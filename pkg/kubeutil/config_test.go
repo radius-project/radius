@@ -98,66 +98,200 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
-	// Get expected defaults based on current environment
-	expectedQPS, expectedBurst := GetServerQPSAndBurst()
+	t.Run("default values", func(t *testing.T) {
+		// Ensure environment variables are not set
+		os.Unsetenv("RADIUS_SERVER_QPS")
+		os.Unsetenv("RADIUS_SERVER_BURST")
 
-	optionTests := []struct {
-		name string
-		in   *ConfigOptions
-		out  *ConfigOptions
-	}{
-		{
-			name: "default",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
+		optionTests := []struct {
+			name string
+			in   *ConfigOptions
+			out  *ConfigOptions
+		}{
+			{
+				name: "default",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: DefaultServerBurst,
+				},
 			},
-			out: &ConfigOptions{
-				QPS:   expectedQPS,
-				Burst: expectedBurst,
+			{
+				name: "only QPS",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: DefaultServerBurst,
+				},
 			},
-		},
-		{
-			name: "only QPS",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-				QPS:            DefaultServerQPS,
+			{
+				name: "only Burst",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: DefaultServerBurst,
+				},
 			},
-			out: &ConfigOptions{
-				QPS:   DefaultServerQPS,
-				Burst: expectedBurst, // Burst should still be set to environment default
+			{
+				name: "QPS and Burst",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: DefaultServerBurst,
+				},
 			},
-		},
-		{
-			name: "only Burst",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-				Burst:          DefaultServerBurst,
-			},
-			out: &ConfigOptions{
-				QPS:   expectedQPS, // QPS should still be set to environment default
-				Burst: DefaultServerBurst,
-			},
-		},
-		{
-			name: "QPS and Burst",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-				QPS:            DefaultServerQPS,
-				Burst:          DefaultServerBurst,
-			},
-			out: &ConfigOptions{
-				QPS:   DefaultServerQPS,
-				Burst: DefaultServerBurst,
-			},
-		},
-	}
+		}
 
-	for _, tc := range optionTests {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg, err := NewClientConfig(tc.in)
-			require.NoError(t, err)
-			require.Equal(t, tc.out.QPS, cfg.QPS)
-			require.Equal(t, tc.out.Burst, cfg.Burst)
-		})
-	}
+		for _, tc := range optionTests {
+			t.Run(tc.name, func(t *testing.T) {
+				cfg, err := NewClientConfig(tc.in)
+				require.NoError(t, err)
+				require.Equal(t, tc.out.QPS, cfg.QPS)
+				require.Equal(t, tc.out.Burst, cfg.Burst)
+			})
+		}
+	})
+
+	t.Run("with environment variable overrides", func(t *testing.T) {
+		// Set environment variables
+		os.Setenv("RADIUS_SERVER_QPS", "800")
+		os.Setenv("RADIUS_SERVER_BURST", "800")
+		defer func() {
+			os.Unsetenv("RADIUS_SERVER_QPS")
+			os.Unsetenv("RADIUS_SERVER_BURST")
+		}()
+
+		optionTests := []struct {
+			name string
+			in   *ConfigOptions
+			out  *ConfigOptions
+		}{
+			{
+				name: "default with env override",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+				},
+				out: &ConfigOptions{
+					QPS:   800.0,
+					Burst: 800,
+				},
+			},
+			{
+				name: "explicit QPS overrides env",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS, // Explicit value should override env
+					Burst: 800,              // Should use env value
+				},
+			},
+			{
+				name: "explicit Burst overrides env",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   800.0,              // Should use env value
+					Burst: DefaultServerBurst, // Explicit value should override env
+				},
+			},
+			{
+				name: "explicit values override env",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: DefaultServerBurst,
+				},
+			},
+		}
+
+		for _, tc := range optionTests {
+			t.Run(tc.name, func(t *testing.T) {
+				cfg, err := NewClientConfig(tc.in)
+				require.NoError(t, err)
+				require.Equal(t, tc.out.QPS, cfg.QPS)
+				require.Equal(t, tc.out.Burst, cfg.Burst)
+			})
+		}
+	})
+}
+
+func TestGetServerQPSAndBurst(t *testing.T) {
+	t.Run("default values", func(t *testing.T) {
+		os.Unsetenv("RADIUS_SERVER_QPS")
+		os.Unsetenv("RADIUS_SERVER_BURST")
+
+		qps, burst := GetServerQPSAndBurst()
+		require.Equal(t, DefaultServerQPS, qps)
+		require.Equal(t, DefaultServerBurst, burst)
+	})
+
+	t.Run("environment variable overrides", func(t *testing.T) {
+		os.Setenv("RADIUS_SERVER_QPS", "500.5")
+		os.Setenv("RADIUS_SERVER_BURST", "600")
+		defer func() {
+			os.Unsetenv("RADIUS_SERVER_QPS")
+			os.Unsetenv("RADIUS_SERVER_BURST")
+		}()
+
+		qps, burst := GetServerQPSAndBurst()
+		require.Equal(t, float32(500.5), qps)
+		require.Equal(t, 600, burst)
+	})
+
+	t.Run("invalid environment variables", func(t *testing.T) {
+		os.Setenv("RADIUS_SERVER_QPS", "invalid")
+		os.Setenv("RADIUS_SERVER_BURST", "not_a_number")
+		defer func() {
+			os.Unsetenv("RADIUS_SERVER_QPS")
+			os.Unsetenv("RADIUS_SERVER_BURST")
+		}()
+
+		qps, burst := GetServerQPSAndBurst()
+		require.Equal(t, DefaultServerQPS, qps)
+		require.Equal(t, DefaultServerBurst, burst)
+	})
+}
+
+func TestGetCLIQPSAndBurst(t *testing.T) {
+	t.Run("default values", func(t *testing.T) {
+		os.Unsetenv("RADIUS_CLI_QPS")
+		os.Unsetenv("RADIUS_CLI_BURST")
+
+		qps, burst := GetCLIQPSAndBurst()
+		require.Equal(t, DefaultCLIQPS, qps)
+		require.Equal(t, DefaultCLIBurst, burst)
+	})
+
+	t.Run("environment variable overrides", func(t *testing.T) {
+		os.Setenv("RADIUS_CLI_QPS", "100.0")
+		os.Setenv("RADIUS_CLI_BURST", "150")
+		defer func() {
+			os.Unsetenv("RADIUS_CLI_QPS")
+			os.Unsetenv("RADIUS_CLI_BURST")
+		}()
+
+		qps, burst := GetCLIQPSAndBurst()
+		require.Equal(t, float32(100.0), qps)
+		require.Equal(t, 150, burst)
+	})
 }

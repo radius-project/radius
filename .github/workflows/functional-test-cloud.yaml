@@ -86,6 +86,11 @@ env:
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
   # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  # Kubernetes client QPS and Burst settings for high-concurrency CI environments
+  RADIUS_SERVER_QPS: "800"
+  RADIUS_SERVER_BURST: "800"
+  RADIUS_CLI_QPS: "200"
+  RADIUS_CLI_BURST: "400"
 
 jobs:
   build:

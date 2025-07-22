@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -100,7 +101,7 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	if options.QPS > 0.0 {
 		config.QPS = options.QPS
 	} else {
-		// Auto-detect environment and set appropriate QPS
+		// Use environment variable override or default
 		qps, _ := GetServerQPSAndBurst()
 		config.QPS = qps
 	}
@@ -108,7 +109,7 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	if options.Burst > 0 {
 		config.Burst = options.Burst
 	} else {
-		// Auto-detect environment and set appropriate Burst
+		// Use environment variable override or default
 		_, burst := GetServerQPSAndBurst()
 		config.Burst = burst
 	}
@@ -140,7 +141,7 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	if options.QPS > 0.0 {
 		merged.QPS = options.QPS
 	} else {
-		// Auto-detect environment and set appropriate QPS
+		// Use environment variable override or default
 		qps, _ := GetServerQPSAndBurst()
 		merged.QPS = qps
 	}
@@ -148,7 +149,7 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	if options.Burst > 0 {
 		merged.Burst = options.Burst
 	} else {
-		// Auto-detect environment and set appropriate Burst
+		// Use environment variable override or default
 		_, burst := GetServerQPSAndBurst()
 		merged.Burst = burst
 	}
@@ -156,43 +157,46 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	return merged, nil
 }
 
-// IsCI detects if the current environment is a CI/CD environment by checking common environment variables.
-func IsCI() bool {
-	// Check for common CI environment variables
-	ciEnvVars := []string{
-		"CI",               // Generic CI indicator
-		"GITHUB_ACTIONS",   // GitHub Actions
-		"GITLAB_CI",        // GitLab CI
-		"TRAVIS",           // Travis CI
-		"CIRCLECI",         // Circle CI
-		"JENKINS_URL",      // Jenkins
-		"BUILDKITE",        // Buildkite
-		"AZURE_PIPELINES",  // Azure Pipelines
-		"TEAMCITY_VERSION", // TeamCity
-	}
+// GetServerQPSAndBurst returns the appropriate QPS and Burst values for server operations.
+// Values can be overridden using RADIUS_SERVER_QPS and RADIUS_SERVER_BURST environment variables.
+func GetServerQPSAndBurst() (float32, int) {
+	qps := DefaultServerQPS
+	burst := DefaultServerBurst
 
-	for _, envVar := range ciEnvVars {
-		if os.Getenv(envVar) != "" {
-			return true
+	// Check for environment variable overrides
+	if envQPS := os.Getenv("RADIUS_SERVER_QPS"); envQPS != "" {
+		if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
+			qps = float32(parsedQPS)
 		}
 	}
-	return false
-}
 
-// GetServerQPSAndBurst returns the appropriate QPS and Burst values for server operations,
-// automatically using higher values in CI environments.
-func GetServerQPSAndBurst() (float32, int) {
-	if IsCI() {
-		return DefaultCIServerQPS, DefaultCIServerBurst
+	if envBurst := os.Getenv("RADIUS_SERVER_BURST"); envBurst != "" {
+		if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
+			burst = parsedBurst
+		}
 	}
-	return DefaultServerQPS, DefaultServerBurst
+
+	return qps, burst
 }
 
-// GetCLIQPSAndBurst returns the appropriate QPS and Burst values for CLI operations,
-// automatically using higher values in CI environments.
+// GetCLIQPSAndBurst returns the appropriate QPS and Burst values for CLI operations.
+// Values can be overridden using RADIUS_CLI_QPS and RADIUS_CLI_BURST environment variables.
 func GetCLIQPSAndBurst() (float32, int) {
-	if IsCI() {
-		return DefaultCICLIQPS, DefaultCICLIBurst
+	qps := DefaultCLIQPS
+	burst := DefaultCLIBurst
+
+	// Check for environment variable overrides
+	if envQPS := os.Getenv("RADIUS_CLI_QPS"); envQPS != "" {
+		if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
+			qps = float32(parsedQPS)
+		}
 	}
-	return DefaultCLIQPS, DefaultCLIBurst
+
+	if envBurst := os.Getenv("RADIUS_CLI_BURST"); envBurst != "" {
+		if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
+			burst = parsedBurst
+		}
+	}
+
+	return qps, burst
 }
