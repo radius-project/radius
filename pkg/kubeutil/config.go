@@ -37,17 +37,6 @@ const (
 	DefaultCLIQPS float32 = 50.0
 	// DefaultCLIBurst is the default number of queries k8sclient handles concurrently for CLI.
 	DefaultCLIBurst int = 100
-
-	// CI environment QPS and Burst values (4x higher for high-concurrency test environments)
-	// DefaultCIServerQPS is the QPS for server operations in CI environments with high test parallelism.
-	DefaultCIServerQPS float32 = 800.0
-	// DefaultCIServerBurst is the burst for server operations in CI environments with high test parallelism.
-	DefaultCIServerBurst int = 800
-
-	// DefaultCICLIQPS is the QPS for CLI operations in CI environments with high test parallelism.
-	DefaultCICLIQPS float32 = 200.0
-	// DefaultCICLIBurst is the burst for CLI operations in CI environments with high test parallelism.
-	DefaultCICLIBurst int = 400
 )
 
 // ConfigOptions is custom options to configure kubernetes client config.
