@@ -32,6 +32,16 @@ global:
     irsa:
       enabled: false
 
+  # Configure terraform binary source for pre-downloading terraform binaries
+  # This avoids downloading terraform on each recipe execution
+  terraform:
+    # Enable terraform binary pre-downloading during pod startup
+    enabled: true
+    # URL for downloading Terraform binary
+    # Leave empty to automatically fetch the latest version from HashiCorp
+    # Or provide a complete direct download URL for custom sources
+    downloadUrl: ""
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

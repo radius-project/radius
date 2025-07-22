@@ -89,9 +89,9 @@ func validateCapability(input *string) error {
 		return v1.NewClientErrInvalidRequest("capability cannot be null")
 	}
 
-	if *input == datamodel.CapabilitySupportsRecipes {
+	if *input == datamodel.CapabilityManualResourceProvisioning {
 		return nil
 	}
 
-	return v1.NewClientErrInvalidRequest(fmt.Sprintf("capability %q is not recognized. Supported capabilities: %s", *input, datamodel.CapabilitySupportsRecipes))
+	return v1.NewClientErrInvalidRequest(fmt.Sprintf("capability %q is not recognized. Supported capabilities: %s", *input, datamodel.CapabilityManualResourceProvisioning))
 }

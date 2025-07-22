@@ -130,13 +130,13 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 
 			switch resourceType {
 			case inertResourceType:
-				response.Properties = &v20231001preview.ResourceTypeProperties{}
+				response.Properties = &v20231001preview.ResourceTypeProperties{
+					Capabilities: []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)},
+				}
 				resp.SetResponse(http.StatusOK, response, nil)
 				return
 			case recipeResourceType:
-				response.Properties = &v20231001preview.ResourceTypeProperties{
-					Capabilities: []*string{to.Ptr(datamodel.CapabilitySupportsRecipes)},
-				}
+				response.Properties = &v20231001preview.ResourceTypeProperties{}
 				resp.SetResponse(http.StatusOK, response, nil)
 				return
 			default:

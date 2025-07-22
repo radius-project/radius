@@ -170,6 +170,9 @@ func Test_E2E(t *testing.T) {
 			Type: tea.KeyCtrlC,
 		})
 
+		// Give the model a moment to process the Ctrl+C before quitting
+		time.Sleep(10 * time.Millisecond)
+
 		if err := tm.Quit(); err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +180,11 @@ func Test_E2E(t *testing.T) {
 		// FinalModel only returns once the program has finished running or when it times out.
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
-		model, ok := tm.FinalModel(t).(Model)
+		finalModel := tm.FinalModel(t)
+		model, ok := finalModel.(Model)
+		if !ok {
+			t.Logf("FinalModel returned type: %T, value: %+v", finalModel, finalModel)
+		}
 		require.True(t, ok, "Final model should be of type Model")
 
 		require.False(t, model.valueEntered)
