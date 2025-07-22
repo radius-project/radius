@@ -172,7 +172,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 			if data, err := os.ReadFile(preMountedBinaryPath); err == nil {
 				if err := os.WriteFile(filepath.Join(installDir, "terraform"), data, 0755); err == nil {
 					logger.Info("Successfully copied pre-downloaded Terraform binary")
-					
+
 					// Create a new instance of tfexec.Terraform with the copied binary
 					tf, err := NewTerraform(ctx, tfDir, filepath.Join(installDir, "terraform"))
 					if err != nil {
