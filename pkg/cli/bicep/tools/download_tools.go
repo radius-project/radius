@@ -20,9 +20,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"runtime"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 )
@@ -30,6 +32,8 @@ import (
 const (
 	// binaryRepo is the name of the remote bicep binary repository
 	binaryRepo = "https://github.com/Azure/bicep/releases/latest/download/"
+	// manifestToBicepExtensionRepo is the name of the remote manifest-to-bicep-extension repository
+	manifestToBicepExtensionRepo = "https://github.com/willdavsmith/bicep-tools/releases/latest/download/"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
@@ -40,6 +44,15 @@ var validPlatforms = map[string]string{
 	"linux-arm64":   "bicep-linux-arm64",
 	"darwin-amd64":  "bicep-osx-x64",
 	"darwin-arm64":  "bicep-osx-arm64",
+}
+
+// manifestExtensionPlatforms is a map of valid platforms for manifest-to-bicep-extension
+var manifestExtensionPlatforms = map[string]string{
+	"windows-amd64": "manifest-to-bicep-extension-win-amd64",
+	"linux-amd64":   "manifest-to-bicep-extension-linux-amd64",
+	"linux-arm64":   "manifest-to-bicep-extension-linux-arm64",
+	"darwin-amd64":  "manifest-to-bicep-extension-darwin-amd64",
+	"darwin-arm64":  "manifest-to-bicep-extension-darwin-arm64",
 }
 
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
@@ -178,4 +191,146 @@ func getFilename(base string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
+}
+
+// validateDownloadURL validates that the URL is secure and properly formatted
+func validateDownloadURL(downloadURL string) error {
+	if downloadURL == "" {
+		return nil // Empty URL is valid (will use defaults)
+	}
+
+	u, err := url.Parse(downloadURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL format: %v", err)
+	}
+
+	if u.Scheme != "https" {
+		return fmt.Errorf("only HTTPS URLs are allowed for security reasons, got: %s", u.Scheme)
+	}
+
+	return nil
+}
+
+// constructDownloadURL constructs the download URL based on base URL and binary name
+func constructDownloadURL(baseURL, binaryName string) string {
+	if baseURL != "" {
+		return fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), binaryName)
+	}
+	return binaryRepo + binaryName
+}
+
+// constructManifestDownloadURL constructs the download URL for manifest-to-bicep extension
+func constructManifestDownloadURL(baseURL, binaryName string) string {
+	if baseURL != "" {
+		return fmt.Sprintf("%s/%s", strings.TrimSuffix(baseURL, "/"), binaryName)
+	}
+	return manifestToBicepExtensionRepo + binaryName
+}
+
+// downloadBinary downloads a binary from the given URL to the specified filepath
+func downloadBinary(filepath, downloadURL string) error {
+	// Create folders
+	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+	}
+
+	// Create the file
+	file, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %v", filepath, err)
+	}
+	defer file.Close()
+
+	// Get the data
+	resp, err := http.Get(downloadURL)
+	if clients.Is404Error(err) {
+		return fmt.Errorf("unable to locate binary resource at %s (HTTP 404): %v", downloadURL, err)
+	} else if err != nil {
+		return fmt.Errorf("failed to download from %s: %v", downloadURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with status %d from %s", resp.StatusCode, downloadURL)
+	}
+
+	// Write the body to file
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write downloaded content to %s: %v", filepath, err)
+	}
+
+	// Get the filemode so we can mark it as executable
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
+	}
+
+	// Make file executable by everyone
+	err = file.Chmod(fileInfo.Mode() | 0111)
+	if err != nil {
+		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
+	}
+
+	return nil
+}
+
+// DownloadToFolderWithOptions downloads the bicep binary with custom URL
+func DownloadToFolderWithOptions(filepath, customURL string) error {
+	// Validate custom URL if provided
+	if err := validateDownloadURL(customURL); err != nil {
+		return fmt.Errorf("invalid bicep download URL: %v", err)
+	}
+
+	if customURL != "" {
+		fmt.Printf("Warning: Using custom download URL for bicep: %s\n", customURL)
+	}
+
+	// Get platform-specific binary name
+	binary, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return err
+	}
+
+	binaryName, err := getFilename(binary)
+	if err != nil {
+		return err
+	}
+
+	// Construct download URL
+	downloadURL := constructDownloadURL(customURL, binaryName)
+
+	// Download the binary
+	return downloadBinary(filepath, downloadURL)
+}
+
+// DownloadManifestToBicepExtension downloads the manifest-to-bicep extension
+func DownloadManifestToBicepExtension(filepath, customURL string) error {
+	// Validate custom URL if provided
+	if err := validateDownloadURL(customURL); err != nil {
+		return fmt.Errorf("invalid manifest-to-bicep-extension download URL: %v", err)
+	}
+
+	if customURL != "" {
+		fmt.Printf("Warning: Using custom download URL for manifest-to-bicep-extension: %s\n", customURL)
+	}
+
+	// Get platform-specific binary name
+	platform, ok := manifestExtensionPlatforms[runtime.GOOS+"-"+runtime.GOARCH]
+	if !ok {
+		fmt.Printf("Warning: manifest-to-bicep-extension is not available for platform %s/%s, skipping...\n", runtime.GOOS, runtime.GOARCH)
+		return nil // Don't fail the entire operation
+	}
+
+	binaryName, err := getFilename(platform)
+	if err != nil {
+		return err
+	}
+
+	// Construct download URL
+	downloadURL := constructManifestDownloadURL(customURL, binaryName)
+
+	// Download the binary
+	return downloadBinary(filepath, downloadURL)
 }
