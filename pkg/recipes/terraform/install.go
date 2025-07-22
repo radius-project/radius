@@ -124,7 +124,7 @@ func validateArchiveURL(ctx context.Context, archiveURL string, tlsConfig *datam
 // Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
 // the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
 // if the directory creation or Terraform installation fails.
-func Install(ctx context.Context, installer *install.Installer, tfDir string, terraformConfig datamodel.TerraformConfigProperties, secrets map[string]recipes.SecretData) (*tfexec.Terraform, error) {
+func Install(ctx context.Context, installer *install.Installer, tfDir string, terraformConfig datamodel.TerraformConfigProperties, secrets map[string]recipes.SecretData, logLevel string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Create Terraform installation directory
@@ -314,7 +314,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 	}
 
 	// Configure Terraform logs once Terraform installation is complete
-	configureTerraformLogs(ctx, tf)
+	configureTerraformLogs(ctx, tf, logLevel)
 
 	return tf, nil
 }

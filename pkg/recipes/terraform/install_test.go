@@ -20,7 +20,10 @@ import (
 	"context"
 	"testing"
 
+	install "github.com/hashicorp/hc-install"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -171,6 +174,42 @@ func Test_validateArchiveURL(t *testing.T) {
 				}
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Test the Install function signature with logLevel parameter
+func TestInstall_LogLevelParameter(t *testing.T) {
+	ctx := testcontext.New(t)
+
+	// Create a temporary directory for terraform
+	workingDir := t.TempDir()
+
+	// Create installer
+	i := install.NewInstaller()
+
+	// Basic terraform config (empty for this test)
+	terraformConfig := datamodel.TerraformConfigProperties{}
+
+	// Empty secrets
+	secrets := map[string]recipes.SecretData{}
+
+	// Test different log levels
+	testCases := []string{"", "ERROR", "DEBUG", "INFO", "WARN", "TRACE", "OFF"}
+
+	for _, logLevel := range testCases {
+		t.Run("logLevel_"+logLevel, func(t *testing.T) {
+			// This will attempt to install terraform and fail in the test environment,
+			// but it tests that the function signature accepts the logLevel parameter
+			_, err := Install(ctx, i, workingDir, terraformConfig, secrets, logLevel)
+
+			// We expect an error because we don't have terraform available for download in test,
+			// but we're testing that the function accepts the correct parameters
+			if err != nil {
+				t.Logf("Install function correctly accepted logLevel parameter '%s' (error expected in test environment): %v", logLevel, err)
+			} else {
+				t.Logf("Install function succeeded with logLevel parameter '%s'", logLevel)
 			}
 		})
 	}

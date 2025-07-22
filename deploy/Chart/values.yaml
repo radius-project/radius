@@ -32,6 +32,12 @@ global:
     irsa:
       enabled: false
 
+  terraform:
+    # Configure Terraform log level for terraform-exec execution
+    # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
+    # Default: ERROR
+    loglevel: "ERROR"
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

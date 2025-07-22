@@ -42,10 +42,15 @@ func (w *tfLogWrapper) Write(p []byte) (n int, err error) {
 }
 
 // configureTerraformLogs configures the Terraform logs to be streamed to the Radius logs.
-func configureTerraformLogs(ctx context.Context, tf *tfexec.Terraform) {
+func configureTerraformLogs(ctx context.Context, tf *tfexec.Terraform, logLevel string) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	err := tf.SetLog("TRACE")
+	// Default to ERROR if no log level is provided
+	if logLevel == "" {
+		logLevel = "ERROR"
+	}
+
+	err := tf.SetLog(logLevel)
 	if err != nil {
 		logger.Error(err, "Failed to set log level for Terraform")
 		return
