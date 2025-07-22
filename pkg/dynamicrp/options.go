@@ -209,6 +209,7 @@ func terraformDriver(options *Options) (driver.Driver, error) {
 		options.UCP,
 		options.SecretProvider,
 		terraform.TerraformOptions{
-			Path: options.Config.Terraform.Path,
+			Path:     options.Config.Terraform.Path,
+			LogLevel: options.Config.Terraform.LogLevel,
 		}, *options.KubernetesProvider), nil
 }

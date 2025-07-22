@@ -85,7 +85,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	terraformConfig := getEnvTerraformConfig(options)
 
-	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets, options.LogLevel)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -143,7 +143,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	terraformConfig := getEnvTerraformConfig(options)
 
-	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets, options.LogLevel)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -214,7 +214,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 	terraformConfig := getEnvTerraformConfig(options)
 
-	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets, options.LogLevel)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {

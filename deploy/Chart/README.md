@@ -15,6 +15,20 @@ To install the chart with the release name `radius`:
 helm upgrade --wait --install radius deploy/Chart -n radius-system
 ```
 
+### Configuration Options
+
+#### Terraform Logging Configuration
+
+You can configure the log level for Terraform execution to control verbosity:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.terraform.loglevel="DEBUG"
+```
+
+Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`. Default is `ERROR`.
+
+
 ### Verify the installation
 
 Verify that the controller is running in the radius-system namespace:
