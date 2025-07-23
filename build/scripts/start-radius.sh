@@ -8,7 +8,6 @@ if [ ! -f "debug_files/bin/ucpd" ]; then
 fi
 
 cd debug_files
-source env-setup.sh
 
 echo "🚀 Starting Radius components..."
 

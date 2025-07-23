@@ -38,10 +38,10 @@ check_prerequisites() {
     
     # Required tools
     command -v go >/dev/null 2>&1 || missing_tools+=("go")
-    command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl")
     command -v psql >/dev/null 2>&1 || missing_tools+=("psql")
     command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform")
     command -v rad >/dev/null 2>&1 || missing_tools+=("rad")
+    command -v k3d >/dev/null 2>&1 || missing_tools+=("k3d")
     
     if [ ${#missing_tools[@]} -gt 0 ]; then
         log_error "Missing required tools: ${missing_tools[*]}"
@@ -51,6 +51,10 @@ check_prerequisites() {
     fi
     
     # Optional tools
+    if ! command -v kubectl >/dev/null 2>&1; then
+        log_warning "kubectl not found - will be provided by k3d"
+    fi
+    
     if ! command -v dotnet >/dev/null 2>&1; then
         log_warning "dotnet not found - local deployment engine debugging will not be available"
     fi
@@ -66,7 +70,7 @@ check_prerequisites() {
 create_directories() {
     log_info "Creating directory structure at $DEV_ROOT..."
     
-    mkdir -p "$DEV_ROOT"/{configs,logs,scripts,bin,terraform-cache,terraform,data}
+    mkdir -p "$DEV_ROOT"/{configs,logs,bin,terraform-cache,terraform,data}
     
     log_success "Directory structure created"
 }
@@ -75,18 +79,7 @@ create_directories() {
 generate_configs() {
     log_info "Generating configuration files..."
     
-    # Get current Kubernetes context
-    local k8s_context
-    k8s_context=$(kubectl config current-context 2>/dev/null || echo "")
-    
-    if [ -z "$k8s_context" ]; then
-        log_warning "No Kubernetes context found. Using empty context in UCP config."
-        k8s_context=""
-    else
-        log_info "Using Kubernetes context: $k8s_context"
-    fi
-    
-    # UCP configuration
+    # UCP configuration with PostgreSQL (no Kubernetes required)
     cat > "$DEV_ROOT/configs/ucp.yaml" <<EOF
 environment:
   name: "dev"
@@ -97,20 +90,16 @@ server:
   pathBase: /apis/api.ucp.dev/v1alpha3
 
 databaseProvider:
-  provider: "apiserver"
-  apiserver:
-    context: '$k8s_context'
-    namespace: 'radius-testing'
+  provider: "postgresql"
+  postgresql:
+    url: "postgresql://radius_user:radius_pass@localhost:5432/radius?sslmode=disable"
 
 secretProvider:
   provider: "kubernetes"
 
 queueProvider:
-  provider: "apiserver"
+  provider: "inmemory"
   name: 'ucp'
-  apiserver:
-    context: '$k8s_context'
-    namespace: 'radius-testing'
 
 profilerProvider:
   enabled: false
@@ -170,16 +159,12 @@ environment:
   name: "dev"
   roleLocation: "global"
 databaseProvider:
-  provider: "apiserver"
-  apiserver:
-    context: '$k8s_context'
-    namespace: 'radius-testing'
+  provider: "postgresql"
+  postgresql:
+    url: "postgresql://radius_user:radius_pass@localhost:5432/radius?sslmode=disable"
 queueProvider:
-  provider: "apiserver"
+  provider: "inmemory"
   name: radius
-  apiserver:
-    context: '$k8s_context'
-    namespace: 'radius-testing'
 secretProvider:
   provider: "kubernetes"
 metricsProvider:
@@ -258,16 +243,12 @@ environment:
   name: "dev"
   roleLocation: "global"
 databaseProvider:
-  provider: "apiserver"
-  apiserver:
-    context: '$k8s_context'
-    namespace: 'radius-testing'
+  provider: "postgresql"
+  postgresql:
+    url: "postgresql://radius_user:radius_pass@localhost:5432/radius?sslmode=disable"
 queueProvider:
-  provider: "apiserver"
+  provider: "inmemory"
   name: dynamic-rp
-  apiserver:
-    context: '$k8s_context'
-    namespace: 'radius-testing'
 secretProvider:
   provider: "kubernetes"
 profilerProvider:
@@ -383,22 +364,14 @@ EOF
 generate_debug_cli() {
     log_info "Generating debug CLI configuration and wrapper..."
     
-    # Get current Kubernetes context
-    local k8s_context
-    k8s_context=$(kubectl config current-context 2>/dev/null || echo "")
-    if [ -z "$k8s_context" ]; then
-        log_warning "No active Kubernetes context found"
-        k8s_context="kind-kind"  # Default fallback
-    fi
-    
-    # Create debug CLI config that sets up workspace with UCP override
+    # Create debug CLI config that sets up workspace with UCP override (hardcoded for k3d)
     cat > "$DEV_ROOT/configs/rad-debug-config.yaml" <<EOF
 workspaces:
   default: debug
   items:
     debug:
       connection:
-        context: '$k8s_context'
+        context: 'k3d-radius-debug'
         kind: kubernetes
         overrides:
           ucp: http://localhost:9000
@@ -694,17 +667,63 @@ check_database() {
     log_info "Checking database setup..."
     
     if ! psql "postgresql://radius_user:radius_pass@localhost:5432/radius" -c "SELECT 1;" >/dev/null 2>&1; then
-        log_warning "Database not set up. Please run the following commands:"
-        echo ""
-        echo "sudo -u postgres psql <<EOF"
-        echo "CREATE DATABASE radius;"
-        echo "CREATE USER radius_user WITH PASSWORD 'radius_pass';"
-        echo "GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;"
-        echo "GRANT CREATE ON SCHEMA public TO radius_user;"
-        echo "\\q"
-        echo "EOF"
-        echo ""
-        log_info "Then restart this setup script"
+        log_info "Database not found. Setting up PostgreSQL database..."
+        
+        # Check if PostgreSQL is running
+        if ! pgrep postgres >/dev/null 2>&1; then
+            log_error "PostgreSQL is not running. Please start PostgreSQL first:"
+            echo "  brew services start postgresql"
+            echo "  # or sudo systemctl start postgresql (Linux)"
+            exit 1
+        fi
+        
+        # Create database and user
+        if sudo -u postgres psql 2>/dev/null <<EOF
+CREATE DATABASE radius;
+CREATE USER radius_user WITH PASSWORD 'radius_pass';
+GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;
+GRANT CREATE ON SCHEMA public TO radius_user;
+EOF
+        then
+            log_success "Database and user created successfully"
+            
+            # Initialize database schema
+            log_info "Initializing database schema..."
+            if psql "postgresql://radius_user:radius_pass@localhost:5432/radius" < "$(pwd)/deploy/init-db/db.sql.txt" >/dev/null 2>&1; then
+                log_success "Database schema initialized successfully"
+            else
+                log_error "Failed to initialize database schema"
+                exit 1
+            fi
+        else
+            # Try without sudo -u postgres (for Homebrew PostgreSQL)
+            log_info "Trying alternative PostgreSQL setup method..."
+            if psql postgres 2>/dev/null <<EOF
+CREATE DATABASE radius;
+CREATE USER radius_user WITH PASSWORD 'radius_pass';
+GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;
+GRANT CREATE ON SCHEMA public TO radius_user;
+EOF
+            then
+                log_success "Database and user created successfully"
+                
+                # Initialize database schema
+                log_info "Initializing database schema..."
+                if psql "postgresql://radius_user:radius_pass@localhost:5432/radius" < "$(pwd)/deploy/init-db/db.sql.txt" >/dev/null 2>&1; then
+                    log_success "Database schema initialized successfully"
+                else
+                    log_error "Failed to initialize database schema"
+                    exit 1
+                fi
+            else
+                log_error "Failed to create database automatically. Please run manually:"
+                echo "  createdb radius"
+                echo "  psql postgres -c \"CREATE USER radius_user WITH PASSWORD 'radius_pass';\""
+                echo "  psql postgres -c \"GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;\""
+                echo "  psql postgres -c \"GRANT CREATE ON SCHEMA public TO radius_user;\""
+                exit 1
+            fi
+        fi
     else
         log_success "Database connection verified"
     fi
@@ -832,21 +851,23 @@ main() {
     generate_configs
     generate_env_script
     generate_debug_cli
-    generate_scripts
     check_database
-    check_kubernetes
+    # Skip Kubernetes check - k3d cluster will be created by debug-start
+    # check_kubernetes
     setup_deployment_engine
     setup_terraform_symlinks
     
     log_success "Debug environment setup complete!"
     echo ""
     log_info "Next steps:"
-    echo "1. Run 'make debug-start' to start all components"
-    echo "2. Run 'make debug-env-init' to create resources and register recipes"
+    echo "1. Run 'make debug-start' to start all components and initialize environment"
+    echo "2. Start debugging! Components are ready with VS Code debug ports 40001-40004"
     echo ""
-    log_info "Alternative manual steps:"
-    echo "2a. Run './rad group create default && ./rad env create default' to create resources"
-    echo "2b. Run 'make debug-register-recipes' to register default recipes"
+    log_info "The debug-start command will automatically:"
+    echo "• Create k3d cluster (radius-debug)"
+    echo "• Start all Radius components with debugging enabled"
+    echo "• Initialize default resource group and environment"
+    echo "• Register default recipes"
     echo ""
     log_info "For more information, see:"
     echo "docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md"
