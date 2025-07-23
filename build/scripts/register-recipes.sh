@@ -8,9 +8,9 @@ cd "$DEBUG_DEV_ROOT"
 
 echo "📝 Registering default recipes..."
 
-# Check if rad wrapper exists
-if [ ! -f bin/rad-wrapper ]; then
-    echo "❌ rad-wrapper not found. Run setup first."
+# Check if drad wrapper exists
+if [ ! -f drad ]; then
+    echo "❌ drad wrapper not found. Run 'make debug-start' first."
     exit 1
 fi
 
@@ -20,7 +20,7 @@ max_attempts=30
 attempt=0
 
 while [ $attempt -lt $max_attempts ]; do
-    if ./bin/rad-wrapper env show default >/dev/null 2>&1; then
+    if ./drad env show default >/dev/null 2>&1; then
         echo "✅ Environment 'default' is ready"
         break
     fi
@@ -53,7 +53,7 @@ for recipe_spec in "${recipes[@]}"; do
     
     echo "Registering default recipe for $resource_type -> $template_path"
     
-    if ./bin/rad-wrapper recipe register "default" \
+    if ./drad recipe register "default" \
         --resource-type "$resource_type" \
         --template-kind "bicep" \
         --template-path "$template_path" \
