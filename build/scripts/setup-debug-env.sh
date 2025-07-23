@@ -859,16 +859,6 @@ main() {
     
     log_success "Debug environment setup complete!"
     echo ""
-    log_info "Next steps:"
-    echo "1. Run 'make debug-start' to start all components and initialize environment"
-    echo "2. Start debugging! Components are ready with VS Code debug ports 40001-40004"
-    echo ""
-    log_info "The debug-start command will automatically:"
-    echo "• Create k3d cluster (radius-debug)"
-    echo "• Start all Radius components with debugging enabled"
-    echo "• Initialize default resource group and environment"
-    echo "• Register default recipes"
-    echo ""
     log_info "For more information, see:"
     echo "docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md"
 }
