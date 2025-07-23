@@ -30,18 +30,18 @@ dump: ## Outputs the values of all variables in the makefile.
 DEBUG_CONFIG_FILE ?= build/debug-config.yaml
 DEBUG_DEV_ROOT ?= $(PWD)/debug_files
 
-.PHONY: debug-setup debug-clean debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init
+.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init
 
 debug-help: ## Show debug automation help
 	@echo "Debug Development Automation Commands:"
 	@echo ""
 	@echo "Setup Commands:"
 	@echo "  debug-setup          - Complete one-time setup for OS process debugging"
-	@echo "  debug-clean          - Clean up debug environment"
+	@echo "  debug-stop           - Stop all components and destroy k3d cluster"
 	@echo ""
 	@echo "Runtime Commands:"
 	@echo "  debug-start          - Start all Radius components as OS processes"
-	@echo "  debug-stop           - Stop all running Radius components"
+	@echo "  debug-stop           - Stop all components, destroy cluster, and clean up completely"
 	@echo "  debug-status         - Show status of all components"
 	@echo "  debug-logs           - Tail all component logs"
 	@echo ""
@@ -68,7 +68,7 @@ debug-help: ## Show debug automation help
 	@echo ""
 	@echo "💡 All builds are incremental - only changed code is recompiled"
 	@echo "💡 Individual component builds are fastest when working on specific components"
-	@echo "💡 rad CLI is symlinked to ./rad and always uses debug config for local development"
+	@echo "💡 drad CLI is created for debug configuration (preserves 'rad' for your installed version)"
 	@echo ""
 	@echo "Configuration:"
 	@echo "  DEBUG_CONFIG_FILE    - Debug configuration file (default: build/debug-config.yaml)"
@@ -113,26 +113,38 @@ debug-build-dynamic-rp: ## Build Dynamic RP with debug symbols
 	@go build -gcflags="all=-N -l" -o $(DEBUG_DEV_ROOT)/bin/dynamic-rp ./cmd/dynamic-rp
 	@echo "✅ dynamic-rp built"
 
-debug-build-rad: ## Build rad CLI with debug symbols
+debug-build-rad: ## Build rad CLI with debug symbols + create drad alias
 	@echo "Building rad CLI with debug symbols..."
 	@mkdir -p $(DEBUG_DEV_ROOT)/bin
 	@go build -gcflags="all=-N -l" -o $(DEBUG_DEV_ROOT)/bin/rad ./cmd/rad
 	@echo "✅ rad CLI built"
-	@echo "Creating symlink in workspace root..."
+	@echo "Creating drad alias for debug CLI..."
 	@if [ -f $(DEBUG_DEV_ROOT)/bin/rad-wrapper ]; then \
-		ln -sf $(DEBUG_DEV_ROOT)/bin/rad-wrapper ./rad; \
-		echo "✅ rad CLI (debug wrapper) symlinked to ./rad"; \
+		ln -sf $(DEBUG_DEV_ROOT)/bin/rad-wrapper ./drad; \
+		echo "✅ drad alias (debug wrapper) created"; \
 	else \
-		ln -sf $(DEBUG_DEV_ROOT)/bin/rad ./rad; \
-		echo "✅ rad CLI (binary) symlinked to ./rad"; \
+		ln -sf $(DEBUG_DEV_ROOT)/bin/rad ./drad; \
+		echo "✅ drad alias (binary) created"; \
 	fi
+	@echo "💡 Use './drad' for debug-configured CLI (preserves 'rad' for your installed version)"
 
-debug-start: debug-build-all ## Start all Radius components as OS processes
+debug-start: debug-setup debug-build-all ## Start k3d cluster and all Radius components as OS processes
+	@echo "Creating k3d cluster..."
+	@if k3d cluster list | grep -q "radius-debug"; then \
+		echo "k3d cluster 'radius-debug' already exists"; \
+	else \
+		k3d cluster create radius-debug --wait --timeout 60s; \
+	fi
+	@echo "Switching to k3d context..."
+	@kubectl config use-context k3d-radius-debug
 	@echo "Starting Radius components as OS processes..."
 	@build/scripts/start-radius.sh
-	@echo "🚀 All components started. Use 'make debug-status' to check health."
+	@echo "Initializing environment resources..."
+	@$(MAKE) debug-env-init
+	@echo "🚀 All components started and environment initialized!"
+	@echo "📊 Use 'make debug-status' to check component health"
 
-debug-stop: ## Stop all running Radius components
+debug-stop: ## Stop all running Radius components, destroy k3d cluster, and clean up
 	@echo "Stopping Radius components..."
 	@if [ -f build/scripts/stop-radius.sh ]; then \
 		build/scripts/stop-radius.sh; \
@@ -142,12 +154,23 @@ debug-stop: ## Stop all running Radius components
 	fi
 	@echo "Stopping deployment engine..."
 	@$(MAKE) debug-deployment-engine-stop
+	@echo "Destroying k3d cluster..."
+	@k3d cluster delete radius-debug 2>/dev/null || echo "k3d cluster was not running"
+	@echo "Cleaning up PostgreSQL database..."
+	@psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS radius;" 2>/dev/null || echo "Database cleanup completed or PostgreSQL not accessible"
+	@psql -h localhost -U postgres -c "CREATE DATABASE radius;" 2>/dev/null || echo "Database recreation failed or PostgreSQL not accessible"
+	@psql -h localhost -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;" 2>/dev/null || echo "Database permissions failed or PostgreSQL not accessible"
+	@psql "postgresql://radius_user:radius_pass@localhost:5432/radius" < deploy/init-db/db.sql.txt 2>/dev/null || echo "Database schema initialization failed or PostgreSQL not accessible"
+	@echo "Cleaning up debug files and symlinks..."
+	@rm -rf $(DEBUG_DEV_ROOT)
+	@rm -f ./drad
+	@echo "✅ Debug environment completely stopped and cleaned up"
 
 debug-status: ## Show status of all components
-	@if [ -f $(DEBUG_DEV_ROOT)/scripts/status-radius.sh ]; then \
-		$(DEBUG_DEV_ROOT)/scripts/status-radius.sh; \
+	@if [ -f build/scripts/status-radius.sh ]; then \
+		build/scripts/status-radius.sh; \
 	else \
-		echo "❌ Status script not found. Run 'make debug-setup' first."; \
+		echo "❌ Status script not found at build/scripts/status-radius.sh"; \
 		exit 1; \
 	fi
 
@@ -201,14 +224,7 @@ debug-deployment-engine-status: ## Check deployment engine status
 debug-deployment-engine-logs: ## View deployment engine logs
 	@docker logs -f radius-deployment-engine 2>/dev/null || echo "❌ Deployment Engine container not found"
 
-debug-clean: ## Clean up debug environment
-	@echo "Cleaning up debug environment..."
-	@$(MAKE) debug-stop || true
-	@$(MAKE) debug-deployment-engine-stop || true
-	@rm -rf $(DEBUG_DEV_ROOT)
-	@rm -rf .vscode/launch.json .vscode/tasks.json || true
-	@rm -f ./rad ./rad-debug || true
-	@echo "✅ Debug environment cleaned up"
+
 
 # Recipe registration
 debug-register-recipes: ## Register default recipes in the debug environment
@@ -217,7 +233,7 @@ debug-register-recipes: ## Register default recipes in the debug environment
 		echo "❌ Debug environment not set up. Run 'make debug-setup' first."; \
 		exit 1; \
 	fi
-	@$(DEBUG_DEV_ROOT)/scripts/register-recipes.sh
+	@build/scripts/register-recipes.sh
 
 debug-env-init: ## Create default resource group, environment, and register recipes
 	@echo "Initializing debug environment resources..."
