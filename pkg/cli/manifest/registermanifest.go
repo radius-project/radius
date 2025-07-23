@@ -238,7 +238,11 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
 	}
 
-	logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Name, typeName, strings.Join(resourceType.Capabilities, ","))
+	if len(resourceType.Capabilities) == 0 {
+		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
+	} else {
+		logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Name, typeName, strings.Join(resourceType.Capabilities, ","))
+	}
 
 	err = retryOperation(ctx, func() error {
 		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
