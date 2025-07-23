@@ -104,7 +104,7 @@ fi
 
 # Start UCP with dlv
 echo "Starting UCP with dlv on port 40001..."
-dlv exec "$DEBUG_ROOT/bin/ucpd" --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/ucp.yaml" > "$DEBUG_ROOT/logs/ucp.log" 2>&1 &
+dlv exec "$DEBUG_ROOT/bin/ucpd" --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/ucp.yaml" > "$DEBUG_ROOT/logs/ucp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/ucp.pid"
 sleep 5
 
@@ -117,19 +117,19 @@ echo "✅ UCP started successfully"
 
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
-dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/controller.yaml" --cert-dir="" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
+dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/controller.yaml" --cert-dir="" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/controller.pid"
 sleep 3
 
 # Start Applications RP with dlv
 echo "Starting Applications RP with dlv on port 40003..."
-dlv exec "$DEBUG_ROOT/bin/applications-rp" --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/applications-rp.yaml" > "$DEBUG_ROOT/logs/applications-rp.log" 2>&1 &
+dlv exec "$DEBUG_ROOT/bin/applications-rp" --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/applications-rp.yaml" > "$DEBUG_ROOT/logs/applications-rp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/applications-rp.pid"
 sleep 3
 
 # Start Dynamic RP with dlv
 echo "Starting Dynamic RP with dlv on port 40004..."
-dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/dynamic-rp.yaml" > "$DEBUG_ROOT/logs/dynamic-rp.log" 2>&1 &
+dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/dynamic-rp.yaml" > "$DEBUG_ROOT/logs/dynamic-rp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/dynamic-rp.pid"
 sleep 3
 

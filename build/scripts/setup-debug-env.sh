@@ -122,6 +122,11 @@ initialization:
     - id: "/planes/azure/azure"
       properties:
         kind: "Azure"
+    - id: "/planes/kubernetes/kubernetes"
+      properties:
+        kind: "Kubernetes"
+        resourceProviders:
+          Microsoft.Resources: "http://localhost:5017"
   manifestDirectory: "$(pwd)/deploy/manifest/built-in-providers/dev"
 
 identity:
