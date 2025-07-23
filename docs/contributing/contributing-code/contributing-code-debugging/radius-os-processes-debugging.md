@@ -198,11 +198,10 @@ make debug-stop
 make debug-help           # Show all available debug commands
 make debug-check-prereqs  # Verify all prerequisites are installed
 make debug-setup          # Complete one-time environment setup
-make debug-clean          # Clean up debug environment
 
 # Development Workflow
 make debug-start          # Start all components as OS processes
-make debug-stop           # Stop all running components
+make debug-stop           # Stop all running components and clean up database
 make debug-status         # Show component health status
 make debug-build          # Build all components with debug symbols (incremental)
 
@@ -553,7 +552,7 @@ If you encounter issues not covered here:
 1. **Check the rad CLI configuration**: The `./rad` wrapper is automatically configured for local debugging
 2. **Check component logs**: Use `make debug-logs` to see all component output
 3. **Verify prerequisites**: Run `make debug-check-prereqs` 
-4. **Clean and restart**: Use `make debug-clean && make debug-setup`
+4. **Clean and restart**: Use `make debug-stop && make debug-setup`
 5. **Use VS Code debugging**: Set breakpoints and step through problematic code paths
 
 The automation handles ~90% of the setup complexity, but understanding the underlying components helps with advanced debugging scenarios.
