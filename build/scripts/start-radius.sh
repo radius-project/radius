@@ -140,8 +140,8 @@ if command -v docker >/dev/null 2>&1; then
   docker stop radius-deployment-engine 2>/dev/null || true
   docker rm radius-deployment-engine 2>/dev/null || true
   
-  if [ -f "$DEBUG_ROOT/scripts/start-deployment-engine.sh" ]; then
-    "$DEBUG_ROOT/scripts/start-deployment-engine.sh"
+  if [ -f "$SCRIPT_DIR/start-deployment-engine.sh" ]; then
+    "$SCRIPT_DIR/start-deployment-engine.sh"
   else
     echo "⚠️  Deployment engine start script not found"
   fi
