@@ -92,7 +92,7 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	} else {
 		// Use environment variable override or default
 		qps := DefaultServerQPS
-		if envQPS := os.Getenv("RADIUS_SERVER_QPS"); envQPS != "" {
+		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
 			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
 				qps = float32(parsedQPS)
 			}
@@ -105,7 +105,7 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	} else {
 		// Use environment variable override or default
 		burst := DefaultServerBurst
-		if envBurst := os.Getenv("RADIUS_SERVER_BURST"); envBurst != "" {
+		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
 			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
 				burst = parsedBurst
 			}
@@ -142,7 +142,7 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	} else {
 		// Use environment variable override or default
 		qps := DefaultServerQPS
-		if envQPS := os.Getenv("RADIUS_SERVER_QPS"); envQPS != "" {
+		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
 			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
 				qps = float32(parsedQPS)
 			}
@@ -155,7 +155,7 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	} else {
 		// Use environment variable override or default
 		burst := DefaultServerBurst
-		if envBurst := os.Getenv("RADIUS_SERVER_BURST"); envBurst != "" {
+		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
 			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
 				burst = parsedBurst
 			}

@@ -100,8 +100,7 @@ users:
 
 	t.Run("default values", func(t *testing.T) {
 		// Ensure environment variables are not set
-		os.Unsetenv("RADIUS_SERVER_QPS")
-		os.Unsetenv("RADIUS_SERVER_BURST")
+		os.Unsetenv("RADIUS_QPS_AND_BURST")
 
 		optionTests := []struct {
 			name string
@@ -166,11 +165,9 @@ users:
 
 	t.Run("with environment variable overrides", func(t *testing.T) {
 		// Set environment variables
-		os.Setenv("RADIUS_SERVER_QPS", "800")
-		os.Setenv("RADIUS_SERVER_BURST", "800")
+		os.Setenv("RADIUS_QPS_AND_BURST", "800")
 		defer func() {
-			os.Unsetenv("RADIUS_SERVER_QPS")
-			os.Unsetenv("RADIUS_SERVER_BURST")
+			os.Unsetenv("RADIUS_QPS_AND_BURST")
 		}()
 
 		optionTests := []struct {
