@@ -77,9 +77,13 @@ debug-help: ## Show debug automation help
 
 debug-setup: ## Complete one-time setup for OS process debugging
 	@echo "Setting up Radius debug environment..."
-	@mkdir -p $(DEBUG_DEV_ROOT)/{configs,logs,scripts,bin,terraform-cache}
-	@build/scripts/setup-debug-env.sh $(DEBUG_CONFIG_FILE) $(DEBUG_DEV_ROOT)
+	@mkdir -p $(DEBUG_DEV_ROOT)/{logs,bin,terraform-cache}
+	@echo "Making scripts executable..."
+	@chmod +x build/scripts/*.sh 2>/dev/null || true
+	@chmod +x build/scripts/rad-wrapper 2>/dev/null || true
+	@chmod +x drad 2>/dev/null || true
 	@echo "✅ Debug environment setup complete at $(DEBUG_DEV_ROOT)"
+	@echo "💡 Use './drad' command from project root for debug environment"
 	@echo "📖 See docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md for usage instructions"
 
 debug-build: build ## Build components with debug symbols for debugging
@@ -160,7 +164,7 @@ debug-stop: ## Stop all running Radius components, destroy k3d cluster, and clea
 	@psql "postgresql://$(shell whoami)@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || echo "Database cleanup completed or PostgreSQL not accessible"
 	@psql "postgresql://$(shell whoami)@localhost:5432/postgres" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || echo "User cleanup completed or PostgreSQL not accessible"
 	@echo "Cleaning up debug files and symlinks..."
-	@rm -rf $(DEBUG_DEV_ROOT)
+	@rm -rf $(DEBUG_DEV_ROOT)/logs
 	@rm -f ./drad
 	@echo "✅ Debug environment completely stopped and cleaned up"
 
@@ -227,22 +231,22 @@ debug-deployment-engine-logs: ## View deployment engine logs
 # Recipe registration
 debug-register-recipes: ## Register default recipes in the debug environment
 	@echo "Registering default recipes..."
-	@if [ ! -f $(DEBUG_DEV_ROOT)/bin/rad-wrapper ]; then \
-		echo "❌ Debug environment not set up. Run 'make debug-setup' first."; \
+	@if [ ! -f ./drad ]; then \
+		echo "❌ drad wrapper not found. This should not happen after debug-start."; \
 		exit 1; \
 	fi
 	@build/scripts/register-recipes.sh
 
 debug-env-init: ## Create default resource group, environment, and register recipes
 	@echo "Initializing debug environment resources..."
-	@if [ ! -f $(DEBUG_DEV_ROOT)/bin/rad-wrapper ]; then \
-		echo "❌ Debug environment not set up. Run 'make debug-setup' first."; \
+	@if [ ! -f ./drad ]; then \
+		echo "❌ drad wrapper not found. This should not happen after debug-start."; \
 		exit 1; \
 	fi
 	@echo "Creating resource group 'default'..."
-	@$(DEBUG_DEV_ROOT)/bin/rad-wrapper group create default || echo "Resource group may already exist"
+	@./drad group create default || echo "Resource group may already exist"
 	@echo "Creating environment 'default'..."
-	@$(DEBUG_DEV_ROOT)/bin/rad-wrapper env create default || echo "Environment may already exist"
+	@./drad env create default || echo "Environment may already exist"
 	@echo "Registering default recipes..."
 	@$(MAKE) debug-register-recipes
 	@echo "✅ Debug environment ready for application deployment!"
