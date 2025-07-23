@@ -1,21 +1,24 @@
 #!/bin/bash
 set -e
 
-# Check if we're in the right directory
-if [ ! -f "debug_files/bin/ucpd" ]; then
-    echo "❌ Please run this script from the repository root directory"
+# Get the script directory and repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+DEBUG_ROOT="$REPO_ROOT/debug_files"
+
+# Check if we have the debug environment set up
+if [ ! -f "$DEBUG_ROOT/bin/ucpd" ]; then
+    echo "❌ Debug environment not found. Please run 'make debug-setup' first."
     exit 1
 fi
-
-cd debug_files
 
 echo "🚀 Starting Radius components..."
 
 # Stop any existing components first
 echo "Checking for existing components and stopping them..."
 for component in dynamic-rp applications-rp controller ucp; do
-  if [ -f "logs/${component}.pid" ]; then
-    pid=$(cat "logs/${component}.pid")
+  if [ -f "$DEBUG_ROOT/logs/${component}.pid" ]; then
+    pid=$(cat "$DEBUG_ROOT/logs/${component}.pid")
     if kill -0 "$pid" 2>/dev/null; then
       echo "Stopping existing $component (PID: $pid)"
       kill "$pid" 2>/dev/null || true
@@ -24,7 +27,7 @@ for component in dynamic-rp applications-rp controller ucp; do
         kill -9 "$pid" 2>/dev/null || true
       fi
     fi
-    rm -f "logs/${component}.pid"
+    rm -f "$DEBUG_ROOT/logs/${component}.pid"
   fi
 done
 
@@ -47,10 +50,62 @@ fi
 
 echo "✅ Cleanup complete"
 
+# Initialize PostgreSQL database if needed
+echo "🗄️  Initializing PostgreSQL database..."
+if command -v psql >/dev/null 2>&1; then
+  # Create applications_rp user if it doesn't exist
+  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER applications_rp WITH PASSWORD 'radius_pass';" 2>/dev/null || echo "User applications_rp already exists"
+  
+  # Create applications_rp database if it doesn't exist
+  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE applications_rp;" 2>/dev/null || echo "Database applications_rp already exists"
+  
+  # Grant privileges
+  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" 2>/dev/null || true
+  
+  # Create the resources table in applications_rp database
+  psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "
+  CREATE TABLE IF NOT EXISTS resources (
+    id TEXT PRIMARY KEY NOT NULL,
+    original_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    root_scope TEXT NOT NULL,
+    routing_scope TEXT NOT NULL,
+    etag TEXT NOT NULL,
+    created_at timestamp(6) with time zone DEFAULT CURRENT_TIMESTAMP,
+    resource_data jsonb NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
+  " 2>/dev/null || echo "Resources table setup completed"
+  
+  # Also create UCP database for completeness
+  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER ucp WITH PASSWORD 'radius_pass';" 2>/dev/null || echo "User ucp already exists"
+  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE ucp;" 2>/dev/null || echo "Database ucp already exists"
+  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" 2>/dev/null || true
+  
+  # Create the resources table in ucp database too
+  psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "
+  CREATE TABLE IF NOT EXISTS resources (
+    id TEXT PRIMARY KEY NOT NULL,
+    original_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL,
+    root_scope TEXT NOT NULL,
+    routing_scope TEXT NOT NULL,
+    etag TEXT NOT NULL,
+    created_at timestamp(6) with time zone DEFAULT CURRENT_TIMESTAMP,
+    resource_data jsonb NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
+  " 2>/dev/null || echo "UCP resources table setup completed"
+  
+  echo "✅ Database initialization complete"
+else
+  echo "⚠️  psql not available - database may not be properly initialized"
+fi
+
 # Start UCP with dlv
 echo "Starting UCP with dlv on port 40001..."
-dlv exec ./bin/ucpd --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/ucp.yaml > logs/ucp.log 2>&1 &
-echo $! > logs/ucp.pid
+dlv exec "$DEBUG_ROOT/bin/ucpd" --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/ucp.yaml" > "$DEBUG_ROOT/logs/ucp.log" 2>&1 &
+echo $! > "$DEBUG_ROOT/logs/ucp.pid"
 sleep 5
 
 # Verify UCP
@@ -62,34 +117,33 @@ echo "✅ UCP started successfully"
 
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
-dlv exec ./bin/controller --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/controller.yaml --cert-dir="" > logs/controller.log 2>&1 &
-echo $! > logs/controller.pid
+dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/controller.yaml" --cert-dir="" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
+echo $! > "$DEBUG_ROOT/logs/controller.pid"
 sleep 3
 
 # Start Applications RP with dlv
 echo "Starting Applications RP with dlv on port 40003..."
-dlv exec ./bin/applications-rp --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/applications-rp.yaml > logs/applications-rp.log 2>&1 &
-echo $! > logs/applications-rp.pid
+dlv exec "$DEBUG_ROOT/bin/applications-rp" --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/applications-rp.yaml" > "$DEBUG_ROOT/logs/applications-rp.log" 2>&1 &
+echo $! > "$DEBUG_ROOT/logs/applications-rp.pid"
 sleep 3
 
 # Start Dynamic RP with dlv
 echo "Starting Dynamic RP with dlv on port 40004..."
-dlv exec ./bin/dynamic-rp --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file=configs/dynamic-rp.yaml > logs/dynamic-rp.log 2>&1 &
-echo $! > logs/dynamic-rp.pid
+dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$DEBUG_ROOT/configs/dynamic-rp.yaml" > "$DEBUG_ROOT/logs/dynamic-rp.log" 2>&1 &
+echo $! > "$DEBUG_ROOT/logs/dynamic-rp.pid"
 sleep 3
 
-# Check deployment engine and start if needed
-echo "Checking deployment engine..."
+# Start deployment engine (always restart for fresh configuration)
+echo "Starting deployment engine..."
 if command -v docker >/dev/null 2>&1; then
-  if ! docker ps --filter "name=radius-deployment-engine" --format "{{.Names}}" | grep -q radius-deployment-engine; then
-    echo "Starting deployment engine..."
-    if [ -f "scripts/start-deployment-engine.sh" ]; then
-      ./scripts/start-deployment-engine.sh
-    else
-      echo "⚠️  Deployment engine start script not found"
-    fi
+  # Stop existing container if running
+  docker stop radius-deployment-engine 2>/dev/null || true
+  docker rm radius-deployment-engine 2>/dev/null || true
+  
+  if [ -f "$DEBUG_ROOT/scripts/start-deployment-engine.sh" ]; then
+    "$DEBUG_ROOT/scripts/start-deployment-engine.sh"
   else
-    echo "✅ Deployment engine already running"
+    echo "⚠️  Deployment engine start script not found"
   fi
 else
   echo "⚠️  Docker not available - deployment engine cannot be started"
