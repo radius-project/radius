@@ -156,11 +156,9 @@ debug-stop: ## Stop all running Radius components, destroy k3d cluster, and clea
 	@$(MAKE) debug-deployment-engine-stop
 	@echo "Destroying k3d cluster..."
 	@k3d cluster delete radius-debug 2>/dev/null || echo "k3d cluster was not running"
-	@echo "Cleaning up PostgreSQL database..."
-	@psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS radius;" 2>/dev/null || echo "Database cleanup completed or PostgreSQL not accessible"
-	@psql -h localhost -U postgres -c "CREATE DATABASE radius;" 2>/dev/null || echo "Database recreation failed or PostgreSQL not accessible"
-	@psql -h localhost -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;" 2>/dev/null || echo "Database permissions failed or PostgreSQL not accessible"
-	@psql "postgresql://radius_user:radius_pass@localhost:5432/radius" < deploy/init-db/db.sql.txt 2>/dev/null || echo "Database schema initialization failed or PostgreSQL not accessible"
+	@echo "Cleaning up PostgreSQL databases..."
+	@psql "postgresql://$(shell whoami)@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || echo "Database cleanup completed or PostgreSQL not accessible"
+	@psql "postgresql://$(shell whoami)@localhost:5432/postgres" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || echo "User cleanup completed or PostgreSQL not accessible"
 	@echo "Cleaning up debug files and symlinks..."
 	@rm -rf $(DEBUG_DEV_ROOT)
 	@rm -f ./drad
@@ -264,12 +262,6 @@ debug-validate:
 # Development workflow targets
 debug-dev-start: debug-setup debug-start ## Complete development setup and start
 	@echo "🎉 Debug development environment ready!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "1. Open VS Code: code ."
-	@echo "2. Use 'Launch Control Plane (all)' debug configuration"
-	@echo "3. Create resources: rad group create default && rad env create default"
-	@echo ""
 
 debug-dev-stop: debug-stop ## Stop development environment
 	@echo "🛑 Debug development environment stopped"
