@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -417,11 +418,79 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
-	// Destroy Terraform configuration
+	// Destroy Terraform configuration with retry logic for state lock errors
 	logger.Info("Running Terraform destroy")
-	if err := tf.Destroy(ctx); err != nil {
+	if err := destroyWithRetry(ctx, tf); err != nil {
 		return fmt.Errorf("terraform destroy failure: %w", err)
 	}
 
 	return nil
+}
+
+// destroyWithRetry attempts to run Terraform destroy with retry logic for state lock errors.
+// It will attempt to force unlock the state if multiple destroy attempts fail due to locks.
+func destroyWithRetry(ctx context.Context, tf *tfexec.Terraform) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	maxRetries := 5
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := tf.Destroy(ctx)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+
+		// Check if the error is related to state locking
+		if isStateLockError(err) {
+			lockID := extractLockID(err.Error())
+
+			if attempt < maxRetries-1 {
+				waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+				logger.Info(fmt.Sprintf("Terraform destroy failed due to state lock (attempt %d/%d), retrying in %v", attempt+1, maxRetries, waitTime))
+				time.Sleep(waitTime)
+				continue
+			} else if lockID != "" {
+				// On the final attempt, try to force unlock if we have a lock ID
+				logger.Info(fmt.Sprintf("Final attempt failed, trying to force unlock state with lock ID: %s", lockID))
+				if forceUnlockErr := tf.ForceUnlock(ctx, lockID); forceUnlockErr != nil {
+					logger.Info(fmt.Sprintf("Force unlock failed: %s", forceUnlockErr.Error()))
+				} else {
+					logger.Info("Force unlock succeeded, retrying destroy")
+					// Try destroy one more time after force unlock
+					if finalErr := tf.Destroy(ctx); finalErr == nil {
+						return nil
+					} else {
+						logger.Info(fmt.Sprintf("Destroy after force unlock still failed: %s", finalErr.Error()))
+					}
+				}
+			}
+		} else {
+			// For non-lock errors, don't retry
+			break
+		}
+	}
+
+	return lastErr
+}
+
+// isStateLockError checks if the error message indicates a Terraform state lock issue
+func isStateLockError(err error) bool {
+	errorMsg := strings.ToLower(err.Error())
+	return strings.Contains(errorMsg, "state lock") ||
+		strings.Contains(errorMsg, "state is already locked") ||
+		strings.Contains(errorMsg, "acquiring the state lock")
+}
+
+// extractLockID attempts to extract the lock ID from the error message
+func extractLockID(errorMsg string) string {
+	// Look for lock ID patterns in the error message
+	// Pattern: ID: followed by a UUID-like string
+	re := regexp.MustCompile(`ID:\s*([a-fA-F0-9-]+)`)
+	matches := re.FindStringSubmatch(errorMsg)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }
