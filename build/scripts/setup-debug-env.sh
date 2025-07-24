@@ -126,7 +126,7 @@ initialization:
       properties:
         kind: "Kubernetes"
         resourceProviders:
-          Microsoft.Resources: "http://localhost:5017"
+          Microsoft.Resources: "http://localhost:5445"
   manifestDirectory: "$(pwd)/deploy/manifest/built-in-providers/dev"
 
 identity:

@@ -34,7 +34,7 @@ initialization:
           Applications.Messaging: "http://localhost:8080"
           Applications.Dapr: "http://localhost:8080"
           Applications.Datastores: "http://localhost:8080"
-          Microsoft.Resources: "http://localhost:5445"
+          Microsoft.Resources: "http://localhost:5017"
         kind: "UCPNative"
     - id: "/planes/azure/azure"
       properties:
@@ -60,7 +60,7 @@ metricsProvider:
     port: 9091
 
 logging:
-  level: "info"
+  level: "debug"
   json: true
 
 tracerProvider:

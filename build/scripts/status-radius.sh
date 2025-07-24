@@ -23,18 +23,23 @@ for component in "${components[@]}"; do
   fi
 done
 
-# Check deployment engine (Docker container)
+# Check deployment engine (k3d deployment)
 echo ""
 echo "🚢 Deployment Engine Status:"
 echo "=========================="
 
-if command -v docker >/dev/null 2>&1; then
-  if docker ps --filter "name=radius-deployment-engine" --format "table {{.Names}}\t{{.Status}}" | grep -q radius-deployment-engine; then
-    status=$(docker ps --filter "name=radius-deployment-engine" --format "{{.Status}}")
-    echo "✅ deployment-engine (Docker) - Running ($status)"
+if command -v kubectl >/dev/null 2>&1; then
+  if kubectl --context k3d-radius-debug get deployment deployment-engine -n default >/dev/null 2>&1; then
+    status=$(kubectl --context k3d-radius-debug get deployment deployment-engine -n default -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null)
+    if [ "$status" = "True" ]; then
+      replicas=$(kubectl --context k3d-radius-debug get deployment deployment-engine -n default -o jsonpath='{.status.readyReplicas}' 2>/dev/null)
+      echo "✅ deployment-engine (k3d) - Running ($replicas replicas ready)"
+    else
+      echo "❌ deployment-engine (k3d) - Not ready"
+    fi
   else
-    echo "❌ deployment-engine - Not running (Docker container not found)"
+    echo "❌ deployment-engine - Not found in k3d cluster"
   fi
 else
-  echo "⚠️  deployment-engine - Cannot check status (Docker not available)"
+  echo "⚠️  deployment-engine - Cannot check status (kubectl not available)"
 fi

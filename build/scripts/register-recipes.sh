@@ -1,16 +1,15 @@
 #!/bin/bash
 set -e
 
-# Get debug directory from environment or default
-DEBUG_DEV_ROOT=${DEBUG_DEV_ROOT:-"$(pwd)/debug_files"}
-
-cd "$DEBUG_DEV_ROOT"
+# Get the project root directory (where this script is called from)
+PROJECT_ROOT="$(pwd)"
+RAD_WRAPPER="$PROJECT_ROOT/build/scripts/rad-wrapper"
 
 echo "📝 Registering default recipes..."
 
-# Check if drad wrapper exists
-if [ ! -f drad ]; then
-    echo "❌ drad wrapper not found. Run 'make debug-start' first."
+# Check if rad-wrapper exists
+if [ ! -f "$RAD_WRAPPER" ]; then
+    echo "❌ rad-wrapper script not found at $RAD_WRAPPER"
     exit 1
 fi
 
@@ -20,7 +19,7 @@ max_attempts=30
 attempt=0
 
 while [ $attempt -lt $max_attempts ]; do
-    if ./drad env show default >/dev/null 2>&1; then
+    if "$RAD_WRAPPER" env show default >/dev/null 2>&1; then
         echo "✅ Environment 'default' is ready"
         break
     fi
@@ -31,7 +30,7 @@ done
 
 if [ $attempt -eq $max_attempts ]; then
     echo "❌ Environment not ready after ${max_attempts} attempts"
-    echo "💡 Make sure to run: ./rad group create default && ./rad env create default"
+    echo "💡 Make sure to run: build/scripts/rad-wrapper group create default && build/scripts/rad-wrapper env create default"
     exit 1
 fi
 
@@ -53,7 +52,7 @@ for recipe_spec in "${recipes[@]}"; do
     
     echo "Registering default recipe for $resource_type -> $template_path"
     
-    if ./drad recipe register "default" \
+    if "$RAD_WRAPPER" recipe register "default" \
         --resource-type "$resource_type" \
         --template-kind "bicep" \
         --template-path "$template_path" \

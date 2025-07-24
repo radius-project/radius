@@ -19,7 +19,7 @@ CURRENT_CLIENT_CERT=$(kubectl config view --raw --minify -o jsonpath='{.users[0]
 CURRENT_CLIENT_KEY=$(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-key-data}')
 
 # Replace server with container-accessible endpoint
-CONTAINER_SERVER=$(echo "$CURRENT_SERVER" | sed 's|127\.0\.0\.1|host.docker.internal|g' | sed 's|localhost|host.docker.internal|g')
+CONTAINER_SERVER=$(echo "$CURRENT_SERVER" | sed 's|127\.0\.0\.1|host.docker.internal|g' | sed 's|localhost|host.docker.internal|g' | sed 's|0\.0\.0\.0|host.docker.internal|g')
 
 # Use template and substitute values
 cp "$SCRIPT_DIR/../configs/kubeconfig-template" "$TEMP_KUBECONFIG"
