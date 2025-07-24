@@ -389,11 +389,10 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		require.Contains(t, err.Error(), "unsupported type: array")
 	})
 
-	t.Run("additionalProperties validation", func(t *testing.T) {
+	t.Run("additionalProperties schema validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Has: &[]bool{true}[0],
 				Schema: &openapi3.SchemaRef{
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"string"},
@@ -405,11 +404,10 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("invalid additionalProperties", func(t *testing.T) {
+	t.Run("invalid additionalProperties schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Has: &[]bool{true}[0],
 				Schema: &openapi3.SchemaRef{
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"array"}, // Not allowed
@@ -506,7 +504,6 @@ func TestValidator_checkRefUsage(t *testing.T) {
 				Value: &openapi3.Schema{
 					Type: &openapi3.Types{"object"},
 					AdditionalProperties: openapi3.AdditionalProperties{
-						Has: &[]bool{true}[0],
 						Schema: &openapi3.SchemaRef{
 							Ref: "#/components/schemas/SomeSchema",
 						},
@@ -522,7 +519,6 @@ func TestValidator_checkRefUsage(t *testing.T) {
 				Value: &openapi3.Schema{
 					Type: &openapi3.Types{"object"},
 					AdditionalProperties: openapi3.AdditionalProperties{
-						Has: &[]bool{true}[0],
 						Schema: &openapi3.SchemaRef{
 							Ref: "external.yaml#/components/schemas/SomeSchema",
 						},
@@ -836,11 +832,10 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 			hasErr: false,
 		},
 		{
-			name: "object with only additionalProperties - allowed",
+			name: "object with only additionalProperties schema - allowed",
 			schema: &openapi3.Schema{
 				Type: &openapi3.Types{"object"},
 				AdditionalProperties: openapi3.AdditionalProperties{
-					Has: &[]bool{true}[0],
 					Schema: &openapi3.SchemaRef{
 						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 					},
@@ -849,7 +844,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 			hasErr: false,
 		},
 		{
-			name: "object with both properties and additionalProperties - not allowed",
+			name: "object with both properties and additionalProperties schema - not allowed",
 			schema: &openapi3.Schema{
 				Type: &openapi3.Types{"object"},
 				Properties: map[string]*openapi3.SchemaRef{
@@ -858,7 +853,6 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					},
 				},
 				AdditionalProperties: openapi3.AdditionalProperties{
-					Has: &[]bool{true}[0],
 					Schema: &openapi3.SchemaRef{
 						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 					},
@@ -883,12 +877,11 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 			hasErr: false,
 		},
 		{
-			name: "object with empty properties and additionalProperties true - allowed",
+			name: "object with empty properties and additionalProperties schema - allowed",
 			schema: &openapi3.Schema{
 				Type:       &openapi3.Types{"object"},
 				Properties: map[string]*openapi3.SchemaRef{}, // Empty properties map
 				AdditionalProperties: openapi3.AdditionalProperties{
-					Has: &[]bool{true}[0],
 					Schema: &openapi3.SchemaRef{
 						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 					},
@@ -912,7 +905,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 			hasErr: false, // Constraint only applies to object types
 		},
 		{
-			name: "typeless schema with both properties and additionalProperties - not allowed",
+			name: "typeless schema with both properties and additionalProperties schema - not allowed",
 			schema: &openapi3.Schema{
 				// No type specified, but has object-like properties
 				Properties: map[string]*openapi3.SchemaRef{
@@ -921,7 +914,9 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					},
 				},
 				AdditionalProperties: openapi3.AdditionalProperties{
-					Has: &[]bool{true}[0],
+					Schema: &openapi3.SchemaRef{
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
 				},
 			},
 			hasErr: true,
@@ -933,6 +928,32 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 				Type: &openapi3.Types{"object"},
 			},
 			hasErr: false,
+		},
+		{
+			name: "object with additionalProperties: true - not allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+				},
+			},
+			hasErr: true,
+			errMsg: "additionalProperties: true is not allowed, use a schema object instead",
+		},
+		{
+			name: "typeless schema with additionalProperties: true - not allowed",
+			schema: &openapi3.Schema{
+				Properties: map[string]*openapi3.SchemaRef{
+					"name": {
+						Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+					},
+				},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Has: &[]bool{true}[0],
+				},
+			},
+			hasErr: true,
+			errMsg: "additionalProperties: true is not allowed, use a schema object instead",
 		},
 	}
 
@@ -957,7 +978,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 	validator := NewValidator()
 
-	t.Run("schema with both properties and additionalProperties fails main validation", func(t *testing.T) {
+	t.Run("schema with both properties and additionalProperties schema fails main validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			Properties: map[string]*openapi3.SchemaRef{
@@ -966,7 +987,6 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 				},
 			},
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Has: &[]bool{true}[0],
 				Schema: &openapi3.SchemaRef{
 					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 				},
@@ -995,11 +1015,10 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("schema with only additionalProperties passes main validation", func(t *testing.T) {
+	t.Run("schema with only additionalProperties schema passes main validation", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			AdditionalProperties: openapi3.AdditionalProperties{
-				Has: &[]bool{true}[0],
 				Schema: &openapi3.SchemaRef{
 					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 				},
@@ -1007,6 +1026,18 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 		}
 		err := validator.validateRadiusConstraints(schema)
 		require.NoError(t, err)
+	})
+
+	t.Run("schema with additionalProperties: true fails main validation", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			AdditionalProperties: openapi3.AdditionalProperties{
+				Has: &[]bool{true}[0],
+			},
+		}
+		err := validator.validateRadiusConstraints(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "additionalProperties: true is not allowed, use a schema object instead")
 	})
 }
 
@@ -1255,6 +1286,19 @@ func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("schema with additionalProperties: true should fail", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			AdditionalProperties: openapi3.AdditionalProperties{
+				Has: &[]bool{true}[0],
+			},
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "additionalProperties: true is not allowed, use a schema object instead")
+	})
+
 	t.Run("schema with multiple types should fail", func(t *testing.T) {
 		// OpenAPI 3.0 doesn't support multiple types in the same way as JSON Schema
 		schema := &openapi3.Schema{
@@ -1463,7 +1507,7 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 		require.Contains(t, validationErrors.Errors[0].Message, "property 'connections' must be a map object")
 	})
 
-	t.Run("valid connections property as map with additionalProperties", func(t *testing.T) {
+	t.Run("valid connections property as map with additionalProperties schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			Properties: openapi3.Schemas{
@@ -1471,7 +1515,9 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"object"},
 						AdditionalProperties: openapi3.AdditionalProperties{
-							Has: &[]bool{true}[0], // Helper to get *bool from true
+							Schema: &openapi3.SchemaRef{
+								Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+							},
 						},
 					},
 				},
@@ -1510,6 +1556,29 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 		require.Len(t, validationErrors.Errors, 1)
 		require.Equal(t, "connections", validationErrors.Errors[0].Field)
 		require.Contains(t, validationErrors.Errors[0].Message, "must be a map object (use additionalProperties)")
+	})
+
+	t.Run("connections property with additionalProperties: true should fail", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"connections": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Has: &[]bool{true}[0], // This should fail
+						},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.NoError(t, err) // checkReservedProperties doesn't enforce the additionalProperties: true restriction
 	})
 
 	t.Run("connections property with fixed properties should fail", func(t *testing.T) {
