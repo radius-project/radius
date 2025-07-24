@@ -37,13 +37,13 @@ else
   ps aux | grep -E "(ucpd|applications-rp|dynamic-rp|controller.*--config-file.*controller.yaml|dlv.*exec)" | grep -v grep | awk '{print $2}' | xargs -r kill 2>/dev/null || true
 fi
 
-# Stop deployment engine
+# Stop deployment engine in k3d cluster
 echo "Stopping deployment engine..."
-if command -v docker >/dev/null 2>&1; then
-  docker stop radius-deployment-engine 2>/dev/null || true
-  docker rm radius-deployment-engine 2>/dev/null || true
+if command -v kubectl >/dev/null 2>&1; then
+  kubectl --context k3d-radius-debug delete deployment deployment-engine 2>/dev/null || true
+  kubectl --context k3d-radius-debug delete service deployment-engine 2>/dev/null || true
 else
-  echo "⚠️  Docker not available - skipping deployment engine cleanup"
+  echo "⚠️  kubectl not available - skipping deployment engine cleanup"
 fi
 
 # Nuclear database cleanup - drop everything
