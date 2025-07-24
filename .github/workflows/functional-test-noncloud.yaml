@@ -85,6 +85,8 @@ env:
   GITEA_EMAIL: "testuser@radapp.io"
   # Gitea access token name
   GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Kubernetes client QPS and Burst settings for high-concurrency CI environments
+  RADIUS_QPS_AND_BURST: "800"
 
 jobs:
   build:
