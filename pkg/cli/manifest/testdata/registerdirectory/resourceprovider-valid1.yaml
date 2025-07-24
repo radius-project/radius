@@ -3,10 +3,8 @@ types:
   testResource1:
     apiVersions:
       "2025-01-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    
   testResource2:
     apiVersions:
       "2025-01-01-preview":
-        schema: {}
-    capabilities: []
+        schema: {}    

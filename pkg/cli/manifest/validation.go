@@ -17,13 +17,16 @@ limitations under the License.
 package manifest
 
 import (
+	"context"
+	"fmt"
 	"regexp"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/radius-project/radius/pkg/schema"
 )
 
 var (
-	resourceProviderNamespaceRegex = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+.[A-Z][A-Za-z0-9]+$`)
+	resourceProviderNamespaceRegex = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+\.[A-Z][A-Za-z0-9]+$`)
 	resourceTypeRegex              = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
 	apiVersionRegex                = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(-preview)?$`)
 	capabilityRegex                = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+$`)
@@ -52,4 +55,47 @@ func validateAPIVersion(fl validator.FieldLevel) bool {
 func validateCapability(fl validator.FieldLevel) bool {
 	str := fl.Field().String()
 	return capabilityRegex.Match([]byte(str))
+}
+
+// validateManifestSchemas validates schemas in a ResourceProvider
+func validateManifestSchemas(ctx context.Context, provider *ResourceProvider) error {
+	if provider == nil {
+		return fmt.Errorf("provider is nil")
+	}
+
+	validator := schema.NewValidator()
+	errors := &schema.ValidationErrors{}
+
+	// Iterate through resource types in the provider
+	for resourceTypeName, resourceType := range provider.Types {
+		// Check each API version
+		for apiVersion, versionInfo := range resourceType.APIVersions {
+			if versionInfo.Schema != nil {
+				schemaPath := fmt.Sprintf("%s/%s@%s", provider.Name, resourceTypeName, apiVersion)
+
+				// Convert schema to OpenAPI schema
+				openAPISchema, err := schema.ConvertToOpenAPISchema(versionInfo.Schema)
+				if err != nil {
+					errors.Add(schema.NewSchemaError(schemaPath, fmt.Sprintf("failed to parse schema: %v", err)))
+					continue
+				}
+
+				// Validate the schema
+				if err := validator.ValidateSchema(ctx, openAPISchema); err != nil {
+					if valErr, ok := err.(*schema.ValidationError); ok {
+						valErr.Field = schemaPath + "." + valErr.Field
+						errors.Add(valErr)
+					} else {
+						errors.Add(schema.NewSchemaError(schemaPath, err.Error()))
+					}
+				}
+			}
+		}
+	}
+
+	if errors.HasErrors() {
+		return errors
+	}
+
+	return nil
 }

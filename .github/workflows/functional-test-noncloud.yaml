@@ -361,7 +361,6 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
-        continue-on-error: true  
 
         env:
           USE_CERT_FILE: "true"
@@ -478,6 +477,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
           GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          RADIUS_TEST_FAST_CLEANUP: true
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

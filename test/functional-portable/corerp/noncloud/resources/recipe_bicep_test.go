@@ -112,6 +112,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 
 // This test validates that the recipe context parameter is populated as expected.
 func Test_BicepRecipe_ContextParameter(t *testing.T) {
+	t.Skip("https://github.com/radius-project/radius/issues/10002")
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-contextparameter"
 

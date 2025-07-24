@@ -64,7 +64,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 	createResourceType(server)
 	expected.ResourceTypes[resourceTypeName] = &v20231001preview.ResourceProviderSummaryResourceType{
 		APIVersions:       map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{},
-		Capabilities:      []*string{to.Ptr("SupportsRecipes")},
+		Capabilities:      []*string{},
 		DefaultAPIVersion: to.Ptr("2025-01-01"),
 	}
 

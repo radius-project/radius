@@ -31,6 +31,46 @@ These tests use your local Kubernetes credentials, and Radius Environment for te
 
 As much as possible, the tests use product functionality such as the Radius CLI configuration and local KubeConfig to detect settings.
 
+## Test cleanup modes
+
+Functional tests support two cleanup modes to optimize test execution:
+
+### Standard cleanup (default for local development)
+- Waits for each resource to be fully deleted before proceeding
+- Provides detailed logging of the deletion process
+- Shows retry attempts for resources stuck in "Updating" state
+- Best for debugging cleanup issues
+
+### Fast cleanup (default for CI)
+- Initiates resource deletions in the background without waiting for completion
+- Dramatically reduces test execution time by avoiding deletion timeouts
+- Safe for non-cloud tests where Kubernetes cluster cleanup handles orphaned resources
+- Enabled automatically in CI via `RADIUS_TEST_FAST_CLEANUP=true`
+- **Skips post-delete verification** since background deletions may not be complete
+
+### Configuration
+
+You can control the cleanup mode using the `RADIUS_TEST_FAST_CLEANUP` environment variable:
+
+```bash
+# Enable fast cleanup (useful for local testing with unique resource names)
+export RADIUS_TEST_FAST_CLEANUP=true
+go test ./test/functional-portable/corerp/noncloud/resources
+
+# Disable fast cleanup for debugging (default for local development)
+export RADIUS_TEST_FAST_CLEANUP=false
+go test ./test/functional-portable/corerp/noncloud/resources
+```
+
+When fast cleanup is used, you'll see output like:
+```
+Fast cleanup mode: 4 resources were deleted in the background
+skipping post-delete verification in fast cleanup mode (background deletions may not be complete)
+If you need to debug cleanup issues, re-run with RADIUS_TEST_FAST_CLEANUP=false
+```
+
+> ⚠️ **Important**: Fast cleanup is only safe for non-cloud tests. Cloud tests always use standard cleanup to ensure proper deletion of cloud resources that incur costs.
+
 ## Running the tests locally
 
 ### Prerequisites

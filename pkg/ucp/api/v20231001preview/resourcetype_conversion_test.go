@@ -48,7 +48,7 @@ func Test_ResourceType_VersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.ResourceTypeProperties{
-					Capabilities:      []string{"SupportsRecipes"},
+					Capabilities:      []string{},
 					DefaultAPIVersion: to.Ptr("2025-01-01"),
 				},
 			},
@@ -88,7 +88,7 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 				Name: to.Ptr("testResources"),
 				Properties: &ResourceTypeProperties{
 					ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
-					Capabilities:      []*string{to.Ptr("SupportsRecipes")},
+					Capabilities:      []*string{},
 					DefaultAPIVersion: to.Ptr("2025-01-01"),
 				},
 			},
@@ -124,12 +124,12 @@ func Test_validateCapability(t *testing.T) {
 	}{
 		{
 			name:  "valid capability",
-			input: to.Ptr(datamodel.CapabilitySupportsRecipes),
+			input: to.Ptr(string(datamodel.CapabilityManualResourceProvisioning)),
 		},
 		{
 			name:        "invalid capability",
 			input:       to.Ptr("InvalidCapability"),
-			expectedErr: v1.NewClientErrInvalidRequest("capability \"InvalidCapability\" is not recognized. Supported capabilities: SupportsRecipes"),
+			expectedErr: v1.NewClientErrInvalidRequest("capability \"InvalidCapability\" is not recognized. Supported capabilities: ManualResourceProvisioning"),
 		},
 		{
 			name:        "nil capability",

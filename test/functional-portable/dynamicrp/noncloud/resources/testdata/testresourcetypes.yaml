@@ -1,7 +1,6 @@
 name: Test.Resources
 types:
-  userTypeAlpha:
-    capabilities: ["SupportsRecipes"]
+  userTypeAlpha:    
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -16,9 +15,11 @@ types:
             connections:
               type: object
               additionalProperties:
-                source:
-                  type: string
-                  description: The resourceID of the source of the connection.
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: The resourceID of the source of the connection.
             status:
               type: object
               properties:
@@ -44,9 +45,11 @@ types:
             connections:
               type: object
               additionalProperties:
-                source:
-                  type: string
-                  description: The resourceID of the source of the connection.
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: The resourceID of the source of the connection.
             status:
               type: object
               properties:
@@ -60,7 +63,7 @@ types:
             - application
             - environment
   postgres:
-    capabilities: ["SupportsRecipes"]
+    
     apiVersions:
       '2025-01-01-preview':
         schema: 
@@ -93,7 +96,7 @@ types:
                       type: string
                       description: The username for the database.
   externalResource:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -114,7 +117,7 @@ types:
             - configMap 
   # Additional resource types for shared API version deletion test (GitHub issue #9754)
   sharedAPITestTypeA:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -133,7 +136,7 @@ types:
             - application
             - environment
   sharedAPITestTypeB:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:

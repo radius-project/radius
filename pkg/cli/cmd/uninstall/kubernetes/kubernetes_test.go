@@ -81,9 +81,6 @@ func Test_Run(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: "Uninstalling Radius...",
-			},
-			output.LogOutput{
 				Format: "Radius was uninstalled successfully. Any existing data will be retained for future installations. Local configuration is also retained. Use the `rad workspace` command if updates are needed to your configuration.",
 			},
 		}
@@ -147,9 +144,6 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		expectedWrites := []any{
-			output.LogOutput{
-				Format: "Uninstalling Radius...",
-			},
 			output.LogOutput{
 				Format: "Deleting namespace %s",
 				Params: []any{helm.RadiusSystemNamespace},

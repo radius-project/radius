@@ -42,8 +42,23 @@ runs:
 
         INPUT_FILES="$INPUT_DIRECTORY*.xml"
         mkdir -p "$INPUT_DIRECTORY/processed"
+        
+        # Check if any XML files exist
+        if ! ls $INPUT_FILES 1> /dev/null 2>&1; then
+          echo "No XML files found in $INPUT_DIRECTORY"
+          # Create an empty processed directory to avoid issues with subsequent steps
+          touch "$INPUT_DIRECTORY/processed/.gitkeep"
+          exit 0
+        fi
+        
         for INPUT_FILE in $INPUT_FILES
         do
+          # Skip if the file doesn't exist (shouldn't happen after the check above, but being safe)
+          if [ ! -f "$INPUT_FILE" ]; then
+            echo "Skipping non-existent file: $INPUT_FILE"
+            continue
+          fi
+          
           DIRECTORY=$(dirname -- "$INPUT_FILE")
           FILENAME=$(basename -- "$INPUT_FILE")
           FILENAME="${FILENAME%.*}"
@@ -66,4 +81,5 @@ runs:
         name: ${{ inputs.artifact_name }}
         path: |
           ${{ inputs.result_directory }}/*.xml 
-          ${{ inputs.result_directory }}processed/*.xml
+          ${{ inputs.result_directory }}/processed/*.xml
+        if-no-files-found: warn

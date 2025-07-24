@@ -7,7 +7,7 @@
           "schema": {}
         }
       },
-      "capabilities": ["SupportsRecipes"]
+      "capabilities": ["ManualResourceProvisioning"]
     }
   }
 }
