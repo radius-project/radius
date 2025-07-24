@@ -77,15 +77,38 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
 
+		// Retry deletion with exponential backoff for 409 Conflict errors
+		// Environments may be stuck in "Updating" state after failed deployments
+		maxRetries := 3
+		var err error
 		var respFromCtx *http.Response
-		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
-		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			respFromCtx = nil
+			ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+			_, err = client.DeleteEnvironment(ctxWithResp, resource.Name)
+			if err == nil {
+				break
+			}
+
+			// Check if it's a 409 Conflict error (resource is updating)
+			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
+				if attempt < maxRetries-1 {
+					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+					t.Logf("environment %s is in updating state, retrying deletion in %v (attempt %d/%d)", resource.Name, waitTime, attempt+1, maxRetries)
+					time.Sleep(waitTime)
+					continue
+				}
+			}
+			break
+		}
+
 		if err != nil {
 			return err
 		}
 
-		if respFromCtx.StatusCode == 204 {
+		if respFromCtx != nil && respFromCtx.StatusCode == 204 {
 			output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
 		}
 
@@ -106,15 +129,32 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 // This is useful for background cleanup operations to avoid "Log in goroutine after test has completed" panics.
 func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
 	if resource.Type == EnvironmentsResource {
-		var respFromCtx *http.Response
-		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+		// Retry deletion with exponential backoff for 409 Conflict errors
+		// Environments may be stuck in "Updating" state after failed deployments
+		maxRetries := 5
+		var err error
 
-		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
-		if err != nil {
-			return err
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			var respFromCtx *http.Response
+			ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+			_, err = client.DeleteEnvironment(ctxWithResp, resource.Name)
+			if err == nil {
+				break
+			}
+
+			// Check if it's a 409 Conflict error (resource is updating)
+			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
+				if attempt < maxRetries-1 {
+					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+					time.Sleep(waitTime)
+					continue
+				}
+			}
+			break
 		}
 
-		return nil
+		return err
 	} else if resource.Type == ApplicationsResource {
 		return cli.ApplicationDelete(ctx, resource.Name)
 	} else {
