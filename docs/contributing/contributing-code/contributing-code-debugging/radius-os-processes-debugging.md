@@ -1,6 +1,6 @@
 # Running Radius as OS Processes for Advanced Debugging
 
-This guide explains how to run Radius components as native OS processes instead of containers to enable advanced debugging capabilities, including using debuggers and debugging authentication issues.
+This guide details how to leverage the fully-integrated VS Code debugging experience for Radius development. By running core components as native OS processes instead of in containers, you can take advantage of pre-configured launch configurations and tasks to enable a seamless "inner-loop" workflow. This setup allows for advanced debugging capabilities, such as setting breakpoints, inspecting variables, and stepping through code in real-time—all directly within the VS Code editor—significantly accelerating development and troubleshooting.
 
 ## Table of Contents
 
