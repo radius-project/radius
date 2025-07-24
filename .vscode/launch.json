@@ -38,44 +38,43 @@
             "host": "127.0.0.1"
         },
         {
-            "name": "Launch Applications RP (Direct)",
+            "name": "Debug rad CLI",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/applications-rp",
-            "args": ["--config-file", "${workspaceFolder}/cmd/applications-rp/applications-rp-dev.yaml"],
-            "env": {},
-            "cwd": "${workspaceFolder}"
+            "program": "${workspaceFolder}/cmd/rad/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": []
         },
         {
-            "name": "Launch Controller (Direct)",
+            "name": "Debug rad CLI (prompt for args)",
             "type": "go",
             "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/cmd/controller",
-            "args": ["--config-file", "${workspaceFolder}/cmd/controller/controller-dev.yaml"],
-            "env": {},
-            "cwd": "${workspaceFolder}"
-        },
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/rad",
+            "args": "${input:cliArgs}",
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
         {
-            "name": "Launch Dynamic RP (Direct)",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/cmd/dynamic-rp",
-            "args": ["--config-file", "${workspaceFolder}/cmd/dynamic-rp/dynamicrp-dev.yaml"],
-            "env": {},
-            "cwd": "${workspaceFolder}"
-        },
+            "name": "Start and Attach to All Components",
+            "preLaunchTask": "Debug: Start All Components",
+            "configurations": [
+                "Attach to UCP",
+                "Attach to Controller",
+                "Attach to Applications RP",
+                "Attach to Dynamic RP"
+            ],
+            "stopAll": true
+        }
+    ],
+    "inputs": [
         {
-            "name": "Launch UCP (Direct)",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/cmd/ucpd",
-            "args": ["--config-file", "${workspaceFolder}/cmd/ucpd/ucp-dev.yaml"],
-            "env": {},
-            "cwd": "${workspaceFolder}"
+            "id": "cliArgs",
+            "type": "promptString",
+            "description": "Enter arguments for rad CLI",
+            "default": ""
         }
     ]
 }
