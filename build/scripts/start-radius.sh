@@ -133,22 +133,6 @@ dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true -
 echo $! > "$DEBUG_ROOT/logs/dynamic-rp.pid"
 sleep 3
 
-# Start deployment engine (always restart for fresh configuration)
-echo "Starting deployment engine..."
-if command -v docker >/dev/null 2>&1; then
-  # Stop existing container if running
-  docker stop radius-deployment-engine 2>/dev/null || true
-  docker rm radius-deployment-engine 2>/dev/null || true
-  
-  if [ -f "$SCRIPT_DIR/start-deployment-engine.sh" ]; then
-    "$SCRIPT_DIR/start-deployment-engine.sh"
-  else
-    echo "⚠️  Deployment engine start script not found"
-  fi
-else
-  echo "⚠️  Docker not available - deployment engine cannot be started"
-fi
-
 echo "🎉 All components started successfully with dlv debugging!"
 echo "🔗 UCP API: http://localhost:9000 (dlv debug port 40001)"
 echo "🔗 Applications RP: http://localhost:8080 (dlv debug port 40003)"

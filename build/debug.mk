@@ -52,7 +52,7 @@ debug-help: ## Show debug automation help
 	@echo ""
 	@echo "Deployment Engine Commands:"
 	@echo "  debug-deployment-engine-pull   - Pull latest deployment engine image from ghcr.io"
-	@echo "  debug-deployment-engine-start  - Start deployment engine (Docker container)"
+	@echo "  debug-deployment-engine-start  - Start deployment engine in k3d cluster"
 	@echo "  debug-deployment-engine-stop   - Stop deployment engine"
 	@echo "  debug-deployment-engine-status - Check deployment engine status"
 	@echo "  debug-deployment-engine-logs   - View deployment engine logs"
@@ -123,8 +123,8 @@ debug-build-rad: ## Build rad CLI with debug symbols + create drad alias
 	@go build -gcflags="all=-N -l" -o $(DEBUG_DEV_ROOT)/bin/rad ./cmd/rad
 	@echo "✅ rad CLI built"
 	@echo "Creating drad alias for debug CLI..."
-	@if [ -f $(DEBUG_DEV_ROOT)/bin/rad-wrapper ]; then \
-		ln -sf $(DEBUG_DEV_ROOT)/bin/rad-wrapper ./drad; \
+	@if [ -f build/scripts/rad-wrapper ]; then \
+		ln -sf build/scripts/rad-wrapper ./drad; \
 		echo "✅ drad alias (debug wrapper) created"; \
 	else \
 		ln -sf $(DEBUG_DEV_ROOT)/bin/rad ./drad; \
@@ -137,16 +137,34 @@ debug-start: debug-setup debug-build-all ## Start k3d cluster and all Radius com
 	@if k3d cluster list | grep -q "radius-debug"; then \
 		echo "k3d cluster 'radius-debug' already exists"; \
 	else \
-		k3d cluster create radius-debug --wait --timeout 60s; \
+		k3d cluster create radius-debug --api-port 6443 --wait --timeout 60s; \
 	fi
 	@echo "Switching to k3d context..."
 	@kubectl config use-context k3d-radius-debug
 	@echo "Starting Radius components as OS processes..."
 	@build/scripts/start-radius.sh
+	@echo "Waiting for components to be ready..."
+	@max_attempts=30; \
+	attempt=0; \
+	while [ $$attempt -lt $$max_attempts ]; do \
+		if curl -s "http://localhost:9000/healthz" > /dev/null 2>&1; then \
+			echo "✅ UCP is ready"; \
+			break; \
+		fi; \
+		echo "Waiting for UCP... (attempt $$((attempt + 1))/$$max_attempts)"; \
+		sleep 2; \
+		attempt=$$((attempt + 1)); \
+	done; \
+	if [ $$attempt -eq $$max_attempts ]; then \
+		echo "❌ UCP not ready after $$max_attempts attempts"; \
+		echo "💡 Check component logs with 'make debug-logs'"; \
+		exit 1; \
+	fi
 	@echo "Initializing environment resources..."
 	@$(MAKE) debug-env-init
 	@echo "🚀 All components started and environment initialized!"
 	@echo "📊 Use 'make debug-status' to check component health"
+	@echo "🚢 Use 'make debug-deployment-engine-status' to check deployment engine"
 
 debug-stop: ## Stop all running Radius components, destroy k3d cluster, and clean up
 	@echo "Stopping Radius components..."
@@ -194,59 +212,82 @@ debug-deployment-engine-pull: ## Pull latest deployment engine image from ghcr.i
 		&& echo "✅ Deployment Engine image pulled successfully" \
 		|| echo "❌ Failed to pull Deployment Engine image"
 
-debug-deployment-engine-start: debug-deployment-engine-pull ## Start deployment engine (Docker container)
-	@echo "Starting Deployment Engine..."
-	@docker run -d \
-		--name radius-deployment-engine \
-		-p 5017:8080 \
-		-e RADIUSBACKENDURL=http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3 \
-		ghcr.io/radius-project/deployment-engine:latest \
-		&& echo "✅ Deployment Engine started on port 5017" \
-		|| echo "❌ Failed to start Deployment Engine"
+debug-deployment-engine-start: ## Start deployment engine in k3d cluster
+	@echo "Installing ONLY deployment engine to k3d cluster..."
+	@echo "Applying deployment engine manifest to k3d cluster..."
+	@kubectl --context k3d-radius-debug apply -f build/configs/deployment-engine.yaml
+	@echo "Waiting for deployment engine to be ready..."
+	@kubectl --context k3d-radius-debug wait --for=condition=available deployment/deployment-engine --timeout=60s
+	@echo "Setting up port forwarding for deployment engine..."
+	@pkill -f "port-forward.*deployment-engine" 2>/dev/null || true
+		@kubectl --context k3d-radius-debug port-forward -n default service/deployment-engine 5017:5445 > $(DEBUG_DEV_ROOT)/logs/de-port-forward.log 2>&1 &
+	@echo "Waiting for deployment engine health check..."
+	@max_attempts=30; \
+	attempt=0; \
+	while [ $$attempt -lt $$max_attempts ]; do \
+		if curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
+			echo "✅ Deployment Engine is ready"; \
+			break; \
+		fi; \
+		echo "Waiting for Deployment Engine... (attempt $$((attempt + 1))/$$max_attempts)"; \
+		sleep 2; \
+		attempt=$$((attempt + 1)); \
+	done; \
+	if [ $$attempt -eq $$max_attempts ]; then \
+		echo "❌ Deployment Engine not ready after $$max_attempts attempts"; \
+		echo "💡 Check component logs with 'make debug-logs' and 'make debug-deployment-engine-logs'"; \
+		exit 1; \
+	fi
+	@echo "✅ Deployment engine installed and ready in k3d cluster"
 
-debug-deployment-engine-stop: ## Stop deployment engine
-	@echo "Stopping Deployment Engine..."
-	@docker stop radius-deployment-engine 2>/dev/null || true
-	@docker rm radius-deployment-engine 2>/dev/null || true
-	@echo "✅ Deployment Engine stopped"
+debug-deployment-engine-stop: ## Stop deployment engine in k3d cluster
+	@echo "Removing deployment engine from k3d cluster..."
+	@pkill -f "port-forward.*deployment-engine" 2>/dev/null || true
+	@kubectl --context k3d-radius-debug delete deployment deployment-engine 2>/dev/null || echo "Deployment engine deployment not found"
+	@kubectl --context k3d-radius-debug delete service deployment-engine 2>/dev/null || echo "Deployment engine service not found"
+	@echo "✅ Deployment engine removed from k3d cluster"
 
 debug-deployment-engine-status: ## Check deployment engine status
 	@echo "🚀 Deployment Engine Status:"
-	@if docker ps --filter "name=radius-deployment-engine" --format "table {{.Names}}\t{{.Status}}" | grep -q radius-deployment-engine; then \
-		if curl -s "http://localhost:5017/healthz" > /dev/null 2>&1; then \
-			echo "✅ Deployment Engine (Docker) - Running and healthy"; \
+	@if kubectl --context k3d-radius-debug get deployment deployment-engine >/dev/null 2>&1; then \
+		replicas=$$(kubectl --context k3d-radius-debug get deployment deployment-engine -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"); \
+		if [ "$$replicas" = "1" ]; then \
+			echo "✅ Deployment Engine (k3d) - Running and ready"; \
 		else \
-			echo "⚠️  Deployment Engine (Docker) - Container running but not responding"; \
+			echo "⚠️  Deployment Engine (k3d) - Deployment exists but not ready"; \
 		fi; \
 	else \
-		echo "❌ Deployment Engine - Not running"; \
+		echo "❌ Deployment Engine - Not deployed to k3d cluster"; \
 		echo "💡 Start with: make debug-deployment-engine-start"; \
 	fi
 
 debug-deployment-engine-logs: ## View deployment engine logs
-	@docker logs -f radius-deployment-engine 2>/dev/null || echo "❌ Deployment Engine container not found"
+	@echo "Showing deployment engine logs from k3d cluster..."
+	@kubectl --context k3d-radius-debug logs -l app=deployment-engine --tail=100 -f
 
 
 
 # Recipe registration
 debug-register-recipes: ## Register default recipes in the debug environment
 	@echo "Registering default recipes..."
-	@if [ ! -f ./drad ]; then \
-		echo "❌ drad wrapper not found. This should not happen after debug-start."; \
+	@if [ ! -f build/scripts/rad-wrapper ]; then \
+		echo "❌ rad-wrapper script not found. This should not happen."; \
 		exit 1; \
 	fi
 	@build/scripts/register-recipes.sh
 
 debug-env-init: ## Create default resource group, environment, and register recipes
 	@echo "Initializing debug environment resources..."
-	@if [ ! -f ./drad ]; then \
-		echo "❌ drad wrapper not found. This should not happen after debug-start."; \
+	@if [ ! -f build/scripts/rad-wrapper ]; then \
+		echo "❌ rad-wrapper script not found. This should not happen."; \
 		exit 1; \
 	fi
 	@echo "Creating resource group 'default'..."
-	@./drad group create default || echo "Resource group may already exist"
-	@echo "Creating environment 'default'..."
-	@./drad env create default || echo "Environment may already exist"
+	@build/scripts/rad-wrapper group create default || echo "Resource group may already exist"
+	@echo "Creating environment 'default' with Kubernetes compute configuration..."
+	@build/scripts/rad-wrapper env create default --namespace default || echo "Environment may already exist"
+	@echo "Starting deployment engine in k3d cluster..."
+	@$(MAKE) debug-deployment-engine-start
 	@echo "Registering default recipes..."
 	@$(MAKE) debug-register-recipes
 	@echo "✅ Debug environment ready for application deployment!"
