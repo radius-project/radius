@@ -74,9 +74,6 @@ types:
             password:
               type: string
               description: The password for the database.
-            username:
-              type: string
-              description: The username for the database.
   externalResource:
     capabilities: ["ManualResourceProvisioning"]
     apiVersions:

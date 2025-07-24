@@ -182,34 +182,32 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	}
 
 	// Also validate additionalProperties if present
-	if schema.AdditionalProperties.Has != nil {
-		if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil {
-			if addPropSchema.Ref != "" {
-				// The $ref validation is already handled by checkRefUsage above
-			} else if addPropSchema.Value != nil {
-				if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
-					// Add context to error
-					if valErrs, ok := err.(*ValidationErrors); ok {
-						for _, ve := range valErrs.Errors {
-							// Clone the error to avoid modifying the original
-							contextualErr := &ValidationError{
-								Type:    ve.Type,
-								Field:   "additionalProperties." + ve.Field,
-								Message: ve.Message,
-							}
-							errors.Add(contextualErr)
-						}
-					} else if valErr, ok := err.(*ValidationError); ok {
+	if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil {
+		if addPropSchema.Ref != "" {
+			// The $ref validation is already handled by checkRefUsage above
+		} else if addPropSchema.Value != nil {
+			if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
+				// Add context to error
+				if valErrs, ok := err.(*ValidationErrors); ok {
+					for _, ve := range valErrs.Errors {
 						// Clone the error to avoid modifying the original
 						contextualErr := &ValidationError{
-							Type:    valErr.Type,
-							Field:   "additionalProperties." + valErr.Field,
-							Message: valErr.Message,
+							Type:    ve.Type,
+							Field:   "additionalProperties." + ve.Field,
+							Message: ve.Message,
 						}
 						errors.Add(contextualErr)
-					} else {
-						errors.Add(NewSchemaError("additionalProperties", err.Error()))
 					}
+				} else if valErr, ok := err.(*ValidationError); ok {
+					// Clone the error to avoid modifying the original
+					contextualErr := &ValidationError{
+						Type:    valErr.Type,
+						Field:   "additionalProperties." + valErr.Field,
+						Message: valErr.Message,
+					}
+					errors.Add(contextualErr)
+				} else {
+					errors.Add(NewSchemaError("additionalProperties", err.Error()))
 				}
 			}
 		}
@@ -444,11 +442,15 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 		return nil // No object features to validate
 	}
 
+	// Check if additionalProperties is set to true (boolean true is not allowed)
+	if schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has {
+		return NewConstraintError("", "additionalProperties: true is not allowed, use a schema object instead")
+	}
+
 	// Check if both properties and additionalProperties are defined
 	// Note: Empty properties map should be treated as no properties defined
 	hasProperties := len(schema.Properties) > 0
-	hasAdditionalProperties := (schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has) ||
-		schema.AdditionalProperties.Schema != nil
+	hasAdditionalProperties := schema.AdditionalProperties.Schema != nil
 
 	if hasProperties && hasAdditionalProperties {
 		return NewConstraintError("", "object schemas cannot have both 'properties' and 'additionalProperties' defined")
