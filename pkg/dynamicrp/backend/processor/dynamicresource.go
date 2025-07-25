@@ -18,6 +18,8 @@ package processor
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
@@ -30,6 +32,7 @@ import (
 )
 
 var _ processors.ResourceProcessor[*datamodel.DynamicResource, datamodel.DynamicResource] = (*DynamicProcessor)(nil)
+var ErrNoSchemaFound = errors.New("no schema found for resource type")
 
 // DynamicProcessor is a processor for dynamic resources. It implements the processors.ResourceProcessor interface.
 type DynamicProcessor struct {
@@ -125,4 +128,35 @@ func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v202310
 	}
 
 	return nil
+}
+
+// GetSchemaForResourceType fetches the schema for a resource type from UCP
+func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientFactory, resourceID string, apiVersion string) (any, error) {
+	// Parse resourceID to get components
+	ID, err := resources.Parse(resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	plane := ID.PlaneNamespace()
+	planeName := strings.Split(plane, "/")[1]
+	resourceProvider := strings.Split(ID.ProviderNamespace(), "/")[0]
+	resourceType := strings.Split(ID.Type(), "/")[1]
+
+	response, err := ucp.NewAPIVersionsClient().Get(
+		ctx,
+		planeName,
+		resourceProvider,
+		resourceType,
+		apiVersion,
+		nil)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrNoSchemaFound, err)
+	}
+
+	if response.Properties == nil || response.Properties.Schema == nil {
+		return nil, ErrNoSchemaFound
+	}
+
+	return response.Properties.Schema, nil
 }
