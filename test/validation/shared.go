@@ -73,6 +73,7 @@ type RPResourceSet struct {
 // DeleteRPResource deletes an environment or application resource depending on the type of the resource passed in, and
 // returns an error if one occurs.
 func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
+	t.Logf("deleting .. code works")
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
 
