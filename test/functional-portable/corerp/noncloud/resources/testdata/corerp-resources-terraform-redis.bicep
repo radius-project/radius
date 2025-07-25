@@ -9,19 +9,13 @@ param redisCacheName string
 @description('Name of the Radius Application.')
 param appName string
 
-@description('Name of the Radius Environment.')
-param envName string = 'corerp-resources-terraform-redis-env'
-
-@description('Name of the extender resource.')
-param resourceName string = 'corerp-resources-terraform-redis'
-
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: envName
+  name: 'corerp-resources-terraform-redis-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: envName
+      namespace: 'corerp-resources-terraform-redis-env'
     }
     recipeConfig: {
       env: {
@@ -54,7 +48,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: resourceName
+  name: 'corerp-resources-terraform-redis'
   properties: {
     application: app.id
     environment: env.id

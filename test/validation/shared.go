@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/cli"
@@ -98,77 +97,9 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
 		return cli.ApplicationDelete(ctx, resource.Name)
-	} else {
-		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
-		t.Logf("deleting resource: %s of type: %s", resource.Name, resource.Type)
-		
-		// Retry deletion with exponential backoff for 409 Conflict errors
-		// Resources may be stuck in "Updating" state after failed deployments
-		maxRetries := 5
-		var err error
-		for attempt := 0; attempt < maxRetries; attempt++ {
-			_, err = client.DeleteResource(ctx, resource.Type, resource.Name)
-			if err == nil {
-				break
-			}
-			
-			// Check if it's a 409 Conflict error (resource is updating)
-			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
-				if attempt < maxRetries-1 {
-					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-					t.Logf("resource %s is updating (409 Conflict), retrying in %v (attempt %d/%d)", resource.Name, waitTime, attempt+1, maxRetries)
-					time.Sleep(waitTime)
-					continue
-				} else {
-					t.Logf("resource %s still updating after %d attempts, giving up", resource.Name, maxRetries)
-				}
-			}
-			break
-		}
-		return err
 	}
-}
 
-// DeleteRPResourceSilent deletes an environment or application resource without logging to the test.
-// This is useful for background cleanup operations to avoid "Log in goroutine after test has completed" panics.
-func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
-	if resource.Type == EnvironmentsResource {
-		var respFromCtx *http.Response
-		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
-
-		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	} else if resource.Type == ApplicationsResource {
-		return cli.ApplicationDelete(ctx, resource.Name)
-	} else {
-		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
-		
-		// Retry deletion with exponential backoff for 409 Conflict errors
-		// Resources may be stuck in "Updating" state after failed deployments
-		maxRetries := 5
-		var err error
-		for attempt := 0; attempt < maxRetries; attempt++ {
-			_, err = client.DeleteResource(ctx, resource.Type, resource.Name)
-			if err == nil {
-				break
-			}
-			
-			// Check if it's a 409 Conflict error (resource is updating)
-			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
-				if attempt < maxRetries-1 {
-					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-					time.Sleep(waitTime)
-					continue
-				}
-			}
-			break
-		}
-		return err
-	}
+	return nil
 }
 
 // ValidateRPResources checks if the expected resources exist in the response and validates the output resources if present.
