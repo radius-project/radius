@@ -79,7 +79,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 
 		// Retry deletion upto 5 minutes for 409 Conflict errors
 		// Environments may be stuck in "Updating" state after failed deployments
-		maxRetries := 3
+		maxRetries := 5
 		var err error
 		var respFromCtx *http.Response
 
