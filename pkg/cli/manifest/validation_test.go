@@ -316,6 +316,9 @@ func TestValidateManifestSchemas(t *testing.T) {
 									"count": map[string]any{
 										"type": "integer",
 									},
+									"environment": map[string]any{
+										"type": "string",
+									},
 								},
 							},
 						},
@@ -419,7 +422,8 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"name": map[string]any{"type": "string"},
+									"name":        map[string]any{"type": "string"},
+									"environment": map[string]any{"type": "string"},
 								},
 							},
 						},
@@ -429,6 +433,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 								"properties": map[string]any{
 									"name":        map[string]any{"type": "string"},
 									"description": map[string]any{"type": "string"},
+									"environment": map[string]any{"type": "string"},
 								},
 							},
 						},
@@ -440,8 +445,9 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"id":     map[string]any{"type": "string"},
-									"active": map[string]any{"type": "boolean"},
+									"id":          map[string]any{"type": "string"},
+									"active":      map[string]any{"type": "boolean"},
+									"environment": map[string]any{"type": "string"},
 								},
 							},
 						},

@@ -120,7 +120,7 @@ func TestValidationErrors_Error(t *testing.T) {
 					NewConstraintError("field2", "second error"),
 				},
 			},
-			expected: "validation failed with 2 errors:\n  1. SchemaError error at \"field1\": first error\n  2. ConstraintError error at \"field2\": second error",
+			expected: "validation failed with following errors:\n  • SchemaError error at \"field1\": first error\n  • ConstraintError error at \"field2\": second error",
 		},
 	}
 
