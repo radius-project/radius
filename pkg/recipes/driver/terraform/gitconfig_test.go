@@ -17,51 +17,145 @@ limitations under the License.
 package terraform
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAddConfig(t *testing.T) {
+func TestAddSecretsToGitConfigIfApplicable(t *testing.T) {
+	secretData := map[string]recipes.SecretData{
+		"git-secret": {
+			Data: map[string]string{
+				"username": "test-user",
+				"pat":      "ghp_token",
+			},
+		},
+		"another-git-secret": {
+			Data: map[string]string{
+				"username": "another-user",
+				"pat":      "another_token",
+			},
+		},
+	}
+
 	tests := []struct {
 		desc             string
-		templatePath     string
-		expectedResponse string
+		config           recipes.Configuration
+		secrets          map[string]recipes.SecretData
+		expectedResponse []string
+		shouldCreateGit  bool
 		expectedErr      error
 	}{
 		{
-			desc:             "success",
-			templatePath:     "git::https://github.com/project/module",
-			expectedResponse: "[url \"https://test-user:ghp_token@github.com\"]\n\tinsteadOf = https://github.com\n",
+			desc: "success with single host",
+			config: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"github.com": {Secret: "git-secret"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:          secretData,
+			expectedResponse: []string{"[url \"https://test-user:ghp_token@github.com\"]\n\tinsteadOf = https://github.com\n"},
+			shouldCreateGit:  true,
 			expectedErr:      nil,
 		},
 		{
-			desc:         "invalid git url",
-			templatePath: "git::https://gith  ub.com/project/module",
-			expectedErr:  errors.New("failed to parse git url"),
+			desc: "success with multiple hosts",
+			config: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"github.com":   {Secret: "git-secret"},
+									"othertfs.com": {Secret: "another-git-secret"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: secretData,
+			expectedResponse: []string{
+				"[url \"https://test-user:ghp_token@github.com\"]\n\tinsteadOf = https://github.com\n",
+				"[url \"https://another-user:another_token@othertfs.com\"]\n\tinsteadOf = https://othertfs.com\n",
+			},
+			shouldCreateGit: true,
+			expectedErr:     nil,
+		},
+		{
+			desc: "no pat config",
+			config: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: nil,
+							},
+						},
+					},
+				},
+			},
+			secrets:          secretData,
+			expectedResponse: nil,
+			shouldCreateGit:  false,
+			expectedErr:      nil,
+		},
+		{
+			desc: "secret not found",
+			config: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"github.com": {Secret: "non-existent-secret"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:         secretData,
+			shouldCreateGit: true,
+			expectedErr:     fmt.Errorf("secrets not found for secret store ID %q", "non-existent-secret"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			err := addSecretsToGitConfig(tmpdir, getSecretList(), tt.templatePath)
+			err := addSecretsToGitConfigIfApplicable(context.Background(), tt.config, tt.secrets, tmpdir)
 			if tt.expectedErr == nil {
 				require.NoError(t, err)
-				fileContent, err := os.ReadFile(tmpdir + "/.git/config")
-				require.NoError(t, err)
-				require.Contains(t, string(fileContent), tt.expectedResponse)
+				if tt.shouldCreateGit {
+					fileContent, err := os.ReadFile(filepath.Join(tmpdir, ".git", "config"))
+					require.NoError(t, err)
+					for _, res := range tt.expectedResponse {
+						require.Contains(t, string(fileContent), res)
+					}
+				} else {
+					_, err := os.Stat(filepath.Join(tmpdir, ".git"))
+					require.True(t, os.IsNotExist(err), ".git directory should not be created")
+				}
 			} else {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErr.Error())
 			}
 		})
 	}
-
 }
 
 func TestSetGitConfigForDir(t *testing.T) {
@@ -115,7 +209,7 @@ func TestUnsetGitConfigForDir(t *testing.T) {
 			config, err := withGlobalGitConfigFile(tmpdir, tt.fileContent)
 			require.NoError(t, err)
 			defer config()
-			err = unsetGitConfigForDir(tt.workingDirectory, getSecretList(), tt.templatePath)
+			err = unsetGitConfigForDir(tt.workingDirectory)
 			require.NoError(t, err)
 			contents, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
 			require.NoError(t, err)
@@ -182,7 +276,6 @@ func TestConfigureSSHAuth(t *testing.T) {
 			// Create an empty git config file
 			err = os.WriteFile(filepath.Join(tmpdir, ".git", "config"), []byte(""), 0644)
 			require.NoError(t, err)
-
 			err = configureSSHAuth(tmpdir, tt.privateKey, secrets)
 
 			if tt.expectError {
@@ -212,31 +305,6 @@ func TestConfigureSSHAuth(t *testing.T) {
 			}
 		})
 	}
-}
-
-func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
-	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
-
-	err := os.WriteFile(
-		tmpGitConfigFile,
-		[]byte(content),
-		0777,
-	)
-
-	if err != nil {
-		return func() {}, err
-	}
-
-	prevGitConfigEnv := os.Getenv("HOME")
-	err = os.Setenv("HOME", tmpdir)
-	if err != nil {
-		return func() {}, fmt.Errorf("failed to set HOME environment variable: %w", err)
-	}
-
-	return func() {
-		// Best effort restoration - errors here are non-critical
-		_ = os.Setenv("HOME", prevGitConfigEnv)
-	}, nil
 }
 
 func Test_GetGitURL(t *testing.T) {
@@ -271,51 +339,54 @@ func Test_GetGitURL(t *testing.T) {
 	}
 }
 
-// Test_addSecretsToGitConfigIfApplicable tests only wrapper funcion.
-// Additional tests exist for inner function call addSecretsToGitConfig() in TestAddConfig().
-func Test_addSecretsToGitConfigIfApplicable(t *testing.T) {
-	templatePath := "git::dev.azure.com/project/module"
-	secretDetails := map[string]recipes.SecretData{
-		"existingID": {
-			Type: "generic",
-			Data: map[string]string{"key": "value"},
-		},
-	}
-
+func TestUnsetGitConfigForDirIfApplicable(t *testing.T) {
 	tests := []struct {
-		name          string
-		secretStoreID string
-		secretData    map[string]recipes.SecretData
-		expectError   bool
-		expectErrMsg  string
+		desc     string
+		config   recipes.Configuration
+		hasError bool
 	}{
 		{
-			name:          "Secrets not found for secret store ID",
-			secretStoreID: "missingID",
-			secretData:    secretDetails,
-			expectError:   true,
-			expectErrMsg:  "secrets not found for secret store ID \"missingID\"",
+			desc: "success with PAT config",
+			config: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: map[string]datamodel.SecretConfig{
+									"github.com": {Secret: "git-secret"},
+								},
+							},
+						},
+					},
+				},
+			},
+			hasError: false,
 		},
 		{
-			name:          "Successful secrets addition",
-			secretStoreID: "existingID",
-			secretData:    secretDetails,
-			expectError:   false,
-		},
-		{
-			name:          "secretData is nil",
-			secretStoreID: "missingID",
-			secretData:    nil,
-			expectError:   false,
+			desc: "no PAT config - should not error",
+			config: recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Authentication: datamodel.AuthConfig{
+							Git: datamodel.GitAuthConfig{
+								PAT: nil,
+							},
+						},
+					},
+				},
+			},
+			hasError: false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tmpdir := t.TempDir()
-			err := addSecretsToGitConfigIfApplicable(tt.secretStoreID, tt.secretData, tmpdir, templatePath)
-			if tt.expectError {
-				require.EqualError(t, err, tt.expectErrMsg)
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			ctx := context.Background()
+
+			err := unsetGitConfigForDirIfApplicable(ctx, test.config, tmpDir)
+			if test.hasError {
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}
@@ -323,74 +394,27 @@ func Test_addSecretsToGitConfigIfApplicable(t *testing.T) {
 	}
 }
 
-// Test_unsetGitConfigForDirIfApplicable tests only wrapper funcion.
-// Additional tests exist for inner function call unsetGitConfigForDir() in TestUnsetGitConfigForDir().
-func Test_unsetGitConfigForDirIfApplicable(t *testing.T) {
-	tmpdir := t.TempDir()
-	workingDirectory := "test-working-dir"
-	templatePath := "git::https://github.com/project/module"
-	fileContent := `
-			[includeIf "gitdir:test-working-dir/"]
-        path = test-working-dir/.git/config
-			`
+// withGlobalGitConfigFile creates a temporary git config file and sets it as the global config
+func withGlobalGitConfigFile(tmpdir, content string) (func(), error) {
+	gitConfigPath := filepath.Join(tmpdir, ".gitconfig")
 
-	tests := []struct {
-		name             string
-		secretStoreID    string
-		secretData       map[string]recipes.SecretData
-		expectError      bool
-		expectErrMsg     string
-		expectCallToFunc bool
-	}{
-		{
-			name:          "Secrets not found for secret store ID",
-			secretStoreID: "missingID",
-			secretData: map[string]recipes.SecretData{
-				"existingID": {
-					Type: "generic",
-					Data: map[string]string{"key": "value"},
-				},
-			},
-			expectError:  true,
-			expectErrMsg: "secrets not found for secret store ID \"missingID\"",
-		},
-		{
-			name:          "Successful call to unsetGitConfigForDir",
-			secretStoreID: "existingID",
-			secretData: map[string]recipes.SecretData{
-				"existingID": {
-					Type: "generic",
-					Data: map[string]string{"username": "test-user", "pat": "ghp_token"},
-				},
-			},
-			expectError:      false,
-			expectCallToFunc: true,
-		},
-		{
-			name:          "secretData is nil",
-			secretStoreID: "missingID",
-			secretData:    nil,
-			expectError:   false,
-		},
+	// Write the content to the temporary git config file
+	if err := os.WriteFile(gitConfigPath, []byte(content), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write git config file: %w", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config, err := withGlobalGitConfigFile(tmpdir, fileContent)
-			require.NoError(t, err)
-			defer config()
+	// Set the GIT_CONFIG_GLOBAL environment variable to point to our temporary file
+	originalConfig := os.Getenv("GIT_CONFIG_GLOBAL")
+	os.Setenv("GIT_CONFIG_GLOBAL", gitConfigPath)
 
-			err = unsetGitConfigForDirIfApplicable(tt.secretStoreID, tt.secretData, workingDirectory, templatePath)
-			if tt.expectError {
-				require.EqualError(t, err, tt.expectErrMsg)
-			} else {
-				require.NoError(t, err)
-				if tt.expectCallToFunc {
-					contents, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
-					require.NoError(t, err)
-					require.NotContains(t, string(contents), fileContent)
-				}
-			}
-		})
+	// Return cleanup function
+	cleanup := func() {
+		if originalConfig != "" {
+			os.Setenv("GIT_CONFIG_GLOBAL", originalConfig)
+		} else {
+			os.Unsetenv("GIT_CONFIG_GLOBAL")
+		}
 	}
+
+	return cleanup, nil
 }
