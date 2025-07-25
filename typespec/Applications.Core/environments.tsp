@@ -111,6 +111,9 @@ model TerraformConfigProperties {
   @doc("Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.")
   registry?: TerraformRegistryConfig;
 
+  @doc("Configuration for Terraform provider registry mirroring.")
+  providerRegistry?: TerraformRegistryConfig;
+
   @doc("Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.")
   version?: TerraformVersionConfig;
 }

@@ -66,20 +66,18 @@ func ConfigureTerraformRegistry(
 	var token []byte
 
 	// Check if registry mirror configuration exists
-	if config.RecipeConfig.Terraform.Registry == nil || config.RecipeConfig.Terraform.Registry.Mirror == "" {
-		logger.Info("No Terraform registry mirror configured, skipping registry configuration")
+	if config.RecipeConfig.Terraform.ProviderMirror == nil || config.RecipeConfig.Terraform.ProviderMirror.Mirror == "" {
+		logger.Info("No Terraform provider mirror configured, skipping registry configuration")
 		return nil, nil
 	}
 
-	logger.Info("Starting Terraform registry configuration",
-		"mirror", config.RecipeConfig.Terraform.Registry.Mirror,
-		"hasAuthentication", config.RecipeConfig.Terraform.Registry.Authentication.Token != nil,
-		"hasTLS", config.RecipeConfig.Terraform.Registry.TLS != nil,
-		"workingDir", dirPath)
+	logger.Info("Setting up Terraform provider mirror configuration",
+		"mirror", config.RecipeConfig.Terraform.ProviderMirror.Mirror,
+		"hasAuthentication", config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token != nil,
+		"hasTLS", config.RecipeConfig.Terraform.ProviderMirror.TLS != nil,
+		"secretsCount", len(secrets))
 
-	// Extract and validate the mirror URL
-	mirrorURL := config.RecipeConfig.Terraform.Registry.Mirror
-	logger.Info("Normalizing mirror URL", "originalURL", mirrorURL)
+	mirrorURL := config.RecipeConfig.Terraform.ProviderMirror.Mirror
 
 	// Check if URL is malformed first (e.g., starts with ://)
 	if strings.HasPrefix(mirrorURL, "://") {
@@ -112,8 +110,8 @@ func ConfigureTerraformRegistry(
 	// Use Host() instead of Hostname() to preserve port information
 	host := parsedURL.Host
 	if host == "" {
-		logger.Error(nil, "Empty host in mirror URL", "originalURL", config.RecipeConfig.Terraform.Registry.Mirror, "parsedURL", mirrorURL)
-		return nil, fmt.Errorf("empty host in mirror URL: %s", config.RecipeConfig.Terraform.Registry.Mirror)
+		logger.Error(nil, "Empty host in mirror URL", "originalURL", config.RecipeConfig.Terraform.ProviderMirror.Mirror, "parsedURL", mirrorURL)
+		return nil, fmt.Errorf("empty host in mirror URL: %s", config.RecipeConfig.Terraform.ProviderMirror.Mirror)
 	}
 
 	logger.Info("Mirror URL normalized", "normalizedURL", parsedURL.String(), "host", host)
@@ -122,7 +120,7 @@ func ConfigureTerraformRegistry(
 	var configContent strings.Builder
 
 	// Handle authentication
-	auth := config.RecipeConfig.Terraform.Registry.Authentication
+	auth := config.RecipeConfig.Terraform.ProviderMirror.Authentication
 
 	// Token authentication
 	if auth.Token != nil && auth.Token.Secret != "" {
@@ -223,36 +221,36 @@ func ConfigureTerraformRegistry(
 	}
 
 	// Log TLS configuration details
-	if config.RecipeConfig.Terraform.Registry.TLS != nil {
-		logger.Info("Registry TLS configuration found",
-			"skipVerify", config.RecipeConfig.Terraform.Registry.TLS.SkipVerify,
-			"hasCACert", config.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil)
+	if config.RecipeConfig.Terraform.ProviderMirror.TLS != nil {
+		logger.Info("Provider mirror TLS configuration found",
+			"skipVerify", config.RecipeConfig.Terraform.ProviderMirror.TLS.SkipVerify,
+			"hasCACert", config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate != nil)
 
-		if config.RecipeConfig.Terraform.Registry.TLS.SkipVerify {
+		if config.RecipeConfig.Terraform.ProviderMirror.TLS.SkipVerify {
 			// Add TF_INSECURE_SKIP_TLS_VERIFY environment variable
 			regConfig.EnvVars["TF_INSECURE_SKIP_TLS_VERIFY"] = "1"
 			logger.Info("Added TF_INSECURE_SKIP_TLS_VERIFY environment variable for TLS skip")
 
 			if parsedURL.Scheme == "https" {
-				logger.Info("WARNING: TLS skipVerify is set for HTTPS registry. Using TF_INSECURE_SKIP_TLS_VERIFY to bypass certificate verification.")
+				logger.Info("WARNING: TLS skipVerify is set for HTTPS provider mirror. Using TF_INSECURE_SKIP_TLS_VERIFY to bypass certificate verification.")
 			}
 		}
 	} else {
-		logger.Info("No TLS configuration found for registry")
+		logger.Info("No TLS configuration found for provider mirror")
 	}
 
 	// Handle CA certificate if provided
-	if config.RecipeConfig.Terraform.Registry.TLS != nil &&
-		config.RecipeConfig.Terraform.Registry.TLS.CACertificate != nil &&
-		config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Source != "" {
+	if config.RecipeConfig.Terraform.ProviderMirror.TLS != nil &&
+		config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate != nil &&
+		config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Source != "" {
 
-		logger.Info("Configuring CA certificate for registry",
-			"secretStore", config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Source,
-			"key", config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Key)
+		logger.Info("Configuring CA certificate for provider mirror",
+			"secretStore", config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Source,
+			"key", config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Key)
 
 		// Get CA certificate from secrets
-		secretStoreID := config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Source
-		secretKey := config.RecipeConfig.Terraform.Registry.TLS.CACertificate.Key
+		secretStoreID := config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Source
+		secretKey := config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Key
 
 		// Log available secrets for debugging
 		if secrets != nil {

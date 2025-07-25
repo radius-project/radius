@@ -208,7 +208,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 			}
 
 			if config.Terraform.Registry != nil {
-				registryConfig := &datamodel.TerraformRegistryConfig{
+				registryConfig := &datamodel.TerraformProviderMirrorConfig{
 					Mirror: to.String(config.Terraform.Registry.Mirror),
 				}
 
@@ -247,7 +247,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 					}
 				}
 
-				recipeConfig.Terraform.Registry = registryConfig
+				recipeConfig.Terraform.ProviderMirror = registryConfig
 			}
 
 			if config.Terraform.Version != nil {
@@ -340,35 +340,35 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				}
 			}
 
-			if config.Terraform.Registry != nil {
+			if config.Terraform.ProviderMirror != nil {
 				registryConfig := &TerraformRegistryConfig{
-					Mirror: to.Ptr(config.Terraform.Registry.Mirror),
+					Mirror: to.Ptr(config.Terraform.ProviderMirror.Mirror),
 				}
 
 				// Only set ProviderMappings if it exists and is not empty
-				if len(config.Terraform.Registry.ProviderMappings) > 0 {
+				if len(config.Terraform.ProviderMirror.ProviderMappings) > 0 {
 					providerMappings := make(map[string]*string)
-					for key, value := range config.Terraform.Registry.ProviderMappings {
+					for key, value := range config.Terraform.ProviderMirror.ProviderMappings {
 						providerMappings[key] = to.Ptr(value)
 					}
 					registryConfig.ProviderMappings = providerMappings
 				}
 
 				// Handle authentication if provided
-				if !reflect.DeepEqual(config.Terraform.Registry.Authentication, datamodel.RegistryAuthConfig{}) {
+				if !reflect.DeepEqual(config.Terraform.ProviderMirror.Authentication, datamodel.RegistryAuthConfig{}) {
 					registryConfig.Authentication = &RegistryAuthConfig{}
 
 					// Handle token auth if provided
-					if config.Terraform.Registry.Authentication.Token != nil {
+					if config.Terraform.ProviderMirror.Authentication.Token != nil {
 						registryConfig.Authentication.Token = &TokenConfig{
-							Secret: to.Ptr(config.Terraform.Registry.Authentication.Token.Secret),
+							Secret: to.Ptr(config.Terraform.ProviderMirror.Authentication.Token.Secret),
 						}
 					}
 
 					// Handle additional hosts if provided
-					if config.Terraform.Registry.Authentication.AdditionalHosts != nil {
+					if config.Terraform.ProviderMirror.Authentication.AdditionalHosts != nil {
 						additionalHosts := []*string{}
-						for _, host := range config.Terraform.Registry.Authentication.AdditionalHosts {
+						for _, host := range config.Terraform.ProviderMirror.Authentication.AdditionalHosts {
 							h := host // Create a copy to avoid pointer issues
 							additionalHosts = append(additionalHosts, to.Ptr(h))
 						}
@@ -377,8 +377,8 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				}
 
 				// Handle TLS configuration
-				if config.Terraform.Registry.TLS != nil {
-					registryConfig.TLS = fromTLSConfigDatamodel(config.Terraform.Registry.TLS)
+				if config.Terraform.ProviderMirror.TLS != nil {
+					registryConfig.TLS = fromTLSConfigDatamodel(config.Terraform.ProviderMirror.TLS)
 				}
 
 				recipeConfig.Terraform.Registry = registryConfig

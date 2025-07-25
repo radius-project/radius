@@ -836,10 +836,15 @@ func Test_FindSecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name:          "GetPrivateGitRepoSecretStoreID returns error",
-			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azu  re.com/project/module"},
-			envConfig:     createTerraformConfigWithAuthProviderEnvSecrets(),
-			expectedError: true,
+			name:          "Empty PAT config - no secrets needed",
+			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azure.com/project/module"},
+			envConfig:     createTerraformConfigWithProviderEnvSecrets(), // This config has no Git PAT authentication
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-id1":    {"secret-key1", "secret-key-env"},
+				"secret-store-id2":    {"secret-key2"},
+				"secret-store-id-env": {"secret-key-env"},
+			},
 		},
 	}
 

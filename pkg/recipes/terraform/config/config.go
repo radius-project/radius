@@ -132,16 +132,16 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	}
 
 	// Apply provider mappings if configured
-	if envConfig != nil && envConfig.RecipeConfig.Terraform.Registry != nil &&
-		len(envConfig.RecipeConfig.Terraform.Registry.ProviderMappings) > 0 {
-		logger.Info("Applying provider mappings", "mappings", envConfig.RecipeConfig.Terraform.Registry.ProviderMappings)
+	if envConfig != nil && envConfig.RecipeConfig.Terraform.ProviderMirror != nil &&
+		len(envConfig.RecipeConfig.Terraform.ProviderMirror.ProviderMappings) > 0 {
+		logger.Info("Applying provider mappings", "mappings", envConfig.RecipeConfig.Terraform.ProviderMirror.ProviderMappings)
 
 		// Create a copy of requiredProviders with mappings applied
 		mappedProviders := make(map[string]*RequiredProviderInfo)
 		for providerName, providerInfo := range requiredProviders {
 			// Check if there's a mapping for this provider's source
 			if providerInfo.Source != "" {
-				if mappedSource, exists := envConfig.RecipeConfig.Terraform.Registry.ProviderMappings[providerInfo.Source]; exists {
+				if mappedSource, exists := envConfig.RecipeConfig.Terraform.ProviderMirror.ProviderMappings[providerInfo.Source]; exists {
 					logger.Info("Mapping provider source", "from", providerInfo.Source, "to", mappedSource)
 					// Create a new provider info with the mapped source
 					mappedInfo := &RequiredProviderInfo{
