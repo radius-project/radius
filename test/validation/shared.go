@@ -77,7 +77,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
 
-		// Retry deletion with exponential backoff for 409 Conflict errors
+		// Retry deletion upto 5 minutes for 409 Conflict errors
 		// Environments may be stuck in "Updating" state after failed deployments
 		maxRetries := 3
 		var err error
@@ -95,7 +95,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 			// Check if it's a 409 Conflict error (resource is updating)
 			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
 				if attempt < maxRetries-1 {
-					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+					waitTime := time.Duration(60) * time.Second
 					t.Logf("environment %s is in updating state, retrying deletion in %v (attempt %d/%d)", resource.Name, waitTime, attempt+1, maxRetries)
 					time.Sleep(waitTime)
 					continue
@@ -140,18 +140,18 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 
 			_, err = client.DeleteEnvironment(ctxWithResp, resource.Name)
 			if err == nil {
-				break
+				return nil
 			}
 
 			// Check if it's a 409 Conflict error (resource is updating)
 			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
 				if attempt < maxRetries-1 {
-					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+					waitTime := time.Duration(60) * time.Second
 					time.Sleep(waitTime)
 					continue
 				}
 			}
-			break
+			break // do not retry for other errors
 		}
 
 		return err

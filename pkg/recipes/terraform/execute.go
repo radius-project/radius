@@ -447,7 +447,7 @@ func destroyWithRetry(ctx context.Context, tf *tfexec.Terraform) error {
 			lockID := extractLockID(err.Error())
 
 			if attempt < maxRetries-1 {
-				waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+				waitTime := time.Duration(60) * time.Second
 				logger.Info(fmt.Sprintf("Terraform destroy failed due to state lock (attempt %d/%d), retrying in %v", attempt+1, maxRetries, waitTime))
 				time.Sleep(waitTime)
 				continue
