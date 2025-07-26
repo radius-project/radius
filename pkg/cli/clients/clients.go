@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/cli/output"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	ucp_v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
@@ -191,6 +192,9 @@ type ApplicationsManagementClient interface {
 	// ListEnvironmentsAll lists all environments across resource groups.
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 
+	// ListEnvironmentsInResourceGroup lists all environments in a resource group.
+	ListEnvironmentsInResourceGroup(ctx context.Context, resourceGroupName string) ([]corerp.EnvironmentResource, error)
+
 	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.
 	GetEnvironment(ctx context.Context, environmentNameOrID string) (corerp.EnvironmentResource, error)
 
@@ -213,7 +217,7 @@ type ApplicationsManagementClient interface {
 	CreateOrUpdateResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resource *ucp_v20231001preview.ResourceGroupResource) error
 
 	// DeleteResourceGroup deletes a resource group by its name.
-	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string, outputInterface output.Interface) (bool, error)
 
 	// ListResourceProviders lists all resource providers in the configured scope.
 	ListResourceProviders(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceProviderResource, error)
