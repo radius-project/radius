@@ -70,9 +70,7 @@ hack/bicep-types-radius/generated/**/*.md
 # Bicep extensions
 *.tgz
 
-# Debug files
+# debug environment files
 debug_files/*
-
-# Demo app
-demo/*
+drad
 demo
