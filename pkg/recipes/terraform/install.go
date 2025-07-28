@@ -45,7 +45,7 @@ const (
 // for better performance and reduced download overhead. If not found or not working, it falls back
 // to downloading the latest version of Terraform and returns the path to the installed Terraform
 // executable. It returns an error if the directory creation or Terraform installation fails.
-func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
+func Install(ctx context.Context, installer *install.Installer, tfDir string, logLevel string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Check if Terraform is pre-mounted from a container (e.g., via init container)
@@ -66,7 +66,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 		} else {
 			logger.Info("Successfully using pre-mounted Terraform binary")
 			// Configure Terraform logs for the pre-mounted binary
-			configureTerraformLogs(ctx, tf)
+			configureTerraformLogs(ctx, tf, logLevel)
 			return tf, nil
 		}
 	}
@@ -158,7 +158,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 	}
 
 	// Configure Terraform logs once Terraform installation is complete
-	configureTerraformLogs(ctx, tf)
+	configureTerraformLogs(ctx, tf, logLevel)
 
 	return tf, nil
 }

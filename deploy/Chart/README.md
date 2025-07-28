@@ -36,6 +36,17 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
   --set global.terraform.downloadUrl="https://my-artifactory.com/terraform_1.5.7_linux_amd64.zip"
 ```
 
+#### Terraform Logging Configuration
+
+You can configure the log level for Terraform execution to control verbosity:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.terraform.loglevel="DEBUG"
+```
+
+Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`. Default is `ERROR`.
+
 
 ### Verify the installation
 

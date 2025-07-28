@@ -103,6 +103,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		Secrets:        opts.Secrets,
+		LogLevel:       getTerraformLogLevel(),
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -155,6 +156,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		Secrets:        opts.Secrets,
+		LogLevel:       getTerraformLogLevel(),
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -280,6 +282,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		LogLevel:       getTerraformLogLevel(),
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -426,4 +429,14 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	return recipeResources, nil
+}
+
+// getTerraformLogLevel returns the Terraform log level from environment variable.
+// Defaults to "ERROR" if not set.
+func getTerraformLogLevel() string {
+	logLevel := os.Getenv("TERRAFORM_LOG_LEVEL")
+	if logLevel == "" {
+		return "ERROR"
+	}
+	return logLevel
 }
