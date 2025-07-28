@@ -4778,15 +4778,64 @@
             "x-ms-identifiers": []
           }
         },
-        "registry": {
-          "$ref": "#/definitions/TerraformRegistryConfig",
-          "description": "Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror."
+        "providerMirror": {
+          "$ref": "#/definitions/TerraformProviderMirrorConfig",
+          "description": "Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror."
+        },
+        "moduleRegistries": {
+          "type": "object",
+          "description": "Configuration for Terraform module registries. Allows overriding the default Terraform module registry with a custom registry.",
+          "additionalProperties": {
+            "$ref": "#/definitions/TerraformModuleRegistryConfig"
+          }
         },
         "version": {
           "$ref": "#/definitions/TerraformVersionConfig",
           "description": "Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API."
         }
       }
+    },
+    "TerraformModuleRegistryConfig": {
+      "type": "object",
+      "description": "Configuration for a Terraform module registry. Allows overriding the default Terraform module registry with a custom registry.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The base URL of the module registry. Example: 'https://terraform.example.com'"
+        },
+        "authentication": {
+          "$ref": "#/definitions/RegistryAuthConfig",
+          "description": "Authentication configuration for accessing the module registry."
+        },
+        "tls": {
+          "$ref": "#/definitions/TLSConfig",
+          "description": "TLS configuration for connecting to the module registry."
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "TerraformProviderMirrorConfig": {
+      "type": "object",
+      "description": "Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The base URL of the provider mirror. Example: 'https://terraform.example.com'"
+        },
+        "authentication": {
+          "$ref": "#/definitions/RegistryAuthConfig",
+          "description": "Authentication configuration for accessing the provider mirror."
+        },
+        "tls": {
+          "$ref": "#/definitions/TLSConfig",
+          "description": "TLS configuration for connecting to the provider mirror."
+        }
+      },
+      "required": [
+        "url"
+      ]
     },
     "TerraformRecipeProperties": {
       "type": "object",
@@ -4803,31 +4852,6 @@
         }
       ],
       "x-ms-discriminator-value": "terraform"
-    },
-    "TerraformRegistryConfig": {
-      "type": "object",
-      "description": "Configuration for Terraform provider registry mirroring.",
-      "properties": {
-        "mirror": {
-          "type": "string",
-          "description": "Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'"
-        },
-        "providerMappings": {
-          "type": "object",
-          "description": "Provider mappings to translate between official and custom provider identifiers.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "authentication": {
-          "$ref": "#/definitions/RegistryAuthConfig",
-          "description": "Authentication configuration for accessing private Terraform registry mirrors."
-        },
-        "tls": {
-          "$ref": "#/definitions/TLSConfig",
-          "description": "TLS configuration for connecting to the Terraform registry mirror."
-        }
-      }
     },
     "TerraformVersionConfig": {
       "type": "object",
