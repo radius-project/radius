@@ -38,19 +38,19 @@ func GetTerraformProviderFullName(registry, provider string) string {
 	return fmt.Sprintf("%s/%s", registry, provider)
 }
 
-// GetTerraformRegistry returns the registry to use based on configuration
+// GetTerraformRegistry returns the configured Terraform provider mirror URL, or the default registry if none is configured.
 func GetTerraformRegistry(config recipes.Configuration) string {
-	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.Mirror != "" {
-		return config.RecipeConfig.Terraform.Registry.Mirror
+	if config.RecipeConfig.Terraform.ProviderMirror != nil && config.RecipeConfig.Terraform.ProviderMirror.Mirror != "" {
+		return config.RecipeConfig.Terraform.ProviderMirror.Mirror
 	}
 	return DefaultTerraformRegistry
 }
 
-// GetTerraformProviderName returns the provider name to use based on configuration
-func GetTerraformProviderName(config recipes.Configuration, defaultProvider, providerName string) string {
-	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.ProviderMappings != nil {
-		if mapping, exists := config.RecipeConfig.Terraform.Registry.ProviderMappings[defaultProvider]; exists {
-			return mapping
+// GetTerraformProviderName returns the provider name to use, applying any configured provider mappings.
+func GetTerraformProviderName(config recipes.Configuration, providerName string) string {
+	if config.RecipeConfig.Terraform.ProviderMirror != nil && len(config.RecipeConfig.Terraform.ProviderMirror.ProviderMappings) > 0 {
+		if mappedName, exists := config.RecipeConfig.Terraform.ProviderMirror.ProviderMappings[providerName]; exists {
+			return mappedName
 		}
 	}
 	return providerName

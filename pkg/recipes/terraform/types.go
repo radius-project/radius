@@ -140,6 +140,25 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 		}
 	}
 
+	// Handle module registries authentication
+	if envConfig.RecipeConfig.Terraform.ModuleRegistries != nil {
+		for _, registry := range envConfig.RecipeConfig.Terraform.ModuleRegistries {
+			auth := registry.Authentication
+
+			// Token authentication
+			if auth.Token != nil && auth.Token.Secret != "" {
+				// Token auth needs token
+				addSecretKeys(registrySecretIDs, auth.Token.Secret, "token", &mu)
+			}
+
+			// Handle module registry TLS CA certificate
+			if registry.TLS != nil && registry.TLS.CACertificate != nil {
+				cert := registry.TLS.CACertificate
+				addSecretKeys(registrySecretIDs, cert.Source, cert.Key, &mu)
+			}
+		}
+	}
+
 	// Handle version authentication for binary downloads
 	if envConfig.RecipeConfig.Terraform.Version != nil {
 		// Handle authentication

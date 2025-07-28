@@ -108,28 +108,37 @@ model TerraformConfigProperties {
   @doc("Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.")
   providers?: Record<Array<ProviderConfigProperties>>;
 
-  @doc("Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.")
-  registry?: TerraformRegistryConfig;
+  @doc("Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror.")
+  providerMirror?: TerraformProviderMirrorConfig;
 
-  @doc("Configuration for Terraform provider registry mirroring.")
-  providerRegistry?: TerraformRegistryConfig;
+  @doc("Configuration for Terraform module registries. Allows overriding the default Terraform module registry with a custom registry.")
+  moduleRegistries?: Record<TerraformModuleRegistryConfig>;
 
   @doc("Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.")
   version?: TerraformVersionConfig;
 }
 
-@doc("Configuration for Terraform provider registry mirroring.")
-model TerraformRegistryConfig {
-  @doc("Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'")
-  mirror?: string;
+@doc("Configuration for a Terraform module registry. Allows overriding the default Terraform module registry with a custom registry.")
+model TerraformModuleRegistryConfig {
+  @doc("The base URL of the module registry. Example: 'https://terraform.example.com'")
+  url: string;
 
-  @doc("Provider mappings to translate between official and custom provider identifiers.")
-  providerMappings?: Record<string>;
-
-  @doc("Authentication configuration for accessing private Terraform registry mirrors.")
+  @doc("Authentication configuration for accessing the module registry.")
   authentication?: RegistryAuthConfig;
 
-  @doc("TLS configuration for connecting to the Terraform registry mirror.")
+  @doc("TLS configuration for connecting to the module registry.")
+  tls?: TLSConfig;
+}
+
+@doc("Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror.")
+model TerraformProviderMirrorConfig {
+  @doc("The base URL of the provider mirror. Example: 'https://terraform.example.com'")
+  url: string;
+
+  @doc("Authentication configuration for accessing the provider mirror.")
+  authentication?: RegistryAuthConfig;
+
+  @doc("TLS configuration for connecting to the provider mirror.")
   tls?: TLSConfig;
 }
 
