@@ -1527,16 +1527,46 @@ type TerraformConfigProperties struct {
 // Authentication information used to access private Terraform module sources. Supported module sources: Git.
 	Authentication *AuthConfig
 
+// Configuration for Terraform module registries. Allows overriding the default Terraform module registry with a custom registry.
+	ModuleRegistries map[string]*TerraformModuleRegistryConfig
+
+// Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom
+// mirror.
+	ProviderMirror *TerraformProviderMirrorConfig
+
 // Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and
 // other APIs. For more information, please see:
 // https://developer.hashicorp.com/terraform/language/providers/configuration.
 	Providers map[string][]*ProviderConfigProperties
 
-// Registry configuration for Terraform providers. Allows overriding the default Terraform registry with a custom mirror.
-	Registry *TerraformRegistryConfig
-
 // Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.
 	Version *TerraformVersionConfig
+}
+
+// TerraformModuleRegistryConfig - Configuration for a Terraform module registry. Allows overriding the default Terraform
+// module registry with a custom registry.
+type TerraformModuleRegistryConfig struct {
+// REQUIRED; The base URL of the module registry. Example: 'https://terraform.example.com'
+	URL *string
+
+// Authentication configuration for accessing the module registry.
+	Authentication *RegistryAuthConfig
+
+// TLS configuration for connecting to the module registry.
+	TLS *TLSConfig
+}
+
+// TerraformProviderMirrorConfig - Configuration for a Terraform provider mirror. Allows overriding the default Terraform
+// provider registry with a custom mirror.
+type TerraformProviderMirrorConfig struct {
+// REQUIRED; The base URL of the provider mirror. Example: 'https://terraform.example.com'
+	URL *string
+
+// Authentication configuration for accessing the provider mirror.
+	Authentication *RegistryAuthConfig
+
+// TLS configuration for connecting to the provider mirror.
+	TLS *TLSConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
@@ -1566,21 +1596,6 @@ func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
 	}
-}
-
-// TerraformRegistryConfig - Configuration for Terraform provider registry mirroring.
-type TerraformRegistryConfig struct {
-// Authentication configuration for accessing private Terraform registry mirrors.
-	Authentication *RegistryAuthConfig
-
-// Mirror URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'
-	Mirror *string
-
-// Provider mappings to translate between official and custom provider identifiers.
-	ProviderMappings map[string]*string
-
-// TLS configuration for connecting to the Terraform registry mirror.
-	TLS *TLSConfig
 }
 
 // TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
