@@ -6,11 +6,68 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEBUG_ROOT="$REPO_ROOT/debug_files"
 
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+print_error() {
+    echo -e "${RED}❌${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠️${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}✅${NC} $1"
+}
+
+# Check prerequisites
+check_prerequisites() {
+    echo "🔍 Checking prerequisites..."
+    local missing_tools=()
+    
+    # Check for required tools
+    if ! command -v dlv >/dev/null 2>&1; then
+        missing_tools+=("dlv (go install github.com/go-delve/delve/cmd/dlv@latest)")
+    fi
+    
+    if ! command -v k3d >/dev/null 2>&1; then
+        missing_tools+=("k3d (https://k3d.io/)")
+    fi
+    
+    if ! command -v kubectl >/dev/null 2>&1; then
+        missing_tools+=("kubectl")
+    fi
+    
+    if ! command -v psql >/dev/null 2>&1; then
+        print_warning "psql not available - database may not be properly initialized"
+    fi
+    
+    if [ ${#missing_tools[@]} -ne 0 ]; then
+        print_error "Missing required tools:"
+        for tool in "${missing_tools[@]}"; do
+            echo "  - $tool"
+        done
+        exit 1
+    fi
+    
+    print_success "All prerequisites are available"
+}
+
 # Check if we have the debug environment set up
 if [ ! -f "$DEBUG_ROOT/bin/ucpd" ]; then
-    echo "❌ Debug environment not found. Please run 'make debug-setup' first."
+    print_error "Debug environment not found. Please run 'make debug-setup' first."
     exit 1
 fi
+
+# Ensure logs directory exists
+mkdir -p "$DEBUG_ROOT/logs"
+
+# Check prerequisites
+check_prerequisites
 
 echo "🚀 Starting Radius components..."
 
@@ -48,7 +105,10 @@ else
   ps aux | grep -E "(ucpd|applications-rp|dynamic-rp|controller.*--config-file.*controller.yaml|dlv.*exec)" | grep -v grep | awk '{print $2}' | xargs -r kill 2>/dev/null || true
 fi
 
-echo "✅ Cleanup complete"
+print_success "Cleanup complete"
+
+# Ensure logs directory exists (double-check)
+mkdir -p "$DEBUG_ROOT/logs"
 
 # Initialize PostgreSQL database if needed
 echo "🗄️  Initializing PostgreSQL database..."
@@ -97,9 +157,9 @@ if command -v psql >/dev/null 2>&1; then
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
   " 2>/dev/null || echo "UCP resources table setup completed"
   
-  echo "✅ Database initialization complete"
+  print_success "Database initialization complete"
 else
-  echo "⚠️  psql not available - database may not be properly initialized"
+  print_warning "psql not available - database may not be properly initialized"
 fi
 
 # Start UCP with dlv
@@ -110,10 +170,10 @@ sleep 5
 
 # Verify UCP
 if ! curl -s "http://localhost:9000/apis/api.ucp.dev/v1alpha3" > /dev/null; then
-  echo "❌ UCP failed to start"
+  print_error "UCP failed to start"
   exit 1
 fi
-echo "✅ UCP started successfully"
+print_success "UCP started successfully"
 
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
