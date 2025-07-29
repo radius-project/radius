@@ -90,6 +90,9 @@ debug-setup: debug-check-prereqs ## Complete one-time setup for OS process debug
 debug-check-prereqs: ## Check if all required tools are installed for debugging
 	@echo "🔍 Checking debug prerequisites..."
 	@MISSING_TOOLS=""; \
+	if ! command -v go >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS go"; \
+	fi; \
 	if ! command -v dlv >/dev/null 2>&1; then \
 		MISSING_TOOLS="$$MISSING_TOOLS dlv"; \
 	fi; \
@@ -99,17 +102,27 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 	if ! command -v kubectl >/dev/null 2>&1; then \
 		MISSING_TOOLS="$$MISSING_TOOLS kubectl"; \
 	fi; \
+	if ! command -v terraform >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS terraform"; \
+	fi; \
 	if [ -n "$$MISSING_TOOLS" ]; then \
 		echo "❌ Missing required tools:$$MISSING_TOOLS"; \
 		echo ""; \
 		echo "Installation instructions:"; \
+		echo "  go: https://golang.org/doc/install"; \
 		echo "  dlv: go install github.com/go-delve/delve/cmd/dlv@latest"; \
 		echo "  k3d: https://k3d.io/v5.6.0/#installation"; \
 		echo "  kubectl: https://kubernetes.io/docs/tasks/tools/"; \
+		echo "  terraform: https://learn.hashicorp.com/tutorials/terraform/install-cli"; \
 		exit 1; \
 	fi; \
 	if ! command -v psql >/dev/null 2>&1; then \
 		echo "⚠️  psql not available - database may not be properly initialized"; \
+	fi; \
+	if ! command -v docker >/dev/null 2>&1; then \
+		echo "⚠️  docker not available - deployment engine will not be available"; \
+	elif ! docker info >/dev/null 2>&1; then \
+		echo "⚠️  Docker daemon not running - deployment engine will not be available"; \
 	fi; \
 	echo "✅ All required tools are available"
 
@@ -247,7 +260,7 @@ debug-deployment-engine-start: ## Start deployment engine in k3d cluster
 	@kubectl --context k3d-radius-debug wait --for=condition=available deployment/deployment-engine --timeout=60s
 	@echo "Setting up port forwarding for deployment engine..."
 	@pkill -f "port-forward.*deployment-engine" 2>/dev/null || true
-		@kubectl --context k3d-radius-debug port-forward -n default service/deployment-engine 5017:5445 > $(DEBUG_DEV_ROOT)/logs/de-port-forward.log 2>&1 &
+	@kubectl --context k3d-radius-debug port-forward -n default service/deployment-engine 5017:5445 > $(DEBUG_DEV_ROOT)/logs/de-port-forward.log 2>&1 &
 	@echo "Waiting for deployment engine health check..."
 	@max_attempts=30; \
 	attempt=0; \
