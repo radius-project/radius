@@ -84,7 +84,6 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 		return nil, err
 	}
 
-	// Check for Name field
 	if resourceTypeDetails.Name == nil {
 		return nil, fmt.Errorf("resource type name is missing in response")
 	}
@@ -115,25 +114,20 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 
 // validateRequestSchema validates the request body against the resource type's schema
 func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, request *ctrl.Request) error {
-	// Extract operation context once
 	operationContext, resourceTypeDetails, err := c.extractOperationAndResourceTypeDetails(ctx, request)
 	if err != nil {
 		return err
 	}
 
-	// Skip validation for non-PUT operations
 	if operationContext.Method != v1.OperationPut {
 		return nil
 	}
 
-	// Get the resource data from storage (for existing resources)
 	resourceData, err := c.getResourceDataFromStorage(ctx, request.ResourceID)
 	if err != nil {
-		// Unexpected error accessing storage
 		return fmt.Errorf("failed to access and validate resource data: %w", err)
 	}
 
-	// Get the schema for the resource type
 	schemaData, err := processor.GetSchemaForResourceType(ctx, c.ucp, request.ResourceID, request.APIVersion)
 	if err != nil {
 		if errors.Is(err, processor.ErrNoSchemaFound) {
@@ -144,7 +138,6 @@ func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, r
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
 
-	// Validate the resource against the schema using the schema package
 	err = schema.ValidateResourceAgainstSchema(ctx, resourceData, schemaData)
 	if err != nil {
 		return &v1.ErrClientRP{
@@ -204,13 +197,11 @@ func (c *DynamicResourceController) getResourceDataFromStorage(ctx context.Conte
 		return nil, err
 	}
 
-	// Extract the resource data for validation
 	resourceData := obj.Data
 	if resourceData == nil {
 		return nil, nil
 	}
 
-	// Convert resource data to map for validation
 	var resourceMap map[string]any
 	resourceMap, ok := resourceData.(map[string]any)
 	if !ok {
