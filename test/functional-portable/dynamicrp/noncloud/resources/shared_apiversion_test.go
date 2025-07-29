@@ -61,9 +61,12 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 		{
 			// Step 1: Register all resource types including shared API versions
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				// Create the resource provider with multiple resource types
-				_, err := cli.ResourceProviderCreate(ctx, filepath)
-				require.NoError(t, err)
+				// Create resource types individually
+				resourceTypeParams := []string{"sharedAPITestTypeA", "sharedAPITestTypeB"}
+				for _, resourceTypeParam := range resourceTypeParams {
+					_, err := cli.ResourceTypeCreate(ctx, resourceTypeParam, filepath)
+					require.NoError(t, err)
+				}
 
 				// Verify that all resource types were created and have the shared API version
 				for _, resourceType := range append(resourceTypesToPreserve, resourceTypesToDelete) {
