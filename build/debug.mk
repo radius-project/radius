@@ -90,6 +90,9 @@ debug-setup: debug-check-prereqs ## Complete one-time setup for OS process debug
 debug-check-prereqs: ## Check if all required tools are installed for debugging
 	@echo "🔍 Checking debug prerequisites..."
 	@MISSING_TOOLS=""; \
+	if ! command -v go >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS go"; \
+	fi; \
 	if ! command -v dlv >/dev/null 2>&1; then \
 		MISSING_TOOLS="$$MISSING_TOOLS dlv"; \
 	fi; \
@@ -99,17 +102,27 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 	if ! command -v kubectl >/dev/null 2>&1; then \
 		MISSING_TOOLS="$$MISSING_TOOLS kubectl"; \
 	fi; \
+	if ! command -v terraform >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS terraform"; \
+	fi; \
 	if [ -n "$$MISSING_TOOLS" ]; then \
 		echo "❌ Missing required tools:$$MISSING_TOOLS"; \
 		echo ""; \
 		echo "Installation instructions:"; \
+		echo "  go: https://golang.org/doc/install"; \
 		echo "  dlv: go install github.com/go-delve/delve/cmd/dlv@latest"; \
 		echo "  k3d: https://k3d.io/v5.6.0/#installation"; \
 		echo "  kubectl: https://kubernetes.io/docs/tasks/tools/"; \
+		echo "  terraform: https://learn.hashicorp.com/tutorials/terraform/install-cli"; \
 		exit 1; \
 	fi; \
 	if ! command -v psql >/dev/null 2>&1; then \
 		echo "⚠️  psql not available - database may not be properly initialized"; \
+	fi; \
+	if ! command -v docker >/dev/null 2>&1; then \
+		echo "⚠️  docker not available - deployment engine will not be available"; \
+	elif ! docker info >/dev/null 2>&1; then \
+		echo "⚠️  Docker daemon not running - deployment engine will not be available"; \
 	fi; \
 	echo "✅ All required tools are available"
 
@@ -247,7 +260,7 @@ debug-deployment-engine-start: ## Start deployment engine in k3d cluster
 	@kubectl --context k3d-radius-debug wait --for=condition=available deployment/deployment-engine --timeout=60s
 	@echo "Setting up port forwarding for deployment engine..."
 	@pkill -f "port-forward.*deployment-engine" 2>/dev/null || true
-		@kubectl --context k3d-radius-debug port-forward -n default service/deployment-engine 5017:5445 > $(DEBUG_DEV_ROOT)/logs/de-port-forward.log 2>&1 &
+	@kubectl --context k3d-radius-debug port-forward -n default service/deployment-engine 5017:5445 > $(DEBUG_DEV_ROOT)/logs/de-port-forward.log 2>&1 &
 	@echo "Waiting for deployment engine health check..."
 	@max_attempts=30; \
 	attempt=0; \
@@ -321,35 +334,3 @@ debug-env-init: ## Create default resource group, environment, and register reci
 
 # Integration with existing build system
 build-debug: debug-build ## Alias for debug-build
-
-# Validate debug configuration
-debug-validate:
-	@if [ ! -f $(DEBUG_CONFIG_FILE) ]; then \
-		echo "❌ Debug configuration file not found: $(DEBUG_CONFIG_FILE)"; \
-		echo "💡 This file should be created automatically during setup"; \
-		exit 1; \
-	fi
-	@echo "✅ Debug configuration valid"
-
-# Development workflow targets
-debug-dev-start: debug-setup debug-start ## Complete development setup and start
-	@echo "🎉 Debug development environment ready!"
-
-debug-dev-stop: debug-stop ## Stop development environment
-	@echo "🛑 Debug development environment stopped"
-
-# Prerequisite checks
-debug-check-prereqs:
-	@echo "Checking prerequisites for debug development..."
-	@command -v go >/dev/null 2>&1 || { echo "❌ Go not found. Please install Go 1.21+"; exit 1; }
-	@command -v dlv >/dev/null 2>&1 || { echo "❌ Delve debugger not found. Please install: go install github.com/go-delve/delve/cmd/dlv@latest"; exit 1; }
-	@command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl not found. Please install kubectl"; exit 1; }
-	@command -v psql >/dev/null 2>&1 || { echo "❌ PostgreSQL client not found. Please install PostgreSQL"; exit 1; }
-	@command -v terraform >/dev/null 2>&1 || { echo "❌ Terraform not found. Please install Terraform"; exit 1; }
-	@command -v docker >/dev/null 2>&1 || { echo "⚠️  Docker not found. Deployment Engine will not be available"; }
-	@if command -v docker >/dev/null 2>&1; then \
-		docker info >/dev/null 2>&1 || { echo "⚠️  Docker daemon not running. Start Docker to use Deployment Engine"; }; \
-	fi
-	@echo "✅ Core prerequisites found"
-
-.PHONY: debug-check-prereqs debug-validate debug-dev-start debug-dev-stop build-debug
