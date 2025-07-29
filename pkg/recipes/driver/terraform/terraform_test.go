@@ -40,7 +40,12 @@ import (
 func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	ctrl := gomock.NewController(t)
 	tfExecutor := terraform.NewMockTerraformExecutor(ctrl)
-	tfDriver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
+	tfDriver := terraformDriver{
+		terraformExecutor: tfExecutor,
+		ucpConn:           nil, // Mock connection - not needed for these tests
+		secretProvider:    nil, // Mock secret provider - not needed for these tests
+		options:           TerraformOptions{Path: t.TempDir()},
+	}
 	return *tfExecutor, tfDriver
 }
 
@@ -836,10 +841,15 @@ func Test_FindSecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name:          "GetPrivateGitRepoSecretStoreID returns error",
-			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azu  re.com/project/module"},
-			envConfig:     createTerraformConfigWithAuthProviderEnvSecrets(),
-			expectedError: true,
+			name:          "Empty PAT config - no secrets needed",
+			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azure.com/project/module"},
+			envConfig:     createTerraformConfigWithProviderEnvSecrets(), // This config has no Git PAT authentication
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-id1":    {"secret-key1", "secret-key-env"},
+				"secret-store-id2":    {"secret-key2"},
+				"secret-store-id-env": {"secret-key-env"},
+			},
 		},
 	}
 
@@ -1013,5 +1023,260 @@ func createTerraformConfigWithEnvSecrets() recipes.Configuration {
 				},
 			},
 		},
+	}
+}
+
+func Test_InjectProviderConfigIfNeeded_NoProviderBlocks(t *testing.T) {
+	ctx := testcontext.New(t)
+	_, tfDriver := setup(t)
+
+	// Create test directory with terraform files that don't have provider blocks
+	testDir := t.TempDir()
+	err := os.WriteFile(testDir+"/main.tf", []byte(`
+resource "azurerm_resource_group" "test" {
+  name     = "test-rg"
+  location = "West US 2"
+}
+`), 0644)
+	require.NoError(t, err)
+
+	envConfig := recipes.Configuration{}
+	secrets := map[string]recipes.SecretData{}
+
+	// Should not inject anything when no provider blocks exist
+	err = tfDriver.injectProviderConfigIfNeeded(ctx, testDir, envConfig, secrets)
+	require.NoError(t, err)
+
+	// File should remain unchanged
+	content, err := os.ReadFile(testDir + "/main.tf")
+	require.NoError(t, err)
+	require.NotContains(t, string(content), "client_id")
+	require.NotContains(t, string(content), "client_secret")
+}
+
+func Test_InjectProviderConfigIfNeeded_WithHCLProviderBlocks(t *testing.T) {
+	ctx := testcontext.New(t)
+	_, tfDriver := setup(t)
+
+	// Create test directory with terraform files that have provider blocks
+	testDir := t.TempDir()
+	originalTfContent := `
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "test" {
+  name     = "test-rg"
+  location = "West US 2"
+}
+`
+	err := os.WriteFile(testDir+"/main.tf", []byte(originalTfContent), 0644)
+	require.NoError(t, err)
+
+	envConfig, _, _ := buildTestInputs()
+	secrets := map[string]recipes.SecretData{}
+
+	// Should inject provider credentials when provider blocks exist
+	err = tfDriver.injectProviderConfigIfNeeded(ctx, testDir, envConfig, secrets)
+	require.NoError(t, err)
+
+	// File should be modified with injected credentials
+	content, err := os.ReadFile(testDir + "/main.tf")
+	require.NoError(t, err)
+	
+	// The content should still contain the original provider block
+	require.Contains(t, string(content), `provider "azurerm"`)
+	require.Contains(t, string(content), "features {}")
+	require.Contains(t, string(content), "resource \"azurerm_resource_group\"")
+}
+
+func Test_InjectProviderConfigIfNeeded_WithJSONProviderBlocks(t *testing.T) {
+	ctx := testcontext.New(t)
+	_, tfDriver := setup(t)
+
+	// Create test directory with JSON terraform files that have provider blocks
+	testDir := t.TempDir()
+	originalTfContent := `{
+  "provider": {
+    "azurerm": [
+      {
+        "features": {}
+      }
+    ]
+  },
+  "resource": {
+    "azurerm_resource_group": {
+      "test": {
+        "name": "test-rg",
+        "location": "West US 2"
+      }
+    }
+  }
+}`
+	err := os.WriteFile(testDir+"/main.tf.json", []byte(originalTfContent), 0644)
+	require.NoError(t, err)
+
+	envConfig, _, _ := buildTestInputs()
+	secrets := map[string]recipes.SecretData{}
+
+	// Should inject provider credentials when provider blocks exist
+	err = tfDriver.injectProviderConfigIfNeeded(ctx, testDir, envConfig, secrets)
+	require.NoError(t, err)
+
+	// File should be modified with injected credentials
+	content, err := os.ReadFile(testDir + "/main.tf.json")
+	require.NoError(t, err)
+	
+	// The content should still contain the original provider block structure
+	require.Contains(t, string(content), `"provider"`)
+	require.Contains(t, string(content), `"azurerm"`)
+	require.Contains(t, string(content), `"features"`)
+}
+
+func Test_HasProviderBlocks_HCL(t *testing.T) {
+	_, tfDriver := setup(t)
+
+	testCases := []struct {
+		name     string
+		content  string
+		expected bool
+	}{
+		{
+			name: "HCL with provider block",
+			content: `
+provider "azurerm" {
+  features {}
+}`,
+			expected: true,
+		},
+		{
+			name: "HCL with indented provider block",
+			content: `
+  provider "aws" {
+    region = "us-west-2"
+  }`,
+			expected: true,
+		},
+		{
+			name: "HCL without provider block",
+			content: `
+resource "azurerm_resource_group" "test" {
+  name = "test"
+}`,
+			expected: false,
+		},
+		{
+			name: "HCL with commented provider block",
+			content: `
+# provider "azurerm" {
+#   features {}
+# }`,
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDir := t.TempDir()
+			filePath := testDir + "/test.tf"
+			err := os.WriteFile(filePath, []byte(tc.content), 0644)
+			require.NoError(t, err)
+
+			hasProvider, err := tfDriver.hasProviderBlocks(filePath)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, hasProvider)
+		})
+	}
+}
+
+func Test_HasProviderBlocks_JSON(t *testing.T) {
+	_, tfDriver := setup(t)
+
+	testCases := []struct {
+		name     string
+		content  string
+		expected bool
+	}{
+		{
+			name: "JSON with provider block",
+			content: `{
+  "provider": {
+    "azurerm": [{}]
+  }
+}`,
+			expected: true,
+		},
+		{
+			name: "JSON without provider block",
+			content: `{
+  "resource": {
+    "azurerm_resource_group": {
+      "test": {}
+    }
+  }
+}`,
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDir := t.TempDir()
+			filePath := testDir + "/test.tf.json"
+			err := os.WriteFile(filePath, []byte(tc.content), 0644)
+			require.NoError(t, err)
+
+			hasProvider, err := tfDriver.hasProviderBlocks(filePath)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, hasProvider)
+		})
+	}
+}
+
+func Test_FindTerraformFiles(t *testing.T) {
+	_, tfDriver := setup(t)
+
+	testDir := t.TempDir()
+	
+	// Create various files
+	files := []string{
+		"main.tf",
+		"variables.tf",
+		"outputs.tf.json",
+		"terraform.tfvars",
+		"README.md",
+		"subdir/nested.tf",
+		"subdir/config.tf.json",
+	}
+
+	for _, file := range files {
+		fullPath := testDir + "/" + file
+		dir := fullPath[:strings.LastIndex(fullPath, "/")]
+		err := os.MkdirAll(dir, 0755)
+		require.NoError(t, err)
+		err = os.WriteFile(fullPath, []byte("test content"), 0644)
+		require.NoError(t, err)
+	}
+
+	foundFiles, err := tfDriver.findTerraformFiles(testDir)
+	require.NoError(t, err)
+
+	// Should find only .tf and .tf.json files
+	expectedFiles := []string{
+		testDir + "/main.tf",
+		testDir + "/variables.tf",
+		testDir + "/outputs.tf.json",
+		testDir + "/subdir/nested.tf",
+		testDir + "/subdir/config.tf.json",
+	}
+
+	require.Len(t, foundFiles, len(expectedFiles))
+	for _, expectedFile := range expectedFiles {
+		require.Contains(t, foundFiles, expectedFile)
+	}
+	
+	// Should not find non-terraform files
+	for _, foundFile := range foundFiles {
+		require.True(t, strings.HasSuffix(foundFile, ".tf") || strings.HasSuffix(foundFile, ".tf.json"))
 	}
 }

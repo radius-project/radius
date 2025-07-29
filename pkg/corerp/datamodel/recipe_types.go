@@ -41,8 +41,11 @@ type TerraformConfigProperties struct {
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
 
-	// Registry specifies the Terraform registry configuration.
-	Registry *TerraformRegistryConfig `json:"registry,omitempty"`
+	// ProviderMirror specifies the Terraform provider mirror configuration.
+	ProviderMirror *TerraformProviderMirrorConfig `json:"providerMirror,omitempty"`
+
+	// ModuleRegistries specifies configuration for Terraform module registries (e.g., Terraform Cloud/Enterprise).
+	ModuleRegistries map[string]*TerraformModuleRegistryConfig `json:"moduleRegistries,omitempty"`
 
 	// Version specifies the Terraform binary version and the URL to download it from.
 	Version *TerraformVersionConfig `json:"version,omitempty"`
@@ -114,18 +117,31 @@ type SecretReference struct {
 	Key string `json:"key"`
 }
 
-// TerraformRegistryConfig - Configuration for Terraform Registry.
-type TerraformRegistryConfig struct {
-	// Mirror is the URL to use instead of the default Terraform registry. Example: 'https://terraform.example.com'.
+// TerraformProviderMirrorConfig - Configuration for Terraform provider mirrors.
+type TerraformProviderMirrorConfig struct {
+	// Mirror is the URL to use instead of the default Terraform provider registry. Example: 'https://terraform.example.com'.
 	Mirror string `json:"mirror,omitempty"`
 
 	// ProviderMappings is used to translate between official and custom provider identifiers.
 	ProviderMappings map[string]string `json:"providerMappings,omitempty"`
 
-	// Authentication configuration for accessing private Terraform registry mirrors.
+	// Authentication configuration for accessing private Terraform provider mirrors.
 	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
 
-	// TLS configuration for connecting to the Terraform registry mirror.
+	// TLS configuration for connecting to the Terraform provider registry mirror.
+	TLS *TLSConfig `json:"tls,omitempty"`
+}
+
+// TerraformModuleRegistryConfig - Configuration for Terraform module registries.
+type TerraformModuleRegistryConfig struct {
+	// Host is the hostname of the module registry.
+	// Example: 'app.terraform.io' for Terraform Cloud or 'terraform.example.com' for Terraform Enterprise
+	Host string `json:"host,omitempty"`
+
+	// Authentication configuration for accessing private module registries.
+	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
+
+	// TLS configuration for connecting to the module registry.
 	TLS *TLSConfig `json:"tls,omitempty"`
 }
 
@@ -136,7 +152,7 @@ type TokenConfig struct {
 	Secret string `json:"secret,omitempty"`
 }
 
-// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registries (both provider and module registries).
 type RegistryAuthConfig struct {
 	// Token is the token authentication configuration for registry authentication.
 	Token *TokenConfig `json:"token,omitempty"`

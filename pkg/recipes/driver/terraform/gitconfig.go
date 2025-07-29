@@ -18,7 +18,6 @@ package terraform
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -65,16 +64,12 @@ func getURLConfigKeyValue(secrets map[string]string, templatePath string) (strin
 	return fmt.Sprintf("url.%s.insteadOf", path), fmt.Sprintf("%s://%s", url.Scheme, url.Hostname()), nil
 }
 
-// Updates the local Git configuration in terraform working directory with credentials for a recipe template path, and global git configuration with includeif directive to point to the local config file
-// in the working directory which will be used when terraform(in turn calls git) runs from that working directory.
-//
-// Retrieves the git credentials from the provided secrets object
-// and adds them to the Git config by running
-// git config --file .git/config url<template_path_domain_with_credentails>.insteadOf <template_path_domain>.
-func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, templatePath string) error {
-	logger := ucplog.FromContextOrDiscard(context.Background())
+// addSecretsToGitConfigIfApplicable adds secrets to the Git configuration file if applicable.
+// It is a wrapper function to addSecretsToGitConfig()
+func addSecretsToGitConfigIfApplicable(ctx context.Context, config recipes.Configuration, secrets map[string]recipes.SecretData, workingDirectory string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 
-	if !strings.HasPrefix(templatePath, "git::") || secrets == nil || len(secrets) == 0 {
+	if config.RecipeConfig.Terraform.Authentication.Git.PAT == nil || len(config.RecipeConfig.Terraform.Authentication.Git.PAT) == 0 {
 		return nil
 	}
 
@@ -89,22 +84,30 @@ func addSecretsToGitConfig(workingDirectory string, secrets map[string]string, t
 		return err
 	}
 
-	logger.Info("Configuring PAT/username authentication for Git",
-		"templatePath", templatePath,
-		"hasUsername", secrets["username"] != "")
-	// Handle PAT/username authentication
-	urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secrets, templatePath)
-	if err != nil {
-		return err
-	}
+	for host, patConfig := range config.RecipeConfig.Terraform.Authentication.Git.PAT {
+		secretData, ok := secrets[patConfig.Secret]
+		if !ok {
+			logger.Error(nil, "Secrets not found for secret store", "secretStoreID", patConfig.Secret)
+			return fmt.Errorf("secrets not found for secret store ID %q", patConfig.Secret)
+		}
 
-	cmd := exec.Command("git", "config", "--file", workingDirectory+"/.git/config", urlConfigKey, urlConfigValue)
-	_, err = cmd.Output()
-	if err != nil {
-		logger.Error(err, "Failed to add git config")
-		return errors.New("failed to add git config")
+		logger.Info("Configuring PAT/username authentication for Git",
+			"host", host,
+			"hasUsername", secretData.Data["username"] != "")
+
+		// Handle PAT/username authentication
+		urlConfigKey, urlConfigValue, err := getURLConfigKeyValue(secretData.Data, "https://"+host)
+		if err != nil {
+			return err
+		}
+
+		// git config --file .git/config <urlConfigKey> <urlConfigValue>
+		cmd := exec.Command("git", "config", "--file", filepath.Join(workingDirectory, ".git", "config"), urlConfigKey, urlConfigValue)
+		cmd.Dir = workingDirectory
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to set git config: %w", err)
+		}
 	}
-	logger.Info("Git authentication configured successfully")
 
 	return nil
 }
@@ -126,15 +129,15 @@ func setGitConfigForDir(workingDirectory string) error {
 // unsetGitConfigForDir removes a conditional include directive from the global Git configuration.
 // This function modifies the global Git configuration to remove a previously set `includeIf` directive
 // for a given working directory.
-func unsetGitConfigForDir(workingDirectory string, secrets map[string]string, templatePath string) error {
-	if !strings.HasPrefix(templatePath, "git::") || secrets == nil || len(secrets) == 0 {
-		return nil
-	}
-
+func unsetGitConfigForDir(workingDirectory string) error {
 	cmd := exec.Command("git", "config", "--global", "--unset", fmt.Sprintf("includeIf.gitdir:%s/.path", workingDirectory))
-	_, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to unset conditional includeIf directive : %w", err)
+	// We use Run here instead of Output because on success, there is no output, but on failure,
+	// there might be output on stderr. We don't capture it here, but Run will return an error.
+	if err := cmd.Run(); err != nil {
+		// It's possible the config was never set or already removed, so we don't treat errors here as fatal.
+		// For instance, if the process was interrupted after setting the config but before the operation completed.
+		// We can log the error for debugging purposes.
+		ucplog.FromContextOrDiscard(context.Background()).V(ucplog.LevelDebug).Info("failed to unset conditional includeIf directive, this may not be an error", "error", err, "workingDirectory", workingDirectory)
 	}
 
 	return nil
@@ -158,49 +161,18 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 	return url, nil
 }
 
-// addSecretsToGitConfigIfApplicable adds secrets to the Git configuration file if applicable.
-// It is a wrapper function to addSecretsToGitConfig()
-func addSecretsToGitConfigIfApplicable(secretStoreID string, secretData map[string]recipes.SecretData, requestDirPath string, templatePath string) error {
-	logger := ucplog.FromContextOrDiscard(context.Background())
-
-	if secretStoreID == "" || secretData == nil {
-		return nil
-	}
-
-	secrets, ok := secretData[secretStoreID]
-	if !ok {
-		logger.Error(nil, "Secrets not found for secret store", "secretStoreID", secretStoreID)
-		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
-	}
-
-	logger.Info("Adding Git authentication configuration", "secretStoreID", secretStoreID, "templatePath", templatePath)
-
-	err := addSecretsToGitConfig(requestDirPath, secrets.Data, templatePath)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// unsetGitConfigForDir removes a conditional include directive from the global Git configuration if applicable.
+// unsetGitConfigForDirIfApplicable removes a conditional include directive from the global Git configuration if applicable.
 // It is a wrapper function to unsetGitConfigForDir()
-func unsetGitConfigForDirIfApplicable(secretStoreID string, secretData map[string]recipes.SecretData, requestDirPath string, templatePath string) error {
-	if secretStoreID == "" || secretData == nil {
+func unsetGitConfigForDirIfApplicable(ctx context.Context, config recipes.Configuration, workingDirectory string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if config.RecipeConfig.Terraform.Authentication.Git.PAT == nil || len(config.RecipeConfig.Terraform.Authentication.Git.PAT) == 0 {
 		return nil
 	}
 
-	secrets, ok := secretData[secretStoreID]
-	if !ok {
-		return fmt.Errorf("secrets not found for secret store ID %q", secretStoreID)
-	}
+	logger.Info("Unsetting git config for directory", "directory", workingDirectory)
 
-	err := unsetGitConfigForDir(requestDirPath, secrets.Data, templatePath)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return unsetGitConfigForDir(workingDirectory)
 }
 
 // configureSSHAuth sets up SSH authentication for Git operations

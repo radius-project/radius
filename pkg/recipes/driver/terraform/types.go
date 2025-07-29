@@ -38,19 +38,19 @@ func GetTerraformProviderFullName(registry, provider string) string {
 	return fmt.Sprintf("%s/%s", registry, provider)
 }
 
-// GetTerraformRegistry returns the registry to use based on configuration
+// GetTerraformRegistry returns the configured Terraform provider mirror URL, or the default registry if none is configured.
 func GetTerraformRegistry(config recipes.Configuration) string {
-	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.Mirror != "" {
-		return config.RecipeConfig.Terraform.Registry.Mirror
+	if config.RecipeConfig.Terraform.ProviderMirror != nil && config.RecipeConfig.Terraform.ProviderMirror.Mirror != "" {
+		return config.RecipeConfig.Terraform.ProviderMirror.Mirror
 	}
 	return DefaultTerraformRegistry
 }
 
-// GetTerraformProviderName returns the provider name to use based on configuration
-func GetTerraformProviderName(config recipes.Configuration, defaultProvider, providerName string) string {
-	if config.RecipeConfig.Terraform.Registry != nil && config.RecipeConfig.Terraform.Registry.ProviderMappings != nil {
-		if mapping, exists := config.RecipeConfig.Terraform.Registry.ProviderMappings[defaultProvider]; exists {
-			return mapping
+// GetTerraformProviderName returns the provider name to use, applying any configured provider mappings.
+func GetTerraformProviderName(config recipes.Configuration, providerName string) string {
+	if config.RecipeConfig.Terraform.ProviderMirror != nil && len(config.RecipeConfig.Terraform.ProviderMirror.ProviderMappings) > 0 {
+		if mappedName, exists := config.RecipeConfig.Terraform.ProviderMirror.ProviderMappings[providerName]; exists {
+			return mappedName
 		}
 	}
 	return providerName
@@ -64,10 +64,13 @@ func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePat
 			return "", err
 		}
 
-		// get the secret store id associated with the git domain of the template path.
+		// Extract hostname from git URL for authentication lookup
+		// For example: "git::https://git.company.com/org/repo" -> "git.company.com"
+		// This hostname must match the key in the PAT configuration map
 		hostname := strings.TrimPrefix(url.Hostname(), "www.")
 
-		// Check for PAT authentication
+		// Check for PAT authentication using hostname-based lookup
+		// The PAT map allows different authentication for different git hosts
 		if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
 			if patConfig, exists := envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[hostname]; exists {
 				return patConfig.Secret, nil

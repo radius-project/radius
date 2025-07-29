@@ -18,11 +18,13 @@ package terraform
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -31,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -51,6 +54,8 @@ var _ driver.Driver = (*terraformDriver)(nil)
 func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options TerraformOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) driver.Driver {
 	return &terraformDriver{
 		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, kubernetesClients),
+		ucpConn:           ucpConn,
+		secretProvider:    secretProvider,
 		options:           options,
 	}
 }
@@ -72,6 +77,12 @@ type terraformDriver struct {
 	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
 
+	// ucpConn represents the connection to UCP for fetching cloud provider credentials
+	ucpConn sdk.Connection
+
+	// secretProvider is used for managing secrets
+	secretProvider *secretprovider.SecretProvider
+
 	// options contains options required to execute a Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
 	options TerraformOptions
 }
@@ -91,23 +102,23 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		}
 	}()
 
-	logger.Info("Configuring Terraform registry",
-		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+	logger.Info("Configuring Terraform provider mirror",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.ProviderMirror != nil,
 		"secretsCount", len(opts.Secrets))
 
 	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
-		logger.Error(err, "Failed to configure Terraform registry")
-		return nil, fmt.Errorf("failed to configure terraform registry: %w", err)
+		logger.Error(err, "Failed to configure Terraform provider mirror")
+		return nil, fmt.Errorf("failed to configure terraform provider mirror: %w", err)
 	}
 
 	if regConfig != nil {
-		logger.Info("Terraform registry configured successfully",
+		logger.Info("Terraform provider mirror configured successfully",
 			"configPath", regConfig.ConfigPath,
 			"envVarsCount", len(regConfig.EnvVars),
 			"tempFilesCount", len(regConfig.TempFiles))
 	} else {
-		logger.Info("No Terraform registry configuration needed")
+		logger.Info("No Terraform provider mirror configuration needed")
 	}
 
 	defer func() {
@@ -116,6 +127,15 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform registry configuration: %s", err.Error()))
 		}
 	}()
+
+	// Add git credentials to git config if the recipe is a git module.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") {
+		err = addSecretsToGitConfigIfApplicable(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+		if err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to add secrets to git config: %s", err.Error()), recipes_util.RecipeSetupError, nil)
+		}
+		// TODO: implement cleanup of git config
+	}
 
 	// Extract registry environment variables to pass to the executor
 	var registryEnv map[string]string
@@ -129,16 +149,11 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		}
 	}
 
-	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
+	// Check if provider block injection is needed
+	err = d.injectProviderConfigIfNeeded(ctx, requestDirPath, opts.Configuration, opts.Secrets)
 	if err != nil {
-		return nil, err
-	}
-
-	// Add credential information to .gitconfig for module source of type git if applicable.
-	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
-	if err != nil {
-		return nil, err
+		logger.Error(err, "Failed to inject provider configuration")
+		return nil, fmt.Errorf("failed to inject provider configuration: %w", err)
 	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
@@ -150,11 +165,6 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		RegistryEnv:    registryEnv,
 		LogLevel:       d.options.LogLevel,
 	})
-
-	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
-	if unsetError != nil {
-		return nil, unsetError
-	}
 
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
@@ -183,23 +193,23 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		}
 	}()
 
-	logger.Info("Configuring Terraform registry for delete operation",
-		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+	logger.Info("Configuring Terraform provider mirror for delete operation",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.ProviderMirror != nil,
 		"secretsCount", len(opts.Secrets))
 
 	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
-		logger.Error(err, "Failed to configure Terraform registry for delete")
-		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
+		logger.Error(err, "Failed to configure Terraform provider mirror for delete")
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to configure terraform provider mirror: %s", err.Error()), "", nil)
 	}
 
 	if regConfig != nil {
-		logger.Info("Terraform registry configured successfully for delete",
+		logger.Info("Terraform provider mirror configured successfully for delete",
 			"configPath", regConfig.ConfigPath,
 			"envVarsCount", len(regConfig.EnvVars),
 			"tempFilesCount", len(regConfig.TempFiles))
 	} else {
-		logger.Info("No Terraform registry configuration needed for delete")
+		logger.Info("No Terraform provider mirror configuration needed for delete")
 	}
 
 	defer func() {
@@ -221,16 +231,13 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		}
 	}
 
-	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
-	if err != nil {
-		return err
-	}
-
-	// Add credential information to .gitconfig for module source of type git if applicable.
-	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
-	if err != nil {
-		return err
+	// Add git credentials to git config if the recipe is a git module.
+	if strings.HasPrefix(opts.Definition.TemplatePath, "git::") {
+		err = addSecretsToGitConfigIfApplicable(ctx, opts.Configuration, opts.Secrets, requestDirPath)
+		if err != nil {
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to add secrets to git config: %s", err.Error()), "", nil)
+		}
+		// TODO: implement cleanup of git config
 	}
 
 	err = d.terraformExecutor.Delete(ctx, terraform.Options{
@@ -243,10 +250,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		LogLevel:       d.options.LogLevel,
 	})
 
-	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
-	if unsetError != nil {
-		return unsetError
-	}
+	// TODO: implement cleanup of git config
 
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
@@ -336,6 +340,299 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	return requestDirPath, nil
 }
 
+// injectProviderConfigIfNeeded detects if Terraform files contain explicit provider blocks
+// and injects the appropriate provider credentials when provider blocks are present
+func (d *terraformDriver) injectProviderConfigIfNeeded(ctx context.Context, rootDir string, config recipes.Configuration, secrets map[string]recipes.SecretData) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	logger.Info("Checking for provider blocks in Terraform files", "directory", rootDir)
+
+	// Find all .tf and .tf.json files
+	tfFiles, err := d.findTerraformFiles(rootDir)
+	if err != nil {
+		return fmt.Errorf("failed to find terraform files: %w", err)
+	}
+
+	logger.Info("Found Terraform files", "count", len(tfFiles), "files", tfFiles)
+
+	// Check if any files contain explicit provider blocks
+	hasProviderBlocks := false
+	providerBlockFiles := []string{}
+	for _, file := range tfFiles {
+		hasProvider, err := d.hasProviderBlocks(file)
+		if err != nil {
+			logger.Error(err, "Failed to check for provider blocks", "file", file)
+			continue
+		}
+		if hasProvider {
+			hasProviderBlocks = true
+			providerBlockFiles = append(providerBlockFiles, file)
+			logger.Info("Found provider block in file", "file", file)
+		}
+	}
+
+	if !hasProviderBlocks {
+		logger.Info("No explicit provider blocks found, will use standard provider configuration via generated config")
+		return nil
+	}
+
+	logger.Info("Provider blocks detected, injecting credentials into provider blocks", "files", providerBlockFiles)
+
+	// Inject provider credentials into each file that has provider blocks
+	for _, file := range providerBlockFiles {
+		err := d.injectProviderCredentials(ctx, file, config, secrets)
+		if err != nil {
+			return fmt.Errorf("failed to inject provider credentials in file %s: %w", file, err)
+		}
+	}
+
+	return nil
+}
+
+// findTerraformFiles recursively finds all .tf and .tf.json files in the directory
+func (d *terraformDriver) findTerraformFiles(rootDir string) ([]string, error) {
+	var tfFiles []string
+
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if strings.HasSuffix(path, ".tf") || strings.HasSuffix(path, ".tf.json") {
+			tfFiles = append(tfFiles, path)
+		}
+
+		return nil
+	})
+
+	return tfFiles, err
+}
+
+// hasProviderBlocks checks if a Terraform file contains explicit provider blocks
+func (d *terraformDriver) hasProviderBlocks(filePath string) (bool, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+
+	fileContent := string(content)
+
+	// Check for HCL provider blocks
+	if strings.HasSuffix(filePath, ".tf") {
+		// Look for "provider " followed by provider name
+		// This is a simple regex-based detection
+		providerRegex := regexp.MustCompile(`(?m)^\s*provider\s+"[^"]+"\s*\{`)
+		return providerRegex.MatchString(fileContent), nil
+	}
+
+	// Check for JSON provider blocks
+	if strings.HasSuffix(filePath, ".tf.json") {
+		// Look for "provider" key in JSON
+		return strings.Contains(fileContent, `"provider"`), nil
+	}
+
+	return false, nil
+}
+
+// injectProviderCredentials injects cloud provider credentials into explicit provider blocks
+func (d *terraformDriver) injectProviderCredentials(ctx context.Context, filePath string, config recipes.Configuration, secrets map[string]recipes.SecretData) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+
+	logger.Info("Injecting provider credentials", "file", filePath)
+
+	// Skip provider injection if UCP connection or secret provider is not available
+	if d.ucpConn == nil {
+		logger.Info("UCP connection not available, skipping provider credential injection", "file", filePath)
+		return nil
+	}
+
+	if d.secretProvider == nil {
+		logger.Info("Secret provider not available, skipping provider credential injection", "file", filePath)
+		return nil
+	}
+
+	// Get provider configurations from the existing provider system
+	ucpConfiguredProviders := providers.GetUCPConfiguredTerraformProviders(d.ucpConn, d.secretProvider)
+
+	// Generate provider configs using the existing system
+	providerConfigs := make(map[string]map[string]any)
+	for providerName, provider := range ucpConfiguredProviders {
+		providerConfig, err := provider.BuildConfig(ctx, &config)
+		if err != nil {
+			logger.Error(err, "Failed to build provider config", "provider", providerName)
+			continue
+		}
+		if len(providerConfig) > 0 {
+			providerConfigs[providerName] = providerConfig
+			logger.Info("Generated provider config", "provider", providerName, "config", providerConfig)
+		}
+	}
+
+	if len(providerConfigs) == 0 {
+		logger.Info("No provider configurations generated, skipping injection", "file", filePath)
+		return nil
+	}
+
+	// Modify the file based on its type
+	if strings.HasSuffix(filePath, ".tf") {
+		err = d.injectHCLProviderCredentials(ctx, filePath, string(content), providerConfigs)
+	} else if strings.HasSuffix(filePath, ".tf.json") {
+		err = d.injectJSONProviderCredentials(ctx, filePath, string(content), providerConfigs)
+	} else {
+		logger.Info("Skipping unknown file type", "file", filePath)
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to inject provider credentials in %s: %w", filePath, err)
+	}
+
+	logger.Info("Successfully injected provider credentials", "file", filePath)
+	return nil
+}
+
+// injectHCLProviderCredentials injects credentials into HCL (.tf) provider blocks
+func (d *terraformDriver) injectHCLProviderCredentials(ctx context.Context, filePath, content string, providerConfigs map[string]map[string]any) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	modifiedContent := content
+
+	// For each provider that has config to inject
+	for providerName, providerConfig := range providerConfigs {
+		// Find provider blocks for this provider type
+		providerRegex := regexp.MustCompile(fmt.Sprintf(`(?ms)(provider\s+"%s"\s*\{)(.*?)(\})`, regexp.QuoteMeta(providerName)))
+
+		if providerRegex.MatchString(modifiedContent) {
+			logger.Info("Injecting credentials into HCL provider block", "provider", providerName, "file", filePath)
+
+			// Replace the provider block with credentials injected
+			modifiedContent = providerRegex.ReplaceAllStringFunc(modifiedContent, func(match string) string {
+				submatches := providerRegex.FindStringSubmatch(match)
+				if len(submatches) != 4 {
+					return match
+				}
+
+				providerStart := submatches[1]   // provider "azurerm" {
+				existingContent := submatches[2] // existing content inside {}
+				providerEnd := submatches[3]     // }
+
+				// Generate HCL for the provider config
+				var configLines []string
+				for key, value := range providerConfig {
+					switch v := value.(type) {
+					case string:
+						configLines = append(configLines, fmt.Sprintf("  %s = %q", key, v))
+					case bool:
+						configLines = append(configLines, fmt.Sprintf("  %s = %t", key, v))
+					case int, int64, float64:
+						configLines = append(configLines, fmt.Sprintf("  %s = %v", key, v))
+					case map[string]any:
+						// Handle nested objects (like features block or assume_role block)
+						configLines = append(configLines, fmt.Sprintf("  %s {", key))
+						for nestedKey, nestedValue := range v {
+							switch nv := nestedValue.(type) {
+							case string:
+								configLines = append(configLines, fmt.Sprintf("    %s = %q", nestedKey, nv))
+							case bool:
+								configLines = append(configLines, fmt.Sprintf("    %s = %t", nestedKey, nv))
+							case int, int64, float64:
+								configLines = append(configLines, fmt.Sprintf("    %s = %v", nestedKey, nv))
+							}
+						}
+						configLines = append(configLines, "  }")
+					}
+				}
+
+				// Combine existing content with new config
+				var finalContent string
+				if strings.TrimSpace(existingContent) != "" {
+					// Preserve existing content and add new config
+					finalContent = existingContent + "\n" + strings.Join(configLines, "\n")
+				} else {
+					// Just add new config
+					finalContent = "\n" + strings.Join(configLines, "\n") + "\n"
+				}
+
+				return providerStart + finalContent + providerEnd
+			})
+		}
+	}
+
+	err := os.WriteFile(filePath, []byte(modifiedContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write modified HCL file: %w", err)
+	}
+
+	return nil
+}
+
+// injectJSONProviderCredentials injects credentials into JSON (.tf.json) provider blocks
+func (d *terraformDriver) injectJSONProviderCredentials(ctx context.Context, filePath, content string, providerConfigs map[string]map[string]any) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Parse JSON content
+	var tfConfig map[string]interface{}
+	if err := json.Unmarshal([]byte(content), &tfConfig); err != nil {
+		return fmt.Errorf("failed to parse JSON terraform file: %w", err)
+	}
+
+	// Check if there's a provider section
+	if providers, exists := tfConfig["provider"]; exists {
+		if providerMap, ok := providers.(map[string]interface{}); ok {
+			// For each provider that has config to inject
+			for providerName, providerConfig := range providerConfigs {
+				if providerList, exists := providerMap[providerName]; exists {
+					logger.Info("Injecting credentials into JSON provider block", "provider", providerName, "file", filePath)
+
+					// Handle provider list (array of provider configs)
+					if providerArray, ok := providerList.([]interface{}); ok {
+						for i, providerItem := range providerArray {
+							if existingConfig, ok := providerItem.(map[string]interface{}); ok {
+								// Merge new config into existing config
+								for key, value := range providerConfig {
+									existingConfig[key] = value
+								}
+								providerArray[i] = existingConfig
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Write back the modified JSON
+	modifiedJSON, err := json.MarshalIndent(tfConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified JSON: %w", err)
+	}
+
+	err = os.WriteFile(filePath, modifiedJSON, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write modified JSON file: %w", err)
+	}
+
+	return nil
+}
+
+// getKeys returns the keys of a map as a slice
+func getKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // GetRecipeMetadata returns the Terraform Recipe parameters by downloading the module and retrieving variable information
 func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOptions) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -350,23 +647,23 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		}
 	}()
 
-	logger.Info("Configuring Terraform registry for metadata operation",
-		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.Registry != nil,
+	logger.Info("Configuring Terraform provider mirror for metadata operation",
+		"hasConfiguration", opts.Configuration.RecipeConfig.Terraform.ProviderMirror != nil,
 		"secretsCount", len(opts.Secrets))
 
 	regConfig, err := ConfigureTerraformRegistry(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
-		logger.Error(err, "Failed to configure Terraform registry for metadata")
-		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, fmt.Sprintf("failed to configure terraform registry: %s", err.Error()), "", nil)
+		logger.Error(err, "Failed to configure Terraform provider mirror for metadata")
+		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, fmt.Sprintf("failed to configure terraform provider mirror: %s", err.Error()), "", nil)
 	}
 
 	if regConfig != nil {
-		logger.Info("Terraform registry configured successfully for metadata",
+		logger.Info("Terraform provider mirror configured successfully for metadata",
 			"configPath", regConfig.ConfigPath,
 			"envVarsCount", len(regConfig.EnvVars),
 			"tempFilesCount", len(regConfig.TempFiles))
 	} else {
-		logger.Info("No Terraform registry configuration needed for metadata")
+		logger.Info("No Terraform provider mirror configuration needed for metadata")
 	}
 
 	defer func() {
@@ -388,14 +685,8 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		}
 	}
 
-	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetPrivateGitRepoSecretStoreID(opts.Configuration, opts.Definition.TemplatePath)
-	if err != nil {
-		return nil, err
-	}
-
 	// Add credential information to .gitconfig for module source of type git if applicable.
-	err = addSecretsToGitConfigIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
+	err = addSecretsToGitConfigIfApplicable(ctx, opts.Configuration, opts.Secrets, requestDirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -408,10 +699,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		LogLevel:       d.options.LogLevel,
 	})
 
-	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
-	if unsetError != nil {
-		return nil, unsetError
-	}
+	// TODO: implement cleanup of git config
 
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
@@ -425,16 +713,14 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Configuration, definition recipes.EnvironmentDefinition) (secretStoreIDResourceKeys map[string][]string, err error) {
 	secretStoreIDResourceKeys = make(map[string][]string)
 
-	// Get the secret store ID associated with the git private terraform repository source.
-	secretStoreID, err := GetPrivateGitRepoSecretStoreID(envConfig, definition.TemplatePath)
-	if err != nil {
-		return nil, err
-	}
-
-	if secretStoreID != "" {
-		// For Git authentication, we request both pat and username keys.
-		// The username is optional and will be handled gracefully if not present.
-		secretStoreIDResourceKeys[secretStoreID] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
+	if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
+		// Iterate through all configured git PAT authentication entries
+		// Each entry maps a hostname (e.g., "git.company.com") to a secret store containing PAT credentials
+		for _, patConfig := range envConfig.RecipeConfig.Terraform.Authentication.Git.PAT {
+			// For Git authentication, we request both pat and username keys.
+			// The username is optional and will be handled gracefully if not present.
+			secretStoreIDResourceKeys[patConfig.Secret] = []string{PrivateRegistrySecretKey_Pat, PrivateRegistrySecretKey_Username}
+		}
 	}
 
 	// Get the secret IDs and associated keys in provider configuration and environment variables
@@ -472,11 +758,11 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 
 	registry := GetTerraformRegistry(d.options.EnvConfig)
 	azureProvider := GetTerraformProviderFullName(registry,
-		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAzureProvider, DefaultTerraformAzureProvider))
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAzureProvider))
 	awsProvider := GetTerraformProviderFullName(registry,
-		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAWSProvider, DefaultTerraformAWSProvider))
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformAWSProvider))
 	kubernetesProvider := GetTerraformProviderFullName(registry,
-		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformKubernetesProvider, DefaultTerraformKubernetesProvider))
+		GetTerraformProviderName(d.options.EnvConfig, DefaultTerraformKubernetesProvider))
 
 	for _, resource := range module.Resources {
 		switch resource.ProviderName {
