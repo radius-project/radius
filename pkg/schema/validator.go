@@ -24,6 +24,15 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
+// Constants for reserved property names
+const (
+	reservedPropApplication = "application"
+	reservedPropEnvironment = "environment"
+	reservedPropStatus      = "status"
+	reservedPropRecipe      = "recipe"
+	reservedPropConnections = "connections"
+)
+
 // Validator validates OpenAPI 3.0 schemas with Radius-specific constraints
 type Validator struct{}
 
@@ -469,13 +478,13 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 
 	for propName, propRef := range schema.Properties {
 		// Check for restricted property names
-		if propName == "status" || propName == "recipe" {
+		if propName == reservedPropStatus || propName == reservedPropRecipe {
 			err := NewConstraintError(propName, fmt.Sprintf("property '%s' is reserved and cannot be used", propName))
 			errors.Add(err)
 		}
 
 		// Check specific property type constraints
-		if propName == "application" || propName == "environment" {
+		if propName == reservedPropApplication || propName == reservedPropEnvironment {
 			if propRef.Value != nil {
 				if propRef.Value.Type == nil || !propRef.Value.Type.Is("string") {
 					err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a string", propName))
@@ -484,11 +493,11 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 			}
 		}
 
-		if propName == "connections" {
+		if propName == reservedPropConnections {
 			if propRef.Value != nil {
 				// Check if it's an object type
 				if propRef.Value.Type != nil && !propRef.Value.Type.Is("object") {
-					err := NewConstraintError(propName, "property 'connections' must be a map object")
+					err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a map object", reservedPropConnections))
 					errors.Add(err)
 				}
 
@@ -498,7 +507,7 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 						propRef.Value.AdditionalProperties.Schema != nil
 
 					if !hasAdditionalProps {
-						err := NewConstraintError(propName, "property 'connections' must be a map object (use additionalProperties)")
+						err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a map object (use additionalProperties)", reservedPropConnections))
 						errors.Add(err)
 					}
 				}
@@ -508,8 +517,8 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 
 	// Check that environment property is always included
 	if schema.Properties != nil {
-		if _, hasEnv := schema.Properties["environment"]; !hasEnv {
-			err := NewConstraintError("environment", "property 'environment' must be included in schema")
+		if _, hasEnv := schema.Properties[reservedPropEnvironment]; !hasEnv {
+			err := NewConstraintError(reservedPropEnvironment, fmt.Sprintf("property '%s' must be included in schema", reservedPropEnvironment))
 			errors.Add(err)
 		}
 	}
