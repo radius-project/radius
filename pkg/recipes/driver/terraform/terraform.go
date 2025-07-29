@@ -714,6 +714,8 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 	secretStoreIDResourceKeys = make(map[string][]string)
 
 	if envConfig.RecipeConfig.Terraform.Authentication.Git.PAT != nil {
+		// Iterate through all configured git PAT authentication entries
+		// Each entry maps a hostname (e.g., "git.company.com") to a secret store containing PAT credentials
 		for _, patConfig := range envConfig.RecipeConfig.Terraform.Authentication.Git.PAT {
 			// For Git authentication, we request both pat and username keys.
 			// The username is optional and will be handled gracefully if not present.
