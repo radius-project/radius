@@ -30,12 +30,13 @@ dump: ## Outputs the values of all variables in the makefile.
 DEBUG_CONFIG_FILE ?= build/debug-config.yaml
 DEBUG_DEV_ROOT ?= $(PWD)/debug_files
 
-.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init
+.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init debug-check-prereqs
 
 debug-help: ## Show debug automation help
 	@echo "Debug Development Automation Commands:"
 	@echo ""
 	@echo "Setup Commands:"
+	@echo "  debug-check-prereqs  - Check if all required tools are installed"
 	@echo "  debug-setup          - Complete one-time setup for OS process debugging"
 	@echo "  debug-stop           - Stop all components and destroy k3d cluster"
 	@echo ""
@@ -75,7 +76,7 @@ debug-help: ## Show debug automation help
 	@echo "  DEBUG_DEV_ROOT       - Debug development root (default: $(PWD)/debug_files)"
 	@echo ""
 
-debug-setup: ## Complete one-time setup for OS process debugging
+debug-setup: debug-check-prereqs ## Complete one-time setup for OS process debugging
 	@echo "Setting up Radius debug environment..."
 	@mkdir -p $(DEBUG_DEV_ROOT)/{logs,bin,terraform-cache}
 	@echo "Making scripts executable..."
@@ -85,6 +86,32 @@ debug-setup: ## Complete one-time setup for OS process debugging
 	@echo "✅ Debug environment setup complete at $(DEBUG_DEV_ROOT)"
 	@echo "💡 Use './drad' command from project root for debug environment"
 	@echo "📖 See docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md for usage instructions"
+
+debug-check-prereqs: ## Check if all required tools are installed for debugging
+	@echo "🔍 Checking debug prerequisites..."
+	@MISSING_TOOLS=""; \
+	if ! command -v dlv >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS dlv"; \
+	fi; \
+	if ! command -v k3d >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS k3d"; \
+	fi; \
+	if ! command -v kubectl >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS kubectl"; \
+	fi; \
+	if [ -n "$$MISSING_TOOLS" ]; then \
+		echo "❌ Missing required tools:$$MISSING_TOOLS"; \
+		echo ""; \
+		echo "Installation instructions:"; \
+		echo "  dlv: go install github.com/go-delve/delve/cmd/dlv@latest"; \
+		echo "  k3d: https://k3d.io/v5.6.0/#installation"; \
+		echo "  kubectl: https://kubernetes.io/docs/tasks/tools/"; \
+		exit 1; \
+	fi; \
+	if ! command -v psql >/dev/null 2>&1; then \
+		echo "⚠️  psql not available - database may not be properly initialized"; \
+	fi; \
+	echo "✅ All required tools are available"
 
 debug-build: build ## Build components with debug symbols for debugging
 	@echo "Building Radius components with debug symbols..."

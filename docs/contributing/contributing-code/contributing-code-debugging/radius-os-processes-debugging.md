@@ -36,32 +36,23 @@ The simplest way to get debugging working:
 
 ### Setup Commands
 ```bash
-# One-time setup (uses your current kubectl context)
-make debug-setup
-
-# Start all components as OS processes with debugging
+# Start all components as OS processes with debugging (Checks prereqs and creates necessary folders)
 make debug-start
-
-# First time only: initialize environment resources
-make debug-env-init
 
 # Check that everything is running
 make debug-status
-
-# Use the debug CLI (doesn't conflict with installed rad)
-source debug_files/env-setup.sh
-drad version  # Should show "Connected" status
 ```
 
 **VS Code Debugging:**
 - Debugger attach configurations are pre-configured in `.vscode/launch.json`
 - Set breakpoints in your code, then use F5 to attach to any component
 - Debug ports: UCP (40001), Controller (40002), Applications RP (40003), Dynamic RP (40004)
-5. Debug with full breakpoint support!
 
 **For code changes:**
 1. Use "Rebuild and Restart [Component]" task
 2. Re-attach debugger to new process
+
+The project could take on Air as a depdendency and allow for golang hot-reload, this would be a huge value if someone wants to contribute.
 
 **What the automation provides:**
 - Environment directory structure at `debug_files/` (in project root)
@@ -70,8 +61,8 @@ drad version  # Should show "Connected" status
 - Database setup verification
 - Management scripts (start/stop/status)
 - Incremental builds for individual components
-- Convenient `./rad` symlink in workspace root for easy CLI access
-- Debug CLI wrapper `./rad` with automatic UCP endpoint configuration
+- Convenient `./drad` symlink in workspace root for easy CLI access
+- Debug CLI wrapper `./drad` with automatic UCP endpoint configuration
 
 ## Prerequisites
 
@@ -83,9 +74,9 @@ The automation checks for all required tools. Install any missing prerequisites:
 - **kubectl** - Kubernetes cluster access
 - **psql** - PostgreSQL client for database verification
 - **terraform** - Terraform CLI for recipe execution
+- **docker** - To host k3d
 
 ### Optional Tools
-- **docker** - For deployment engine (recommended)
 - **VS Code** - For integrated debugging experience
 
 ### Installation Commands
@@ -147,47 +138,15 @@ The automation handles all setup, configuration, and management tasks:
 
 ```bash
 # Complete setup and start development environment
-make debug-dev-start
+make debug-start
 
 # This single command:
 # 1. Sets up directory structure and configuration files
 # 2. Builds components with debug symbols
 # 3. Starts all components as OS processes
-# 4. Provides next steps for creating resources
-
-# Create Radius resources (after components are running)
-# Use ./rad for automatic UCP connection and workspace setup
-./rad group create default
-./rad env create default
-
-# Or use regular rad CLI (requires workspace override configuration)
-./rad group create default
-./rad env create default
+# 4. Initializes a clean dev environment with default recipes
 
 # Stop development environment when done
-make debug-dev-stop
-```
-
-### Daily Development
-
-```bash
-# Start components (uses existing configuration)
-make debug-start
-
-# Check component health
-make debug-status
-
-# Monitor logs
-make debug-logs
-
-# Build only changed components (incremental builds)
-make debug-build-ucpd              # Build only UCP daemon
-make debug-build-applications-rp   # Build only Applications RP
-make debug-build-controller        # Build only Controller
-make debug-build-dynamic-rp        # Build only Dynamic RP
-make debug-build-rad              # Build only rad CLI
-
-# Stop components
 make debug-stop
 ```
 
@@ -276,39 +235,13 @@ All configurations use the "attach" mode - they connect to already running proce
 
 This workflow separates process management (via make) from debugging (via VS Code), making it much cleaner and more reliable.
 
-#### Initial Setup
-
-1. **Complete Setup and Start** (first time):
-   ```bash
-   make debug-setup              # Setup environment
-   make debug-start              # Start all components as processes
-   make debug-env-init           # Initialize database (first time only)
-   ```
-
-2. **Daily Development Start**:
-   ```bash
-   make debug-start              # Start all components
-   # Components run as regular OS processes, ready for debugger attachment
-   ```
-
 #### Debugging Workflow
 
 1. **Set Breakpoints**: Add breakpoints in your code in VS Code
 
 2. **Attach Debugger** (Choose one method):
-
-   **Method A: Automatic PID Resolution (Recommended)**
-   - Run VS Code task: "Update Launch.json PIDs" (Ctrl+Shift+P → "Tasks: Run Task")
-   - Open Debug panel (Ctrl+Shift+D / Cmd+Shift+D)
-   - Select "Quick Attach to [Component]" (e.g., "Quick Attach to UCP (Update PID)")
-   - Press F5 - debugger attaches immediately with current PID
    
-   **Method B: Manual PID Entry**
-   - Run VS Code task: "Show PIDs for Debugging" to see current process IDs
-   - Open Debug panel and select "Attach to [Component]"
-   - Press F5 and enter the PID when prompted
-   
-   **Method C: VS Code Process Picker**
+   **Method A: VS Code Process Picker**
    - Open Debug panel and select "Attach to [Component]"
    - Press F5 - VS Code will show a process picker
    - Select the component process (e.g., "ucpd")
@@ -321,35 +254,6 @@ This workflow separates process management (via make) from debugging (via VS Cod
    - Use rebuild/restart tasks: Ctrl+Shift+P → "Tasks: Run Task" → "Rebuild and Restart [Component]"
    - Re-run "Update Launch.json PIDs" task if using Method A
    - Re-attach debugger to the new process
-
-4. **Individual Component Development**:
-   - **UCP**: "Rebuild and Restart UCP" → "Update Launch.json PIDs" → "Quick Attach to UCP"  
-   - **Applications RP**: "Rebuild and Restart Applications RP" → "Update Launch.json PIDs" → "Quick Attach to Applications RP"
-   - **Controller**: "Rebuild and Restart Controller" → "Update Launch.json PIDs" → "Quick Attach to Controller"
-   - **Dynamic RP**: "Rebuild and Restart Dynamic RP" → "Update Launch.json PIDs" → "Quick Attach to Dynamic RP"
-
-> **Note**: Currently, the rebuild/restart tasks restart all components because the underlying make system doesn't support individual component restart. This ensures all inter-component dependencies are properly refreshed, but means a slight delay when you only want to restart one component.
-> 
-> **💡 Contribution Opportunity**: Adding individual component start/stop make targets (e.g., `debug-start-ucpd`, `debug-stop-ucpd`) would enable truly granular rebuild/restart tasks. This would be a great contribution for anyone wanting to improve the developer experience!
-
-#### Available VS Code Tasks
-
-**Debug Management:**
-- **"Show PIDs for Debugging"** - Display current process IDs for all components
-- **"Update Launch.json PIDs"** - Automatically update Quick Attach configurations with current PIDs
-
-**Build and Restart:**
-- **"Rebuild and Restart UCP"** - Rebuild UCP binary and restart all components
-- **"Rebuild and Restart Applications RP"** - Rebuild Applications RP and restart all components
-- **"Rebuild and Restart Controller"** - Rebuild Controller and restart all components
-- **"Rebuild and Restart Dynamic RP"** - Rebuild Dynamic RP and restart all components
-
-**General:**
-- **"Build All Components"** - Build all components (without restart)
-- **"Component Status"** - Check which components are running
-- **"View All Logs"** - Tail all component logs
-
-> **Technical Note**: The rebuild/restart tasks currently restart all components due to make system limitations. Individual component builds are supported (`debug-build-ucpd`, etc.), but individual start/stop is not yet implemented.
 
 #### Advantages of This Approach
 
@@ -392,7 +296,6 @@ cat debug_files/logs/dynamic-rp.log
 # Restart specific components in VS Code debugger
 # Or rebuild and restart all components
 make debug-stop
-make debug-build
 make debug-start
 ```
 
@@ -443,9 +346,6 @@ lsof -i :8080  # Applications RP
 lsof -i :8082  # Dynamic RP
 lsof -i :7073  # Controller health
 lsof -i :5017  # Deployment Engine
-
-# Kill conflicting processes
-sudo kill -9 $(lsof -t -i:9000)
 ```
 
 **5. Kubernetes Permission Issues**
@@ -464,95 +364,14 @@ kubectl get namespace radius-system || kubectl create namespace radius-system
 kubectl get namespace radius-testing || kubectl create namespace radius-testing
 ```
 
-**6. Controller TLS Certificate Issues**
-
-The controller component uses webhooks for validation, which require TLS certificates in production. For local development, the automation automatically configures the controller to skip webhook setup when TLS certificates are not available.
-
-If you see TLS-related errors in the controller logs:
-
-```bash
-# Check if controller is configured without TLS certificates (expected for local dev)
-grep "Webhooks will be skipped" debug_files/logs/controller.log
-
-# The controller should show this message for local development:
-# "Webhooks will be skipped. TLS certificates not present."
-```
-
-The automation handles this automatically by:
-- Setting `--cert-dir=""` in the start script
-- Configuring VS Code launch configurations without TLS requirements
-- The controller service detects empty cert directory and skips webhook registration
-
-**7. rad CLI 503 "Service Unavailable" Errors**
-
-When running Radius components as OS processes, the rad CLI may fail with a 503 error because it's configured to connect to Kubernetes instead of the local UCP endpoint. The CLI needs to be configured to connect directly to the local UCP at `http://localhost:9000`.
-
-```bash
-# Check current workspace configuration
-rad workspace show
-
-# If you see connection kind "kubernetes", you need to add UCP override
-# Edit your workspace configuration file (~/.rad/config.yaml)
-```
-
-**Solution 1: Use the debug CLI wrapper (Recommended)**
-
-The automation creates a debug CLI wrapper that automatically configures the UCP endpoint:
-
-```bash
-# Use the debug wrapper (no configuration needed)
-./rad workspace show
-./rad group create default
-./rad env create default
-
-# The ./rad symlink automatically uses debug configuration for local development
-```
-
-**Solution 2: Configure workspace UCP override**
-
-Add a UCP override to your workspace configuration in `~/.rad/config.yaml`:
-
-```yaml
-workspaces:
-  default: default
-  items:
-    default:
-      connection:
-        context: k3d-k3s-default  # Your current Kubernetes context
-        kind: kubernetes
-        overrides:
-          ucp: http://localhost:9000  # Add this override
-      environment: /planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default
-      scope: /planes/radius/local/resourceGroups/default
-```
-
-After adding the override:
-
-```bash
-# Test the connection
-rad workspace show
-
-# You should see output indicating direct UCP connection
-# "Kubernetes (context=k3d-k3s-default, ucp=http://localhost:9000)"
-
-# Create resources using local UCP
-rad group create default
-rad env create default
-```
-
-The automation handles this automatically by:
-- Setting `--cert-dir=""` in the start script
-- Configuring VS Code launch configurations without TLS requirements
-- The controller service detects empty cert directory and skips webhook registration
-
 ### Getting Help
 
 If you encounter issues not covered here:
 
-1. **Check the rad CLI configuration**: The `./rad` wrapper is automatically configured for local debugging
+1. **Check the rad CLI configuration**: The `./drad` wrapper is automatically configured for local debugging
 2. **Check component logs**: Use `make debug-logs` to see all component output
 3. **Verify prerequisites**: Run `make debug-check-prereqs` 
-4. **Clean and restart**: Use `make debug-stop && make debug-setup`
+4. **Clean and restart**: Use `make debug-stop && make debug-start`
 5. **Use VS Code debugging**: Set breakpoints and step through problematic code paths
 
 The automation handles ~90% of the setup complexity, but understanding the underlying components helps with advanced debugging scenarios.
@@ -573,15 +392,14 @@ The Radius debug automation provides:
 - Log aggregation and monitoring
 - Health checking and verification
 - Incremental builds for individual components
+- Database setup
 
 🔶 **Partially Automated:**
-- Database setup (automated checks, manual creation if needed)
 - Kubernetes prerequisites (namespace creation, permission verification)
 - Prerequisites validation (automated checking with installation guidance)
 
 ❌ **Manual Steps Required:**
-- Tool installation (Go, kubectl, PostgreSQL, Terraform) - one-time setup
+- Tool installation (Go, Docker, kubectl, PostgreSQL, Terraform) - one-time setup
 - Cloud credentials configuration (Azure/AWS) - as needed for your development
-- Kubernetes cluster setup or access - one-time setup
 
 The automation eliminates the complexity of manual configuration while preserving the flexibility needed for advanced debugging scenarios.
