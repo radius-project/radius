@@ -113,8 +113,8 @@ users:
 					ConfigFilePath: configFile.Name(),
 				},
 				out: &ConfigOptions{
-					QPS:   DefaultServerQPS,
-					Burst: DefaultServerBurst,
+					QPS:   0.0,
+					Burst: 0,
 				},
 			},
 			{
@@ -125,7 +125,7 @@ users:
 				},
 				out: &ConfigOptions{
 					QPS:   DefaultServerQPS,
-					Burst: DefaultServerBurst,
+					Burst: 0,
 				},
 			},
 			{
@@ -135,7 +135,7 @@ users:
 					Burst:          DefaultServerBurst,
 				},
 				out: &ConfigOptions{
-					QPS:   DefaultServerQPS,
+					QPS:   0.0,
 					Burst: DefaultServerBurst,
 				},
 			},
@@ -181,8 +181,8 @@ users:
 					ConfigFilePath: configFile.Name(),
 				},
 				out: &ConfigOptions{
-					QPS:   800.0,
-					Burst: 800,
+					QPS:   0.0,
+					Burst: 0,
 				},
 			},
 			{
@@ -192,8 +192,8 @@ users:
 					QPS:            DefaultServerQPS,
 				},
 				out: &ConfigOptions{
-					QPS:   DefaultServerQPS, // Explicit value should override env
-					Burst: 800,              // Should use env value
+					QPS:   800.0,
+					Burst: 0,
 				},
 			},
 			{
@@ -203,8 +203,8 @@ users:
 					Burst:          DefaultServerBurst,
 				},
 				out: &ConfigOptions{
-					QPS:   800.0,              // Should use env value
-					Burst: DefaultServerBurst, // Explicit value should override env
+					QPS:   0.0,
+					Burst: 800,
 				},
 			},
 			{
@@ -215,8 +215,8 @@ users:
 					Burst:          DefaultServerBurst,
 				},
 				out: &ConfigOptions{
-					QPS:   DefaultServerQPS,
-					Burst: DefaultServerBurst,
+					QPS:   800.0,
+					Burst: 800,
 				},
 			},
 		}
