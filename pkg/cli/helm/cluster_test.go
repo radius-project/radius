@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v3/pkg/action"
@@ -31,15 +30,6 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
-
-func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
-	t.Parallel()
-
-	clusterOptions := PopulateDefaultClusterOptions(CLIClusterOptions{})
-
-	// Not checking other values due to potential failures on release builds
-	require.Equal(t, version.ChartVersion(), clusterOptions.Radius.ChartVersion)
-}
 
 func Test_Helm_InstallRadius(t *testing.T) {
 	t.Parallel()

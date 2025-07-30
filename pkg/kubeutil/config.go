@@ -19,6 +19,8 @@ package kubeutil
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -86,11 +88,23 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	}
 
 	if options.QPS > 0.0 {
-		config.QPS = options.QPS
+		qps := options.QPS
+		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
+			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
+				qps = float32(parsedQPS)
+			}
+		}
+		config.QPS = qps
 	}
 
 	if options.Burst > 0 {
-		config.Burst = options.Burst
+		burst := options.Burst
+		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
+			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
+				burst = parsedBurst
+			}
+		}
+		config.Burst = burst
 	}
 
 	return config, nil
@@ -118,11 +132,23 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	}
 
 	if options.QPS > 0.0 {
-		merged.QPS = options.QPS
+		qps := options.QPS
+		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
+			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
+				qps = float32(parsedQPS)
+			}
+		}
+		merged.QPS = qps
 	}
 
 	if options.Burst > 0 {
-		merged.Burst = options.Burst
+		burst := options.Burst
+		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
+			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
+				burst = parsedBurst
+			}
+		}
+		merged.Burst = burst
 	}
 
 	return merged, nil
