@@ -245,7 +245,6 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, schema)
 
-		// Verify schema structure
 		schemaMap, ok := schema.(map[string]any)
 		require.True(t, ok)
 
