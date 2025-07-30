@@ -468,7 +468,7 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          make test-functional-${{ matrix.name }}
+          make test-functional-${{ matrix.name }} 2>&1
         env:
           DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
