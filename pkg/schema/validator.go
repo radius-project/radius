@@ -24,6 +24,15 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
+// Constants for reserved property names
+const (
+	reservedPropApplication = "application"
+	reservedPropEnvironment = "environment"
+	reservedPropStatus      = "status"
+	reservedPropRecipe      = "recipe"
+	reservedPropConnections = "connections"
+)
+
 // Validator validates OpenAPI 3.0 schemas with Radius-specific constraints
 type Validator struct{}
 
@@ -39,15 +48,44 @@ func (v *Validator) ValidateSchema(ctx context.Context, schema *openapi3.Schema)
 		return nil
 	}
 
+	var errors ValidationErrors
+
 	// Validate the schema using OpenAPI loader
 	err := v.validateSchemaWithOpenAPI(schema)
 	if err != nil {
-		return fmt.Errorf("OpenAPI schema validation failed: %w", err)
+		errors.Add(NewSchemaError("", fmt.Sprintf("OpenAPI schema validation failed: %s", err.Error())))
+	}
+
+	// Check reserved property constraints at root level only
+	if err := v.checkReservedProperties(schema); err != nil {
+		// If it's already a ValidationErrors collection, merge it
+		if valErrs, ok := err.(*ValidationErrors); ok {
+			for _, ve := range valErrs.Errors {
+				errors.Add(ve)
+			}
+		} else if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
 	}
 
 	// Check Radius-specific constraints
 	if err := v.validateRadiusConstraints(schema); err != nil {
-		return fmt.Errorf("schema violates Radius constraints: %w", err)
+		// If it's already a ValidationErrors collection, merge it
+		if valErrs, ok := err.(*ValidationErrors); ok {
+			for _, ve := range valErrs.Errors {
+				errors.Add(ve)
+			}
+		} else if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", fmt.Sprintf("schema violates Radius constraints: %s", err.Error())))
+		}
+	}
+
+	if errors.HasErrors() {
+		return &errors
 	}
 
 	return nil
@@ -55,33 +93,52 @@ func (v *Validator) ValidateSchema(ctx context.Context, schema *openapi3.Schema)
 
 // ValidateConstraints checks if a schema meets Radius-specific constraints
 func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
+	var errors ValidationErrors
+
 	// Check for prohibited features
 	if err := v.checkProhibitedFeatures(schema); err != nil {
-		return err
+		if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
 	}
 
 	// Check for prohibited $ref usage throughout the schema
 	// We need to wrap the schema in a SchemaRef to use our recursive function
 	schemaRef := &openapi3.SchemaRef{Value: schema}
 	if err := v.checkRefUsage(schemaRef, ""); err != nil {
-		return err
+		if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
 	}
 
 	// Check object property constraints
 	if err := v.checkObjectPropertyConstraints(schema); err != nil {
-		return err
+		if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
 	}
 
 	// Validate type constraints
 	if err := v.validateTypeConstraints(schema); err != nil {
-		return err
+		if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
 	}
 
 	// Recursively validate object properties
 	if schema.Properties != nil {
 		for propName, propRef := range schema.Properties {
 			if propRef == nil {
-				return NewSchemaError(propName, "property schema is nil")
+				errors.Add(NewSchemaError(propName, "property schema is nil"))
+				continue
 			}
 
 			// If this is a reference (has Ref), we don't need to validate the Value
@@ -92,43 +149,81 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 			}
 
 			if propRef.Value == nil {
-				return NewSchemaError(propName, "property schema is nil")
+				errors.Add(NewSchemaError(propName, "property schema is nil"))
+				continue
 			}
 
 			if err := v.validateRadiusConstraints(propRef.Value); err != nil {
 				// Add property context to error
-				if valErr, ok := err.(*ValidationError); ok {
-					if valErr.Field != "" {
-						valErr.Field = propName + "." + valErr.Field
-					} else {
-						valErr.Field = propName
+				if valErrs, ok := err.(*ValidationErrors); ok {
+					for _, ve := range valErrs.Errors {
+						// Clone the error to avoid modifying the original
+						contextualErr := &ValidationError{
+							Type:    ve.Type,
+							Field:   ve.Field,
+							Message: ve.Message,
+						}
+						if contextualErr.Field != "" {
+							contextualErr.Field = propName + "." + contextualErr.Field
+						} else {
+							contextualErr.Field = propName
+						}
+						errors.Add(contextualErr)
 					}
-					return valErr
+				} else if valErr, ok := err.(*ValidationError); ok {
+					// Clone the error to avoid modifying the original
+					contextualErr := &ValidationError{
+						Type:    valErr.Type,
+						Field:   valErr.Field,
+						Message: valErr.Message,
+					}
+					if contextualErr.Field != "" {
+						contextualErr.Field = propName + "." + contextualErr.Field
+					} else {
+						contextualErr.Field = propName
+					}
+					errors.Add(contextualErr)
+				} else {
+					errors.Add(NewSchemaError(propName, err.Error()))
 				}
-				return NewSchemaError(propName, err.Error())
 			}
 		}
 	}
 
 	// Also validate additionalProperties if present
-	if schema.AdditionalProperties.Has != nil {
-		if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil {
-			if addPropSchema.Ref != "" {
-				// The $ref validation is already handled by checkRefUsage above
-				return nil
-			}
-
-			if addPropSchema.Value != nil {
-				if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
-					// Add context to error
-					if valErr, ok := err.(*ValidationError); ok {
-						valErr.Field = "additionalProperties." + valErr.Field
-						return valErr
+	if addPropSchema := schema.AdditionalProperties.Schema; addPropSchema != nil {
+		if addPropSchema.Ref != "" {
+			// The $ref validation is already handled by checkRefUsage above
+		} else if addPropSchema.Value != nil {
+			if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
+				// Add context to error
+				if valErrs, ok := err.(*ValidationErrors); ok {
+					for _, ve := range valErrs.Errors {
+						// Clone the error to avoid modifying the original
+						contextualErr := &ValidationError{
+							Type:    ve.Type,
+							Field:   "additionalProperties." + ve.Field,
+							Message: ve.Message,
+						}
+						errors.Add(contextualErr)
 					}
-					return NewSchemaError("additionalProperties", err.Error())
+				} else if valErr, ok := err.(*ValidationError); ok {
+					// Clone the error to avoid modifying the original
+					contextualErr := &ValidationError{
+						Type:    valErr.Type,
+						Field:   "additionalProperties." + valErr.Field,
+						Message: valErr.Message,
+					}
+					errors.Add(contextualErr)
+				} else {
+					errors.Add(NewSchemaError("additionalProperties", err.Error()))
 				}
 			}
 		}
+	}
+
+	if errors.HasErrors() {
+		return &errors
 	}
 
 	return nil
@@ -356,14 +451,80 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 		return nil // No object features to validate
 	}
 
+	// Check if additionalProperties is set to true (boolean true is not allowed)
+	if schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has {
+		return NewConstraintError("", "additionalProperties: true is not allowed, use a schema object instead")
+	}
+
 	// Check if both properties and additionalProperties are defined
 	// Note: Empty properties map should be treated as no properties defined
 	hasProperties := len(schema.Properties) > 0
-	hasAdditionalProperties := (schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has) ||
-		schema.AdditionalProperties.Schema != nil
+	hasAdditionalProperties := schema.AdditionalProperties.Schema != nil
 
 	if hasProperties && hasAdditionalProperties {
 		return NewConstraintError("", "object schemas cannot have both 'properties' and 'additionalProperties' defined")
+	}
+
+	return nil
+}
+
+// checkReservedProperties validates reserved property constraints
+func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
+	if schema.Properties == nil {
+		return nil
+	}
+
+	var errors ValidationErrors
+
+	for propName, propRef := range schema.Properties {
+		// Check for restricted property names
+		if propName == reservedPropStatus || propName == reservedPropRecipe {
+			err := NewConstraintError(propName, fmt.Sprintf("property '%s' is reserved and cannot be used", propName))
+			errors.Add(err)
+		}
+
+		// Check specific property type constraints
+		if propName == reservedPropApplication || propName == reservedPropEnvironment {
+			if propRef.Value != nil {
+				if propRef.Value.Type == nil || !propRef.Value.Type.Is("string") {
+					err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a string", propName))
+					errors.Add(err)
+				}
+			}
+		}
+
+		if propName == reservedPropConnections {
+			if propRef.Value != nil {
+				// Check if it's an object type
+				if propRef.Value.Type != nil && !propRef.Value.Type.Is("object") {
+					err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a map object", reservedPropConnections))
+					errors.Add(err)
+				}
+
+				// If it's an object, ensure it's map-like (must have additionalProperties)
+				if propRef.Value.Type != nil && propRef.Value.Type.Is("object") {
+					hasAdditionalProps := (propRef.Value.AdditionalProperties.Has != nil && *propRef.Value.AdditionalProperties.Has) ||
+						propRef.Value.AdditionalProperties.Schema != nil
+
+					if !hasAdditionalProps {
+						err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a map object (use additionalProperties)", reservedPropConnections))
+						errors.Add(err)
+					}
+				}
+			}
+		}
+	}
+
+	// Check that environment property is always included
+	if schema.Properties != nil {
+		if _, hasEnv := schema.Properties[reservedPropEnvironment]; !hasEnv {
+			err := NewConstraintError(reservedPropEnvironment, fmt.Sprintf("property '%s' must be included in schema", reservedPropEnvironment))
+			errors.Add(err)
+		}
+	}
+
+	if errors.HasErrors() {
+		return &errors
 	}
 
 	return nil
