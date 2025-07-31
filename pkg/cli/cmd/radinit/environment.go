@@ -68,6 +68,8 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 
 	var recipes map[string]map[string]corerp.RecipePropertiesClassification
 	if r.Options.Recipes.DevRecipes {
+		// Note: To use custom registry for recipes, users need to manually configure
+		// their environment after initialization or use custom recipe definitions
 		recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
 		if err != nil {
 			return err

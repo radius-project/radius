@@ -28,6 +28,7 @@ import (
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -666,6 +667,106 @@ func Test_Validate(t *testing.T) {
 				initKubeContextWithInterruptSignal(mocks.Prompter)
 			},
 		},
+		{
+			Name:          "Valid Init Command with --set flag",
+			Input:         []string{"--set", "global.imageRegistry=myregistry.io"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Valid Init Command with multiple --set flags",
+			Input:         []string{"--set", "global.imageRegistry=myregistry.io", "--set", "global.rootCA.cert=test"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Valid Init Command with --set flag using comma separator",
+			Input:         []string{"--set", "global.imageRegistry=myregistry.io,global.rootCA.cert=test"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Valid Init Command with --set-file flag",
+			Input:         []string{"--set-file", "global.rootCA.cert=/path/to/cert.crt"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Valid Init Command with both --set and --set-file flags",
+			Input:         []string{"--set", "global.imageRegistry=myregistry.io", "--set-file", "global.rootCA.cert=/path/to/cert.crt"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -678,6 +779,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 		awsProvider    *aws.Provider
 		recipes        map[string]map[string]corerp.RecipePropertiesClassification
 		expectedOutput []any
+		set            []string
+		setFile        []string
 	}{
 		{
 			name:          "`rad init` with recipes",
@@ -797,6 +900,36 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
+		{
+			name:           "`rad init` with --set flags",
+			full:           false,
+			azureProvider:  nil,
+			awsProvider:    nil,
+			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
+			expectedOutput: []any{},
+			set:            []string{"global.imageRegistry=myregistry.io", "key=value"},
+			setFile:        nil,
+		},
+		{
+			name:           "`rad init` with --set-file flags",
+			full:           false,
+			azureProvider:  nil,
+			awsProvider:    nil,
+			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
+			expectedOutput: []any{},
+			set:            nil,
+			setFile:        []string{"global.rootCA.cert=/path/to/cert.crt"},
+		},
+		{
+			name:           "`rad init` with both --set and --set-file flags",
+			full:           false,
+			azureProvider:  nil,
+			awsProvider:    nil,
+			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
+			expectedOutput: []any{},
+			set:            []string{"global.imageRegistry=myregistry.io"},
+			setFile:        []string{"global.rootCA.cert=/path/to/cert.crt", "tls.cert=/path/to/tls.crt"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -886,9 +1019,23 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			helmInterface := helm.NewMockInterface(ctrl)
+			
+			// Verify that Set and SetFile values are passed to Helm
+			expectedClusterOptions := helm.CLIClusterOptions{
+				Radius: helm.ChartOptions{
+					SetArgs:     tc.set,
+					SetFileArgs: tc.setFile,
+				},
+			}
+			
 			helmInterface.EXPECT().
 				InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-				Return(nil).
+				DoAndReturn(func(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
+					// Verify the SetArgs and SetFileArgs are passed correctly
+					assert.Equal(t, expectedClusterOptions.Radius.SetArgs, clusterOptions.Radius.SetArgs)
+					assert.Equal(t, expectedClusterOptions.Radius.SetFileArgs, clusterOptions.Radius.SetFileArgs)
+					return nil
+				}).
 				Times(1)
 
 			prompter := prompt.NewMockInterface(ctrl)
@@ -931,6 +1078,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Workspace: &workspaces.Workspace{
 					Name: "default",
 				},
+				Set:     tc.set,
+				SetFile: tc.setFile,
 			}
 
 			err := runner.Run(context.Background())

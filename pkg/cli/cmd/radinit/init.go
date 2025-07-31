@@ -72,6 +72,12 @@ rad init
 
 ## Prompt the user for all available options to create a new environment
 rad init --full
+
+## Initialize with a custom container registry
+rad init --set global.imageRegistry=myregistry.azurecr.io
+
+## Initialize with custom values from a file
+rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -80,6 +86,8 @@ rad init --full
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
+	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	return cmd, runner
 }
 
@@ -120,6 +128,12 @@ type Runner struct {
 
 	// Full determines whether or not we ask the user for all options.
 	Full bool
+
+	// Set is the list of additional Helm values to set.
+	Set []string
+
+	// SetFile is the list of additional Helm values from files.
+	SetFile []string
 
 	// Options provides the options to used for Radius initialization. This will be populated by Validate.
 	Options *initOptions
@@ -215,7 +229,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.Options.Cluster.Install {
 		cliOptions := helm.CLIClusterOptions{
 			Radius: helm.ChartOptions{
-				SetArgs: r.Options.SetValues,
+				SetArgs:     append(r.Options.SetValues, r.Set...),
+				SetFileArgs: r.SetFile,
 			},
 		}
 
