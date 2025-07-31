@@ -133,4 +133,35 @@ types:
           required:
             - application
             - environment
+  testResourceSchema:
+    capabilities: ["ManualResourceProvisioning"]
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            validationData:
+              type: string
+              description: Data used for schema validation testing (must be string).
+            numericField:
+              type: integer
+              description: A numeric field for testing type validation.
+            configSettings:
+              type: object
+              description: Configuration settings object.
+              properties:
+                enabled:
+                  type: boolean
+                name:
+                  type: string
+          required:
+            - application
+            - environment
+            - validationData
             

@@ -20,8 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Constants for reserved property names
@@ -525,6 +527,79 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 
 	if errors.HasErrors() {
 		return &errors
+	}
+
+	return nil
+}
+
+// ValidateResourceAgainstSchema validates resource data against an OpenAPI 3.0 schema.
+// It converts the schema data to OpenAPI format, creates a minimal OpenAPI document for validation,
+// and then validates the resource data against the schema using OpenAPI's built-in validation.
+func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if schemaData == nil {
+		// Extract resource identifier for cleaner logging
+		resourceID := "unknown"
+		if id, ok := resourceData["id"].(string); ok && id != "" {
+			resourceID = id
+		} else if name, ok := resourceData["name"].(string); ok && name != "" {
+			resourceID = name
+		}
+
+		logger.V(ucplog.LevelDebug).Info("No schema data provided, skipping validation",
+			"resourceID", resourceID)
+		return nil // No schema to validate against
+
+	}
+
+	// Convert schema to OpenAPI schema format
+	openAPISchema, err := ConvertToOpenAPISchema(schemaData)
+	if err != nil {
+		return fmt.Errorf("failed to convert schema: %w", err)
+	}
+
+	// Create a minimal OpenAPI document with the schema
+	doc := &openapi3.T{
+		OpenAPI: "3.0.0",
+		Info: &openapi3.Info{
+			Title:   "validateSchema",
+			Version: "1.0.0",
+		},
+		Components: &openapi3.Components{
+			Schemas: map[string]*openapi3.SchemaRef{
+				"validateSchema": {Value: openAPISchema},
+			},
+		},
+		Paths: &openapi3.Paths{},
+	}
+
+	// Validate the document structure
+	if err := doc.Validate(ctx); err != nil {
+		return fmt.Errorf("resource type schema validation failed: %w", err)
+	}
+
+	// Validate the data against the schema
+	schemaRef := &openapi3.SchemaRef{Value: openAPISchema}
+
+	propertiesData, ok := resourceData["properties"]
+	if !ok {
+		return fmt.Errorf("resource data missing 'properties' field")
+	}
+
+	if err := schemaRef.Value.VisitJSON(propertiesData); err != nil {
+		// Try to extract structured error information
+		if openAPIErr, ok := err.(*openapi3.SchemaError); ok {
+
+			// Clean up the JSON pointer for better readability
+			schemaErr := openAPIErr.JSONPointer()
+			fieldPath := fmt.Sprintf("%v", schemaErr)
+			fieldPath = strings.Trim(fieldPath, "[]")
+
+			message := fmt.Sprintf("Error at %q: %s", fieldPath, openAPIErr.Reason)
+			return fmt.Errorf("resource data validation failed: %s", message)
+		}
+
+		return fmt.Errorf("resource data validation failed: %w", err)
 	}
 
 	return nil

@@ -563,3 +563,57 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 	})
 	test.Test(t)
 }
+
+// Test_DynamicRP_SchemaValidation tests that schema validation properly rejects invalid resources.
+// It consists of two main steps:
+// 1. Resource Type Registration:
+//   - Registers a user-defined resource type "Test.Resources/testResourceSchema" with schema validation
+//
+// 2. Resource Deployment Failure:
+//   - Attempts to deploy a Bicep template with invalid schema (incorrect value, extra properties)
+//   - Validates that the deployment fails with appropriate schema validation errors
+func Test_DynamicRP_SchemaValidation(t *testing.T) {
+	template := "testdata/testResourceSchema-invalid.bicep"
+	appName := "udt-schemavalidation-app"
+	resourceTypeName := "Test.Resources/testResourceSchema"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "InvalidRequestContent",
+				MessageContains: "Schema validation failed",
+			},
+		},
+	})
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			},
+		},
+		{
+			// The next step is to deploy a bicep file with invalid schema - this should fail
+			Executor:                               step.NewDeployErrorExecutor(template, validate),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+	})
+
+	test.Test(t)
+}
