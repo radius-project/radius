@@ -3,7 +3,7 @@ Copyright 2023 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
-You may obtain a copy of the License ats
+You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -36,7 +36,6 @@ func TestValidator_ValidateSchema(t *testing.T) {
 
 	t.Run("nil schema", func(t *testing.T) {
 		err := validator.ValidateSchema(ctx, nil)
-		require.NoError(t, err)
 		require.NoError(t, err)
 	})
 
@@ -204,12 +203,18 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 			hasErr: false,
 		},
 		{
-			name: "array type not allowed",
+			name: "array type allowed",
 			schema: &openapi3.Schema{
 				Type: &openapi3.Types{"array"},
 			},
-			hasErr: true,
-			errMsg: "unsupported type: array",
+			hasErr: false,
+		},
+		{
+			name: "enum type allowed",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"enum"},
+			},
+			hasErr: false,
 		},
 		{
 			name: "null type not allowed",
@@ -371,7 +376,7 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 						Properties: openapi3.Schemas{
 							"data": {
 								Value: &openapi3.Schema{
-									Type: &openapi3.Types{"array"}, // Not allowed
+									Type: &openapi3.Types{"invalidtype"}, // Not allowed
 								},
 							},
 						},
@@ -387,7 +392,7 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "user.data")
-		require.Contains(t, err.Error(), "unsupported type: array")
+		require.Contains(t, err.Error(), "unsupported type: invalidtype")
 	})
 
 	t.Run("additionalProperties schema validation", func(t *testing.T) {
@@ -411,7 +416,7 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 			AdditionalProperties: openapi3.AdditionalProperties{
 				Schema: &openapi3.SchemaRef{
 					Value: &openapi3.Schema{
-						Type: &openapi3.Types{"array"}, // Not allowed
+						Type: &openapi3.Types{"invalidtype"}, // Not allowed
 					},
 				},
 			},
@@ -419,7 +424,7 @@ func TestValidator_validateRadiusConstraints_NestedProperties(t *testing.T) {
 		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "additionalProperties")
-		require.Contains(t, err.Error(), "unsupported type: array")
+		require.Contains(t, err.Error(), "unsupported type: invalidtype")
 	})
 }
 
@@ -1934,35 +1939,6 @@ func TestValidateResourceAgainstSchema(t *testing.T) {
 
 		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
 		require.NoError(t, err) // empty object is valid against object schema
-	})
-
-	t.Run("structured error message with field path", func(t *testing.T) {
-		schema := map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"user": map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"age": map[string]any{
-							"type": "integer",
-						},
-					},
-					"required": []any{"age"},
-				},
-			},
-		}
-
-		resourceData := map[string]any{
-			"properties": map[string]any{
-				"user": map[string]any{
-					"name": "john", // missing required age field
-				},
-			},
-		}
-
-		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "property \"age\" is missing")
 	})
 
 	t.Run("structured error message with field path", func(t *testing.T) {
