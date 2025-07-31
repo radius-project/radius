@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -29,6 +30,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
+	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
 func Test_Helm_InstallRadius(t *testing.T) {
@@ -467,4 +469,98 @@ func Test_Helm_RollbackRadiusToRevision_RollbackError(t *testing.T) {
 	err := impl.RollbackRadiusToRevision(ctx, kubeContext, targetRevision)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to rollback Radius to revision 1")
+}
+
+func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{Helm: mockHelmClient}
+	ctx := context.Background()
+	kubeContext := "test-context"
+
+	// Mock history with multiple versions
+	history := []*release.Release{
+		{
+			Version: 1,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
+			Info: &release.Info{
+				Status:        release.StatusSuperseded,
+				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+				Description:   "Install complete",
+			},
+		},
+		{
+			Version: 2,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}},
+			Info: &release.Info{
+				Status:        release.StatusDeployed,
+				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+				Description:   "Upgrade complete",
+			},
+		},
+	}
+
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+		Return(history, nil).
+		Times(1)
+
+	revisions, err := impl.GetRadiusRevisions(ctx, kubeContext)
+	require.NoError(t, err)
+	require.Len(t, revisions, 2)
+
+	// Check that revisions are in reverse order (latest first)
+	require.Equal(t, 2, revisions[0].Revision)
+	require.Equal(t, "0.46.0", revisions[0].ChartVersion)
+	require.Equal(t, "deployed", revisions[0].Status)
+	require.Equal(t, "Upgrade complete", revisions[0].Description)
+	require.Equal(t, "2023-01-01 12:00:00", revisions[0].UpdatedAt)
+
+	require.Equal(t, 1, revisions[1].Revision)
+	require.Equal(t, "0.45.0", revisions[1].ChartVersion)
+	require.Equal(t, "superseded", revisions[1].Status)
+	require.Equal(t, "Install complete", revisions[1].Description)
+}
+
+func Test_Helm_GetRadiusRevisions_NoRevisions(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{Helm: mockHelmClient}
+	ctx := context.Background()
+	kubeContext := "test-context"
+
+	// Mock empty history
+	history := []*release.Release{}
+
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+		Return(history, nil).
+		Times(1)
+
+	_, err := impl.GetRadiusRevisions(ctx, kubeContext)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no revisions found for Radius installation")
+}
+
+func Test_Helm_GetRadiusRevisions_HistoryError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{Helm: mockHelmClient}
+	ctx := context.Background()
+	kubeContext := "test-context"
+
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+		Return(nil, fmt.Errorf("history error")).
+		Times(1)
+
+	_, err := impl.GetRadiusRevisions(ctx, kubeContext)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to get release history")
 }
