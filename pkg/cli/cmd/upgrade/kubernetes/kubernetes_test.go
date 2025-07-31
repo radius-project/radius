@@ -161,6 +161,8 @@ func TestRunner_Run(t *testing.T) {
 		version       string
 		skipPreflight bool
 		preflightOnly bool
+		set           []string
+		setFile       []string
 		expectError   bool
 		errorMessage  string
 	}{
@@ -208,6 +210,33 @@ func TestRunner_Run(t *testing.T) {
 			expectError:   true,
 			errorMessage:  "failed to upgrade Radius",
 		},
+		{
+			name: "successful upgrade with --set and --set-file",
+			setupMock: func(mockHelm *helm.MockInterface, mockOutput *output.MockInterface) {
+				installState := helm.InstallState{
+					RadiusInstalled: true,
+					RadiusVersion:   "v0.46.0",
+				}
+				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
+				// Verify the correct options are passed
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").
+					DoAndReturn(func(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
+						// Verify SetArgs and SetFileArgs
+						expectedSetArgs := []string{"global.imageRegistry=myregistry.io", "key=value"}
+						expectedSetFileArgs := []string{"global.rootCA.cert=/path/to/cert.crt"}
+						assert.Equal(t, expectedSetArgs, clusterOptions.Radius.SetArgs)
+						assert.Equal(t, expectedSetFileArgs, clusterOptions.Radius.SetFileArgs)
+						return nil
+					})
+				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
+				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+			},
+			version:       "0.47.0",
+			skipPreflight: true,
+			set:           []string{"global.imageRegistry=myregistry.io", "key=value"},
+			setFile:       []string{"global.rootCA.cert=/path/to/cert.crt"},
+			expectError:   false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -227,6 +256,8 @@ func TestRunner_Run(t *testing.T) {
 				Version:       tt.version,
 				SkipPreflight: tt.skipPreflight,
 				PreflightOnly: tt.preflightOnly,
+				Set:           tt.set,
+				SetFile:       tt.setFile,
 			}
 
 			err := runner.Run(context.Background())

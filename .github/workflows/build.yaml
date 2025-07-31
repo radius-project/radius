@@ -239,6 +239,10 @@ jobs:
       - name: Run Helm linter
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
+      - name: Run Helm unit tests
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
+          cd ${{ env.HELM_CHARTS_DIR }} && helm unittest .
       - name: Package Helm chart
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}

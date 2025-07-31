@@ -24,7 +24,7 @@ spec:
       serviceAccountName: dashboard
       containers:
       - name: dashboard
-        image: "{{ .Values.dashboard.image }}:{{ .Values.dashboard.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.dashboard.image "tag" (.Values.dashboard.tag | default $appversion) "global" .Values.global) }}"
         imagePullPolicy: Always
         ports:
         - name: http
