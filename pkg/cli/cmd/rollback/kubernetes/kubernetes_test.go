@@ -30,6 +30,7 @@ import (
 )
 
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -49,198 +50,214 @@ func TestNewCommand(t *testing.T) {
 }
 
 func TestRunner_Validate(t *testing.T) {
+	t.Parallel()
 	runner := &Runner{}
 	err := runner.Validate(nil, nil)
 	require.NoError(t, err)
 }
 
-func TestRunner_Run_SpecificRevision_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestRunner_Run(t *testing.T) {
+	t.Parallel()
 
-	helmMock := helm.NewMockInterface(ctrl)
-	outputMock := output.NewMockInterface(ctrl)
+	tests := []struct {
+		name          string
+		runner        Runner
+		mockSetup     func(helmMock *helm.MockInterface, outputMock *output.MockInterface)
+		expectedError string
+	}{
+		{
+			name: "revision 0 - triggers automatic rollback",
+			runner: Runner{
+				KubeContext: "test-context",
+				Revision:    0,
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				// Mock CheckRadiusInstall
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
 
-	runner := &Runner{
-		Helm:        helmMock,
-		Output:      outputMock,
-		KubeContext: "test-context",
-		Revision:    3,
+				// Mock output calls - should use automatic rollback path
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+				outputMock.EXPECT().LogInfo("Checking for previous revisions...").Times(1)
+				outputMock.EXPECT().LogInfo("✓ Radius rollback completed successfully!").Times(1)
+
+				// Mock RollbackRadius (not RollbackRadiusToRevision)
+				helmMock.EXPECT().
+					RollbackRadius(gomock.Any(), "test-context").
+					Return(nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "no revision specified - automatic rollback success",
+			runner: Runner{
+				KubeContext: "test-context",
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+				outputMock.EXPECT().LogInfo("Checking for previous revisions...").Times(1)
+				outputMock.EXPECT().LogInfo("✓ Radius rollback completed successfully!").Times(1)
+
+				helmMock.EXPECT().
+					RollbackRadius(gomock.Any(), "test-context").
+					Return(nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "specific revision 3 - success",
+			runner: Runner{
+				KubeContext: "test-context",
+				Revision:    3,
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+				outputMock.EXPECT().LogInfo("Rolling back to specified revision %d...", 3).Times(1)
+				outputMock.EXPECT().LogInfo("✓ Radius rollback completed successfully!").Times(1)
+
+				helmMock.EXPECT().
+					RollbackRadiusToRevision(gomock.Any(), "test-context", 3).
+					Return(nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "specific revision 999 - not found",
+			runner: Runner{
+				KubeContext: "test-context",
+				Revision:    999,
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+				outputMock.EXPECT().LogInfo("Rolling back to specified revision %d...", 999).Times(1)
+
+				helmMock.EXPECT().
+					RollbackRadiusToRevision(gomock.Any(), "test-context", 999).
+					Return(errors.New("revision not found")).
+					Times(1)
+			},
+			expectedError: "failed to rollback Radius to revision 999",
+		},
+		{
+			name: "radius not installed",
+			runner: Runner{
+				KubeContext: "test-context",
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: false}, nil).
+					Times(1)
+			},
+			expectedError: "Radius is not currently installed. Use 'rad install kubernetes' to install Radius first",
+		},
+		{
+			name: "check install fails",
+			runner: Runner{
+				KubeContext: "test-context",
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{}, errors.New("helm error")).
+					Times(1)
+			},
+			expectedError: "failed to check current Radius installation",
+		},
+		{
+			name: "automatic rollback fails",
+			runner: Runner{
+				KubeContext: "test-context",
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+				outputMock.EXPECT().LogInfo("Checking for previous revisions...").Times(1)
+
+				helmMock.EXPECT().
+					RollbackRadius(gomock.Any(), "test-context").
+					Return(errors.New("rollback failed")).
+					Times(1)
+			},
+			expectedError: "failed to rollback Radius",
+		},
+		{
+			name: "specific revision rollback fails",
+			runner: Runner{
+				KubeContext: "test-context",
+				Revision:    5,
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+				outputMock.EXPECT().LogInfo("Rolling back to specified revision %d...", 5).Times(1)
+
+				helmMock.EXPECT().
+					RollbackRadiusToRevision(gomock.Any(), "test-context", 5).
+					Return(errors.New("rollback operation failed")).
+					Times(1)
+			},
+			expectedError: "failed to rollback Radius to revision 5",
+		},
 	}
 
-	// Mock CheckRadiusInstall to return that Radius is installed
-	helmMock.EXPECT().
-		CheckRadiusInstall("test-context").
-		Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
-		Times(1)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	// Mock output calls
-	outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
-	outputMock.EXPECT().LogInfo("Rolling back to specified revision %d...", 3).Times(1)
-	outputMock.EXPECT().LogInfo("✓ Radius rollback completed successfully!").Times(1)
+			helmMock := helm.NewMockInterface(ctrl)
+			outputMock := output.NewMockInterface(ctrl)
 
-	// Mock RollbackRadiusToRevision to succeed
-	helmMock.EXPECT().
-		RollbackRadiusToRevision(gomock.Any(), "test-context", 3).
-		Return(nil).
-		Times(1)
+			runner := tt.runner
+			runner.Helm = helmMock
+			runner.Output = outputMock
 
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-}
+			tt.mockSetup(helmMock, outputMock)
 
-func TestRunner_Run_SpecificRevision_Fails(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+			err := runner.Run(context.Background())
 
-	helmMock := helm.NewMockInterface(ctrl)
-	outputMock := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:        helmMock,
-		Output:      outputMock,
-		KubeContext: "test-context",
-		Revision:    999,
+			if tt.expectedError == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedError)
+			}
+		})
 	}
-
-	// Mock CheckRadiusInstall to return that Radius is installed
-	helmMock.EXPECT().
-		CheckRadiusInstall("test-context").
-		Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
-		Times(1)
-
-	// Mock output calls
-	outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
-	outputMock.EXPECT().LogInfo("Rolling back to specified revision %d...", 999).Times(1)
-
-	// Mock RollbackRadiusToRevision to fail
-	helmMock.EXPECT().
-		RollbackRadiusToRevision(gomock.Any(), "test-context", 999).
-		Return(errors.New("revision not found")).
-		Times(1)
-
-	err := runner.Run(context.Background())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to rollback Radius to revision 999")
-}
-
-func TestRunner_Run_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	helmMock := helm.NewMockInterface(ctrl)
-	outputMock := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:        helmMock,
-		Output:      outputMock,
-		KubeContext: "test-context",
-	}
-
-	// Mock CheckRadiusInstall to return that Radius is installed
-	helmMock.EXPECT().
-		CheckRadiusInstall("test-context").
-		Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
-		Times(1)
-
-	// Mock output calls
-	outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
-	outputMock.EXPECT().LogInfo("Checking for previous revisions...").Times(1)
-	outputMock.EXPECT().LogInfo("✓ Radius rollback completed successfully!").Times(1)
-
-	// Mock RollbackRadius to succeed
-	helmMock.EXPECT().
-		RollbackRadius(gomock.Any(), "test-context").
-		Return(nil).
-		Times(1)
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-}
-
-func TestRunner_Run_RadiusNotInstalled(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	helmMock := helm.NewMockInterface(ctrl)
-	outputMock := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:        helmMock,
-		Output:      outputMock,
-		KubeContext: "test-context",
-	}
-
-	// Mock CheckRadiusInstall to return that Radius is not installed
-	helmMock.EXPECT().
-		CheckRadiusInstall("test-context").
-		Return(helm.InstallState{RadiusInstalled: false}, nil).
-		Times(1)
-
-	err := runner.Run(context.Background())
-	require.Error(t, err)
-	require.Equal(t, "Radius is not currently installed. Use 'rad install kubernetes' to install Radius first", err.Error())
-}
-
-func TestRunner_Run_CheckInstallFails(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	helmMock := helm.NewMockInterface(ctrl)
-	outputMock := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:        helmMock,
-		Output:      outputMock,
-		KubeContext: "test-context",
-	}
-
-	// Mock CheckRadiusInstall to fail
-	helmMock.EXPECT().
-		CheckRadiusInstall("test-context").
-		Return(helm.InstallState{}, errors.New("helm error")).
-		Times(1)
-
-	err := runner.Run(context.Background())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to check current Radius installation")
-}
-
-func TestRunner_Run_RollbackFails(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	helmMock := helm.NewMockInterface(ctrl)
-	outputMock := output.NewMockInterface(ctrl)
-
-	runner := &Runner{
-		Helm:        helmMock,
-		Output:      outputMock,
-		KubeContext: "test-context",
-	}
-
-	// Mock CheckRadiusInstall to return that Radius is installed
-	helmMock.EXPECT().
-		CheckRadiusInstall("test-context").
-		Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
-		Times(1)
-
-	// Mock output calls
-	outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
-	outputMock.EXPECT().LogInfo("Checking for previous revisions...").Times(1)
-
-	// Mock RollbackRadius to fail
-	helmMock.EXPECT().
-		RollbackRadius(gomock.Any(), "test-context").
-		Return(errors.New("rollback failed")).
-		Times(1)
-
-	err := runner.Run(context.Background())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to rollback Radius")
 }
 
 func TestNewRunner(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -255,4 +272,106 @@ func TestNewRunner(t *testing.T) {
 
 	require.Same(t, helmMock, runner.Helm)
 	require.Same(t, outputMock, runner.Output)
+}
+
+func TestRunner_Run_ListRevisions(t *testing.T) {
+	t.Parallel()
+
+	revisions := []helm.RevisionInfo{
+		{
+			Revision:     2,
+			ChartVersion: "0.46.0",
+			Status:       "deployed",
+			UpdatedAt:    "2023-01-01 12:00:00",
+			Description:  "Upgrade complete",
+		},
+		{
+			Revision:     1,
+			ChartVersion: "0.45.0",
+			Status:       "superseded",
+			UpdatedAt:    "2023-01-01 11:00:00",
+			Description:  "Install complete",
+		},
+	}
+
+	tests := []struct {
+		name          string
+		runner        Runner
+		mockSetup     func(helmMock *helm.MockInterface, outputMock *output.MockInterface)
+		expectedError string
+	}{
+		{
+			name: "list revisions success",
+			runner: Runner{
+				KubeContext:   "test-context",
+				ListRevisions: true,
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+
+				helmMock.EXPECT().
+					GetRadiusRevisions(gomock.Any(), "test-context").
+					Return(revisions, nil).
+					Times(1)
+
+				outputMock.EXPECT().
+					WriteFormatted("table", revisions, gomock.Any()).
+					Return(nil).
+					Times(1)
+			},
+			expectedError: "",
+		},
+		{
+			name: "list revisions error",
+			runner: Runner{
+				KubeContext:   "test-context",
+				ListRevisions: true,
+			},
+			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
+				helmMock.EXPECT().
+					CheckRadiusInstall("test-context").
+					Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "v0.46.0"}, nil).
+					Times(1)
+
+				outputMock.EXPECT().LogInfo("Current Radius version: %s", "v0.46.0").Times(1)
+
+				helmMock.EXPECT().
+					GetRadiusRevisions(gomock.Any(), "test-context").
+					Return(nil, errors.New("failed to get history")).
+					Times(1)
+			},
+			expectedError: "failed to get revision history",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			helmMock := helm.NewMockInterface(ctrl)
+			outputMock := output.NewMockInterface(ctrl)
+
+			runner := tt.runner
+			runner.Helm = helmMock
+			runner.Output = outputMock
+
+			tt.mockSetup(helmMock, outputMock)
+
+			err := runner.Run(context.Background())
+
+			if tt.expectedError == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedError)
+			}
+		})
+	}
 }

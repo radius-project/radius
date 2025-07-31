@@ -38,7 +38,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 This command rolls back the Radius control plane in the cluster associated with the active workspace.
 By default, it rolls back to the previous successful deployment with an older version (n-1 revision).
-You can also specify a specific revision number to rollback to.
+You can also specify a specific revision number to rollback to, or use --list-revisions to see all available revisions.
+
+Note: Specifying --revision 0 or omitting the --revision flag will roll back to the previous version.
+This aligns with Helm's behavior where revision 0 is a special value meaning "previous revision".
 
 The rollback operation will:
 - Check that Radius is currently installed
@@ -54,8 +57,14 @@ Radius is installed in the 'radius-system' namespace. For more information visit
 		Example: `# Rollback Radius to the previous version in the cluster of the active workspace
 rad rollback kubernetes
 
+# Rollback to the previous version explicitly using revision 0
+rad rollback kubernetes --revision 0
+
 # Rollback Radius to a specific revision number
 rad rollback kubernetes --revision 3
+
+# List available revisions without performing rollback
+rad rollback kubernetes --list-revisions
 
 # Check which workspace is active  
 rad workspace show
@@ -69,7 +78,8 @@ rad rollback kubernetes --revision 2
 	}
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
-	cmd.Flags().IntVar(&runner.Revision, "revision", 0, "Specify the revision number to rollback to (defaults to previous version)")
+	cmd.Flags().IntVar(&runner.Revision, "revision", 0, "Specify the revision number to rollback to (0 or omitted = previous version)")
+	cmd.Flags().BoolVar(&runner.ListRevisions, "list-revisions", false, "List available revisions without performing rollback")
 
 	return cmd, runner
 }
@@ -79,8 +89,9 @@ type Runner struct {
 	Helm   helm.Interface
 	Output output.Interface
 
-	KubeContext string
-	Revision    int
+	KubeContext   string
+	Revision      int
+	ListRevisions bool
 }
 
 // NewRunner creates an instance of the runner for the `rad rollback kubernetes` command.
@@ -110,6 +121,18 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Current Radius version: %s", state.RadiusVersion)
 
+	// If --list-revisions is specified, show the revisions and exit
+	if r.ListRevisions {
+		revisions, err := r.Helm.GetRadiusRevisions(ctx, r.KubeContext)
+		if err != nil {
+			return fmt.Errorf("failed to get revision history: %w", err)
+		}
+
+		return r.displayRevisions(revisions)
+	}
+
+	// Note: revision 0 has special meaning - it indicates rollback to the previous version.
+	// This aligns with Helm's behavior where 'helm rollback <release> 0' rolls back to n-1.
 	if r.Revision != 0 {
 		// Specific revision rollback
 		r.Output.LogInfo("Rolling back to specified revision %d...", r.Revision)
@@ -118,7 +141,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to rollback Radius to revision %d: %w", r.Revision, err)
 		}
 	} else {
-		// Automatic rollback to previous version
+		// Automatic rollback to previous version (revision 0 or --revision flag omitted)
 		r.Output.LogInfo("Checking for previous revisions...")
 		err = r.Helm.RollbackRadius(ctx, r.KubeContext)
 		if err != nil {
@@ -127,5 +150,39 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("✓ Radius rollback completed successfully!")
+	return nil
+}
+
+// displayRevisions displays the available revisions in a formatted table.
+func (r *Runner) displayRevisions(revisions []helm.RevisionInfo) error {
+	columns := []output.Column{
+		{
+			Heading:  "REVISION",
+			JSONPath: "{ .Revision }",
+		},
+		{
+			Heading:  "CHART VERSION",
+			JSONPath: "{ .ChartVersion }",
+		},
+		{
+			Heading:  "STATUS",
+			JSONPath: "{ .Status }",
+		},
+		{
+			Heading:  "UPDATED",
+			JSONPath: "{ .UpdatedAt }",
+		},
+		{
+			Heading:  "DESCRIPTION",
+			JSONPath: "{ .Description }",
+		},
+	}
+
+	err := r.Output.WriteFormatted("table", revisions, output.FormatterOptions{
+		Columns: columns,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to display revisions: %w", err)
+	}
 	return nil
 }

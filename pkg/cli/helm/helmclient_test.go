@@ -41,7 +41,10 @@ func TestHelmClientImpl_RunHelmHistory(t *testing.T) {
 	}()
 
 	// This will panic or error, which is expected behavior
-	client.RunHelmHistory(nil, "test-release")
+	_, err := client.RunHelmHistory(nil, "test-release")
+	if err == nil {
+		t.Error("Expected error when configuration is nil, but got nil")
+	}
 }
 
 func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
@@ -61,7 +64,10 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 	}()
 
 	// This will panic or error, which is expected behavior
-	client.RunHelmRollback(nil, "test-release", 1, true)
+	err := client.RunHelmRollback(nil, "test-release", 1, true)
+	if err == nil {
+		t.Error("Expected error when configuration is nil, but got nil")
+	}
 }
 
 func TestHelmClient_Constants(t *testing.T) {

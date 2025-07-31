@@ -117,6 +117,45 @@ func (c *MockInterfaceGetLatestRadiusVersionCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// GetRadiusRevisions mocks base method.
+func (m *MockInterface) GetRadiusRevisions(arg0 context.Context, arg1 string) ([]RevisionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRadiusRevisions", arg0, arg1)
+	ret0, _ := ret[0].([]RevisionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRadiusRevisions indicates an expected call of GetRadiusRevisions.
+func (mr *MockInterfaceMockRecorder) GetRadiusRevisions(arg0, arg1 any) *MockInterfaceGetRadiusRevisionsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRadiusRevisions", reflect.TypeOf((*MockInterface)(nil).GetRadiusRevisions), arg0, arg1)
+	return &MockInterfaceGetRadiusRevisionsCall{Call: call}
+}
+
+// MockInterfaceGetRadiusRevisionsCall wrap *gomock.Call
+type MockInterfaceGetRadiusRevisionsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceGetRadiusRevisionsCall) Return(arg0 []RevisionInfo, arg1 error) *MockInterfaceGetRadiusRevisionsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceGetRadiusRevisionsCall) Do(f func(context.Context, string) ([]RevisionInfo, error)) *MockInterfaceGetRadiusRevisionsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceGetRadiusRevisionsCall) DoAndReturn(f func(context.Context, string) ([]RevisionInfo, error)) *MockInterfaceGetRadiusRevisionsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // InstallRadius mocks base method.
 func (m *MockInterface) InstallRadius(arg0 context.Context, arg1 ClusterOptions, arg2 string) error {
 	m.ctrl.T.Helper()

@@ -155,6 +155,24 @@ type InstallState struct {
 	ContourVersion string
 }
 
+// RevisionInfo contains information about a specific Helm release revision.
+type RevisionInfo struct {
+	// Revision is the revision number of the release.
+	Revision int
+
+	// ChartVersion is the version of the chart used in this revision.
+	ChartVersion string
+
+	// UpdatedAt is when this revision was deployed.
+	UpdatedAt string
+
+	// Status is the current status of the revision (e.g., deployed, superseded).
+	Status string
+
+	// Description provides additional information about the revision.
+	Description string
+}
+
 //go:generate mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
 
 // Interface provides an abstraction over Helm operations for installing Radius.
@@ -179,6 +197,9 @@ type Interface interface {
 
 	// RollbackRadiusToRevision rolls back the Radius installation to a specific revision.
 	RollbackRadiusToRevision(ctx context.Context, kubeContext string, revision int) error
+
+	// GetRadiusRevisions lists all available revisions of the Radius installation.
+	GetRadiusRevisions(ctx context.Context, kubeContext string) ([]RevisionInfo, error)
 }
 
 type Impl struct {
@@ -514,4 +535,56 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 
 	output.LogInfo("Radius rollback completed successfully!")
 	return nil
+}
+
+// GetRadiusRevisions returns information about all available revisions of the Radius installation.
+func (i *Impl) GetRadiusRevisions(ctx context.Context, kubeContext string) ([]RevisionInfo, error) {
+	clusterOptions := NewDefaultClusterOptions()
+
+	// Initialize helm configuration
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+		Context:   &kubeContext,
+	}
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize helm config: %w", err)
+	}
+
+	// Get release history
+	history, err := i.Helm.RunHelmHistory(helmConf, radiusReleaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get release history: %w", err)
+	}
+
+	if len(history) == 0 {
+		return nil, fmt.Errorf("no revisions found for Radius installation")
+	}
+
+	// Convert to RevisionInfo
+	var revisions []RevisionInfo
+	for _, release := range history {
+		info := RevisionInfo{
+			Revision:    release.Version,
+			Status:      release.Info.Status.String(),
+			Description: release.Info.Description,
+		}
+
+		if !release.Info.FirstDeployed.IsZero() {
+			info.UpdatedAt = release.Info.FirstDeployed.Format("2006-01-02 15:04:05")
+		}
+
+		if release.Chart != nil && release.Chart.Metadata != nil {
+			info.ChartVersion = release.Chart.Metadata.Version
+		}
+
+		revisions = append(revisions, info)
+	}
+
+	// Reverse the order so the latest revision is first
+	for i, j := 0, len(revisions)-1; i < j; i, j = i+1, j-1 {
+		revisions[i], revisions[j] = revisions[j], revisions[i]
+	}
+
+	return revisions, nil
 }
