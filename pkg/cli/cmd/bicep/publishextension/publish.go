@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
-
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -141,8 +141,13 @@ func (r *Runner) Run(ctx context.Context) error {
 
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
 	// npx @radius-project/manifest-to-bicep-extension@alpha generate <resource provider> <temp>
+	bicepExtension := "@radius-project/manifest-to-bicep-extension@edge"
+	if version.Release() != "edge" {
+		bicepExtension = "@radius-project/manifest-to-bicep-extension@" + version.Release()
+	}
+
 	args := []string{
-		"@radius-project/manifest-to-bicep-extension@alpha",
+		bicepExtension,
 		"generate",
 		inputFilePath,
 		outputDirectoryPath,
