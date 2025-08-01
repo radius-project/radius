@@ -41,3 +41,55 @@ References:
 {{- printf "%s" $value -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Create a fully qualified image name with optional registry override.
+
+Usage:
+{{ include "radius.image" (dict "image" .Values.component.image "tag" (.Values.component.tag | default $appversion) "global" .Values.global) }}
+
+Params:
+  - image - String - Required - Image name (e.g., "radius-project/controller" or "myregistry.io/custom-image")
+  - tag - String - Required - Image tag
+  - global - Object - Required - Global values containing imageRegistry
+
+Priority:
+1. If image appears to be a full registry path (contains domain or port before first /), use it as-is with tag handling
+2. If global.imageRegistry is set, prepend it to the image name
+3. Otherwise, use ghcr.io as the default registry
+*/}}
+{{- define "radius.image" -}}
+{{- $isFullPath := false -}}
+{{- /* Check if image looks like a full registry path */ -}}
+{{- if contains "/" .image -}}
+  {{- $firstPart := (split "/" .image)._0 -}}
+  {{- /* Check if first part looks like a registry (has dot or colon, or is localhost) */ -}}
+  {{- if or (contains "." $firstPart) (contains ":" $firstPart) (eq $firstPart "localhost") -}}
+    {{- $isFullPath = true -}}
+  {{- end -}}
+{{- end -}}
+{{- if $isFullPath -}}
+  {{- /* Image is a full path with registry */ -}}
+  {{- if contains ":" .image -}}
+    {{- /* Check if colon is part of tag (after last /) or port */ -}}
+    {{- $parts := splitList "/" .image -}}
+    {{- $lastPart := last $parts -}}
+    {{- if contains ":" $lastPart -}}
+      {{- /* Last part has colon, so image already has a tag */ -}}
+      {{- .image }}
+    {{- else -}}
+      {{- /* Colon is in registry part (port), append tag */ -}}
+      {{- .image }}:{{ .tag }}
+    {{- end -}}
+  {{- else -}}
+    {{- /* Full path but no tag, append the provided tag */ -}}
+    {{- .image }}:{{ .tag }}
+  {{- end -}}
+{{- else if .global.imageRegistry -}}
+  {{- /* Not a full path, use global registry */ -}}
+  {{- .global.imageRegistry }}/{{ .image }}:{{ .tag }}
+{{- else -}}
+  {{- /* Not a full path, no global registry, use default */ -}}
+  ghcr.io/{{ .image }}:{{ .tag }}
+{{- end -}}
+{{- end -}}

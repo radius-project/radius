@@ -64,6 +64,9 @@ rad upgrade kubernetes
 # Upgrade Radius with custom configuration
 rad upgrade kubernetes --set key=value
 
+# Upgrade Radius with a custom container registry
+rad upgrade kubernetes --set global.imageRegistry=myregistry.azurecr.io
+
 # Upgrade to a specific version
 rad upgrade kubernetes --version 0.47.0
 

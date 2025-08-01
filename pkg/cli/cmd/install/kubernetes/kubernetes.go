@@ -57,6 +57,9 @@ rad install kubernetes --skip-contour-install
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
 
+# Install Radius with a custom container registry
+rad install kubernetes --set global.imageRegistry=myregistry.azurecr.io
+
 # Install Radius with the intermediate root CA certificate in the current Kubernetes context
 rad install kubernetes --set-file global.rootCA.cert=/path/to/rootCA.crt
 
