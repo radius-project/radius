@@ -222,6 +222,10 @@ jobs:
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+      - name: Release radius-project/bicep-types version ${{ steps.get-version.outputs.release-version }}
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Log in to Azure
         uses: azure/login@v2
         with:
