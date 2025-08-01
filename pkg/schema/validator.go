@@ -417,7 +417,7 @@ func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
 		return nil
 	}
 
-	supportedTypes := []string{"string", "number", "integer", "boolean", "object"}
+	supportedTypes := []string{"string", "number", "integer", "boolean", "object", "array", "enum"}
 
 	for _, supported := range supportedTypes {
 		if schema.Type.Is(supported) {

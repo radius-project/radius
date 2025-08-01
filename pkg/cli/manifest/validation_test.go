@@ -338,7 +338,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
 						"2023-10-01": {
 							Schema: map[string]any{
-								"type": "array", // Not supported
+								"type": "invalidtype", // Not supported
 								"items": map[string]any{
 									"type": "string",
 								},
@@ -350,7 +350,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 		}
 		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "unsupported type: array")
+		require.Contains(t, err.Error(), "unsupported type: invalidtype")
 		require.Contains(t, err.Error(), "Test.Provider/widgets@2023-10-01")
 	})
 
