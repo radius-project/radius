@@ -66,18 +66,12 @@ type executor struct {
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
 	// Install Terraform
 	i := install.NewInstaller()
 	tf, err := Install(ctx, i, options.RootDir)
-	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
-	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
-	defer func() {
-		if err := i.Remove(ctx); err != nil {
-			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
-		}
-	}()
+	// Note: We use a global shared binary approach, so we should NOT call i.Remove() 
+	// as it would remove the shared global binary that other operations might be using.
+	// The global binary will persist across operations to eliminate race conditions.
 	if err != nil {
 		return nil, err
 	}
@@ -131,13 +125,9 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	// Install Terraform
 	i := install.NewInstaller()
 	tf, err := Install(ctx, i, options.RootDir)
-	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
-	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
-	defer func() {
-		if err := i.Remove(ctx); err != nil {
-			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
-		}
-	}()
+	// Note: We use a global shared binary approach, so we should NOT call i.Remove() 
+	// as it would remove the shared global binary that other operations might be using.
+	// The global binary will persist across operations to eliminate race conditions.
 	if err != nil {
 		return err
 	}
@@ -189,18 +179,12 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 }
 
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
 	// Install Terraform
 	i := install.NewInstaller()
 	tf, err := Install(ctx, i, options.RootDir)
-	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
-	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
-	defer func() {
-		if err := i.Remove(ctx); err != nil {
-			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
-		}
-	}()
+	// Note: We use a global shared binary approach, so we should NOT call i.Remove() 
+	// as it would remove the shared global binary that other operations might be using.
+	// The global binary will persist across operations to eliminate race conditions.
 	if err != nil {
 		return nil, err
 	}
@@ -407,6 +391,15 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 
 	// Load Terraform state to retrieve the outputs
 	logger.Info("Fetching Terraform state")
+	
+	// Verify terraform binary is still accessible before state operation
+	if execPath := tf.ExecPath(); execPath != "" {
+		if _, err := os.Stat(execPath); err != nil {
+			logger.Info(fmt.Sprintf("ERROR: Terraform binary missing at %s during state fetch: %s", execPath, err.Error()))
+			return nil, fmt.Errorf("terraform binary disappeared at %s: %w", execPath, err)
+		}
+	}
+	
 	return tf.Show(ctx)
 }
 
