@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -31,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 // NewCommand creates a new instance of the `rad bicep publish-extension` command.
@@ -142,7 +144,7 @@ func (r *Runner) Run(ctx context.Context) error {
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
 	// npx @radius-project/manifest-to-bicep-extension@alpha generate <resource provider> <temp>
 	bicepExtension := "@radius-project/manifest-to-bicep-extension@edge"
-	if version.Release() != "edge" {
+	if isValidSemver(version.Release()) {
 		bicepExtension = "@radius-project/manifest-to-bicep-extension@" + version.Release()
 	}
 
@@ -191,4 +193,12 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 	}
 
 	return nil
+}
+
+func isValidSemver(version string) bool {
+	// The semver package expects versions to start with 'v'
+	if !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+	return semver.IsValid(version)
 }
