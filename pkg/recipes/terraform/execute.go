@@ -97,7 +97,11 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Run TF Init and Apply in the working directory
-	state, err := initAndApply(ctx, tf)
+	stateLockTimeout := options.StateLockTimeout
+	if stateLockTimeout == "" {
+		stateLockTimeout = DefaultStateLockTimeout
+	}
+	state, err := initAndApply(ctx, tf, stateLockTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +168,11 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
-	err = initAndDestroy(ctx, tf)
+	stateLockTimeout := options.StateLockTimeout
+	if stateLockTimeout == "" {
+		stateLockTimeout = DefaultStateLockTimeout
+	}
+	err = initAndDestroy(ctx, tf, stateLockTimeout)
 	if err != nil {
 		return err
 	}
@@ -376,7 +384,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, error) {
+func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout string) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
@@ -391,9 +399,9 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
 
-	// Apply Terraform configuration
-	logger.Info("Running Terraform apply")
-	if err := tf.Apply(ctx); err != nil {
+	// Apply Terraform configuration with state lock timeout
+	logger.Info("Running Terraform apply with state lock timeout: " + stateLockTimeout)
+	if err := tf.Apply(ctx, tfexec.Lock(true), tfexec.LockTimeout(stateLockTimeout)); err != nil {
 		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
@@ -403,7 +411,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 }
 
 // initAndDestroy runs Terraform init and destroy in the provided working directory.
-func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
+func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
@@ -417,9 +425,9 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
-	// Destroy Terraform configuration
-	logger.Info("Running Terraform destroy")
-	if err := tf.Destroy(ctx); err != nil {
+	// Destroy Terraform configuration with state lock timeout
+	logger.Info("Running Terraform destroy with state lock timeout: " + stateLockTimeout)
+	if err := tf.Destroy(ctx, tfexec.Lock(true), tfexec.LockTimeout(stateLockTimeout)); err != nil {
 		return fmt.Errorf("terraform destroy failure: %w", err)
 	}
 

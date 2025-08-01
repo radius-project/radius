@@ -34,6 +34,9 @@ import (
 const (
 	executionSubDir                = "deploy"
 	workingDirFileMode fs.FileMode = 0700
+
+	// DefaultStateLockTimeout is the default timeout for acquiring Terraform state locks
+	DefaultStateLockTimeout = "3m"
 )
 
 //go:generate mockgen -typed -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
@@ -66,6 +69,10 @@ type Options struct {
 	// Secrets represents a map of secrets required for recipe execution.
 	// The map's key represents the secretStoreIDs while the value represents the secret data.
 	Secrets map[string]recipes.SecretData
+
+	// StateLockTimeout is the timeout duration for acquiring Terraform state locks.
+	// If not specified, Terraform's default timeout will be used.
+	StateLockTimeout string
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.
