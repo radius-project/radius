@@ -36,7 +36,7 @@ const (
 	workingDirFileMode fs.FileMode = 0700
 
 	// DefaultStateLockTimeout is the default timeout for acquiring Terraform state locks
-	DefaultStateLockTimeout = "3m"
+	DefaultStateLockTimeout = "10m"
 )
 
 //go:generate mockgen -typed -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor

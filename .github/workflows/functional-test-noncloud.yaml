@@ -479,7 +479,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
           GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
-          RADIUS_TEST_FAST_CLEANUP: false
+          RADIUS_TEST_FAST_CLEANUP: true
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

@@ -48,7 +48,7 @@ on:
   workflow_dispatch:
     inputs:
       skip-build:
-        description: 'Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the main branch.'
+        description: 'Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the selected branch.'
         required: false
         default: 'true'
         type: choice
@@ -134,7 +134,6 @@ jobs:
           path: ./dist/cache
           key: radius-test-latest-
       - name: Skip build if build is still valid
-        if: github.event_name != 'pull_request'
         id: skip-build
         run: |
           # check if the last build time to see if we need to build again
@@ -159,20 +158,21 @@ jobs:
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
-      - name: Set up checkout target (pull_request)
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'pull_request'
-        run: |
-          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # For manual runs, use the same branch as the workflow was triggered from
+            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
+          else
+            # For scheduled runs, use main branch
+            echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+          fi
       - name: Generate ID for release
         id: gen-id
         run: |
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
-          if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
+          EFFECTIVE_SKIP_BUILD="${{ steps.skip-build.outputs.SKIP_BUILD }}"
+          if [[ "$EFFECTIVE_SKIP_BUILD" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
               # Add run number to randomize unique id for scheduled runs.
