@@ -38,7 +38,7 @@ func TestInstall_SuccessfulDownload(t *testing.T) {
 	globalTmpDir, err := os.MkdirTemp("", "terraform-download-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(globalTmpDir)
-	
+
 	// Set environment variable to override global terraform path for testing
 	oldEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
 	os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir)
@@ -67,10 +67,10 @@ func TestInstall_SuccessfulDownload(t *testing.T) {
 	// Verify global terraform directory was created with expected files
 	globalBinary := filepath.Join(globalTmpDir, "terraform")
 	globalMarker := filepath.Join(globalTmpDir, ".terraform-ready")
-	
+
 	_, err = os.Stat(globalBinary)
 	require.NoError(t, err, "Global terraform binary should exist")
-	
+
 	_, err = os.Stat(globalMarker)
 	require.NoError(t, err, "Global terraform marker file should exist")
 }
@@ -85,7 +85,7 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	globalTmpDir, err := os.MkdirTemp("", "terraform-reuse-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(globalTmpDir)
-	
+
 	// Set environment variable to override global terraform path for testing
 	oldEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
 	os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir)
@@ -109,10 +109,10 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	// Verify global files exist after first install
 	globalBinary := filepath.Join(globalTmpDir, "terraform")
 	globalMarker := filepath.Join(globalTmpDir, ".terraform-ready")
-	
+
 	_, err = os.Stat(globalBinary)
 	require.NoError(t, err, "Global terraform binary should exist after first install")
-	
+
 	_, err = os.Stat(globalMarker)
 	require.NoError(t, err, "Global terraform marker should exist after first install")
 
@@ -128,13 +128,13 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	// Both should work
 	_, _, err = tf1.Version(ctx, false)
 	require.NoError(t, err, "First terraform instance should work")
-	
+
 	_, _, err = tf2.Version(ctx, false)
 	require.NoError(t, err, "Second terraform instance should work")
 }
 
 func TestInstall_MultipleConcurrentCallsUseSameBinary(t *testing.T) {
-	// Skip this test in short mode as it requires downloading Terraform  
+	// Skip this test in short mode as it requires downloading Terraform
 	if testing.Short() {
 		t.Skip("Skipping download test in short mode")
 	}
@@ -143,7 +143,7 @@ func TestInstall_MultipleConcurrentCallsUseSameBinary(t *testing.T) {
 	globalTmpDir, err := os.MkdirTemp("", "terraform-same-binary-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(globalTmpDir)
-	
+
 	// Set environment variable to override global terraform path for testing
 	oldEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
 	os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir)
@@ -176,17 +176,17 @@ func TestInstall_MultipleConcurrentCallsUseSameBinary(t *testing.T) {
 	// Both should work and be using terraform from global location
 	_, _, err = tf1.Version(ctx, false)
 	require.NoError(t, err, "First terraform instance should work")
-	
+
 	_, _, err = tf2.Version(ctx, false)
 	require.NoError(t, err, "Second terraform instance should work")
 
 	// Verify only one set of global files exists
 	globalBinary := filepath.Join(globalTmpDir, "terraform")
 	globalMarker := filepath.Join(globalTmpDir, ".terraform-ready")
-	
+
 	_, err = os.Stat(globalBinary)
 	require.NoError(t, err, "Global terraform binary should exist")
-	
+
 	_, err = os.Stat(globalMarker)
 	require.NoError(t, err, "Global terraform marker should exist")
 
@@ -210,7 +210,7 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 	globalTmpDir, err := os.MkdirTemp("", "terraform-global-test")
 	require.NoError(t, err)
 	defer os.RemoveAll(globalTmpDir)
-	
+
 	// Set environment variable to override global terraform path for testing
 	oldEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
 	os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir)
@@ -218,11 +218,11 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 
 	// Reset global state for this test
 	resetGlobalStateForTesting()
-	
+
 	// Test that multiple concurrent Install calls use the same binary without race conditions
 	ctx := context.Background()
 	installer := install.NewInstaller()
-	
+
 	// Create multiple execution directories (as would happen in production)
 	tmpDirs := make([]string, 3)
 	for i := range tmpDirs {
@@ -232,10 +232,9 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 		tmpDirs[i] = tmpDir
 	}
 
-	// Run multiple Install calls concurrently
 	results := make(chan *tfexec.Terraform, len(tmpDirs))
 	errors := make(chan error, len(tmpDirs))
-	
+
 	for _, tmpDir := range tmpDirs {
 		go func(dir string) {
 			tf, err := Install(ctx, installer, dir)
@@ -247,7 +246,6 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 		}(tmpDir)
 	}
 
-	// Collect results
 	var terraforms []*tfexec.Terraform
 	for i := 0; i < len(tmpDirs); i++ {
 		select {
@@ -258,11 +256,7 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 		}
 	}
 
-	// Verify all succeeded
 	require.Len(t, terraforms, len(tmpDirs), "All Install calls should succeed")
-	
-	// Verify all are using terraform (can't easily verify same binary path without exposing internals,
-	// but we can verify they all work)
 	for i, tf := range terraforms {
 		require.NotNil(t, tf, "Terraform instance %d should not be nil", i)
 		// Verify terraform binary works
@@ -270,4 +264,3 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 		require.NoError(t, err, "Terraform version check should work for instance %d", i)
 	}
 }
-

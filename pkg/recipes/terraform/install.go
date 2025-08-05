@@ -61,7 +61,7 @@ var (
 	globalTerraformReady bool
 )
 
-// Install installs Terraform using a global shared binary approach to eliminate race conditions.
+// Install installs Terraform using a global shared binary approach.
 // It uses a global mutex to ensure thread-safe access to the shared Terraform binary.
 // This approach prevents concurrent file system operations that were causing state lock errors.
 func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
@@ -90,7 +90,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Installer, logger logr.Logger) (string, error) {
 	// Get dynamic paths (allows testing override)
 	globalDir, globalBinary, globalMarker := getGlobalTerraformPaths()
-	
+
 	// Lock global mutex to prevent concurrent access
 	globalTerraformMutex.Lock()
 	defer globalTerraformMutex.Unlock()
@@ -233,4 +233,3 @@ func resetGlobalStateForTesting() {
 	defer globalTerraformMutex.Unlock()
 	globalTerraformReady = false
 }
-

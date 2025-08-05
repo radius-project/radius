@@ -63,15 +63,12 @@ type executor struct {
 	kubernetesClients kubernetesclientprovider.KubernetesClientProvider
 }
 
-// Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
+// Deploy ensures Terraform is available, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
 	// Install Terraform
 	i := install.NewInstaller()
 	tf, err := Install(ctx, i, options.RootDir)
-	// Note: We use a global shared binary approach, so we should NOT call i.Remove() 
-	// as it would remove the shared global binary that other operations might be using.
-	// The global binary will persist across operations to eliminate race conditions.
 	if err != nil {
 		return nil, err
 	}
@@ -91,10 +88,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Run TF Init and Apply in the working directory
-	stateLockTimeout := options.StateLockTimeout
-	if stateLockTimeout == "" {
-		stateLockTimeout = DefaultStateLockTimeout
-	}
+	stateLockTimeout := getStateLockTimeout(options.StateLockTimeout)
 	state, err := initAndApply(ctx, tf, stateLockTimeout)
 	if err != nil {
 		return nil, err
@@ -117,7 +111,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	return state, nil
 }
 
-// Delete installs Terraform, creates a working directory, generates a config, and runs Terraform destroy
+// Delete ensures Terraform is available, creates a working directory, generates a config, and runs Terraform destroy
 // in the working directory, returning an error if any of these steps fail.
 func (e *executor) Delete(ctx context.Context, options Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -125,7 +119,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	// Install Terraform
 	i := install.NewInstaller()
 	tf, err := Install(ctx, i, options.RootDir)
-	// Note: We use a global shared binary approach, so we should NOT call i.Remove() 
+	// Note: We use a global shared binary approach, so we should NOT call i.Remove()
 	// as it would remove the shared global binary that other operations might be using.
 	// The global binary will persist across operations to eliminate race conditions.
 	if err != nil {
@@ -158,10 +152,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
-	stateLockTimeout := options.StateLockTimeout
-	if stateLockTimeout == "" {
-		stateLockTimeout = DefaultStateLockTimeout
-	}
+	stateLockTimeout := getStateLockTimeout(options.StateLockTimeout)
 	err = initAndDestroy(ctx, tf, stateLockTimeout)
 	if err != nil {
 		return err
@@ -182,9 +173,6 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	// Install Terraform
 	i := install.NewInstaller()
 	tf, err := Install(ctx, i, options.RootDir)
-	// Note: We use a global shared binary approach, so we should NOT call i.Remove() 
-	// as it would remove the shared global binary that other operations might be using.
-	// The global binary will persist across operations to eliminate race conditions.
 	if err != nil {
 		return nil, err
 	}
@@ -367,6 +355,14 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	return tfConfig, nil
 }
 
+// getStateLockTimeout returns the configured state lock timeout or the default if not set.
+func getStateLockTimeout(timeout string) string {
+	if timeout == "" {
+		return DefaultStateLockTimeout
+	}
+	return timeout
+}
+
 // initAndApply runs Terraform init and apply in the provided working directory.
 func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout string) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -391,7 +387,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 
 	// Load Terraform state to retrieve the outputs
 	logger.Info("Fetching Terraform state")
-	
+
 	// Verify terraform binary is still accessible before state operation
 	if execPath := tf.ExecPath(); execPath != "" {
 		if _, err := os.Stat(execPath); err != nil {
@@ -399,7 +395,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 			return nil, fmt.Errorf("terraform binary disappeared at %s: %w", execPath, err)
 		}
 	}
-	
+
 	return tf.Show(ctx)
 }
 

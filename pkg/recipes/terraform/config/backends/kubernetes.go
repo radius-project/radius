@@ -108,7 +108,7 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 	}
 
 	inputString := strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))
-	
+
 	hasher := sha1.New()
 	_, err = hasher.Write([]byte(inputString))
 	if err != nil {
@@ -116,10 +116,6 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 	}
 	hash := hasher.Sum(nil)
 	suffix := fmt.Sprintf("%x", hash)
-
-	// Debug logging to help investigate state lock collisions
-	fmt.Printf("DEBUG STATE KEY: ResourceID=%s, EnvID=%s, AppID=%s, Input=%s, Suffix=%s\n", 
-		resourceRecipe.ResourceID, resourceRecipe.EnvironmentID, resourceRecipe.ApplicationID, inputString, suffix)
 
 	return suffix, nil
 }
