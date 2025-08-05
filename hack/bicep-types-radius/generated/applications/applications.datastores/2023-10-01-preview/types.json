@@ -706,11 +706,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Datastores/mongoDatabases@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/3"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
@@ -1038,11 +1038,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Datastores/redisCaches@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/58"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
@@ -1356,11 +1356,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Datastores/sqlDatabases@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/80"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {

@@ -720,11 +720,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Messaging/rabbitMQQueues@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/3"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {

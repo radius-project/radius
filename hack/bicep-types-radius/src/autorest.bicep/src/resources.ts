@@ -660,14 +660,14 @@ export function getProviderDefinitions(
     }
 
     // ambiguous - without any further information, we have to assume 'all'
-    return ScopeType.Unknown;
+    return ScopeType.None;
   }
 
   function mergeScopes(scopeA: ScopeType, scopeB: ScopeType) {
     // We have to assume any (unknown) scope if either scope is unknown
     // Bitwise OR will not handle this case correctly as 'unknown' is 0.
-    if (scopeA == ScopeType.Unknown || scopeB == ScopeType.Unknown) {
-      return ScopeType.Unknown;
+    if (scopeA == ScopeType.None || scopeB == ScopeType.None) {
+      return ScopeType.None;
     }
 
     return scopeA | scopeB;
