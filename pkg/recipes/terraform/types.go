@@ -66,6 +66,9 @@ type Options struct {
 	// Secrets represents a map of secrets required for recipe execution.
 	// The map's key represents the secretStoreIDs while the value represents the secret data.
 	Secrets map[string]recipes.SecretData
+
+	// LogLevel represents the Terraform execution log level.
+	LogLevel string
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.
