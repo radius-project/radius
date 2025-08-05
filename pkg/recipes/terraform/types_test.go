@@ -34,6 +34,10 @@ func TestNewTerraform_Success(t *testing.T) {
 	execPath := filepath.Join(testDir, "terraform")
 	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
 
+	// Create a mock terraform binary
+	err := os.WriteFile(execPath, []byte("#!/bin/bash\necho 'mock terraform'"), 0755)
+	require.NoError(t, err)
+
 	tf, err := NewTerraform(testcontext.New(t), testDir, execPath)
 	require.NoError(t, err)
 	require.Equal(t, expectedWorkingDir, tf.WorkingDir())
