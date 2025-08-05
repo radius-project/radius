@@ -98,11 +98,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
-		RootDir:        requestDirPath,
-		EnvConfig:      &opts.Configuration,
-		ResourceRecipe: &opts.Recipe,
-		EnvRecipe:      &opts.Definition,
-		Secrets:        opts.Secrets,
+		RootDir:          requestDirPath,
+		EnvConfig:        &opts.Configuration,
+		ResourceRecipe:   &opts.Recipe,
+		EnvRecipe:        &opts.Definition,
+		Secrets:          opts.Secrets,
+		StateLockTimeout: terraform.DefaultStateLockTimeout,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -150,11 +151,12 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 	}
 
 	err = d.terraformExecutor.Delete(ctx, terraform.Options{
-		RootDir:        requestDirPath,
-		EnvConfig:      &opts.Configuration,
-		ResourceRecipe: &opts.Recipe,
-		EnvRecipe:      &opts.Definition,
-		Secrets:        opts.Secrets,
+		RootDir:          requestDirPath,
+		EnvConfig:        &opts.Configuration,
+		ResourceRecipe:   &opts.Recipe,
+		EnvRecipe:        &opts.Definition,
+		Secrets:          opts.Secrets,
+		StateLockTimeout: terraform.DefaultStateLockTimeout,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)

@@ -107,14 +107,17 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 		return "", err
 	}
 
+	inputString := strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))
+
 	hasher := sha1.New()
-	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
+	_, err = hasher.Write([]byte(inputString))
 	if err != nil {
 		return "", err
 	}
 	hash := hasher.Sum(nil)
+	suffix := fmt.Sprintf("%x", hash)
 
-	return fmt.Sprintf("%x", hash), nil
+	return suffix, nil
 }
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.

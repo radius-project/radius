@@ -20,9 +20,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
@@ -37,73 +38,117 @@ const (
 	installSubDir                     = "install"
 	installVerificationRetryCount     = 5
 	installVerificationRetryDelaySecs = 3
+
+	// Global shared terraform binary paths (persistent hidden directory under terraform root)
+	// Using .terraform-global as a more recognizable and persistent directory name
+	defaultGlobalTerraformDir    = "/terraform/.terraform-global"
+	defaultGlobalTerraformBinary = "/terraform/.terraform-global/terraform"
+	defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
 )
 
-// Install installs Terraform under /install in the provided Terraform root directory for the resource.
-// It first checks for a pre-mounted Terraform binary (typically copied by an init container from a
-// container image) at the root of the tfDir. If found and working, it uses the pre-mounted binary
-// for better performance and reduced download overhead. If not found or not working, it falls back
-// to downloading the latest version of Terraform and returns the path to the installed Terraform
-// executable. It returns an error if the directory creation or Terraform installation fails.
+// getGlobalTerraformPaths returns the terraform paths, allowing override for testing
+func getGlobalTerraformPaths() (dir, binary, marker string) {
+	if testDir := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR"); testDir != "" {
+		return testDir, testDir + "/terraform", testDir + "/.terraform-ready"
+	}
+	return defaultGlobalTerraformDir, defaultGlobalTerraformBinary, defaultGlobalMarkerFile
+}
+
+var (
+	// Global mutex to synchronize terraform binary installation and access
+	globalTerraformMutex sync.Mutex
+	// Track if global terraform binary is initialized
+	globalTerraformReady bool
+)
+
+// Install installs Terraform using a global shared binary approach.
+// It uses a global mutex to ensure thread-safe access to the shared Terraform binary.
+// This approach prevents concurrent file system operations that were causing state lock errors.
 func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Check if Terraform is pre-mounted from a container (e.g., via init container)
-	preMountedPath := filepath.Join(tfDir, "terraform")
-	if _, err := os.Stat(preMountedPath); err == nil {
-		logger.Info(fmt.Sprintf("Found pre-mounted Terraform binary at: %q", preMountedPath))
-
-		// Create a new instance of tfexec.Terraform with the pre-mounted binary
-		tf, err := NewTerraform(ctx, tfDir, preMountedPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Terraform instance with pre-mounted binary: %w", err)
-		}
-
-		// Verify the pre-mounted Terraform binary is working
-		_, _, err = tf.Version(ctx, false)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Pre-mounted Terraform binary is not working properly: %s. Falling back to download.", err.Error()))
-		} else {
-			logger.Info("Successfully using pre-mounted Terraform binary")
-			// Configure Terraform logs for the pre-mounted binary
-			configureTerraformLogs(ctx, tf)
-			return tf, nil
-		}
+	// Use global shared binary approach with proper locking
+	execPath, err := ensureGlobalTerraformBinary(ctx, installer, logger)
+	if err != nil {
+		return nil, err
 	}
 
-	// Fall back to downloading Terraform if no pre-mounted binary is found or if it's not working
-	logger.Info("No pre-mounted Terraform binary found, downloading Terraform...")
-
-	// Create Terraform installation directory
-	installDir := filepath.Join(tfDir, installSubDir)
-	if err := os.MkdirAll(installDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create directory for terraform installation for resource: %w", err)
+	// Create a new instance of tfexec.Terraform with the global shared binary
+	tf, err := NewTerraform(ctx, tfDir, execPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Terraform instance with global shared binary: %w", err)
 	}
 
-	// Check if pre-downloaded Terraform binary exists and copy it to installDir
-	preMountedBinaryPath := "/terraform/terraform"
-	markerFile := "/terraform/.terraform-source"
-	
-	if _, err := os.Stat(preMountedBinaryPath); err == nil {
-		if _, err := os.Stat(markerFile); err == nil {
-			logger.Info("Copying pre-downloaded Terraform binary to install directory")
-			if data, err := os.ReadFile(preMountedBinaryPath); err == nil {
-				if err := os.WriteFile(filepath.Join(installDir, "terraform"), data, 0755); err == nil {
-					logger.Info("Successfully copied pre-downloaded Terraform binary")
-				}
+	// Configure Terraform logs
+	configureTerraformLogs(ctx, tf)
+
+	return tf, nil
+}
+
+// ensureGlobalTerraformBinary ensures a global shared Terraform binary is available.
+// Uses mutex-based locking to prevent race conditions during concurrent access.
+func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Installer, logger logr.Logger) (string, error) {
+	// Get dynamic paths (allows testing override)
+	globalDir, globalBinary, globalMarker := getGlobalTerraformPaths()
+
+	// Lock global mutex to prevent concurrent access
+	globalTerraformMutex.Lock()
+	defer globalTerraformMutex.Unlock()
+
+	// Check if global binary is already ready
+	if globalTerraformReady {
+		if _, err := os.Stat(globalBinary); err == nil {
+			if _, err := os.Stat(globalMarker); err == nil {
+				logger.Info("Using existing global shared Terraform binary")
+				return globalBinary, nil
+			} else {
+				logger.Info(fmt.Sprintf("Global marker file missing at %s, will reinstall", globalMarker))
 			}
+		} else {
+			logger.Info(fmt.Sprintf("Global binary missing at %s, will reinstall", globalBinary))
 		}
+		// Mark as not ready if files are missing
+		globalTerraformReady = false
 	}
 
-	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
+	// Check if pre-mounted binary exists (from init container)
+	if _, err := os.Stat(globalBinary); err == nil {
+		if _, err := os.Stat(globalMarker); err == nil {
+			logger.Info("Found pre-mounted global Terraform binary")
+
+			// Verify the binary works
+			tf, err := tfexec.NewTerraform(globalDir, globalBinary)
+			if err != nil {
+				logger.Info(fmt.Sprintf("Failed to create Terraform instance with pre-mounted binary: %s", err.Error()))
+			} else {
+				_, _, err = tf.Version(ctx, false)
+				if err == nil {
+					logger.Info("Successfully verified pre-mounted global Terraform binary")
+					globalTerraformReady = true
+					return globalBinary, nil
+				}
+				logger.Info(fmt.Sprintf("Pre-mounted global Terraform binary verification failed: %s", err.Error()))
+			}
+		} else {
+			logger.Info(fmt.Sprintf("Global binary exists at %s but marker missing at %s", globalBinary, globalMarker))
+		}
+	} else {
+		logger.Info(fmt.Sprintf("No global binary found at %s", globalBinary))
+	}
+
+	// Need to download and install Terraform
+	logger.Info("Downloading Terraform to global shared location")
+
+	// Create global terraform directory
+	if err := os.MkdirAll(globalDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create global terraform directory: %w", err)
+	}
 
 	installStartTime := time.Now()
-	// Re-visit this: consider checking if an existing installation of same version of Terraform is available.
-	// For initial iteration we will always install Terraform for every execution of the recipe driver.
 	execPath, err := installer.Ensure(ctx, []src.Source{
 		&releases.LatestVersion{
 			Product:    product.Terraform,
-			InstallDir: installDir,
+			InstallDir: globalDir,
 		},
 	})
 	if err != nil {
@@ -113,7 +158,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 				metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
 			},
 		)
-		return nil, err
+		return "", fmt.Errorf("failed to install Terraform to global location: %w", err)
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
@@ -123,16 +168,28 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 		},
 	)
 
-	logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
+	logger.Info(fmt.Sprintf("Terraform installed to global location: %q", execPath))
 
-	// Create a new instance of tfexec.Terraform with current Terraform installation path
-	tf, err := NewTerraform(ctx, tfDir, execPath)
-	if err != nil {
-		return nil, err
+	// Copy to our standardized global path if different
+	if execPath != globalBinary {
+		if data, err := os.ReadFile(execPath); err == nil {
+			if err := os.WriteFile(globalBinary, data, 0755); err != nil {
+				return "", fmt.Errorf("failed to copy terraform binary to global path: %w", err)
+			}
+			logger.Info("Copied Terraform binary to standardized global path")
+		} else {
+			return "", fmt.Errorf("failed to read installed terraform binary: %w", err)
+		}
 	}
 
-	// Verify Terraform installation is complete before proceeding
+	// Verify installation with retries
 	for attempt := 0; attempt <= installVerificationRetryCount; attempt++ {
+		tf, err := tfexec.NewTerraform(globalDir, globalBinary)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Failed to create Terraform instance: %s", err.Error()))
+			continue
+		}
+
 		_, _, err = tf.Version(ctx, false)
 		if err == nil {
 			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
@@ -143,8 +200,9 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 			)
 			break
 		}
+
 		if attempt < installVerificationRetryCount {
-			logger.Info(fmt.Sprintf("Failed to verify Terraform installation completion: %s. Retrying after %d seconds", err.Error(), installVerificationRetryDelaySecs))
+			logger.Info(fmt.Sprintf("Failed to verify global Terraform installation: %s. Retrying after %d seconds", err.Error(), installVerificationRetryDelaySecs))
 			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
 				[]attribute.KeyValue{
 					metrics.TerraformVersionAttrKey.String("latest"),
@@ -154,11 +212,24 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 			time.Sleep(time.Duration(installVerificationRetryDelaySecs) * time.Second)
 			continue
 		}
-		return nil, fmt.Errorf("failed to verify Terraform installation completion after %d attempts. Error: %s", installVerificationRetryCount, err.Error())
+		return "", fmt.Errorf("failed to verify global Terraform installation after %d attempts. Error: %s", installVerificationRetryCount, err.Error())
 	}
 
-	// Configure Terraform logs once Terraform installation is complete
-	configureTerraformLogs(ctx, tf)
+	// Create marker file to indicate successful installation
+	if err := os.WriteFile(globalMarker, []byte("ready"), 0644); err != nil {
+		return "", fmt.Errorf("failed to create global terraform marker file: %w", err)
+	}
 
-	return tf, nil
+	globalTerraformReady = true
+	logger.Info("Global shared Terraform binary is ready")
+
+	return globalBinary, nil
+}
+
+// resetGlobalStateForTesting resets the global terraform state for testing purposes
+// This should only be used in tests
+func resetGlobalStateForTesting() {
+	globalTerraformMutex.Lock()
+	defer globalTerraformMutex.Unlock()
+	globalTerraformReady = false
 }
