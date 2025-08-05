@@ -32,7 +32,7 @@ spec:
       serviceAccountName: ucp
       containers:
       - name: ucp
-        image: "{{ include "radius.image" (dict "image" .Values.ucp.image "tag" (.Values.ucp.tag | default $appversion) "global" .Values.global) }}"
+        image: "{{ include "radius.image" (dict "image" .Values.ucp.image "tag" (.Values.ucp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         args:
         - --config-file=/etc/config/ucp-config.yaml
         env:

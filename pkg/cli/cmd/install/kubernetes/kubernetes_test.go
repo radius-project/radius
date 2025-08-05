@@ -218,4 +218,82 @@ func Test_Run(t *testing.T) {
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
+	t.Run("Success: Install with global.imageTag", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:   helmMock,
+			Output: outputMock,
+
+			KubeContext: "test-context",
+			Set:         []string{"global.imageTag=v0.48.0"},
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{}, nil).
+			Times(1)
+
+		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+			Radius: helm.ChartOptions{
+				SetArgs: []string{"global.imageTag=v0.48.0"},
+			},
+		})
+		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
+			Return(nil).
+			Times(1)
+
+		err := runner.Run(ctx)
+		require.NoError(t, err)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "Installing Radius version %s to namespace: %s...",
+				Params: []interface{}{"edge", "radius-system"},
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
+	t.Run("Success: Install with both global.imageRegistry and global.imageTag", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:   helmMock,
+			Output: outputMock,
+
+			KubeContext: "test-context",
+			Set:         []string{"global.imageRegistry=myregistry.azurecr.io", "global.imageTag=v0.48.0"},
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{}, nil).
+			Times(1)
+
+		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+			Radius: helm.ChartOptions{
+				SetArgs: []string{"global.imageRegistry=myregistry.azurecr.io", "global.imageTag=v0.48.0"},
+			},
+		})
+		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
+			Return(nil).
+			Times(1)
+
+		err := runner.Run(ctx)
+		require.NoError(t, err)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "Installing Radius version %s to namespace: %s...",
+				Params: []interface{}{"edge", "radius-system"},
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
 }

@@ -21,6 +21,10 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system
 
 By default, Radius pulls container images from GitHub Container Registry (ghcr.io). For air-gapped environments or when using private registries, you can configure a custom container registry using the `global.imageRegistry` parameter.
 
+### Custom Image Tag
+
+You can specify a custom tag for all Radius images using the `global.imageTag` parameter. This is useful when you want to deploy a specific version across all components or use custom-built images.
+
 #### Using a Custom Registry
 
 ```console
@@ -37,22 +41,51 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
   --set global.imageRegistry=private.registry.com:5000
 ```
 
-#### With rad CLI commands
-
-The custom registry configuration is also supported in rad CLI commands:
+#### Using a Custom Image Tag
 
 ```console
-# During initial installation
+# Use a specific version for all components
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.imageTag=v0.48.0
+
+# Combine custom registry with custom tag
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.imageRegistry=myregistry.azurecr.io \
+  --set global.imageTag=v0.48.0
+
+# Override specific component while using global tag for others
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.imageTag=v0.48.0 \
+  --set controller.tag=v0.48.1
+```
+
+#### With rad CLI commands
+
+The custom registry and tag configuration is also supported in rad CLI commands:
+
+```console
+# During initial installation with custom registry
 rad install kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io
 
+# During initial installation with custom tag
+rad install kubernetes \
+  --set global.imageTag=v0.48.0
+
+# Combine custom registry and tag
+rad install kubernetes \
+  --set global.imageRegistry=myregistry.azurecr.io \
+  --set global.imageTag=v0.48.0
+
 # During upgrade
 rad upgrade kubernetes \
-  --set global.imageRegistry=myregistry.azurecr.io
+  --set global.imageRegistry=myregistry.azurecr.io \
+  --set global.imageTag=v0.48.0
 
 # During initialization
 rad init \
-  --set global.imageRegistry=myregistry.azurecr.io
+  --set global.imageRegistry=myregistry.azurecr.io \
+  --set global.imageTag=v0.48.0
 ```
 
 #### Using with Private Registries and Certificates

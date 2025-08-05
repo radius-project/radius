@@ -41,7 +41,7 @@ spec:
         {{- end }}
       containers:
       - name: de
-        image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default $appversion) "global" .Values.global) }}
+        image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
         args:
         - --kubernetes=true
         volumeMounts:

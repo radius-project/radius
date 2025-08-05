@@ -76,6 +76,12 @@ rad init --full
 ## Initialize with a custom container registry
 rad init --set global.imageRegistry=myregistry.azurecr.io
 
+## Initialize with a specific version tag
+rad init --set global.imageTag=v0.48.0
+
+## Initialize with custom registry and tag
+rad init --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=v0.48.0
+
 ## Initialize with custom values from a file
 rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 `,

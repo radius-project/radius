@@ -43,20 +43,25 @@ References:
 {{- end -}}
 
 {{/*
-Create a fully qualified image name with optional registry override.
+Create a fully qualified image name with optional registry and tag overrides.
 
 Usage:
-{{ include "radius.image" (dict "image" .Values.component.image "tag" (.Values.component.tag | default $appversion) "global" .Values.global) }}
+{{ include "radius.image" (dict "image" .Values.component.image "tag" (.Values.component.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
 
 Params:
   - image - String - Required - Image name (e.g., "radius-project/controller" or "myregistry.io/custom-image")
-  - tag - String - Required - Image tag
-  - global - Object - Required - Global values containing imageRegistry
+  - tag - String - Required - Image tag (can be component-specific, global, or default)
+  - global - Object - Required - Global values containing imageRegistry and imageTag
 
-Priority:
+Priority for registry:
 1. If image appears to be a full registry path (contains domain or port before first /), use it as-is with tag handling
 2. If global.imageRegistry is set, prepend it to the image name
 3. Otherwise, use ghcr.io as the default registry
+
+Priority for tag (handled by caller):
+1. Component-specific tag (e.g., controller.tag)
+2. global.imageTag
+3. Chart AppVersion (default)
 */}}
 {{- define "radius.image" -}}
 {{- $isFullPath := false -}}

@@ -4,6 +4,11 @@ global:
   # Example: global.imageRegistry=myregistry.azurecr.io
   imageRegistry: ""
   
+  # Configure global.imageTag to use a specific tag for all Radius images.
+  # When empty (default), images will use the tag derived from Chart AppVersion.
+  # Example: global.imageTag=v0.48.0
+  imageTag: ""
+  
   # Configure global.rootCA.cert to use the intermediate CA cert in Radius containers.
   # Otherwise, Radius containers use the default root CA provided by base OS image.
   rootCA:
