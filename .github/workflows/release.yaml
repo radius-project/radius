@@ -206,6 +206,10 @@ jobs:
           echo "* Desired release tag: ${{ steps.get-version.outputs.release-version }}" >> $GITHUB_STEP_SUMMARY
           echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
+      - name: Release radius-project/bicep-tools version ${{ steps.get-version.outputs.release-version }}
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-tools ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
