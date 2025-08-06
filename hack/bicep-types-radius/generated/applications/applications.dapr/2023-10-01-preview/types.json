@@ -717,11 +717,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Dapr/configurationStores@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/3"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -989,11 +989,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Dapr/pubSubBrokers@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/58"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -1241,11 +1241,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Dapr/secretStores@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/78"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -1513,11 +1513,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Dapr/stateStores@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/97"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   }
 ]
