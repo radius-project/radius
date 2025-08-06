@@ -58,12 +58,14 @@ rad install kubernetes --skip-contour-install
 rad install kubernetes --set key=value
 
 # Install Radius with a custom container registry
+# Images will be pulled as: myregistry.azurecr.io/controller, myregistry.azurecr.io/ucpd, etc.
 rad install kubernetes --set global.imageRegistry=myregistry.azurecr.io
 
 # Install Radius with a specific version tag for all components
 rad install kubernetes --set global.imageTag=v0.48.0
 
 # Install Radius with custom registry and tag
+# Images will be pulled as: myregistry.azurecr.io/controller:v0.48.0, etc.
 rad install kubernetes --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=v0.48.0
 
 # Install Radius with the intermediate root CA certificate in the current Kubernetes context

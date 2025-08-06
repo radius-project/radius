@@ -53,7 +53,7 @@ global:
     downloadUrl: ""
 
 controller:
-  image: radius-project/controller
+  image: controller
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -63,7 +63,7 @@ controller:
       memory: "300Mi"
 
 de:
-  image: radius-project/deployment-engine
+  image: deployment-engine
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -74,7 +74,7 @@ de:
       memory: "300Mi"
 
 ucp:
-  image: radius-project/ucpd
+  image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -85,7 +85,7 @@ ucp:
       memory: "300Mi"
 
 dynamicrp:
-  image: radius-project/dynamic-rp
+  image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -103,7 +103,7 @@ dynamicrp:
     path: "/terraform"
 
 rp:
-  image: radius-project/applications-rp
+  image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   publicEndpointOverride: ""
@@ -124,7 +124,7 @@ rp:
 dashboard:
   enabled: true
   containerPort: 7007
-  image: radius-project/dashboard
+  image: dashboard
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -136,7 +136,7 @@ dashboard:
 database:
   enabled: false # Enable the Postgres database install
   postgres_user: "radius"
-  image: radius-project/mirror/postgres
+  image: mirror/postgres
   tag: latest
   storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.
@@ -150,6 +150,6 @@ database:
       memory: "1024Mi"
 
 bicep:
-  image: radius-project/bicep
+  image: bicep
   # Default tag uses Chart AppVersion.
   # tag: latest

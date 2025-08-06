@@ -49,14 +49,14 @@ Usage:
 {{ include "radius.image" (dict "image" .Values.component.image "tag" (.Values.component.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
 
 Params:
-  - image - String - Required - Image name (e.g., "radius-project/controller" or "myregistry.io/custom-image")
+  - image - String - Required - Image name (e.g., "controller" or "myregistry.io/custom-image")
   - tag - String - Required - Image tag (can be component-specific, global, or default)
   - global - Object - Required - Global values containing imageRegistry and imageTag
 
 Priority for registry:
 1. If image appears to be a full registry path (contains domain or port before first /), use it as-is with tag handling
-2. If global.imageRegistry is set, prepend it to the image name
-3. Otherwise, use ghcr.io as the default registry
+2. If global.imageRegistry is set, use it as the registry
+3. Otherwise, use ghcr.io/radius-project as the default registry
 
 Priority for tag (handled by caller):
 1. Component-specific tag (e.g., controller.tag)
@@ -94,7 +94,7 @@ Priority for tag (handled by caller):
   {{- /* Not a full path, use global registry */ -}}
   {{- .global.imageRegistry }}/{{ .image }}:{{ .tag }}
 {{- else -}}
-  {{- /* Not a full path, no global registry, use default */ -}}
-  ghcr.io/{{ .image }}:{{ .tag }}
+  {{- /* Not a full path, no global registry, use default ghcr.io/radius-project */ -}}
+  ghcr.io/radius-project/{{ .image }}:{{ .tag }}
 {{- end -}}
 {{- end -}}

@@ -11,7 +11,7 @@ templates:
 tests:
   - it: should use default ghcr.io registry when global.imageRegistry is not set
     set:
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: v1.0.0
     asserts:
       - equal:
@@ -22,18 +22,18 @@ tests:
   - it: should use custom registry when global.imageRegistry is set
     set:
       global.imageRegistry: myregistry.azurecr.io
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: v1.0.0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/radius-project/controller:v1.0.0
+          value: myregistry.azurecr.io/controller:v1.0.0
         template: controller/deployment.yaml
 
   - it: should handle empty global.imageRegistry
     set:
       global.imageRegistry: ""
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: v1.0.0
     asserts:
       - equal:
@@ -107,7 +107,7 @@ tests:
 
   - it: should work with default tag from appVersion
     set:
-      controller.image: radius-project/controller
+      controller.image: controller
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
@@ -117,93 +117,93 @@ tests:
   - it: should work with custom registry and default tag
     set:
       global.imageRegistry: custom.registry.io
-      controller.image: radius-project/controller
+      controller.image: controller
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
-          pattern: ^custom\.registry\.io/radius-project/controller:.*$
+          pattern: ^custom\.registry\.io/controller:.*$
         template: controller/deployment.yaml
 
   - it: should apply to all deployments with custom registry
     set:
       global.imageRegistry: private.registry.com
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: latest
-      ucp.image: radius-project/ucpd
+      ucp.image: ucpd
       ucp.tag: latest
-      rp.image: radius-project/applications-rp
+      rp.image: applications-rp
       rp.tag: latest
-      dynamicrp.image: radius-project/dynamic-rp
+      dynamicrp.image: dynamic-rp
       dynamicrp.tag: latest
-      de.image: radius-project/deployment-engine
+      de.image: deployment-engine
       de.tag: latest
-      dashboard.image: radius-project/dashboard
+      dashboard.image: dashboard
       dashboard.tag: latest
-      bicep.image: radius-project/bicep
+      bicep.image: bicep
       bicep.tag: latest
     asserts:
       # Test controller image
       - equal:
           path: spec.template.spec.containers[0].image
-          value: private.registry.com/radius-project/controller:latest
+          value: private.registry.com/controller:latest
         template: controller/deployment.yaml
       # Test bicep init container
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: private.registry.com/radius-project/bicep:latest
+          value: private.registry.com/bicep:latest
         template: controller/deployment.yaml
       # Test UCP image
       - equal:
           path: spec.template.spec.containers[0].image
-          value: private.registry.com/radius-project/ucpd:latest
+          value: private.registry.com/ucpd:latest
         template: ucp/deployment.yaml
       # Test applications-rp image
       - equal:
           path: spec.template.spec.containers[0].image
-          value: private.registry.com/radius-project/applications-rp:latest
+          value: private.registry.com/applications-rp:latest
         template: rp/deployment.yaml
       # Test dynamic-rp image
       - equal:
           path: spec.template.spec.containers[0].image
-          value: private.registry.com/radius-project/dynamic-rp:latest
+          value: private.registry.com/dynamic-rp:latest
         template: dynamic-rp/deployment.yaml
       # Test deployment-engine image
       - equal:
           path: spec.template.spec.containers[0].image
-          value: private.registry.com/radius-project/deployment-engine:latest
+          value: private.registry.com/deployment-engine:latest
         template: de/deployment.yaml
       # Test dashboard image
       - equal:
           path: spec.template.spec.containers[0].image
-          value: private.registry.com/radius-project/dashboard:latest
+          value: private.registry.com/dashboard:latest
         template: dashboard/deployment.yaml
 
   - it: should handle database statefulset with custom registry
     set:
       global.imageRegistry: internal.registry.io
       database.enabled: true
-      database.image: radius-project/mirror/postgres
+      database.image: mirror/postgres
       database.tag: 14-alpine
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: internal.registry.io/radius-project/mirror/postgres:14-alpine
+          value: internal.registry.io/mirror/postgres:14-alpine
         template: database/statefulset.yaml
 
   - it: should handle mixed scenario - some with full paths, some without
     set:
       global.imageRegistry: default-registry.io
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: v1.0.0
       rp.image: custom-registry.io/custom-rp:v2.0.0
       rp.tag: ignored
-      ucp.image: radius-project/ucpd
+      ucp.image: ucpd
       ucp.tag: v1.0.0
     asserts:
       # Controller should use global registry
       - equal:
           path: spec.template.spec.containers[0].image
-          value: default-registry.io/radius-project/controller:v1.0.0
+          value: default-registry.io/controller:v1.0.0
         template: controller/deployment.yaml
       # RP should use its full path
       - equal:
@@ -213,16 +213,16 @@ tests:
       # UCP should use global registry
       - equal:
           path: spec.template.spec.containers[0].image
-          value: default-registry.io/radius-project/ucpd:v1.0.0
+          value: default-registry.io/ucpd:v1.0.0
         template: ucp/deployment.yaml
 
   # Tests for global.imageTag functionality
   - it: should use global.imageTag when component tag is not specified
     set:
       global.imageTag: v0.48.0
-      controller.image: radius-project/controller
-      ucp.image: radius-project/ucpd
-      rp.image: radius-project/applications-rp
+      controller.image: controller
+      ucp.image: ucpd
+      rp.image: applications-rp
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
@@ -240,9 +240,9 @@ tests:
   - it: should prioritize component tag over global.imageTag
     set:
       global.imageTag: v0.48.0
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: v0.49.0
-      ucp.image: radius-project/ucpd
+      ucp.image: ucpd
     asserts:
       # Controller should use its specific tag
       - equal:
@@ -259,37 +259,37 @@ tests:
     set:
       global.imageRegistry: myregistry.azurecr.io
       global.imageTag: v0.48.0
-      controller.image: radius-project/controller
-      ucp.image: radius-project/ucpd
-      rp.image: radius-project/applications-rp
-      dynamicrp.image: radius-project/dynamic-rp
-      de.image: radius-project/deployment-engine
+      controller.image: controller
+      ucp.image: ucpd
+      rp.image: applications-rp
+      dynamicrp.image: dynamic-rp
+      de.image: deployment-engine
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/radius-project/controller:v0.48.0
+          value: myregistry.azurecr.io/controller:v0.48.0
         template: controller/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/radius-project/ucpd:v0.48.0
+          value: myregistry.azurecr.io/ucpd:v0.48.0
         template: ucp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/radius-project/applications-rp:v0.48.0
+          value: myregistry.azurecr.io/applications-rp:v0.48.0
         template: rp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/radius-project/dynamic-rp:v0.48.0
+          value: myregistry.azurecr.io/dynamic-rp:v0.48.0
         template: dynamic-rp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/radius-project/deployment-engine:v0.48.0
+          value: myregistry.azurecr.io/deployment-engine:v0.48.0
         template: de/deployment.yaml
 
   - it: should handle empty global.imageTag and fall back to appVersion
     set:
       global.imageTag: ""
-      controller.image: radius-project/controller
+      controller.image: controller
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
@@ -299,8 +299,8 @@ tests:
   - it: should apply global.imageTag to bicep init container
     set:
       global.imageTag: v0.48.0
-      bicep.image: radius-project/bicep
-      controller.image: radius-project/controller
+      bicep.image: bicep
+      controller.image: controller
     asserts:
       # Check bicep init container
       - equal:
@@ -317,17 +317,17 @@ tests:
     set:
       global.imageRegistry: myregistry.io
       global.imageTag: v0.48.0
-      controller.image: radius-project/controller
+      controller.image: controller
       controller.tag: v0.49.0-rc1
-      ucp.image: radius-project/ucpd
+      ucp.image: ucpd
     asserts:
       # Controller with override should use its specific tag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/radius-project/controller:v0.49.0-rc1
+          value: myregistry.io/controller:v0.49.0-rc1
         template: controller/deployment.yaml
       # UCP should use global tag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/radius-project/ucpd:v0.48.0
+          value: myregistry.io/ucpd:v0.48.0
         template: ucp/deployment.yaml

@@ -74,12 +74,14 @@ rad init
 rad init --full
 
 ## Initialize with a custom container registry
+## Images will be pulled as: myregistry.azurecr.io/controller, myregistry.azurecr.io/ucpd, etc.
 rad init --set global.imageRegistry=myregistry.azurecr.io
 
 ## Initialize with a specific version tag
 rad init --set global.imageTag=v0.48.0
 
 ## Initialize with custom registry and tag
+## Images will be pulled as: myregistry.azurecr.io/controller:v0.48.0, etc.
 rad init --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=v0.48.0
 
 ## Initialize with custom values from a file
