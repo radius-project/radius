@@ -275,6 +275,44 @@ func (c *MockHelmClientRunHelmPullCall) DoAndReturn(f func([]action.PullOpt, str
 	return c
 }
 
+// RunHelmRollback mocks base method.
+func (m *MockHelmClient) RunHelmRollback(arg0 *action.Configuration, arg1 string, arg2 int, arg3 bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunHelmRollback", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RunHelmRollback indicates an expected call of RunHelmRollback.
+func (mr *MockHelmClientMockRecorder) RunHelmRollback(arg0, arg1, arg2, arg3 any) *MockHelmClientRunHelmRollbackCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunHelmRollback", reflect.TypeOf((*MockHelmClient)(nil).RunHelmRollback), arg0, arg1, arg2, arg3)
+	return &MockHelmClientRunHelmRollbackCall{Call: call}
+}
+
+// MockHelmClientRunHelmRollbackCall wrap *gomock.Call
+type MockHelmClientRunHelmRollbackCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHelmClientRunHelmRollbackCall) Return(arg0 error) *MockHelmClientRunHelmRollbackCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHelmClientRunHelmRollbackCall) Do(f func(*action.Configuration, string, int, bool) error) *MockHelmClientRunHelmRollbackCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHelmClientRunHelmRollbackCall) DoAndReturn(f func(*action.Configuration, string, int, bool) error) *MockHelmClientRunHelmRollbackCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // RunHelmUninstall mocks base method.
 func (m *MockHelmClient) RunHelmUninstall(arg0 *action.Configuration, arg1, arg2 string, arg3 bool) (*release.UninstallReleaseResponse, error) {
 	m.ctrl.T.Helper()

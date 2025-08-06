@@ -87,8 +87,8 @@ func Execute() error {
 	err = preupgrade.RunPreflightChecks(ctx, config, options)
 	if err != nil {
 		config.Output.LogInfo("ERROR: %v", err)
-		// Exit with non-zero code to fail the Helm hook
-		os.Exit(1)
+		// Return error to propagate failure
+		return err
 	}
 
 	return nil
