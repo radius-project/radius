@@ -155,6 +155,8 @@ preupgrade:
   checks:
     # Version compatibility check
     version: true
+  # Timeout for preflight checks in seconds (default: 300)
+  timeoutSeconds: 300
   # Job configuration
   ttlSecondsAfterFinished: 300
   # Resource requirements
@@ -165,3 +167,21 @@ preupgrade:
     limits:
       cpu: "200m"
       memory: "128Mi"
+  # Security context for the container
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532

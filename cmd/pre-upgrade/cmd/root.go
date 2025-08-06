@@ -18,7 +18,9 @@ package cmd
 
 import (
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -50,6 +52,18 @@ func Execute() error {
 
 	targetVersion := os.Getenv("TARGET_VERSION")
 
+	// Parse timeout from environment variable
+	var timeout time.Duration
+	timeoutEnv := os.Getenv("PREFLIGHT_TIMEOUT_SECONDS")
+	if timeoutEnv != "" {
+		seconds, err := strconv.Atoi(timeoutEnv)
+		if err != nil {
+			config.Output.LogInfo("Warning: Invalid PREFLIGHT_TIMEOUT_SECONDS value '%s', using default", timeoutEnv)
+		} else {
+			timeout = time.Duration(seconds) * time.Second
+		}
+	}
+
 	// Retrieve current version from cluster for accurate logging
 	var currentVersion string
 	state, err := config.Helm.CheckRadiusInstall(config.KubeContext)
@@ -66,7 +80,16 @@ func Execute() error {
 		EnabledChecks:  enabledChecks,
 		TargetVersion:  targetVersion,
 		CurrentVersion: currentVersion,
+		Timeout:        timeout,
 	}
 
-	return preupgrade.RunPreflightChecks(ctx, config, options)
+	// Run preflight checks and ensure proper exit code
+	err = preupgrade.RunPreflightChecks(ctx, config, options)
+	if err != nil {
+		config.Output.LogInfo("ERROR: %v", err)
+		// Exit with non-zero code to fail the Helm hook
+		os.Exit(1)
+	}
+
+	return nil
 }

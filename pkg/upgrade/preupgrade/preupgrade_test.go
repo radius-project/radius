@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -49,7 +50,7 @@ func TestRunPreflightChecks_Success(t *testing.T) {
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
 	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
-	mockOutput.EXPECT().LogInfo("Success: %s: %s", gomock.Any(), gomock.Any())
+	mockOutput.EXPECT().LogInfo("✓ Success: %s: %s", gomock.Any(), gomock.Any())
 
 	config := Config{
 		KubeContext: "test-context",
@@ -88,7 +89,7 @@ func TestRunPreflightChecks_MultipleChecks(t *testing.T) {
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any()).Times(2)
 	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
-	mockOutput.EXPECT().LogInfo("Success: %s: %s", gomock.Any(), gomock.Any()).Times(2)
+	mockOutput.EXPECT().LogInfo("✓ Success: %s: %s", gomock.Any(), gomock.Any()).Times(2)
 
 	config := Config{
 		KubeContext: "test-context",
@@ -126,7 +127,7 @@ func TestRunPreflightChecks_WithSpacesInCheckNames(t *testing.T) {
 	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
 	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
 	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
-	mockOutput.EXPECT().LogInfo("Success: %s: %s", gomock.Any(), gomock.Any())
+	mockOutput.EXPECT().LogInfo("✓ Success: %s: %s", gomock.Any(), gomock.Any())
 
 	config := Config{
 		KubeContext: "test-context",
@@ -264,4 +265,44 @@ func TestRunPreflightChecks_PreflightCheckFailure(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pre-flight check")
 	assert.Contains(t, err.Error(), "failed")
+}
+
+func TestRunPreflightChecks_WithTimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelm := helm.NewMockInterface(ctrl)
+	mockOutput := output.NewMockInterface(ctrl)
+
+	installState := helm.InstallState{
+		RadiusInstalled: true,
+		RadiusVersion:   "0.28.0",
+	}
+
+	mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
+	mockOutput.EXPECT().LogInfo("Running preflight checks: %s", "version")
+	mockOutput.EXPECT().LogInfo("Target version: %s", "0.29.0")
+	mockOutput.EXPECT().LogInfo("Current version: %s", gomock.Any())
+	mockOutput.EXPECT().LogInfo("Running pre-flight checks...")
+	mockOutput.EXPECT().LogInfo("  Running %s...", gomock.Any())
+	mockOutput.EXPECT().LogInfo("    %s %s", gomock.Any(), gomock.Any())
+	mockOutput.EXPECT().LogInfo("Pre-flight checks completed successfully")
+	mockOutput.EXPECT().LogInfo("All preflight checks completed successfully")
+	mockOutput.EXPECT().LogInfo("✓ Success: %s: %s", gomock.Any(), gomock.Any())
+
+	config := Config{
+		KubeContext: "test-context",
+		Helm:        mockHelm,
+		Output:      mockOutput,
+	}
+
+	options := Options{
+		EnabledChecks:  []string{"version"},
+		TargetVersion:  "0.29.0",
+		CurrentVersion: "",
+		Timeout:        10 * time.Second, // Custom timeout
+	}
+
+	err := RunPreflightChecks(context.Background(), config, options)
+	require.NoError(t, err)
 }

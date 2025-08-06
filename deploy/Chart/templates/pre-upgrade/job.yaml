@@ -32,6 +32,8 @@ spec:
         env:
         - name: TARGET_VERSION
           value: "{{ .Chart.AppVersion }}"
+        - name: PREFLIGHT_TIMEOUT_SECONDS
+          value: "{{ .Values.preupgrade.timeoutSeconds }}"
         - name: ENABLED_CHECKS
           value: "{{- $checks := list -}}
           {{- if .Values.preupgrade.checks.version -}}
@@ -41,19 +43,7 @@ spec:
         resources:
           {{- toYaml .Values.preupgrade.resources | nindent 10 }}
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 65532
-          runAsGroup: 65532
-          seccompProfile:
-            type: RuntimeDefault
+          {{- toYaml .Values.preupgrade.securityContext | nindent 10 }}
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 65532
-        runAsGroup: 65532
-        fsGroup: 65532
+        {{- toYaml .Values.preupgrade.podSecurityContext | nindent 8 }}
 {{- end }}

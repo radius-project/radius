@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -38,14 +39,24 @@ type Options struct {
 	EnabledChecks  []string
 	TargetVersion  string
 	CurrentVersion string
+	Timeout        time.Duration // Timeout for preflight checks, defaults to 5 minutes if not set
 }
 
 // RunPreflightChecks executes all configured preflight checks
 func RunPreflightChecks(ctx context.Context, config Config, options Options) error {
+	// Apply default timeout if not set
+	timeout := options.Timeout
+	if timeout == 0 {
+		timeout = 5 * time.Minute
+	}
+
+	// Create context with timeout
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	registry := preflight.NewRegistry(config.Output)
 
 	config.Output.LogInfo("Running preflight checks: %s", strings.Join(options.EnabledChecks, ", "))
-
 	config.Output.LogInfo("Target version: %s", options.TargetVersion)
 	config.Output.LogInfo("Current version: %s", options.CurrentVersion)
 
@@ -75,8 +86,12 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 		}
 	}
 
-	results, err := registry.RunChecks(ctx)
+	results, err := registry.RunChecks(ctxWithTimeout)
 	if err != nil {
+		// Check if the error was due to timeout
+		if ctxWithTimeout.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("preflight checks timed out after %v", timeout)
+		}
 		return fmt.Errorf("preflight checks failed: %w", err)
 	}
 
@@ -84,9 +99,9 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 
 	for _, result := range results {
 		if result.Success {
-			config.Output.LogInfo("Success: %s: %s", result.Check.Name(), result.Message)
+			config.Output.LogInfo("✓ Success: %s: %s", result.Check.Name(), result.Message)
 		} else if result.Severity == preflight.SeverityWarning {
-			config.Output.LogInfo("Failure: %s: %s", result.Check.Name(), result.Message)
+			config.Output.LogInfo("⚠ Warning: %s: %s", result.Check.Name(), result.Message)
 		}
 	}
 
