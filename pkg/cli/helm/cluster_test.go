@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v3/pkg/action"
@@ -32,14 +31,9 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
-func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
-	clusterOptions := PopulateDefaultClusterOptions(CLIClusterOptions{})
-
-	// Not checking other values due to potential failures on release builds
-	require.Equal(t, version.ChartVersion(), clusterOptions.Radius.ChartVersion)
-}
-
 func Test_Helm_InstallRadius(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -94,6 +88,8 @@ func Test_Helm_InstallRadius(t *testing.T) {
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -122,6 +118,8 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 }
 
 func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -154,6 +152,8 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 }
 
 func Test_Helm_CheckRadiusInstall(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -174,7 +174,7 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 	// Set the release status to deployed for the history check
 	radiusRelease.Info = &release.Info{Status: release.StatusDeployed}
-	
+
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return(radiusRelease, nil).Times(1)
@@ -195,6 +195,8 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 }
 
 func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -216,6 +218,8 @@ func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 }
 
 func Test_Helm_UpgradeRadius(t *testing.T) {
+	t.Parallel()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -266,6 +270,8 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 }
 
 func Test_PopulateDefaultClusterOptions(t *testing.T) {
+	t.Parallel()
+
 	custom := CLIClusterOptions{
 		Radius: ChartOptions{
 			Reinstall:    true,

@@ -30,7 +30,8 @@ import (
 )
 
 type CLIClusterOptions struct {
-	Radius ChartOptions
+	Radius  ChartOptions
+	Contour ChartOptions
 }
 
 type ClusterOptions struct {
@@ -82,13 +83,17 @@ func NewDefaultClusterOptions() ClusterOptions {
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 
-	// If any of the CLI options are provided, override the default options.
+	// If any of the Radius CLI options are provided, override the default options.
 	if cliOptions.Radius.Reinstall {
 		options.Radius.Reinstall = cliOptions.Radius.Reinstall
 	}
 
 	if cliOptions.Radius.ChartPath != "" {
 		options.Radius.ChartPath = cliOptions.Radius.ChartPath
+	}
+
+	if cliOptions.Radius.ChartRepo != "" {
+		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
 	}
 
 	if len(cliOptions.Radius.SetArgs) > 0 {
@@ -101,6 +106,35 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	if cliOptions.Radius.ChartVersion != "" {
 		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
+	}
+
+	if cliOptions.Radius.ChartRepo != "" {
+		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
+	}
+
+	// Apply Contour overrides
+	if cliOptions.Contour.Disabled {
+		options.Contour.Disabled = cliOptions.Contour.Disabled
+	}
+
+	if cliOptions.Contour.ChartVersion != "" {
+		options.Contour.ChartVersion = cliOptions.Contour.ChartVersion
+	}
+
+	if cliOptions.Contour.ChartRepo != "" {
+		options.Contour.ChartRepo = cliOptions.Contour.ChartRepo
+	}
+
+	if cliOptions.Contour.ChartPath != "" {
+		options.Contour.ChartPath = cliOptions.Contour.ChartPath
+	}
+
+	if len(cliOptions.Contour.SetArgs) > 0 {
+		options.Contour.SetArgs = cliOptions.Contour.SetArgs
+	}
+
+	if len(cliOptions.Contour.SetFileArgs) > 0 {
+		options.Contour.SetFileArgs = cliOptions.Contour.SetFileArgs
 	}
 
 	return options
@@ -136,6 +170,9 @@ type Interface interface {
 
 	// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
 	CheckRadiusInstall(kubeContext string) (InstallState, error)
+
+	// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
+	GetLatestRadiusVersion(ctx context.Context) (string, error)
 }
 
 type Impl struct {
@@ -165,11 +202,18 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
 
+	if clusterOptions.Contour.Disabled {
+		output.LogInfo("Contour is disabled, skipping installation")
+		return nil
+	}
+
 	// Install Contour
+	output.LogInfo("Installing Contour...")
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
+
 	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
@@ -180,39 +224,38 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	output.LogInfo("Uninstalling Radius...")
-	radiusFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Radius.Namespace,
-		Context:   &kubeContext,
-	}
-	radiusHelmConf, err := initHelmConfig(&radiusFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w", err)
-	}
-	_, err = i.Helm.RunHelmUninstall(radiusHelmConf, radiusReleaseName, clusterOptions.Radius.Namespace, true)
-	if err != nil {
-		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", radiusReleaseName)
-		} else {
-			return fmt.Errorf("failed to uninstall radius, err: %w", err)
-		}
+	// Uninstall Radius
+	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+		return err
 	}
 
-	output.LogInfo("Uninstalling Contour...")
-	contourFlags := genericclioptions.ConfigFlags{
-		Namespace: &clusterOptions.Radius.Namespace,
+	// Uninstall Contour
+	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {
+	output.LogInfo("Uninstalling %s...", componentName)
+
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
 		Context:   &kubeContext,
 	}
-	contourHelmConf, err := initHelmConfig(&contourFlags)
+
+	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return fmt.Errorf("failed to get helm config, err: %w", err)
+		return fmt.Errorf("failed to get helm config for %s, err: %w", componentName, err)
 	}
-	_, err = i.Helm.RunHelmUninstall(contourHelmConf, contourReleaseName, clusterOptions.Radius.Namespace, true)
+
+	_, err = i.Helm.RunHelmUninstall(helmConf, releaseName, namespace, true)
 	if err != nil {
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			output.LogInfo("%s not found", radiusReleaseName)
+			output.LogInfo("%s not found", releaseName)
 		} else {
-			return fmt.Errorf("failed to uninstall contour, err: %w", err)
+			return fmt.Errorf("failed to uninstall %s, err: %w", componentName, err)
 		}
 	}
 
@@ -290,4 +333,37 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	output.LogInfo("Contour upgrade complete")
 
 	return nil
+}
+
+// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
+func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
+	helmAction := NewHelmAction(i.Helm)
+
+	// Use the same repository configuration as we use for installation
+	clusterOptions := NewDefaultClusterOptions()
+	chartRepo := clusterOptions.Radius.ChartRepo
+	chartName := radiusReleaseName
+
+	// Create a minimal helm configuration for chart operations
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &clusterOptions.Radius.Namespace,
+	}
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize helm config: %w", err)
+	}
+
+	// Use the existing HelmChartFromContainerRegistry method with empty version
+	// to fetch the latest chart and extract its version
+	chart, err := helmAction.HelmChartFromContainerRegistry("", helmConf, chartRepo, chartName)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch latest version from repository: %w", err)
+	}
+
+	// Extract version from chart metadata
+	if chart.Metadata == nil || chart.Metadata.Version == "" {
+		return "", fmt.Errorf("chart metadata does not contain version information")
+	}
+
+	return chart.Metadata.Version, nil
 }

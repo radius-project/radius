@@ -18,6 +18,7 @@ package dynamic
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -128,6 +129,72 @@ func Test_Dynamic_Resource_Inert_Lifecycle(t *testing.T) {
 	response.EqualsErrorCode(404, v1.CodeNotFound)
 }
 
+// Test_Dynamic_Resource_Inert_Schema_Validation_Failure tests that schema validation fails as expected
+// when a resource does not conform to the defined schema.
+func Test_Dynamic_Resource_Inert_Schema_Validation_Failure(t *testing.T) {
+	_, ucp := testhost.Start(t)
+
+	// Setup a resource provider with a schema that requires specific properties
+	createRadiusPlane(ucp)
+	createResourceProvider(ucp)
+	createInertResourceType(ucp)
+
+	// Create a schema that requires a "requiredField" property of type string
+	schema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"requiredField": map[string]any{
+				"type": "string",
+			},
+		},
+		"required": []string{"requiredField"},
+	}
+
+	createAPIVersion(ucp, inertResourceTypeName, schema)
+	createLocation(ucp, inertResourceTypeName)
+	createResourceGroup(ucp)
+
+	// Create a resource that violates the schema (missing required field)
+	invalidResource := map[string]any{
+		"properties": map[string]any{
+			"foo": "bar", // This doesn't match the schema which requires "requiredField"
+		},
+		"tags": map[string]string{
+			"costcenter": "12345",
+		},
+	}
+
+	// Attempt to create the resource - this should fail due to schema validation
+	response := ucp.MakeTypedRequest(http.MethodPut, testInertResourceURL, invalidResource)
+	response.WaitForOperationComplete(nil)
+
+	// Get the operation status to check for the error in the Result.Error field
+	operationStatusURL := response.Raw.Header.Get("Azure-AsyncOperation")
+	require.NotEmpty(t, operationStatusURL, "Expected Azure-AsyncOperation header")
+
+	// Make a request to the operation status endpoint
+	statusResponse := ucp.MakeRequest(http.MethodGet, operationStatusURL, nil)
+
+	// Parse the operation status response
+	var operationStatus map[string]any
+	err := json.Unmarshal(statusResponse.Body.Bytes(), &operationStatus)
+	require.NoError(t, err, "Failed to parse operation status response")
+
+	// Check that the operation failed
+	require.Equal(t, "Failed", operationStatus["status"], "Expected operation to fail")
+
+	// Check the error field - this should now contain the schema validation error
+	errorObj, exists := operationStatus["error"]
+	require.True(t, exists, "Expected error field in operation status")
+
+	errorMap, ok := errorObj.(map[string]any)
+	require.True(t, ok, "Expected error to be an object")
+
+	// Verify error details match what we expect from the controller Result.Error field
+	require.Equal(t, v1.CodeInvalidRequestContent, errorMap["code"], "Expected validation error code")
+	require.Contains(t, errorMap["message"].(string), "Schema validation failed", "Expected schema validation error message")
+}
+
 func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockDriver := driver.NewMockDriver(ctrl)
@@ -149,10 +216,11 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 	}))
 
 	schema := map[string]any{
+		"type": "object",
 		"properties": map[string]any{
-			"hostname": map[string]any{},
-			"port":     map[string]any{},
-			"password": map[string]any{},
+			"foo": map[string]any{
+				"type": "string",
+			},
 		},
 	}
 	// Setup a resource provider (Applications.Test/exampleRecipeResources)
@@ -227,9 +295,6 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 		"location": "global",
 		"name":     "my-recipe-example",
 		"properties": map[string]any{
-			"port":              float64(8080), // This is an artifact of the JSON unmarshal process. It's wierd but intended.
-			"hostname":          "example.com",
-			"password":          "v3ryS3cr3t", // TODO: See comments in dynamicresource.go
 			"foo":               "bar",
 			"provisioningState": "Succeeded",
 			"recipe": map[string]any{
@@ -334,7 +399,11 @@ func createInertResourceType(server *ucptesthost.TestHost) {
 	ctx := context.Background()
 
 	resourceType := v20231001preview.ResourceTypeResource{
-		Properties: &v20231001preview.ResourceTypeProperties{},
+		Properties: &v20231001preview.ResourceTypeProperties{
+			Capabilities: []*string{
+				to.Ptr(datamodel.CapabilityManualResourceProvisioning),
+			},
+		},
 	}
 
 	client := server.UCP().NewResourceTypesClient()
@@ -349,11 +418,7 @@ func createRecipeResourceType(server *ucptesthost.TestHost) {
 	ctx := context.Background()
 
 	resourceType := v20231001preview.ResourceTypeResource{
-		Properties: &v20231001preview.ResourceTypeProperties{
-			Capabilities: []*string{
-				to.Ptr(datamodel.CapabilitySupportsRecipes),
-			},
-		},
+		Properties: &v20231001preview.ResourceTypeProperties{},
 	}
 
 	client := server.UCP().NewResourceTypesClient()

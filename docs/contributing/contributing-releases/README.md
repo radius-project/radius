@@ -36,7 +36,17 @@ When starting the release process, we first kick it off by creating an RC releas
 
 Follow the steps below to create an RC release.
 
-1. Run the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) to create deployment engine container images for this release. Enter the release version number (x.y.z, x.y.z-rc1) that is being released.
+1. Run the following commands in a local clone of the [Deployment Engine Repo](https://github.com/azure-octo/deployment-engine), replacing `v.x.y.z-rc1` with the rc release version:
+```bash
+git checkout main
+git pull origin main
+git tag vx.y.z-rc1
+git push origin vx.y.z-rc1
+```
+
+> Note: `azure-octo` org requires the "verified" tag on git tags ([read more](https://docs.github.com/en/authentication/managing-commit-signature-verification/displaying-verification-statuses-for-all-of-your-commits)), so you will have to [set up GPG signing locally](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key).
+
+> Note: This is a temporary workaround. We should ideally run the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) workflow, but the GPG signing is not set up. Issue ref: https://github.com/azure-octo/deployment-engine/issues/456
 
 1. Clone the [radius-project/radius](https://github.com/radius-project/radius) repo locally, or use your existing local copy.
 
@@ -102,6 +112,18 @@ Follow the steps below to create an RC release.
 Once an RC release has been created and validated, we can proceed to creating the final release.
 
 Follow the steps below to create a final release.
+
+1. Run the following commands in a local clone of the [Deployment Engine Repo](https://github.com/azure-octo/deployment-engine), replacing `v.x.y.z` with the release version:
+```bash
+git checkout main
+git pull origin main
+git tag vx.y.z
+git push origin vx.y.z
+```
+
+> Note: `azure-octo` org requires the "verified" tag on git tags ([read more](https://docs.github.com/en/authentication/managing-commit-signature-verification/displaying-verification-statuses-for-all-of-your-commits)), so you will have to [set up GPG signing locally](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key).
+
+> Note: This is a temporary workaround. We should ideally run the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) workflow, but the GPG signing is not set up. Issue ref: https://github.com/azure-octo/deployment-engine/issues/456
 
 1. Move to your local copy of the `radius-project/radius` repo.
 

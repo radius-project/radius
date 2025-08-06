@@ -48,7 +48,7 @@ env:
   # Helm version
   HELM_VER: "v3.15.3"
   # KinD cluster version
-  KIND_VER: "v0.23.0"
+  KIND_VER: "v0.29.0"
   # Kubectl version
   KUBECTL_VER: "v1.30.0"
   # Dapr CLI version
@@ -85,6 +85,8 @@ env:
   GITEA_EMAIL: "testuser@radapp.io"
   # Gitea access token name
   GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Kubernetes client QPS and Burst settings for high-concurrency CI environments
+  RADIUS_QPS_AND_BURST: "800"
 
 jobs:
   build:
@@ -363,7 +365,6 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
-        continue-on-error: true  
 
         env:
           USE_CERT_FILE: "true"
@@ -480,6 +481,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
           GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          RADIUS_TEST_FAST_CLEANUP: true
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

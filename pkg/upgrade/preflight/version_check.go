@@ -72,6 +72,11 @@ func (v *VersionCompatibilityCheck) Run(ctx context.Context) (bool, string, erro
 		return false, "Target version 'latest' must be resolved to a specific version before validation", nil
 	}
 
+	// Use the message from validation if provided
+	if message != "" {
+		return true, message, nil
+	}
+
 	return true, fmt.Sprintf("Upgrade from %s to %s is valid", v.currentVersion, v.targetVersion), nil
 }
 

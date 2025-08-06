@@ -299,6 +299,23 @@ func (cli *CLI) ResourceProviderCreate(ctx context.Context, manifestFilePath str
 	return cli.RunCommand(ctx, args)
 }
 
+// ResourceTypeCreate runs a command to create or update a resource type.
+// It returns the output string or an error if the command fails.
+func (cli *CLI) ResourceTypeCreate(ctx context.Context, resourceTypeName string, manifestFilePath string) (string, error) {
+	args := []string{
+		"resource-type",
+		"create",
+		"--from-file",
+		manifestFilePath,
+	}
+
+	if resourceTypeName != "" {
+		args = append(args, resourceTypeName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
 // Version runs the version command and returns the output as a string, or an error if the command fails.
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{

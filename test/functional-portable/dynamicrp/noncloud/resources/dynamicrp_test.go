@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test"
@@ -49,6 +50,7 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 	appNamespace := "usertypealpha-recipe-env-usertypealpha-recipe-app"
 	containerName := "usertypealphacntr"
 	resourceTypeName := "Test.Resources/userTypeAlpha"
+	resourceTypeParam := strings.Split(resourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -57,7 +59,7 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				_, err := cli.ResourceTypeCreate(ctx, resourceTypeParam, filepath)
 				require.NoError(t, err)
 			}),
 			SkipKubernetesOutputResourceValidation: true,
@@ -88,6 +90,10 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 					},
 					{
 						Name: "usertypealphainstance",
+						Type: resourceTypeName,
+					},
+					{
+						Name: "usertypealphalatest",
 						Type: resourceTypeName,
 					},
 				},
@@ -141,6 +147,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 	appNamespace := "dynamicrp-postgres-existing-app"
 	appName := "dynamicrp-postgres-existing"
 	resourceTypeName := "Test.Resources/postgres"
+	resourceTypeParam := strings.Split(resourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -148,7 +155,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				_, err := cli.ResourceTypeCreate(ctx, resourceTypeParam, filepath)
 				require.NoError(t, err)
 			}),
 			SkipKubernetesOutputResourceValidation: true,
@@ -236,6 +243,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 	expectedEnvName := "CONNECTION_EXTERNALRESOURCE_CONFIGMAP"
 	expectedEnvValue := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
 	resourceTypeName := "Test.Resources/externalResource"
+	resourceTypeParam := strings.Split(resourceTypeName, "/")[1]
 	containerName := "externalresourcecntr"
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
@@ -245,7 +253,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				_, err := cli.ResourceTypeCreate(ctx, resourceTypeParam, filepath)
 				require.NoError(t, err)
 			}),
 			SkipKubernetesOutputResourceValidation: true,
@@ -345,7 +353,9 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 	appNamespace := "udttoudtapp"
 	appName := "udttoudtapp"
 	childResourceTypeName := "Test.Resources/externalResource"
+	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	expectedEnvName := "CONN_INJECTED"
 	options := rp.NewRPTestOptions(t)
@@ -354,7 +364,7 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 		{
 			// The first step in this test is to create/register required user-defined resource types using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				_, err := cli.ResourceTypeCreate(ctx, childResourceTypeParam, filepath)
 				require.NoError(t, err)
 			}),
 			SkipKubernetesOutputResourceValidation: true,
@@ -364,7 +374,19 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
 				require.NoError(t, err)
 				require.Contains(t, output, childResourceTypeName)
-				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+			},
+		},
+		{
+			// The first step in this test is to create/register required user-defined resource types using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
 				require.NoError(t, err)
 				require.Contains(t, output, parentResourceTypeName)
 			},
@@ -446,7 +468,9 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 	appName := "udttoudtapp"
 	expectedEnvName := "CONN_INJECTED"
 	childResourceTypeName := "Test.Resources/externalResource"
+	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -454,7 +478,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				_, err := cli.ResourceTypeCreate(ctx, childResourceTypeParam, filepath)
 				require.NoError(t, err)
 			}),
 			SkipKubernetesOutputResourceValidation: true,
@@ -464,7 +488,19 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
 				require.NoError(t, err)
 				require.Contains(t, output, childResourceTypeName)
-				output, err = cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+			},
+		},
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
 				require.NoError(t, err)
 				require.Contains(t, output, parentResourceTypeName)
 			},
@@ -525,5 +561,59 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 			},
 		},
 	})
+	test.Test(t)
+}
+
+// Test_DynamicRP_SchemaValidation tests that schema validation properly rejects invalid resources.
+// It consists of two main steps:
+// 1. Resource Type Registration:
+//   - Registers a user-defined resource type "Test.Resources/testResourceSchema" with schema validation
+//
+// 2. Resource Deployment Failure:
+//   - Attempts to deploy a Bicep template with invalid schema (incorrect value, extra properties)
+//   - Validates that the deployment fails with appropriate schema validation errors
+func Test_DynamicRP_SchemaValidation(t *testing.T) {
+	template := "testdata/testResourceSchema-invalid.bicep"
+	appName := "udt-schemavalidation-app"
+	resourceTypeName := "Test.Resources/testResourceSchema"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "InvalidRequestContent",
+				MessageContains: "Schema validation failed",
+			},
+		},
+	})
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// The first step in this test is to create/register a user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			},
+		},
+		{
+			// The next step is to deploy a bicep file with invalid schema - this should fail
+			Executor:                               step.NewDeployErrorExecutor(template, validate),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+	})
+
 	test.Test(t)
 }

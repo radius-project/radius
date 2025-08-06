@@ -1,7 +1,6 @@
 name: Test.Resources
 types:
-  userTypeAlpha:
-    capabilities: ["SupportsRecipes"]
+  userTypeAlpha:    
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -16,25 +15,42 @@ types:
             connections:
               type: object
               additionalProperties:
-                source:
-                  type: string
-                  description: The resourceID of the source of the connection.
-            status:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: The resourceID of the source of the connection.
+            port:
+              type: string
+              description: The port number exposed by the application.
+          required:
+            - application
+            - environment
+      "2025-01-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            connections:
               type: object
-              properties:
-                computedValues:
-                  type: object
-                  properties:
-                    port:
-                      type: string
-                      description: The port the container listens on.
+              additionalProperties:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: The resourceID of the source of the connection.
           required:
             - application
             - environment
   postgres:
-    capabilities: ["SupportsRecipes"]
+    
     apiVersions:
-      '2023-10-01-preview':
+      '2025-01-01-preview':
         schema: 
           type: object
           properties:
@@ -52,20 +68,14 @@ types:
             port:
               type: string
               description: The port number of the database.
+            username:
+              type: string
+              description: The username for the database.
             password:
               type: string
               description: The password for the database.
-            status:
-              type: object
-              properties:
-                computedValues:
-                  type: object
-                  properties:
-                    username:
-                      type: string
-                      description: The username for the database.
   externalResource:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -86,7 +96,7 @@ types:
             - configMap 
   # Additional resource types for shared API version deletion test (GitHub issue #9754)
   sharedAPITestTypeA:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -105,7 +115,7 @@ types:
             - application
             - environment
   sharedAPITestTypeB:
-    capabilities: []
+    capabilities: ["ManualResourceProvisioning"]
     apiVersions:
       "2023-10-01-preview":
         schema:
@@ -123,4 +133,35 @@ types:
           required:
             - application
             - environment
+  testResourceSchema:
+    capabilities: ["ManualResourceProvisioning"]
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            validationData:
+              type: string
+              description: Data used for schema validation testing (must be string).
+            numericField:
+              type: integer
+              description: A numeric field for testing type validation.
+            configSettings:
+              type: object
+              description: Configuration settings object.
+              properties:
+                enabled:
+                  type: boolean
+                name:
+                  type: string
+          required:
+            - application
+            - environment
+            - validationData
             

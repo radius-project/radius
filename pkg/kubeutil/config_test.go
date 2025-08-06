@@ -98,63 +98,136 @@ users:
 `), os.FileMode(0755))
 	require.NoError(t, err)
 
-	optionTests := []struct {
-		name string
-		in   *ConfigOptions
-		out  *ConfigOptions
-	}{
-		{
-			name: "default",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-			},
-			out: &ConfigOptions{
-				QPS:   0.0,
-				Burst: 0,
-			},
-		},
-		{
-			name: "only QPS",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-				QPS:            DefaultServerQPS,
-			},
-			out: &ConfigOptions{
-				QPS:   DefaultServerQPS,
-				Burst: 0,
-			},
-		},
-		{
-			name: "only Burst",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-				Burst:          DefaultServerBurst,
-			},
-			out: &ConfigOptions{
-				QPS:   0.0,
-				Burst: DefaultServerBurst,
-			},
-		},
-		{
-			name: "QPS and Burst",
-			in: &ConfigOptions{
-				ConfigFilePath: configFile.Name(),
-				QPS:            DefaultServerQPS,
-				Burst:          DefaultServerBurst,
-			},
-			out: &ConfigOptions{
-				QPS:   DefaultServerQPS,
-				Burst: DefaultServerBurst,
-			},
-		},
-	}
+	t.Run("default values", func(t *testing.T) {
+		// Ensure environment variables are not set
+		os.Unsetenv("RADIUS_QPS_AND_BURST")
 
-	for _, tc := range optionTests {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg, err := NewClientConfig(tc.in)
-			require.NoError(t, err)
-			require.Equal(t, tc.out.QPS, cfg.QPS)
-			require.Equal(t, tc.out.Burst, cfg.Burst)
-		})
-	}
+		optionTests := []struct {
+			name string
+			in   *ConfigOptions
+			out  *ConfigOptions
+		}{
+			{
+				name: "default",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+				},
+				out: &ConfigOptions{
+					QPS:   0.0,
+					Burst: 0,
+				},
+			},
+			{
+				name: "only QPS",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: 0,
+				},
+			},
+			{
+				name: "only Burst",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   0.0,
+					Burst: DefaultServerBurst,
+				},
+			},
+			{
+				name: "QPS and Burst",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   DefaultServerQPS,
+					Burst: DefaultServerBurst,
+				},
+			},
+		}
+
+		for _, tc := range optionTests {
+			t.Run(tc.name, func(t *testing.T) {
+				cfg, err := NewClientConfig(tc.in)
+				require.NoError(t, err)
+				require.Equal(t, tc.out.QPS, cfg.QPS)
+				require.Equal(t, tc.out.Burst, cfg.Burst)
+			})
+		}
+	})
+
+	t.Run("with environment variable overrides", func(t *testing.T) {
+		// Set environment variables
+		os.Setenv("RADIUS_QPS_AND_BURST", "800")
+		defer func() {
+			os.Unsetenv("RADIUS_QPS_AND_BURST")
+		}()
+
+		optionTests := []struct {
+			name string
+			in   *ConfigOptions
+			out  *ConfigOptions
+		}{
+			{
+				name: "default with env override",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+				},
+				out: &ConfigOptions{
+					QPS:   0.0,
+					Burst: 0,
+				},
+			},
+			{
+				name: "explicit QPS overrides env",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+				},
+				out: &ConfigOptions{
+					QPS:   800.0,
+					Burst: 0,
+				},
+			},
+			{
+				name: "explicit Burst overrides env",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   0.0,
+					Burst: 800,
+				},
+			},
+			{
+				name: "explicit values override env",
+				in: &ConfigOptions{
+					ConfigFilePath: configFile.Name(),
+					QPS:            DefaultServerQPS,
+					Burst:          DefaultServerBurst,
+				},
+				out: &ConfigOptions{
+					QPS:   800.0,
+					Burst: 800,
+				},
+			},
+		}
+
+		for _, tc := range optionTests {
+			t.Run(tc.name, func(t *testing.T) {
+				cfg, err := NewClientConfig(tc.in)
+				require.NoError(t, err)
+				require.Equal(t, tc.out.QPS, cfg.QPS)
+				require.Equal(t, tc.out.Burst, cfg.Burst)
+			})
+		}
+	})
 }

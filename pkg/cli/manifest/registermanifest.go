@@ -42,7 +42,7 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	resourceProvider, err := ReadFile(filePath)
+	resourceProvider, err := ValidateManifest(ctx, filePath)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("invalid manifest file path")
 	}
 
-	resourceProvider, err := ReadFile(filePath)
+	resourceProvider, err := ValidateManifest(ctx, filePath)
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,11 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
 	}
 
-	logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Name, typeName, strings.Join(resourceType.Capabilities, ","))
+	if len(resourceType.Capabilities) == 0 {
+		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Name, typeName)
+	} else {
+		logIfEnabled(logger, "Creating resource type %s/%s with capabilities %s ", resourceProvider.Name, typeName, strings.Join(resourceType.Capabilities, ","))
+	}
 
 	err = retryOperation(ctx, func() error {
 		resourceTypePoller, err := clientFactory.NewResourceTypesClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Name, typeName, v20231001preview.ResourceTypeResource{
@@ -286,22 +290,16 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	var defaultAPIVersion string
-	if resourceType.DefaultAPIVersion == nil {
-		defaultAPIVersion = v20231001preview.Version //hardcoded for now, since we don't have a default API version in the manifest but it should be made mandatory as part of schema validation
-	} else {
-		defaultAPIVersion = *resourceType.DefaultAPIVersion
-	}
-
 	locationResource := locationResourceGetResponse.LocationResource
 	if address != "" {
 		locationResource.Properties.Address = to.Ptr(address)
 	}
 
 	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
-		APIVersions: map[string]map[string]any{
-			defaultAPIVersion: {},
-		},
+		APIVersions: map[string]map[string]any{},
+	}
+	for apiVersionName := range resourceType.APIVersions {
+		locationResource.Properties.ResourceTypes[typeName].APIVersions[apiVersionName] = map[string]any{}
 	}
 
 	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Name, locationName)
@@ -365,4 +363,18 @@ func is409ConflictError(err error) bool {
 
 	var respErr *azcore.ResponseError
 	return errors.As(err, &respErr) && respErr.StatusCode == 409
+}
+
+// ValidateManifest validates manifest file and returns a resourceprovider if no errors
+func ValidateManifest(ctx context.Context, path string) (resourceProvider *ResourceProvider, err error) {
+	resourceProvider, err = ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest: %w", err)
+	}
+
+	if err := validateManifestSchemas(ctx, resourceProvider); err != nil {
+		return nil, fmt.Errorf("failed to validate manifest schemas: %w", err)
+	}
+
+	return resourceProvider, nil
 }
