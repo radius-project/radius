@@ -377,6 +377,8 @@ func addTLSEnvironmentVariables(
 				logger.Info("Configuring custom CA certificate for Git operations", "path", certPaths.CAPath)
 				// Git respects GIT_SSL_CAINFO for Git-based module sources
 				envVars["GIT_SSL_CAINFO"] = certPaths.CAPath
+				// Set in OS environment so Git processes spawned by Terraform can see it
+				os.Setenv("GIT_SSL_CAINFO", certPaths.CAPath)
 				// Note: We only set GIT_SSL_CAINFO here to avoid conflicts with registry CA certificates
 				// Registry operations use SSL_CERT_FILE which is set separately in registry configuration
 			}
