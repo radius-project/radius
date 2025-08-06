@@ -67,6 +67,8 @@ import (
 	resourcetype_delete "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/delete"
 	resourcetype_list "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/list"
 	resourcetype_show "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/show"
+	"github.com/radius-project/radius/pkg/cli/cmd/rollback"
+	rollback_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/rollback/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
@@ -382,6 +384,12 @@ func initSubCommands() {
 
 	upgradeKubernetesCmd, _ := upgrade_kubernetes.NewCommand(framework)
 	upgradeCmd.AddCommand(upgradeKubernetesCmd)
+
+	rollbackCmd := rollback.NewCommand()
+	RootCmd.AddCommand(rollbackCmd)
+
+	rollbackKubernetesCmd, _ := rollback_kubernetes.NewCommand(framework)
+	rollbackCmd.AddCommand(rollbackKubernetesCmd)
 
 	versionCmd, _ := version.NewCommand(framework)
 	RootCmd.AddCommand(versionCmd)
