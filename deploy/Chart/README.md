@@ -116,16 +116,16 @@ Example of mirroring images (requires access to both registries):
 ```bash
 # List of Radius images
 IMAGES=(
-  "radius-project/controller"
-  "radius-project/ucpd"
-  "radius-project/applications-rp"
-  "radius-project/dynamic-rp"
-  "radius-project/deployment-engine"
-  "radius-project/dashboard"
-  "radius-project/bicep"
+  "controller"
+  "ucpd"
+  "applications-rp"
+  "dynamic-rp"
+  "deployment-engine"
+  "dashboard"
+  "bicep"
 )
 
-SOURCE_REGISTRY="ghcr.io"
+SOURCE_REGISTRY="ghcr.io/radius-project"
 TARGET_REGISTRY="myregistry.azurecr.io"
 VERSION="latest"  # or specific version like "v0.36.0"
 
@@ -143,6 +143,8 @@ Then install Radius using your private registry:
 rad install kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io
 ```
+
+**Note:** When using a custom registry, images are pulled directly from `<registry>/<image-name>:<tag>` format. For example, with `myregistry.azurecr.io`, the controller image will be pulled from `myregistry.azurecr.io/controller:latest`.
 
 ### Terraform Binary Pre-downloading
 
