@@ -46,17 +46,17 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 ```console
 # Use a specific version for all components
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.imageTag=v0.48.0
+  --set global.imageTag=0.48
 
 # Combine custom registry with custom tag
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
   --set global.imageRegistry=myregistry.azurecr.io \
-  --set global.imageTag=v0.48.0
+  --set global.imageTag=0.48
 
 # Override specific component while using global tag for others
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.imageTag=v0.48.0 \
-  --set controller.tag=v0.48.1
+  --set global.imageTag=0.48 \
+  --set controller.tag=0.49
 ```
 
 #### With rad CLI commands
@@ -70,22 +70,22 @@ rad install kubernetes \
 
 # During initial installation with custom tag
 rad install kubernetes \
-  --set global.imageTag=v0.48.0
+  --set global.imageTag=0.48
 
 # Combine custom registry and tag
 rad install kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io \
-  --set global.imageTag=v0.48.0
+  --set global.imageTag=0.48
 
 # During upgrade
 rad upgrade kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io \
-  --set global.imageTag=v0.48.0
+  --set global.imageTag=0.48
 
 # During initialization
 rad init \
   --set global.imageRegistry=myregistry.azurecr.io \
-  --set global.imageTag=v0.48.0
+  --set global.imageTag=0.48
 ```
 
 #### Using with Private Registries and Certificates

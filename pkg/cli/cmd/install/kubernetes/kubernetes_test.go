@@ -230,7 +230,7 @@ func Test_Run(t *testing.T) {
 			Output: outputMock,
 
 			KubeContext: "test-context",
-			Set:         []string{"global.imageTag=v0.48.0"},
+			Set:         []string{"global.imageTag=0.48"},
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
@@ -239,7 +239,7 @@ func Test_Run(t *testing.T) {
 
 		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
 			Radius: helm.ChartOptions{
-				SetArgs: []string{"global.imageTag=v0.48.0"},
+				SetArgs: []string{"global.imageTag=0.48"},
 			},
 		})
 		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
@@ -269,7 +269,7 @@ func Test_Run(t *testing.T) {
 			Output: outputMock,
 
 			KubeContext: "test-context",
-			Set:         []string{"global.imageRegistry=myregistry.azurecr.io", "global.imageTag=v0.48.0"},
+			Set:         []string{"global.imageRegistry=myregistry.azurecr.io", "global.imageTag=0.48"},
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
@@ -278,7 +278,7 @@ func Test_Run(t *testing.T) {
 
 		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
 			Radius: helm.ChartOptions{
-				SetArgs: []string{"global.imageRegistry=myregistry.azurecr.io", "global.imageTag=v0.48.0"},
+				SetArgs: []string{"global.imageRegistry=myregistry.azurecr.io", "global.imageTag=0.48"},
 			},
 		})
 		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").

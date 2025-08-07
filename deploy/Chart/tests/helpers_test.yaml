@@ -219,46 +219,46 @@ tests:
   # Tests for global.imageTag functionality
   - it: should use global.imageTag when component tag is not specified
     set:
-      global.imageTag: v0.48.0
+      global.imageTag: 0.48
       controller.image: controller
       ucp.image: ucpd
       rp.image: applications-rp
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/controller:v0.48.0
+          value: ghcr.io/radius-project/controller:0.48
         template: controller/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/ucpd:v0.48.0
+          value: ghcr.io/radius-project/ucpd:0.48
         template: ucp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/applications-rp:v0.48.0
+          value: ghcr.io/radius-project/applications-rp:0.48
         template: rp/deployment.yaml
 
   - it: should prioritize component tag over global.imageTag
     set:
-      global.imageTag: v0.48.0
+      global.imageTag: 0.48
       controller.image: controller
-      controller.tag: v0.49.0
+      controller.tag: 0.49
       ucp.image: ucpd
     asserts:
       # Controller should use its specific tag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/controller:v0.49.0
+          value: ghcr.io/radius-project/controller:0.49
         template: controller/deployment.yaml
       # UCP should use global.imageTag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/ucpd:v0.48.0
+          value: ghcr.io/radius-project/ucpd:0.48
         template: ucp/deployment.yaml
 
   - it: should combine global.imageRegistry with global.imageTag
     set:
       global.imageRegistry: myregistry.azurecr.io
-      global.imageTag: v0.48.0
+      global.imageTag: 0.48
       controller.image: controller
       ucp.image: ucpd
       rp.image: applications-rp
@@ -267,23 +267,23 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/controller:v0.48.0
+          value: myregistry.azurecr.io/controller:0.48
         template: controller/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/ucpd:v0.48.0
+          value: myregistry.azurecr.io/ucpd:0.48
         template: ucp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/applications-rp:v0.48.0
+          value: myregistry.azurecr.io/applications-rp:0.48
         template: rp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/dynamic-rp:v0.48.0
+          value: myregistry.azurecr.io/dynamic-rp:0.48
         template: dynamic-rp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/deployment-engine:v0.48.0
+          value: myregistry.azurecr.io/deployment-engine:0.48
         template: de/deployment.yaml
 
   - it: should handle empty global.imageTag and fall back to appVersion
@@ -298,36 +298,36 @@ tests:
 
   - it: should apply global.imageTag to bicep init container
     set:
-      global.imageTag: v0.48.0
+      global.imageTag: 0.48
       bicep.image: bicep
       controller.image: controller
     asserts:
       # Check bicep init container
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: ghcr.io/radius-project/bicep:v0.48.0
+          value: ghcr.io/radius-project/bicep:0.48
         template: controller/deployment.yaml
       # Check main controller container
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/controller:v0.48.0
+          value: ghcr.io/radius-project/controller:0.48
         template: controller/deployment.yaml
 
   - it: should handle component tag override with global registry and tag
     set:
       global.imageRegistry: myregistry.io
-      global.imageTag: v0.48.0
+      global.imageTag: 0.48
       controller.image: controller
-      controller.tag: v0.49.0-rc1
+      controller.tag: 0.49-rc1
       ucp.image: ucpd
     asserts:
       # Controller with override should use its specific tag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/controller:v0.49.0-rc1
+          value: myregistry.io/controller:0.49-rc1
         template: controller/deployment.yaml
       # UCP should use global tag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/ucpd:v0.48.0
+          value: myregistry.io/ucpd:0.48
         template: ucp/deployment.yaml
