@@ -19,8 +19,8 @@
             }
           }
         },
-        "registry": {
-          "mirror": "https://terraform.example.com",
+        "providerMirror": {
+          "url": "https://terraform.example.com",
           "providerMappings": {
             "registry.terraform.io/hashicorp/aws": "terraform.example.com/providers/aws"
           },

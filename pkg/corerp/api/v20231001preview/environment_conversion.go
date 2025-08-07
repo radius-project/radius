@@ -90,7 +90,6 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 		converted.Properties.Recipes = envRecipes
 	}
-
 	if src.Properties.Providers != nil {
 		if src.Properties.Providers.Azure != nil {
 			converted.Properties.Providers.Azure = datamodel.ProvidersAzure{
@@ -198,9 +197,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 					if gitConfig.Pat != nil {
 						p := map[string]datamodel.SecretConfig{}
 						for k, v := range gitConfig.Pat {
-							p[k] = datamodel.SecretConfig{
-								Secret: to.String(v.Secret),
-							}
+							p[k] = datamodel.SecretConfig{Secret: to.String(v.Secret)}
 						}
 						recipeConfig.Terraform.Authentication.Git.PAT = p
 					}
@@ -209,38 +206,50 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 
 			// Handle provider mirror configuration
 			if config.Terraform.ProviderMirror != nil {
-				providerMirrorConfig := &datamodel.TerraformProviderMirrorConfig{
-					Mirror: to.String(config.Terraform.ProviderMirror.URL),
+				pm := &datamodel.TerraformProviderMirrorConfig{}
+
+				// Preserve mirror type if provided
+				if config.Terraform.ProviderMirror.Type != nil && to.String(config.Terraform.ProviderMirror.Type) != "" {
+					pm.Type = to.String(config.Terraform.ProviderMirror.Type)
 				}
 
-				// Handle TLS configuration
+				// Preserve URL if provided
+				if config.Terraform.ProviderMirror.URL != nil && to.String(config.Terraform.ProviderMirror.URL) != "" {
+					pm.URL = to.String(config.Terraform.ProviderMirror.URL)
+				}
+
+				// TLS configuration
 				if config.Terraform.ProviderMirror.TLS != nil {
-					providerMirrorConfig.TLS = toTLSConfigDatamodel(config.Terraform.ProviderMirror.TLS)
+					pm.TLS = toTLSConfigDatamodel(config.Terraform.ProviderMirror.TLS)
 				}
 
-				// Handle authentication only if provided
+				// Authentication
 				if config.Terraform.ProviderMirror.Authentication != nil {
 					auth := config.Terraform.ProviderMirror.Authentication
-					providerMirrorConfig.Authentication = datamodel.RegistryAuthConfig{}
-
-					// Handle token auth if provided
+					pm.Authentication = datamodel.RegistryAuthConfig{}
 					if auth.Token != nil {
-						providerMirrorConfig.Authentication.Token = &datamodel.TokenConfig{
-							Secret: to.String(auth.Token.Secret),
-						}
+						pm.Authentication.Token = &datamodel.TokenConfig{Secret: to.String(auth.Token.Secret)}
 					}
-
-					// Handle additional hosts if provided
 					if auth.AdditionalHosts != nil {
-						additionalHosts := []string{}
-						for _, host := range auth.AdditionalHosts {
-							additionalHosts = append(additionalHosts, to.String(host))
+						additionalHosts := make([]string, 0, len(auth.AdditionalHosts))
+						for _, h := range auth.AdditionalHosts {
+							additionalHosts = append(additionalHosts, to.String(h))
 						}
-						providerMirrorConfig.Authentication.AdditionalHosts = additionalHosts
+						pm.Authentication.AdditionalHosts = additionalHosts
 					}
 				}
 
-				recipeConfig.Terraform.ProviderMirror = providerMirrorConfig
+				// Provider mappings
+				if config.Terraform.ProviderMirror.ProviderMappings != nil {
+					pm.ProviderMappings = map[string]string{}
+					for k, v := range config.Terraform.ProviderMirror.ProviderMappings {
+						if v != nil {
+							pm.ProviderMappings[k] = to.String(v)
+						}
+					}
+				}
+
+				recipeConfig.Terraform.ProviderMirror = pm
 			}
 
 			// Handle module registries configuration
@@ -365,48 +374,52 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 					if config.Terraform.Authentication.Git.PAT != nil {
 						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*SecretConfig{}
 						for k, v := range config.Terraform.Authentication.Git.PAT {
-							recipeConfig.Terraform.Authentication.Git.Pat[k] = &SecretConfig{
-								Secret: to.Ptr(v.Secret),
-							}
+							recipeConfig.Terraform.Authentication.Git.Pat[k] = &SecretConfig{Secret: to.Ptr(v.Secret)}
 						}
 					}
 				}
 			}
 
-			// Handle provider mirror configuration
+			// Provider mirror (map datamodel fields back to versioned)
 			if config.Terraform.ProviderMirror != nil {
-				providerMirrorConfig := &TerraformProviderMirrorConfig{
-					URL: to.Ptr(config.Terraform.ProviderMirror.Mirror),
+				pm := &TerraformProviderMirrorConfig{}
+				if config.Terraform.ProviderMirror.URL != "" {
+					pm.URL = to.Ptr(config.Terraform.ProviderMirror.URL)
 				}
 
-				// Handle authentication if provided
+				if config.Terraform.ProviderMirror.Type != "" {
+					pm.Type = to.Ptr(config.Terraform.ProviderMirror.Type)
+				}
+
 				if !reflect.DeepEqual(config.Terraform.ProviderMirror.Authentication, datamodel.RegistryAuthConfig{}) {
-					providerMirrorConfig.Authentication = &RegistryAuthConfig{}
-
-					// Handle token auth if provided
+					pm.Authentication = &RegistryAuthConfig{}
 					if config.Terraform.ProviderMirror.Authentication.Token != nil {
-						providerMirrorConfig.Authentication.Token = &TokenConfig{
-							Secret: to.Ptr(config.Terraform.ProviderMirror.Authentication.Token.Secret),
-						}
+						pm.Authentication.Token = &TokenConfig{Secret: to.Ptr(config.Terraform.ProviderMirror.Authentication.Token.Secret)}
 					}
-
-					// Handle additional hosts if provided
 					if config.Terraform.ProviderMirror.Authentication.AdditionalHosts != nil {
 						additionalHosts := []*string{}
-						for _, host := range config.Terraform.ProviderMirror.Authentication.AdditionalHosts {
-							h := host // Create a copy to avoid pointer issues
-							additionalHosts = append(additionalHosts, to.Ptr(h))
+						for _, h := range config.Terraform.ProviderMirror.Authentication.AdditionalHosts {
+							hCopy := h
+							additionalHosts = append(additionalHosts, to.Ptr(hCopy))
 						}
-						providerMirrorConfig.Authentication.AdditionalHosts = additionalHosts
+						pm.Authentication.AdditionalHosts = additionalHosts
 					}
 				}
 
-				// Handle TLS configuration
 				if config.Terraform.ProviderMirror.TLS != nil {
-					providerMirrorConfig.TLS = fromTLSConfigDatamodel(config.Terraform.ProviderMirror.TLS)
+					pm.TLS = fromTLSConfigDatamodel(config.Terraform.ProviderMirror.TLS)
 				}
 
-				recipeConfig.Terraform.ProviderMirror = providerMirrorConfig
+				// Provider mappings
+				if config.Terraform.ProviderMirror.ProviderMappings != nil {
+					pm.ProviderMappings = map[string]*string{}
+					for k, v := range config.Terraform.ProviderMirror.ProviderMappings {
+						val := v // create copy for pointer safety
+						pm.ProviderMappings[k] = to.Ptr(val)
+					}
+				}
+
+				recipeConfig.Terraform.ProviderMirror = pm
 			}
 
 			// Handle module registries configuration

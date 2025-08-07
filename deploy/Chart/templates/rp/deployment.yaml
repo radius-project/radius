@@ -30,6 +30,28 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: applications-rp
+      {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+      initContainers:
+      - name: append-root-ca
+        image: "{{ .Values.global.appendRootCA.initImage }}"
+        command: ["/bin/sh","-c"]
+        args:
+          - >-
+            set -e;
+            apk add --no-cache ca-certificates ca-certificates-bundle >/dev/null 2>&1 || true;
+            mkdir -p {{ .Values.global.appendRootCA.bundleMountPath }};
+            cp -a /etc/ssl/certs/. {{ .Values.global.appendRootCA.bundleMountPath }}/;
+            if [ -f {{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt ]; then
+              cat /src/ca.crt >> {{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt;
+            else
+              cp /src/ca.crt {{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt;
+            fi
+        volumeMounts:
+        - name: {{ .Values.global.rootCA.volumeName }}
+          mountPath: /src
+        - name: ca-bundle
+          mountPath: {{ .Values.global.appendRootCA.bundleMountPath }}
+      {{- end }}
       containers:
       - name: applications-rp
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
@@ -48,10 +70,15 @@ spec:
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
           value: {{ .Values.rp.publicEndpointOverride }}
         {{- end }}
-        {{- if .Values.global.rootCA.cert }}
+        {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
+          value: {{ .Values.global.appendRootCA.bundleMountPath }}
+        - name: {{ .Values.global.appendRootCA.sslCertFileEnvVar }}
+          value: "{{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt"
+        {{- else if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
-        {{- end}}
+        {{- end }}
         ports:
         - containerPort: 5443
           name: applications-rp
@@ -75,6 +102,10 @@ spec:
         {{- end }}
         - name: terraform
           mountPath: {{ .Values.rp.terraform.path }}
+        {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+        - name: ca-bundle
+          mountPath: {{ .Values.global.appendRootCA.bundleMountPath }}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -98,6 +129,10 @@ spec:
         {{- end }}
         - name: terraform
           emptyDir: {}
+        {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+        - name: ca-bundle
+          emptyDir: {}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

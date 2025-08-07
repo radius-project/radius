@@ -119,8 +119,17 @@ type SecretReference struct {
 
 // TerraformProviderMirrorConfig - Configuration for Terraform provider mirrors.
 type TerraformProviderMirrorConfig struct {
-	// Mirror is the URL to use instead of the default Terraform provider registry. Example: 'https://terraform.example.com'.
-	Mirror string `json:"mirror,omitempty"`
+	// Type of mirror. Only "filesystem" is supported. When type == "filesystem":
+	// - URL must point to a packaged filesystem mirror (zip/tar.gz) or a local path/URL (file:// or absolute path)
+	//   to a ready mirror directory.
+	// - Authentication and TLS (CA certificate, skipVerify) apply to downloading the file from HTTP(S) sources.
+	// - The mirror is unpacked to a local directory and used via provider_installation.filesystem_mirror.
+	Type string `json:"type,omitempty"`
+
+	// URL to the mirror file or directory:
+	// - http(s)://... .zip/.tar.gz => downloaded and extracted locally
+	// - file:///abs/path or plain absolute/relative path => used directly as a local directory
+	URL string `json:"url,omitempty"`
 
 	// ProviderMappings is used to translate between official and custom provider identifiers.
 	ProviderMappings map[string]string `json:"providerMappings,omitempty"`
@@ -128,7 +137,7 @@ type TerraformProviderMirrorConfig struct {
 	// Authentication configuration for accessing private Terraform provider mirrors.
 	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
 
-	// TLS configuration for connecting to the Terraform provider registry mirror.
+	// TLS configuration for connecting to the Terraform provider registry mirror or for downloading the filesystem mirror.
 	TLS *TLSConfig `json:"tls,omitempty"`
 }
 

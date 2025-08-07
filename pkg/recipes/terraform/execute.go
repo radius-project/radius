@@ -352,9 +352,25 @@ func addTLSEnvironmentVariables(
 ) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	// Debug: Log the state of options to understand why TLS might not be configured
+	logger.Info("DEBUG: Checking TLS configuration state",
+		"hasEnvRecipe", options.EnvRecipe != nil,
+		"envRecipeNil", options.EnvRecipe == nil)
+
+	if options.EnvRecipe != nil {
+		logger.Info("DEBUG: EnvRecipe exists, checking TLS",
+			"hasTLS", options.EnvRecipe.TLS != nil,
+			"tlsNil", options.EnvRecipe.TLS == nil)
+	}
+
 	// Handle TLS configuration if present in the recipe definition
 	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
 		logger.Info("Configuring TLS settings for recipe")
+
+		logger.Info("DEBUG: TLS configuration details",
+			"skipVerify", options.EnvRecipe.TLS.SkipVerify,
+			"hasCACertificate", options.EnvRecipe.TLS.CACertificate != nil,
+			"secretsCount", len(options.Secrets))
 
 		// Skip verification if requested
 		if options.EnvRecipe.TLS.SkipVerify {
@@ -364,6 +380,9 @@ func addTLSEnvironmentVariables(
 
 		// Only write certificate files if certificates are actually provided
 		if options.EnvRecipe.TLS.CACertificate != nil {
+			logger.Info("DEBUG: CA certificate configuration found",
+				"source", options.EnvRecipe.TLS.CACertificate.Source,
+				"key", options.EnvRecipe.TLS.CACertificate.Key)
 			// Note: We need the working directory, but don't have access to tf here
 			// This function is called before tf is fully initialized, so we use RootDir
 			workingDir := filepath.Join(options.RootDir, executionSubDir)
@@ -374,13 +393,103 @@ func addTLSEnvironmentVariables(
 
 			// CA certificate configuration
 			if certPaths != nil && certPaths.CAPath != "" {
-				logger.Info("Configuring custom CA certificate for Git operations", "path", certPaths.CAPath)
-				// Git respects GIT_SSL_CAINFO for Git-based module sources
-				envVars["GIT_SSL_CAINFO"] = certPaths.CAPath
-				// Set in OS environment so Git processes spawned by Terraform can see it
-				os.Setenv("GIT_SSL_CAINFO", certPaths.CAPath)
-				// Note: We only set GIT_SSL_CAINFO here to avoid conflicts with registry CA certificates
-				// Registry operations use SSL_CERT_FILE which is set separately in registry configuration
+				logger.Info("Configuring comprehensive CA certificate environment for Git operations", "path", certPaths.CAPath)
+
+				// Set comprehensive Git and SSL environment variables for Terraform process
+				gitSSLEnvVars := map[string]string{
+					"GIT_SSL_CAINFO":     certPaths.CAPath,               // Primary Git SSL CA certificate file
+					"GIT_SSL_CAPATH":     certPaths.CAPath,               // Git SSL CA certificate file (not directory)
+					"SSL_CERT_FILE":      certPaths.CAPath,               // General SSL certificate file for curl/wget
+					"SSL_CERT_DIR":       filepath.Dir(certPaths.CAPath), // General SSL certificate directory
+					"CURL_CA_BUNDLE":     certPaths.CAPath,               // Curl CA bundle file
+					"REQUESTS_CA_BUNDLE": certPaths.CAPath,               // Python requests library CA bundle
+				}
+
+				// Add all SSL environment variables to the Terraform process environment
+				for envVar, envValue := range gitSSLEnvVars {
+					envVars[envVar] = envValue
+					logger.Info("Added Git SSL env var for Terraform process", "var", envVar, "value", envValue)
+				}
+
+				logger.Info("Configured comprehensive SSL environment variables",
+					"caPath", certPaths.CAPath,
+					"envVarsCount", len(gitSSLEnvVars))
+				// Note: Registry operations use different SSL environment variables set separately in registry configuration
+			}
+		} else {
+			logger.Info("DEBUG: No CA certificate configured in TLS settings")
+		}
+	} else {
+		logger.Info("DEBUG: No TLS configuration found in recipe")
+
+		// Check if we're in an air-gapped environment by looking at registry settings
+		// If we have registry environment variables, we might need SSL certificates for Git too
+		if len(options.RegistryEnv) > 0 {
+			logger.Info("DEBUG: Registry environment detected, checking for SSL certificate needs")
+
+			// Look for any SSL certificate files in secrets that might be needed for Git
+			for secretKey, secretData := range options.Secrets {
+				logger.Info("DEBUG: Checking secret for certificates",
+					"secretKey", secretKey,
+					"dataKeysCount", len(secretData.Data))
+
+				for dataKey, dataValue := range secretData.Data {
+					if strings.Contains(dataKey, "cert") || strings.Contains(dataKey, "ca") ||
+						strings.Contains(strings.ToLower(dataValue), "-----begin certificate-----") {
+						logger.Info("DEBUG: Found potential certificate in secret",
+							"secretKey", secretKey,
+							"dataKey", dataKey,
+							"valueLength", len(dataValue),
+							"isFilePath", isFilePath(dataValue),
+							"containsCertMarker", strings.Contains(strings.ToLower(dataValue), "-----begin certificate-----"))
+
+						// If this looks like certificate content (not a file path), try to use it
+						if !isFilePath(dataValue) && strings.Contains(strings.ToLower(dataValue), "-----begin certificate-----") {
+							logger.Info("DEBUG: Attempting to use certificate for Git SSL")
+
+							// Write this certificate to a temporary file and set Git SSL environment
+							workingDir := filepath.Join(options.RootDir, executionSubDir)
+							tlsDir := filepath.Join(workingDir, ".tls")
+							if err := os.MkdirAll(tlsDir, 0700); err != nil {
+								logger.Error(err, "Failed to create TLS directory for fallback certificate")
+								continue
+							}
+
+							certPath := filepath.Join(tlsDir, "fallback-ca.crt")
+							if err := os.WriteFile(certPath, []byte(dataValue), 0600); err != nil {
+								logger.Error(err, "Failed to write fallback certificate")
+								continue
+							}
+
+							// Set Git SSL environment variables using this certificate
+							gitSSLEnvVars := map[string]string{
+								"GIT_SSL_CAINFO":     certPath,
+								"GIT_SSL_CAPATH":     certPath,
+								"SSL_CERT_FILE":      certPath,
+								"SSL_CERT_DIR":       tlsDir,
+								"CURL_CA_BUNDLE":     certPath,
+								"REQUESTS_CA_BUNDLE": certPath,
+							}
+
+							// Set in both OS environment and Terraform process environment
+							for envVar, envValue := range gitSSLEnvVars {
+								os.Setenv(envVar, envValue)
+								envVars[envVar] = envValue
+								logger.Info("DEBUG: Set fallback Git SSL environment variable", "var", envVar, "value", envValue)
+							}
+
+							os.Setenv("GIT_SSL_NO_VERIFY", "false")
+							os.Setenv("GIT_CURL_VERBOSE", "1")
+
+							logger.Info("DEBUG: Configured fallback Git SSL certificate",
+								"certPath", certPath,
+								"certSize", len(dataValue))
+
+							// Stop after finding the first usable certificate
+							break
+						}
+					}
+				}
 			}
 		}
 	}
@@ -421,10 +530,62 @@ func writeTLSCertificates(ctx context.Context, workingDir string, tls *recipes.T
 			return nil, fmt.Errorf("CA certificate key %q not found in secret %s", tls.CACertificate.Key, tls.CACertificate.Source)
 		}
 
+		// Check if caData appears to be a file path rather than certificate content
+		caDataStr := strings.TrimSpace(caData)
+		if isFilePath(caDataStr) {
+			logger.Error(nil, "Certificate data appears to be a file path, not certificate content",
+				"path", caDataStr,
+				"hint", "Use loadTextContent('./path/to/cert.crt') in Bicep to load actual certificate content")
+			return nil, fmt.Errorf("certificate data appears to be a file path (%s) instead of certificate content. Use loadTextContent() in Bicep to load the actual certificate content", caDataStr)
+		}
+
+		// Validate that we have actual certificate content
+		if !strings.Contains(caDataStr, "-----BEGIN CERTIFICATE-----") &&
+			!strings.Contains(caDataStr, "-----BEGIN TRUSTED CERTIFICATE-----") {
+			logger.Error(nil, "Certificate data does not appear to contain valid PEM certificate content",
+				"dataLength", len(caDataStr),
+				"dataPreview", getCertPreview(caDataStr))
+			return nil, fmt.Errorf("certificate data does not contain valid PEM certificate content")
+		}
+
 		paths.CAPath = filepath.Join(tlsDir, "ca.crt")
 		if err := os.WriteFile(paths.CAPath, []byte(caData), 0600); err != nil {
 			return nil, fmt.Errorf("failed to write CA certificate: %w", err)
 		}
+
+		// Set comprehensive Git SSL environment variables for all Git operations
+		// These environment variables ensure Git uses our custom certificate for all SSL connections
+		gitSSLEnvVars := map[string]string{
+			"GIT_SSL_CAINFO":     paths.CAPath, // Primary Git SSL CA certificate file
+			"GIT_SSL_CAPATH":     paths.CAPath, // Git SSL CA certificate file (alternative to CAINFO)
+			"SSL_CERT_FILE":      paths.CAPath, // General SSL certificate file for curl/wget
+			"SSL_CERT_DIR":       tlsDir,       // General SSL certificate directory
+			"CURL_CA_BUNDLE":     paths.CAPath, // Curl CA bundle file
+			"REQUESTS_CA_BUNDLE": paths.CAPath, // Python requests library CA bundle
+		}
+
+		// Set in OS environment so Git processes spawned by Terraform can access them
+		for envVar, envValue := range gitSSLEnvVars {
+			os.Setenv(envVar, envValue)
+			logger.Info("Set Git SSL environment variable globally", "var", envVar, "value", envValue)
+		}
+
+		// Configure Git SSL verification settings
+		os.Setenv("GIT_SSL_NO_VERIFY", "false") // We want verification, just with our custom cert
+		os.Setenv("GIT_CURL_VERBOSE", "1")      // Enable verbose Git curl output for debugging
+
+		// NOTE: Do NOT set GIT_SSL_CERT - that's for client certificates (private keys), not CA certificates
+
+		logger.Info("Configured Git to use custom SSL certificate",
+			"caPath", paths.CAPath,
+			"GIT_SSL_CAINFO", paths.CAPath,
+			"GIT_SSL_CAPATH", paths.CAPath)
+
+		logger.Info("Successfully wrote CA certificate file with comprehensive SSL environment",
+			"path", paths.CAPath,
+			"size", len(caData),
+			"certPreview", getCertPreview(caDataStr),
+			"envVarsSet", len(gitSSLEnvVars))
 	}
 
 	return paths, nil
@@ -441,6 +602,37 @@ func splitEnvVar(envVars []string) map[string]string {
 	}
 
 	return parsedEnvVars
+}
+
+// isFilePath checks if a string appears to be a file path rather than certificate content
+func isFilePath(data string) bool {
+	trimmed := strings.TrimSpace(data)
+
+	// Check if it looks like a file path
+	if strings.HasPrefix(trimmed, "./") || strings.HasPrefix(trimmed, "../") || strings.HasPrefix(trimmed, "/") {
+		return true
+	}
+
+	// Check if it has file extensions common for certificates
+	if strings.HasSuffix(trimmed, ".crt") || strings.HasSuffix(trimmed, ".pem") ||
+		strings.HasSuffix(trimmed, ".cer") || strings.HasSuffix(trimmed, ".key") {
+		// But if it also contains certificate markers, it's probably content
+		if strings.Contains(trimmed, "-----BEGIN") {
+			return false
+		}
+		return true
+	}
+
+	return false
+}
+
+// getCertPreview returns a safe preview of certificate content for logging
+func getCertPreview(cert string) string {
+	lines := strings.Split(cert, "\n")
+	if len(lines) > 0 {
+		return lines[0] // Usually "-----BEGIN CERTIFICATE-----" or the first line
+	}
+	return "empty"
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
@@ -559,11 +751,33 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 		"workingDir", tf.WorkingDir())
 
 	// Check if required environment variables are set (for debugging)
-	for _, envKey := range []string{"TF_CLI_CONFIG_FILE", "SSL_CERT_FILE", "CURL_CA_BUNDLE"} {
+	gitSSLEnvVars := []string{"GIT_SSL_CAINFO", "GIT_SSL_CAPATH", "SSL_CERT_FILE", "SSL_CERT_DIR", "CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "GIT_SSL_NO_VERIFY"}
+	registryEnvVars := []string{"TF_CLI_CONFIG_FILE", "TF_INSECURE_SKIP_TLS_VERIFY"}
+
+	logger.Info("Checking Git SSL environment variables for debugging")
+	for _, envKey := range gitSSLEnvVars {
 		if value := os.Getenv(envKey); value != "" {
-			logger.Info("Environment variable check", "key", envKey, "value", value)
+			logger.Info("Git SSL environment variable set", "key", envKey, "value", value)
 		} else {
-			logger.Info("Environment variable not set in process", "key", envKey)
+			logger.Info("Git SSL environment variable not set", "key", envKey)
+		}
+	}
+
+	logger.Info("Checking registry environment variables for debugging")
+	for _, envKey := range registryEnvVars {
+		if value := os.Getenv(envKey); value != "" {
+			logger.Info("Registry environment variable set", "key", envKey, "value", value)
+		} else {
+			logger.Info("Registry environment variable not set", "key", envKey)
+		}
+	}
+
+	// Also check if certificate files actually exist
+	if caInfo := os.Getenv("GIT_SSL_CAINFO"); caInfo != "" {
+		if _, err := os.Stat(caInfo); err == nil {
+			logger.Info("Certificate file exists and accessible", "path", caInfo)
+		} else {
+			logger.Error(err, "Certificate file not accessible", "path", caInfo)
 		}
 	}
 

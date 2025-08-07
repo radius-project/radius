@@ -17,13 +17,20 @@ limitations under the License.
 package terraform
 
 import (
+	"archive/zip"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -57,17 +64,14 @@ func ConfigureTerraformRegistry(
 ) (*RegistryConfig, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Initialize the registry config to track what we create
-	regConfig := &RegistryConfig{
-		EnvVars: make(map[string]string),
-	}
+	regConfig := &RegistryConfig{EnvVars: make(map[string]string)}
 
-	// Token will be extracted from secrets if authentication is configured
 	var token []byte
 
-	// Check if registry mirror configuration exists
-	hasProviderMirror := config.RecipeConfig.Terraform.ProviderMirror != nil && config.RecipeConfig.Terraform.ProviderMirror.Mirror != ""
-	hasModuleRegistries := config.RecipeConfig.Terraform.ModuleRegistries != nil && len(config.RecipeConfig.Terraform.ModuleRegistries) > 0
+	pm := config.RecipeConfig.Terraform.ProviderMirror
+	hasProviderMirror := pm != nil && (pm.URL != "" || pm.Type != "")
+	// Determine if module registries exist
+	hasModuleRegistries := len(config.RecipeConfig.Terraform.ModuleRegistries) > 0
 
 	if !hasProviderMirror && !hasModuleRegistries {
 		logger.Info("No Terraform provider mirror or module registries configured, skipping registry configuration")
@@ -80,462 +84,403 @@ func ConfigureTerraformRegistry(
 		"moduleRegistryCount", len(config.RecipeConfig.Terraform.ModuleRegistries),
 		"secretsCount", len(secrets))
 
-	var mirrorURL string
-	var parsedURL *url.URL
 	var host string
 	var err error
 
-	// Handle provider mirror configuration
-	if hasProviderMirror {
-		logger.Info("Setting up Terraform provider mirror configuration",
-			"mirror", config.RecipeConfig.Terraform.ProviderMirror.Mirror,
-			"hasAuthentication", config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token != nil,
-			"hasTLS", config.RecipeConfig.Terraform.ProviderMirror.TLS != nil)
-
-		mirrorURL = config.RecipeConfig.Terraform.ProviderMirror.Mirror
-
-		// Check if URL is malformed first (e.g., starts with ://)
-		if strings.HasPrefix(mirrorURL, "://") {
-			logger.Error(nil, "Invalid mirror URL format", "url", mirrorURL)
-			return nil, fmt.Errorf("invalid terraform registry mirror URL: %s", mirrorURL)
-		}
-
-		// Try parsing the URL as-is
-		parsedURL, err = url.Parse(mirrorURL)
-		if err != nil {
-			logger.Error(err, "Failed to parse mirror URL", "url", mirrorURL)
-			return nil, fmt.Errorf("invalid terraform registry mirror URL: %w", err)
-		}
-
-		// If no scheme is present, add https:// and reparse
-		// This handles cases like "example.com" or "example.com:8443"
-		if parsedURL.Scheme == "" || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https" && strings.Contains(mirrorURL, ":")) {
-			// For URLs without a scheme, Go's url.Parse may misinterpret the host as scheme
-			// e.g., "example.com:8443" becomes scheme="example.com" instead of host="example.com:8443"
-			// So we always add https:// for scheme-less URLs
-			logger.Info("Adding https:// scheme to URL", "originalURL", mirrorURL)
-			mirrorURL = "https://" + mirrorURL
-			parsedURL, err = url.Parse(mirrorURL)
-			if err != nil {
-				logger.Error(err, "Failed to parse URL after adding scheme", "url", mirrorURL)
-				return nil, fmt.Errorf("invalid terraform registry mirror URL: %w", err)
-			}
-		}
-
-		// Use Host() instead of Hostname() to preserve port information
-		host = parsedURL.Host
-		if host == "" {
-			logger.Error(nil, "Empty host in mirror URL", "originalURL", config.RecipeConfig.Terraform.ProviderMirror.Mirror, "parsedURL", mirrorURL)
-			return nil, fmt.Errorf("empty host in mirror URL: %s", config.RecipeConfig.Terraform.ProviderMirror.Mirror)
-		}
-
-		logger.Info("Mirror URL normalized", "normalizedURL", parsedURL.String(), "host", host)
-	}
-
 	// Begin building Terraform configuration
 	var configContent strings.Builder
+	credentialsHosts := make(map[string]bool)
 
-	// Handle provider mirror authentication
+	// Provider mirror auth/TLS envs
 	if hasProviderMirror {
-		auth := config.RecipeConfig.Terraform.ProviderMirror.Authentication
+		// Extract host from URL if http(s) so we can set token env and credentials blocks
+		mirrorURL := pm.URL
+		if strings.HasPrefix(strings.ToLower(mirrorURL), "http") {
+			u, parseErr := url.Parse(mirrorURL)
+			if parseErr != nil || u.Host == "" {
+				return nil, fmt.Errorf("invalid provider mirror URL: %s", mirrorURL)
+			}
+			host = u.Host
+		}
 
-		// Token authentication
-		if auth.Token != nil && auth.Token.Secret != "" {
-			logger.Info("Configuring provider mirror token authentication",
-				"secretStore", auth.Token.Secret,
-				"additionalHostsCount", len(auth.AdditionalHosts))
-
-			secretStoreID := auth.Token.Secret
-
-			// Get token from secret store
+		// Token env
+		if pm.Authentication.Token != nil && pm.Authentication.Token.Secret != "" {
+			secretStoreID := pm.Authentication.Token.Secret
 			if secrets == nil {
-				logger.Error(nil, "No secrets available for token authentication")
 				return nil, fmt.Errorf("no secrets available for token authentication")
 			}
-
-			secretData, secretExists := secrets[secretStoreID]
-			if !secretExists {
-				availableSecrets := make([]string, 0, len(secrets))
-				for k := range secrets {
-					availableSecrets = append(availableSecrets, k)
-				}
-				logger.Error(nil, "Secret store not found",
-					"secretStore", secretStoreID,
-					"availableSecrets", availableSecrets)
+			secretData, ok := secrets[secretStoreID]
+			if !ok {
 				return nil, fmt.Errorf("secret store %q not found", secretStoreID)
 			}
-
-			logger.Info("Found secret data",
-				"secretStore", secretStoreID,
-				"dataKeys", len(secretData.Data))
-
-			var tokenExists bool
-			tokenString, tokenExists := secretData.Data["token"]
-			if !tokenExists {
-				availableKeys := make([]string, 0, len(secretData.Data))
-				for k := range secretData.Data {
-					availableKeys = append(availableKeys, k)
-				}
-				logger.Error(nil, "Token key not found in secret data",
-					"secretStore", secretStoreID,
-					"availableKeys", availableKeys)
+			tokenString, ok := secretData.Data["token"]
+			if !ok {
 				return nil, fmt.Errorf("token not found in secret store %q", secretStoreID)
 			}
-
-			// Convert string to []byte
 			token = []byte(tokenString)
-
-			// Log token info (safely)
-			logger.Info("Successfully extracted provider mirror token",
-				"tokenLength", len(token),
-				"tokenPrefix", getTokenPrefix(string(token)))
-
-			// Use environment variables instead of credentials blocks in the config file.
-			// This is necessary when using self-signed certificates, as Terraform requires
-			// the TLS configuration to be set via environment variables for the initial
-			// connection to download the provider index files.
-			envVarName, envVarValue, err := getTerraformTokenEnv(host, string(token))
-			if err != nil {
-				logger.Error(err, "Failed to prepare token environment variable", "host", host)
-				return nil, fmt.Errorf("failed to prepare token for %s: %w", host, err)
-			}
-			logger.Info("Setting environment variable for provider mirror token authentication",
-				"envVar", envVarName,
-				"envValue", envVarValue,
-				"host", host,
-				"token", string(token))
-			regConfig.EnvVars[envVarName] = envVarValue
-
-			logger.Info("Configured provider mirror token authentication",
-				"host", host,
-				"envVar", envVarName,
-				"secretStoreID", secretStoreID)
-
-			// Handle additional hosts if configured
-			if len(auth.AdditionalHosts) > 0 {
-				logger.Info("Configuring provider mirror authentication for additional hosts", "hosts", auth.AdditionalHosts)
-
-				// Apply same token to each additional host
-				for _, additionalHost := range auth.AdditionalHosts {
-					if additionalHost == "" || additionalHost == host {
-						logger.Info("Skipping host", "host", additionalHost, "reason", "empty or duplicate")
-						continue // Skip empty or duplicate hosts
-					}
-
-					// Get environment variable name and value
-					envVarName, envVarValue, err := getTerraformTokenEnv(additionalHost, string(token))
-					if err != nil {
-						logger.Error(err, "Failed to prepare token for additional host", "host", additionalHost)
-						return nil, fmt.Errorf("failed to prepare token for additional host %s: %w", additionalHost, err)
-					}
-					regConfig.EnvVars[envVarName] = envVarValue
-
-					logger.Info("Added provider mirror token authentication for additional host",
-						"host", additionalHost,
-						"envVar", envVarName)
+			if host != "" {
+				name, value, err := getTerraformTokenEnv(host, string(token))
+				if err != nil {
+					return nil, err
 				}
+				regConfig.EnvVars[name] = value
+			}
+			for _, ah := range pm.Authentication.AdditionalHosts {
+				if ah == "" || ah == host {
+					continue
+				}
+				name, value, err := getTerraformTokenEnv(ah, string(token))
+				if err != nil {
+					return nil, err
+				}
+				regConfig.EnvVars[name] = value
 			}
 		}
-	}
 
-	// Log TLS configuration details
-	if hasProviderMirror && config.RecipeConfig.Terraform.ProviderMirror.TLS != nil {
-		logger.Info("Provider mirror TLS configuration found",
-			"skipVerify", config.RecipeConfig.Terraform.ProviderMirror.TLS.SkipVerify,
-			"hasCACert", config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate != nil)
-
-		if config.RecipeConfig.Terraform.ProviderMirror.TLS.SkipVerify {
-			// Add TF_INSECURE_SKIP_TLS_VERIFY environment variable
-			regConfig.EnvVars["TF_INSECURE_SKIP_TLS_VERIFY"] = "1"
-			logger.Info("Added TF_INSECURE_SKIP_TLS_VERIFY environment variable for TLS skip")
-
-			if parsedURL.Scheme == "https" {
-				logger.Info("WARNING: TLS skipVerify is set for HTTPS provider mirror. Using TF_INSECURE_SKIP_TLS_VERIFY to bypass certificate verification.")
+		// TLS envs
+		if pm.TLS != nil {
+			if pm.TLS.SkipVerify {
+				regConfig.EnvVars["TF_INSECURE_SKIP_TLS_VERIFY"] = "1"
 			}
-		}
-	} else {
-		logger.Info("No TLS configuration found for provider mirror")
-	}
-
-	// Handle CA certificate if provided for provider mirror
-	if hasProviderMirror &&
-		config.RecipeConfig.Terraform.ProviderMirror.TLS != nil &&
-		config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate != nil &&
-		config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Source != "" {
-
-		logger.Info("Configuring CA certificate for provider mirror",
-			"secretStore", config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Source,
-			"key", config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Key)
-
-		// Get CA certificate from secrets
-		secretStoreID := config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Source
-		secretKey := config.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate.Key
-
-		// Log available secrets for debugging
-		if secrets != nil {
-			availableSecrets := make([]string, 0, len(secrets))
-			for k := range secrets {
-				availableSecrets = append(availableSecrets, k)
-			}
-			logger.Info("Looking for CA certificate in secrets",
-				"targetSecretStore", secretStoreID,
-				"targetKey", secretKey,
-				"availableSecrets", availableSecrets)
-		}
-
-		// Check if secrets map exists first
-		if secrets == nil {
-			logger.Info("No secrets available, skipping CA certificate configuration")
-		} else if secretData, ok := secrets[secretStoreID]; ok {
-			logger.Info("Found CA certificate secret store",
-				"secretStore", secretStoreID,
-				"dataKeysCount", len(secretData.Data))
-
-			if caCert, ok := secretData.Data[secretKey]; ok {
-				logger.Info("Successfully extracted CA certificate",
-					"certLength", len(caCert),
-					"certPreview", getCertPreview(string(caCert)))
-
-				// Write CA certificate to file
-				caCertPath := filepath.Join(dirPath, "terraform-registry-ca.pem")
-				logger.Info("Writing CA certificate to file",
-					"path", caCertPath,
-					"size", len(caCert))
-
-				if err := os.WriteFile(caCertPath, []byte(caCert), 0600); err != nil {
-					logger.Error(err, "Failed to write CA certificate", "path", caCertPath)
+			if pm.TLS.CACertificate != nil && pm.TLS.CACertificate.Source != "" {
+				secretStoreID := pm.TLS.CACertificate.Source
+				key := pm.TLS.CACertificate.Key
+				if secrets == nil {
+					return nil, fmt.Errorf("no secrets available for CA certificate")
+				}
+				secretData, ok := secrets[secretStoreID]
+				if !ok {
+					return nil, fmt.Errorf("secret store %q not found for CA certificate", secretStoreID)
+				}
+				ca, ok := secretData.Data[key]
+				if !ok {
+					return nil, fmt.Errorf("CA certificate not found in secret store %q with key %q", secretStoreID, key)
+				}
+				caPath := filepath.Join(dirPath, "terraform-registry-ca.pem")
+				if err := os.WriteFile(caPath, []byte(ca), 0600); err != nil {
 					return nil, fmt.Errorf("failed to write CA certificate: %w", err)
 				}
-
-				// Verify file was written
-				if stat, err := os.Stat(caCertPath); err == nil {
-					logger.Info("CA certificate file written successfully",
-						"path", caCertPath,
-						"size", stat.Size(),
-						"mode", stat.Mode())
-				}
-
-				regConfig.TempFiles = append(regConfig.TempFiles, caCertPath)
-
-				// Store environment variables for CA certificate
-				// These are used for HTTPS operations during provider downloads from the registry
-				// Note: Git operations use GIT_SSL_CAINFO which is set separately in recipe TLS config
-				regConfig.EnvVars["SSL_CERT_FILE"] = caCertPath
-				regConfig.EnvVars["CURL_CA_BUNDLE"] = caCertPath
-
-				logger.Info("CA certificate configured for registry operations",
-					"path", caCertPath,
-					"SSL_CERT_FILE", caCertPath,
-					"CURL_CA_BUNDLE", caCertPath)
-			} else {
-				availableKeys := make([]string, 0, len(secretData.Data))
-				for k := range secretData.Data {
-					availableKeys = append(availableKeys, k)
-				}
-				logger.Error(nil, "CA certificate key not found in secret data",
-					"secretStore", secretStoreID,
-					"requestedKey", secretKey,
-					"availableKeys", availableKeys)
-				return nil, fmt.Errorf("CA certificate not found in secret store %q with key %q", secretStoreID, secretKey)
+				regConfig.TempFiles = append(regConfig.TempFiles, caPath)
+				regConfig.EnvVars["SSL_CERT_FILE"] = caPath
+				regConfig.EnvVars["CURL_CA_BUNDLE"] = caPath
+				regConfig.EnvVars["GIT_SSL_CAINFO"] = caPath
 			}
-		} else {
-			logger.Error(nil, "Secret store not found for CA certificate",
-				"requestedSecretStore", secretStoreID)
-			return nil, fmt.Errorf("secret store %q not found for CA certificate", secretStoreID)
 		}
 	}
 
-	// Add provider installation configuration if provider mirror is configured
+	// Provider installation: support filesystem and network mirror types
 	if hasProviderMirror {
-		logger.Info("Creating provider installation configuration",
-			"mirrorURL", parsedURL.String(),
-			"includePattern", "*/*/*",
-			"excludePattern", "*/*/*")
+		mirrorType := strings.ToLower(strings.TrimSpace(pm.Type))
+		if mirrorType == "" {
+			return nil, fmt.Errorf("provider mirror type is required")
+		}
 
-		configContent.WriteString(fmt.Sprintf(`provider_installation {
-  network_mirror {
-    url     = %q
+		// Log the resolved provider mirror configuration for diagnostics
+		logger.Info("Resolved Terraform provider mirror configuration",
+			"type", mirrorType,
+			"url", pm.URL)
+
+		switch mirrorType {
+		case "filesystem":
+			mirrorPath, err := prepareFilesystemMirror(ctx, pm, secrets, dirPath, token)
+			if err != nil {
+				return nil, err
+			}
+			configContent.WriteString(fmt.Sprintf(`provider_installation {
+  filesystem_mirror {
+    path    = %q
     include = ["*/*/*"]
   }
   direct {
     exclude = ["*/*/*"]
   }
 }
-`, parsedURL.String()))
-	}
-
-	// Add credentials block for provider mirror authentication (only if token is configured)
-	if hasProviderMirror && config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token != nil && 
-		config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token.Secret != "" && len(token) > 0 {
-		logger.Info("Adding provider mirror credentials block to .terraformrc",
-			"host", host,
-			"tokenLength", len(token))
-
-		configContent.WriteString(fmt.Sprintf(`
-credentials %q {
-  token = %q
+`, mirrorPath))
+			regConfig.TempFiles = append(regConfig.TempFiles, mirrorPath)
+		case "network":
+			if pm.URL == "" {
+				return nil, fmt.Errorf("provider mirror url is required for network mirror")
+			}
+			configContent.WriteString(fmt.Sprintf(`provider_installation {
+  network_mirror {
+    url = %q
+  }
+  direct {}
 }
-`, host, string(token)))
+`, strings.TrimRight(pm.URL, "/")))
+		default:
+			return nil, fmt.Errorf("unsupported provider mirror type: %s", pm.Type)
+		}
 	}
 
-	// Add credentials blocks for module registries
+	// Module registries (unchanged)
 	if hasModuleRegistries {
-		logger.Info("Processing module registry configurations",
-			"count", len(config.RecipeConfig.Terraform.ModuleRegistries))
-
 		for registryName, registryConfig := range config.RecipeConfig.Terraform.ModuleRegistries {
-			logger.Info("Processing module registry",
-				"name", registryName,
-				"host", registryConfig.Host,
-				"hasAuth", registryConfig.Authentication.Token != nil)
+			redirectHost := registryConfig.Host
+			if redirectHost == "" {
+				continue
+			}
+			hostToRedirect := registryName
+			configContent.WriteString(fmt.Sprintf(`
+host %q {
+  services = {
+    "modules.v1" = "https://%s"
+  }
+}
+`, hostToRedirect, redirectHost))
 
-			// Handle authentication if configured
+			// Module registry credentials
 			if registryConfig.Authentication.Token != nil && registryConfig.Authentication.Token.Secret != "" {
-				logger.Info("Configuring module registry token authentication",
-					"registryName", registryName,
-					"host", registryConfig.Host,
-					"secretStore", registryConfig.Authentication.Token.Secret)
-
 				secretStoreID := registryConfig.Authentication.Token.Secret
-
-				// Get token from secret store
-				if secrets == nil {
-					logger.Error(nil, "No secrets available for module registry token authentication")
-					return nil, fmt.Errorf("no secrets available for module registry token authentication")
-				}
-
-				secretData, secretExists := secrets[secretStoreID]
-				if !secretExists {
-					availableSecrets := make([]string, 0, len(secrets))
-					for k := range secrets {
-						availableSecrets = append(availableSecrets, k)
-					}
-					logger.Error(nil, "Secret store not found for module registry",
-						"registryName", registryName,
-						"secretStore", secretStoreID,
-						"availableSecrets", availableSecrets)
+				secretData, ok := secrets[secretStoreID]
+				if !ok {
 					return nil, fmt.Errorf("secret store %q not found for module registry %q", secretStoreID, registryName)
 				}
-
-				tokenString, tokenExists := secretData.Data["token"]
-				if !tokenExists {
-					availableKeys := make([]string, 0, len(secretData.Data))
-					for k := range secretData.Data {
-						availableKeys = append(availableKeys, k)
-					}
-					logger.Error(nil, "Token key not found in module registry secret data",
-						"registryName", registryName,
-						"secretStore", secretStoreID,
-						"availableKeys", availableKeys)
+				tokenString, ok := secretData.Data["token"]
+				if !ok {
 					return nil, fmt.Errorf("token not found in secret store %q for module registry %q", secretStoreID, registryName)
 				}
-
-				logger.Info("Successfully extracted module registry token",
-					"registryName", registryName,
-					"host", registryConfig.Host,
-					"tokenLength", len(tokenString))
-
-				// Add credentials block for this module registry
-				configContent.WriteString(fmt.Sprintf(`
+				credentialsHost := registryConfig.Host
+				if strings.Contains(credentialsHost, "/") {
+					credentialsHost = strings.Split(credentialsHost, "/")[0]
+				}
+				if !credentialsHosts[credentialsHost] {
+					configContent.WriteString(fmt.Sprintf(`
 credentials %q {
   token = %q
 }
-`, registryConfig.Host, tokenString))
-
-				logger.Info("Added module registry credentials block to .terraformrc",
-					"registryName", registryName,
-					"host", registryConfig.Host)
-
-				// Handle additional hosts if configured for module registry
-				if len(registryConfig.Authentication.AdditionalHosts) > 0 {
-					logger.Info("Configuring module registry authentication for additional hosts", 
-						"registryName", registryName,
-						"hosts", registryConfig.Authentication.AdditionalHosts)
-
-					for _, additionalHost := range registryConfig.Authentication.AdditionalHosts {
-						if additionalHost == "" || additionalHost == registryConfig.Host {
-							logger.Info("Skipping additional host", "host", additionalHost, "reason", "empty or duplicate")
-							continue
-						}
-
-						// Add credentials block for additional host
+`, credentialsHost, tokenString))
+					credentialsHosts[credentialsHost] = true
+				}
+				for _, ah := range registryConfig.Authentication.AdditionalHosts {
+					if ah == "" || ah == credentialsHost {
+						continue
+					}
+					if !credentialsHosts[ah] {
 						configContent.WriteString(fmt.Sprintf(`
 credentials %q {
   token = %q
 }
-`, additionalHost, tokenString))
+`, ah, tokenString))
+						credentialsHosts[ah] = true
+					}
+				}
 
-						logger.Info("Added module registry credentials for additional host",
+				// Configure Git authentication for module downloads using the same PAT
+				// Strip port from host for .netrc since Git doesn't use ports in machine names
+				gitHost := credentialsHost
+				if colonIndex := strings.LastIndex(gitHost, ":"); colonIndex != -1 {
+					gitHost = gitHost[:colonIndex]
+				}
+
+				logger.Info("Configuring Git authentication for module registry",
+					"registryName", registryName,
+					"host", gitHost)
+
+				err := configureGitAuthentication(ctx, dirPath, gitHost, tokenString, regConfig)
+				if err != nil {
+					logger.Error(err, "Failed to configure Git authentication",
+						"registryName", registryName,
+						"host", gitHost)
+					return nil, fmt.Errorf("failed to configure Git authentication for registry %q: %w", registryName, err)
+				}
+
+				// Also configure Git auth for additional hosts
+				for _, ah := range registryConfig.Authentication.AdditionalHosts {
+					if ah == "" || ah == credentialsHost {
+						continue
+					}
+
+					// Strip port from additional host for .netrc
+					gitAH := ah
+					if colonIndex := strings.LastIndex(gitAH, ":"); colonIndex != -1 {
+						gitAH = gitAH[:colonIndex]
+					}
+
+					logger.Info("Configuring Git authentication for additional host",
+						"registryName", registryName,
+						"additionalHost", gitAH)
+
+					err := configureGitAuthentication(ctx, dirPath, gitAH, tokenString, regConfig)
+					if err != nil {
+						logger.Error(err, "Failed to configure Git authentication for additional host",
 							"registryName", registryName,
-							"additionalHost", additionalHost)
+							"additionalHost", gitAH)
+						return nil, fmt.Errorf("failed to configure Git authentication for additional host %q: %w", gitAH, err)
 					}
 				}
 			}
 		}
 	}
 
-	// Create the .terraformrc file in the execution directory
+	// Write config file
 	terraformRCPath := filepath.Join(dirPath, TerraformRCFilename)
-	logger.Info("Writing Terraform registry configuration file",
-		"path", terraformRCPath,
-		"contentLength", configContent.Len())
-
-	err = os.WriteFile(terraformRCPath, []byte(configContent.String()), DefaultFilePerms)
-	if err != nil {
-		logger.Error(err, "Failed to write Terraform registry configuration file", "path", terraformRCPath)
+	if err = os.WriteFile(terraformRCPath, []byte(configContent.String()), DefaultFilePerms); err != nil {
 		return nil, fmt.Errorf("failed to write Terraform registry configuration file: %w", err)
 	}
-
-	// Verify file was written
-	if stat, err := os.Stat(terraformRCPath); err == nil {
-		logger.Info("Terraform registry configuration file written successfully",
-			"path", terraformRCPath,
-			"size", stat.Size(),
-			"mode", stat.Mode())
-
-		// Log the content for debugging (be careful not to log sensitive tokens in production)
-		if content, err := os.ReadFile(terraformRCPath); err == nil {
-			// Mask the token in the log
-			maskedContent := string(content)
-			if hasProviderMirror && config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token != nil && 
-				config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token.Secret != "" && len(token) > 0 {
-				maskedContent = strings.ReplaceAll(maskedContent, string(token), "***MASKED***")
-			}
-			logger.Info("Terraform configuration content",
-				"content", maskedContent)
-		}
-	}
-
 	regConfig.ConfigPath = terraformRCPath
-
-	// Store the TF_CLI_CONFIG_FILE environment variable
 	regConfig.EnvVars[EnvTerraformCLIConfigFile] = terraformRCPath
 
-	// Log all environment variables that will be set
-	envVarKeys := make([]string, 0, len(regConfig.EnvVars))
-	for k, v := range regConfig.EnvVars {
-		envVarKeys = append(envVarKeys, k)
-		// Log specific important env vars
-		if k == "TF_INSECURE_SKIP_TLS_VERIFY" {
-			logger.Info("TLS verification will be skipped", "envVar", k, "value", v)
-		}
+	return regConfig, nil
+}
+
+// prepareFilesystemMirror ensures a local filesystem mirror directory exists.
+// If pm.URL is http(s) and points to a zip or tar.gz, download and extract to a temp dir under dirPath.
+// If pm.URL is file:// or a local path, verify and return the path.
+func prepareFilesystemMirror(ctx context.Context, pm *datamodel.TerraformProviderMirrorConfig, secrets map[string]recipes.SecretData, dirPath string, token []byte) (string, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	src := pm.URL
+	if src == "" {
+		// Allow pre-provisioned mirror path via AdditionalHosts? For now, require URL
+		return "", fmt.Errorf("provider mirror URL is required for filesystem mirror")
 	}
 
-	// Log if credentials were added
-	hasCredentials := (hasProviderMirror && config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token != nil && 
-		config.RecipeConfig.Terraform.ProviderMirror.Authentication.Token.Secret != "" && len(token) > 0) ||
-		hasModuleRegistries
+	lower := strings.ToLower(src)
+	if strings.HasPrefix(lower, "file://") || strings.HasPrefix(src, "/") || strings.HasPrefix(src, "./") || strings.HasPrefix(src, "../") {
+		// Local directory
+		path := strings.TrimPrefix(src, "file://")
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", err
+		}
+		stat, err := os.Stat(abs)
+		if err != nil {
+			return "", err
+		}
+		if !stat.IsDir() {
+			return "", fmt.Errorf("filesystem mirror path is not a directory: %s", abs)
+		}
+		return abs, nil
+	}
 
-	logger.Info("Terraform registry configuration complete",
-		"configPath", terraformRCPath,
-		"hasProviderMirror", hasProviderMirror,
-		"hasModuleRegistries", hasModuleRegistries,
-		"hasCredentialsBlock", hasCredentials,
-		"envVarCount", len(regConfig.EnvVars),
-		"envVars", envVarKeys,
-		"tempFilesCount", len(regConfig.TempFiles))
+	// Remote artifact
+	u, err := url.Parse(src)
+	if err != nil {
+		return "", fmt.Errorf("invalid provider mirror URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("unsupported provider mirror URL scheme: %s", u.Scheme)
+	}
 
-	return regConfig, nil
+	// Download
+	artifactPath := filepath.Join(dirPath, "providers-mirror.zip")
+	logger.Info("Downloading filesystem provider mirror", "url", src, "dest", artifactPath)
+	if err := downloadWithTLSAndAuth(ctx, src, artifactPath, pm, secrets, token); err != nil {
+		return "", fmt.Errorf("failed to download provider mirror: %w", err)
+	}
+
+	// Extract
+	mirrorDir := filepath.Join(dirPath, "providers-mirror")
+	_ = os.RemoveAll(mirrorDir)
+	if err := os.MkdirAll(mirrorDir, 0755); err != nil {
+		return "", err
+	}
+	logger.Info("Extracting filesystem provider mirror", "zip", artifactPath, "dest", mirrorDir)
+	if err := unzip(artifactPath, mirrorDir); err != nil {
+		return "", fmt.Errorf("failed to extract provider mirror: %w", err)
+	}
+	return mirrorDir, nil
+}
+
+// downloadWithTLSAndAuth downloads a URL with optional token auth and CA bundle/skip verify from pm.TLS.
+func downloadWithTLSAndAuth(ctx context.Context, src, dest string, pm *datamodel.TerraformProviderMirrorConfig, secrets map[string]recipes.SecretData, token []byte) error {
+	// Reuse customsource HTTP client logic by creating a minimal client
+	client, err := buildHTTPClientFromTLS(pm, secrets)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", src, nil)
+	if err != nil {
+		return err
+	}
+	if len(token) > 0 {
+		// Use Bearer token; many proxies accept raw token in Authorization or PRIVATE-TOKEN. Use Authorization if not GitLab-specific
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", string(token)))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed: %s", resp.Status)
+	}
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func buildHTTPClientFromTLS(pm *datamodel.TerraformProviderMirrorConfig, secrets map[string]recipes.SecretData) (*http.Client, error) {
+	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
+	if pm.TLS != nil {
+		if pm.TLS.SkipVerify {
+			tlsCfg.InsecureSkipVerify = true
+		}
+		if pm.TLS.CACertificate != nil && pm.TLS.CACertificate.Source != "" {
+			secretData, ok := secrets[pm.TLS.CACertificate.Source]
+			if !ok {
+				return nil, fmt.Errorf("CA certificate secret store not found: %s", pm.TLS.CACertificate.Source)
+			}
+			pem, ok := secretData.Data[pm.TLS.CACertificate.Key]
+			if !ok {
+				return nil, fmt.Errorf("CA certificate key '%s' not found", pm.TLS.CACertificate.Key)
+			}
+			pool, _ := x509.SystemCertPool()
+			if pool == nil {
+				pool = x509.NewCertPool()
+			}
+			if !pool.AppendCertsFromPEM([]byte(pem)) {
+				return nil, fmt.Errorf("failed to parse CA certificate")
+			}
+			tlsCfg.RootCAs = pool
+		}
+	}
+	return &http.Client{Transport: &http.Transport{TLSClientConfig: tlsCfg}}, nil
+}
+
+// unzip extracts a simple zip archive into destDir
+func unzip(zipPath, destDir string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	for _, f := range r.File {
+		fp := filepath.Join(destDir, f.Name)
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(fp, 0755); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(fp), 0755); err != nil {
+			return err
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		out, err := os.OpenFile(fp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
+		if err != nil {
+			rc.Close()
+			return err
+		}
+		if _, err := io.Copy(out, rc); err != nil {
+			out.Close()
+			rc.Close()
+			return err
+		}
+		out.Close()
+		rc.Close()
+	}
+	return nil
 }
 
 // getTerraformTokenEnv prepares the TF_TOKEN_* environment variable for a hostname
@@ -546,6 +491,60 @@ func getTerraformTokenEnv(hostname string, token string) (string, string, error)
 	envHostname = strings.ReplaceAll(envHostname, ":", "_")
 	envVarName := fmt.Sprintf("TF_TOKEN_%s", envHostname)
 	return envVarName, token, nil
+}
+
+// configureGitAuthentication sets up Git authentication and URL rewriting for module downloads.
+// This configures a per-directory Git config that:
+// 1. Rewrites Git clone URLs from a public host (github.com) to the specified private host (e.g., gitlab.airgapped.local).
+// 2. Injects an HTTP Authorization header for requests to the private host.
+func configureGitAuthentication(ctx context.Context, dirPath, host, token string, regConfig *RegistryConfig) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Ensure host without trailing slashes and whitespace
+	host = strings.TrimSpace(strings.TrimSuffix(host, "/"))
+	if host == "" {
+		return fmt.Errorf("git host is empty")
+	}
+
+	// Prepare config path in the working directory
+	gitConfigPath := filepath.Join(dirPath, ".gitconfig")
+
+	// Build Basic auth header: base64("oauth2:" + PAT)
+	basic := base64.StdEncoding.EncodeToString([]byte("oauth2:" + token))
+	authHeader := "Authorization: Basic " + basic
+
+	// Build the .gitconfig content
+	var gitConfigContent strings.Builder
+
+	// Section for URL rewriting.
+	// This tells Git to replace any github.com URL with our internal GitLab host.
+	// The trailing slashes are important for Git's prefix matching.
+	gitConfigContent.WriteString(fmt.Sprintf("[url \"https://%s/\"]\n", host))
+	gitConfigContent.WriteString("\tinsteadOf = https://github.com/\n\n")
+
+	// Section for authentication.
+	// This injects the auth header for requests to our internal GitLab host.
+	gitConfigContent.WriteString(fmt.Sprintf("[http \"https://%s\"]\n", host))
+	gitConfigContent.WriteString(fmt.Sprintf("\textraHeader = %s\n", authHeader))
+
+	// Write the config file. This will overwrite any existing .gitconfig in this directory.
+	if err := os.WriteFile(gitConfigPath, []byte(gitConfigContent.String()), 0600); err != nil {
+		return fmt.Errorf("failed to write .gitconfig: %w", err)
+	}
+
+	// Track for cleanup
+	regConfig.TempFiles = append(regConfig.TempFiles, gitConfigPath)
+
+	// Set environment variables for Git
+	regConfig.EnvVars["GIT_CONFIG_GLOBAL"] = gitConfigPath
+	regConfig.EnvVars["HOME"] = dirPath
+	regConfig.EnvVars["GIT_TERMINAL_PROMPT"] = "0"
+
+	logger.Info("Configured Git URL rewriting and authentication for module downloads",
+		"host", host,
+		"insteadOf", "https://github.com/",
+		"config", gitConfigPath)
+	return nil
 }
 
 // CleanupTerraformRegistryConfig removes the Terraform registry configuration and unsets environment variables

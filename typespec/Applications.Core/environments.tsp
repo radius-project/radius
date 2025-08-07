@@ -132,8 +132,14 @@ model TerraformModuleRegistryConfig {
 
 @doc("Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror.")
 model TerraformProviderMirrorConfig {
-  @doc("The base URL of the provider mirror. Example: 'https://terraform.example.com'")
-  url: string;
+  @doc("Type of mirror. Only 'filesystem' is supported. When type is 'filesystem': URL must point to a packaged filesystem mirror (zip/tar.gz) or a local path/URL (file:// or absolute path) to a ready mirror directory. Authentication and TLS (CA certificate, skipVerify) apply to downloading the file from HTTP(S) sources. The mirror is unpacked to a local directory and used via provider_installation.filesystem_mirror.")
+  type?: string;
+
+  @doc("URL to the mirror file or directory: http(s)://... .zip/.tar.gz => downloaded and extracted locally; file:///abs/path or plain absolute/relative path => used directly as a local directory. Example: 'https://terraform.example.com'")
+  url?: string;
+
+  @doc("Provider mappings used to translate between official and custom provider identifiers.")
+  providerMappings?: Record<string>;
 
   @doc("Authentication configuration for accessing the provider mirror.")
   authentication?: RegistryAuthConfig;

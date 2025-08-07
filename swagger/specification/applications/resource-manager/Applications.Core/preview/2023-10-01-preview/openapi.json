@@ -4820,9 +4820,20 @@
       "type": "object",
       "description": "Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror.",
       "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of mirror. Only 'filesystem' is supported. When type is 'filesystem': URL must point to a packaged filesystem mirror (zip/tar.gz) or a local path/URL (file:// or absolute path) to a ready mirror directory. Authentication and TLS (CA certificate, skipVerify) apply to downloading the file from HTTP(S) sources. The mirror is unpacked to a local directory and used via provider_installation.filesystem_mirror."
+        },
         "url": {
           "type": "string",
-          "description": "The base URL of the provider mirror. Example: 'https://terraform.example.com'"
+          "description": "URL to the mirror file or directory: http(s)://... .zip/.tar.gz => downloaded and extracted locally; file:///abs/path or plain absolute/relative path => used directly as a local directory. Example: 'https://terraform.example.com'"
+        },
+        "providerMappings": {
+          "type": "object",
+          "description": "Provider mappings used to translate between official and custom provider identifiers.",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "authentication": {
           "$ref": "#/definitions/RegistryAuthConfig",
@@ -4832,10 +4843,7 @@
           "$ref": "#/definitions/TLSConfig",
           "description": "TLS configuration for connecting to the provider mirror."
         }
-      },
-      "required": [
-        "url"
-      ]
+      }
     },
     "TerraformRecipeProperties": {
       "type": "object",

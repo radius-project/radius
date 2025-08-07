@@ -40,8 +40,8 @@ func GetTerraformProviderFullName(registry, provider string) string {
 
 // GetTerraformRegistry returns the configured Terraform provider mirror URL, or the default registry if none is configured.
 func GetTerraformRegistry(config recipes.Configuration) string {
-	if config.RecipeConfig.Terraform.ProviderMirror != nil && config.RecipeConfig.Terraform.ProviderMirror.Mirror != "" {
-		return config.RecipeConfig.Terraform.ProviderMirror.Mirror
+	if config.RecipeConfig.Terraform.ProviderMirror != nil && config.RecipeConfig.Terraform.ProviderMirror.URL != "" {
+		return config.RecipeConfig.Terraform.ProviderMirror.URL
 	}
 	return DefaultTerraformRegistry
 }

@@ -19,8 +19,9 @@
             }
           }
         },
-        "registry": {
-          "mirror": "https://registry.example.com",
+        "providerMirror": {
+          "url": "https://registry.example.com",
+          "type": "network",
           "authentication": {
             "token": {
               "secret": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/registrySecrets"

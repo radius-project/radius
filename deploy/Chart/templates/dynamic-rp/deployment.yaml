@@ -30,6 +30,28 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+      initContainers:
+      - name: append-root-ca
+        image: "{{ .Values.global.appendRootCA.initImage }}"
+        command: ["/bin/sh","-c"]
+        args:
+          - >-
+            set -e;
+            apk add --no-cache ca-certificates ca-certificates-bundle >/dev/null 2>&1 || true;
+            mkdir -p {{ .Values.global.appendRootCA.bundleMountPath }};
+            cp -a /etc/ssl/certs/. {{ .Values.global.appendRootCA.bundleMountPath }}/;
+            if [ -f {{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt ]; then
+              cat /src/ca.crt >> {{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt;
+            else
+              cp /src/ca.crt {{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt;
+            fi
+        volumeMounts:
+        - name: {{ .Values.global.rootCA.volumeName }}
+          mountPath: /src
+        - name: ca-bundle
+          mountPath: {{ .Values.global.appendRootCA.bundleMountPath }}
+      {{- end }}
       containers:
       - name: dynamic-rp
         image: "{{ .Values.dynamicrp.image }}:{{ .Values.dynamicrp.tag | default $appversion }}"
@@ -44,10 +66,15 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
-        {{- if .Values.global.rootCA.cert }}
+        {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
+          value: {{ .Values.global.appendRootCA.bundleMountPath }}
+        - name: {{ .Values.global.appendRootCA.sslCertFileEnvVar }}
+          value: "{{ .Values.global.appendRootCA.bundleMountPath }}/ca-certificates.crt"
+        {{- else if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
-        {{- end}}
+        {{- end }}
         ports:
         - containerPort: 5443
           name: dynamic-rp
@@ -68,6 +95,10 @@ spec:
         {{- end }}
         - name: terraform
           mountPath: {{ .Values.dynamicrp.terraform.path }}
+        {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+        - name: ca-bundle
+          mountPath: {{ .Values.global.appendRootCA.bundleMountPath }}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -91,6 +122,10 @@ spec:
         {{- end }}
         - name: terraform
           emptyDir: {}
+        {{- if and .Values.global.appendRootCA.enabled .Values.global.rootCA.cert }}
+        - name: ca-bundle
+          emptyDir: {}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

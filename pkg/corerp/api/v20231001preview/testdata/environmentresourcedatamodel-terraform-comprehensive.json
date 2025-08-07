@@ -25,8 +25,9 @@
             }
           }
         },
-        "registry": {
-          "mirror": "https://terraform.example.com",
+        "providerMirror": {
+          "type": "network",
+          "url": "https://terraform.example.com",
           "providerMappings": {
             "registry.terraform.io/hashicorp/aws": "terraform.example.com/providers/aws",
             "registry.terraform.io/hashicorp/azurerm": "terraform.example.com/providers/azurerm"

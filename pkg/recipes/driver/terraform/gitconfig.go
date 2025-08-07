@@ -34,10 +34,11 @@ import (
 func getGitURLWithSecrets(secrets map[string]string, url *url.URL) string {
 	// accessing the secret values and creating the git url with secret information.
 	path := fmt.Sprintf("%s://", url.Scheme)
-	user, ok := secrets["username"]
-	if ok {
-		path += fmt.Sprintf("%s:", user)
+	user := secrets["username"]
+	if strings.TrimSpace(user) == "" {
+		user = "oauth2"
 	}
+	path += fmt.Sprintf("%s:", user)
 
 	token, ok := secrets["pat"]
 	if ok {
@@ -69,7 +70,7 @@ func getURLConfigKeyValue(secrets map[string]string, templatePath string) (strin
 func addSecretsToGitConfigIfApplicable(ctx context.Context, config recipes.Configuration, secrets map[string]recipes.SecretData, workingDirectory string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	if config.RecipeConfig.Terraform.Authentication.Git.PAT == nil || len(config.RecipeConfig.Terraform.Authentication.Git.PAT) == 0 {
+	if len(config.RecipeConfig.Terraform.Authentication.Git.PAT) == 0 {
 		return nil
 	}
 
@@ -166,7 +167,7 @@ func GetGitURL(templatePath string) (*url.URL, error) {
 func unsetGitConfigForDirIfApplicable(ctx context.Context, config recipes.Configuration, workingDirectory string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	if config.RecipeConfig.Terraform.Authentication.Git.PAT == nil || len(config.RecipeConfig.Terraform.Authentication.Git.PAT) == 0 {
+	if len(config.RecipeConfig.Terraform.Authentication.Git.PAT) == 0 {
 		return nil
 	}
 
