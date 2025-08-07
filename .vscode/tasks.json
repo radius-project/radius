@@ -1,66 +1,120 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Check for Deployment Engine",
-      "detail": "Checks if the Deployment Engine is cloned as a sibling to the Radius repo",
-      "command": "bash",
-      "args": [
-        "-c",
-        "(test -d ../deployment-engine/src) || { echo >&1 \"The radius-project/deployment-engine is not cloned as a sibling to the Radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo.\"; exit 1; }"
-      ],
-      "type": "shell",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "group": "none",
-      "presentation": {
-        "reveal": "silent",
-        "echo": false,
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Build Deployment Engine",
-      "detail": "Builds the Deployment Engine. This requires the radius-project/deployment engine repo to be cloned as a sibling to the radius-project/radius repo",
-      "dependsOn": ["Check for Deployment Engine"],
-      "command": "dotnet build",
-      "type": "shell",
-      "options": {
-        "cwd": "${workspaceFolder}/../deployment-engine/src/DeploymentEngine"
-      },
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
-      "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "Build Radius (all)",
-      "detail": "Builds the Radius repository using make build",
-      "command": "make",
-      "type": "shell",
-      "args": ["build"],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "problemMatcher": "$gcc",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      }
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Debug: Start All Components",
+            "type": "shell",
+            "command": "make",
+            "args": ["debug-start"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug: Stop All Components", 
+            "type": "shell",
+            "command": "make",
+            "args": ["debug-stop"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug: Component Status",
+            "type": "shell", 
+            "command": "make",
+            "args": ["debug-status"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug: View Logs",
+            "type": "shell",
+            "command": "make", 
+            "args": ["debug-logs"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Debug: Clean Environment",
+            "type": "shell",
+            "command": "make",
+            "args": ["debug-clean"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build All Components",
+            "type": "shell",
+            "command": "make",
+            "args": ["build"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Debug Components",
+            "type": "shell",
+            "command": "make",
+            "args": ["debug-build"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        }
+    ]
 }
