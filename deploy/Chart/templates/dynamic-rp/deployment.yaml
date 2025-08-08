@@ -30,6 +30,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       {{- if eq .Values.global.terraform.enabled true }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance

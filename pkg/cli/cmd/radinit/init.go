@@ -84,6 +84,14 @@ rad init --set global.imageTag=0.48
 ## Images will be pulled as: myregistry.azurecr.io/controller:0.48, etc.
 rad init --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=0.48
 
+## Initialize with private registry and image pull secrets
+## Note: Secret must be created in radius-system namespace first
+rad init --set global.imageRegistry=myregistry.azurecr.io --set-string 'global.imagePullSecrets[0].name=regcred'
+
+## Initialize with multiple image pull secrets for different registries
+rad init --set-string 'global.imagePullSecrets[0].name=azure-cred' \
+         --set-string 'global.imagePullSecrets[1].name=aws-cred'
+
 ## Initialize with custom values from a file
 rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 `,
