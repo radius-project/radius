@@ -119,7 +119,7 @@ spec:
       {{- end }}
       containers:
       - name: dynamic-rp
-        image: "{{ .Values.dynamicrp.image }}:{{ .Values.dynamicrp.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.dynamicrp.image "tag" (.Values.dynamicrp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
