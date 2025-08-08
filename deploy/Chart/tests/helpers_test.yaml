@@ -12,55 +12,55 @@ tests:
   - it: should use default ghcr.io registry when global.imageRegistry is not set
     set:
       controller.image: controller
-      controller.tag: v1.0.0
+      controller.tag: 1.0.0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/controller:v1.0.0
+          value: ghcr.io/radius-project/controller:1.0.0
         template: controller/deployment.yaml
 
   - it: should use custom registry when global.imageRegistry is set
     set:
       global.imageRegistry: myregistry.azurecr.io
       controller.image: controller
-      controller.tag: v1.0.0
+      controller.tag: 1.0.0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.azurecr.io/controller:v1.0.0
+          value: myregistry.azurecr.io/controller:1.0.0
         template: controller/deployment.yaml
 
   - it: should handle empty global.imageRegistry
     set:
       global.imageRegistry: ""
       controller.image: controller
-      controller.tag: v1.0.0
+      controller.tag: 1.0.0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/controller:v1.0.0
+          value: ghcr.io/radius-project/controller:1.0.0
         template: controller/deployment.yaml
 
   - it: should use full image path as-is when it contains registry and tag
     set:
       global.imageRegistry: otherregistry.io
-      controller.image: myregistry.io/custom-controller:v2.0.0
+      controller.image: myregistry.io/custom-controller:2.0.0
       controller.tag: ignored-tag
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/custom-controller:v2.0.0
+          value: myregistry.io/custom-controller:2.0.0
         template: controller/deployment.yaml
 
   - it: should append tag to full image path when tag is missing
     set:
       global.imageRegistry: otherregistry.io
       controller.image: myregistry.io/custom-controller
-      controller.tag: v1.0.0
+      controller.tag: 1.0.0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/custom-controller:v1.0.0
+          value: myregistry.io/custom-controller:1.0.0
         template: controller/deployment.yaml
 
   - it: should handle localhost with port in full image path
@@ -98,11 +98,11 @@ tests:
   - it: should handle ECR-style registry in full path
     set:
       ucp.image: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd
-      ucp.tag: v1.0.0
+      ucp.tag: 1.0.0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd:v1.0.0
+          value: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd:1.0.0
         template: ucp/deployment.yaml
 
   - it: should work with default tag from appVersion
@@ -194,26 +194,26 @@ tests:
     set:
       global.imageRegistry: default-registry.io
       controller.image: controller
-      controller.tag: v1.0.0
-      rp.image: custom-registry.io/custom-rp:v2.0.0
+      controller.tag: 1.0.0
+      rp.image: custom-registry.io/custom-rp:2.0.0
       rp.tag: ignored
       ucp.image: ucpd
-      ucp.tag: v1.0.0
+      ucp.tag: 1.0.0
     asserts:
       # Controller should use global registry
       - equal:
           path: spec.template.spec.containers[0].image
-          value: default-registry.io/controller:v1.0.0
+          value: default-registry.io/controller:1.0.0
         template: controller/deployment.yaml
       # RP should use its full path
       - equal:
           path: spec.template.spec.containers[0].image
-          value: custom-registry.io/custom-rp:v2.0.0
+          value: custom-registry.io/custom-rp:2.0.0
         template: rp/deployment.yaml
       # UCP should use global registry
       - equal:
           path: spec.template.spec.containers[0].image
-          value: default-registry.io/ucpd:v1.0.0
+          value: default-registry.io/ucpd:1.0.0
         template: ucp/deployment.yaml
 
   # Tests for global.imageTag functionality

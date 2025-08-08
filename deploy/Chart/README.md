@@ -127,7 +127,7 @@ IMAGES=(
 
 SOURCE_REGISTRY="ghcr.io/radius-project"
 TARGET_REGISTRY="myregistry.azurecr.io"
-VERSION="latest"  # or specific version like "v0.36.0"
+VERSION="latest"  # or specific version like "0.48"
 
 # Mirror each image
 for IMAGE in "${IMAGES[@]}"; do

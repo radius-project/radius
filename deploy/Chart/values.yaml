@@ -1,6 +1,6 @@
 global:
   # Configure global.imageRegistry to use a custom container registry for all Radius images.
-  # When empty (default), images will use their default registries (ghcr.io).
+  # When empty (default), images will use ghcr.io/radius-project as the registry.
   # Example: global.imageRegistry=myregistry.azurecr.io
   imageRegistry: ""
   

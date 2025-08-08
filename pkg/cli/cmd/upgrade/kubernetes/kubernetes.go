@@ -69,11 +69,11 @@ rad upgrade kubernetes --set key=value
 rad upgrade kubernetes --set global.imageRegistry=myregistry.azurecr.io
 
 # Upgrade Radius to a specific version tag for all components
-rad upgrade kubernetes --set global.imageTag=v0.48.0
+rad upgrade kubernetes --set global.imageTag=0.48
 
 # Upgrade Radius with custom registry and tag
-# Images will be pulled as: myregistry.azurecr.io/controller:v0.48.0, etc.
-rad upgrade kubernetes --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=v0.48.0
+# Images will be pulled as: myregistry.azurecr.io/controller:0.48, etc.
+rad upgrade kubernetes --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=0.48
 
 # Upgrade to a specific version
 rad upgrade kubernetes --version 0.47.0

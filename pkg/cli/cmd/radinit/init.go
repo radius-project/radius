@@ -78,11 +78,11 @@ rad init --full
 rad init --set global.imageRegistry=myregistry.azurecr.io
 
 ## Initialize with a specific version tag
-rad init --set global.imageTag=v0.48.0
+rad init --set global.imageTag=0.48
 
 ## Initialize with custom registry and tag
-## Images will be pulled as: myregistry.azurecr.io/controller:v0.48.0, etc.
-rad init --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=v0.48.0
+## Images will be pulled as: myregistry.azurecr.io/controller:0.48, etc.
+rad init --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=0.48
 
 ## Initialize with custom values from a file
 rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
