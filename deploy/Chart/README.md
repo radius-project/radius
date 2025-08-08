@@ -108,7 +108,7 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 
 For private registries that require authentication:
 
-1. Create the docker-registry secret in the namespace:
+1. Create the docker-registry secret in the `radius-system` namespace:
 
 ```bash
 kubectl create secret docker-registry regcred \

@@ -213,6 +213,30 @@ tests:
           value: azure-cred
         template: rp/deployment.yaml
 
+  # Edge case tests for imagePullSecrets
+  - it: should handle empty imagePullSecrets array
+    set:
+      global.imagePullSecrets: []
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+        template: controller/deployment.yaml
+
+  # Keep one malformed test as documentation of behavior without schema validation
+  - it: should handle imagePullSecrets with missing name field
+    set:
+      global.imagePullSecrets:
+        - {}
+      rp.image: applications-rp
+      rp.tag: latest
+    asserts:
+      # Document that objects without name field are passed through (schema validation would catch this)
+      - isNull:
+          path: spec.template.spec.imagePullSecrets[0].name
+        template: rp/deployment.yaml
+
   - it: should work with default tag from appVersion
     set:
       controller.image: controller
