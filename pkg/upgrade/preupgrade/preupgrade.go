@@ -63,6 +63,11 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 	for _, checkName := range options.EnabledChecks {
 		checkName = strings.TrimSpace(checkName)
 
+		// Skip empty check names
+		if checkName == "" {
+			continue
+		}
+
 		switch checkName {
 		case "version":
 			state, err := config.Helm.CheckRadiusInstall(config.KubeContext)
@@ -81,8 +86,25 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 			versionCheck := preflight.NewVersionCompatibilityCheck(currentVersion, options.TargetVersion)
 			registry.AddCheck(versionCheck)
 
+		case "helm":
+			helmCheck := preflight.NewHelmConnectivityCheck(config.Helm, config.KubeContext)
+			registry.AddCheck(helmCheck)
+
+		case "installation":
+			installationCheck := preflight.NewRadiusInstallationCheck(config.Helm, config.KubeContext)
+			registry.AddCheck(installationCheck)
+
+		case "kubernetes":
+			kubernetesCheck := preflight.NewKubernetesConnectivityCheck(config.KubeContext)
+			registry.AddCheck(kubernetesCheck)
+
+		case "resources":
+			resourcesCheck := preflight.NewKubernetesResourceCheck(config.KubeContext)
+			registry.AddCheck(resourcesCheck)
+
 		default:
-			return fmt.Errorf("unknown check '%s'", checkName)
+			// Log warning but continue with other checks
+			config.Output.LogInfo("Warning: Unknown check '%s', skipping", checkName)
 		}
 	}
 

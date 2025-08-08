@@ -17,13 +17,15 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/radius-project/radius/cmd/pre-upgrade/cmd"
 )
 
 func main() {
-	err := cmd.Execute()
+	ctx := context.Background()
+	err := cmd.ExecuteWithContext(ctx)
 	if err != nil {
 		os.Exit(1) //nolint:forbidigo // this is OK inside the main function.
 	}

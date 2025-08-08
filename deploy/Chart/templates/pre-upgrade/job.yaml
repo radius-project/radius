@@ -27,17 +27,37 @@ spec:
       serviceAccountName: pre-upgrade
       containers:
       - name: pre-upgrade
-        image: "{{ .Values.preupgrade.image }}:{{ .Values.preupgrade.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.preupgrade.image "tag" (.Values.preupgrade.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         imagePullPolicy: 'Always'
         env:
         - name: TARGET_VERSION
-          value: "{{ .Chart.AppVersion }}"
+          value: "{{ .Values.preupgrade.targetVersion | default .Chart.AppVersion }}"
         - name: PREFLIGHT_TIMEOUT_SECONDS
           value: "{{ .Values.preupgrade.timeoutSeconds }}"
+        - name: RADIUS_LOGGING_LEVEL
+          value: "{{ .Values.preupgrade.logLevel | default "INFO" }}"
+        - name: RADIUS_LOGGING_JSON
+          value: "{{ .Values.preupgrade.logProfile | default "production" }}"
+        - name: RETRY_ATTEMPTS
+          value: "{{ .Values.preupgrade.retryAttempts }}"
+        - name: RETRY_DELAY_SECONDS
+          value: "{{ .Values.preupgrade.retryDelaySeconds }}"
         - name: ENABLED_CHECKS
           value: "{{- $checks := list -}}
           {{- if .Values.preupgrade.checks.version -}}
             {{- $checks = append $checks "version" -}}
+          {{- end -}}
+          {{- if .Values.preupgrade.checks.helm -}}
+            {{- $checks = append $checks "helm" -}}
+          {{- end -}}
+          {{- if .Values.preupgrade.checks.installation -}}
+            {{- $checks = append $checks "installation" -}}
+          {{- end -}}
+          {{- if .Values.preupgrade.checks.kubernetes -}}
+            {{- $checks = append $checks "kubernetes" -}}
+          {{- end -}}
+          {{- if .Values.preupgrade.checks.resources -}}
+            {{- $checks = append $checks "resources" -}}
           {{- end -}}
           {{- join "," $checks -}}"
         resources:
