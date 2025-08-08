@@ -48,7 +48,10 @@ type HelmClient interface {
 	// RunHelmList lists the Helm releases.
 	RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
 
-	// RunHelmHistory lists the release revisions for a given release.
+	// RunHelmGet retrieves the Helm release information.
+	RunHelmGet(helmConf *helm.Configuration, releaseName string) (*release.Release, error)
+
+	// RunHelmHistory retrieves the history of a Helm release.
 	RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error)
 
 	// RunHelmRollback rolls back a release to a previous revision.
@@ -109,19 +112,26 @@ func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseN
 	return listClient.Run()
 }
 
+func (client *HelmClientImpl) RunHelmGet(helmConf *helm.Configuration, releaseName string) (*release.Release, error) {
+	getClient := helm.NewGet(helmConf)
+	getClient.Version = 0
+
+	return getClient.Run(releaseName)
+}
+
+func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
+	historyClient := helm.NewHistory(helmConf)
+	historyClient.Max = 0 // Get all revisions
+
+	return historyClient.Run(releaseName)
+}
+
 func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {
 	pullClient := helm.NewPullWithOpts(
 		pullopts...,
 	)
 
 	return pullClient.Run(chartRef)
-}
-
-func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
-	historyClient := helm.NewHistory(helmConf)
-	historyClient.Max = 256 // Helm default
-
-	return historyClient.Run(releaseName)
 }
 
 func (client *HelmClientImpl) RunHelmRollback(helmConf *helm.Configuration, releaseName string, revision int, wait bool) error {

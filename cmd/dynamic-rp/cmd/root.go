@@ -34,7 +34,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "dynamic-rp",
-	Short: "Dyanamic Resource Provider server",
+	Short: "Dynamic Resource Provider server",
 	Long:  `Server process for the Dynamic Resource Provider (dynamic-rp).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configFilePath := cmd.Flag("config-file").Value.String()
