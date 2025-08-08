@@ -104,12 +104,51 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
   --set-file global.rootCA.cert=/path/to/ca-certificate.pem
 ```
 
+#### Using with Private Registries and Authentication
+
+For private registries that require authentication:
+
+1. Create the docker-registry secret in the `radius-system` namespace:
+
+```bash
+kubectl create secret docker-registry regcred \
+  --docker-server=myregistry.azurecr.io \
+  --docker-username=<username> \
+  --docker-password=<password> \
+  --docker-email=<email> \
+  -n radius-system
+```
+
+2. Reference the secret in your Helm values:
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set global.imageRegistry=myregistry.azurecr.io \
+  --set-string 'global.imagePullSecrets[0].name=regcred'
+
+# Or using values file:
+# values.yaml:
+# global:
+#   imageRegistry: myregistry.azurecr.io
+#   imagePullSecrets:
+#     - name: regcred
+```
+
+3. With rad CLI:
+
+```console
+rad install kubernetes \
+  --set global.imageRegistry=myregistry.azurecr.io \
+  --set-string 'global.imagePullSecrets[0].name=regcred'
+```
+
 #### Air-gapped Environment Setup
 
 For completely air-gapped environments, you'll need to:
 
 1. Mirror all Radius images to your private registry
 2. Configure Radius to use your private registry
+3. Create and reference image pull secrets if authentication is required
 
 Example of mirroring images (requires access to both registries):
 

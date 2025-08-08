@@ -27,6 +27,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: controller
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       initContainers:
       - name: bicep
         image: "{{ include "radius.image" (dict "image" .Values.bicep.image "tag" (.Values.bicep.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"

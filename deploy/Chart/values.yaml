@@ -8,7 +8,14 @@ global:
   # When empty (default), images will use the tag derived from Chart AppVersion.
   # Example: global.imageTag=0.48
   imageTag: ""
-
+  
+  # Configure global.imagePullSecrets for pulling images from private registries.
+  # Secrets must be manually created in the namespace.
+  # Example:
+  # imagePullSecrets:
+  #   - name: myregistrykey
+  imagePullSecrets: []
+  
   # Configure global.rootCA.cert to use the intermediate CA cert in Radius containers.
   # Otherwise, Radius containers use the default root CA provided by base OS image.
   rootCA:

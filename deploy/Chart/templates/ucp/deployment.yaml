@@ -30,6 +30,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: ucp
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       containers:
       - name: ucp
         image: "{{ include "radius.image" (dict "image" .Values.ucp.image "tag" (.Values.ucp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
