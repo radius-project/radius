@@ -25,6 +25,10 @@ spec:
     spec:
       restartPolicy: Never
       serviceAccountName: pre-upgrade
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       containers:
       - name: pre-upgrade
         image: "{{ include "radius.image" (dict "image" .Values.preupgrade.image "tag" (.Values.preupgrade.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"

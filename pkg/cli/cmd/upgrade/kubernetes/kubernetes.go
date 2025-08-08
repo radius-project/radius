@@ -75,6 +75,14 @@ rad upgrade kubernetes --set global.imageTag=0.48
 # Images will be pulled as: myregistry.azurecr.io/controller:0.48, etc.
 rad upgrade kubernetes --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=0.48
 
+# Upgrade Radius with private registry and image pull secrets
+# Note: Secret must be created in radius-system namespace first
+rad upgrade kubernetes --set global.imageRegistry=myregistry.azurecr.io --set-string 'global.imagePullSecrets[0].name=regcred'
+
+# Upgrade Radius with multiple image pull secrets for different registries
+rad upgrade kubernetes --set-string 'global.imagePullSecrets[0].name=azure-cred' \
+                       --set-string 'global.imagePullSecrets[1].name=aws-cred'
+
 # Upgrade to a specific version
 rad upgrade kubernetes --version 0.47.0
 

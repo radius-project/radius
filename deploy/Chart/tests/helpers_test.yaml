@@ -105,6 +105,138 @@ tests:
           value: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd:1.0.0
         template: ucp/deployment.yaml
 
+  # Tests for global.imagePullSecrets functionality
+  - it: should add imagePullSecrets when specified
+    set:
+      global.imagePullSecrets:
+        - name: myregistrykey
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: myregistrykey
+        template: controller/deployment.yaml
+
+  - it: should handle multiple imagePullSecrets
+    set:
+      global.imagePullSecrets:
+        - name: regcred1
+        - name: regcred2
+      ucp.image: ucpd
+      ucp.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: regcred1
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[1].name
+          value: regcred2
+        template: ucp/deployment.yaml
+
+  - it: should not add imagePullSecrets when not specified
+    set:
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+        template: controller/deployment.yaml
+
+  - it: should work with imagePullSecrets and custom registry
+    set:
+      global.imageRegistry: myregistry.azurecr.io
+      global.imagePullSecrets:
+        - name: azurecred
+      dashboard.image: dashboard
+      dashboard.tag: 0.48
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/dashboard:0.48
+        template: dashboard/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: azurecred
+        template: dashboard/deployment.yaml
+
+  - it: should apply imagePullSecrets to database statefulset
+    set:
+      database.enabled: true
+      global.imagePullSecrets:
+        - name: dbregistrykey
+      database.image: mirror/postgres
+      database.tag: 14-alpine
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: dbregistrykey
+        template: database/statefulset.yaml
+
+  - it: should handle multiple imagePullSecrets with custom registry and tag
+    set:
+      global.imageRegistry: private.registry.io
+      global.imageTag: 0.48
+      global.imagePullSecrets:
+        - name: azure-cred
+        - name: aws-cred
+        - name: gcr-cred
+      controller.image: controller
+      rp.image: applications-rp
+    asserts:
+      # Check image is correctly formed
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.io/controller:0.48
+        template: controller/deployment.yaml
+      # Check all three secrets are present
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: azure-cred
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[1].name
+          value: aws-cred
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[2].name
+          value: gcr-cred
+        template: controller/deployment.yaml
+      # Verify it applies to other deployments too
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.io/applications-rp:0.48
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: azure-cred
+        template: rp/deployment.yaml
+
+  # Edge case tests for imagePullSecrets
+  - it: should handle empty imagePullSecrets array
+    set:
+      global.imagePullSecrets: []
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+        template: controller/deployment.yaml
+
+  # Keep one malformed test as documentation of behavior without schema validation
+  - it: should handle imagePullSecrets with missing name field
+    set:
+      global.imagePullSecrets:
+        - {}
+      rp.image: applications-rp
+      rp.tag: latest
+    asserts:
+      # Document that objects without name field are passed through (schema validation would catch this)
+      - isNull:
+          path: spec.template.spec.imagePullSecrets[0].name
+        template: rp/deployment.yaml
+
   - it: should work with default tag from appVersion
     set:
       controller.image: controller
