@@ -119,7 +119,7 @@ spec:
       {{- end }}
       containers:
       - name: applications-rp
-        image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.rp.image "tag" (.Values.rp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:

@@ -43,7 +43,7 @@ GOTEST_TOOL ?= gotestsum $(GOTESTSUM_OPTS) --
 endif
 
 .PHONY: test
-test: test-get-envtools ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-get-envtools
@@ -141,6 +141,13 @@ test-functional-samples-noncloud: ## Runs Samples functional tests that do not r
 .PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
+
+.PHONY: test-helm
+test-helm: ## Runs Helm chart unit tests
+	@echo "$(ARROW) Installing helm-unittest plugin if not already installed..."
+	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git
+	@echo "$(ARROW) Running Helm unit tests..."
+	cd deploy/Chart && helm unittest .
 
 .PHONY: oav-installed
 oav-installed:

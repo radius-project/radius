@@ -1,4 +1,14 @@
 global:
+  # Configure global.imageRegistry to use a custom container registry for all Radius images.
+  # When empty (default), images will use ghcr.io/radius-project as the registry.
+  # Example: global.imageRegistry=myregistry.azurecr.io
+  imageRegistry: ""
+  
+  # Configure global.imageTag to use a specific tag for all Radius images.
+  # When empty (default), images will use the tag derived from Chart AppVersion.
+  # Example: global.imageTag=0.48
+  imageTag: ""
+  
   # Configure global.rootCA.cert to use the intermediate CA cert in Radius containers.
   # Otherwise, Radius containers use the default root CA provided by base OS image.
   rootCA:
@@ -43,7 +53,7 @@ global:
     downloadUrl: ""
 
 controller:
-  image: ghcr.io/radius-project/controller
+  image: controller
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -53,7 +63,7 @@ controller:
       memory: "300Mi"
 
 de:
-  image: ghcr.io/radius-project/deployment-engine
+  image: deployment-engine
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -64,7 +74,7 @@ de:
       memory: "300Mi"
 
 ucp:
-  image: ghcr.io/radius-project/ucpd
+  image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -75,7 +85,7 @@ ucp:
       memory: "300Mi"
 
 dynamicrp:
-  image: ghcr.io/radius-project/dynamic-rp
+  image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -93,7 +103,7 @@ dynamicrp:
     path: "/terraform"
 
 rp:
-  image: ghcr.io/radius-project/applications-rp
+  image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   publicEndpointOverride: ""
@@ -114,7 +124,7 @@ rp:
 dashboard:
   enabled: true
   containerPort: 7007
-  image: ghcr.io/radius-project/dashboard
+  image: dashboard
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -126,7 +136,7 @@ dashboard:
 database:
   enabled: false # Enable the Postgres database install
   postgres_user: "radius"
-  image: ghcr.io/radius-project/mirror/postgres
+  image: mirror/postgres
   tag: latest
   storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.
@@ -140,6 +150,6 @@ database:
       memory: "1024Mi"
 
 bicep:
-  image: ghcr.io/radius-project/bicep
+  image: bicep
   # Default tag uses Chart AppVersion.
   # tag: latest

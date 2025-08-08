@@ -26,7 +26,7 @@ spec:
       - name: database
         securityContext:
           allowPrivilegeEscalation: false
-        image: "{{ .Values.database.image }}:{{ .Values.database.tag }}"
+        image: "{{ include "radius.image" (dict "image" .Values.database.image "tag" (.Values.database.tag | default .Values.global.imageTag | default "latest") "global" .Values.global) }}"
         imagePullPolicy: IfNotPresent
         resources:
           requests:

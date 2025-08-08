@@ -76,3 +76,6 @@ debug_files/*
 # Demo app
 demo/*
 demo
+
+# Helm debug output
+.debug/
