@@ -270,6 +270,9 @@ model Container {
 
   @doc("Working directory for the container")
   workingDir?: string;
+
+  @doc("Resource requirements for the container")
+  resources?: ContainerResources;
 }
 
 @doc("Environment variables type")
@@ -324,6 +327,24 @@ enum VolumePermission {
 
   @doc("Read and write")
   write,
+}
+
+@doc("Resource requirements for the container")
+model ContainerResources {
+  @doc("The resource requests for the container")
+  requests?: ResourceConstraints;
+
+  @doc("The resource limits for the container")
+  limits?: ResourceConstraints;
+}
+
+@doc("Resource constraints for CPU and memory")
+model ResourceConstraints {
+  @doc("CPU resource constraints. e.g. '0.5', '1', '1000m', '100'")
+  cpu?: string;
+
+  @doc("Memory resource constraints. e.g. '128Mi', '1Gi', '1G'")
+  memory?: string;
 }
 
 @doc("The kind of IAM provider to configure")

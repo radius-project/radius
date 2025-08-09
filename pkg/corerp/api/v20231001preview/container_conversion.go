@@ -137,6 +137,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 				Command:         stringSlice(src.Properties.Container.Command),
 				Args:            stringSlice(src.Properties.Container.Args),
 				WorkingDir:      to.String(src.Properties.Container.WorkingDir),
+				Resources:       toContainerResourcesDataModel(src.Properties.Container.Resources),
 			},
 			Extensions:           extensions,
 			Runtimes:             toRuntimePropertiesDataModel(src.Properties.Runtimes),
@@ -327,6 +328,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 			Command:         to.SliceOfPtrs(c.Properties.Container.Command...),
 			Args:            to.SliceOfPtrs(c.Properties.Container.Args...),
 			WorkingDir:      to.Ptr(c.Properties.Container.WorkingDir),
+			Resources:       fromContainerResourcesDataModel(c.Properties.Container.Resources),
 		},
 		Extensions:           extensions,
 		Identity:             identity,
@@ -823,4 +825,53 @@ func fromExtensionClassificationFields(e datamodel.Extension) (map[string]string
 	}
 
 	return ann, lbl
+}
+
+func toContainerResourcesDataModel(resources *ContainerResources) *datamodel.ContainerResources {
+	if resources == nil {
+		return nil
+	}
+
+	return &datamodel.ContainerResources{
+		Requests: toResourceConstraintsDataModel(resources.Requests),
+		Limits:   toResourceConstraintsDataModel(resources.Limits),
+	}
+}
+
+func toResourceConstraintsDataModel(constraints *ResourceConstraints) *datamodel.ResourceConstraints {
+	if constraints == nil {
+		return nil
+	}
+
+	return &datamodel.ResourceConstraints{
+		CPU:    to.String(constraints.CPU),
+		Memory: to.String(constraints.Memory),
+	}
+}
+
+func fromContainerResourcesDataModel(resources *datamodel.ContainerResources) *ContainerResources {
+	if resources == nil {
+		return nil
+	}
+
+	return &ContainerResources{
+		Requests: fromResourceConstraintsDataModel(resources.Requests),
+		Limits:   fromResourceConstraintsDataModel(resources.Limits),
+	}
+}
+
+func fromResourceConstraintsDataModel(constraints *datamodel.ResourceConstraints) *ResourceConstraints {
+	if constraints == nil {
+		return nil
+	}
+
+	var result ResourceConstraints
+	if constraints.CPU != "" {
+		result.CPU = to.Ptr(constraints.CPU)
+	}
+	if constraints.Memory != "" {
+		result.Memory = to.Ptr(constraints.Memory)
+	}
+
+	return &result
 }
