@@ -1,4 +1,4 @@
-name: MyCompany.Resources4
+namespace: MyCompany.Resources4
 types:
   testResources:
     
