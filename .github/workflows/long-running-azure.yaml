@@ -379,7 +379,7 @@ jobs:
           cache: true
       - name: Download rad CLI
         if: env.SKIP_BUILD != 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
