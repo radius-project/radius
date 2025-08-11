@@ -117,8 +117,22 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 		exit 1; \
 	fi; \
 	if ! command -v psql >/dev/null 2>&1; then \
-		echo "⚠️  psql not available - database may not be properly initialized"; \
+		echo "❌ psql not available - PostgreSQL client is required"; \
+		exit 1; \
 	fi; \
+	echo "🔍 Checking PostgreSQL connectivity..."; \
+	if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then \
+		echo "❌ Cannot connect to PostgreSQL as user '$(whoami)'"; \
+		echo "   Please ensure:"; \
+		echo "   1. PostgreSQL is running on localhost:5432"; \
+		echo "   2. User '$(whoami)' has access to connect"; \
+		echo "   3. Authentication is properly configured"; \
+		echo ""; \
+		echo "   Try running: brew services start postgresql"; \
+		echo "   Or: pg_ctl -D /opt/homebrew/var/postgres start"; \
+		exit 1; \
+	fi; \
+	echo "✅ PostgreSQL is accessible"; \
 	if ! command -v docker >/dev/null 2>&1; then \
 		echo "⚠️  docker not available - deployment engine will not be available"; \
 	elif ! docker info >/dev/null 2>&1; then \

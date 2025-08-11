@@ -43,7 +43,14 @@ check_prerequisites() {
     fi
     
     if ! command -v psql >/dev/null 2>&1; then
-        print_warning "psql not available - database may not be properly initialized"
+        missing_tools+=("psql (PostgreSQL client)")
+    else
+        # Check if PostgreSQL is actually accessible
+        if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
+            print_error "PostgreSQL is not accessible as user '$(whoami)'"
+            echo "Please ensure PostgreSQL is running and properly configured"
+            exit 1
+        fi
     fi
     
     if [ ${#missing_tools[@]} -ne 0 ]; then
@@ -113,17 +120,34 @@ mkdir -p "$DEBUG_ROOT/logs"
 # Initialize PostgreSQL database if needed
 echo "🗄️  Initializing PostgreSQL database..."
 if command -v psql >/dev/null 2>&1; then
+  # First check if we can connect to PostgreSQL
+  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
+    print_error "Cannot connect to PostgreSQL as user '$(whoami)'"
+    echo "Please ensure:"
+    echo "1. PostgreSQL is running on localhost:5432"
+    echo "2. User '$(whoami)' has access to connect"
+    echo "3. Authentication is properly configured"
+    echo ""
+    echo "Try running: brew services start postgresql"
+    echo "Or: pg_ctl -D /opt/homebrew/var/postgres start"
+    exit 1
+  fi
+  
   # Create applications_rp user if it doesn't exist
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER applications_rp WITH PASSWORD 'radius_pass';" 2>/dev/null || echo "User applications_rp already exists"
+  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER applications_rp WITH PASSWORD 'radius_pass';" 2>/dev/null; then
+    echo "User applications_rp already exists or cannot be created"
+  fi
   
   # Create applications_rp database if it doesn't exist
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE applications_rp;" 2>/dev/null || echo "Database applications_rp already exists"
+  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE applications_rp;" 2>/dev/null; then
+    echo "Database applications_rp already exists or cannot be created"
+  fi
   
   # Grant privileges
   psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" 2>/dev/null || true
   
   # Create the resources table in applications_rp database
-  psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "
+  if ! psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY NOT NULL,
     original_id TEXT NOT NULL,
@@ -135,15 +159,21 @@ if command -v psql >/dev/null 2>&1; then
     resource_data jsonb NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
-  " 2>/dev/null || echo "Resources table setup completed"
+  " 2>/dev/null; then
+    print_warning "Could not set up applications_rp database tables"
+  fi
   
   # Also create UCP database for completeness
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER ucp WITH PASSWORD 'radius_pass';" 2>/dev/null || echo "User ucp already exists"
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE ucp;" 2>/dev/null || echo "Database ucp already exists"
+  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER ucp WITH PASSWORD 'radius_pass';" 2>/dev/null; then
+    echo "User ucp already exists or cannot be created"
+  fi
+  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE ucp;" 2>/dev/null; then
+    echo "Database ucp already exists or cannot be created"
+  fi
   psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" 2>/dev/null || true
   
   # Create the resources table in ucp database too
-  psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "
+  if ! psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY NOT NULL,
     original_id TEXT NOT NULL,
@@ -155,43 +185,118 @@ if command -v psql >/dev/null 2>&1; then
     resource_data jsonb NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
-  " 2>/dev/null || echo "UCP resources table setup completed"
+  " 2>/dev/null; then
+    print_warning "Could not set up UCP database tables"
+  fi
   
   print_success "Database initialization complete"
 else
-  print_warning "psql not available - database may not be properly initialized"
+  print_error "psql not available - database cannot be initialized"
+  exit 1
 fi
 
 # Start UCP with dlv
 echo "Starting UCP with dlv on port 40001..."
 dlv exec "$DEBUG_ROOT/bin/ucpd" --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/ucp.yaml" > "$DEBUG_ROOT/logs/ucp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/ucp.pid"
-sleep 5
 
-# Verify UCP
-if ! curl -s "http://localhost:9000/apis/api.ucp.dev/v1alpha3" > /dev/null; then
-  print_error "UCP failed to start"
+# Wait for UCP to start and complete initialization (this can take 60+ seconds)
+echo "Waiting for UCP to initialize (this may take up to 2 minutes)..."
+max_attempts=60
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  if curl -s "http://localhost:9000/apis/api.ucp.dev/v1alpha3" > /dev/null 2>&1; then
+    # Check if initialization is complete by looking for the success message in logs
+    if grep -q "Successfully registered manifests" "$DEBUG_ROOT/logs/ucp.log" 2>/dev/null; then
+      break
+    fi
+  fi
+  
+  # Show progress every 10 seconds
+  if [ $((attempt % 10)) -eq 0 ] && [ $attempt -gt 0 ]; then
+    echo "  Still waiting for UCP initialization... (${attempt}s elapsed)"
+  fi
+  
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+# Verify UCP is fully ready
+if [ $attempt -eq $max_attempts ]; then
+  print_error "UCP failed to start within 2 minutes"
+  echo "Check the UCP log for details: $DEBUG_ROOT/logs/ucp.log"
   exit 1
 fi
-print_success "UCP started successfully"
+print_success "UCP started and initialized successfully"
 
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
 dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/controller.yaml" --cert-dir="" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/controller.pid"
-sleep 3
+
+# Wait for Controller to start (check health endpoint)
+echo "Waiting for Controller to start..."
+attempt=0
+max_attempts=15
+while [ $attempt -lt $max_attempts ]; do
+  if curl -s "http://localhost:7073/healthz" > /dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  print_warning "Controller health check failed, but continuing (check logs: $DEBUG_ROOT/logs/controller.log)"
+else
+  print_success "Controller started successfully"
+fi
 
 # Start Applications RP with dlv
 echo "Starting Applications RP with dlv on port 40003..."
 dlv exec "$DEBUG_ROOT/bin/applications-rp" --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/applications-rp.yaml" > "$DEBUG_ROOT/logs/applications-rp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/applications-rp.pid"
-sleep 3
+
+# Wait for Applications RP to start (it takes time to register with UCP)
+echo "Waiting for Applications RP to start..."
+attempt=0
+max_attempts=15
+while [ $attempt -lt $max_attempts ]; do
+  if curl -s "http://localhost:8080/healthz" > /dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  print_warning "Applications RP health check failed, but continuing (check logs: $DEBUG_ROOT/logs/applications-rp.log)"
+else
+  print_success "Applications RP started successfully"
+fi
 
 # Start Dynamic RP with dlv
 echo "Starting Dynamic RP with dlv on port 40004..."
 dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/dynamic-rp.yaml" > "$DEBUG_ROOT/logs/dynamic-rp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/dynamic-rp.pid"
-sleep 3
+
+# Wait for Dynamic RP to start
+echo "Waiting for Dynamic RP to start..."
+attempt=0
+max_attempts=15
+while [ $attempt -lt $max_attempts ]; do
+  if curl -s "http://localhost:8082/healthz" > /dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  print_warning "Dynamic RP health check failed, but continuing (check logs: $DEBUG_ROOT/logs/dynamic-rp.log)"
+else
+  print_success "Dynamic RP started successfully"
+fi
 
 echo "🎉 All components started successfully with dlv debugging!"
 echo "🔗 UCP API: http://localhost:9000 (dlv debug port 40001)"
