@@ -2782,6 +2782,10 @@
         "workingDir": {
           "type": "string",
           "description": "Working directory for the container"
+        },
+        "resources": {
+          "$ref": "#/definitions/ContainerResources",
+          "description": "Resource requirements for the container"
         }
       },
       "required": [
@@ -2961,6 +2965,20 @@
           "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
       ]
+    },
+    "ContainerResources": {
+      "type": "object",
+      "description": "Resource requirements for the container",
+      "properties": {
+        "requests": {
+          "$ref": "#/definitions/ResourceConstraints",
+          "description": "The resource requests for the container"
+        },
+        "limits": {
+          "$ref": "#/definitions/ResourceConstraints",
+          "description": "The resource limits for the container"
+        }
+      }
     },
     "DaprSidecarExtension": {
       "type": "object",
@@ -4254,6 +4272,20 @@
         "secret": {
           "type": "string",
           "description": "The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry.The keys in the secretstore depends on the type."
+        }
+      }
+    },
+    "ResourceConstraints": {
+      "type": "object",
+      "description": "Resource constraints for CPU and memory",
+      "properties": {
+        "cpu": {
+          "type": "string",
+          "description": "CPU resource constraints. e.g. '0.5', '1', '1000m', '100'"
+        },
+        "memory": {
+          "type": "string",
+          "description": "Memory resource constraints. e.g. '128Mi', '1Gi', '1G'"
         }
       }
     },
