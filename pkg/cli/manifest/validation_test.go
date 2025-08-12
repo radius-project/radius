@@ -293,8 +293,8 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with no resource types", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name:  "Test.Provider",
-			Types: map[string]*ResourceType{},
+			Namespace: "Test.Provider",
+			Types:     map[string]*ResourceType{},
 		}
 		err := validateManifestSchemas(ctx, provider)
 		require.NoError(t, err) // Empty types should be valid
@@ -302,7 +302,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with valid schemas", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -332,7 +332,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with invalid schema - unsupported type", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -356,7 +356,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with invalid schema - prohibited feature", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -379,7 +379,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with invalid JSON schema", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -397,7 +397,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with nil schema", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -414,7 +414,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with multiple resource types and versions", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -461,7 +461,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with multiple errors", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
