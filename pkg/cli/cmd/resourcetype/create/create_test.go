@@ -105,7 +105,7 @@ func Test_Run(t *testing.T) {
 
 		// Verify RegisterType was called (should see specific log messages)
 		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "testResources"))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
 	})
 
 	t.Run("No resource type name provided - registers entire manifest", func(t *testing.T) {
@@ -147,8 +147,8 @@ func Test_Run(t *testing.T) {
 
 		// Verify RegisterResourceProvider was called
 		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "testResources"))
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Name, "prodResources"))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "prodResources"))
 	})
 
 	t.Run("Resource provider does not exist - registers resource provider with single type", func(t *testing.T) {

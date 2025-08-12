@@ -75,7 +75,7 @@ jobs:
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
       - name: Generate testresources extension index
         run: |
-          npx @radius-project/manifest-to-bicep-extension@alpha generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
+          npx @radius-project/manifest-to-bicep-extension@edge generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
       - name: Publish testresources extension
         run: |
           bicep publish-extension ./tmp-testresources-bicep-extension/index.json --target ./tmp-testresources-bicep-extension/testresources.tgz --force

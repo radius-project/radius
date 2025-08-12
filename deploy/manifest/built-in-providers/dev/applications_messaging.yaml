@@ -1,4 +1,4 @@
-name: Applications.Messaging
+namespace: Applications.Messaging
 location:
   global:
     "http://localhost:8080"

@@ -142,7 +142,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
-	// npx @radius-project/manifest-to-bicep-extension@alpha generate <resource provider> <temp>
+	// npx @radius-project/manifest-to-bicep-extension generate <resource provider> <temp>
 	bicepExtension := "@radius-project/manifest-to-bicep-extension@edge"
 	if isValidSemver(version.Release()) {
 		bicepExtension = "@radius-project/manifest-to-bicep-extension@" + version.Release()

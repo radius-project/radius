@@ -152,9 +152,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			return registerErr
 		}
 	} else {
-		r.Output.LogInfo("Creating resource type %s/%s.", r.ResourceProvider.Name, r.ResourceTypeName)
+		r.Output.LogInfo("Creating resource type %s/%s.", r.ResourceProvider.Namespace, r.ResourceTypeName)
 
-		_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Name, nil)
+		_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
 		if err != nil {
 			if clients.Is404Error(err) {
 				for key := range r.ResourceProvider.Types {
@@ -170,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				return err
 			}
 
-			r.Output.LogInfo("Resource type %s/%s created successfully", r.ResourceProvider.Name, r.ResourceTypeName)
+			r.Output.LogInfo("Resource type %s/%s created successfully", r.ResourceProvider.Namespace, r.ResourceTypeName)
 		} else {
 			registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger)
 			if registerErr != nil {
