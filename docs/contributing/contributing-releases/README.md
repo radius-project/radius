@@ -88,6 +88,8 @@ git push origin vx.y.z-rc1
 
 1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vx.y.z-rc1` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
 
+1. In the `bicep-types-aws` repository, there should be a run of the `Update extensibility provider types` job that was triggered by the `vx.y.z-rc1` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully. 
+
 1. Verify that an RC release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
@@ -146,6 +148,8 @@ git push origin vx.y.z
 1. After maintainer approval, merge the pull request into the release branch.
 
 1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vx.y.z` tag. Monitor this workflow to ensure that it completes successfully.
+
+1. In the `bicep-types-aws` repository, there should be a run of the `Update extensibility provider types` job that was triggered by the `vx.y.z` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully. 
 
 1. You may need to wait around ~20 minutes for the release assets to be published.
 
