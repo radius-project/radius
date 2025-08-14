@@ -70,10 +70,14 @@ type HelmClientImpl struct{}
 
 var _ HelmClient = &HelmClientImpl{}
 
+// NewHelmClient creates a new instance of HelmClient that uses the Helm Go SDK
+// to perform operations on Helm charts.
 func NewHelmClient() HelmClient {
 	return &HelmClientImpl{}
 }
 
+// RunHelmInstall installs a Helm chart as a new release in the specified namespace.
+// It creates the namespace if it doesn't exist and optionally waits for the deployment to be ready.
 func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = releaseName
@@ -85,6 +89,8 @@ func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmC
 	return installClient.Run(helmChart, helmChart.Values)
 }
 
+// RunHelmUpgrade upgrades an existing Helm release with a new chart version or configuration.
+// It recreates pods to ensure the new configuration is applied and optionally waits for the deployment to be ready.
 func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = namespace
@@ -95,6 +101,8 @@ func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmC
 	return upgradeClient.Run(releaseName, helmChart, helmChart.Values)
 }
 
+// RunHelmUninstall removes a Helm release and its associated resources from the cluster.
+// It optionally waits for all resources to be deleted before returning.
 func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error) {
 	uninstallClient := helm.NewUninstall(helmConf)
 	uninstallClient.Timeout = uninstallTimeout
@@ -103,6 +111,8 @@ func (client *HelmClientImpl) RunHelmUninstall(helmConf *helm.Configuration, rel
 	return uninstallClient.Run(releaseName)
 }
 
+// RunHelmList lists Helm releases that match the provided filter.
+// It searches for deployed releases across all namespaces.
 func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
 	listClient := helm.NewList(helmConf)
 	listClient.Filter = releaseName
@@ -112,6 +122,8 @@ func (client *HelmClientImpl) RunHelmList(helmConf *helm.Configuration, releaseN
 	return listClient.Run()
 }
 
+// RunHelmGet retrieves detailed information about a specific Helm release.
+// It returns the latest revision of the release.
 func (client *HelmClientImpl) RunHelmGet(helmConf *helm.Configuration, releaseName string) (*release.Release, error) {
 	getClient := helm.NewGet(helmConf)
 	getClient.Version = 0
@@ -119,6 +131,8 @@ func (client *HelmClientImpl) RunHelmGet(helmConf *helm.Configuration, releaseNa
 	return getClient.Run(releaseName)
 }
 
+// RunHelmHistory retrieves the revision history of a Helm release.
+// It returns all revisions of the release, including superseded and failed deployments.
 func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*release.Release, error) {
 	historyClient := helm.NewHistory(helmConf)
 	historyClient.Max = 0 // Get all revisions
@@ -126,6 +140,8 @@ func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, relea
 	return historyClient.Run(releaseName)
 }
 
+// RunHelmPull downloads a Helm chart from a repository to the local filesystem.
+// It returns the path to the downloaded chart archive.
 func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {
 	pullClient := helm.NewPullWithOpts(
 		pullopts...,
@@ -134,6 +150,8 @@ func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef stri
 	return pullClient.Run(chartRef)
 }
 
+// RunHelmRollback rolls back a Helm release to a previous revision.
+// It optionally waits for the rollback to complete and all resources to be ready.
 func (client *HelmClientImpl) RunHelmRollback(helmConf *helm.Configuration, releaseName string, revision int, wait bool) error {
 	rollbackClient := helm.NewRollback(helmConf)
 	rollbackClient.Timeout = rollbackTimeout
@@ -143,6 +161,8 @@ func (client *HelmClientImpl) RunHelmRollback(helmConf *helm.Configuration, rele
 	return rollbackClient.Run(releaseName)
 }
 
+// LoadChart loads a Helm chart from the specified file path.
+// The path can be a directory containing chart files or a packaged chart archive.
 func (client *HelmClientImpl) LoadChart(chartPath string) (*chart.Chart, error) {
 	return loader.Load(chartPath)
 }

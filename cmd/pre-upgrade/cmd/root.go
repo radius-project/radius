@@ -54,6 +54,7 @@ func ExecuteWithContext(ctx context.Context) error {
 	return Execute()
 }
 
+// Execute runs the root command and is the main entry point for the pre-upgrade CLI
 func Execute() error {
 	ctx := rootCmd.Context()
 	if ctx == nil {
@@ -128,7 +129,7 @@ func parseConfig() Config {
 	return Config{
 		TargetVersion: getEnvString("TARGET_VERSION", ""),
 		EnabledChecks: parseEnabledChecks(),
-		Timeout:       getEnvDuration("PREFLIGHT_TIMEOUT_SECONDS", 5*time.Minute),
+		Timeout:       getEnvDuration("PREFLIGHT_TIMEOUT_SECONDS", 1*time.Minute),
 		RetryAttempts: getEnvInt("RETRY_ATTEMPTS", 1),
 		RetryDelay:    getEnvDuration("RETRY_DELAY_SECONDS", 2*time.Second),
 	}

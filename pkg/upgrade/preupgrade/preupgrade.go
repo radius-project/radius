@@ -39,15 +39,17 @@ type Options struct {
 	EnabledChecks  []string
 	TargetVersion  string
 	CurrentVersion string
-	Timeout        time.Duration // Timeout for preflight checks, defaults to 5 minutes if not set
+	Timeout        time.Duration // Timeout for all preflight checks combined, defaults to 1 minute if not set
 }
 
 // RunPreflightChecks executes all configured preflight checks
 func RunPreflightChecks(ctx context.Context, config Config, options Options) error {
 	// Apply default timeout if not set
+	// Most checks complete quickly (version check, helm check), but we allow 1 minute
+	// to account for potential network delays or slow Kubernetes API responses
 	timeout := options.Timeout
 	if timeout == 0 {
-		timeout = 5 * time.Minute
+		timeout = 1 * time.Minute
 	}
 
 	// Create context with timeout
@@ -63,7 +65,6 @@ func RunPreflightChecks(ctx context.Context, config Config, options Options) err
 	for _, checkName := range options.EnabledChecks {
 		checkName = strings.TrimSpace(checkName)
 
-		// Skip empty check names
 		if checkName == "" {
 			continue
 		}

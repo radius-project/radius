@@ -305,6 +305,8 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	// If Radius is installed, check if we're in an upgrade scenario
 	// During a Helm upgrade, the release is in a pending state with the new version already set
 	// We need to get the previous deployed version instead
+	// Note: We check radiusVersion != "" as a defensive measure in case the version
+	// cannot be retrieved from a corrupted or incomplete Helm release
 	if radiusInstalled && radiusVersion != "" {
 		// Try to get the previous deployed version from history
 		previousVersion, err := helmAction.GetPreviousReleaseVersion(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
