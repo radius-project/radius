@@ -131,6 +131,13 @@ test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests th
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
+.PHONY: test-functional-upgrade
+test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests
+
+.PHONY: test-functional-upgrade-noncloud
+test-functional-upgrade-noncloud: ## Runs Upgrade functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/upgrade/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+	
 .PHONY: test-functional-samples
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
 
