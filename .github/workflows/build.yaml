@@ -92,7 +92,7 @@ jobs:
             target_arch: arm64
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -170,7 +170,7 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go
@@ -229,7 +229,7 @@ jobs:
       OCI_REPOSITORY: "radius-project/helm-chart"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install helm
         uses: azure/setup-helm@v4
         with:
@@ -264,7 +264,7 @@ jobs:
     environment: publish-bicep
     steps: 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go
@@ -314,11 +314,11 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: rad_cli_*
           merge-multiple: true
