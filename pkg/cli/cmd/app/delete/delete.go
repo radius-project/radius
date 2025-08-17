@@ -164,20 +164,21 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	app, err := client.GetApplication(ctx, r.ApplicationName)
+	if clients.Is404Error(err) {
+		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	var environmentID resources.ID
+
+	environmentID, err = resources.ParseResource(*app.Properties.Environment)
+	if err != nil {
+		return err
+	}
 	if !r.Confirm {
-		app, err := client.GetApplication(ctx, r.ApplicationName)
-		if clients.Is404Error(err) {
-			r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
-			return nil
-		} else if err != nil {
-			return err
-		}
-
-		environmentID, err := resources.ParseResource(*app.Properties.Environment)
-		if err != nil {
-			return err
-		}
-
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
@@ -185,8 +186,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		if !confirmed {
 			return nil
 		}
-		r.EnvironmentName = environmentID.Name()
 	}
+	r.EnvironmentName = environmentID.Name()
 
 	progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", r.ApplicationName, r.EnvironmentName)
 

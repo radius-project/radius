@@ -103,6 +103,13 @@ func (listener *InteractiveListener) Run() {
 
 	// Main loop that updates spinner position and writes output. This runs concurrently with accepting updates.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				output.LogInfo("Progress display encountered an error: %v", r)
+				close(writerDone)
+			}
+		}()
+
 		writer := uilive.New()
 		writer.Start()
 

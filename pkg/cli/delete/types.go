@@ -24,7 +24,7 @@ import (
 
 //go:generate mockgen -typed -destination=./mock_delete.go -package=delete -self_package github.com/radius-project/radius/pkg/cli/delete github.com/radius-project/radius/pkg/cli/delete Interface
 
-// Interface is the interface for executing Bicep deployments in the CLI.
+// Interface is the interface for executing delete operations in the CLI.
 type Interface interface {
 	// DeleteApplicationWithProgress deletes an application with progress reporting. This is used to
 	// provide feedback to the user during the deletion process. It returns a boolean indicating

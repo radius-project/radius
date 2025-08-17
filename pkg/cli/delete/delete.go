@@ -37,8 +37,13 @@ func DeleteApplicationWithProgress(ctx context.Context, amc clients.Applications
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				output.LogInfo("Progress listener encountered an error: %v", r)
+			}
+			wg.Done()
+		}()
 		listener.Run()
-		wg.Done()
 	}()
 
 	resourcesList, err := amc.ListResourcesInApplication(ctx, options.ApplicationNameOrID)
@@ -52,55 +57,66 @@ func DeleteApplicationWithProgress(ctx context.Context, amc clients.Applications
 
 	for _, resource := range resourcesList {
 		if resource.ID != nil {
-			resourceID, err := resources.ParseResource(*resource.ID)
-			if err == nil {
-				if _, exists := processedResources[resourceID.String()]; !exists {
-					progressChan <- clients.ResourceProgress{
-						Resource: resourceID,
-						Status:   clients.StatusStarted,
-					}
-					processedResources[resourceID.String()] = true
+			resourceID, parseErr := resources.ParseResource(*resource.ID)
+			if parseErr != nil {
+				close(progressChan)
+				wg.Wait()
+				return false, parseErr
+			}
+			if _, exists := processedResources[resourceID.String()]; !exists {
+				progressChan <- clients.ResourceProgress{
+					Resource: resourceID,
+					Status:   clients.StatusStarted,
 				}
+				processedResources[resourceID.String()] = true
 			}
 		}
 	}
 
 	app, err := amc.GetApplication(ctx, options.ApplicationNameOrID)
 	if err == nil && app.ID != nil {
-		appID, err := resources.ParseResource(*app.ID)
-		if err == nil {
-			if _, exists := processedResources[appID.String()]; !exists {
-				progressChan <- clients.ResourceProgress{
-					Resource: appID,
-					Status:   clients.StatusStarted,
-				}
-				processedResources[appID.String()] = true
+		appID, parseErr := resources.ParseResource(*app.ID)
+		if parseErr != nil {
+			close(progressChan)
+			wg.Wait()
+			return false, parseErr
+		}
+		if _, exists := processedResources[appID.String()]; !exists {
+			progressChan <- clients.ResourceProgress{
+				Resource: appID,
+				Status:   clients.StatusStarted,
 			}
+			processedResources[appID.String()] = true
 		}
 	}
 
 	deleted, err := amc.DeleteApplication(ctx, options.ApplicationNameOrID)
-
 	if err == nil {
 		for _, resource := range resourcesList {
 			if resource.ID != nil {
-				resourceID, err := resources.ParseResource(*resource.ID)
-				if err == nil {
-					progressChan <- clients.ResourceProgress{
-						Resource: resourceID,
-						Status:   clients.StatusCompleted,
-					}
+				resourceID, parseErr := resources.ParseResource(*resource.ID)
+				if parseErr != nil {
+					close(progressChan)
+					wg.Wait()
+					return false, parseErr
+				}
+				progressChan <- clients.ResourceProgress{
+					Resource: resourceID,
+					Status:   clients.StatusCompleted,
 				}
 			}
 		}
 
 		if app.ID != nil {
-			appID, err := resources.ParseResource(*app.ID)
-			if err == nil {
-				progressChan <- clients.ResourceProgress{
-					Resource: appID,
-					Status:   clients.StatusCompleted,
-				}
+			appID, parseErr := resources.ParseResource(*app.ID)
+			if parseErr != nil {
+				close(progressChan)
+				wg.Wait()
+				return false, parseErr
+			}
+			progressChan <- clients.ResourceProgress{
+				Resource: appID,
+				Status:   clients.StatusCompleted,
 			}
 		}
 	}
