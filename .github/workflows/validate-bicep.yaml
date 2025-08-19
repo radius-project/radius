@@ -65,7 +65,7 @@ jobs:
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Create a temporary file system 
         run: |
           mkdir tmp-radius-bicep-extension

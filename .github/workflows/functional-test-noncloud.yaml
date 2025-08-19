@@ -180,10 +180,10 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout samples repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
