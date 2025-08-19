@@ -49,11 +49,6 @@ func GetTerraformRegistry(config recipes.Configuration) string {
 
 // GetTerraformProviderName returns the provider name to use based on configuration
 func GetTerraformProviderName(config recipes.Configuration, defaultProvider, providerName string) string {
-	if config.RecipeConfig.Terraform.ProviderMirror != nil && config.RecipeConfig.Terraform.ProviderMirror.ProviderMappings != nil {
-		if mapping, exists := config.RecipeConfig.Terraform.ProviderMirror.ProviderMappings[defaultProvider]; exists {
-			return mapping
-		}
-	}
 	return providerName
 }
 

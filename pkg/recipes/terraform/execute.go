@@ -366,17 +366,9 @@ func addTLSEnvironmentVariables(
 	// Handle TLS configuration if present in the recipe definition
 	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
 		logger.Info("Configuring TLS settings for recipe")
-
 		logger.Info("DEBUG: TLS configuration details",
-			"skipVerify", options.EnvRecipe.TLS.SkipVerify,
 			"hasCACertificate", options.EnvRecipe.TLS.CACertificate != nil,
 			"secretsCount", len(options.Secrets))
-
-		// Skip verification if requested
-		if options.EnvRecipe.TLS.SkipVerify {
-			logger.Info("TLS verification will be skipped")
-			envVars["GIT_SSL_NO_VERIFY"] = "true"
-		}
 
 		// Only write certificate files if certificates are actually provided
 		if options.EnvRecipe.TLS.CACertificate != nil {
@@ -478,7 +470,6 @@ func addTLSEnvironmentVariables(
 								logger.Info("DEBUG: Set fallback Git SSL environment variable", "var", envVar, "value", envValue)
 							}
 
-							os.Setenv("GIT_SSL_NO_VERIFY", "false")
 							os.Setenv("GIT_CURL_VERBOSE", "1")
 
 							logger.Info("DEBUG: Configured fallback Git SSL certificate",
@@ -570,9 +561,8 @@ func writeTLSCertificates(ctx context.Context, workingDir string, tls *recipes.T
 			logger.Info("Set Git SSL environment variable globally", "var", envVar, "value", envValue)
 		}
 
-		// Configure Git SSL verification settings
-		os.Setenv("GIT_SSL_NO_VERIFY", "false") // We want verification, just with our custom cert
-		os.Setenv("GIT_CURL_VERBOSE", "1")      // Enable verbose Git curl output for debugging
+				// Configure Git SSL verbosity for debugging
+				os.Setenv("GIT_CURL_VERBOSE", "1")
 
 		// NOTE: Do NOT set GIT_SSL_CERT - that's for client certificates (private keys), not CA certificates
 
@@ -751,8 +741,8 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 		"workingDir", tf.WorkingDir())
 
 	// Check if required environment variables are set (for debugging)
-	gitSSLEnvVars := []string{"GIT_SSL_CAINFO", "GIT_SSL_CAPATH", "SSL_CERT_FILE", "SSL_CERT_DIR", "CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "GIT_SSL_NO_VERIFY"}
-	registryEnvVars := []string{"TF_CLI_CONFIG_FILE", "TF_INSECURE_SKIP_TLS_VERIFY"}
+	gitSSLEnvVars := []string{"GIT_SSL_CAINFO", "GIT_SSL_CAPATH", "SSL_CERT_FILE", "SSL_CERT_DIR", "CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE"}
+	registryEnvVars := []string{"TF_CLI_CONFIG_FILE"}
 
 	logger.Info("Checking Git SSL environment variables for debugging")
 	for _, envKey := range gitSSLEnvVars {

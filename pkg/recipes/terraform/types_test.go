@@ -40,15 +40,15 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			wantKeys:   map[string][]string{},
 		},
 		{
-			name: "registry token authentication only",
+			name: "module registry token authentication only",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/registry",
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"app.terraform.io": {
+								Host: "app.terraform.io",
+								Authentication: datamodel.RegistryAuthConfig{
+									Token: &datamodel.TokenConfig{Secret: "/secret/store/registry"},
 								},
 							},
 						},
@@ -83,15 +83,15 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name: "both registry and version token authentication",
+			name: "module registry and version token authentication",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/registry",
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"app.terraform.io": {
+								Host: "app.terraform.io",
+								Authentication: datamodel.RegistryAuthConfig{
+									Token: &datamodel.TokenConfig{Secret: "/secret/store/registry"},
 								},
 							},
 						},
@@ -99,9 +99,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 							Version:            "1.7.0",
 							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
 							Authentication: &datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/version",
-								},
+								Token: &datamodel.TokenConfig{Secret: "/secret/store/version"},
 							},
 						},
 					},
@@ -137,15 +135,15 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name: "all authentication types",
+			name: "module registry auth plus version auth and TLS CA",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/registry",
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"app.terraform.io": {
+								Host: "app.terraform.io",
+								Authentication: datamodel.RegistryAuthConfig{
+									Token: &datamodel.TokenConfig{Secret: "/secret/store/registry"},
 								},
 							},
 						},
@@ -153,15 +151,10 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 							Version:            "1.7.0",
 							ReleasesAPIBaseURL: "https://terraform-mirror.example.com",
 							Authentication: &datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/version",
-								},
+								Token: &datamodel.TokenConfig{Secret: "/secret/store/version"},
 							},
 							TLS: &datamodel.TLSConfig{
-								CACertificate: &datamodel.SecretReference{
-									Source: "/secret/store/tls",
-									Key:    "ca-cert",
-								},
+								CACertificate: &datamodel.SecretReference{Source: "/secret/store/tls", Key: "ca-cert"},
 							},
 						},
 					},
@@ -179,11 +172,11 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/shared",
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"registry.example.com": {
+								Host: "registry.example.com",
+								Authentication: datamodel.RegistryAuthConfig{
+									Token: &datamodel.TokenConfig{Secret: "/secret/store/shared"},
 								},
 							},
 						},
@@ -205,17 +198,17 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name: "token auth with additional hosts",
+			name: "module registry token auth with additional hosts",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "/secret/store/token",
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"registry.example.com": {
+								Host: "registry.example.com",
+								Authentication: datamodel.RegistryAuthConfig{
+									Token: &datamodel.TokenConfig{Secret: "/secret/store/token"},
+									AdditionalHosts: []string{"gitlab.com", "packages.gitlab.com"},
 								},
-								AdditionalHosts: []string{"gitlab.com", "packages.gitlab.com"},
 							},
 						},
 					},
@@ -279,14 +272,14 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			},
 		},
 		{
-			name: "empty additional hosts",
+			name: "empty additional hosts on module registry",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								AdditionalHosts: []string{},
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"registry.example.com": {
+								Host: "registry.example.com",
+								Authentication: datamodel.RegistryAuthConfig{AdditionalHosts: []string{}},
 							},
 						},
 					},
@@ -296,16 +289,14 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			wantKeys:   map[string][]string{},
 		},
 		{
-			name: "token auth with empty secret",
+			name: "module registry token auth with empty secret",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: &datamodel.TokenConfig{
-									Secret: "",
-								},
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"registry.example.com": {
+								Host: "registry.example.com",
+								Authentication: datamodel.RegistryAuthConfig{Token: &datamodel.TokenConfig{Secret: ""}},
 							},
 						},
 					},
@@ -315,14 +306,14 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 			wantKeys:   map[string][]string{},
 		},
 		{
-			name: "nil token config",
+			name: "nil token config on module registry",
 			envConfig: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
-						Registry: &datamodel.TerraformRegistryConfig{
-							Mirror: "https://registry.example.com",
-							Authentication: datamodel.RegistryAuthConfig{
-								Token: nil,
+						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+							"registry.example.com": {
+								Host: "registry.example.com",
+								Authentication: datamodel.RegistryAuthConfig{Token: nil},
 							},
 						},
 					},

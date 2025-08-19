@@ -38,10 +38,6 @@
               "original-registry.example.com",
               "backup-registry.example.com"
             ]
-          },
-          "providerMappings": {
-            "hashicorp/aws": "my-company/aws",
-            "hashicorp/azurerm": "my-company/azurerm"
           }
         },
         "providers": {},

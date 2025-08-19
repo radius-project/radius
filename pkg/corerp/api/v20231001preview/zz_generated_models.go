@@ -1515,10 +1515,6 @@ type TLSConfig struct {
 // Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
 // key named 'ca-cert' with the PEM-encoded certificate bundle.
 	CaCertificate *SecretReference
-
-// Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING:
-// This makes the connection vulnerable to man-in-the-middle attacks.
-	SkipVerify *bool
 }
 
 // TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
@@ -1559,25 +1555,10 @@ type TerraformModuleRegistryConfig struct {
 // TerraformProviderMirrorConfig - Configuration for a Terraform provider mirror. Allows overriding the default Terraform
 // provider registry with a custom mirror.
 type TerraformProviderMirrorConfig struct {
-// Authentication configuration for accessing the provider mirror.
-	Authentication *RegistryAuthConfig
-
-// Provider mappings used to translate between official and custom provider identifiers.
-	ProviderMappings map[string]*string
-
 // TLS configuration for connecting to the provider mirror.
 	TLS *TLSConfig
 
-// Type of mirror. Only 'filesystem' is supported. When type is 'filesystem': URL must point to a packaged filesystem mirror
-// (zip/tar.gz) or a local path/URL (file:// or absolute path) to a ready mirror
-// directory. Authentication and TLS (CA certificate, skipVerify) apply to downloading the file from HTTP(S) sources. The
-// mirror is unpacked to a local directory and used via provider
-// installation.filesystemmirror.
-	Type *string
-
-// URL to the mirror file or directory: http(s)://… .zip/.tar.gz => downloaded and extracted locally; file:///abs/path or
-// plain absolute/relative path => used directly as a local directory. Example:
-// 'https://terraform.example.com'
+// URL to the mirror server implementing the provider network mirror protocol. Example: 'https://terraform.example.com'
 	URL *string
 }
 

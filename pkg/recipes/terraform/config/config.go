@@ -131,38 +131,8 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 		cfg.Terraform = &TerraformDefinition{}
 	}
 
-	// Apply provider mappings if configured
-	if envConfig != nil && envConfig.RecipeConfig.Terraform.ProviderMirror != nil &&
-		len(envConfig.RecipeConfig.Terraform.ProviderMirror.ProviderMappings) > 0 {
-		logger.Info("Applying provider mappings", "mappings", envConfig.RecipeConfig.Terraform.ProviderMirror.ProviderMappings)
-
-		// Create a copy of requiredProviders with mappings applied
-		mappedProviders := make(map[string]*RequiredProviderInfo)
-		for providerName, providerInfo := range requiredProviders {
-			// Check if there's a mapping for this provider's source
-			if providerInfo.Source != "" {
-				if mappedSource, exists := envConfig.RecipeConfig.Terraform.ProviderMirror.ProviderMappings[providerInfo.Source]; exists {
-					logger.Info("Mapping provider source", "from", providerInfo.Source, "to", mappedSource)
-					// Create a new provider info with the mapped source
-					mappedInfo := &RequiredProviderInfo{
-						Source:               mappedSource,
-						Version:              providerInfo.Version,
-						ConfigurationAliases: providerInfo.ConfigurationAliases,
-					}
-					mappedProviders[providerName] = mappedInfo
-				} else {
-					// No mapping, use original
-					mappedProviders[providerName] = providerInfo
-				}
-			} else {
-				// No source specified, use original
-				mappedProviders[providerName] = providerInfo
-			}
-		}
-		cfg.Terraform.RequiredProviders = mappedProviders
-	} else {
-		cfg.Terraform.RequiredProviders = requiredProviders
-	}
+	// No provider source remapping. Provider mirrors are configured only via TF CLI network_mirror.
+	cfg.Terraform.RequiredProviders = requiredProviders
 
 	return nil
 }

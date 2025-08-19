@@ -14,7 +14,6 @@
           "version": "1.7.0",
           "releasesApiBaseUrl": "https://terraform.example.com",
           "tls": {
-            "skipVerify": true,
             "caCertificate": {
               "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
               "key": "ca-cert"

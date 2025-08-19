@@ -55,8 +55,7 @@ func InstallTerraformWithTLS(
 	}
 
 	hasAuthentication := terraformConfig.Version.Authentication != nil
-	hasTLSConfig := terraformConfig.Version.TLS != nil &&
-		(terraformConfig.Version.TLS.SkipVerify || terraformConfig.Version.TLS.CACertificate != nil)
+	hasTLSConfig := terraformConfig.Version.TLS != nil && terraformConfig.Version.TLS.CACertificate != nil
 	hasArchiveURL := terraformConfig.Version.ReleasesArchiveURL != ""
 
 	if !hasAuthentication && !hasTLSConfig && !hasArchiveURL {
@@ -82,12 +81,6 @@ func InstallTerraformWithTLS(
 	// Handle TLS configuration if present
 	if terraformConfig.Version.TLS != nil {
 		tlsConfig := terraformConfig.Version.TLS
-
-		// Handle skip verification
-		if tlsConfig.SkipVerify {
-			customSource.InsecureSkipVerify = true
-			logger.Info("TLS verification disabled for Terraform download", "skipVerify", true)
-		}
 
 		// Handle custom CA certificate
 		if tlsConfig.CACertificate != nil {

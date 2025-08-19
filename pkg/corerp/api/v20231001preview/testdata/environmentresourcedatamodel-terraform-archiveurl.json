@@ -19,7 +19,6 @@
             }
           },
           "tls": {
-            "skipVerify": false,
             "caCertificate": {
               "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
               "key": "ca-cert"

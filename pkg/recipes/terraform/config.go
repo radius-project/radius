@@ -28,6 +28,10 @@ type TerraformModuleRegistryConfig struct {
 type TerraformProviderMirrorConfig struct {
 	// URL is the base URL of the provider mirror.
 	URL string `json:"url"`
+	// Type is the type of the provider mirror (e.g., "filesystem", "network").
+	Type string `json:"type"`
+	// Authentication is the authentication configuration for accessing the module registry.
+	Authentication *RegistryAuthConfig `json:"authentication,omitempty"`
 	// TLS is the TLS configuration for connecting to the provider mirror.
 	TLS *TLSConfig `json:"tls,omitempty"`
 }
@@ -54,8 +58,6 @@ type ProviderConfig struct {
 
 // TLSConfig contains the TLS configuration.
 type TLSConfig struct {
-	// InsecureSkipVerify skips TLS certificate verification.
-	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 	// CAFile is the path to the CA certificate file.
 	CAFile string `json:"caFile,omitempty"`
 	// CertFile is the path to the client certificate file.

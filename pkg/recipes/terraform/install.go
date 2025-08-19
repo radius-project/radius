@@ -62,13 +62,8 @@ func validateReleasesURL(ctx context.Context, releasesURL string, tlsConfig *dat
 
 	// Check if URL uses HTTP instead of HTTPS
 	if parsedURL.Scheme == "http" {
-		if tlsConfig != nil && tlsConfig.SkipVerify {
-			// Allow HTTP only if skipVerify is explicitly set to true
-			logger.Info("Allowing HTTP URL due to TLS skip verify setting", "url", releasesURL)
-			return nil
-		}
 		logger.Error(nil, "Releases API URL must use HTTPS for security", "url", releasesURL)
-		return fmt.Errorf("releases API URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)")
+		return fmt.Errorf("releases API URL must use HTTPS for security")
 	}
 
 	if parsedURL.Scheme != "https" {
@@ -97,13 +92,8 @@ func validateArchiveURL(ctx context.Context, archiveURL string, tlsConfig *datam
 
 	// Check if URL uses HTTP instead of HTTPS
 	if parsedURL.Scheme == "http" {
-		if tlsConfig != nil && tlsConfig.SkipVerify {
-			// Allow HTTP only if skipVerify is explicitly set to true
-			logger.Info("Allowing HTTP archive URL due to TLS skip verify setting", "url", archiveURL)
-			return nil
-		}
 		logger.Error(nil, "Archive URL must use HTTPS for security", "url", archiveURL)
-		return fmt.Errorf("archive URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)")
+		return fmt.Errorf("archive URL must use HTTPS for security")
 	}
 
 	if parsedURL.Scheme != "https" {
@@ -155,7 +145,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 
 	// Check if we need to use custom source for TLS configuration, authentication, or archive URL
 	needsCustomSource := useArchiveURL ||
-		(tlsConfig != nil && (tlsConfig.SkipVerify || tlsConfig.CACertificate != nil)) ||
+		(tlsConfig != nil && tlsConfig.CACertificate != nil) ||
 		(terraformConfig.Version != nil && terraformConfig.Version.Authentication != nil)
 
 	installStartTime := time.Now()
@@ -167,9 +157,6 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string, te
 		logger.Info("Using custom source for Terraform installation due to TLS configuration or authentication")
 
 		// Log security warnings if applicable
-		if tlsConfig != nil && tlsConfig.SkipVerify {
-			logger.Info("WARNING: TLS verification is disabled for Terraform releases. This is insecure and should not be used in production.")
-		}
 		if tlsConfig != nil && tlsConfig.CACertificate != nil {
 			logger.Info("Using custom CA certificate for Terraform releases")
 		}

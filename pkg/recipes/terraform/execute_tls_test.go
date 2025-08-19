@@ -34,20 +34,6 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "recipe TLS with skipVerify only",
-			options: Options{
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					TLS: &recipes.TLSConfig{
-						SkipVerify: true,
-					},
-				},
-			},
-			existingEnvVars: map[string]string{},
-			expectedEnvVars: map[string]string{
-				"GIT_SSL_NO_VERIFY": "true",
-			},
-		},
-		{
 			name: "recipe TLS with CA certificate",
 			options: Options{
 				RootDir: "/tmp/test",
@@ -73,34 +59,7 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 			},
 		},
 		{
-			name: "recipe TLS with both skipVerify and CA certificate",
-			options: Options{
-				RootDir: "/tmp/test",
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					TLS: &recipes.TLSConfig{
-						SkipVerify: true,
-						CACertificate: &recipes.SecretReference{
-							Source: "secret-store-1",
-							Key:    "ca-cert",
-						},
-					},
-				},
-				Secrets: map[string]recipes.SecretData{
-					"secret-store-1": {
-						Data: map[string]string{
-							"ca-cert": "-----BEGIN CERTIFICATE-----\ntest-ca-cert\n-----END CERTIFICATE-----",
-						},
-					},
-				},
-			},
-			existingEnvVars: map[string]string{},
-			expectedEnvVars: map[string]string{
-				"GIT_SSL_NO_VERIFY": "true",
-				"GIT_SSL_CAINFO":    "/tmp/test/.terraform/modules/.tls/ca.crt",
-			},
-		},
-		{
-			name: "recipe TLS with registry env vars present",
+			name: "recipe TLS with registry env vars present (CA only)",
 			options: Options{
 				RootDir: "/tmp/test",
 				EnvRecipe: &recipes.EnvironmentDefinition{

@@ -122,17 +122,8 @@ func GetTerraformRegistrySecretIDs(envConfig recipes.Configuration) map[string][
 	registrySecretIDs := make(map[string][]string)
 	var mu sync.Mutex
 
-	// Handle provider mirror authentication
+	// Handle provider mirror TLS CA certificate only (no auth supported for provider mirrors)
 	if envConfig.RecipeConfig.Terraform.ProviderMirror != nil {
-		auth := envConfig.RecipeConfig.Terraform.ProviderMirror.Authentication
-
-		// Token authentication
-		if auth.Token != nil && auth.Token.Secret != "" {
-			// Token auth needs token
-			addSecretKeys(registrySecretIDs, auth.Token.Secret, "token", &mu)
-		}
-
-		// Handle provider mirror TLS CA certificate
 		if envConfig.RecipeConfig.Terraform.ProviderMirror.TLS != nil &&
 			envConfig.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate != nil {
 			cert := envConfig.RecipeConfig.Terraform.ProviderMirror.TLS.CACertificate

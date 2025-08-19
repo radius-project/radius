@@ -119,16 +119,10 @@ type SecretReference struct {
 
 // TerraformProviderMirrorConfig - Configuration for Terraform provider mirrors.
 type TerraformProviderMirrorConfig struct {
-	// Type of mirror. Only "filesystem" is supported. When type == "filesystem":
-	// - URL must point to a packaged filesystem mirror (zip/tar.gz) or a local path/URL (file:// or absolute path)
-	//   to a ready mirror directory.
-	// - Authentication and TLS (CA certificate, skipVerify) apply to downloading the file from HTTP(S) sources.
-	// - The mirror is unpacked to a local directory and used via provider_installation.filesystem_mirror.
+	// Type of mirror. DEPRECATED: This field is deprecated. All provider mirrors now use the network mirror protocol.
 	Type string `json:"type,omitempty"`
 
-	// URL to the mirror file or directory:
-	// - http(s)://... .zip/.tar.gz => downloaded and extracted locally
-	// - file:///abs/path or plain absolute/relative path => used directly as a local directory
+	// URL to the mirror server implementing the provider network mirror protocol.
 	URL string `json:"url,omitempty"`
 
 	// ProviderMappings is used to translate between official and custom provider identifiers.
@@ -202,9 +196,4 @@ type TLSConfig struct {
 	// CACertificate is a reference to a secret containing a custom CA certificate bundle to use for TLS verification.
 	// The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.
 	CACertificate *SecretReference `json:"caCertificate,omitempty"`
-
-	// SkipVerify allows insecure connections (skip TLS verification).
-	// This is strongly discouraged in production environments.
-	// WARNING: This makes the connection vulnerable to man-in-the-middle attacks.
-	SkipVerify bool `json:"skipVerify,omitempty"`
 }

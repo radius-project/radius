@@ -77,8 +77,7 @@ type CustomRegistrySource struct {
 	// CACertPEM is PEM-encoded CA certificate(s)
 	CACertPEM []byte
 
-	// InsecureSkipVerify skips TLS verification (not recommended for production)
-	InsecureSkipVerify bool
+	// InsecureSkipVerify removed: we always verify TLS; use CACertPEM for custom CAs
 
 	// Timeout for HTTP requests
 	Timeout int
@@ -255,14 +254,13 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 	}
 
 	// Otherwise create a default client with custom TLS configuration
-	logger.Info("Creating default HTTP client with custom TLS configuration", "insecureSkipVerify", s.InsecureSkipVerify)
+	logger.Info("Creating default HTTP client with custom TLS configuration (verification enforced)")
 	tlsConfig := &tls.Config{
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: s.InsecureSkipVerify,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	// Add custom CA if provided and not skipping verification
-	if len(s.CACertPEM) > 0 && !s.InsecureSkipVerify {
+	if len(s.CACertPEM) > 0 {
 		logger.Info("Configuring custom CA certificate",
 			"certLength", len(s.CACertPEM),
 			"certPreview", getCertPreview(string(s.CACertPEM)))
@@ -288,8 +286,6 @@ func (s *CustomRegistrySource) getHTTPClient() (HTTPClient, error) {
 		logger.Info("Successfully added custom CA certificate to pool")
 
 		tlsConfig.RootCAs = caCertPool
-	} else if len(s.CACertPEM) > 0 && s.InsecureSkipVerify {
-		logger.Info("CA certificate provided but TLS verification is disabled - CA cert will be ignored")
 	}
 
 	timeout := s.Timeout

@@ -48,19 +48,11 @@ func Test_validateReleasesURL(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name:        "HTTP URL without skipVerify is invalid",
+			name:        "HTTP URL is invalid",
 			releasesURL: "http://releases.example.com",
 			tlsConfig:   nil,
 			wantErr:     true,
-			errorMsg:    "releases API URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)",
-		},
-		{
-			name:        "HTTP URL with skipVerify is valid",
-			releasesURL: "http://releases.example.com",
-			tlsConfig: &datamodel.TLSConfig{
-				SkipVerify: true,
-			},
-			wantErr: false,
+			errorMsg:    "releases API URL must use HTTPS for security",
 		},
 		{
 			name:        "invalid URL scheme",
@@ -114,19 +106,11 @@ func Test_validateArchiveURL(t *testing.T) {
 			wantErr:    false,
 		},
 		{
-			name:       "HTTP URL without skipVerify is invalid",
+			name:       "HTTP URL is invalid",
 			archiveURL: "http://releases.example.com/terraform_1.7.0_linux_amd64.zip",
 			tlsConfig:  nil,
 			wantErr:    true,
-			errorMsg:   "archive URL must use HTTPS for security. Use 'tls.skipVerify: true' to allow insecure connections (not recommended)",
-		},
-		{
-			name:       "HTTP URL with skipVerify is valid",
-			archiveURL: "http://releases.example.com/terraform_1.7.0_linux_amd64.zip",
-			tlsConfig: &datamodel.TLSConfig{
-				SkipVerify: true,
-			},
-			wantErr: false,
+			errorMsg:   "archive URL must use HTTPS for security",
 		},
 		{
 			name:       "URL without .zip extension is invalid",

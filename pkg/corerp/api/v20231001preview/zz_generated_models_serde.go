@@ -3595,7 +3595,6 @@ func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
 func (t TLSConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "caCertificate", t.CaCertificate)
-	populate(objectMap, "skipVerify", t.SkipVerify)
 	return json.Marshal(objectMap)
 }
 
@@ -3610,9 +3609,6 @@ func (t *TLSConfig) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "caCertificate":
 				err = unpopulate(val, "CaCertificate", &t.CaCertificate)
-			delete(rawMsg, key)
-		case "skipVerify":
-				err = unpopulate(val, "SkipVerify", &t.SkipVerify)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3703,10 +3699,7 @@ func (t *TerraformModuleRegistryConfig) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type TerraformProviderMirrorConfig.
 func (t TerraformProviderMirrorConfig) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "authentication", t.Authentication)
-	populate(objectMap, "providerMappings", t.ProviderMappings)
 	populate(objectMap, "tls", t.TLS)
-	populate(objectMap, "type", t.Type)
 	populate(objectMap, "url", t.URL)
 	return json.Marshal(objectMap)
 }
@@ -3720,17 +3713,8 @@ func (t *TerraformProviderMirrorConfig) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "authentication":
-				err = unpopulate(val, "Authentication", &t.Authentication)
-			delete(rawMsg, key)
-		case "providerMappings":
-				err = unpopulate(val, "ProviderMappings", &t.ProviderMappings)
-			delete(rawMsg, key)
 		case "tls":
 				err = unpopulate(val, "TLS", &t.TLS)
-			delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &t.Type)
 			delete(rawMsg, key)
 		case "url":
 				err = unpopulate(val, "URL", &t.URL)

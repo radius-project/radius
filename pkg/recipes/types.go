@@ -87,9 +87,6 @@ type EnvironmentDefinition struct {
 type TLSConfig struct {
 	// CACertificate represents a reference to a CA certificate secret.
 	CACertificate *SecretReference `json:"caCertificate,omitempty"`
-
-	// SkipVerify allows insecure connections (skip TLS verification).
-	SkipVerify bool `json:"skipVerify,omitempty"`
 }
 
 // SecretReference represents a reference to a secret.

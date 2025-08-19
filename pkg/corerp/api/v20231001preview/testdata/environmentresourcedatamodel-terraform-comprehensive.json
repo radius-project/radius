@@ -28,10 +28,6 @@
         "providerMirror": {
           "type": "network",
           "url": "https://terraform.example.com",
-          "providerMappings": {
-            "registry.terraform.io/hashicorp/aws": "terraform.example.com/providers/aws",
-            "registry.terraform.io/hashicorp/azurerm": "terraform.example.com/providers/azurerm"
-          },
           "authentication": {
             "token": {
               "secret": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/registry-pat"
@@ -43,7 +39,6 @@
           "version": "1.7.0",
           "releasesApiBaseUrl": "https://releases.example.com",
           "tls": {
-            "skipVerify": true,
             "caCertificate": {
               "source": "/planes/radius/local/resourcegroups/test-group/providers/Applications.Core/secretStores/ca-cert",
               "key": "ca-cert"

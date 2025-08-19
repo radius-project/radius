@@ -125,17 +125,12 @@ func TestConfigureTerraformRegistry_ProviderMirror_NoAuth(t *testing.T) {
 	// Create temp dir for test
 	tempDir := t.TempDir()
 
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with provider mirror using filesystem path
+	// Setup configuration with provider mirror using network protocol (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
+					URL: "https://mirror.example.com/providers/",
 				},
 			},
 		},
@@ -160,13 +155,13 @@ func TestConfigureTerraformRegistry_ProviderMirror_NoAuth(t *testing.T) {
 	require.False(t, strings.Contains(configContent, "credentials"),
 		"Config file should not contain credentials block when no auth is provided")
 
-	// Check for provider installation block with filesystem mirror path
+	// Check for provider installation block with network mirror
 	require.True(t, strings.Contains(configContent, "provider_installation {"),
 		"Config file should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, "filesystem_mirror {"),
-		"Config file should contain filesystem_mirror block")
-	require.Contains(t, configContent, fmt.Sprintf("path    = %q", localMirrorDir),
-		"Config file should contain the local mirror path")
+	require.True(t, strings.Contains(configContent, "network_mirror {"),
+		"Config file should contain network_mirror block")
+	require.Contains(t, configContent, `url = "https://mirror.example.com/providers"`,
+		"Config file should contain the mirror URL without trailing slash")
 
 	// Verify only TF_CLI_CONFIG_FILE is tracked (no token env vars)
 	require.Len(t, regConfig.EnvVars, 1, "Should only track one environment variable")
@@ -202,17 +197,12 @@ func TestConfigureTerraformRegistry_ProviderMirror_WithAuth(t *testing.T) {
 		token         = "test-token-with-port"
 	)
 
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with provider mirror and authentication
+	// Setup configuration with provider mirror and authentication (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
+					URL: "https://mirror.example.com/providers/",
 					Authentication: datamodel.RegistryAuthConfig{
 						Token: &datamodel.TokenConfig{
 							Secret: secretStoreID,
@@ -243,16 +233,16 @@ func TestConfigureTerraformRegistry_ProviderMirror_WithAuth(t *testing.T) {
 	require.NoError(t, err, "Should be able to read the config file")
 	configContent := string(content)
 
-	// Should contain provider_installation block with filesystem mirror path
+	// Should contain provider_installation block with network mirror
 	require.True(t, strings.Contains(configContent, "provider_installation {"),
 		"Config file should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, "filesystem_mirror {"),
-		"Config file should contain filesystem_mirror block")
-	require.Contains(t, configContent, fmt.Sprintf("path    = %q", localMirrorDir),
-		"Config file should contain the local mirror path")
+	require.True(t, strings.Contains(configContent, "network_mirror {"),
+		"Config file should contain network_mirror block")
+	require.Contains(t, configContent, `url = "https://mirror.example.com/providers"`,
+		"Config file should contain the mirror URL without trailing slash")
 
-	// No TF_TOKEN_* should be set for filesystem mirrors using local paths
-	require.Len(t, regConfig.EnvVars, 1, "Should only track TF_CLI_CONFIG_FILE for local filesystem mirror")
+	// Should only track TF_CLI_CONFIG_FILE for network mirror
+	require.Len(t, regConfig.EnvVars, 1, "Should only track TF_CLI_CONFIG_FILE for network mirror")
 	require.Contains(t, regConfig.EnvVars, EnvTerraformCLIConfigFile)
 }
 
@@ -371,13 +361,12 @@ func TestConfigureTerraformRegistry_ProviderMirror_InvalidURL(t *testing.T) {
 	// Create temp dir for test
 	tempDir := t.TempDir()
 
-	// Setup configuration with invalid URL
+	// Setup configuration with empty URL (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  "://invalid-url",
+					URL: "", // Empty URL should cause error
 				},
 			},
 		},
@@ -386,9 +375,9 @@ func TestConfigureTerraformRegistry_ProviderMirror_InvalidURL(t *testing.T) {
 	// Call the function under test
 	ctx := context.Background()
 	regConfig, err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
-	require.Error(t, err, "ConfigureTerraformRegistry should return an error for invalid URL")
+	require.Error(t, err, "ConfigureTerraformRegistry should return an error for empty URL")
 	require.Nil(t, regConfig, "Should return nil on error")
-	require.Contains(t, err.Error(), "invalid provider mirror URL")
+	require.Contains(t, err.Error(), "provider mirror url is required")
 }
 
 func TestConfigureTerraformRegistry_BothProviderMirrorAndModuleRegistry(t *testing.T) {
@@ -403,17 +392,12 @@ func TestConfigureTerraformRegistry_BothProviderMirrorAndModuleRegistry(t *testi
 		moduleToken           = "module-token-67890"
 	)
 
-	// Create a local filesystem mirror directory for providers
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with both provider mirror and module registry
+	// Setup configuration with both provider mirror and module registry (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
+					URL: "https://mirror.example.com/providers/",
 					Authentication: datamodel.RegistryAuthConfig{
 						Token: &datamodel.TokenConfig{
 							Secret: providerSecretStoreID,
@@ -464,10 +448,10 @@ func TestConfigureTerraformRegistry_BothProviderMirrorAndModuleRegistry(t *testi
 	// Verify provider mirror configuration
 	require.True(t, strings.Contains(configContent, "provider_installation {"),
 		"Config file should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, "filesystem_mirror {"),
-		"Config file should contain filesystem_mirror block")
-	require.Contains(t, configContent, fmt.Sprintf("path    = %q", localMirrorDir),
-		"Config file should contain provider mirror path")
+	require.True(t, strings.Contains(configContent, "network_mirror {"),
+		"Config file should contain network_mirror block")
+	require.Contains(t, configContent, `url = "https://mirror.example.com/providers"`,
+		"Config file should contain provider mirror URL without trailing slash")
 
 	// Verify module registry credentials
 	require.True(t, strings.Contains(configContent, fmt.Sprintf(`credentials "%s"`, moduleRegistryHost)),
@@ -538,17 +522,12 @@ b24gUm9vdCBDQSAxMA0GCSqGSIb3DQEBCwUAA4IBAQCTLMF4dYaD+3yL4FyYLG2o
 -----END CERTIFICATE-----`
 	)
 
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with provider mirror, authentication, and CA certificate
+	// Setup configuration with provider mirror, authentication, and CA certificate (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
+					URL: "https://mirror.example.com/providers/",
 					Authentication: datamodel.RegistryAuthConfig{
 						Token: &datamodel.TokenConfig{
 							Secret: tokenSecretID,
@@ -587,111 +566,29 @@ b24gUm9vdCBDQSAxMA0GCSqGSIb3DQEBCwUAA4IBAQCTLMF4dYaD+3yL4FyYLG2o
 	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
 	require.NotNil(t, regConfig, "Should return a RegistryConfig")
 
-	// Verify CA certificate file was created
-	require.Len(t, regConfig.TempFiles, 2, "Should have two temporary files: CA certificate and provider mirror directory")
+	// Verify CA certificate configuration is ignored for provider mirrors (no auth/TLS support)
+	require.Len(t, regConfig.TempFiles, 0, "Provider mirrors do not support TLS - no CA certificate files should be created")
 
-	// Find the CA certificate file in TempFiles
-	var caCertPath string
-	for _, tempFile := range regConfig.TempFiles {
-		if strings.HasSuffix(tempFile, "terraform-registry-ca.pem") {
-			caCertPath = tempFile
-			break
-		}
-	}
-	require.NotEmpty(t, caCertPath, "Should find CA certificate file in TempFiles")
-	require.True(t, strings.HasSuffix(caCertPath, "terraform-registry-ca.pem"), "CA cert file should have correct name")
-	require.FileExists(t, caCertPath, "CA certificate file should exist")
+	// Verify no TLS environment variables are set for provider mirrors
+	_, hasSSL := regConfig.EnvVars["SSL_CERT_FILE"]
+	require.False(t, hasSSL, "SSL_CERT_FILE should not be set for provider mirrors")
+	_, hasCURL := regConfig.EnvVars["CURL_CA_BUNDLE"]
+	require.False(t, hasCURL, "CURL_CA_BUNDLE should not be set for provider mirrors")
 
-	// Verify CA certificate content
-	writtenCert, err := os.ReadFile(caCertPath)
-	require.NoError(t, err, "Should be able to read CA certificate file")
-	require.Equal(t, caCertContent, string(writtenCert), "CA certificate content should match")
-
-	// Verify CA certificate environment variables
-	require.Equal(t, caCertPath, regConfig.EnvVars["SSL_CERT_FILE"],
-		"SSL_CERT_FILE should point to CA certificate")
-	require.Equal(t, caCertPath, regConfig.EnvVars["CURL_CA_BUNDLE"],
-		"CURL_CA_BUNDLE should point to CA certificate")
-
-	// Verify .terraformrc contains provider installation block
+	// Verify .terraformrc contains provider installation block without authentication
 	content, err := os.ReadFile(regConfig.ConfigPath)
 	require.NoError(t, err, "Should be able to read config file")
 	configContent := string(content)
 	require.True(t, strings.Contains(configContent, "provider_installation {"),
 		"Config should contain provider_installation block")
-	require.True(t, strings.Contains(configContent, "filesystem_mirror {"),
-		"Config should contain filesystem_mirror block")
+	require.True(t, strings.Contains(configContent, "network_mirror {"),
+		"Config should contain network_mirror block")
 
-	// Cleanup should remove CA certificate file
+	// Cleanup (no files to clean up for provider mirrors)
 	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err, "Cleanup should succeed")
-	require.NoFileExists(t, caCertPath, "CA certificate file should be removed after cleanup")
 }
 
-func TestConfigureTerraformRegistry_ProviderMirror_TLSSkipVerify(t *testing.T) {
-	// Create temp dir for test
-	tempDir := t.TempDir()
-
-	const (
-		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/tokens"
-		token         = "insecure-registry-token"
-	)
-
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with TLS skip verify
-	config := recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
-					Authentication: datamodel.RegistryAuthConfig{
-						Token: &datamodel.TokenConfig{
-							Secret: secretStoreID,
-						},
-					},
-					TLS: &datamodel.TLSConfig{
-						SkipVerify: true,
-					},
-				},
-			},
-		},
-	}
-
-	// Setup mock secrets data
-	secrets := map[string]recipes.SecretData{
-		secretStoreID: {
-			Type: "opaque",
-			Data: map[string]string{
-				"token": token,
-			},
-		},
-	}
-
-	// Call the function under test
-	ctx := context.Background()
-	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
-
-	// Verify TLS skip verify environment variable is set
-	require.Equal(t, "1", regConfig.EnvVars["TF_INSECURE_SKIP_TLS_VERIFY"],
-		"TF_INSECURE_SKIP_TLS_VERIFY should be set to 1")
-
-	// Verify no CA certificate file is created, but provider mirror directory is tracked
-	require.Len(t, regConfig.TempFiles, 1, "Should have one temporary file for the provider mirror directory")
-
-	// Verify the temp file is the provider mirror directory, not a CA cert
-	tempFile := regConfig.TempFiles[0]
-	require.False(t, strings.HasSuffix(tempFile, "terraform-registry-ca.pem"), "Should not create CA certificate file")
-	require.True(t, strings.HasSuffix(tempFile, "providers-mirror"), "Should track provider mirror directory")
-
-	// Cleanup
-	err = CleanupTerraformRegistryConfig(ctx, regConfig)
-	require.NoError(t, err)
-}
 
 func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingSecret(t *testing.T) {
 	// Create temp dir for test
@@ -701,17 +598,12 @@ func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingSecret(t *testi
 		caCertSecretID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/missing"
 	)
 
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with CA certificate but missing secret
+	// Setup configuration with CA certificate but missing secret (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
+					URL: "https://mirror.example.com/providers/",
 					TLS: &datamodel.TLSConfig{
 						CACertificate: &datamodel.SecretReference{
 							Source: caCertSecretID,
@@ -729,9 +621,11 @@ func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingSecret(t *testi
 	// Call the function under test
 	ctx := context.Background()
 	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.Error(t, err, "Should return error when CA certificate secret is missing")
-	require.Nil(t, regConfig, "Should return nil on error")
-	require.Contains(t, err.Error(), "secret store", "Error should mention missing secret store")
+	require.NoError(t, err, "Should succeed - TLS configuration is ignored for provider mirrors")
+	require.NotNil(t, regConfig, "Should return valid config")
+
+	// Verify no TLS environment variables or files are created
+	require.Len(t, regConfig.TempFiles, 0, "No TLS files should be created for provider mirrors")
 }
 
 func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingKey(t *testing.T) {
@@ -742,16 +636,12 @@ func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingKey(t *testing.
 		caCertSecretID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/certs"
 	)
 
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with CA certificate
+	// Setup configuration with CA certificate (type field is deprecated)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
 				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					URL: localMirrorDir,
+					URL: "https://mirror.example.com/providers/",
 					TLS: &datamodel.TLSConfig{
 						CACertificate: &datamodel.SecretReference{
 							Source: caCertSecretID,
@@ -776,86 +666,13 @@ func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingKey(t *testing.
 	// Call the function under test
 	ctx := context.Background()
 	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.Error(t, err, "Should return error when CA certificate key is missing")
-	require.Nil(t, regConfig, "Should return nil on error")
-	require.Contains(t, err.Error(), "CA certificate not found", "Error should mention missing CA certificate")
+	require.NoError(t, err, "Should succeed - TLS configuration is ignored for provider mirrors")
+	require.NotNil(t, regConfig, "Should return valid config")
+
+	// Verify no TLS environment variables or files are created
+	require.Len(t, regConfig.TempFiles, 0, "No TLS files should be created for provider mirrors")
 }
 
-func TestConfigureTerraformRegistry_ProviderMirror_TLSSkipVerifyAndCACert(t *testing.T) {
-	// Create temp dir for test
-	tempDir := t.TempDir()
-
-	const (
-		caCertSecretID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/certs"
-		caCertContent  = `-----BEGIN CERTIFICATE-----
-MIIDCustomCertForTesting
------END CERTIFICATE-----`
-	)
-
-	// Create a local filesystem mirror directory
-	localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-	require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-
-	// Setup configuration with both skip verify AND CA certificate (skip verify should take precedence)
-	config := recipes.Configuration{
-		RecipeConfig: datamodel.RecipeConfigProperties{
-			Terraform: datamodel.TerraformConfigProperties{
-				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-					Type: "filesystem",
-					URL:  localMirrorDir,
-					TLS: &datamodel.TLSConfig{
-						SkipVerify: true,
-						CACertificate: &datamodel.SecretReference{
-							Source: caCertSecretID,
-							Key:    "ca.crt",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Setup mock secrets data
-	secrets := map[string]recipes.SecretData{
-		caCertSecretID: {
-			Type: "opaque",
-			Data: map[string]string{
-				"ca.crt": caCertContent,
-			},
-		},
-	}
-
-	// Call the function under test
-	ctx := context.Background()
-	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
-	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
-
-	// Verify TLS skip verify is set
-	require.Equal(t, "1", regConfig.EnvVars["TF_INSECURE_SKIP_TLS_VERIFY"],
-		"TF_INSECURE_SKIP_TLS_VERIFY should be set")
-
-	// CA certificate should still be processed (both can coexist)
-	require.Len(t, regConfig.TempFiles, 2, "Should have two temporary files: CA certificate and provider mirror directory")
-	require.Contains(t, regConfig.EnvVars, "SSL_CERT_FILE", "Should set SSL_CERT_FILE")
-	require.Contains(t, regConfig.EnvVars, "CURL_CA_BUNDLE", "Should set CURL_CA_BUNDLE")
-
-	// Verify both CA cert and provider mirror directory are tracked
-	var hasCACert, hasProviderMirror bool
-	for _, tempFile := range regConfig.TempFiles {
-		if strings.HasSuffix(tempFile, "terraform-registry-ca.pem") {
-			hasCACert = true
-		}
-		if strings.HasSuffix(tempFile, "providers-mirror") {
-			hasProviderMirror = true
-		}
-	}
-	require.True(t, hasCACert, "Should track CA certificate file")
-	require.True(t, hasProviderMirror, "Should track provider mirror directory")
-
-	// Cleanup
-	err = CleanupTerraformRegistryConfig(ctx, regConfig)
-	require.NoError(t, err)
-}
 
 func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 	// Test configuration based on GitLab air-gapped environment with registry.terraform.io redirection
@@ -874,14 +691,13 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Terraform: datamodel.TerraformConfigProperties{
 						ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
-							Type: "filesystem",
-							URL:  "", // will be set to local path in test
+							URL: "https://providermirror.example.com/providers/", // will be set to network URL
 							Authentication: datamodel.RegistryAuthConfig{
 								Token: &datamodel.TokenConfig{
 									Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/gitlab-token",
 								},
 							},
-							TLS: &datamodel.TLSConfig{SkipVerify: true},
+							TLS: &datamodel.TLSConfig{},
 						},
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"gitlab": {
@@ -917,8 +733,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 }`,
 			},
 			expectedEnvVars: map[string]string{
-				// For local filesystem mirror, only TLS skip verify should be set
-				"TF_INSECURE_SKIP_TLS_VERIFY": "1",
+				// Provider mirrors do not support TLS configuration
 			},
 			shouldHaveProviderMirror: true,
 		},
@@ -1010,13 +825,6 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 			// Create temporary directory
 			tempDir := t.TempDir()
 
-			// If provider mirror is configured, set it to a local filesystem path to avoid network calls
-			if tt.config.RecipeConfig.Terraform.ProviderMirror != nil {
-				localMirrorDir := filepath.Join(tempDir, "providers-mirror")
-				require.NoError(t, os.MkdirAll(localMirrorDir, 0o755))
-				tt.config.RecipeConfig.Terraform.ProviderMirror.URL = localMirrorDir
-			}
-
 			// Configure Terraform registry
 			ctx := context.Background()
 			regConfig, err := ConfigureTerraformRegistry(ctx, tt.config, tt.secrets, tempDir)
@@ -1037,7 +845,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 			// Verify provider installation block presence
 			if tt.shouldHaveProviderMirror {
 				require.Contains(t, configContent, "provider_installation {", "Should contain provider installation block")
-				require.Contains(t, configContent, "filesystem_mirror {", "Should contain filesystem mirror block")
+				require.Contains(t, configContent, "network_mirror {", "Should contain network mirror block")
 			} else {
 				require.NotContains(t, configContent, "provider_installation {", "Should not contain provider installation block")
 			}
@@ -1271,16 +1079,16 @@ func TestConfigureTerraformRegistry_ProviderMirror_Network_WithCACert_SetsAllCAE
 	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
 	require.NoError(t, err)
 
-	// Expect CA envs are set for Terraform, curl, and Git
-	ssl := regConfig.EnvVars["SSL_CERT_FILE"]
-	curl := regConfig.EnvVars["CURL_CA_BUNDLE"]
-	git := regConfig.EnvVars["GIT_SSL_CAINFO"]
-	require.NotEmpty(t, ssl)
-	require.Equal(t, ssl, curl)
-	require.Equal(t, ssl, git)
-	// File should exist
-	_, err = os.Stat(ssl)
-	require.NoError(t, err)
+	// Provider mirrors do not support TLS - no CA environment variables should be set
+	_, hasSSL := regConfig.EnvVars["SSL_CERT_FILE"]
+	require.False(t, hasSSL, "SSL_CERT_FILE should not be set for provider mirrors")
+	_, hasCURL := regConfig.EnvVars["CURL_CA_BUNDLE"]
+	require.False(t, hasCURL, "CURL_CA_BUNDLE should not be set for provider mirrors")
+	_, hasGit := regConfig.EnvVars["GIT_SSL_CAINFO"]
+	require.False(t, hasGit, "GIT_SSL_CAINFO should not be set for provider mirrors")
+
+	// No certificate files should be created
+	require.Len(t, regConfig.TempFiles, 0, "No certificate files should be created for provider mirrors")
 
 	// Config should be network_mirror
 	b, err := os.ReadFile(regConfig.ConfigPath)
@@ -1292,15 +1100,25 @@ func TestConfigureTerraformRegistry_ProviderMirror_Network_WithCACert_SetsAllCAE
 func TestConfigureTerraformRegistry_ProviderMirror_UnsupportedType(t *testing.T) {
 	tempDir := t.TempDir()
 
+	// Test that the deprecated type field is ignored (no error should occur)
 	config := recipes.Configuration{
 		RecipeConfig: datamodel.RecipeConfigProperties{
 			Terraform: datamodel.TerraformConfigProperties{
-				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{Type: "s3", URL: "https://example.com"},
+				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
+					Type: "s3", // This deprecated field should be ignored
+					URL:  "https://mirror.example.com/providers/",
+				},
 			},
 		},
 	}
 	ctx := context.Background()
 	regConfig, err := ConfigureTerraformRegistry(ctx, config, nil, tempDir)
-	require.Error(t, err)
-	require.Nil(t, regConfig)
+	require.NoError(t, err, "Should not return error - type field is deprecated and ignored")
+	require.NotNil(t, regConfig, "Should return valid registry config")
+
+	// Verify network mirror is used regardless of the deprecated type field
+	content, err := os.ReadFile(regConfig.ConfigPath)
+	require.NoError(t, err)
+	configContent := string(content)
+	require.Contains(t, configContent, "network_mirror {", "Should use network mirror regardless of deprecated type field")
 }

@@ -232,7 +232,6 @@ N1R6JSAKM3FIq3zV0hLi
 		BaseURL:            "https://example.com",
 		InstallDir:         "/tmp",
 		CACertPEM:          testCA,
-		InsecureSkipVerify: false,
 	}
 
 	client, err := source.getHTTPClient()
@@ -242,25 +241,6 @@ N1R6JSAKM3FIq3zV0hLi
 	// Since we're using an interface, we can't directly inspect the transport
 	// Instead, we verify the source is configured correctly
 	assert.NotNil(t, source.CACertPEM)
-	assert.False(t, source.InsecureSkipVerify)
-}
-
-func TestCustomRegistrySource_InsecureSkipVerify(t *testing.T) {
-	source := &CustomRegistrySource{
-		Product:            product.Terraform,
-		Version:            version.Must(version.NewVersion("1.5.0")),
-		BaseURL:            "https://example.com",
-		InstallDir:         "/tmp",
-		InsecureSkipVerify: true,
-	}
-
-	client, err := source.getHTTPClient()
-	require.NoError(t, err)
-	assert.NotNil(t, client)
-
-	// Since we're using an interface, we can't directly inspect the transport
-	// Instead, we verify the source is configured correctly
-	assert.True(t, source.InsecureSkipVerify)
 }
 
 func TestCustomRegistrySource_ZipSlipProtection(t *testing.T) {

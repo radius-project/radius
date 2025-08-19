@@ -64,12 +64,33 @@ func ConfigureTerraformRegistry(
 ) (*RegistryConfig, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	// DEBUG: Log configuration at entry point
+	logger.Info("DEBUG: ConfigureTerraformRegistry called",
+		"secretsCount", len(secrets),
+		"hasProviderMirror", config.RecipeConfig.Terraform.ProviderMirror != nil,
+		"moduleRegistriesCount", len(config.RecipeConfig.Terraform.ModuleRegistries),
+		"note", "provider mirror type field is deprecated - always using network mirror")
+
 	regConfig := &RegistryConfig{EnvVars: make(map[string]string)}
 
-	var token []byte
-
 	pm := config.RecipeConfig.Terraform.ProviderMirror
-	hasProviderMirror := pm != nil && (pm.URL != "" || pm.Type != "")
+
+	// DEBUG: Log provider mirror details step by step
+	logger.Info("DEBUG: Checking provider mirror configuration", "step", "1-checking-pm-nil")
+	if pm == nil {
+		logger.Info("DEBUG: Provider mirror is nil", "pm", "nil")
+	} else {
+		logger.Info("DEBUG: Provider mirror exists",
+			"pm_url", pm.URL,
+			"pm_type", pm.Type,
+			"url_empty", pm.URL == "",
+			"type_deprecated_ignored", "type field is deprecated")
+	}
+
+	// Provider mirror is valid if configured (URL validation happens later)
+	hasProviderMirror := pm != nil
+	logger.Info("DEBUG: Final hasProviderMirror result", "hasProviderMirror", hasProviderMirror, "note", "type field deprecated, only URL required")
+
 	// Determine if module registries exist
 	hasModuleRegistries := len(config.RecipeConfig.Terraform.ModuleRegistries) > 0
 
@@ -84,132 +105,65 @@ func ConfigureTerraformRegistry(
 		"moduleRegistryCount", len(config.RecipeConfig.Terraform.ModuleRegistries),
 		"secretsCount", len(secrets))
 
-	var host string
-	var err error
-
 	// Begin building Terraform configuration
 	var configContent strings.Builder
 	credentialsHosts := make(map[string]bool)
 
-	// Provider mirror auth/TLS envs
+	// Provider installation: always use network mirror (type field is deprecated)
 	if hasProviderMirror {
-		// Extract host from URL if http(s) so we can set token env and credentials blocks
-		mirrorURL := pm.URL
-		if strings.HasPrefix(strings.ToLower(mirrorURL), "http") {
-			u, parseErr := url.Parse(mirrorURL)
-			if parseErr != nil || u.Host == "" {
-				return nil, fmt.Errorf("invalid provider mirror URL: %s", mirrorURL)
-			}
-			host = u.Host
-		}
+		// Always use network mirror - the type field is deprecated
+		mirrorType := "network"
 
-		// Token env
-		if pm.Authentication.Token != nil && pm.Authentication.Token.Secret != "" {
-			secretStoreID := pm.Authentication.Token.Secret
-			if secrets == nil {
-				return nil, fmt.Errorf("no secrets available for token authentication")
-			}
-			secretData, ok := secrets[secretStoreID]
-			if !ok {
-				return nil, fmt.Errorf("secret store %q not found", secretStoreID)
-			}
-			tokenString, ok := secretData.Data["token"]
-			if !ok {
-				return nil, fmt.Errorf("token not found in secret store %q", secretStoreID)
-			}
-			token = []byte(tokenString)
-			if host != "" {
-				name, value, err := getTerraformTokenEnv(host, string(token))
-				if err != nil {
-					return nil, err
-				}
-				regConfig.EnvVars[name] = value
-			}
-			for _, ah := range pm.Authentication.AdditionalHosts {
-				if ah == "" || ah == host {
-					continue
-				}
-				name, value, err := getTerraformTokenEnv(ah, string(token))
-				if err != nil {
-					return nil, err
-				}
-				regConfig.EnvVars[name] = value
-			}
-		}
-
-		// TLS envs
-		if pm.TLS != nil {
-			if pm.TLS.SkipVerify {
-				regConfig.EnvVars["TF_INSECURE_SKIP_TLS_VERIFY"] = "1"
-			}
-			if pm.TLS.CACertificate != nil && pm.TLS.CACertificate.Source != "" {
-				secretStoreID := pm.TLS.CACertificate.Source
-				key := pm.TLS.CACertificate.Key
-				if secrets == nil {
-					return nil, fmt.Errorf("no secrets available for CA certificate")
-				}
-				secretData, ok := secrets[secretStoreID]
-				if !ok {
-					return nil, fmt.Errorf("secret store %q not found for CA certificate", secretStoreID)
-				}
-				ca, ok := secretData.Data[key]
-				if !ok {
-					return nil, fmt.Errorf("CA certificate not found in secret store %q with key %q", secretStoreID, key)
-				}
-				caPath := filepath.Join(dirPath, "terraform-registry-ca.pem")
-				if err := os.WriteFile(caPath, []byte(ca), 0600); err != nil {
-					return nil, fmt.Errorf("failed to write CA certificate: %w", err)
-				}
-				regConfig.TempFiles = append(regConfig.TempFiles, caPath)
-				regConfig.EnvVars["SSL_CERT_FILE"] = caPath
-				regConfig.EnvVars["CURL_CA_BUNDLE"] = caPath
-				regConfig.EnvVars["GIT_SSL_CAINFO"] = caPath
-			}
-		}
-	}
-
-	// Provider installation: support filesystem and network mirror types
-	if hasProviderMirror {
-		mirrorType := strings.ToLower(strings.TrimSpace(pm.Type))
-		if mirrorType == "" {
-			return nil, fmt.Errorf("provider mirror type is required")
-		}
+		logger.Info("Using network mirror for provider installation (type field deprecated)",
+			"url", pm.URL,
+			"deprecated_type_field", pm.Type,
+			"note", "provider mirrors do not support authentication")
 
 		// Log the resolved provider mirror configuration for diagnostics
 		logger.Info("Resolved Terraform provider mirror configuration",
 			"type", mirrorType,
 			"url", pm.URL)
 
-		switch mirrorType {
-		case "filesystem":
-			mirrorPath, err := prepareFilesystemMirror(ctx, pm, secrets, dirPath, token)
-			if err != nil {
-				return nil, err
-			}
-			configContent.WriteString(fmt.Sprintf(`provider_installation {
-  filesystem_mirror {
-    path    = %q
-    include = ["*/*/*"]
-  }
-  direct {
-    exclude = ["*/*/*"]
-  }
-}
-`, mirrorPath))
-			regConfig.TempFiles = append(regConfig.TempFiles, mirrorPath)
-		case "network":
-			if pm.URL == "" {
-				return nil, fmt.Errorf("provider mirror url is required for network mirror")
-			}
-			configContent.WriteString(fmt.Sprintf(`provider_installation {
+		if pm.URL == "" {
+			return nil, fmt.Errorf("provider mirror url is required for network mirror")
+		}
+
+		// Provider mirrors do not support authentication - only URL is needed
+		configContent.WriteString(fmt.Sprintf(`provider_installation {
   network_mirror {
     url = %q
   }
   direct {}
 }
 `, strings.TrimRight(pm.URL, "/")))
-		default:
-			return nil, fmt.Errorf("unsupported provider mirror type: %s", pm.Type)
+
+		// Optional: Support custom CA bundle for provider mirror by writing the PEM to a temp file
+		// and setting standard TLS env vars used by many CLIs and libraries. We avoid skip-verify.
+		if pm.TLS != nil && pm.TLS.CACertificate != nil && pm.TLS.CACertificate.Source != "" && pm.TLS.CACertificate.Key != "" {
+			secretData, ok := secrets[pm.TLS.CACertificate.Source]
+			if !ok {
+				return nil, fmt.Errorf("CA certificate secret store not found: %s", pm.TLS.CACertificate.Source)
+			}
+			pem, ok := secretData.Data[pm.TLS.CACertificate.Key]
+			if !ok {
+				return nil, fmt.Errorf("CA certificate key '%s' not found", pm.TLS.CACertificate.Key)
+			}
+
+			// Write CA bundle to a temp file within the working directory
+			caPath := filepath.Join(dirPath, "provider-mirror-ca.pem")
+			if err := os.WriteFile(caPath, []byte(pem), 0600); err != nil {
+				return nil, fmt.Errorf("failed to write provider mirror CA bundle: %w", err)
+			}
+			regConfig.TempFiles = append(regConfig.TempFiles, caPath)
+
+			// Set common env vars recognized by many tools and (in recent Go versions) TLS stack.
+			// This ensures Terraform and any helper tools trust the provided CA.
+			regConfig.EnvVars["SSL_CERT_FILE"] = caPath
+			regConfig.EnvVars["CURL_CA_BUNDLE"] = caPath
+			// Also set for git in case modules use a private Git host with the same CA.
+			regConfig.EnvVars["GIT_SSL_CAINFO"] = caPath
+
+			logger.Info("Configured custom CA bundle for provider mirror", "caPath", caPath)
 		}
 	}
 
@@ -315,9 +269,10 @@ credentials %q {
 
 	// Write config file
 	terraformRCPath := filepath.Join(dirPath, TerraformRCFilename)
-	if err = os.WriteFile(terraformRCPath, []byte(configContent.String()), DefaultFilePerms); err != nil {
+	if err := os.WriteFile(terraformRCPath, []byte(configContent.String()), DefaultFilePerms); err != nil {
 		return nil, fmt.Errorf("failed to write Terraform registry configuration file: %w", err)
 	}
+	logger.Info("Terraform config file generated", "path", terraformRCPath, "content", configContent.String())
 	regConfig.ConfigPath = terraformRCPath
 	regConfig.EnvVars[EnvTerraformCLIConfigFile] = terraformRCPath
 
@@ -325,6 +280,7 @@ credentials %q {
 }
 
 // prepareFilesystemMirror ensures a local filesystem mirror directory exists.
+// DEPRECATED: Filesystem mirrors are deprecated. All provider mirrors now use network mirror protocol.
 // If pm.URL is http(s) and points to a zip or tar.gz, download and extract to a temp dir under dirPath.
 // If pm.URL is file:// or a local path, verify and return the path.
 func prepareFilesystemMirror(ctx context.Context, pm *datamodel.TerraformProviderMirrorConfig, secrets map[string]recipes.SecretData, dirPath string, token []byte) (string, error) {
@@ -420,9 +376,6 @@ func downloadWithTLSAndAuth(ctx context.Context, src, dest string, pm *datamodel
 func buildHTTPClientFromTLS(pm *datamodel.TerraformProviderMirrorConfig, secrets map[string]recipes.SecretData) (*http.Client, error) {
 	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
 	if pm.TLS != nil {
-		if pm.TLS.SkipVerify {
-			tlsCfg.InsecureSkipVerify = true
-		}
 		if pm.TLS.CACertificate != nil && pm.TLS.CACertificate.Source != "" {
 			secretData, ok := secrets[pm.TLS.CACertificate.Source]
 			if !ok {

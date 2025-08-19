@@ -169,9 +169,7 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 		definition.TemplateVersion = *c.TemplateVersion
 		// Extract TLS configuration
 		if c.TLS != nil {
-			definition.TLS = &recipes.TLSConfig{
-				SkipVerify: c.TLS.SkipVerify != nil && *c.TLS.SkipVerify,
-			}
+			definition.TLS = &recipes.TLSConfig{}
 			if c.TLS.CaCertificate != nil {
 				definition.TLS.CACertificate = &recipes.SecretReference{
 					Source: *c.TLS.CaCertificate.Source,

@@ -423,7 +423,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								Version:            "1.7.0",
 								ReleasesAPIBaseURL: "https://terraform.example.com",
 								TLS: &datamodel.TLSConfig{
-									SkipVerify: true,
+									// SkipVerify removed
 									CACertificate: &datamodel.SecretReference{
 										Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
 										Key:    "ca-cert",
@@ -596,10 +596,6 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 									},
 									AdditionalHosts: []string{"original-registry.example.com", "backup-registry.example.com"},
 								},
-								ProviderMappings: map[string]string{
-									"hashicorp/aws":     "my-company/aws",
-									"hashicorp/azurerm": "my-company/azurerm",
-								},
 							},
 							Version: &datamodel.TerraformVersionConfig{
 								Version: "1.5.0",
@@ -762,7 +758,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 
 					// Verify TLS settings
 					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version.TLS)
-					require.Equal(t, true, *versioned.Properties.RecipeConfig.Terraform.Version.TLS.SkipVerify)
+					// SkipVerify removed; only CA certificate is mapped if present
 
 					// Verify CA certificate reference
 					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.Version.TLS.CaCertificate)
@@ -826,10 +822,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					require.Equal(t, "original-registry.example.com", *versioned.Properties.RecipeConfig.Terraform.ProviderMirror.Authentication.AdditionalHosts[0])
 					require.Equal(t, "backup-registry.example.com", *versioned.Properties.RecipeConfig.Terraform.ProviderMirror.Authentication.AdditionalHosts[1])
 
-					// Verify provider mappings
-					require.NotNil(t, versioned.Properties.RecipeConfig.Terraform.ProviderMirror.ProviderMappings)
-					require.Equal(t, "my-company/aws", *versioned.Properties.RecipeConfig.Terraform.ProviderMirror.ProviderMappings["hashicorp/aws"])
-					require.Equal(t, "my-company/azurerm", *versioned.Properties.RecipeConfig.Terraform.ProviderMirror.ProviderMappings["hashicorp/azurerm"])
+					// Provider mappings are no longer supported
 				}
 			}
 		})
@@ -1519,9 +1512,6 @@ func Test_toFromTerraformProviderMirrorConfigDatamodel(t *testing.T) {
 				Terraform: &TerraformConfigProperties{
 					ProviderMirror: &TerraformProviderMirrorConfig{
 						URL: to.Ptr("terraform.example.com"),
-						ProviderMappings: map[string]*string{
-							"hashicorp/azurerm": to.Ptr("mycompany/azurerm"),
-						},
 						Authentication: &RegistryAuthConfig{
 							Token: &TokenConfig{
 								Secret: to.Ptr("/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore"),
@@ -1532,9 +1522,6 @@ func Test_toFromTerraformProviderMirrorConfigDatamodel(t *testing.T) {
 			},
 			expectedDataModel: &datamodel.TerraformProviderMirrorConfig{
 				URL: "terraform.example.com",
-				ProviderMappings: map[string]string{
-					"hashicorp/azurerm": "mycompany/azurerm",
-				},
 				Authentication: datamodel.RegistryAuthConfig{
 					Token: &datamodel.TokenConfig{
 						Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/mySecretStore",
@@ -1571,17 +1558,11 @@ func Test_toFromTerraformProviderMirrorConfigDatamodel(t *testing.T) {
 				Terraform: &TerraformConfigProperties{
 					ProviderMirror: &TerraformProviderMirrorConfig{
 						URL: to.Ptr("terraform.example.com"),
-						ProviderMappings: map[string]*string{
-							"hashicorp/azurerm": to.Ptr("mycompany/azurerm"),
-						},
 					},
 				},
 			},
 			expectedDataModel: &datamodel.TerraformProviderMirrorConfig{
 				URL: "terraform.example.com",
-				ProviderMappings: map[string]string{
-					"hashicorp/azurerm": "mycompany/azurerm",
-				},
 			},
 		},
 		{
@@ -1604,7 +1585,6 @@ func Test_toFromTerraformProviderMirrorConfigDatamodel(t *testing.T) {
 				// Verify the provider mirror configuration
 				require.NotNil(t, result.Terraform.ProviderMirror, "ProviderMirror should not be nil")
 				require.Equal(t, tt.expectedDataModel.URL, result.Terraform.ProviderMirror.URL)
-				require.Equal(t, tt.expectedDataModel.ProviderMappings, result.Terraform.ProviderMirror.ProviderMappings)
 
 				// Verify authentication details
 				if tt.expectedDataModel.Authentication.Token != nil {
@@ -1627,13 +1607,7 @@ func Test_toFromTerraformProviderMirrorConfigDatamodel(t *testing.T) {
 				require.NotNil(t, versioned.Terraform.ProviderMirror, "ProviderMirror should not be nil after round-trip conversion")
 				require.Equal(t, tt.configWithMirror.Terraform.ProviderMirror.URL, versioned.Terraform.ProviderMirror.URL)
 
-				// Verify provider mappings if present
-				if tt.configWithMirror.Terraform.ProviderMirror.ProviderMappings != nil {
-					require.Equal(t, len(tt.configWithMirror.Terraform.ProviderMirror.ProviderMappings), len(versioned.Terraform.ProviderMirror.ProviderMappings))
-					for k, v := range tt.configWithMirror.Terraform.ProviderMirror.ProviderMappings {
-						require.Equal(t, v, versioned.Terraform.ProviderMirror.ProviderMappings[k])
-					}
-				}
+				// Provider mappings removed
 
 				// Verify authentication details after round-trip
 				if tt.configWithMirror.Terraform.ProviderMirror.Authentication != nil {
@@ -1682,14 +1656,14 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 		expectedDataModel *datamodel.TerraformVersionConfig
 	}{
 		{
-			name: "TLS config with skipVerify only",
+			name: "TLS config without skipVerify (only CA or empty)",
 			config: &RecipeConfigProperties{
 				Terraform: &TerraformConfigProperties{
 					Version: &TerraformVersionConfig{
 						Version:            to.Ptr("1.7.0"),
 						ReleasesAPIBaseURL: to.Ptr("https://terraform.example.com"),
 						TLS: &TLSConfig{
-							SkipVerify: to.Ptr(true),
+							// SkipVerify removed
 						},
 					},
 				},
@@ -1698,7 +1672,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 				Version:            "1.7.0",
 				ReleasesAPIBaseURL: "https://terraform.example.com",
 				TLS: &datamodel.TLSConfig{
-					SkipVerify: true,
+					// SkipVerify removed
 				},
 			},
 		},
@@ -1710,7 +1684,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 						Version:            to.Ptr("1.8.0"),
 						ReleasesAPIBaseURL: to.Ptr("https://private.terraform.io"),
 						TLS: &TLSConfig{
-							SkipVerify: to.Ptr(false),
+							// SkipVerify removed
 							CaCertificate: &SecretReference{
 								Source: to.Ptr("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets"),
 								Key:    to.Ptr("ca-cert"),
@@ -1723,7 +1697,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 				Version:            "1.8.0",
 				ReleasesAPIBaseURL: "https://private.terraform.io",
 				TLS: &datamodel.TLSConfig{
-					SkipVerify: false,
+					// SkipVerify removed
 					CACertificate: &datamodel.SecretReference{
 						Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
 						Key:    "ca-cert",
@@ -1760,7 +1734,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 			// Check TLS config
 			if tt.expectedDataModel.TLS != nil {
 				require.NotNil(t, result.Terraform.Version.TLS)
-				require.Equal(t, tt.expectedDataModel.TLS.SkipVerify, result.Terraform.Version.TLS.SkipVerify)
+				// SkipVerify removed from data model
 
 				if tt.expectedDataModel.TLS.CACertificate != nil {
 					require.NotNil(t, result.Terraform.Version.TLS.CACertificate)
@@ -1783,7 +1757,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 			// Check TLS config after round-trip
 			if tt.config.Terraform.Version.TLS != nil {
 				require.NotNil(t, versioned.Terraform.Version.TLS)
-				require.Equal(t, tt.config.Terraform.Version.TLS.SkipVerify, versioned.Terraform.Version.TLS.SkipVerify)
+				// SkipVerify removed from versioned model
 
 				if tt.config.Terraform.Version.TLS.CaCertificate != nil {
 					require.NotNil(t, versioned.Terraform.Version.TLS.CaCertificate)
