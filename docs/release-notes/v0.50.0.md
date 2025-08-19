@@ -1,0 +1,64 @@
+# Announcing Radius v0.50.0
+
+Today we're happy to announce the release of Radius v0.50.0. Check out the [highlights](#highlights) below, along with the [full changelog](#full-changelog) for more details.
+
+We would like to extend our thanks to all the contributors who helped make this release possible!
+
+## Intro to Radius
+
+If you're new to Radius, check out our website, [radapp.io](https://radapp.io), for more information. Also visit our [getting started guide](https://docs.radapp.io/getting-started/) to learn how to install Radius and create your first app.
+
+## Highlights
+
+### Introducing in-place upgrades
+
+Radius can now be upgraded using the new `rad upgrade` command. The new command upgrades the Radius control plane while preserving existing environments and applications. There is also a `rad rollback` command. Read more in the [Radius documentation](https://docs.radapp.io/guides/operations/kubernetes/kubernetes-upgrade/).
+
+### Enhancements to Radius resource types
+
+Properties on Radius resource types can now be arrays of objects. You can also now specify an `enum` type to validate inputs prior to deployment. 
+
+The YAML file schema for resource type definitions changed. `name` is now `namespace`. For example, when you use `rad resource-type create -f types.yaml` to create a new resource type, the types.yaml file must have `namespace: Radius.Resources` rather than `name: Radius.Resources` on line one.
+
+### Offline installation
+
+Radius can now be installed in an offline environment using the `rad install` command or via the Helm chart by setting location of the Radius containers via the `global.imageRegistry` and `global.imageTag` parameters. 
+
+## Breaking changes
+
+The `name` property in resource type definition YAML file is now `namespace`. See the Radius resource type section above for details.
+
+## Upgrading to Radius v0.50.0
+
+You can upgrade to this release by upgrading your Radius CLI then running `rad upgrade kubernetes`. Only incremental version upgrades are supported. Consult the [upgrade documentation](https://docs.radapp.io/guides/operations/kubernetes/kubernetes-upgrade/) for full details.
+
+## Full changelog
+
+* Download terraform default by @sylvainsf in https://github.com/radius-project/radius/pull/10019
+* Modify message to print capabilities only when present by @nithyatsu in https://github.com/radius-project/radius/pull/10005
+* Bump the go-dependencies group across 1 directory with 24 updates by @dependabot[bot] in https://github.com/radius-project/radius/pull/10025
+* Bump mikefarah/yq from 4.45.4 to 4.46.1 in the github-actions group by @dependabot[bot] in https://github.com/radius-project/radius/pull/9974
+* Increase qps for ci by @sylvainsf in https://github.com/radius-project/radius/pull/10031
+* Update UDT tests to use resource-type create by @lakshmimsft in https://github.com/radius-project/radius/pull/10044
+* Remove reference to `status` in UDT postgres test by @lakshmimsft in https://github.com/radius-project/radius/pull/10072
+* Bump the go-dependencies group with 6 updates by @dependabot[bot] in https://github.com/radius-project/radius/pull/10095
+* Adding fix to increse qps based on config by @vishwahiremat in https://github.com/radius-project/radius/pull/10114
+* Integrating preflight checks with rad upgrade kubernetes command by @ytimocin in https://github.com/radius-project/radius/pull/9745
+* Add validation for reserved words. (UDT) by @lakshmimsft in https://github.com/radius-project/radius/pull/10041
+* Add Server-Side validation for resource data against type schema by @lakshmimsft in https://github.com/radius-project/radius/pull/10008
+* Bump mikefarah/yq from 4.46.1 to 4.47.1 in the github-actions group by @dependabot[bot] in https://github.com/radius-project/radius/pull/10093
+* Enable UDT array, enum types (now enabled in bicep-tools) by @lakshmimsft in https://github.com/radius-project/radius/pull/10140
+* Update TF install to shared binary approach by @lakshmimsft in https://github.com/radius-project/radius/pull/10147
+* Updated the release process to add release branch and tags to bicep-tools repo by @vishwahiremat in https://github.com/radius-project/radius/pull/10138
+* Bump the go-dependencies group with 11 updates by @dependabot[bot] in https://github.com/radius-project/radius/pull/10164
+* rad rollback kubernetes command implementation by @ytimocin in https://github.com/radius-project/radius/pull/9765
+* Bump bicep-types from `1d0af45` to `5f3c0eb` by @dependabot[bot] in https://github.com/radius-project/radius/pull/10163
+* Add global.imageRegistry and global.imageTag parameters by @ytimocin in https://github.com/radius-project/radius/pull/10131
+* Add global.imagePullSecrets parameter for private registry authentication by @ytimocin in https://github.com/radius-project/radius/pull/10184
+* Remove CLAUDE.md from repository by @ytimocin in https://github.com/radius-project/radius/pull/10188
+* Update release docs with bicep-types-aws workflow run by @sk593 in https://github.com/radius-project/radius/pull/10195
+* Change name to namespace by @vishwahiremat in https://github.com/radius-project/radius/pull/10196
+* Bump the go-dependencies group with 14 updates by @dependabot[bot] in https://github.com/radius-project/radius/pull/10190
+* Add `pre-upgrade` container for Radius preflight checks by @willdavsmith in https://github.com/radius-project/radius/pull/9898
+
+**Full Changelog**: https://github.com/radius-project/radius/compare/v0.49.0...v0.50.0
