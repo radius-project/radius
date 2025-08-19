@@ -20,15 +20,18 @@ set -euo pipefail
 
 # Configuration
 readonly NAMESPACE="radius-system"
-readonly OS="linux"
-readonly ARCH="amd64"
 readonly GITHUB_ORG="radius-project"
 readonly GITHUB_REPO="radius"
 
+# Parse arguments: version [os] [arch]
+RELEASE_VERSION_NUMBER="${1:-}"
+OS="${2:-linux}"
+ARCH="${3:-amd64}"
+
 # Cleanup function to remove temporary files and cluster
 cleanup() {
-    echo "Cleaning up..."
     if [[ -f "./rad" ]]; then
+        echo "Deleting downloaded ./rad binary..."
         rm -f ./rad
     fi
     if kind get clusters 2>/dev/null | grep -q "kind"; then
@@ -87,14 +90,16 @@ verify_pod_image() {
     echo "$component_name image verified: $actual_image"
 }
 
-# RELEASE_VERSION_NUMBER is the Radius release version number
-# (e.g. 0.24.0, 0.24.0-rc1)
-RELEASE_VERSION_NUMBER="$1"
-
-if [[ -z "${RELEASE_VERSION_NUMBER}" ]]; then
+if [[ -z "$RELEASE_VERSION_NUMBER" ]]; then
     echo "Error: RELEASE_VERSION_NUMBER is not set." >&2
-    echo "Usage: $0 <version>" >&2
-    echo "Example: $0 0.24.0" >&2
+    echo "Usage: $0 <version> [os] [arch]" >&2
+    echo "  version: Release version (e.g., 0.24.0)" >&2
+    echo "  os:      linux (default) or darwin" >&2
+    echo "  arch:    amd64 (default) or arm64" >&2
+    echo "Examples:" >&2
+    echo "  $0 0.24.0              # Linux AMD64" >&2
+    echo "  $0 0.24.0 darwin       # macOS AMD64" >&2
+    echo "  $0 0.24.0 darwin arm64 # macOS ARM64" >&2
     exit 1
 fi
 
@@ -122,6 +127,8 @@ if [[ "$RELEASE_VERSION_NUMBER" != *"rc"* ]]; then
 fi
 
 echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
+echo "OS: ${OS}"
+echo "ARCH: ${ARCH}"
 echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
@@ -132,8 +139,11 @@ if ! curl -sSL "${DOWNLOAD_URL}" -o rad; then
 fi
 chmod +x ./rad
 
-RELEASE_FROM_RAD_VERSION=$(./rad version --cli -o json | jq -r '.release')
-VERSION_FROM_RAD_VERSION=$(./rad version --cli -o json | jq -r '.version')
+RAD_VERSION_JSON=$(./rad version --cli -o json)
+echo "rad version output: $RAD_VERSION_JSON"
+
+RELEASE_FROM_RAD_VERSION=$(echo "$RAD_VERSION_JSON" | jq -r '.release')
+VERSION_FROM_RAD_VERSION=$(echo "$RAD_VERSION_JSON" | jq -r '.version')
 
 if [[ "${RELEASE_FROM_RAD_VERSION}" != "${EXPECTED_CLI_VERSION}" ]]; then
     echo "Error: Release: ${RELEASE_FROM_RAD_VERSION} from rad version does not match the desired release: ${EXPECTED_CLI_VERSION}." >&2
