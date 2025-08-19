@@ -16,7 +16,21 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -ex
+set -e
+
+# Retrieves the base image for a given pod name prefix (without the unique identifier suffix)
+# Usage: get_pod_base_image <pod_name_prefix>
+get_pod_base_image() {
+    local pod_prefix="$1"
+    if [[ -z "$pod_prefix" ]]; then
+        echo "Error: pod name prefix is required" >&2
+        return 1
+    fi
+    kubectl get pods --no-headers -n radius-system -o custom-columns=":metadata.name" \
+        | grep "^${pod_prefix}" \
+        | head -n 1 \
+        | xargs -I {} kubectl get pod -n radius-system {} -o jsonpath="{.spec.containers[*].image}"
+}
 
 # RELEASE_VERSION_NUMBER is the Radius release version number
 # (e.g. 0.24.0, 0.24.0-rc1)
@@ -68,20 +82,39 @@ if [[ "${VERSION_FROM_RAD_VERSION}" != "v${EXPECTED_CLI_VERSION}" ]]; then
 fi
 
 kind create cluster
-./rad install kubernetes
+./rad install kubernetes --skip-contour-install
 
 EXPECTED_APPCORE_RP_IMAGE="ghcr.io/radius-project/applications-rp:${EXPECTED_TAG_VERSION}"
+EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
+EXPECTED_CONTROLLER_IMAGE="ghcr.io/radius-project/controller:${EXPECTED_TAG_VERSION}"
+EXPECTED_DASHBOARD_IMAGE="ghcr.io/radius-project/dashboard:${EXPECTED_TAG_VERSION}"
 EXPECTED_DYNAMIC_RP_IMAGE="ghcr.io/radius-project/dynamic-rp:${EXPECTED_TAG_VERSION}"
 EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
-EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
 
-APPCORE_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=applications-rp | awk '/^.*Image:/ {print $2}')
-DYNAMIC_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=dynamic-rp | awk '/^.*Image:/ {print $2}')
-UCP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=ucp | awk '/^.*Image:/ {print $2}')
-DE_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=bicep-de | awk '/^.*Image:/ {print $2}')
+APPCORE_RP_IMAGE=$(get_pod_base_image applications-rp)
+DE_IMAGE=$(get_pod_base_image bicep-de)
+CONTROLLER_IMAGE=$(get_pod_base_image controller)
+DASHBOARD_IMAGE=$(get_pod_base_image dashboard)
+DYNAMIC_RP_IMAGE=$(get_pod_base_image dynamic-rp)
+UCP_IMAGE=$(get_pod_base_image ucp)
 
 if [[ "${APPCORE_RP_IMAGE}" != "${EXPECTED_APPCORE_RP_IMAGE}" ]]; then
     echo "Error: Applications RP image: ${APPCORE_RP_IMAGE} does not match the desired image: ${EXPECTED_APPCORE_RP_IMAGE}."
+    exit 1
+fi
+
+if [[ "${DE_IMAGE}" != "${EXPECTED_DE_IMAGE}" ]]; then
+    echo "Error: DE image: ${DE_IMAGE} does not match the desired image: ${EXPECTED_DE_IMAGE}."
+    exit 1
+fi
+
+if [[ "${CONTROLLER_IMAGE}" != "${EXPECTED_CONTROLLER_IMAGE}" ]]; then
+    echo "Error: Controller image: ${CONTROLLER_IMAGE} does not match the desired image: ${EXPECTED_CONTROLLER_IMAGE}."
+    exit 1
+fi
+
+if [[ "${DASHBOARD_IMAGE}" != "${EXPECTED_DASHBOARD_IMAGE}" ]]; then
+    echo "Error: Dashboard image: ${DASHBOARD_IMAGE} does not match the desired image: ${EXPECTED_DASHBOARD_IMAGE}."
     exit 1
 fi
 
@@ -92,11 +125,6 @@ fi
 
 if [[ "${UCP_IMAGE}" != "${EXPECTED_UCP_IMAGE}" ]]; then
     echo "Error: UCP image: ${UCP_IMAGE} does not match the desired image: ${EXPECTED_UCP_IMAGE}."
-    exit 1
-fi
-
-if [[ "${DE_IMAGE}" != "${EXPECTED_DE_IMAGE}" ]]; then
-    echo "Error: DE image: ${DE_IMAGE} does not match the desired image: ${EXPECTED_DE_IMAGE}."
     exit 1
 fi
 
