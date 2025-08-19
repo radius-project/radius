@@ -1662,7 +1662,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 					Version: &TerraformVersionConfig{
 						Version:            to.Ptr("1.7.0"),
 						ReleasesAPIBaseURL: to.Ptr("https://terraform.example.com"),
-						TLS: &TLSConfig{
+						TLS:                &TLSConfig{
 							// SkipVerify removed
 						},
 					},
@@ -1671,7 +1671,7 @@ func Test_toFromTLSConfigDatamodel(t *testing.T) {
 			expectedDataModel: &datamodel.TerraformVersionConfig{
 				Version:            "1.7.0",
 				ReleasesAPIBaseURL: "https://terraform.example.com",
-				TLS: &datamodel.TLSConfig{
+				TLS:                &datamodel.TLSConfig{
 					// SkipVerify removed
 				},
 			},

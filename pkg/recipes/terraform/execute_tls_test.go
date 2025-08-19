@@ -27,11 +27,11 @@ import (
 
 func TestAddTLSEnvironmentVariables(t *testing.T) {
 	tests := []struct {
-		name           string
-		options        Options
+		name            string
+		options         Options
 		existingEnvVars map[string]string
 		expectedEnvVars map[string]string
-		wantErr        bool
+		wantErr         bool
 	}{
 		{
 			name: "recipe TLS with CA certificate",
@@ -79,13 +79,13 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 				},
 			},
 			existingEnvVars: map[string]string{
-				"SSL_CERT_FILE":   "/tmp/registry-ca.crt",
-				"CURL_CA_BUNDLE":  "/tmp/registry-ca.crt",
+				"SSL_CERT_FILE":  "/tmp/registry-ca.crt",
+				"CURL_CA_BUNDLE": "/tmp/registry-ca.crt",
 			},
 			expectedEnvVars: map[string]string{
-				"SSL_CERT_FILE":   "/tmp/registry-ca.crt", // Registry vars preserved
-				"CURL_CA_BUNDLE":  "/tmp/registry-ca.crt", // Registry vars preserved
-				"GIT_SSL_CAINFO":  "/tmp/test/.terraform/modules/.tls/ca.crt", // Recipe uses different var
+				"SSL_CERT_FILE":  "/tmp/registry-ca.crt",                     // Registry vars preserved
+				"CURL_CA_BUNDLE": "/tmp/registry-ca.crt",                     // Registry vars preserved
+				"GIT_SSL_CAINFO": "/tmp/test/.terraform/modules/.tls/ca.crt", // Recipe uses different var
 			},
 		},
 		{
@@ -115,7 +115,7 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 				Secrets: map[string]recipes.SecretData{},
 			},
 			existingEnvVars: map[string]string{},
-			wantErr:        true,
+			wantErr:         true,
 		},
 	}
 

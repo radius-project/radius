@@ -561,8 +561,8 @@ func writeTLSCertificates(ctx context.Context, workingDir string, tls *recipes.T
 			logger.Info("Set Git SSL environment variable globally", "var", envVar, "value", envValue)
 		}
 
-				// Configure Git SSL verbosity for debugging
-				os.Setenv("GIT_CURL_VERBOSE", "1")
+		// Configure Git SSL verbosity for debugging
+		os.Setenv("GIT_CURL_VERBOSE", "1")
 
 		// NOTE: Do NOT set GIT_SSL_CERT - that's for client certificates (private keys), not CA certificates
 

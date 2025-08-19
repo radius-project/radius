@@ -87,17 +87,17 @@ func InstallTerraformWithTLS(
 			logger.Info("Configuring custom CA certificate",
 				"secretSource", tlsConfig.CACertificate.Source,
 				"secretKey", tlsConfig.CACertificate.Key)
-			
+
 			// Log available secrets for debugging
 			availableSecrets := make([]string, 0, len(secrets))
 			for k := range secrets {
 				availableSecrets = append(availableSecrets, k)
 			}
 			logger.Info("Available secrets for TLS configuration", "secrets", availableSecrets)
-			
+
 			secretData, ok := secrets[tlsConfig.CACertificate.Source]
 			if !ok {
-				logger.Error(nil, "CA certificate secret store not found", 
+				logger.Error(nil, "CA certificate secret store not found",
 					"secretSource", tlsConfig.CACertificate.Source,
 					"availableSecrets", availableSecrets)
 				return "", fmt.Errorf("CA certificate secret store not found: %s", tlsConfig.CACertificate.Source)
@@ -113,7 +113,7 @@ func InstallTerraformWithTLS(
 				for k := range secretData.Data {
 					availableKeys = append(availableKeys, k)
 				}
-				logger.Error(nil, "CA certificate key not found in secret store", 
+				logger.Error(nil, "CA certificate key not found in secret store",
 					"requestedKey", tlsConfig.CACertificate.Key,
 					"availableKeys", availableKeys)
 				return "", fmt.Errorf("CA certificate key '%s' not found in secret store", tlsConfig.CACertificate.Key)
@@ -131,16 +131,16 @@ func InstallTerraformWithTLS(
 	if terraformConfig.Version.Authentication != nil {
 		// Handle token authentication
 		if terraformConfig.Version.Authentication.Token != nil {
-			logger.Info("Configuring token authentication", 
+			logger.Info("Configuring token authentication",
 				"secretSource", terraformConfig.Version.Authentication.Token.Secret)
-			
+
 			secretData, ok := secrets[terraformConfig.Version.Authentication.Token.Secret]
 			if !ok {
 				availableSecrets := make([]string, 0, len(secrets))
 				for k := range secrets {
 					availableSecrets = append(availableSecrets, k)
 				}
-				logger.Error(nil, "Authentication secret store not found", 
+				logger.Error(nil, "Authentication secret store not found",
 					"secretSource", terraformConfig.Version.Authentication.Token.Secret,
 					"availableSecrets", availableSecrets)
 				return "", fmt.Errorf("authentication secret store not found: %s", terraformConfig.Version.Authentication.Token.Secret)
@@ -156,7 +156,7 @@ func InstallTerraformWithTLS(
 				for k := range secretData.Data {
 					availableKeys = append(availableKeys, k)
 				}
-				logger.Error(nil, "Token not found in secret store", 
+				logger.Error(nil, "Token not found in secret store",
 					"secretSource", terraformConfig.Version.Authentication.Token.Secret,
 					"availableKeys", availableKeys)
 				return "", fmt.Errorf("token not found in secret store")
@@ -184,9 +184,9 @@ func InstallTerraformWithTLS(
 	}
 
 	// Install directly using the custom source
-	logger.Info("Starting Terraform installation with custom source", 
-		"version", tfVersion, 
-		"hasAuth", hasAuthentication, 
+	logger.Info("Starting Terraform installation with custom source",
+		"version", tfVersion,
+		"hasAuth", hasAuthentication,
 		"hasTLS", hasTLSConfig,
 		"hasArchiveURL", hasArchiveURL)
 	return customSource.Install(ctx)

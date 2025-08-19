@@ -47,7 +47,7 @@ func TestConfigureTerraformRegistry_ModuleRegistry(t *testing.T) {
 			Terraform: datamodel.TerraformConfigProperties{
 				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 					"example-registry": {
-						Host: registryHost,
+						URL: registryHost,
 						Authentication: datamodel.RegistryAuthConfig{
 							Token: &datamodel.TokenConfig{
 								Secret: secretStoreID,
@@ -261,7 +261,7 @@ func TestConfigureTerraformRegistry_ModuleRegistry_MissingToken(t *testing.T) {
 			Terraform: datamodel.TerraformConfigProperties{
 				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 					"example-registry": {
-						Host: registryHost,
+						URL: registryHost,
 						Authentication: datamodel.RegistryAuthConfig{
 							Token: &datamodel.TokenConfig{
 								Secret: secretStoreID,
@@ -307,7 +307,7 @@ func TestConfigureTerraformRegistry_ModuleRegistry_AdditionalHosts(t *testing.T)
 			Terraform: datamodel.TerraformConfigProperties{
 				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 					"example-registry": {
-						Host: registryHost,
+						URL: registryHost,
 						Authentication: datamodel.RegistryAuthConfig{
 							Token: &datamodel.TokenConfig{
 								Secret: secretStoreID,
@@ -406,7 +406,7 @@ func TestConfigureTerraformRegistry_BothProviderMirrorAndModuleRegistry(t *testi
 				},
 				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 					"example-modules": {
-						Host: moduleRegistryHost,
+						URL: moduleRegistryHost,
 						Authentication: datamodel.RegistryAuthConfig{
 							Token: &datamodel.TokenConfig{
 								Secret: moduleSecretStoreID,
@@ -507,6 +507,64 @@ func TestCleanupTerraformRegistryConfig_FileRemoval(t *testing.T) {
 	// to the Terraform process rather than set on the current process
 }
 
+func TestConfigureTerraformRegistry_AddsImplicitRegistryTerraformIoMapping_WhenSingleModuleRegistry(t *testing.T) {
+	// Create temp dir for test
+	tempDir := t.TempDir()
+
+	const (
+		mirrorHost    = "mirror.airgapped.local"
+		secretStoreID = "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/registryToken"
+		token         = "example-token"
+	)
+
+	// Single module registry configured (not named registry.terraform.io)
+	config := recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+					"gitlab": {
+						URL: mirrorHost,
+						Authentication: datamodel.RegistryAuthConfig{
+							Token: &datamodel.TokenConfig{Secret: secretStoreID},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	secrets := map[string]recipes.SecretData{
+		secretStoreID: {Type: "opaque", Data: map[string]string{"token": token}},
+	}
+
+	// Call the function under test
+	ctx := context.Background()
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
+	require.NoError(t, err)
+	require.NotNil(t, regConfig)
+
+	// Read the generated file
+	content, err := os.ReadFile(regConfig.ConfigPath)
+	require.NoError(t, err)
+	cfg := string(content)
+
+	// Should include original host block
+	require.Contains(t, cfg, `host "gitlab" {`)
+	require.Contains(t, cfg, `"modules.v1" = "https://`+mirrorHost+`"`)
+
+	// Should also include implicit mapping for registry.terraform.io
+	require.Contains(t, cfg, `host "registry.terraform.io" {`)
+	require.Contains(t, cfg, `"modules.v1" = "https://`+mirrorHost+`"`)
+
+	// And credentials for mirrorHost
+	require.Contains(t, cfg, `credentials "`+mirrorHost+`" {`)
+	require.Contains(t, cfg, `token = "`+token+`"`)
+
+	// Cleanup
+	err = CleanupTerraformRegistryConfig(ctx, regConfig)
+	require.NoError(t, err)
+}
+
 func TestConfigureTerraformRegistry_ProviderMirror_WithCACert(t *testing.T) {
 	// Create temp dir for test
 	tempDir := t.TempDir()
@@ -588,7 +646,6 @@ b24gUm9vdCBDQSAxMA0GCSqGSIb3DQEBCwUAA4IBAQCTLMF4dYaD+3yL4FyYLG2o
 	err = CleanupTerraformRegistryConfig(ctx, regConfig)
 	require.NoError(t, err, "Cleanup should succeed")
 }
-
 
 func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingSecret(t *testing.T) {
 	// Create temp dir for test
@@ -673,7 +730,6 @@ func TestConfigureTerraformRegistry_ProviderMirror_CACert_MissingKey(t *testing.
 	require.Len(t, regConfig.TempFiles, 0, "No TLS files should be created for provider mirrors")
 }
 
-
 func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 	// Test configuration based on GitLab air-gapped environment with registry.terraform.io redirection
 	tests := []struct {
@@ -701,7 +757,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 						},
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"gitlab": {
-								Host: "providermirror.example.com",
+								URL: "providermirror.example.com",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{
 										Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/gitlab-token",
@@ -744,7 +800,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"terraform-providers": {
-								Host: "providermirror.example.com",
+								URL: "providermirror.example.com",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{
 										Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/gitlab-token",
@@ -785,7 +841,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"company-internal": {
-								Host: "internal.company.com",
+								URL: "internal.company.com",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{
 										Secret: "/planes/radius/local/resourcegroups/mygroup/providers/Applications.Core/secretStores/internal-token",
@@ -939,7 +995,7 @@ func TestConfigureTerraformRegistry_GitAuthentication(t *testing.T) {
 			Terraform: datamodel.TerraformConfigProperties{
 				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 					"gitlab": {
-						Host: registryHost,
+						URL: registryHost,
 						Authentication: datamodel.RegistryAuthConfig{
 							Token: &datamodel.TokenConfig{
 								Secret: secretStoreID,
@@ -1121,4 +1177,137 @@ func TestConfigureTerraformRegistry_ProviderMirror_UnsupportedType(t *testing.T)
 	require.NoError(t, err)
 	configContent := string(content)
 	require.Contains(t, configContent, "network_mirror {", "Should use network mirror regardless of deprecated type field")
+}
+
+func TestConfigureTerraformRegistry_AirGappedEnvironment_ProviderInstallation(t *testing.T) {
+	// Test the exact air-gapped configuration that's failing in production
+	tempDir := t.TempDir()
+
+	const (
+		gitlabSecretID = "/planes/radius/local/resourcegroups/green/providers/Applications.Core/secretStores/git-secret-store2"
+		tlsSecretID    = "/planes/radius/local/resourcegroups/green/providers/Applications.Core/secretStores/registry-tls-certs2"
+		gitlabToken    = "glpat-test-token-12345"
+		caCertContent  = `-----BEGIN CERTIFICATE-----
+MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
+ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6
+b24gUm9vdCBDQSAxMA0GCSqGSIb3DQEBCwUAA4IBAQCTLMF4dYaD+3yL4FyYLG2o
+-----END CERTIFICATE-----`
+	)
+
+	// Configuration matching your green environment exactly
+	config := recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
+					"gitlab": {
+						URL: "gitlab.airgapped.local",
+						Authentication: datamodel.RegistryAuthConfig{
+							Token: &datamodel.TokenConfig{
+								Secret: gitlabSecretID,
+							},
+						},
+					},
+				},
+				ProviderMirror: &datamodel.TerraformProviderMirrorConfig{
+					URL: "https://proxy.airgapped.local/",
+					TLS: &datamodel.TLSConfig{
+						CACertificate: &datamodel.SecretReference{
+							Source: tlsSecretID,
+							Key:    "server.crt",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Mock secrets matching your environment
+	secrets := map[string]recipes.SecretData{
+		gitlabSecretID: {
+			Type: "opaque",
+			Data: map[string]string{
+				"token": gitlabToken,
+			},
+		},
+		tlsSecretID: {
+			Type: "opaque",
+			Data: map[string]string{
+				"server.crt": caCertContent,
+			},
+		},
+	}
+
+	// Call the function under test
+	ctx := context.Background()
+	regConfig, err := ConfigureTerraformRegistry(ctx, config, secrets, tempDir)
+	require.NoError(t, err, "ConfigureTerraformRegistry should not return an error")
+	require.NotNil(t, regConfig, "Should return a RegistryConfig")
+
+	// Read the generated .terraformrc file
+	content, err := os.ReadFile(regConfig.ConfigPath)
+	require.NoError(t, err, "Should be able to read .terraformrc")
+	configContent := string(content)
+
+	t.Logf("Generated .terraformrc for air-gapped environment:\n%s", configContent)
+
+	// CRITICAL: Verify provider_installation block exists and is configured correctly
+	require.True(t, strings.Contains(configContent, "provider_installation {"),
+		"MISSING: provider_installation block should be present for provider mirror")
+
+	require.True(t, strings.Contains(configContent, "network_mirror {"),
+		"MISSING: network_mirror block should be present")
+
+	require.True(t, strings.Contains(configContent, `url = "https://proxy.airgapped.local"`),
+		"MISSING: Provider mirror URL should be configured (without trailing slash)")
+
+	require.True(t, strings.Contains(configContent, `include = ["*"]`),
+		"MISSING: Provider mirror should include all providers with [\"*\"]")
+
+	require.True(t, strings.Contains(configContent, "direct {}"),
+		"MISSING: Direct fallback should be configured after network mirror")
+
+	// Verify module registry configuration
+	require.True(t, strings.Contains(configContent, `host "gitlab" {`),
+		"Module registry host block should be present")
+
+	require.True(t, strings.Contains(configContent, `"modules.v1" = "https://gitlab.airgapped.local"`),
+		"Module registry service should be configured")
+
+	// Verify implicit registry.terraform.io mapping (single module registry)
+	require.True(t, strings.Contains(configContent, `host "registry.terraform.io" {`),
+		"CRITICAL: registry.terraform.io should be mapped to gitlab.airgapped.local")
+
+	require.True(t, strings.Count(configContent, `"modules.v1" = "https://gitlab.airgapped.local"`) >= 2,
+		"CRITICAL: gitlab.airgapped.local should be used for both gitlab host and registry.terraform.io")
+
+	// Verify credentials are configured for gitlab.airgapped.local
+	require.True(t, strings.Contains(configContent, `credentials "gitlab.airgapped.local" {`),
+		"Credentials should be configured for gitlab.airgapped.local")
+
+	require.True(t, strings.Contains(configContent, fmt.Sprintf(`token = "%s"`, gitlabToken)),
+		"GitLab token should be present in credentials")
+
+	// Verify Git authentication is configured
+	require.Contains(t, regConfig.EnvVars, "GIT_CONFIG_GLOBAL",
+		"GIT_CONFIG_GLOBAL should be set for Git authentication")
+
+	gitConfigPath := regConfig.EnvVars["GIT_CONFIG_GLOBAL"]
+	require.FileExists(t, gitConfigPath, ".gitconfig should be created")
+
+	gitContent, err := os.ReadFile(gitConfigPath)
+	require.NoError(t, err, "Should be able to read .gitconfig")
+	gitConfigStr := string(gitContent)
+
+	require.True(t, strings.Contains(gitConfigStr, "[url \"https://gitlab.airgapped.local/\"]"),
+		"Git URL rewriting should be configured")
+
+	require.True(t, strings.Contains(gitConfigStr, "insteadOf = https://github.com/"),
+		"Git should redirect github.com to gitlab.airgapped.local")
+
+	require.True(t, strings.Contains(gitConfigStr, "Authorization: Basic"),
+		"Git authentication should be configured")
+
+	// Test cleanup
+	err = CleanupTerraformRegistryConfig(ctx, regConfig)
+	require.NoError(t, err, "Cleanup should not return an error")
 }

@@ -227,11 +227,11 @@ N1R6JSAKM3FIq3zV0hLi
 -----END CERTIFICATE-----`)
 
 	source := &CustomRegistrySource{
-		Product:            product.Terraform,
-		Version:            version.Must(version.NewVersion("1.5.0")),
-		BaseURL:            "https://example.com",
-		InstallDir:         "/tmp",
-		CACertPEM:          testCA,
+		Product:    product.Terraform,
+		Version:    version.Must(version.NewVersion("1.5.0")),
+		BaseURL:    "https://example.com",
+		InstallDir: "/tmp",
+		CACertPEM:  testCA,
 	}
 
 	client, err := source.getHTTPClient()

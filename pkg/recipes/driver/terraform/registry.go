@@ -132,6 +132,7 @@ func ConfigureTerraformRegistry(
 		configContent.WriteString(fmt.Sprintf(`provider_installation {
   network_mirror {
     url = %q
+    include = ["*"]
   }
   direct {}
 }
@@ -167,10 +168,10 @@ func ConfigureTerraformRegistry(
 		}
 	}
 
-	// Module registries (unchanged)
+	// Module registries
 	if hasModuleRegistries {
 		for registryName, registryConfig := range config.RecipeConfig.Terraform.ModuleRegistries {
-			redirectHost := registryConfig.Host
+			redirectHost := registryConfig.URL
 			if redirectHost == "" {
 				continue
 			}
@@ -194,7 +195,7 @@ host %q {
 				if !ok {
 					return nil, fmt.Errorf("token not found in secret store %q for module registry %q", secretStoreID, registryName)
 				}
-				credentialsHost := registryConfig.Host
+				credentialsHost := registryConfig.URL
 				if strings.Contains(credentialsHost, "/") {
 					credentialsHost = strings.Split(credentialsHost, "/")[0]
 				}
@@ -261,6 +262,38 @@ credentials %q {
 							"registryName", registryName,
 							"additionalHost", gitAH)
 						return nil, fmt.Errorf("failed to configure Git authentication for additional host %q: %w", gitAH, err)
+					}
+				}
+			}
+
+			// If there's exactly one configured module registry and the config does not
+			// already specify a mapping for the public registry, also map
+			// registry.terraform.io to that mirror host. This helps air-gapped
+			// environments where nested modules reference the public registry.
+			if len(config.RecipeConfig.Terraform.ModuleRegistries) == 1 {
+				if _, exists := config.RecipeConfig.Terraform.ModuleRegistries["registry.terraform.io"]; !exists {
+					// Extract the single entry
+					var singleName string
+					var singleCfg *datamodel.TerraformModuleRegistryConfig
+					for n, c := range config.RecipeConfig.Terraform.ModuleRegistries {
+						singleName, singleCfg = n, c
+						break
+					}
+
+					// Only add if we have a URL to redirect to
+					if singleCfg != nil && strings.TrimSpace(singleCfg.URL) != "" {
+						logger.Info("Adding implicit module registry redirect for public registry",
+							"sourceHost", "registry.terraform.io",
+							"targetHost", singleCfg.URL,
+							"viaRegistry", singleName)
+
+						configContent.WriteString(fmt.Sprintf(`
+	host %q {
+	  services = {
+		"modules.v1" = "https://%s"
+	  }
+	}
+	`, "registry.terraform.io", singleCfg.URL))
 					}
 				}
 			}

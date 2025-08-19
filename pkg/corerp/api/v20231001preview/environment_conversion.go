@@ -228,7 +228,7 @@ func toRecipeConfigDatamodel(config *RecipeConfigProperties) datamodel.RecipeCon
 				moduleRegistries := make(map[string]*datamodel.TerraformModuleRegistryConfig)
 				for name, registry := range config.Terraform.ModuleRegistries {
 					moduleRegistryConfig := &datamodel.TerraformModuleRegistryConfig{
-						Host: to.String(registry.URL),
+						URL: to.String(registry.URL),
 					}
 
 					// Handle TLS configuration
@@ -370,7 +370,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				moduleRegistries := make(map[string]*TerraformModuleRegistryConfig)
 				for name, registry := range config.Terraform.ModuleRegistries {
 					moduleRegistryConfig := &TerraformModuleRegistryConfig{
-						URL: to.Ptr(registry.Host),
+						URL: to.Ptr(registry.URL),
 					}
 
 					// Handle authentication if provided

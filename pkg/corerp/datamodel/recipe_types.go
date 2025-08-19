@@ -137,9 +137,9 @@ type TerraformProviderMirrorConfig struct {
 
 // TerraformModuleRegistryConfig - Configuration for Terraform module registries.
 type TerraformModuleRegistryConfig struct {
-	// Host is the hostname of the module registry.
+	// URL is the URL of the module registry.
 	// Example: 'app.terraform.io' for Terraform Cloud or 'terraform.example.com' for Terraform Enterprise
-	Host string `json:"host,omitempty"`
+	URL string `json:"url,omitempty"`
 
 	// Authentication configuration for accessing private module registries.
 	Authentication RegistryAuthConfig `json:"authentication,omitempty"`
