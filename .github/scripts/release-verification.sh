@@ -16,48 +16,109 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -e
+set -euo pipefail
+
+# Configuration
+readonly NAMESPACE="radius-system"
+readonly OS="linux"
+readonly ARCH="amd64"
+readonly GITHUB_ORG="radius-project"
+readonly GITHUB_REPO="radius"
+
+# Cleanup function to remove temporary files and cluster
+cleanup() {
+    echo "Cleaning up..."
+    if [[ -f "./rad" ]]; then
+        rm -f ./rad
+    fi
+    if kind get clusters 2>/dev/null | grep -q "kind"; then
+        echo "Deleting kind cluster..."
+        kind delete cluster || true
+    fi
+}
+
+# Set up cleanup trap
+trap cleanup EXIT ERR
+
+# Validates prerequisites and environment
+validate_prerequisites() {
+    # Check for required commands
+    local required_commands=("kubectl" "kind" "curl" "jq")
+    for cmd in "${required_commands[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo "Error: Required command '$cmd' is not installed or not in PATH" >&2
+            exit 1
+        fi
+    done
+}
 
 # Retrieves the base image for a given pod name prefix (without the unique identifier suffix)
 # Usage: get_pod_base_image <pod_name_prefix>
 get_pod_base_image() {
     local pod_prefix="$1"
-    if [[ -z "$pod_prefix" ]]; then
-        echo "Error: pod name prefix is required" >&2
+    local pod_name
+    pod_name=$(kubectl get pods --no-headers -n "$NAMESPACE" -o custom-columns=":metadata.name" \
+        | grep "^${pod_prefix}" \
+        | head -n 1)
+    
+    if [[ -z "$pod_name" ]]; then
+        echo "Error: No pod found with prefix '$pod_prefix' in namespace '$NAMESPACE'" >&2
         return 1
     fi
-    kubectl get pods --no-headers -n radius-system -o custom-columns=":metadata.name" \
-        | grep "^${pod_prefix}" \
-        | head -n 1 \
-        | xargs -I {} kubectl get pod -n radius-system {} -o jsonpath="{.spec.containers[*].image}"
+    
+    kubectl get pod -n "$NAMESPACE" "$pod_name" -o jsonpath="{.spec.containers[*].image}"
+}
+
+# Verifies that a pod's image matches the expected image
+# Usage: verify_pod_image <pod_prefix> <expected_image> <component_name>
+verify_pod_image() {
+    local pod_prefix="$1"
+    local expected_image="$2"
+    local component_name="$3"
+    
+    local actual_image
+    actual_image=$(get_pod_base_image "$pod_prefix")
+    
+    if [[ "$actual_image" != "$expected_image" ]]; then
+        echo "Error: $component_name image: $actual_image does not match the desired image: $expected_image." >&2
+        exit 1
+    fi
+    
+    echo "$component_name image verified: $actual_image"
 }
 
 # RELEASE_VERSION_NUMBER is the Radius release version number
 # (e.g. 0.24.0, 0.24.0-rc1)
-RELEASE_VERSION_NUMBER=$1
+RELEASE_VERSION_NUMBER="$1"
 
 if [[ -z "${RELEASE_VERSION_NUMBER}" ]]; then
-    echo "Error: RELEASE_VERSION_NUMBER is not set."
+    echo "Error: RELEASE_VERSION_NUMBER is not set." >&2
+    echo "Usage: $0 <version>" >&2
+    echo "Example: $0 0.24.0" >&2
     exit 1
 fi
 
-OS=linux
-ARCH=amd64
-GITHUB_ORG=radius-project
-GITHUB_REPO=radius
-RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
-DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
-DOWNLOAD_URL="${DOWNLOAD_BASE}/v${RELEASE_VERSION_NUMBER}/${RADIUS_CLI_ARTIFACT}"
+# Validate version format
+if [[ ! "$RELEASE_VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+    echo "Error: Invalid version format. Expected format: X.Y.Z or X.Y.Z-rcN" >&2
+    exit 1
+fi
+
+validate_prerequisites
+
+readonly RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
+readonly DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
+readonly DOWNLOAD_URL="${DOWNLOAD_BASE}/v${RELEASE_VERSION_NUMBER}/${RADIUS_CLI_ARTIFACT}"
 
 # EXPECTED_CLI_VERSION is the same as the RELEASE_VERSION_NUMBER
 EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
 
-EXPECTED_TAG_VERSION=$RELEASE_VERSION_NUMBER
+EXPECTED_TAG_VERSION="$RELEASE_VERSION_NUMBER"
 # if RELEASE_VERSION_NUMBER contains -rc, then it is a prerelease.
 # In that case, we need to set expected tag version to the major.minor of the
 # release version number
-if [[ $RELEASE_VERSION_NUMBER != *"rc"* ]]; then
-    EXPECTED_TAG_VERSION=$(echo $RELEASE_VERSION_NUMBER | cut -d '.' -f 1,2)
+if [[ "$RELEASE_VERSION_NUMBER" != *"rc"* ]]; then
+    EXPECTED_TAG_VERSION=$(echo "$RELEASE_VERSION_NUMBER" | cut -d '.' -f 1,2)
 fi
 
 echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
@@ -65,24 +126,36 @@ echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
 echo "Downloading ${DOWNLOAD_URL}"
-curl -sSL "${DOWNLOAD_URL}" -o rad
+if ! curl -sSL "${DOWNLOAD_URL}" -o rad; then
+    echo "Error: Failed to download rad CLI from ${DOWNLOAD_URL}" >&2
+    exit 1
+fi
 chmod +x ./rad
 
 RELEASE_FROM_RAD_VERSION=$(./rad version --cli -o json | jq -r '.release')
 VERSION_FROM_RAD_VERSION=$(./rad version --cli -o json | jq -r '.version')
 
 if [[ "${RELEASE_FROM_RAD_VERSION}" != "${EXPECTED_CLI_VERSION}" ]]; then
-    echo "Error: Release: ${RELEASE_FROM_RAD_VERSION} from rad version does not match the desired release: ${EXPECTED_CLI_VERSION}."
+    echo "Error: Release: ${RELEASE_FROM_RAD_VERSION} from rad version does not match the desired release: ${EXPECTED_CLI_VERSION}." >&2
     exit 1
 fi
 
 if [[ "${VERSION_FROM_RAD_VERSION}" != "v${EXPECTED_CLI_VERSION}" ]]; then
-    echo "Error: Version: ${VERSION_FROM_RAD_VERSION} from rad version does not match the desired version: v${EXPECTED_CLI_VERSION}."
+    echo "Error: Version: ${VERSION_FROM_RAD_VERSION} from rad version does not match the desired version: v${EXPECTED_CLI_VERSION}." >&2
     exit 1
 fi
 
-kind create cluster
-./rad install kubernetes --skip-contour-install
+echo "Creating kind cluster..."
+if ! kind create cluster; then
+    echo "Error: Failed to create kind cluster" >&2
+    exit 1
+fi
+
+echo "Installing Radius..."
+if ! ./rad install kubernetes --skip-contour-install; then
+    echo "Error: Failed to install Radius" >&2
+    exit 1
+fi
 
 EXPECTED_APPCORE_RP_IMAGE="ghcr.io/radius-project/applications-rp:${EXPECTED_TAG_VERSION}"
 EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
@@ -91,41 +164,15 @@ EXPECTED_DASHBOARD_IMAGE="ghcr.io/radius-project/dashboard:${EXPECTED_TAG_VERSIO
 EXPECTED_DYNAMIC_RP_IMAGE="ghcr.io/radius-project/dynamic-rp:${EXPECTED_TAG_VERSION}"
 EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
 
-APPCORE_RP_IMAGE=$(get_pod_base_image applications-rp)
-DE_IMAGE=$(get_pod_base_image bicep-de)
-CONTROLLER_IMAGE=$(get_pod_base_image controller)
-DASHBOARD_IMAGE=$(get_pod_base_image dashboard)
-DYNAMIC_RP_IMAGE=$(get_pod_base_image dynamic-rp)
-UCP_IMAGE=$(get_pod_base_image ucp)
+# Verify all pod images
+echo "Verifying pod images..."
+verify_pod_image "applications-rp" "$EXPECTED_APPCORE_RP_IMAGE" "Applications RP"
+verify_pod_image "bicep-de" "$EXPECTED_DE_IMAGE" "Deployment Engine"
+verify_pod_image "controller" "$EXPECTED_CONTROLLER_IMAGE" "Controller"
+verify_pod_image "dashboard" "$EXPECTED_DASHBOARD_IMAGE" "Dashboard"
+verify_pod_image "dynamic-rp" "$EXPECTED_DYNAMIC_RP_IMAGE" "Dynamic RP"
+verify_pod_image "ucp" "$EXPECTED_UCP_IMAGE" "UCP"
 
-if [[ "${APPCORE_RP_IMAGE}" != "${EXPECTED_APPCORE_RP_IMAGE}" ]]; then
-    echo "Error: Applications RP image: ${APPCORE_RP_IMAGE} does not match the desired image: ${EXPECTED_APPCORE_RP_IMAGE}."
-    exit 1
-fi
-
-if [[ "${DE_IMAGE}" != "${EXPECTED_DE_IMAGE}" ]]; then
-    echo "Error: DE image: ${DE_IMAGE} does not match the desired image: ${EXPECTED_DE_IMAGE}."
-    exit 1
-fi
-
-if [[ "${CONTROLLER_IMAGE}" != "${EXPECTED_CONTROLLER_IMAGE}" ]]; then
-    echo "Error: Controller image: ${CONTROLLER_IMAGE} does not match the desired image: ${EXPECTED_CONTROLLER_IMAGE}."
-    exit 1
-fi
-
-if [[ "${DASHBOARD_IMAGE}" != "${EXPECTED_DASHBOARD_IMAGE}" ]]; then
-    echo "Error: Dashboard image: ${DASHBOARD_IMAGE} does not match the desired image: ${EXPECTED_DASHBOARD_IMAGE}."
-    exit 1
-fi
-
-if [[ "${DYNAMIC_RP_IMAGE}" != "${EXPECTED_DYNAMIC_RP_IMAGE}" ]]; then
-    echo "Error: Dynamic RP image: ${DYNAMIC_RP_IMAGE} does not match the desired image: ${EXPECTED_DYNAMIC_RP_IMAGE}."
-    exit 1
-fi
-
-if [[ "${UCP_IMAGE}" != "${EXPECTED_UCP_IMAGE}" ]]; then
-    echo "Error: UCP image: ${UCP_IMAGE} does not match the desired image: ${EXPECTED_UCP_IMAGE}."
-    exit 1
-fi
-
+echo "============================================================================"
 echo "Release verification successful."
+echo "============================================================================"
