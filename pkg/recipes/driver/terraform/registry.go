@@ -132,9 +132,11 @@ func ConfigureTerraformRegistry(
 		configContent.WriteString(fmt.Sprintf(`provider_installation {
   network_mirror {
     url = %q
-    include = ["*"]
+    include = ["*/*/*"]
   }
-  direct {}
+  direct {
+    exclude = ["*/*/*"]
+  }
 }
 `, strings.TrimRight(pm.URL, "/")))
 

@@ -1260,11 +1260,14 @@ b24gUm9vdCBDQSAxMA0GCSqGSIb3DQEBCwUAA4IBAQCTLMF4dYaD+3yL4FyYLG2o
 	require.True(t, strings.Contains(configContent, `url = "https://proxy.airgapped.local"`),
 		"MISSING: Provider mirror URL should be configured (without trailing slash)")
 
-	require.True(t, strings.Contains(configContent, `include = ["*"]`),
-		"MISSING: Provider mirror should include all providers with [\"*\"]")
+	require.True(t, strings.Contains(configContent, `include = ["*/*/*"]`),
+		"MISSING: Provider mirror should include all providers with [\"*/*/*\"]")
 
-	require.True(t, strings.Contains(configContent, "direct {}"),
-		"MISSING: Direct fallback should be configured after network mirror")
+	require.True(t, strings.Contains(configContent, "direct {"),
+		"MISSING: Direct block should be present")
+
+	require.True(t, strings.Contains(configContent, `exclude = ["*/*/*"]`),
+		"MISSING: Direct block should exclude all providers with [\"*/*/*\"]")
 
 	// Verify module registry configuration
 	require.True(t, strings.Contains(configContent, `host "gitlab" {`),

@@ -132,18 +132,8 @@ model TerraformModuleRegistryConfig {
 
 @doc("Configuration for a Terraform provider mirror. Allows overriding the default Terraform provider registry with a custom mirror.")
 model TerraformProviderMirrorConfig {
-  @doc("Type of mirror. Only 'filesystem' is supported. When type is 'filesystem': URL must point to a packaged filesystem mirror (zip/tar.gz) or a local path/URL (file:// or absolute path) to a ready mirror directory. Authentication and TLS (CA certificate, skipVerify) apply to downloading the file from HTTP(S) sources. The mirror is unpacked to a local directory and used via provider_installation.filesystem_mirror.")
-  type?: string;
-
-  @doc("URL to the mirror file or directory: http(s)://... .zip/.tar.gz => downloaded and extracted locally; file:///abs/path or plain absolute/relative path => used directly as a local directory. Example: 'https://terraform.example.com'")
+  @doc("URL to the mirror server implementing the provider network mirror protocol. Example: 'https://terraform.example.com'")
   url?: string;
-
-  @doc("Provider mappings used to translate between official and custom provider identifiers.")
-  providerMappings?: Record<string>;
-
-  @doc("Authentication configuration for accessing the provider mirror.")
-  authentication?: RegistryAuthConfig;
-
   @doc("TLS configuration for connecting to the provider mirror.")
   tls?: TLSConfig;
 }
@@ -170,9 +160,6 @@ model TerraformVersionConfig {
 model TLSConfig {
   @doc("Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.")
   caCertificate?: SecretReference;
-
-  @doc("Allows insecure connections (skip TLS verification). This is strongly discouraged in production environments. WARNING: This makes the connection vulnerable to man-in-the-middle attacks.")
-  skipVerify?: boolean = false;
 }
 
 @doc("Authentication configuration for accessing private Terraform registry mirrors.")
