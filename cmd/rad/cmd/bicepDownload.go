@@ -23,17 +23,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	bicepDownloadURL                    string
+	manifestToBicepExtensionDownloadURL string
+)
+
 var bicepDownloadCmd = &cobra.Command{
 	Use:   "download",
-	Short: "Download the bicep compiler",
-	Long:  `Downloads the bicep compiler locally`,
+	Short: "Download the bicep compiler and manifest-to-bicep extension",
+	Long:  `Downloads the latest bicep compiler and manifest-to-bicep extension locally.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
-		err := bicep.DownloadBicep()
+
+		options := bicep.DownloadOptions{
+			BicepURL:                    bicepDownloadURL,
+			ManifestToBicepExtensionURL: manifestToBicepExtensionDownloadURL,
+		}
+
+		err := bicep.DownloadBicepTools(options)
 		return err
 	},
 }
 
 func init() {
 	bicepCmd.AddCommand(bicepDownloadCmd)
+
+	bicepDownloadCmd.Flags().StringVar(&bicepDownloadURL, "bicep-download-url", "", "Custom URL for downloading the bicep compiler")
+	bicepDownloadCmd.Flags().StringVar(&manifestToBicepExtensionDownloadURL, "manifest-to-bicep-extension-download-url", "", "Custom URL for downloading the manifest-to-bicep extension")
 }

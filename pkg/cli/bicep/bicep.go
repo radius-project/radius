@@ -25,14 +25,26 @@ import (
 )
 
 const (
-	radBicepEnvVar = "RAD_BICEP"
-	binaryName     = "rad-bicep"
-	retryAttempts  = 10
-	retryDelaySecs = 5
+	radBicepEnvVar                     = "RAD_BICEP"
+	radManifestToBicepExtensionEnvVar  = "RAD_MANIFEST_TO_BICEP_EXTENSION"
+	binaryName                         = "rad-bicep"
+	manifestToBicepExtensionBinaryName = "manifest-to-bicep-extension"
+	retryAttempts                      = 10
+	retryDelaySecs                     = 5
 )
+
+// DownloadOptions represents the options for downloading bicep and manifest-to-bicep extension
+type DownloadOptions struct {
+	BicepURL                    string
+	ManifestToBicepExtensionURL string
+}
 
 func GetBicepFilePath() (string, error) {
 	return tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+}
+
+func GetManifestToBicepExtensionFilePath() (string, error) {
+	return tools.GetLocalFilepath(radManifestToBicepExtensionEnvVar, manifestToBicepExtensionBinaryName)
 }
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
@@ -41,6 +53,22 @@ func GetBicepFilePath() (string, error) {
 // IsBicepInstalled checks if the Bicep binary is installed on the local machine and returns a boolean and an error if one occurs.
 func IsBicepInstalled() (bool, error) {
 	filepath, err := GetBicepFilePath()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = os.Stat(filepath)
+	if err != nil && os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("error checking for %s: %v", filepath, err)
+	}
+
+	return true, nil
+}
+
+func IsManifestToBicepExtensionInstalled() (bool, error) {
+	filepath, err := GetManifestToBicepExtensionFilePath()
 	if err != nil {
 		return false, err
 	}
@@ -73,38 +101,55 @@ func DeleteBicep() error {
 // DownloadBicep updates our local copy of bicep
 //
 
-// DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
-// the download fails. If an error occurs, an error is returned.
+// DownloadBicep downloads both bicep and manifest-to-bicep extension using default options
 func DownloadBicep() error {
-	filepath, err := GetBicepFilePath()
+	return DownloadBicepTools(DownloadOptions{})
+}
+
+// retryDownload executes a download function with retry logic
+func retryDownload(toolName string, downloadFunc func() error) error {
+	for attempt := 1; attempt <= retryAttempts; attempt++ {
+		err := downloadFunc()
+		if err != nil {
+			if attempt == retryAttempts {
+				return fmt.Errorf("failed to download %s after %d attempts: %v", toolName, retryAttempts, err)
+			}
+			fmt.Printf("Attempt %d failed to download %s: %v\nRetrying in %d seconds...\n", attempt, toolName, err, retryDelaySecs)
+			time.Sleep(retryDelaySecs * time.Second)
+			continue
+		}
+		return nil
+	}
+	return nil
+}
+
+// DownloadBicepTools downloads bicep and manifest-to-bicep extension with custom options
+func DownloadBicepTools(options DownloadOptions) error {
+	// Download bicep CLI
+	bicepFilepath, err := GetBicepFilePath()
 	if err != nil {
 		return err
 	}
 
-	retryAttempts := 10
-	for attempt := 1; attempt <= retryAttempts; attempt++ {
-		success, err := retry(filepath, attempt, retryAttempts)
-		if err != nil {
-			return err
-		}
-		if success {
-			break
-		}
+	err = retryDownload("bicep", func() error {
+		return tools.DownloadToFolderWithOptions(bicepFilepath, options.BicepURL)
+	})
+	if err != nil {
+		return err
+	}
+
+	// Download manifest-to-bicep-extension CLI
+	manifestFilepath, err := tools.GetLocalFilepath(radManifestToBicepExtensionEnvVar, manifestToBicepExtensionBinaryName)
+	if err != nil {
+		return err
+	}
+
+	err = retryDownload("manifest-to-bicep-extension", func() error {
+		return tools.DownloadManifestToBicepExtension(manifestFilepath, options.ManifestToBicepExtensionURL)
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
-}
-
-func retry(filepath string, attempt, retryAttempts int) (bool, error) {
-	err := tools.DownloadToFolder(filepath)
-	if err != nil {
-		if attempt == retryAttempts {
-			return false, fmt.Errorf("failed to download bicep: %v", err)
-		}
-		fmt.Printf("Attempt %d failed to download bicep: %v\nRetrying...", attempt, err)
-		time.Sleep(retryDelaySecs * time.Second)
-		return false, nil
-	}
-
-	return true, nil
 }
