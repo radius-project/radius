@@ -18,11 +18,13 @@ package terraform
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -322,6 +324,15 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 		maps.Copy(envVars, options.RegistryEnv)
 	}
 
+	// Ensure Azure auth env vars are set for providers like azapi that rely on Azure SDK defaults
+	if e != nil { // executor has UCP connection to discover creds
+		updated, err := e.addAzureAuthEnvironmentVariables(ctx, envVars, options)
+		if err != nil {
+			logger.Info("Failed to set Azure auth environment variables", "error", err.Error())
+		}
+		envVarUpdate = envVarUpdate || updated
+	}
+
 	// Set the environment variables for the Terraform process
 	if envVarUpdate || len(envVars) > 0 {
 		logger.Info("Setting environment variables for Terraform process",
@@ -339,6 +350,123 @@ func (e *executor) setEnvironmentVariables(ctx context.Context, tf *tfexec.Terra
 	return nil
 }
 
+// addAzureAuthEnvironmentVariables sets AZURE_* and ARM_* environment variables based on UCP credentials so
+// SDK-based providers (e.g., azapi) authenticate via Workload Identity or Service Principal without Azure CLI.
+// Returns true if envVars was modified.
+func (e *executor) addAzureAuthEnvironmentVariables(ctx context.Context, envVars map[string]string, options Options) (bool, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if e.ucpConn == nil || e.secretProvider == nil {
+		return false, nil
+	}
+
+	// Build provider config using existing builder to obtain creds and subscription
+	azBuilder := providers.NewAzureProvider(e.ucpConn, e.secretProvider)
+	cfg, err := azBuilder.BuildConfig(ctx, options.EnvConfig)
+	if err != nil {
+		return false, err
+	}
+	if len(cfg) == 0 {
+		return false, nil
+	}
+
+	changed := false
+	// Map values
+	getStr := func(k string) string {
+		if v, ok := cfg[k]; ok {
+			if s, ok := v.(string); ok {
+				return s
+			}
+		}
+		return ""
+	}
+	getBool := func(k string) bool {
+		if v, ok := cfg[k]; ok {
+			if b, ok := v.(bool); ok {
+				return b
+			}
+		}
+		return false
+	}
+
+	subID := getStr("subscription_id")
+	clientID := getStr("client_id")
+	tenantID := getStr("tenant_id")
+	clientSecret := getStr("client_secret")
+	useOIDC := getBool("use_oidc")
+	oidcTokenPath := getStr("oidc_token_file_path")
+
+	// Set ARM_* (Terraform providers) and AZURE_* (Azure SDK/azapi) variables
+	if subID != "" {
+		if envVars["ARM_SUBSCRIPTION_ID"] == "" {
+			envVars["ARM_SUBSCRIPTION_ID"] = subID
+			changed = true
+		}
+	}
+	if clientID != "" {
+		if envVars["ARM_CLIENT_ID"] == "" {
+			envVars["ARM_CLIENT_ID"] = clientID
+			changed = true
+		}
+		if envVars["AZURE_CLIENT_ID"] == "" {
+			envVars["AZURE_CLIENT_ID"] = clientID
+			changed = true
+		}
+	}
+	if tenantID != "" {
+		if envVars["ARM_TENANT_ID"] == "" {
+			envVars["ARM_TENANT_ID"] = tenantID
+			changed = true
+		}
+		if envVars["AZURE_TENANT_ID"] == "" {
+			envVars["AZURE_TENANT_ID"] = tenantID
+			changed = true
+		}
+	}
+	if clientSecret != "" {
+		if envVars["ARM_CLIENT_SECRET"] == "" {
+			envVars["ARM_CLIENT_SECRET"] = clientSecret
+			changed = true
+		}
+		if envVars["AZURE_CLIENT_SECRET"] == "" {
+			envVars["AZURE_CLIENT_SECRET"] = clientSecret
+			changed = true
+		}
+	}
+	if useOIDC && oidcTokenPath != "" {
+		if envVars["ARM_USE_OIDC"] == "" {
+			envVars["ARM_USE_OIDC"] = "true"
+			changed = true
+		}
+		if envVars["ARM_OIDC_TOKEN_FILE_PATH"] == "" {
+			envVars["ARM_OIDC_TOKEN_FILE_PATH"] = oidcTokenPath
+			changed = true
+		}
+		// For Azure SDK workload identity
+		if envVars["AZURE_FEDERATED_TOKEN_FILE"] == "" {
+			envVars["AZURE_FEDERATED_TOKEN_FILE"] = oidcTokenPath
+			changed = true
+		}
+	}
+
+	// Log key vars for troubleshooting (values redacted where sensitive)
+	if changed {
+		logger.Info("Set Azure auth env vars for Terraform process",
+			"ARM_SUBSCRIPTION_ID_set", subID != "",
+			"ARM_CLIENT_ID_set", clientID != "",
+			"ARM_TENANT_ID_set", tenantID != "",
+			"ARM_CLIENT_SECRET_set", clientSecret != "",
+			"ARM_USE_OIDC", useOIDC,
+			"ARM_OIDC_TOKEN_FILE_PATH_set", oidcTokenPath != "",
+			"AZURE_CLIENT_ID_set", clientID != "",
+			"AZURE_TENANT_ID_set", tenantID != "",
+			"AZURE_FEDERATED_TOKEN_FILE_set", oidcTokenPath != "",
+		)
+	}
+
+	return changed, nil
+}
+
 // tlsCertificatePaths holds paths to temporary certificate files
 type tlsCertificatePaths struct {
 	// CAPath is the path to the CA certificate file
@@ -352,137 +480,55 @@ func addTLSEnvironmentVariables(
 ) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Debug: Log the state of options to understand why TLS might not be configured
-	logger.Info("DEBUG: Checking TLS configuration state",
-		"hasEnvRecipe", options.EnvRecipe != nil,
-		"envRecipeNil", options.EnvRecipe == nil)
-
-	if options.EnvRecipe != nil {
-		logger.Info("DEBUG: EnvRecipe exists, checking TLS",
-			"hasTLS", options.EnvRecipe.TLS != nil,
-			"tlsNil", options.EnvRecipe.TLS == nil)
+	// TODO(rp TLS): For now, skip honoring recipe TLS certificate settings and rely on the
+	// system CA bundle mounted at /etc/ssl/certs. If this works in all environments,
+	// we can remove the TLS settings from the recipe config types entirely.
+	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
+		logger.Info("Skipping recipe TLS settings; using system CA bundle instead")
+	} else {
+		logger.Info("No recipe TLS configuration; using system CA bundle")
 	}
 
-	// Handle TLS configuration if present in the recipe definition
-	if options.EnvRecipe != nil && options.EnvRecipe.TLS != nil {
-		logger.Info("Configuring TLS settings for recipe")
-		logger.Info("DEBUG: TLS configuration details",
-			"hasCACertificate", options.EnvRecipe.TLS.CACertificate != nil,
-			"secretsCount", len(options.Secrets))
+	// Choose system certificate locations. Prefer Debian/Ubuntu, then RHEL/CentOS.
+	certFileCandidates := []string{
+		"/etc/ssl/certs/ca-certificates.crt",
+		"/etc/pki/tls/certs/ca-bundle.crt",
+	}
+	certDirCandidates := []string{
+		"/etc/ssl/certs",
+		"/etc/pki/tls/certs",
+	}
 
-		// Only write certificate files if certificates are actually provided
-		if options.EnvRecipe.TLS.CACertificate != nil {
-			logger.Info("DEBUG: CA certificate configuration found",
-				"source", options.EnvRecipe.TLS.CACertificate.Source,
-				"key", options.EnvRecipe.TLS.CACertificate.Key)
-			// Note: We need the working directory, but don't have access to tf here
-			// This function is called before tf is fully initialized, so we use RootDir
-			workingDir := filepath.Join(options.RootDir, executionSubDir)
-			certPaths, err := writeTLSCertificates(ctx, workingDir, options.EnvRecipe.TLS, options.Secrets)
-			if err != nil {
-				return fmt.Errorf("failed to write TLS certificates: %w", err)
-			}
+	systemCertFile := firstExisting(certFileCandidates)
+	systemCertDir := firstExistingDir(certDirCandidates)
 
-			// CA certificate configuration
-			if certPaths != nil && certPaths.CAPath != "" {
-				logger.Info("Configuring comprehensive CA certificate environment for Git operations", "path", certPaths.CAPath)
+	if systemCertFile == "" || systemCertDir == "" {
+		logger.Info("System certificate paths not found; leaving TLS env unchanged",
+			"file", systemCertFile, "dir", systemCertDir)
+		return nil
+	}
 
-				// Set comprehensive Git and SSL environment variables for Terraform process
-				gitSSLEnvVars := map[string]string{
-					"GIT_SSL_CAINFO":     certPaths.CAPath,               // Primary Git SSL CA certificate file
-					"GIT_SSL_CAPATH":     certPaths.CAPath,               // Git SSL CA certificate file (not directory)
-					"SSL_CERT_FILE":      certPaths.CAPath,               // General SSL certificate file for curl/wget
-					"SSL_CERT_DIR":       filepath.Dir(certPaths.CAPath), // General SSL certificate directory
-					"CURL_CA_BUNDLE":     certPaths.CAPath,               // Curl CA bundle file
-					"REQUESTS_CA_BUNDLE": certPaths.CAPath,               // Python requests library CA bundle
-				}
+	logger.Info("Using system certificate paths", "file", systemCertFile, "dir", systemCertDir)
 
-				// Add all SSL environment variables to the Terraform process environment
-				for envVar, envValue := range gitSSLEnvVars {
-					envVars[envVar] = envValue
-					logger.Info("Added Git SSL env var for Terraform process", "var", envVar, "value", envValue)
-				}
-
-				logger.Info("Configured comprehensive SSL environment variables",
-					"caPath", certPaths.CAPath,
-					"envVarsCount", len(gitSSLEnvVars))
-				// Note: Registry operations use different SSL environment variables set separately in registry configuration
-			}
-		} else {
-			logger.Info("DEBUG: No CA certificate configured in TLS settings")
-		}
-	} else {
-		logger.Info("DEBUG: No TLS configuration found in recipe")
-
-		// Check if we're in an air-gapped environment by looking at registry settings
-		// If we have registry environment variables, we might need SSL certificates for Git too
-		if len(options.RegistryEnv) > 0 {
-			logger.Info("DEBUG: Registry environment detected, checking for SSL certificate needs")
-
-			// Look for any SSL certificate files in secrets that might be needed for Git
-			for secretKey, secretData := range options.Secrets {
-				logger.Info("DEBUG: Checking secret for certificates",
-					"secretKey", secretKey,
-					"dataKeysCount", len(secretData.Data))
-
-				for dataKey, dataValue := range secretData.Data {
-					if strings.Contains(dataKey, "cert") || strings.Contains(dataKey, "ca") ||
-						strings.Contains(strings.ToLower(dataValue), "-----begin certificate-----") {
-						logger.Info("DEBUG: Found potential certificate in secret",
-							"secretKey", secretKey,
-							"dataKey", dataKey,
-							"valueLength", len(dataValue),
-							"isFilePath", isFilePath(dataValue),
-							"containsCertMarker", strings.Contains(strings.ToLower(dataValue), "-----begin certificate-----"))
-
-						// If this looks like certificate content (not a file path), try to use it
-						if !isFilePath(dataValue) && strings.Contains(strings.ToLower(dataValue), "-----begin certificate-----") {
-							logger.Info("DEBUG: Attempting to use certificate for Git SSL")
-
-							// Write this certificate to a temporary file and set Git SSL environment
-							workingDir := filepath.Join(options.RootDir, executionSubDir)
-							tlsDir := filepath.Join(workingDir, ".tls")
-							if err := os.MkdirAll(tlsDir, 0700); err != nil {
-								logger.Error(err, "Failed to create TLS directory for fallback certificate")
-								continue
-							}
-
-							certPath := filepath.Join(tlsDir, "fallback-ca.crt")
-							if err := os.WriteFile(certPath, []byte(dataValue), 0600); err != nil {
-								logger.Error(err, "Failed to write fallback certificate")
-								continue
-							}
-
-							// Set Git SSL environment variables using this certificate
-							gitSSLEnvVars := map[string]string{
-								"GIT_SSL_CAINFO":     certPath,
-								"GIT_SSL_CAPATH":     certPath,
-								"SSL_CERT_FILE":      certPath,
-								"SSL_CERT_DIR":       tlsDir,
-								"CURL_CA_BUNDLE":     certPath,
-								"REQUESTS_CA_BUNDLE": certPath,
-							}
-
-							// Set in both OS environment and Terraform process environment
-							for envVar, envValue := range gitSSLEnvVars {
-								os.Setenv(envVar, envValue)
-								envVars[envVar] = envValue
-								logger.Info("DEBUG: Set fallback Git SSL environment variable", "var", envVar, "value", envValue)
-							}
-
-							os.Setenv("GIT_CURL_VERBOSE", "1")
-
-							logger.Info("DEBUG: Configured fallback Git SSL certificate",
-								"certPath", certPath,
-								"certSize", len(dataValue))
-
-							// Stop after finding the first usable certificate
-							break
-						}
-					}
-				}
-			}
-		}
+	// Only set defaults if not already present in envVars. Do not mutate process env.
+	if val, ok := envVars["SSL_CERT_FILE"]; !ok || val == "" {
+		envVars["SSL_CERT_FILE"] = systemCertFile
+	}
+	if val, ok := envVars["SSL_CERT_DIR"]; !ok || val == "" {
+		envVars["SSL_CERT_DIR"] = systemCertDir
+	}
+	if val, ok := envVars["CURL_CA_BUNDLE"]; !ok || val == "" {
+		envVars["CURL_CA_BUNDLE"] = systemCertFile
+	}
+	if val, ok := envVars["REQUESTS_CA_BUNDLE"]; !ok || val == "" {
+		envVars["REQUESTS_CA_BUNDLE"] = systemCertFile
+	}
+	// For Git, CAINFO is a file and CAPATH is a directory.
+	if val, ok := envVars["GIT_SSL_CAINFO"]; !ok || val == "" {
+		envVars["GIT_SSL_CAINFO"] = systemCertFile
+	}
+	if val, ok := envVars["GIT_SSL_CAPATH"]; !ok || val == "" {
+		envVars["GIT_SSL_CAPATH"] = systemCertDir
 	}
 
 	return nil
@@ -625,6 +671,26 @@ func getCertPreview(cert string) string {
 	return "empty"
 }
 
+// firstExisting returns the first path that exists as a regular file.
+func firstExisting(paths []string) string {
+	for _, p := range paths {
+		if fi, err := os.Stat(p); err == nil && fi.Mode().IsRegular() {
+			return p
+		}
+	}
+	return ""
+}
+
+// firstExistingDir returns the first path that exists as a directory.
+func firstExistingDir(paths []string) string {
+	for _, p := range paths {
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			return p
+		}
+	}
+	return ""
+}
+
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
 func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -698,7 +764,245 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
+	// After module download and config save, force-inject credentials into any explicit provider blocks
+	// in both the working directory and downloaded module sources. This ensures end-user recipes that
+	// declare provider blocks always receive UCP credentials.
+	if err := e.forceInjectProviderCredentials(ctx, workingDir, options); err != nil {
+		logger.Info("Provider block injection encountered a non-fatal error", "error", err.Error())
+		// Do not fail the deployment on injection issues; continue with best-effort
+	}
+
 	return secretSuffix, nil
+}
+
+// forceInjectProviderCredentials scans all .tf and .tf.json files under rootDir (including .terraform/modules)
+// and injects UCP-provided credentials into any explicit provider blocks. This is a best-effort operation.
+func (e *executor) forceInjectProviderCredentials(ctx context.Context, rootDir string, options Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Build provider config maps from UCP credentials
+	ucpProviders := providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider)
+	providerConfigs := make(map[string]map[string]any)
+	for name, builder := range ucpProviders {
+		cfg, err := builder.BuildConfig(ctx, options.EnvConfig)
+		if err != nil {
+			logger.Info("Skipping provider due to build error", "provider", name, "error", err.Error())
+			continue
+		}
+		if len(cfg) > 0 {
+			providerConfigs[name] = cfg
+		}
+	}
+	if len(providerConfigs) == 0 {
+		logger.Info("No UCP provider configurations available to inject")
+		return nil
+	}
+
+	// Walk all files and inject where applicable
+	return filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".tf") {
+			return e.injectIntoHCLFile(ctx, path, providerConfigs)
+		}
+		if strings.HasSuffix(path, ".tf.json") {
+			return e.injectIntoJSONFile(ctx, path, providerConfigs)
+		}
+		return nil
+	})
+}
+
+// injectIntoHCLFile merges or appends provider credential attributes into provider blocks in an HCL file.
+// It replaces existing keys' values when present; otherwise, it appends missing ones. Nested blocks are left as-is.
+func (e *executor) injectIntoHCLFile(ctx context.Context, filePath string, providerConfigs map[string]map[string]any) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	contentBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil
+	}
+	content := string(contentBytes)
+	modified := content
+
+	for providerName, cfg := range providerConfigs {
+		// Find all occurrences of provider "name" {
+		startRe := regexp.MustCompile(fmt.Sprintf(`(?m)^[ \t]*provider\s+"%s"\s*\{`, regexp.QuoteMeta(providerName)))
+		locs := startRe.FindAllStringIndex(modified, -1)
+		if len(locs) == 0 {
+			continue
+		}
+		// Process from end to start to keep indices stable after replacements
+		for i := len(locs) - 1; i >= 0; i-- {
+			startIdx := locs[i][0]
+			// Find the opening brace position
+			openBraceIdx := strings.Index(modified[startIdx:], "{")
+			if openBraceIdx < 0 {
+				continue
+			}
+			openIdx := startIdx + openBraceIdx
+			closeIdx := findMatchingClosingBrace(modified, openIdx)
+			if closeIdx <= openIdx || closeIdx > len(modified) {
+				continue
+			}
+
+			blockStart := startIdx
+			bodyStart := openIdx + 1
+			bodyEnd := closeIdx
+
+			header := modified[blockStart:bodyStart]
+			body := modified[bodyStart:bodyEnd]
+			footer := modified[bodyEnd:]
+
+			// For each key in cfg, replace existing or append new
+			for key, val := range cfg {
+				switch v := val.(type) {
+				case string:
+					lineRe := regexp.MustCompile("(?m)^\\s*" + regexp.QuoteMeta(key) + "\\s*=.*$")
+					replacement := fmt.Sprintf("  %s = \"%s\"", key, v)
+					if lineRe.MatchString(body) {
+						body = lineRe.ReplaceAllString(body, replacement)
+					} else {
+						body = strings.TrimRight(body, "\n") + "\n" + replacement + "\n"
+					}
+				case bool:
+					lineRe := regexp.MustCompile("(?m)^\\s*" + regexp.QuoteMeta(key) + "\\s*=.*$")
+					replacement := fmt.Sprintf("  %s = %t", key, v)
+					if lineRe.MatchString(body) {
+						body = lineRe.ReplaceAllString(body, replacement)
+					} else {
+						body = strings.TrimRight(body, "\n") + "\n" + replacement + "\n"
+					}
+				case int, int64, float64:
+					lineRe := regexp.MustCompile("(?m)^\\s*" + regexp.QuoteMeta(key) + "\\s*=.*$")
+					replacement := fmt.Sprintf("  %s = %v", key, v)
+					if lineRe.MatchString(body) {
+						body = lineRe.ReplaceAllString(body, replacement)
+					} else {
+						body = strings.TrimRight(body, "\n") + "\n" + replacement + "\n"
+					}
+				case map[string]any:
+					// Add nested block if not already present
+					blockRe := regexp.MustCompile("(?m)^\\s*" + regexp.QuoteMeta(key) + "\\s*\\{")
+					if !blockRe.MatchString(body) {
+						var bldr []string
+						bldr = append(bldr, fmt.Sprintf("  %s {", key))
+						for nk, nv := range v {
+							switch nvTyped := nv.(type) {
+							case string:
+								bldr = append(bldr, fmt.Sprintf("    %s = \"%s\"", nk, nvTyped))
+							case bool:
+								bldr = append(bldr, fmt.Sprintf("    %s = %t", nk, nvTyped))
+							case int, int64, float64:
+								bldr = append(bldr, fmt.Sprintf("    %s = %v", nk, nv))
+							}
+						}
+						bldr = append(bldr, "  }")
+						body = strings.TrimRight(body, "\n") + "\n" + strings.Join(bldr, "\n") + "\n"
+					}
+				}
+			}
+
+			// Rebuild content: header + body + closing brace + rest
+			modified = modified[:blockStart] + header + body + "}" + footer
+		}
+	}
+
+	if modified != content {
+		if err := os.WriteFile(filePath, []byte(modified), 0644); err != nil {
+			logger.Info("Failed to write injected HCL file", "file", filePath, "error", err.Error())
+			return nil
+		}
+	}
+	return nil
+}
+
+// findMatchingClosingBrace finds the index of the matching '}' for a '{' at openIdx, considering nested braces and quoted strings.
+func findMatchingClosingBrace(s string, openIdx int) int {
+	depth := 0
+	inStr := false
+	escape := false
+	for i := openIdx; i < len(s); i++ {
+		c := s[i]
+		if inStr {
+			if escape {
+				escape = false
+				continue
+			}
+			if c == '\\' {
+				escape = true
+				continue
+			}
+			if c == '"' {
+				inStr = false
+			}
+			continue
+		}
+		if c == '"' {
+			inStr = true
+			continue
+		}
+		if c == '{' {
+			depth++
+			continue
+		}
+		if c == '}' {
+			depth--
+			if depth == 0 {
+				return i
+			}
+			continue
+		}
+	}
+	return -1
+}
+
+// injectIntoJSONFile merges provider credential attributes into JSON-based Terraform files.
+func (e *executor) injectIntoJSONFile(ctx context.Context, filePath string, providerConfigs map[string]map[string]any) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil
+	}
+	var tfObj map[string]any
+	if err := json.Unmarshal(data, &tfObj); err != nil {
+		return nil
+	}
+	provAny, ok := tfObj["provider"]
+	if !ok {
+		return nil
+	}
+	provMap, ok := provAny.(map[string]any)
+	if !ok {
+		return nil
+	}
+	changed := false
+	for name, cfg := range providerConfigs {
+		if listAny, exists := provMap[name]; exists {
+			if arr, ok := listAny.([]any); ok {
+				for i := range arr {
+					if m, ok := arr[i].(map[string]any); ok {
+						for k, v := range cfg {
+							m[k] = v
+						}
+						arr[i] = m
+						changed = true
+					}
+				}
+			}
+		}
+	}
+	if changed {
+		out, err := json.MarshalIndent(tfObj, "", "  ")
+		if err == nil {
+			if err := os.WriteFile(filePath, out, 0644); err != nil {
+				logger.Info("Failed to write injected JSON file", "file", filePath, "error", err.Error())
+			}
+		}
+	}
+	return nil
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it
@@ -768,6 +1072,38 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 			logger.Info("Certificate file exists and accessible", "path", caInfo)
 		} else {
 			logger.Error(err, "Certificate file not accessible", "path", caInfo)
+		}
+	}
+
+	// Azure auth env diagnostics (for azurerm/azapi SDK auth)
+	azureEnvVars := []string{
+		"ARM_SUBSCRIPTION_ID", "ARM_TENANT_ID", "ARM_CLIENT_ID", "ARM_CLIENT_SECRET",
+		"ARM_USE_OIDC", "ARM_OIDC_TOKEN_FILE_PATH",
+		"AZURE_TENANT_ID", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_FEDERATED_TOKEN_FILE",
+	}
+	logger.Info("Checking Azure auth environment variables for debugging")
+	for _, envKey := range azureEnvVars {
+		if value := os.Getenv(envKey); value != "" {
+			if strings.Contains(envKey, "SECRET") {
+				logger.Info("Azure auth env var set", "key", envKey, "value", "<redacted>")
+			} else {
+				logger.Info("Azure auth env var set", "key", envKey, "value", value)
+			}
+		} else {
+			logger.Info("Azure auth env var not set", "key", envKey)
+		}
+	}
+	// Verify OIDC token file presence if configured
+	tokenPath := os.Getenv("AZURE_FEDERATED_TOKEN_FILE")
+	if tokenPath == "" {
+		// Fallback to common path used by azurerm provider config
+		tokenPath = "/var/run/secrets/azure/tokens/azure-identity-token"
+	}
+	if tokenPath != "" {
+		if fi, err := os.Stat(tokenPath); err == nil && fi.Mode().IsRegular() {
+			logger.Info("OIDC token file present", "path", tokenPath, "size", fi.Size())
+		} else if err != nil {
+			logger.Info("OIDC token file missing or inaccessible", "path", tokenPath, "error", err.Error())
 		}
 	}
 

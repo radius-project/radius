@@ -1,0 +1,12 @@
+{{- if .Values.global.rootCA.cert }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: root-ca-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: radius
+data:
+  ca.crt: |-
+{{ .Values.global.rootCA.cert | indent 4 }}
+{{- end}}

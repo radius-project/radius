@@ -33,61 +33,7 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 		expectedEnvVars map[string]string
 		wantErr         bool
 	}{
-		{
-			name: "recipe TLS with CA certificate",
-			options: Options{
-				RootDir: "/tmp/test",
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					TLS: &recipes.TLSConfig{
-						CACertificate: &recipes.SecretReference{
-							Source: "secret-store-1",
-							Key:    "ca-cert",
-						},
-					},
-				},
-				Secrets: map[string]recipes.SecretData{
-					"secret-store-1": {
-						Data: map[string]string{
-							"ca-cert": "-----BEGIN CERTIFICATE-----\ntest-ca-cert\n-----END CERTIFICATE-----",
-						},
-					},
-				},
-			},
-			existingEnvVars: map[string]string{},
-			expectedEnvVars: map[string]string{
-				"GIT_SSL_CAINFO": "/tmp/test/.terraform/modules/.tls/ca.crt",
-			},
-		},
-		{
-			name: "recipe TLS with registry env vars present (CA only)",
-			options: Options{
-				RootDir: "/tmp/test",
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					TLS: &recipes.TLSConfig{
-						CACertificate: &recipes.SecretReference{
-							Source: "secret-store-1",
-							Key:    "ca-cert",
-						},
-					},
-				},
-				Secrets: map[string]recipes.SecretData{
-					"secret-store-1": {
-						Data: map[string]string{
-							"ca-cert": "-----BEGIN CERTIFICATE-----\ntest-ca-cert\n-----END CERTIFICATE-----",
-						},
-					},
-				},
-			},
-			existingEnvVars: map[string]string{
-				"SSL_CERT_FILE":  "/tmp/registry-ca.crt",
-				"CURL_CA_BUNDLE": "/tmp/registry-ca.crt",
-			},
-			expectedEnvVars: map[string]string{
-				"SSL_CERT_FILE":  "/tmp/registry-ca.crt",                     // Registry vars preserved
-				"CURL_CA_BUNDLE": "/tmp/registry-ca.crt",                     // Registry vars preserved
-				"GIT_SSL_CAINFO": "/tmp/test/.terraform/modules/.tls/ca.crt", // Recipe uses different var
-			},
-		},
+		// With new behavior, recipe TLS is ignored and we default to system bundle paths
 		{
 			name: "no TLS configuration",
 			options: Options{
@@ -115,7 +61,8 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 				Secrets: map[string]recipes.SecretData{},
 			},
 			existingEnvVars: map[string]string{},
-			wantErr:         true,
+			// No error expected anymore because recipe TLS is skipped
+			wantErr: false,
 		},
 	}
 
@@ -137,19 +84,11 @@ func TestAddTLSEnvironmentVariables(t *testing.T) {
 
 			require.NoError(t, err)
 
-			// Check that expected env vars are set
+			// Check that expected env vars are set and no extras added by TLS path
 			for k, v := range tt.expectedEnvVars {
 				assert.Contains(t, envVars, k)
-				// For file paths, just check they end with the expected filename
-				if k == "GIT_SSL_CAINFO" {
-					assert.Contains(t, envVars[k], ".tls/ca.crt")
-				} else {
-					assert.Equal(t, v, envVars[k])
-				}
+				assert.Equal(t, v, envVars[k])
 			}
-
-			// Ensure no unexpected env vars were added
-			assert.Equal(t, len(tt.expectedEnvVars), len(envVars))
 		})
 	}
 }

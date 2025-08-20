@@ -10,10 +10,12 @@ global:
     # Dotnet runtime and Go use this environment variable to load the root CA.
     sslCertDirEnvVar: "SSL_CERT_DIR"
   appendRootCA:
-    enabled: false
+    # Auto-enabled when global.rootCA.cert is provided via --set-file
+    # Init image to normalize and prepare certs directory
     initImage: "alpine:latest"
-    bundleMountPath: "/work/etc/ssl/certs"
-    sslCertFileEnvVar: "SSL_CERT_FILE"
+    # Working and target mount paths
+    workDir: "/work/certs"
+    targetMountPath: "/etc/ssl/certs"
 
   prometheus:
     enabled: true

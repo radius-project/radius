@@ -46,7 +46,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"app.terraform.io": {
-								Host: "app.terraform.io",
+								URL: "app.terraform.io",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{Secret: "/secret/store/registry"},
 								},
@@ -89,7 +89,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"app.terraform.io": {
-								Host: "app.terraform.io",
+								URL: "app.terraform.io",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{Secret: "/secret/store/registry"},
 								},
@@ -141,7 +141,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"app.terraform.io": {
-								Host: "app.terraform.io",
+								URL: "app.terraform.io",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{Secret: "/secret/store/registry"},
 								},
@@ -174,7 +174,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"registry.example.com": {
-								Host: "registry.example.com",
+								URL: "registry.example.com",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token: &datamodel.TokenConfig{Secret: "/secret/store/shared"},
 								},
@@ -204,7 +204,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"registry.example.com": {
-								Host: "registry.example.com",
+								URL: "registry.example.com",
 								Authentication: datamodel.RegistryAuthConfig{
 									Token:           &datamodel.TokenConfig{Secret: "/secret/store/token"},
 									AdditionalHosts: []string{"gitlab.com", "packages.gitlab.com"},
@@ -278,7 +278,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"registry.example.com": {
-								Host:           "registry.example.com",
+								URL:            "registry.example.com",
 								Authentication: datamodel.RegistryAuthConfig{AdditionalHosts: []string{}},
 							},
 						},
@@ -295,7 +295,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"registry.example.com": {
-								Host:           "registry.example.com",
+								URL:            "registry.example.com",
 								Authentication: datamodel.RegistryAuthConfig{Token: &datamodel.TokenConfig{Secret: ""}},
 							},
 						},
@@ -312,7 +312,7 @@ func TestGetTerraformRegistrySecretIDs(t *testing.T) {
 					Terraform: datamodel.TerraformConfigProperties{
 						ModuleRegistries: map[string]*datamodel.TerraformModuleRegistryConfig{
 							"registry.example.com": {
-								Host:           "registry.example.com",
+								URL:            "registry.example.com",
 								Authentication: datamodel.RegistryAuthConfig{Token: nil},
 							},
 						},
