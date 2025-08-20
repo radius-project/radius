@@ -47,52 +47,6 @@ spec:
           cp /etc/ssl/certs/* /etc/radius-ssl/certs/
           cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
 {{ .Values.global.appendRootCA.cert | nindent 10 }}CERTEOF
-          cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'DIGICERTEOF'
-          -----BEGIN CERTIFICATE-----
-          MIIH1DCCBrygAwIBAgIQCxaAt9ua8TWYGLt/afD2QjANBgkqhkiG9w0BAQsFADBN
-          MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMScwJQYDVQQDEx5E
-          aWdpQ2VydCBTSEEyIFNlY3VyZSBTZXJ2ZXIgQ0EwHhcNMjUwNzI1MDAwMDAwWhcN
-          MjYwMTI1MjM1OTU5WjB/MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3Rv
-          bjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0
-          aW9uMSkwJwYDVQQDEyBzdGFtcDIubG9naW4ubWljcm9zb2Z0b25saW5lLmNvbTCC
-          ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMv0UQeMa43rcv9KQ01okWkf
-          wHIVWuxaGOQ/eGYuhRpG1U/aasl502WgDhYjYfotoIJhF21f1FTHnx7RfcidnA4Q
-          vMvUQudqz+pNa7/+SxF0/niJyvVPu1T4ZhgxLozeZtbDBh1sNdSqOnevgY2zYZRS
-          HOc+zXAWENTWIQNGT7ue2iwuqvXO45AGmt2nQzJcKZRJvaF6dtaY93EyoWQhATTF
-          UrRt++Oug9Djfp3M9zvi9uoET2qsrU4R+vdrHowBW4Dq+mFIdP7G0D8kQHoHNH7t
-          K5G2XB+hw7yRQJPLeecFmG+fhN9DlfmSCfFYiJ1PUb46PExmI+HZ7isoRen8bQEC
-          AwEAAaOCBHwwggR4MB8GA1UdIwQYMBaAFA+AYRyCMWHVLyjnjUY4tCzhxtniMB0G
-          A1UdDgQWBBQXNw5UGdDTfbv6BeMagB+znfUeWjCCASYGA1UdEQSCAR0wggEZgiBz
-          dGFtcDIubG9naW4ubWljcm9zb2Z0b25saW5lLmNvbYIdbG9naW4ubWljcm9zb2Z0
-          b25saW5lLWludC5jb22CG2xvZ2luLm1pY3Jvc29mdG9ubGluZS1wLmNvbYIZbG9n
-          aW4ubWljcm9zb2Z0b25saW5lLmNvbYIebG9naW4yLm1pY3Jvc29mdG9ubGluZS1p
-          bnQuY29tghpsb2dpbjIubWljcm9zb2Z0b25saW5lLmNvbYIfbG9naW5leC5taWNy
-          b3NvZnRvbmxpbmUtaW50LmNvbYIbbG9naW5leC5taWNyb3NvZnRvbmxpbmUuY29t
-          giRzdGFtcDIubG9naW4ubWljcm9zb2Z0b25saW5lLWludC5jb20wPgYDVR0gBDcw
-          NTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2VydC5j
-          b20vQ1BTMA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
-          BQUHAwIwgY0GA1UdHwSBhTCBgjA/oD2gO4Y5aHR0cDovL2NybDMuZGlnaWNlcnQu
-          Y29tL0RpZ2ljZXJ0U0hBMlNlY3VyZVNlcnZlckNBLTEuY3JsMD+gPaA7hjlodHRw
-          Oi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaWNlcnRTSEEyU2VjdXJlU2VydmVyQ0Et
-          MS5jcmwwfgYIKwYBBQUHAQEEcjBwMCQGCCsGAQUFBzABhhhodHRwOi8vb2NzcC5k
-          aWdpY2VydC5jb20wSAYIKwYBBQUHMAKGPGh0dHA6Ly9jYWNlcnRzLmRpZ2ljZXJ0
-          LmNvbS9EaWdpQ2VydFNIQTJTZWN1cmVTZXJ2ZXJDQS0yLmNydDAMBgNVHRMBAf8E
-          AjAAMIIBfQYKKwYBBAHWeQIEAgSCAW0EggFpAWcAdQCWl2S/VViXrfdDh2g3CEJ3
-          6fA61fak8zZuRqQ/D8qpxgAAAZhCEFwPAAAEAwBGMEQCID0y+hncWFDCHcsJvVTP
-          Nb8WNLgiW/l48DOGnJA3iXV4AiA6IgToc3f80RnmV5RcixewO8qNxBOFpfCPnOh1
-          coJgTQB2AGQRxGykEuyniRyiAi4AvKtPKAfUHjUnq+r+1QPJfc3wAAABmEIQXAoA
-          AAQDAEcwRQIgWhFtglh6bFUqNNn/v7Uj+gRFcvLw/eP3ShZOfubp0WwCIQDg77PX
-          aDG2ikVZ6A6IGuLaHhCFr0a0uBSmFbosSslIJAB2AEmcm2neHXzs/DbezYdkprhb
-          rwqHgBnRVVL76esp3fjDAAABmEIQXB4AAAQDAEcwRQIhAJvr7+7so+cX+q3Dc858
-          XmEMpGmorJlgLiizLgzIzighAiAstl4Z4kjbA9a8kcQkSoCzLvs2eugqCY5AXFcx
-          hHyCIzANBgkqhkiG9w0BAQsFAAOCAQEAtGjaydSFK7Bx1wRzqIYcxWz6AF22hY5A
-          trxPxLig5j1PAtLj/WDEBAH8wsioFNGA0sGYJYPtiOy0143dkTbVxnRPZBbmIDbt
-          X0OhS8IDXrFW7imaDAPaxqz5ABsTblDAO7DmwY3bn93F6LoMtAPIaRi4I5NbHQeI
-          5TdlKCJ99b65tdPcImFo+0Es5UJuGX43ShXts76fvIEGl/DNqdd6V8S3xJyn/8r+
-          R42DbUkmQ3zbnjprMVKK2c3fdWJ9NsjP33cMyRmpwbFP5vPnIRLmMOwCG0apL1uL
-          LxDWsO/wH/kVKYtwFIhQKOzmYu+xmXh8zgabhdxCev+7MhknA59FJQ==
-          -----END CERTIFICATE-----
-DIGICERTEOF
         volumeMounts:
         - name: ssl-certs
           mountPath: /etc/radius-ssl/certs
