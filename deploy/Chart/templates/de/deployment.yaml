@@ -41,7 +41,7 @@ spec:
           mkdir -p /etc/radius-ssl/certs
           cp /etc/ssl/certs/* /etc/radius-ssl/certs/
           cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
-{{ .Values.global.appendRootCA.cert | nindent 10 }}
+        {{ .Values.global.appendRootCA.cert | nindent 10 }}
           CERTEOF
         volumeMounts:
         - name: ssl-certs
