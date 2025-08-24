@@ -77,7 +77,13 @@ fi
 # Extract version tag from the first non-release candidate entry
 # This command finds the first "tag_name" field, excludes release candidates,
 # takes the first match, and extracts the version string between quotes
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
+if command -v jq >/dev/null 2>&1; then
+    # Use jq for more reliable JSON parsing if available
+    RAD_VERSION=$(echo "$api_response" | jq -r '.[] | select(.tag_name | test("rc") | not) | .tag_name' | head -1)
+else
+    # Fallback to grep/sed approach for environments without jq
+    RAD_VERSION=$(echo "$api_response" | grep -o '"tag_name":[[:space:]]*"[^"]*"' | grep -v rc | head -1 | sed 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/')
+fi
 
 if [ -z "$RAD_VERSION" ]; then
     print_error "Failed to extract RAD_VERSION from API response"

@@ -29,5 +29,3 @@ workflow-enable-all: ## Enable all workflows in the current repo
 .PHONY: workflow-delete-all-runs
 workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: This is a destructive operation and cannot be undone.
 	@bash $(WORKFLOW_SCRIPT) delete-all-runs
-
-
