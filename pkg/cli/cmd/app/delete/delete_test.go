@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/delete"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -124,18 +125,27 @@ func Test_Delete(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
 
 		appManagementClient.EXPECT().
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
 				},
 			}, nil).
 			Times(1)
 
-		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+				},
+			).
 			Return(true, nil).
 			Times(1)
 
@@ -150,10 +160,12 @@ func Test_Delete(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
+			Delete:            deleteMock,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Workspace:         workspace,
 			Output:            outputSink,
 			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
 			Confirm:           true,
 		}
 
@@ -162,7 +174,7 @@ func Test_Delete(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application %s deleted",
+				Format: "Application %s deleted successfully",
 				Params: []any{"test-app"},
 			},
 		}
@@ -185,12 +197,9 @@ func Test_Delete(t *testing.T) {
 		}
 
 		promptMock := prompt.NewMockInterface(ctrl)
-		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
-			Return(prompt.ConfirmYes, nil).
-			Times(1)
-
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
 		appManagementClient.EXPECT().
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
@@ -200,13 +209,27 @@ func Test_Delete(t *testing.T) {
 			}, nil).
 			Times(1)
 
-		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+		promptMock.EXPECT().
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
+			Return(prompt.ConfirmYes, nil).
+			Times(1)
+
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "another-env")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+				},
+			).
 			Return(true, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
+			Delete:            deleteMock,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			InputPrompter:     promptMock,
 			Workspace:         workspace,
@@ -220,7 +243,7 @@ func Test_Delete(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application %s deleted",
+				Format: "Application %s deleted successfully",
 				Params: []any{"test-app"},
 			},
 		}
@@ -243,6 +266,8 @@ func Test_Delete(t *testing.T) {
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
 		appManagementClient.EXPECT().
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
@@ -260,6 +285,7 @@ func Test_Delete(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
+			Delete:            deleteMock,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			InputPrompter:     promptMock,
 			Workspace:         workspace,
@@ -282,17 +308,27 @@ func Test_Delete(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
 		appManagementClient.EXPECT().
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
 				},
 			}, nil).
 			Times(1)
 
-		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+				},
+			).
 			Return(false, nil).
 			Times(1)
 
@@ -307,6 +343,7 @@ func Test_Delete(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
+			Delete:            deleteMock,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Workspace:         workspace,
 			Output:            outputSink,
@@ -344,6 +381,8 @@ func Test_Delete(t *testing.T) {
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
 		appManagementClient.EXPECT().
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
@@ -361,6 +400,7 @@ func Test_Delete(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
+			Delete:            deleteMock,
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			InputPrompter:     promptMock,
 			Output:            outputSink,
@@ -372,5 +412,124 @@ func Test_Delete(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.Equal(t, &prompt.ErrExitConsole{}, err)
 		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Error: Delete Operation Fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
+		// Since GetApplication is now always called, we need to mock it
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+				},
+			}, nil).
+			Times(1)
+
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+				},
+			).
+			Return(false, fmt.Errorf("delete operation failed")).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Delete:            deleteMock,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
+			Confirm:           true,
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed to delete application")
+		require.Contains(t, err.Error(), "delete operation failed")
+	})
+
+	t.Run("Error: Delete Operation Returns 'not found' Error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
+		// Since GetApplication is now always called, we need to mock it
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+				},
+			}, nil).
+			Times(1)
+
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+				},
+			).
+			Return(false, fmt.Errorf("application not found")).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Delete:            deleteMock,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
+			Confirm:           true,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{
+				Format: "Application '%s' does not exist or has already been deleted.",
+				Params: []any{"test-app"},
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
 	})
 }
