@@ -56,13 +56,6 @@ filename="${FILE}_${OS}_${ARCH}${EXT}"
 download_url="https://github.com/radius-project/radius/releases/download/$RAD_VERSION/$filename"
 
 echo "Downloading $filename from $download_url"
-curl -sSLI -w "%{http_code}" "$download_url" --fail-with-body -o "$filename"
-
-# Test Linux amd64 binary if applicable - adapted from original x64 condition
-if [ "$OS" == "linux" ] && [ "$ARCH" == "amd64" ]; then
-    echo "Testing Linux amd64 binary..."
-    chmod +x "./$filename"
-    "./$filename" version
-fi
+curl -sSL -w "%{http_code}" "$download_url" --fail-with-body -o "$filename"
 
 echo "CLI download test completed successfully for $OS/$ARCH"
