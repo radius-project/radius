@@ -17,7 +17,7 @@ import (
 	bicep "github.com/radius-project/radius/pkg/cli/bicep"
 	namespace "github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	connections "github.com/radius-project/radius/pkg/cli/connections"
-	deletepkg "github.com/radius-project/radius/pkg/cli/delete"
+	delete "github.com/radius-project/radius/pkg/cli/delete"
 	deploy "github.com/radius-project/radius/pkg/cli/deploy"
 	helm "github.com/radius-project/radius/pkg/cli/helm"
 	kubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
@@ -275,6 +275,44 @@ func (c *MockFactoryGetConnectionFactoryCall) Do(f func() connections.Factory) *
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockFactoryGetConnectionFactoryCall) DoAndReturn(f func() connections.Factory) *MockFactoryGetConnectionFactoryCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetDelete mocks base method.
+func (m *MockFactory) GetDelete() delete.Interface {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDelete")
+	ret0, _ := ret[0].(delete.Interface)
+	return ret0
+}
+
+// GetDelete indicates an expected call of GetDelete.
+func (mr *MockFactoryMockRecorder) GetDelete() *MockFactoryGetDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDelete", reflect.TypeOf((*MockFactory)(nil).GetDelete))
+	return &MockFactoryGetDeleteCall{Call: call}
+}
+
+// MockFactoryGetDeleteCall wrap *gomock.Call
+type MockFactoryGetDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockFactoryGetDeleteCall) Return(arg0 delete.Interface) *MockFactoryGetDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockFactoryGetDeleteCall) Do(f func() delete.Interface) *MockFactoryGetDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockFactoryGetDeleteCall) DoAndReturn(f func() delete.Interface) *MockFactoryGetDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -579,43 +617,6 @@ func (c *MockFactoryGetPrompterCall) Do(f func() prompt.Interface) *MockFactoryG
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockFactoryGetPrompterCall) DoAndReturn(f func() prompt.Interface) *MockFactoryGetPrompterCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// GetDelete mocks base method.
-func (m *MockFactory) GetDelete() deletepkg.Interface {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDelete")
-	ret0, _ := ret[0].(deletepkg.Interface)
-	return ret0
-}
-
-// GetDelete indicates an expected call of GetDelete.
-func (mr *MockFactoryMockRecorder) GetDelete() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDelete", reflect.TypeOf((*MockFactory)(nil).GetDelete))
-}
-
-// MockFactoryGetDeleteCall wrap *gomock.Call
-type MockFactoryGetDeleteCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockFactoryGetDeleteCall) Return(arg0 deletepkg.Interface) *MockFactoryGetDeleteCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockFactoryGetDeleteCall) Do(f func() deletepkg.Interface) *MockFactoryGetDeleteCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockFactoryGetDeleteCall) DoAndReturn(f func() deletepkg.Interface) *MockFactoryGetDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

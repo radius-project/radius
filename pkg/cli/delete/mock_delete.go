@@ -21,7 +21,6 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
-	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -42,18 +41,18 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // DeleteApplicationWithProgress mocks base method.
-func (m *MockInterface) DeleteApplicationWithProgress(ctx context.Context, client clients.ApplicationsManagementClient, options clients.DeleteOptions) (bool, error) {
+func (m *MockInterface) DeleteApplicationWithProgress(arg0 context.Context, arg1 clients.ApplicationsManagementClient, arg2 clients.DeleteOptions) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteApplicationWithProgress", ctx, client, options)
+	ret := m.ctrl.Call(m, "DeleteApplicationWithProgress", arg0, arg1, arg2)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeleteApplicationWithProgress indicates an expected call of DeleteApplicationWithProgress.
-func (mr *MockInterfaceMockRecorder) DeleteApplicationWithProgress(ctx, client, options any) *MockInterfaceDeleteApplicationWithProgressCall {
+func (mr *MockInterfaceMockRecorder) DeleteApplicationWithProgress(arg0, arg1, arg2 any) *MockInterfaceDeleteApplicationWithProgressCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplicationWithProgress", reflect.TypeOf((*MockInterface)(nil).DeleteApplicationWithProgress), ctx, client, options)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteApplicationWithProgress", reflect.TypeOf((*MockInterface)(nil).DeleteApplicationWithProgress), arg0, arg1, arg2)
 	return &MockInterfaceDeleteApplicationWithProgressCall{Call: call}
 }
 
