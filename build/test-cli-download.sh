@@ -74,6 +74,9 @@ if ! echo "$api_response" | grep -q "tag_name"; then
     exit 1
 fi
 
+# Extract version tag from the first non-release candidate entry
+# This command finds the first "tag_name" field, excludes release candidates,
+# takes the first match, and extracts the version string between quotes
 RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
 
 if [ -z "$RAD_VERSION" ]; then

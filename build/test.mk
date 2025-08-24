@@ -16,6 +16,18 @@
 
 ##@ Test
 
+CLI_DOWNLOAD_TEST_SCRIPT := ./build/test-cli-download.sh
+
+# Default values for CLI download test
+OS ?= linux
+ARCH ?= amd64
+FILE ?= rad
+EXT ?=
+
+.PHONY: test-cli-download
+test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [OS=linux] [ARCH=amd64] [FILE=rad] [EXT=]
+	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) $(OS) $(ARCH) $(FILE) $(EXT)
+
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
