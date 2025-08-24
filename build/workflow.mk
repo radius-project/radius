@@ -17,6 +17,7 @@
 ##@ GitHub Workflows
 
 WORKFLOW_SCRIPT := ./build/workflow.sh
+CLI_DOWNLOAD_TEST_SCRIPT := ./build/test-cli-download.sh
 
 .PHONY: workflow-disable-all
 workflow-disable-all: ## Disable all workflows in the current repo
@@ -29,3 +30,7 @@ workflow-enable-all: ## Enable all workflows in the current repo
 .PHONY: workflow-delete-all-runs
 workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: This is a destructive operation and cannot be undone.
 	@bash $(WORKFLOW_SCRIPT) delete-all-runs
+
+.PHONY: test-cli-download
+test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download OS=linux ARCH=amd64 FILE=rad EXT=
+	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) $(OS) $(ARCH) $(FILE) $(EXT)
