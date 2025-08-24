@@ -8,7 +8,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - .github/workflows/test.yaml
+      - .github/workflows/nightly-rad-CLI-tests.yaml
 
 jobs:
   download:
