@@ -67,7 +67,8 @@ print_info "GitHub API call successful, parsing response..."
 print_info "API response size: $(echo "$api_response" | wc -c) characters"
 
 # Check if response contains expected data
-if ! echo "$api_response" | grep -q "tag_name"; then
+# Use a temporary variable to avoid SIGPIPE with large responses
+if ! grep -q "tag_name" <<< "$api_response"; then
     print_error "GitHub API response does not contain tag_name field"
     print_info "First 500 characters of response:"
     echo "$api_response" | head -c 500
@@ -82,13 +83,14 @@ if command -v jq >/dev/null 2>&1; then
     RAD_VERSION=$(echo "$api_response" | jq -r '.[] | select(.tag_name | test("rc") | not) | .tag_name' | head -1)
 else
     # Fallback to grep/sed approach for environments without jq
-    RAD_VERSION=$(echo "$api_response" | grep -o '"tag_name":[[:space:]]*"[^"]*"' | grep -v rc | head -1 | sed 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/')
+    # Use here-string to avoid SIGPIPE issues with large responses
+    RAD_VERSION=$(grep -o '"tag_name":[[:space:]]*"[^"]*"' <<< "$api_response" | grep -v rc | head -1 | sed 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/')
 fi
 
 if [ -z "$RAD_VERSION" ]; then
     print_error "Failed to extract RAD_VERSION from API response"
     print_info "Lines containing tag_name:"
-    echo "$api_response" | grep "tag_name" | head -5
+    grep "tag_name" <<< "$api_response" | head -5
     exit 1
 fi
 
