@@ -26,7 +26,7 @@ EXT=${4:-""}
 
 echo "Starting CLI download test for $OS/$ARCH"
 
-# Get latest version - replicate original workflow logic with debug output
+# Get latest version from GitHub releases API
 echo "Fetching latest release version from GitHub API..."
 radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
 
@@ -41,7 +41,7 @@ fi
 
 echo "GitHub API call successful"
 
-# Extract RAD_VERSION using the original workflow parsing logic
+# Extract version from API response using grep, awk, and sed
 RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
 
 if [ -z "$RAD_VERSION" ]; then
@@ -51,11 +51,11 @@ fi
 
 echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
 
-# Download file - replicate original workflow logic
+# Download the CLI binary from GitHub releases
 filename="${FILE}_${OS}_${ARCH}${EXT}"
 download_url="https://github.com/radius-project/radius/releases/download/$RAD_VERSION/$filename"
 
 echo "Downloading $filename from $download_url"
-curl -sSL -w "%{http_code}" "$download_url" --fail-with-body -o "$filename"
+curl -sSL "$download_url" --fail-with-body -o "$filename"
 
 echo "CLI download test completed successfully for $OS/$ARCH"
