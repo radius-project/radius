@@ -26,6 +26,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/delete"
+
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -78,6 +80,7 @@ rad app delete my-app --group my-group
 
 // Runner is the Runner implementation for the `rad app delete` command.
 type Runner struct {
+	Delete            delete.Interface
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
 	InputPrompter     prompt.Interface
@@ -93,6 +96,7 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad app delete` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
+		Delete:            factory.GetDelete(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		ConnectionFactory: factory.GetConnectionFactory(),
 		InputPrompter:     factory.GetPrompter(),
@@ -168,11 +172,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environmentID, err := resources.ParseResource(*app.Properties.Environment)
+	var environmentID resources.ID
+
+	environmentID, err = resources.ParseResource(*app.Properties.Environment)
 	if err != nil {
 		return err
 	}
-
 	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
@@ -182,16 +187,26 @@ func (r *Runner) Run(ctx context.Context) error {
 			return nil
 		}
 	}
+	r.EnvironmentName = environmentID.Name()
 
-	deleted, err := client.DeleteApplication(ctx, r.ApplicationName)
+	progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", r.ApplicationName, r.EnvironmentName)
+
+	deleted, err := r.Delete.DeleteApplicationWithProgress(ctx, client, clients.DeleteOptions{
+		ApplicationNameOrID: r.ApplicationName,
+		ProgressText:        progressText,
+	})
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "not found") {
+			r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+			return nil
+		}
+		return clierrors.Message("Failed to delete application '%s': %v", r.ApplicationName, err)
 	}
-
 	if deleted {
-		r.Output.LogInfo("Application %s deleted", r.ApplicationName)
+		r.Output.LogInfo("Application %s deleted successfully", r.ApplicationName)
 	} else {
 		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		return nil
 	}
 
 	return nil
