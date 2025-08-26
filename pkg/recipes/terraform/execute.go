@@ -46,6 +46,59 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// redactSecretsFromError returns an error with secrets redacted from the message.
+func (e *executor) redactSecretsFromError(err error) error {
+	if err == nil || len(e.secretsForRedaction) == 0 {
+		return err
+	}
+	redactedMsg := redactSecrets(err.Error(), e.secretsForRedaction)
+	return fmt.Errorf("%s", redactedMsg)
+}
+
+// redactSecrets replaces sensitive values in error messages while preserving structure for debugging.
+func redactSecrets(message string, secrets map[string]string) string {
+	redacted := message
+	for _, secret := range secrets {
+		if len(secret) > 4 {
+			// Keep first 2 and last 2 chars, replace middle with asterisks
+			replacement := secret[:2] + strings.Repeat("*", len(secret)-4) + secret[len(secret)-2:]
+			redacted = strings.ReplaceAll(redacted, secret, replacement)
+		} else if len(secret) > 0 {
+			// For very short secrets, just show asterisks
+			replacement := strings.Repeat("*", len(secret))
+			redacted = strings.ReplaceAll(redacted, secret, replacement)
+		}
+	}
+	return redacted
+}
+
+// collectSecretsFromProviderConfigs extracts all secret values from provider configurations for redaction.
+func collectSecretsFromProviderConfigs(providerConfigs map[string]map[string]any) map[string]string {
+	secrets := make(map[string]string)
+	secretKeys := []string{"client_secret", "password", "token", "secret", "key", "access_key", "secret_key"}
+	
+	for _, cfg := range providerConfigs {
+		for key, val := range cfg {
+			// Check if this looks like a secret key
+			keyLower := strings.ToLower(key)
+			isSecretKey := false
+			for _, secretKey := range secretKeys {
+				if strings.Contains(keyLower, secretKey) {
+					isSecretKey = true
+					break
+				}
+			}
+			
+			if isSecretKey {
+				if strVal, ok := val.(string); ok && strVal != "" {
+					secrets[key] = strVal
+				}
+			}
+		}
+	}
+	return secrets
+}
+
 var (
 	// ErrRecipeNameEmpty is the error when the recipe name is empty.
 	ErrRecipeNameEmpty = errors.New("recipe name cannot be empty")
@@ -63,7 +116,12 @@ func getEnvTerraformConfig(options Options) datamodel.TerraformConfigProperties 
 
 // NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
 func NewExecutor(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) *executor {
-	return &executor{ucpConn: ucpConn, secretProvider: secretProvider, kubernetesClients: kubernetesClients}
+	return &executor{
+		ucpConn:             ucpConn,
+		secretProvider:      secretProvider,
+		kubernetesClients:   kubernetesClients,
+		secretsForRedaction: make(map[string]string),
+	}
 }
 
 type executor struct {
@@ -75,6 +133,9 @@ type executor struct {
 
 	// kubernetesClients provides access to the Kubernetes clients.
 	kubernetesClients kubernetesclientprovider.KubernetesClientProvider
+
+	// secretsForRedaction stores secrets that should be redacted from error messages
+	secretsForRedaction map[string]string
 }
 
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
@@ -112,7 +173,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Run TF Init and Apply in the working directory
-	state, err := initAndApply(ctx, tf)
+	state, err := e.initAndApply(ctx, tf)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +251,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
-	err = initAndDestroy(ctx, tf)
+	err = e.initAndDestroy(ctx, tf)
 	if err != nil {
 		logger.Error(err, "Failed to initialize and destroy Terraform configuration")
 		return err
@@ -776,27 +837,33 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 }
 
 // forceInjectProviderCredentials scans all .tf and .tf.json files under rootDir (including .terraform/modules)
-// and injects UCP-provided credentials into any explicit provider blocks. This is a best-effort operation.
+// and injects Azure credentials into azurerm provider blocks to ensure authentication works in air-gapped environments.
+// This only processes Azure/UCP credentials and only injects them into azurerm provider blocks.
 func (e *executor) forceInjectProviderCredentials(ctx context.Context, rootDir string, options Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Build provider config maps from UCP credentials
+	// Build provider config maps from UCP credentials - only for Azure/azurerm
 	ucpProviders := providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider)
 	providerConfigs := make(map[string]map[string]any)
-	for name, builder := range ucpProviders {
-		cfg, err := builder.BuildConfig(ctx, options.EnvConfig)
+	
+	// Only process Azure provider for azurerm blocks
+	if azureBuilder, exists := ucpProviders["azure"]; exists {
+		cfg, err := azureBuilder.BuildConfig(ctx, options.EnvConfig)
 		if err != nil {
-			logger.Info("Skipping provider due to build error", "provider", name, "error", err.Error())
-			continue
-		}
-		if len(cfg) > 0 {
-			providerConfigs[name] = cfg
+			logger.Info("Skipping Azure provider due to build error", "error", err.Error())
+		} else if len(cfg) > 0 {
+			// Map Azure credentials to azurerm provider
+			providerConfigs["azurerm"] = cfg
 		}
 	}
+	
 	if len(providerConfigs) == 0 {
-		logger.Info("No UCP provider configurations available to inject")
+		logger.Info("No Azure provider configurations available to inject into azurerm blocks")
 		return nil
 	}
+
+	// Store secrets for redaction
+	e.secretsForRedaction = collectSecretsFromProviderConfigs(providerConfigs)
 
 	// Walk all files and inject where applicable
 	return filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
@@ -905,8 +972,8 @@ func (e *executor) injectIntoHCLFile(ctx context.Context, filePath string, provi
 				}
 			}
 
-			// Rebuild content: header + body + closing brace + rest
-			modified = modified[:blockStart] + header + body + "}" + footer
+			// Rebuild content: header + body + rest (the closing brace is already at bodyEnd)
+			modified = modified[:blockStart] + header + body + footer
 		}
 	}
 
@@ -1037,7 +1104,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, error) {
+func (e *executor) initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
@@ -1113,7 +1180,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return nil, fmt.Errorf("terraform init failure during apply flow: %w", err)
+		return nil, fmt.Errorf("terraform init failure during apply flow: %w", e.redactSecretsFromError(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
@@ -1128,7 +1195,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 	logger.Info("Running Terraform apply")
 	if err := tf.Apply(ctx, applyOptions...); err != nil {
 		logger.Error(err, "Terraform apply failed")
-		return nil, fmt.Errorf("terraform apply failure: %w", err)
+		return nil, fmt.Errorf("terraform apply failure: %w", e.redactSecretsFromError(err))
 	}
 
 	// Load Terraform state to retrieve the outputs
@@ -1137,7 +1204,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, err
 }
 
 // initAndDestroy runs Terraform init and destroy in the provided working directory.
-func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
+func (e *executor) initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
@@ -1148,7 +1215,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
-		return fmt.Errorf("terraform init failure during destroy flow: %w", err)
+		return fmt.Errorf("terraform init failure during destroy flow: %w", e.redactSecretsFromError(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
@@ -1156,7 +1223,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	logger.Info("Running Terraform destroy")
 	if err := tf.Destroy(ctx); err != nil {
 		logger.Error(err, "Terraform destroy failed")
-		return fmt.Errorf("terraform destroy failure: %w", err)
+		return fmt.Errorf("terraform destroy failure: %w", e.redactSecretsFromError(err))
 	}
 
 	return nil

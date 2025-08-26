@@ -160,8 +160,9 @@ func TestConfigureTerraformRegistry_ProviderMirror_NoAuth(t *testing.T) {
 		"Config file should contain provider_installation block")
 	require.True(t, strings.Contains(configContent, "network_mirror {"),
 		"Config file should contain network_mirror block")
-	require.Contains(t, configContent, `url = "https://mirror.example.com/providers"`,
-		"Config file should contain the mirror URL without trailing slash")
+	require.Contains(t, configContent, `url = "https://mirror.example.com/providers/"`,
+		"Config file should contain the mirror URL with trailing slash")
+	// No include/exclude or direct block expected
 
 	// Verify only TF_CLI_CONFIG_FILE is tracked (no token env vars)
 	require.Len(t, regConfig.EnvVars, 1, "Should only track one environment variable")
@@ -238,8 +239,9 @@ func TestConfigureTerraformRegistry_ProviderMirror_WithAuth(t *testing.T) {
 		"Config file should contain provider_installation block")
 	require.True(t, strings.Contains(configContent, "network_mirror {"),
 		"Config file should contain network_mirror block")
-	require.Contains(t, configContent, `url = "https://mirror.example.com/providers"`,
-		"Config file should contain the mirror URL without trailing slash")
+	require.Contains(t, configContent, `url = "https://mirror.example.com/providers/"`,
+		"Config file should contain the mirror URL with trailing slash")
+	// No include/exclude or direct block expected
 
 	// Should only track TF_CLI_CONFIG_FILE for network mirror
 	require.Len(t, regConfig.EnvVars, 1, "Should only track TF_CLI_CONFIG_FILE for network mirror")
@@ -450,8 +452,9 @@ func TestConfigureTerraformRegistry_BothProviderMirrorAndModuleRegistry(t *testi
 		"Config file should contain provider_installation block")
 	require.True(t, strings.Contains(configContent, "network_mirror {"),
 		"Config file should contain network_mirror block")
-	require.Contains(t, configContent, `url = "https://mirror.example.com/providers"`,
-		"Config file should contain provider mirror URL without trailing slash")
+	require.Contains(t, configContent, `url = "https://mirror.example.com/providers/"`,
+		"Config file should contain provider mirror URL with trailing slash")
+	// No include/exclude or direct block expected
 
 	// Verify module registry credentials
 	require.True(t, strings.Contains(configContent, fmt.Sprintf(`credentials "%s"`, moduleRegistryHost)),
@@ -548,13 +551,9 @@ func TestConfigureTerraformRegistry_AddsImplicitRegistryTerraformIoMapping_WhenS
 	require.NoError(t, err)
 	cfg := string(content)
 
-	// Should include original host block
-	require.Contains(t, cfg, `host "gitlab" {`)
-	require.Contains(t, cfg, `"modules.v1" = "https://`+mirrorHost+`"`)
-
-	// Should also include implicit mapping for registry.terraform.io
-	require.Contains(t, cfg, `host "registry.terraform.io" {`)
-	require.Contains(t, cfg, `"modules.v1" = "https://`+mirrorHost+`"`)
+	// We no longer emit host service mapping blocks; rely on service discovery
+	require.NotContains(t, cfg, `host "gitlab" {`)
+	require.NotContains(t, cfg, `host "registry.terraform.io" {`)
 
 	// And credentials for mirrorHost
 	require.Contains(t, cfg, `credentials "`+mirrorHost+`" {`)
@@ -776,13 +775,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 					},
 				},
 			},
-			expectedHostBlocks: []string{
-				`host "gitlab" {
-  services = {
-    "modules.v1" = "https://providermirror.example.com"
-  }
-}`,
-			},
+			expectedHostBlocks: []string{},
 			expectedCredentials: []string{
 				`credentials "providermirror.example.com" {
   token = "example-test-token"
@@ -819,13 +812,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 					},
 				},
 			},
-			expectedHostBlocks: []string{
-				`host "terraform-providers" {
-  services = {
-    "modules.v1" = "https://providermirror.example.com"
-  }
-}`,
-			},
+			expectedHostBlocks: []string{},
 			expectedCredentials: []string{
 				`credentials "providermirror.example.com" {
   token = "example-test-token"
@@ -859,13 +846,7 @@ func TestConfigureTerraformRegistry_GitLabAirGappedEnvironment(t *testing.T) {
 					},
 				},
 			},
-			expectedHostBlocks: []string{
-				`host "company-internal" {
-  services = {
-    "modules.v1" = "https://internal.company.com"
-  }
-}`,
-			},
+			expectedHostBlocks: []string{},
 			expectedCredentials: []string{
 				`credentials "internal.company.com" {
   token = "internal-token-value"
@@ -1097,8 +1078,8 @@ func TestConfigureTerraformRegistry_ProviderMirror_Network_NoAuth(t *testing.T) 
 	require.Contains(t, content, "provider_installation {")
 	require.Contains(t, content, "network_mirror {")
 	// URL in config trims trailing slash
-	require.Contains(t, content, `url = "https://mirror.example.com/providers/mirror"`)
-	require.Contains(t, content, "direct {}")
+	require.Contains(t, content, `url = "https://mirror.example.com/providers/mirror/"`)
+	// No direct block expected
 
 	// Only TF_CLI_CONFIG_FILE should be set
 	require.Len(t, regConfig.EnvVars, 1)
@@ -1257,31 +1238,12 @@ b24gUm9vdCBDQSAxMA0GCSqGSIb3DQEBCwUAA4IBAQCTLMF4dYaD+3yL4FyYLG2o
 	require.True(t, strings.Contains(configContent, "network_mirror {"),
 		"MISSING: network_mirror block should be present")
 
-	require.True(t, strings.Contains(configContent, `url = "https://proxy.airgapped.local"`),
-		"MISSING: Provider mirror URL should be configured (without trailing slash)")
+	require.True(t, strings.Contains(configContent, `url = "https://proxy.airgapped.local/"`),
+		"MISSING: Provider mirror URL should be configured with trailing slash")
 
-	require.True(t, strings.Contains(configContent, `include = ["*/*/*"]`),
-		"MISSING: Provider mirror should include all providers with [\"*/*/*\"]")
+	// No include/exclude or direct block expected
 
-	require.True(t, strings.Contains(configContent, "direct {"),
-		"MISSING: Direct block should be present")
-
-	require.True(t, strings.Contains(configContent, `exclude = ["*/*/*"]`),
-		"MISSING: Direct block should exclude all providers with [\"*/*/*\"]")
-
-	// Verify module registry configuration
-	require.True(t, strings.Contains(configContent, `host "gitlab" {`),
-		"Module registry host block should be present")
-
-	require.True(t, strings.Contains(configContent, `"modules.v1" = "https://gitlab.airgapped.local"`),
-		"Module registry service should be configured")
-
-	// Verify implicit registry.terraform.io mapping (single module registry)
-	require.True(t, strings.Contains(configContent, `host "registry.terraform.io" {`),
-		"CRITICAL: registry.terraform.io should be mapped to gitlab.airgapped.local")
-
-	require.True(t, strings.Count(configContent, `"modules.v1" = "https://gitlab.airgapped.local"`) >= 2,
-		"CRITICAL: gitlab.airgapped.local should be used for both gitlab host and registry.terraform.io")
+	// Host mapping blocks are no longer emitted; rely on service discovery or explicit sources
 
 	// Verify credentials are configured for gitlab.airgapped.local
 	require.True(t, strings.Contains(configContent, `credentials "gitlab.airgapped.local" {`),

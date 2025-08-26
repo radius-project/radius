@@ -128,46 +128,15 @@ func ConfigureTerraformRegistry(
 			return nil, fmt.Errorf("provider mirror url is required for network mirror")
 		}
 
-		// Provider mirrors do not support authentication - only URL is needed
-		configContent.WriteString(fmt.Sprintf(`provider_installation {
-  network_mirror {
-    url = %q
-    include = ["*/*/*"]
-  }
-  direct {
-    exclude = ["*/*/*"]
-  }
+		// Provider mirrors do not support authentication - only URL is needed.
+		// Ensure the URL ends with exactly one trailing slash as required by the protocol.
+		mirrorURL := strings.TrimRight(pm.URL, "/") + "/"
+				configContent.WriteString(fmt.Sprintf(`provider_installation {
+	network_mirror {
+		url = %q
+	}
 }
-`, strings.TrimRight(pm.URL, "/")))
-
-		// Optional: Support custom CA bundle for provider mirror by writing the PEM to a temp file
-		// and setting standard TLS env vars used by many CLIs and libraries. We avoid skip-verify.
-		if pm.TLS != nil && pm.TLS.CACertificate != nil && pm.TLS.CACertificate.Source != "" && pm.TLS.CACertificate.Key != "" {
-			secretData, ok := secrets[pm.TLS.CACertificate.Source]
-			if !ok {
-				return nil, fmt.Errorf("CA certificate secret store not found: %s", pm.TLS.CACertificate.Source)
-			}
-			pem, ok := secretData.Data[pm.TLS.CACertificate.Key]
-			if !ok {
-				return nil, fmt.Errorf("CA certificate key '%s' not found", pm.TLS.CACertificate.Key)
-			}
-
-			// Write CA bundle to a temp file within the working directory
-			caPath := filepath.Join(dirPath, "provider-mirror-ca.pem")
-			if err := os.WriteFile(caPath, []byte(pem), 0600); err != nil {
-				return nil, fmt.Errorf("failed to write provider mirror CA bundle: %w", err)
-			}
-			regConfig.TempFiles = append(regConfig.TempFiles, caPath)
-
-			// Set common env vars recognized by many tools and (in recent Go versions) TLS stack.
-			// This ensures Terraform and any helper tools trust the provided CA.
-			regConfig.EnvVars["SSL_CERT_FILE"] = caPath
-			regConfig.EnvVars["CURL_CA_BUNDLE"] = caPath
-			// Also set for git in case modules use a private Git host with the same CA.
-			regConfig.EnvVars["GIT_SSL_CAINFO"] = caPath
-
-			logger.Info("Configured custom CA bundle for provider mirror", "caPath", caPath)
-		}
+`, mirrorURL))
 	}
 
 	// Module registries
@@ -177,14 +146,8 @@ func ConfigureTerraformRegistry(
 			if redirectHost == "" {
 				continue
 			}
-			hostToRedirect := registryName
-			configContent.WriteString(fmt.Sprintf(`
-host %q {
-  services = {
-    "modules.v1" = "https://%s"
-  }
-}
-`, hostToRedirect, redirectHost))
+			// We no longer emit host service mapping blocks. Terraform should use
+			// normal service discovery or explicit module source addresses.
 
 			// Module registry credentials
 			if registryConfig.Authentication.Token != nil && registryConfig.Authentication.Token.Secret != "" {
@@ -268,37 +231,7 @@ credentials %q {
 				}
 			}
 
-			// If there's exactly one configured module registry and the config does not
-			// already specify a mapping for the public registry, also map
-			// registry.terraform.io to that mirror host. This helps air-gapped
-			// environments where nested modules reference the public registry.
-			if len(config.RecipeConfig.Terraform.ModuleRegistries) == 1 {
-				if _, exists := config.RecipeConfig.Terraform.ModuleRegistries["registry.terraform.io"]; !exists {
-					// Extract the single entry
-					var singleName string
-					var singleCfg *datamodel.TerraformModuleRegistryConfig
-					for n, c := range config.RecipeConfig.Terraform.ModuleRegistries {
-						singleName, singleCfg = n, c
-						break
-					}
-
-					// Only add if we have a URL to redirect to
-					if singleCfg != nil && strings.TrimSpace(singleCfg.URL) != "" {
-						logger.Info("Adding implicit module registry redirect for public registry",
-							"sourceHost", "registry.terraform.io",
-							"targetHost", singleCfg.URL,
-							"viaRegistry", singleName)
-
-						configContent.WriteString(fmt.Sprintf(`
-	host %q {
-	  services = {
-		"modules.v1" = "https://%s"
-	  }
-	}
-	`, "registry.terraform.io", singleCfg.URL))
-					}
-				}
-			}
+			// Implicit registry.terraform.io mapping removed; rely on DNS/proxy or explicit module sources.
 		}
 	}
 
