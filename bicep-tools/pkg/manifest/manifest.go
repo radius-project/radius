@@ -36,6 +36,8 @@ type Schema struct {
 	AdditionalProperties *Schema           `yaml:"additionalProperties,omitempty" json:"additionalProperties,omitempty"`
 	Required             []string          `yaml:"required,omitempty" json:"required,omitempty"`
 	ReadOnly             *bool             `yaml:"readOnly,omitempty" json:"readOnly,omitempty"`
+	Items                *Schema           `yaml:"items,omitempty" json:"items,omitempty"`
+	Enum                 []string          `yaml:"enum,omitempty" json:"enum,omitempty"`
 }
 
 // ParseManifest parses a YAML manifest string into a ResourceProvider struct
@@ -110,6 +112,8 @@ func (s *Schema) Validate(context string) error {
 		"integer": true,
 		"boolean": true,
 		"any":     true,
+		"array":   true,
+		"enum":    true,
 	}
 
 	if !validTypes[s.Type] {
@@ -122,6 +126,13 @@ func (s *Schema) Validate(context string) error {
 			if err := propSchema.Validate(fmt.Sprintf("%s.%s", context, propName)); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Validate items for array types if provided
+	if s.Type == "array" && s.Items != nil {
+		if err := s.Items.Validate(context + "[]"); err != nil {
+			return err
 		}
 	}
 

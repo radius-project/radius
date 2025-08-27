@@ -1,47 +1,18 @@
 package manifest
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
-// Test data from the TypeScript implementation
-const validYAML = `name: MyCompany.Resources
-types:
-  testResources:
-    apiVersions:
-      '2025-01-01-preview':
-        schema: {}
-        capabilities: ['Recipes']`
-
-const validWithSchemaPropertiesYAML = `name: MyCompany.Resources
-types:
-  testResources:
-    apiVersions:
-      '2025-01-01-preview':
-        schema:
-          type: object
-          properties:
-            a:
-              type: integer
-              description: "An integer property"
-            b:
-              type: boolean
-              description: "A boolean property"
-            c:
-              type: string
-              description: "A string property"
-            connections:
-              type: object
-              additionalProperties: 
-                type: object
-                properties:
-                  source:
-                    type: string
-                    description: "A connection string property"
-        capabilities: ['Recipes']`
-
 func TestParseManifest_Valid(t *testing.T) {
-	result, err := ParseManifest(validYAML)
+	testdataPath := filepath.Join("../../internal/testdata", "valid.yaml")
+	yamlContent, err := os.ReadFile(testdataPath)
+	if err != nil {
+		t.Fatalf("Failed to read test file %s: %v", testdataPath, err)
+	}
+	result, err := ParseManifest(string(yamlContent))
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -66,7 +37,12 @@ func TestParseManifest_Valid(t *testing.T) {
 }
 
 func TestParseManifest_WithSchemaProperties(t *testing.T) {
-	result, err := ParseManifest(validWithSchemaPropertiesYAML)
+	testdataPath := filepath.Join("../../internal/testdata", "valid-with-schema-properties.yaml")
+	yamlContent, err := os.ReadFile(testdataPath)
+	if err != nil {
+		t.Fatalf("Failed to read test file %s: %v", testdataPath, err)
+	}
+	result, err := ParseManifest(string(yamlContent))
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/willdavsmith/bicep-tools-go/pkg/cli"
+	"github.com/radius-project/radius/bicep-tools/pkg/cli"
 )
 
 // TestIntegration_WithTypescriptTestData tests the Go implementation against the same
@@ -103,7 +103,7 @@ func TestIntegration_WithTypescriptTestData(t *testing.T) {
 func TestIntegration_CLIEndToEnd(t *testing.T) {
 	// Use valid test data
 	manifestFile := "../internal/testdata/valid-with-schema-properties.yaml"
-	
+
 	// Create temporary output directory
 	tempDir, err := os.MkdirTemp("", "cli-test-")
 	if err != nil {

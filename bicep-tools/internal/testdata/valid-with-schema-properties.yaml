@@ -1,4 +1,4 @@
-name: MyCompany.Resources
+namespace: MyCompany.Resources
 types:
   testResources:
     apiVersions:
@@ -23,4 +23,23 @@ types:
                   source:
                     type: string
                     description: "A connection string property"
+            status:
+              type: enum
+              enum: ['active', 'inactive', 'pending']
+              description: 'The status of the resource'
+            tags:
+              type: array
+              items:
+                type: string
+              description: 'An array of tags'
+            metadata:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+              description: 'An array of metadata objects'
         capabilities: ['Recipes']

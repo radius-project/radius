@@ -179,8 +179,33 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 
 	switch schemaType {
 	case "string":
+		// Handle the edge case: string with enum constraint
+		if len(schema.Enum) > 0 {
+			var enumTypeRefs []types.ITypeReference
+			for _, value := range schema.Enum {
+				stringLiteralType := typeFactory.CreateStringLiteralType(value)
+				enumTypeRefs = append(enumTypeRefs, typeFactory.GetReference(stringLiteralType))
+			}
+			unionType := typeFactory.CreateUnionType(enumTypeRefs)
+			return typeFactory.GetReference(unionType), nil
+		}
+
+		// Regular string without constraints
 		stringType := typeFactory.CreateStringType()
 		return typeFactory.GetReference(stringType), nil
+
+	case "enum":
+		// Handle explicit enum type
+		if len(schema.Enum) == 0 {
+			return nil, fmt.Errorf("enum type '%s' must have at least one value in 'enum' property", name)
+		}
+		var enumTypeRefs []types.ITypeReference
+		for _, value := range schema.Enum {
+			stringLiteralType := typeFactory.CreateStringLiteralType(value)
+			enumTypeRefs = append(enumTypeRefs, typeFactory.GetReference(stringLiteralType))
+		}
+		unionType := typeFactory.CreateUnionType(enumTypeRefs)
+		return typeFactory.GetReference(unionType), nil
 
 	case "integer":
 		intType := typeFactory.CreateIntegerType()
@@ -193,6 +218,13 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 	case "any":
 		anyType := typeFactory.CreateAnyType()
 		return typeFactory.GetReference(anyType), nil
+
+	case "array":
+		if schema.Items == nil {
+			return nil, fmt.Errorf("array type '%s' must have an 'items' property", name)
+		}
+		itemRef, err := addSchemaType(schema.Items, name+"Item", typeFactory)
+		return typeFactory.GetReference(typeFactory.CreateArrayType(itemRef)), err
 
 	case "object":
 		objectProperties, err := addObjectProperties(schema, typeFactory)

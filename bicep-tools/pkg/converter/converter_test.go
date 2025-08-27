@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
@@ -409,5 +410,209 @@ func TestConvert(t *testing.T) {
 	// Basic validation that the index content is valid JSON
 	if result.IndexContent[0] != '{' {
 		t.Error("Expected index content to start with '{'")
+	}
+}
+
+func TestAddSchemaType_Array_StringItems(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "array",
+		Items: &manifest.Schema{
+			Type: "string",
+		},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "testArray", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	added := allTypes[typeRef.Ref]
+	if _, ok := added.(*types.ArrayType); !ok {
+		t.Error("Expected added type to be an ArrayType")
+	}
+}
+
+func TestAddSchemaType_Array_ObjectItems(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "array",
+		Items: &manifest.Schema{
+			Type: "object",
+			Properties: map[string]manifest.Schema{
+				"name":  {Type: "string"},
+				"value": {Type: "integer"},
+			},
+		},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "testObjectArray", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	added := allTypes[typeRef.Ref]
+	if _, ok := added.(*types.ArrayType); !ok {
+		t.Error("Expected added type to be an ArrayType")
+	}
+}
+
+func TestAddSchemaType_NestedArray(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "array",
+		Items: &manifest.Schema{
+			Type: "array",
+			Items: &manifest.Schema{
+				Type: "string",
+			},
+		},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "nestedArray", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	added := allTypes[typeRef.Ref]
+	if _, ok := added.(*types.ArrayType); !ok {
+		t.Error("Expected added type to be an ArrayType")
+	}
+}
+
+func TestAddSchemaType_Array_NoItems_Error(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "array",
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	_, err := addSchemaType(schema, "testArray", typeFactory)
+	if err == nil {
+		t.Fatal("Expected error for array without items, got nil")
+	}
+	expected := "must have an 'items' property"
+	if !strings.Contains(err.Error(), expected) {
+		t.Fatalf("Expected error to contain %q, got %v", expected, err)
+	}
+}
+
+// ...existing code...
+
+func TestAddSchemaType_Enum(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "enum",
+		Enum: []string{"value1", "value2", "value3"},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "testEnum", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	addedType, ok := allTypes[typeRef.Ref].(*types.UnionType)
+	if !ok {
+		t.Fatal("Expected result to be a UnionType")
+	}
+
+	if len(addedType.Elements) != 3 {
+		t.Errorf("Expected 3 enum elements, got %d", len(addedType.Elements))
+	}
+
+	// Verify each enum value is a string literal
+	expectedValues := []string{"value1", "value2", "value3"}
+	for i, element := range addedType.Elements {
+		elementRef, ok := element.(types.TypeReference)
+		if !ok {
+			t.Fatalf("Expected element %d to be a TypeReference", i)
+		}
+		stringLiteral, ok := allTypes[elementRef.Ref].(*types.StringLiteralType)
+		if !ok {
+			t.Fatalf("Expected element %d to be a StringLiteralType", i)
+		}
+		if stringLiteral.Value != expectedValues[i] {
+			t.Errorf("Expected element %d value '%s', got '%s'", i, expectedValues[i], stringLiteral.Value)
+		}
+	}
+}
+
+func TestAddSchemaType_StringWithEnum(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "string",
+		Enum: []string{"apple", "banana", "cherry"},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "fruit", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	addedType, ok := allTypes[typeRef.Ref].(*types.UnionType)
+	if !ok {
+		t.Fatal("Expected result to be a UnionType")
+	}
+
+	if len(addedType.Elements) != 3 {
+		t.Errorf("Expected 3 enum elements, got %d", len(addedType.Elements))
+	}
+
+	// Verify each element is a StringLiteralType with the correct value
+	expectedValues := []string{"apple", "banana", "cherry"}
+	for i, element := range addedType.Elements {
+		elementRef, ok := element.(types.TypeReference)
+		if !ok {
+			t.Fatalf("Expected element %d to be a TypeReference", i)
+		}
+		stringLiteral, ok := allTypes[elementRef.Ref].(*types.StringLiteralType)
+		if !ok {
+			t.Fatalf("Expected element %d to be a StringLiteralType", i)
+		}
+		if stringLiteral.Value != expectedValues[i] {
+			t.Errorf("Expected element %d value '%s', got '%s'", i, expectedValues[i], stringLiteral.Value)
+		}
+	}
+}
+
+func TestAddSchemaType_EnumWithoutValues(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "enum",
+		Enum: []string{},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	_, err := addSchemaType(schema, "testEnum", typeFactory)
+	if err == nil {
+		t.Fatal("Expected error for enum without values, got nil")
+	}
+
+	expectedError := "enum type 'testEnum' must have at least one value in 'enum' property"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
 	}
 }
