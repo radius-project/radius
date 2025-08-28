@@ -26,6 +26,10 @@ import (
 // Ensure VersionCompatibilityCheck implements PreflightCheck interface
 var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
 
+const (
+	RADIUS_EDGE_CHART_VERSION = "0.42.42-dev"
+)
+
 // VersionCompatibilityCheck validates that the target version is a valid upgrade
 // from the current version. It prevents downgrades and enforces incremental upgrade policies.
 type VersionCompatibilityCheck struct {
@@ -82,6 +86,11 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	// "latest" should be resolved to an actual version before calling this check
 	if targetVersion == "latest" {
 		return false, "Target version 'latest' must be resolved to a specific version before validation", nil
+	}
+
+	// Always allow upgrades from edge development version
+	if currentVersion == RADIUS_EDGE_CHART_VERSION {
+		return true, "", nil
 	}
 
 	// Ensure both versions have 'v' prefix for semver parsing

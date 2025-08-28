@@ -1,0 +1,465 @@
+suite: test helpers
+templates:
+  - _helpers.tpl
+  - controller/deployment.yaml
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - de/deployment.yaml
+  - dashboard/deployment.yaml
+  - database/statefulset.yaml
+tests:
+  - it: should use default ghcr.io registry when global.imageRegistry is not set
+    set:
+      controller.image: controller
+      controller.tag: 1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:1.0.0
+        template: controller/deployment.yaml
+
+  - it: should use custom registry when global.imageRegistry is set
+    set:
+      global.imageRegistry: myregistry.azurecr.io
+      controller.image: controller
+      controller.tag: 1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/controller:1.0.0
+        template: controller/deployment.yaml
+
+  - it: should handle empty global.imageRegistry
+    set:
+      global.imageRegistry: ""
+      controller.image: controller
+      controller.tag: 1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:1.0.0
+        template: controller/deployment.yaml
+
+  - it: should use full image path as-is when it contains registry and tag
+    set:
+      global.imageRegistry: otherregistry.io
+      controller.image: myregistry.io/custom-controller:2.0.0
+      controller.tag: ignored-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.io/custom-controller:2.0.0
+        template: controller/deployment.yaml
+
+  - it: should append tag to full image path when tag is missing
+    set:
+      global.imageRegistry: otherregistry.io
+      controller.image: myregistry.io/custom-controller
+      controller.tag: 1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.io/custom-controller:1.0.0
+        template: controller/deployment.yaml
+
+  - it: should handle localhost with port in full image path
+    set:
+      global.imageRegistry: ""
+      rp.image: localhost:5000/custom-rp
+      rp.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: localhost:5000/custom-rp:latest
+        template: rp/deployment.yaml
+
+  - it: should handle functional test scenario with radius-registry
+    set:
+      global.imageRegistry: ""
+      rp.image: radius-registry:5000/applications-rp
+      rp.tag: pr-funceeffa6fd43
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: radius-registry:5000/applications-rp:pr-funceeffa6fd43
+        template: rp/deployment.yaml
+
+  - it: should handle full image path with existing tag and ignore provided tag
+    set:
+      de.image: custom-registry.io/deployment-engine:custom-tag
+      de.tag: ignored-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom-registry.io/deployment-engine:custom-tag
+        template: de/deployment.yaml
+
+  - it: should handle ECR-style registry in full path
+    set:
+      ucp.image: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd
+      ucp.tag: 1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd:1.0.0
+        template: ucp/deployment.yaml
+
+  # Tests for global.imagePullSecrets functionality
+  - it: should add imagePullSecrets when specified
+    set:
+      global.imagePullSecrets:
+        - name: myregistrykey
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: myregistrykey
+        template: controller/deployment.yaml
+
+  - it: should handle multiple imagePullSecrets
+    set:
+      global.imagePullSecrets:
+        - name: regcred1
+        - name: regcred2
+      ucp.image: ucpd
+      ucp.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: regcred1
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[1].name
+          value: regcred2
+        template: ucp/deployment.yaml
+
+  - it: should not add imagePullSecrets when not specified
+    set:
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+        template: controller/deployment.yaml
+
+  - it: should work with imagePullSecrets and custom registry
+    set:
+      global.imageRegistry: myregistry.azurecr.io
+      global.imagePullSecrets:
+        - name: azurecred
+      dashboard.image: dashboard
+      dashboard.tag: 0.48
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/dashboard:0.48
+        template: dashboard/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: azurecred
+        template: dashboard/deployment.yaml
+
+  - it: should apply imagePullSecrets to database statefulset
+    set:
+      database.enabled: true
+      global.imagePullSecrets:
+        - name: dbregistrykey
+      database.image: mirror/postgres
+      database.tag: 14-alpine
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: dbregistrykey
+        template: database/statefulset.yaml
+
+  - it: should handle multiple imagePullSecrets with custom registry and tag
+    set:
+      global.imageRegistry: private.registry.io
+      global.imageTag: 0.48
+      global.imagePullSecrets:
+        - name: azure-cred
+        - name: aws-cred
+        - name: gcr-cred
+      controller.image: controller
+      rp.image: applications-rp
+    asserts:
+      # Check image is correctly formed
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.io/controller:0.48
+        template: controller/deployment.yaml
+      # Check all three secrets are present
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: azure-cred
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[1].name
+          value: aws-cred
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[2].name
+          value: gcr-cred
+        template: controller/deployment.yaml
+      # Verify it applies to other deployments too
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.io/applications-rp:0.48
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: azure-cred
+        template: rp/deployment.yaml
+
+  # Edge case tests for imagePullSecrets
+  - it: should handle empty imagePullSecrets array
+    set:
+      global.imagePullSecrets: []
+      controller.image: controller
+      controller.tag: latest
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+        template: controller/deployment.yaml
+
+  # Keep one malformed test as documentation of behavior without schema validation
+  - it: should handle imagePullSecrets with missing name field
+    set:
+      global.imagePullSecrets:
+        - {}
+      rp.image: applications-rp
+      rp.tag: latest
+    asserts:
+      # Document that objects without name field are passed through (schema validation would catch this)
+      - isNull:
+          path: spec.template.spec.imagePullSecrets[0].name
+        template: rp/deployment.yaml
+
+  - it: should work with default tag from appVersion
+    set:
+      controller.image: controller
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^ghcr\.io/radius-project/controller:.*$
+        template: controller/deployment.yaml
+
+  - it: should work with custom registry and default tag
+    set:
+      global.imageRegistry: custom.registry.io
+      controller.image: controller
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^custom\.registry\.io/controller:.*$
+        template: controller/deployment.yaml
+
+  - it: should apply to all deployments with custom registry
+    set:
+      global.imageRegistry: private.registry.com
+      controller.image: controller
+      controller.tag: latest
+      ucp.image: ucpd
+      ucp.tag: latest
+      rp.image: applications-rp
+      rp.tag: latest
+      dynamicrp.image: dynamic-rp
+      dynamicrp.tag: latest
+      de.image: deployment-engine
+      de.tag: latest
+      dashboard.image: dashboard
+      dashboard.tag: latest
+      bicep.image: bicep
+      bicep.tag: latest
+    asserts:
+      # Test controller image
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.com/controller:latest
+        template: controller/deployment.yaml
+      # Test bicep init container
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: private.registry.com/bicep:latest
+        template: controller/deployment.yaml
+      # Test UCP image
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.com/ucpd:latest
+        template: ucp/deployment.yaml
+      # Test applications-rp image
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.com/applications-rp:latest
+        template: rp/deployment.yaml
+      # Test dynamic-rp image
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.com/dynamic-rp:latest
+        template: dynamic-rp/deployment.yaml
+      # Test deployment-engine image
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.com/deployment-engine:latest
+        template: de/deployment.yaml
+      # Test dashboard image
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: private.registry.com/dashboard:latest
+        template: dashboard/deployment.yaml
+
+  - it: should handle database statefulset with custom registry
+    set:
+      global.imageRegistry: internal.registry.io
+      database.enabled: true
+      database.image: mirror/postgres
+      database.tag: 14-alpine
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: internal.registry.io/mirror/postgres:14-alpine
+        template: database/statefulset.yaml
+
+  - it: should handle mixed scenario - some with full paths, some without
+    set:
+      global.imageRegistry: default-registry.io
+      controller.image: controller
+      controller.tag: 1.0.0
+      rp.image: custom-registry.io/custom-rp:2.0.0
+      rp.tag: ignored
+      ucp.image: ucpd
+      ucp.tag: 1.0.0
+    asserts:
+      # Controller should use global registry
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: default-registry.io/controller:1.0.0
+        template: controller/deployment.yaml
+      # RP should use its full path
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom-registry.io/custom-rp:2.0.0
+        template: rp/deployment.yaml
+      # UCP should use global registry
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: default-registry.io/ucpd:1.0.0
+        template: ucp/deployment.yaml
+
+  # Tests for global.imageTag functionality
+  - it: should use global.imageTag when component tag is not specified
+    set:
+      global.imageTag: 0.48
+      controller.image: controller
+      ucp.image: ucpd
+      rp.image: applications-rp
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.48
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/ucpd:0.48
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/applications-rp:0.48
+        template: rp/deployment.yaml
+
+  - it: should prioritize component tag over global.imageTag
+    set:
+      global.imageTag: 0.48
+      controller.image: controller
+      controller.tag: 0.49
+      ucp.image: ucpd
+    asserts:
+      # Controller should use its specific tag
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.49
+        template: controller/deployment.yaml
+      # UCP should use global.imageTag
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/ucpd:0.48
+        template: ucp/deployment.yaml
+
+  - it: should combine global.imageRegistry with global.imageTag
+    set:
+      global.imageRegistry: myregistry.azurecr.io
+      global.imageTag: 0.48
+      controller.image: controller
+      ucp.image: ucpd
+      rp.image: applications-rp
+      dynamicrp.image: dynamic-rp
+      de.image: deployment-engine
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/controller:0.48
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/ucpd:0.48
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/applications-rp:0.48
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/dynamic-rp:0.48
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.azurecr.io/deployment-engine:0.48
+        template: de/deployment.yaml
+
+  - it: should handle empty global.imageTag and fall back to appVersion
+    set:
+      global.imageTag: ""
+      controller.image: controller
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^ghcr\.io/radius-project/controller:.*$
+        template: controller/deployment.yaml
+
+  - it: should apply global.imageTag to bicep init container
+    set:
+      global.imageTag: 0.48
+      bicep.image: bicep
+      controller.image: controller
+    asserts:
+      # Check bicep init container
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/radius-project/bicep:0.48
+        template: controller/deployment.yaml
+      # Check main controller container
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.48
+        template: controller/deployment.yaml
+
+  - it: should handle component tag override with global registry and tag
+    set:
+      global.imageRegistry: myregistry.io
+      global.imageTag: 0.48
+      controller.image: controller
+      controller.tag: 0.49-rc1
+      ucp.image: ucpd
+    asserts:
+      # Controller with override should use its specific tag
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.io/controller:0.49-rc1
+        template: controller/deployment.yaml
+      # UCP should use global tag
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.io/ucpd:0.48
+        template: ucp/deployment.yaml

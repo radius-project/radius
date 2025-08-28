@@ -1,0 +1,112 @@
+{{- if .Values.preupgrade.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+# Helm stores release information in secrets with specific labels
+# This Role is restricted to "{{ .Release.Namespace }}", since it
+# only needs to be able to access Helm release information for Radius.
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+# Need to check deployments and pods in radius-system namespace
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pre-upgrade
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+# Need to check namespaces for installation validation
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list"]
+# Need to check nodes for resource availability
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+# Need to check CRDs for Radius resources
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+- kind: ServiceAccount
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+roleRef:
+  kind: Role
+  name: pre-upgrade
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pre-upgrade
+  labels:
+    control-plane: pre-upgrade
+    app.kubernetes.io/name: pre-upgrade
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+- kind: ServiceAccount
+  name: pre-upgrade
+  namespace: "{{ .Release.Namespace }}"
+roleRef:
+  kind: ClusterRole
+  name: pre-upgrade
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

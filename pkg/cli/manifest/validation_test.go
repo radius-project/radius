@@ -293,8 +293,8 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with no resource types", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name:  "Test.Provider",
-			Types: map[string]*ResourceType{},
+			Namespace: "Test.Provider",
+			Types:     map[string]*ResourceType{},
 		}
 		err := validateManifestSchemas(ctx, provider)
 		require.NoError(t, err) // Empty types should be valid
@@ -302,7 +302,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with valid schemas", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -315,6 +315,9 @@ func TestValidateManifestSchemas(t *testing.T) {
 									},
 									"count": map[string]any{
 										"type": "integer",
+									},
+									"environment": map[string]any{
+										"type": "string",
 									},
 								},
 							},
@@ -329,13 +332,13 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with invalid schema - unsupported type", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
 						"2023-10-01": {
 							Schema: map[string]any{
-								"type": "array", // Not supported
+								"type": "invalidtype", // Not supported
 								"items": map[string]any{
 									"type": "string",
 								},
@@ -347,13 +350,13 @@ func TestValidateManifestSchemas(t *testing.T) {
 		}
 		err := validateManifestSchemas(ctx, provider)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "unsupported type: array")
+		require.Contains(t, err.Error(), "unsupported type: invalidtype")
 		require.Contains(t, err.Error(), "Test.Provider/widgets@2023-10-01")
 	})
 
 	t.Run("provider with invalid schema - prohibited feature", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -376,7 +379,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with invalid JSON schema", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -394,7 +397,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with nil schema", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -411,7 +414,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with multiple resource types and versions", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{
@@ -419,7 +422,8 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"name": map[string]any{"type": "string"},
+									"name":        map[string]any{"type": "string"},
+									"environment": map[string]any{"type": "string"},
 								},
 							},
 						},
@@ -429,6 +433,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 								"properties": map[string]any{
 									"name":        map[string]any{"type": "string"},
 									"description": map[string]any{"type": "string"},
+									"environment": map[string]any{"type": "string"},
 								},
 							},
 						},
@@ -440,8 +445,9 @@ func TestValidateManifestSchemas(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"id":     map[string]any{"type": "string"},
-									"active": map[string]any{"type": "boolean"},
+									"id":          map[string]any{"type": "string"},
+									"active":      map[string]any{"type": "boolean"},
+									"environment": map[string]any{"type": "string"},
 								},
 							},
 						},
@@ -455,7 +461,7 @@ func TestValidateManifestSchemas(t *testing.T) {
 
 	t.Run("provider with multiple errors", func(t *testing.T) {
 		provider := &ResourceProvider{
-			Name: "Test.Provider",
+			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
 				"widgets": {
 					APIVersions: map[string]*ResourceTypeAPIVersion{

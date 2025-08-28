@@ -30,6 +30,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: bicep-de
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       volumes:
         - name: appsettings-vol
           configMap:
@@ -41,7 +45,7 @@ spec:
         {{- end }}
       containers:
       - name: de
-        image: {{ .Values.de.image }}:{{ .Values.de.tag | default $appversion }}
+        image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
         args:
         - --kubernetes=true
         volumeMounts:

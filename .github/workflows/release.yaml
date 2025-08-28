@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -49,10 +49,10 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout radius-project/radius
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@v4.46.1
+        uses: mikefarah/yq@v4.47.1
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -117,7 +117,7 @@ jobs:
           append: true
           message: |
             ## :warning: Missing release note :warning:
-            
+
             This is the official Radius release. Create the release note by following instruction:            
             1. Create ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md from [release note template](https://github.com/radius-project/radius/blob/main/docs/release-notes/template.md)
             2. Update the each section and add the above Change logs to the end of release note.
@@ -132,40 +132,47 @@ jobs:
     environment: release
     steps:
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: radius-project/radius
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: radius-project/recipes
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: radius-project/dashboard
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: dashboard
       - name: Checkout radius-project/bicep-types-aws@main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: radius-project/bicep-types-aws
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: bicep-types-aws
+      - name: Checkout radius-project/bicep-tools@main
+        uses: actions/checkout@v5
+        with:
+          repository: radius-project/bicep-tools
+          ref: main
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: bicep-tools
       - name: Set up GitHub credentials
         run: |
           git config --global user.name "Radius CI Bot"
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@v4.46.1
+        uses: mikefarah/yq@v4.47.1
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -206,6 +213,10 @@ jobs:
           echo "* Desired release tag: ${{ steps.get-version.outputs.release-version }}" >> $GITHUB_STEP_SUMMARY
           echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
+      - name: Release radius-project/bicep-tools version ${{ steps.get-version.outputs.release-version }}
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-tools ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         run: |
