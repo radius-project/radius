@@ -60,6 +60,16 @@ type DeploymentOptions struct {
 	ProgressChan chan<- ResourceProgress
 }
 
+// DeleteOptions is the options passed when deleting an application.
+type DeleteOptions struct {
+	// ApplicationNameOrID is the name or resource ID of the application to delete.
+	ApplicationNameOrID string
+	// ProgressText is the text to display during the deletion progress.
+	ProgressText string
+	// ProgressChan is a channel used to signal progress of the deletion operation.
+	ProgressChan chan<- ResourceProgress
+}
+
 type ResourceStatus string
 
 const (

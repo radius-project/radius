@@ -22,9 +22,13 @@ spec:
         app.kubernetes.io/part-of: radius
     spec:
       serviceAccountName: dashboard
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       containers:
       - name: dashboard
-        image: "{{ .Values.dashboard.image }}:{{ .Values.dashboard.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.dashboard.image "tag" (.Values.dashboard.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         imagePullPolicy: Always
         ports:
         - name: http

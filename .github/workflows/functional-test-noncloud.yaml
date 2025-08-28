@@ -151,6 +151,7 @@ jobs:
             ucp-noncloud,
             datastoresrp-noncloud,
             dynamicrp-noncloud,
+            upgrade-noncloud,
           ]
     runs-on: ${{ matrix.os }}
     env:
@@ -179,10 +180,10 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout samples repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -302,6 +303,7 @@ jobs:
                  --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
                  --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
                  --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
+                 --set preupgrade.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/pre-upgrade,preupgrade.tag=${{ env.REL_VERSION }} \
                  --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
 
           if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
@@ -501,7 +503,7 @@ jobs:
           namespace="radius-system"
           pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
           for pod_name in "${pod_names[@]}"; do
-            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
+            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt 2>&1 || echo "Failed to get logs for pod: $pod_name" > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
           done
           echo "Pod logs saved to func-nc/radius-logs-events/${{ matrix.name }}/"
           # Get kubernetes events and save to file

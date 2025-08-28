@@ -30,6 +30,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: applications-rp
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       {{- if eq .Values.global.terraform.enabled true }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
@@ -119,7 +123,7 @@ spec:
       {{- end }}
       containers:
       - name: applications-rp
-        image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.rp.image "tag" (.Values.rp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:

@@ -37,7 +37,6 @@ import {
   TypeBaseKind,
   TypeFactory,
   TypeReference,
-  ResourceFlags,
   ResourceTypeFunction,
   FunctionParameter
 } from "bicep-types";
@@ -273,10 +272,9 @@ export function generateTypes(
 
       factory.addResourceType(
         `${getFullyQualifiedType(descriptor)}@${descriptor.apiVersion}`,
-        descriptor.scopeType,
-        undefined,
         bodyType,
-        ResourceFlags.None,
+        descriptor.scopeType,
+        descriptor.scopeType,
         resourceTypeFunctions
       );
     }

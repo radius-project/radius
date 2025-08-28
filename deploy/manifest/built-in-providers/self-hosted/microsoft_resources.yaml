@@ -1,4 +1,4 @@
-name: Microsoft.Resources
+namespace: Microsoft.Resources
 location:
   global:
     "http://bicep-de.radius-system:6443"

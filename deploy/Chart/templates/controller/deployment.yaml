@@ -27,9 +27,13 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: controller
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       initContainers:
       - name: bicep
-        image: "{{ .Values.bicep.image }}:{{ .Values.bicep.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.bicep.image "tag" (.Values.bicep.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         command: ['sh', '-c', 'mv /bicepconfig.json /bicepconfig/bicepconfig.json && mv /bicep /usr/local/bin/bicep']
         volumeMounts:
         - name: bicep
@@ -38,7 +42,7 @@ spec:
           mountPath: /bicepconfig
       containers:
       - name: controller
-        image: "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.controller.image "tag" (.Values.controller.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         imagePullPolicy: 'Always'
         args: 
         - '--config-file'

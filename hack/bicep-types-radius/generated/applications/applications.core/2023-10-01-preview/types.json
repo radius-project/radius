@@ -754,11 +754,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/applications@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/3"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -1706,11 +1706,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/containers@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/65"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -2244,11 +2244,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/environments@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/138"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -2505,11 +2505,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/extenders@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/179"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
@@ -2863,11 +2863,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/gateways@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/200"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   },
   {
@@ -3256,11 +3256,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/secretStores@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/223"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
@@ -3727,11 +3727,11 @@
   {
     "$type": "ResourceType",
     "name": "Applications.Core/volumes@2023-10-01-preview",
-    "scopeType": 0,
     "body": {
       "$ref": "#/259"
     },
-    "flags": 0,
+    "readableScopes": 0,
+    "writableScopes": 0,
     "functions": {}
   }
 ]

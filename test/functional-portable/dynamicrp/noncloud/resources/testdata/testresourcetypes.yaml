@@ -1,4 +1,4 @@
-name: Test.Resources
+namespace: Test.Resources
 types:
   userTypeAlpha:    
     apiVersions:
@@ -20,15 +20,9 @@ types:
                   source:
                     type: string
                     description: The resourceID of the source of the connection.
-            status:
-              type: object
-              properties:
-                computedValues:
-                  type: object
-                  properties:
-                    port:
-                      type: string
-                      description: The port the container listens on.
+            port:
+              type: string
+              description: The port number exposed by the application.
           required:
             - application
             - environment
@@ -50,15 +44,6 @@ types:
                   source:
                     type: string
                     description: The resourceID of the source of the connection.
-            status:
-              type: object
-              properties:
-                computedValues:
-                  type: object
-                  properties:
-                    port:
-                      type: string
-                      description: The port the container listens on.
           required:
             - application
             - environment
@@ -83,12 +68,12 @@ types:
             port:
               type: string
               description: The port number of the database.
-            password:
-              type: string
-              description: The password for the database.
             username:
               type: string
               description: The username for the database.
+            password:
+              type: string
+              description: The password for the database.
   externalResource:
     capabilities: ["ManualResourceProvisioning"]
     apiVersions:
@@ -148,4 +133,35 @@ types:
           required:
             - application
             - environment
+  testResourceSchema:
+    capabilities: ["ManualResourceProvisioning"]
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            validationData:
+              type: string
+              description: Data used for schema validation testing (must be string).
+            numericField:
+              type: integer
+              description: A numeric field for testing type validation.
+            configSettings:
+              type: object
+              description: Configuration settings object.
+              properties:
+                enabled:
+                  type: boolean
+                name:
+                  type: string
+          required:
+            - application
+            - environment
+            - validationData
             

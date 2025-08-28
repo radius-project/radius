@@ -1,4 +1,21 @@
 global:
+  # Configure global.imageRegistry to use a custom container registry for all Radius images.
+  # When empty (default), images will use ghcr.io/radius-project as the registry.
+  # Example: global.imageRegistry=myregistry.azurecr.io
+  imageRegistry: ""
+
+  # Configure global.imageTag to use a specific tag for all Radius images.
+  # When empty (default), images will use the tag derived from Chart AppVersion.
+  # Example: global.imageTag=0.48
+  imageTag: ""
+
+  # Configure global.imagePullSecrets for pulling images from private registries.
+  # Secrets must be manually created in the namespace.
+  # Example:
+  # imagePullSecrets:
+  #   - name: myregistrykey
+  imagePullSecrets: []
+
   # Configure global.rootCA.cert to use the intermediate CA cert in Radius containers.
   # Otherwise, Radius containers use the default root CA provided by base OS image.
   rootCA:
@@ -43,7 +60,7 @@ global:
     downloadUrl: ""
 
 controller:
-  image: ghcr.io/radius-project/controller
+  image: controller
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -53,7 +70,7 @@ controller:
       memory: "300Mi"
 
 de:
-  image: ghcr.io/radius-project/deployment-engine
+  image: deployment-engine
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -64,7 +81,7 @@ de:
       memory: "300Mi"
 
 ucp:
-  image: ghcr.io/radius-project/ucpd
+  image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -75,7 +92,7 @@ ucp:
       memory: "300Mi"
 
 dynamicrp:
-  image: ghcr.io/radius-project/dynamic-rp
+  image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -93,7 +110,7 @@ dynamicrp:
     path: "/terraform"
 
 rp:
-  image: ghcr.io/radius-project/applications-rp
+  image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   publicEndpointOverride: ""
@@ -114,7 +131,7 @@ rp:
 dashboard:
   enabled: true
   containerPort: 7007
-  image: ghcr.io/radius-project/dashboard
+  image: dashboard
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -126,7 +143,7 @@ dashboard:
 database:
   enabled: false # Enable the Postgres database install
   postgres_user: "radius"
-  image: ghcr.io/radius-project/mirror/postgres
+  image: mirror/postgres
   tag: latest
   storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.
@@ -140,6 +157,69 @@ database:
       memory: "1024Mi"
 
 bicep:
-  image: ghcr.io/radius-project/bicep
+  image: bicep
   # Default tag uses Chart AppVersion.
   # tag: latest
+
+preupgrade:
+  # Enable pre-upgrade preflight checks
+  enabled: false
+  # Container image for pre-upgrade checks
+  # Can be overridden with a full registry path (e.g., myregistry.azurecr.io/pre-upgrade)
+  # or use just the image name to use global.imageRegistry
+  image: pre-upgrade
+  # Image tag override. If not set, uses global.imageTag or Chart AppVersion
+  # tag: latest
+  # Target version for upgrade validation. If not set, uses Chart AppVersion
+  # targetVersion: 0.49.0
+  # Individual preflight checks configuration
+  # All checks are optional and can be enabled/disabled independently
+  # For production upgrades, recommended: version=true, helm=true, installation=true, kubernetes=true
+  checks:
+    # Version compatibility check - validates upgrade path compatibility (RECOMMENDED)
+    version: true
+    # Helm connectivity check - validates Helm can connect to cluster (RECOMMENDED)
+    helm: true
+    # Installation check - validates Radius is properly installed (RECOMMENDED)
+    installation: true
+    # Kubernetes connectivity check - validates cluster connectivity and permissions (RECOMMENDED)
+    kubernetes: true
+    # Resource availability check - checks if cluster has sufficient resources (OPTIONAL - warning only)
+    resources: false
+  # Timeout for preflight checks in seconds (default: 60)
+  timeoutSeconds: 60
+  # Log level for preflight checks (DEBUG, INFO, WARN, ERROR)
+  logLevel: INFO
+  # Log profile (production for JSON logs, development for human-readable)
+  logProfile: production
+  # Retry configuration for handling transient failures
+  retryAttempts: 1 # Number of attempts (1 = no retries)
+  retryDelaySeconds: 2 # Delay between retry attempts
+  # Job configuration
+  ttlSecondsAfterFinished: 300
+  # Resource requirements
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  # Security context for the container
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532

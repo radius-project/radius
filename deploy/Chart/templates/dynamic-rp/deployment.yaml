@@ -30,6 +30,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
       {{- if eq .Values.global.terraform.enabled true }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
@@ -119,7 +123,7 @@ spec:
       {{- end }}
       containers:
       - name: dynamic-rp
-        image: "{{ .Values.dynamicrp.image }}:{{ .Values.dynamicrp.tag | default $appversion }}"
+        image: "{{ include "radius.image" (dict "image" .Values.dynamicrp.image "tag" (.Values.dynamicrp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
