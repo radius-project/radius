@@ -299,14 +299,39 @@ jobs:
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
-            :hourglass: Building Radius and pushing container images for functional tests...
+            :hourglass: Building Radius images for functional tests...
 
-      - name: Build and Push container images
+      - name: Build and package images (no push)
         run: |
-          make build && make docker-build && make docker-push
+          make artifacts-no-docker
+          make docker-build DOCKER_CACHE_GHA=1
+          make docker-save-images
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - name: Collect build metrics
+        run: |
+          make build-metrics METRICS_COLLECT_ONLY=1
+          echo '## Build metrics (cloud)' >> $GITHUB_STEP_SUMMARY
+          cat dist/metrics/metrics.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload build metrics (cloud)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metrics-cloud-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/metrics/*
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload built images
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius_images
+          path: |
+            ./dist/images/*.tar
+          if-no-files-found: error
 
       - name: Upload CLI binary
         uses: actions/upload-artifact@v4
@@ -601,12 +626,19 @@ jobs:
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Download built images
+        uses: actions/download-artifact@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          name: radius_images
+          path: dist/images
+
+      - name: Load images into KinD nodes
+        run: |
+          for f in dist/images/*.tar; do
+            [ -e "$f" ] || continue
+            echo "Loading $f to kind..."
+            ./kind load image-archive "$f" --name radius
+          done
 
       - name: Download Bicep
         run: |
@@ -638,12 +670,9 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
-            --set dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
-            --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
-            --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
+            --set global.imageRegistry=${{ env.CONTAINER_REGISTRY }} \
+            --set global.imageTag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
-            --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
             --set global.azureWorkloadIdentity.enabled=true \
             --set global.aws.irsa.enabled=true 
           
