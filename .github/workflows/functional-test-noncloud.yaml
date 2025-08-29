@@ -101,6 +101,8 @@ jobs:
         DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
         RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
       steps:
+        - name: Check out code
+          uses: actions/checkout@v5
         - name: Set DE image and tag (repository_dispatch from de-functional-test)
           if: github.event_name == 'repository_dispatch'
           uses: actions/github-script@v7

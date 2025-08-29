@@ -111,6 +111,8 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
+      - name: Check out code
+        uses: actions/checkout@v5
       - name: Log Event Information
         run: |
           echo "Event Name: ${{ github.event_name }}"
