@@ -19,6 +19,10 @@ DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
+# Helpers for flags that include commas (avoid splitting Make conditionals on ',')
+COMMA := ,
+CACHE_GHA_FLAGS := --cache-from=type=gha --cache-to=type=gha$(COMMA)mode=max
+
 ##@ Docker Images
 
 # Generate a target for each image we define
@@ -65,7 +69,7 @@ docker-multi-arch-build-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 buil
 
 	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
 		--platform linux/amd64,linux/arm64,linux/arm \
-		$(if $(filter 1,$(DOCKER_CACHE_GHA)),--cache-from=type=gha --cache-to=type=gha,mode=max) \
+		$(if $(filter 1,$(DOCKER_CACHE_GHA)),$(CACHE_GHA_FLAGS)) \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
@@ -82,7 +86,7 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 	# to build and add --push.
 	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
 		--platform linux/amd64,linux/arm64,linux/arm \
-		$(if $(filter 1,$(DOCKER_CACHE_GHA)),--cache-from=type=gha --cache-to=type=gha,mode=max) \
+		$(if $(filter 1,$(DOCKER_CACHE_GHA)),$(CACHE_GHA_FLAGS)) \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
