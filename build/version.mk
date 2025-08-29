@@ -16,7 +16,10 @@
 
 # Commit and release info is used by multiple categories of commands
 
-GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+# Allow overriding the commit used for builds by passing GIT_COMMIT=<sha> to make.
+ifndef GIT_COMMIT
+	GIT_COMMIT := $(shell git rev-list -1 HEAD)
+endif
 GIT_VERSION = $(shell git describe --always --abbrev=7 --dirty --tags)
 
 # Azure Autorest require a --module-version, which is used
