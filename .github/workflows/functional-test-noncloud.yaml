@@ -369,6 +369,7 @@ jobs:
               --chart ${{ env.RADIUS_CHART_LOCATION }} \
               --set global.imageRegistry=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }} \
               --set global.imageTag=${{ env.REL_VERSION }} \
+              --set global.imagePullPolicy=IfNotPresent \
               --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
 
             if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
@@ -433,6 +434,21 @@ jobs:
           env:
             USE_CERT_FILE: "true"
             TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+
+        - name: Debug install failure (noncloud)
+          if: failure()
+          run: |
+            echo "==== radius-system pods"
+            kubectl get pods -n radius-system -o wide || true
+            echo "==== radius-system events (latest)"
+            kubectl get events -n radius-system --sort-by=.lastTimestamp | tail -n 200 || true
+            echo "==== helm status"
+            helm status radius -n radius-system || true
+            echo "==== describe deployments"
+            kubectl describe deploy -n radius-system || true
+            echo "==== describe pods"
+            for p in $(kubectl get pods -n radius-system -o name); do
+              echo "---- $p ----"; kubectl describe "$p" -n radius-system || true; done
 
         - name: Install Flux Source Controller
           if: matrix.name == 'kubernetes-noncloud'
