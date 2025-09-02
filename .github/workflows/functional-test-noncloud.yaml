@@ -312,7 +312,7 @@ jobs:
             for f in dist/images/*.tar; do
               [ -e "$f" ] || continue
               echo "Loading $f to kind..."
-              kind load image-archive "$f" --name radius
+              kind load image-archive "$f" --name kind
             done
 
         - name: Download rad CLI
