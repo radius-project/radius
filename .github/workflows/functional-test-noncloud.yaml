@@ -163,11 +163,11 @@ jobs:
 
         - name: Build and package images (no push)
           run: |
-            make artifacts-no-docker
+            make artifacts-no-docker SKIP_HELM=1
             make docker-build DOCKER_CACHE_GHA=1
             make docker-save-images
           env:
-            DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
+            DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
             DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
         - name: Collect build metrics
