@@ -305,7 +305,7 @@ jobs:
 
       - name: Build and package images (no push)
         run: |
-          make artifacts-no-docker
+          make artifacts-no-docker SKIP_HELM=1
           make docker-build DOCKER_CACHE_GHA=1
           make docker-save-images
         env:
