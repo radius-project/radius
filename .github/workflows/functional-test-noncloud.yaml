@@ -170,6 +170,22 @@ jobs:
             DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
             DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
+        - name: Verify built image tarballs exist
+          run: |
+            ls -l dist/images || true
+            missing=0
+            for img in controller ucpd applications-rp dynamic-rp bicep; do
+              if [ ! -f "dist/images/$img.tar" ]; then
+                echo "Missing dist/images/$img.tar"
+                missing=1
+              fi
+            done
+            if [ "$missing" -ne 0 ]; then
+              echo "Docker images present locally:"; docker images | head -n 200 || true
+              echo "docker-save-images likely skipped some tags. Failing early."
+              exit 1
+            fi
+
         - name: Collect build metrics
           run: |
             make build-metrics METRICS_COLLECT_ONLY=1

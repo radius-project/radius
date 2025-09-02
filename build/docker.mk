@@ -37,23 +37,25 @@ docker-build-$(1): build-$(1)-linux-amd64
 	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
-	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
+	cd $(OUT_DIR) && docker build -f ./Dockerfile-$(1) \
 		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		$(2)
 else
 docker-build-$(1):
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
-	docker build $(2) -f $(3) \
+	docker build -f $(3) \
 		$(if $(filter 1,$(DOCKER_CACHE_GHA)),--cache-from=type=gha) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		$(2)
 endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
