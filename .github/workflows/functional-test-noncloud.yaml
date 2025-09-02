@@ -315,6 +315,17 @@ jobs:
               kind load image-archive "$f" --name kind
             done
 
+        - name: Verify images present in node
+          run: |
+            echo "Listing images in kind node"
+            docker exec kind-control-plane crictl images | sed -n '1,200p' || true
+            echo "Check key images present:"
+            for img in controller ucpd applications-rp dynamic-rp bicep; do
+              if docker exec kind-control-plane crictl images | grep -q "radius-registry:5000/$img:${{ env.REL_VERSION }}"; then
+                echo "Found radius-registry:5000/$img:${{ env.REL_VERSION }}"
+              else
+                echo "MISSING radius-registry:5000/$img:${{ env.REL_VERSION }}"; fi; done
+
         - name: Download rad CLI
           uses: actions/download-artifact@v5
           with:
@@ -370,6 +381,7 @@ jobs:
               --set global.imageRegistry=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }} \
               --set global.imageTag=${{ env.REL_VERSION }} \
               --set global.imagePullPolicy=IfNotPresent \
+              --set dashboard.enabled=false \
               --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
 
             if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
