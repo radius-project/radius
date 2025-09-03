@@ -118,7 +118,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
-          file: ./dist/unit_test/ut_coverage.out
+          files: ./dist/unit_test/ut_coverage.out
           fail_ci_if_error: false
           verbose: true
       - name: Process Unit Test Results
@@ -196,8 +196,12 @@ jobs:
       - name: Build container images and create artifacts (PR)
         if: github.event_name == 'pull_request'
         run: |
+          echo "Building images with registry: $DOCKER_REGISTRY and tag: $DOCKER_TAG_VERSION"
           make docker-multi-arch-build
+          echo "Saving images to tarballs..."
           make docker-save-images
+          echo "Contents of dist/images directory:"
+          ls -la ./dist/images/ || echo "dist/images directory not found"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
