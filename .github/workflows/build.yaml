@@ -197,7 +197,9 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           echo "Building images with registry: $DOCKER_REGISTRY and tag: $DOCKER_TAG_VERSION"
-          make docker-multi-arch-build
+          make docker-build
+          echo "Checking what images are available in Docker daemon:"
+          docker images
           echo "Saving images to tarballs..."
           make docker-save-images
           echo "Contents of dist/images directory:"
