@@ -161,17 +161,52 @@ jobs:
             cache-dependency-path: go.sum
             cache: true
 
-        - name: Build and package images (no push)
+        - name: Pull images from GHCR or build locally
           run: |
-            make artifacts-no-docker SKIP_HELM=1
-            make docker-build DOCKER_CACHE_GHA=1
-            # Ensure controller image exists; build it explicitly if missing
-            if ! docker image inspect "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller:${{ env.REL_VERSION }}" >/dev/null 2>&1; then
-              echo "Controller image missing after bulk build; building explicitly..."
-              make docker-build-controller DOCKER_CACHE_GHA=1 \
-                DOCKER_REGISTRY="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}" \
-                DOCKER_TAG_VERSION="${{ env.REL_VERSION }}"
+            # Try to pull images from GHCR dev registry first (for PRs) or main registry
+            PULL_SUCCESS=true
+            
+            # For PRs, try to pull from dev registry first
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              echo "Attempting to pull PR images from ghcr.io/radius-project/dev..."
+              for image in applications-rp dynamic-rp controller ucpd; do
+                if ! docker pull "ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}"; then
+                  echo "Failed to pull ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}"
+                  PULL_SUCCESS=false
+                  break
+                fi
+                # Tag for local registry use
+                docker tag "ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}" "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/${image}:${{ env.REL_VERSION }}"
+              done
+            else
+              # For main/release branches, try to pull from main registry
+              echo "Attempting to pull images from ghcr.io/radius-project..."
+              for image in applications-rp dynamic-rp controller ucpd; do
+                if ! docker pull "ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}"; then
+                  echo "Failed to pull ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}"
+                  PULL_SUCCESS=false
+                  break
+                fi
+                # Tag for local registry use
+                docker tag "ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}" "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/${image}:${{ env.REL_VERSION }}"
+              done
             fi
+            
+            # Fall back to building if pull failed
+            if [[ "$PULL_SUCCESS" == "false" ]]; then
+              echo "Image pull failed, building images locally..."
+              make artifacts-no-docker SKIP_HELM=1
+              make docker-build
+              # Ensure controller image exists; build it explicitly if missing
+              if ! docker image inspect "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller:${{ env.REL_VERSION }}" >/dev/null 2>&1; then
+                echo "Controller image missing after bulk build; building explicitly..."
+                make docker-build-controller \
+                  DOCKER_REGISTRY="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}" \
+                  DOCKER_TAG_VERSION="${{ env.REL_VERSION }}"
+              fi
+            fi
+            
+            # Always save images for upload
             make docker-save-images
           env:
             DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"

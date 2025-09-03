@@ -46,7 +46,17 @@ build-metrics:
 	IMG_DIR="$(CURDIR)/dist/images"; \
 	if [ -d "$$IMG_DIR" ]; then \
 	  COUNT=$$(find "$$IMG_DIR" -type f -name '*.tar' | wc -l | tr -d ' '); \
-	  BYTES=$$(find "$$IMG_DIR" -type f -name '*.tar' -exec stat -f%z {} \; 2>/dev/null | awk '{s+=$$1} END {print s+0}'); \
+	  if command -v stat >/dev/null 2>&1; then \
+	    if stat -c%s /dev/null >/dev/null 2>&1; then \
+	      BYTES=$$(find "$$IMG_DIR" -type f -name '*.tar' -exec stat -c%s {} \; 2>/dev/null | awk '{s+=$$1} END {print s+0}'); \
+	    elif stat -f%z /dev/null >/dev/null 2>&1; then \
+	      BYTES=$$(find "$$IMG_DIR" -type f -name '*.tar' -exec stat -f%z {} \; 2>/dev/null | awk '{s+=$$1} END {print s+0}'); \
+	    else \
+	      BYTES=$$(du -bc "$$IMG_DIR"/*.tar 2>/dev/null | tail -n1 | cut -f1 || echo 0); \
+	    fi; \
+	  else \
+	    BYTES=$$(du -bc "$$IMG_DIR"/*.tar 2>/dev/null | tail -n1 | cut -f1 || echo 0); \
+	  fi; \
 	else \
 	  COUNT=0; BYTES=0; \
 	fi; \

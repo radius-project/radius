@@ -205,6 +205,13 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
+      - name: Push container images to dev registry (PR) # Push PR images to dev namespace for functional tests
+        run: |
+          make docker-multi-arch-push
+        if: github.event_name == 'pull_request'
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
       - name: Push container images (release)
         run: |
           make docker-multi-arch-push

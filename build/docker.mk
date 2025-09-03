@@ -19,6 +19,9 @@ DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
+# Enable GitHub Actions cache by default in CI environments
+DOCKER_CACHE_GHA?=$(if $(CI),1,0)
+
 # Helpers for flags that include commas (avoid splitting Make conditionals on ',')
 COMMA := ,
 CACHE_GHA_FLAGS := --cache-from=type=gha --cache-to=type=gha$(COMMA)mode=max
