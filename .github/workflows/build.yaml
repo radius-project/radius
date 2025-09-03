@@ -180,12 +180,6 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ env.GHCR_ACTOR }}
-          password: ${{ secrets.GH_RAD_CI_BOT_PAT || secrets.GITHUB_TOKEN }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -199,20 +193,21 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: Build container images (PR) # Don't push on PR, agent will not have permission.
+      - name: Build container images (PR) # Build images and save as artifacts for functional tests
         run: |
           make docker-multi-arch-build
-        if: github.event_name == 'pull_request'
-        env:
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: Push container images to dev registry (PR) # Push PR images to dev namespace for functional tests
-        run: |
-          make docker-multi-arch-push
+          make docker-save-images
         if: github.event_name == 'pull_request'
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
+      - name: Upload container images as artifacts (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-images-${{ env.REL_VERSION }}
+          path: ./dist/images/
+          retention-days: 1
       - name: Push container images (release)
         run: |
           make docker-multi-arch-push
