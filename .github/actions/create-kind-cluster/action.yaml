@@ -128,9 +128,9 @@ runs:
             config_path = "/etc/containerd/certs.d"
         EOF
 
-  # Create the directory for the certificates and add the certificate to the system trust store
-  LOCALHOST_DIR="/etc/containerd/certs.d/${{ inputs.registry-server }}:${{ inputs.registry-port }}"
-  RADIUS_DIR="/etc/containerd/certs.d/${{ inputs.registry-name }}:${{ inputs.registry-port }}"
+        # Create the directory for the certificates and add the certificate to the system trust store
+        LOCALHOST_DIR="/etc/containerd/certs.d/${{ inputs.registry-server }}:${{ inputs.registry-port }}"
+        RADIUS_DIR="/etc/containerd/certs.d/${{ inputs.registry-name }}:${{ inputs.registry-port }}"
 
         for node in $(kind get nodes); do
           docker exec "${node}" mkdir -p "${LOCALHOST_DIR}"
