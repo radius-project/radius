@@ -87,7 +87,7 @@ runs:
         done
 
         if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${{ inputs.registry-name }}")" = 'null' ]; then
-          docker network connect "kind" "${reg_name}"
+          docker network connect "kind" "${{ inputs.registry-name }}"
         fi
 
         cat <<EOF | kubectl apply -f -

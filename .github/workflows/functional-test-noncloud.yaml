@@ -324,6 +324,53 @@ jobs:
             registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
             registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
+        - name: Pre-install diagnostics (cluster, kubeconfig, registry, controller image)
+          env:
+            TAG: ${{ env.REL_VERSION }}
+            REG: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
+          run: |
+            set -x
+            echo "== kind version and clusters =="
+            (kind --version || true)
+            (kind get clusters || true)
+
+            echo "== kubeconfig basics =="
+            ls -la ~/.kube || true
+            kubectl config view || true
+            kubectl config current-context || true
+            kubectl version --short || true
+            kubectl cluster-info || true
+            kubectl get nodes -o wide || true
+
+            echo "== docker and registry =="
+            docker ps -a || true
+            docker inspect $REG --format '{{json .NetworkSettings.Networks.kind}}' || true
+            docker logs $REG | tail -n 200 || true
+
+            echo "== controller image local + registry =="
+            echo "Listing saved tars:"
+            ls -l dist/images || true
+            echo "Check tar for controller:"
+            [ -f "dist/images/controller.tar" ] && echo "controller.tar present" || echo "controller.tar MISSING"
+
+            echo "Try pulling from registry on runner:"
+            docker pull $REG/controller:$TAG || echo "runner docker pull failed"
+
+            echo "== containerd registry config inside node =="
+            NODE="kind-control-plane"
+            for path in \
+              "/etc/containerd/certs.d/localhost:${{ env.LOCAL_REGISTRY_PORT }}/hosts.toml" \
+              "/etc/containerd/certs.d/${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/hosts.toml"; do
+              echo "--- $path ---"
+              docker exec "$NODE" sh -c "cat $path" || true
+            done
+
+            echo "List images in node (first 200 lines):"
+            docker exec "$NODE" crictl images | sed -n '1,200p' || true
+
+            echo "Try crictl pull inside node (will reveal registry reachability):"
+            docker exec "$NODE" crictl pull $REG/controller:$TAG || echo "node crictl pull failed"
+
         - name: Download built images
           uses: actions/download-artifact@v5
           with:
