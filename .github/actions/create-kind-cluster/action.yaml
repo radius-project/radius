@@ -128,21 +128,21 @@ runs:
             config_path = "/etc/containerd/certs.d"
         EOF
 
-        # Create the directory for the certificates and add the certificate to the system trust store
-        LOCALHOST_DIR="/etc/containerd/certs.d/${{ inputs.registry-server }}:${{ inputs.registry-port }}"
-        RADIUS_DIR="/etc/containerd/certs.d/${{ inputs.registry-name }}:${{ inputs.registry-port }}"
+  # Create the directory for the certificates and add the certificate to the system trust store
+  LOCALHOST_DIR="/etc/containerd/certs.d/${{ inputs.registry-server }}:${{ inputs.registry-port }}"
+  RADIUS_DIR="/etc/containerd/certs.d/${{ inputs.registry-name }}:${{ inputs.registry-port }}"
 
         for node in $(kind get nodes); do
           docker exec "${node}" mkdir -p "${LOCALHOST_DIR}"
           cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${LOCALHOST_DIR}/hosts.toml"
-        [host."http://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
+        [host."https://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
           capabilities = ["pull", "resolve", "push"]
           skip_verify = true
         EOF
 
           docker exec "${node}" mkdir -p "${RADIUS_DIR}"
           cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${RADIUS_DIR}/hosts.toml"
-        [host."http://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
+        [host."https://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
           capabilities = ["pull", "resolve", "push"]
           skip_verify = true
         EOF

@@ -165,6 +165,13 @@ jobs:
           run: |
             make artifacts-no-docker SKIP_HELM=1
             make docker-build DOCKER_CACHE_GHA=1
+            # Ensure controller image exists; build it explicitly if missing
+            if ! docker image inspect "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller:${{ env.REL_VERSION }}" >/dev/null 2>&1; then
+              echo "Controller image missing after bulk build; building explicitly..."
+              make docker-build-controller DOCKER_CACHE_GHA=1 \
+                DOCKER_REGISTRY="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}" \
+                DOCKER_TAG_VERSION="${{ env.REL_VERSION }}"
+            fi
             make docker-save-images
           env:
             DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
@@ -322,6 +329,20 @@ jobs:
           with:
             name: radius_images
             path: dist/images
+
+        - name: Load images into local Docker and push to local registry
+          run: |
+            set -e
+            for f in dist/images/*.tar; do
+              [ -e "$f" ] || continue
+              name=$(basename "$f" .tar)
+              tag="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/$name:${{ env.REL_VERSION }}"
+              echo "Loading $f into Docker and pushing $tag"
+              docker load -i "$f"
+              # Ensure tag exists (no-op if already correct)
+              docker tag "$tag" "$tag" || true
+              docker push "$tag"
+            done
 
         - name: Load images into KinD nodes
           run: |
