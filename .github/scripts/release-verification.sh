@@ -90,6 +90,33 @@ verify_pod_image() {
     echo "$component_name image verified: $actual_image"
 }
 
+# This function verifies the status of the pre-upgrade image.
+# Note: The pre-upgrade image runs as a Kubernetes Job, so the verification process differs from standard deployments.
+# This verification checks the container image used in the pre-upgrade job.
+verify_pre_upgrade_image() {
+
+    local expected_image="$1"
+    
+    # expect error - ignore and continue. We only want to trigger the pre-upgrade container to run as a job so that we 
+    # can verify the container image used in the job.
+    helm upgrade radius ./deploy/Chart \
+        --namespace radius-system \
+        --set global.imageTag="${EXPECTED_TAG_VERSION}" \
+        --set preupgrade.enabled=true \
+        --set preupgrade.targetVersion="${EXPECTED_CLI_VERSION}" \
+        --wait 2>/dev/null || true
+
+    # Extract the "image" field from the pre-upgrade job
+    PRE_UPGRADE_IMAGE=$(kubectl get job pre-upgrade -n radius-system -o json | jq -r '.spec.template.spec.containers[0].image')
+
+    if [[ "$PRE_UPGRADE_IMAGE" != "$expected_image" ]]; then
+        echo "Error: Pre-upgrade image: $PRE_UPGRADE_IMAGE does not match the desired image: $expected_image." >&2
+        exit 1
+    else
+        echo "Pre-upgrade image verified: $PRE_UPGRADE_IMAGE"
+    fi
+}
+
 if [[ -z "$RELEASE_VERSION_NUMBER" ]]; then
     echo "Error: RELEASE_VERSION_NUMBER is not set." >&2
     echo "Usage: $0 <version> [os] [arch]" >&2
@@ -173,6 +200,7 @@ EXPECTED_CONTROLLER_IMAGE="ghcr.io/radius-project/controller:${EXPECTED_TAG_VERS
 EXPECTED_DASHBOARD_IMAGE="ghcr.io/radius-project/dashboard:${EXPECTED_TAG_VERSION}"
 EXPECTED_DYNAMIC_RP_IMAGE="ghcr.io/radius-project/dynamic-rp:${EXPECTED_TAG_VERSION}"
 EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
+EXPECTED_PRE_UPGRADE_IMAGE="ghcr.io/radius-project/pre-upgrade:${EXPECTED_TAG_VERSION}"
 
 # Verify all pod images
 echo "Verifying pod images..."
@@ -182,6 +210,7 @@ verify_pod_image "controller" "$EXPECTED_CONTROLLER_IMAGE" "Controller"
 verify_pod_image "dashboard" "$EXPECTED_DASHBOARD_IMAGE" "Dashboard"
 verify_pod_image "dynamic-rp" "$EXPECTED_DYNAMIC_RP_IMAGE" "Dynamic RP"
 verify_pod_image "ucp" "$EXPECTED_UCP_IMAGE" "UCP"
+verify_pre_upgrade_image "$EXPECTED_PRE_UPGRADE_IMAGE"
 
 echo "============================================================================"
 echo "Release verification successful."
