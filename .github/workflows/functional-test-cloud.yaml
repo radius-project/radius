@@ -303,7 +303,27 @@ jobs:
           message: |
             :hourglass: Building Radius images for functional tests...
 
+      - name: Download and load container image artifacts
+        if: github.event_name == 'workflow_run'
+        run: |
+          # Download artifacts from the build workflow
+          # This assumes the artifact name is consistent
+          # Note: This requires a way to get the build workflow's run ID
+          echo "Downloading container images from build workflow..."
+          gh run download ${{ github.event.workflow_run.id }} -n "container-images-${{ env.REL_VERSION }}" --dir ./dist/images/
+
+          # Load images into KinD
+          echo "Loading images into KinD cluster..."
+          for f in dist/images/*.tar; do
+            [ -e "$f" ] || continue
+            echo "Loading $f to kind..."
+            ./kind load image-archive "$f" --name radius
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Pull images from GHCR or build locally
+        if: github.event_name != 'workflow_run'
         run: |
           # Try to pull images from GHCR dev registry first (for PRs) or main registry
           PULL_SUCCESS=true
@@ -339,8 +359,7 @@ jobs:
               echo "Image pull failed, building images locally..."
               make artifacts-no-docker SKIP_HELM=1
               make docker-build
-            fi          # Always save images for upload
-          make docker-save-images
+            fi
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}

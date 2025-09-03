@@ -193,15 +193,15 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: Build container images (PR) # Build images and save as artifacts for functional tests
+      - name: Build container images and create artifacts (PR)
+        if: github.event_name == 'pull_request'
         run: |
           make docker-multi-arch-build
           make docker-save-images
-        if: github.event_name == 'pull_request'
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
-      - name: Upload container images as artifacts (PR)
+      - name: Upload container image artifacts (PR)
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
