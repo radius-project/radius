@@ -10,10 +10,6 @@ resource logGroup 'AWS.Logs/LogGroup@default' = {
     RetentionInDays: 14
     Tags: [
       {
-        Key: 'testKey'
-        Value: 'testValue2'
-      }
-      {
         Key: 'RadiusCreationTimestamp'
         Value: creationTimestamp
       }

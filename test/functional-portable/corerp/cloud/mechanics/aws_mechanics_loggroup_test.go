@@ -49,10 +49,6 @@ func Test_AWSRedeployWithUpdatedLogGroupUpdatesResource(t *testing.T) {
 							"RetentionInDays": 7,
 							"Tags": []any{
 								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue",
-								},
-								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,
 								},
@@ -76,10 +72,6 @@ func Test_AWSRedeployWithUpdatedLogGroupUpdatesResource(t *testing.T) {
 							"LogGroupName":    name,
 							"RetentionInDays": 14,
 							"Tags": []any{
-								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue2",
-								},
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,

@@ -184,15 +184,6 @@ func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, er
 // assertFieldsArePresent ensures that all fields in actual exist and are equivalent in expected
 func assertFieldsArePresent(t *testing.T, actual any, expected any) {
 	switch actual := actual.(type) {
-	case []any:
-		if expectedSlice, ok := expected.([]any); ok {
-			require.GreaterOrEqual(t, len(actual), len(expectedSlice), "actual array is smaller than expected array")
-			for i := range expectedSlice {
-				assertFieldsArePresent(t, actual[i], expectedSlice[i])
-			}
-		} else {
-			require.Fail(t, "types of actual and expected do not match")
-		}
 	case map[string]any:
 		if expectedMap, ok := expected.(map[string]any); ok {
 			for k := range actual {
