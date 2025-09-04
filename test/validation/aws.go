@@ -186,7 +186,7 @@ func assertFieldsArePresent(t *testing.T, expected any, actual any) {
 	switch actual := actual.(type) {
 	case map[string]any:
 		if expectedMap, ok := expected.(map[string]any); ok {
-			for k := range actual {
+			for k := range expectedMap {
 				assertFieldsArePresent(t, expectedMap[k], actual[k])
 			}
 		} else {
