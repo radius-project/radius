@@ -283,7 +283,6 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		locationResource.Properties.ResourceTypes[typeName].APIVersions[apiVersionName] = map[string]any{}
 	}
 
-	// logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Namespace, locationName)
 	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, locationName, locationResource, nil)
 	if err != nil {
 		return err
