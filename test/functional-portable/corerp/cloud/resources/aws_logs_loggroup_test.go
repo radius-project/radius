@@ -44,7 +44,7 @@ func Test_AWS_LogsLogGroup(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"LogGroupName":    name,
-							"RetentionInDays": 7,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
@@ -82,7 +82,7 @@ func Test_AWS_LogsLogGroup_Existing(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"LogGroupName":    name,
-							"RetentionInDays": 7,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
@@ -108,7 +108,7 @@ func Test_AWS_LogsLogGroup_Existing(t *testing.T) {
 						Identifier: name,
 						Properties: map[string]any{
 							"LogGroupName":    name,
-							"RetentionInDays": 7,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",

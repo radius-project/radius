@@ -278,7 +278,7 @@ func setupTestAWSLogGroup(t *testing.T, ctx context.Context, logGroupName string
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]any{
 		"LogGroupName":    logGroupName,
-		"RetentionInDays": 7,
+		"RetentionInDays": float64(7),
 		"Tags": []map[string]string{
 			{
 				"Key":   "testKey",
