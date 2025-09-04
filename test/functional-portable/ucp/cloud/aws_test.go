@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,8 +40,10 @@ import (
 )
 
 var (
-	s3BucketResourceType    = "AWS.S3/Bucket"
-	awsS3BucketResourceType = "AWS::S3::Bucket"
+	s3BucketResourceType        = "AWS.S3/Bucket"
+	awsS3BucketResourceType     = "AWS::S3::Bucket"
+	logsLogGroupResourceType    = "AWS.Logs/LogGroup"
+	awsLogsLogGroupResourceType = "AWS::Logs::LogGroup"
 )
 
 func Test_AWS_DeleteResource(t *testing.T) {
@@ -200,4 +202,123 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 
 func generateS3BucketName() string {
 	return "ucpfunctionaltestbucket-" + uuid.NewString()
+}
+
+func Test_AWS_DeleteResource_LogGroup(t *testing.T) {
+	ctx := context.Background()
+
+	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource_LogGroup", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		logGroupName := generateLogGroupName()
+		setupTestAWSLogGroup(t, ctx, logGroupName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, logsLogGroupResourceType, logGroupName)
+		require.NoError(t, err)
+
+		// Construct resource collection url
+		resourceIDParts := strings.Split(resourceID, "/")
+		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
+		resourceID = strings.Join(resourceIDParts, "/")
+		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20231001preview.Version)
+		deleteRequestBody := map[string]any{
+			"properties": map[string]any{
+				"LogGroupName": logGroupName,
+			},
+		}
+		deleteBody, err := json.Marshal(deleteRequestBody)
+		require.NoError(t, err)
+
+		// Issue the Delete Request
+		deleteRequest, err := http.NewRequest(http.MethodPost, deleteURL, bytes.NewBuffer(deleteBody))
+		require.NoError(t, err)
+		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
+
+		// Get the operation status url from the Azure-Asyncoperation header
+		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
+		getRequest, err := http.NewRequest(http.MethodGet, deleteResponseCompletionUrl, nil)
+		require.NoError(t, err)
+		maxRetries := 100
+		for i := 0; i < maxRetries; i++ {
+			getResponse, err := roundTripper.RoundTrip(getRequest)
+			require.NoError(t, err)
+			body := map[string]any{}
+			bodyBytes, err := io.ReadAll(getResponse.Body)
+			require.NoError(t, err)
+			err = json.Unmarshal(bodyBytes, &body)
+			require.NoError(t, err)
+			if body["status"].(string) == "Succeeded" {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		// Validate that the resource was deleted
+		cfg, err := awsconfig.LoadDefaultConfig(ctx)
+		require.NoError(t, err)
+		var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+		cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
+
+		_, err = awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+			Identifier: &logGroupName,
+			TypeName:   &awsLogsLogGroupResourceType,
+		}, cloudControlOpts...)
+		require.True(t, aws.IsAWSResourceNotFoundError(err))
+	})
+
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
+}
+
+func setupTestAWSLogGroup(t *testing.T, ctx context.Context, logGroupName string) {
+	// Test setup - Create AWS LogGroup using AWS APIs
+	cfg, err := awsconfig.LoadDefaultConfig(ctx)
+	require.NoError(t, err)
+	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+	desiredState := map[string]any{
+		"LogGroupName":    logGroupName,
+		"RetentionInDays": 7,
+		"Tags": []map[string]string{
+			{
+				"Key":   "testKey",
+				"Value": "testValue",
+			},
+		},
+	}
+	desiredStateBytes, err := json.Marshal(desiredState)
+	require.NoError(t, err)
+
+	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
+
+	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		TypeName:     &awsLogsLogGroupResourceType,
+		DesiredState: awsgo.String(string(desiredStateBytes)),
+	}, cloudControlOpts...)
+	require.NoError(t, err)
+	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
+
+	t.Cleanup(func() {
+		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
+		// seems to fail if the resource does not exist
+		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+			Identifier: &logGroupName,
+			TypeName:   &awsLogsLogGroupResourceType,
+		}, cloudControlOpts...)
+		if aws.IsAWSResourceNotFoundError(err) {
+			return
+		}
+		// Just in case delete fails
+		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+			Identifier: &logGroupName,
+			TypeName:   &awsLogsLogGroupResourceType,
+		}, cloudControlOpts...)
+		require.NoError(t, err)
+
+		// Ignoring status of delete since AWS command fails if the resource does not already exist
+		waitForSuccess(t, ctx, awsClient, deleteOutput.ProgressEvent.RequestToken)
+	})
+	// End of test setup
+}
+
+func generateLogGroupName() string {
+	return "ucpfunctionaltest-" + uuid.NewString()
 }
