@@ -28,6 +28,7 @@ import (
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	t.Skip("Flaky tests: https://github.com/radius-project/radius/issues/5963")
 	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
 	name := "radiusfunctionaltestbucket-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()

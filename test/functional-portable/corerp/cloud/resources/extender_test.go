@@ -30,6 +30,7 @@ import (
 )
 
 func Test_Extender_RecipeAWS_S3Bucket(t *testing.T) {
+	t.Skip("Flaky tests: https://github.com/radius-project/radius/issues/5963")
 	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set
