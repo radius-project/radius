@@ -59,11 +59,17 @@ if [ "$ARCH" = "arm64" ]; then
   BICEP_ARCH="arm64"
 fi
 
-curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-$BICEP_ARCH
-if [ $? -ne 0 ]; then
-  echo "Failed to download Bicep CLI. Please check your internet connection or the URL."
-  exit 1
-fi
+# Check if bicep binary already exists in the target location
+if [ -f "$OUTPUT_DIR/bicep" ]; then
+  echo "Bicep CLI already exists at $OUTPUT_DIR/bicep, skipping download."
+else
+  echo "Downloading Bicep CLI..."
+  if ! curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-$BICEP_ARCH; then
+    echo "Failed to download Bicep CLI. Please check your internet connection or the URL."
+    exit 1
+  fi
 
-chmod +x bicep
-mv bicep "$OUTPUT_DIR"/bicep
+  chmod +x bicep
+  mv bicep "$OUTPUT_DIR"/bicep
+  echo "Bicep CLI installed successfully at $OUTPUT_DIR/bicep"
+fi
