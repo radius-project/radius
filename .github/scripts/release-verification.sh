@@ -94,7 +94,6 @@ verify_pod_image() {
 # Note: The pre-upgrade image runs as a Kubernetes Job, so the verification process differs from standard deployments.
 # This verification checks the container image used in the pre-upgrade job.
 verify_pre_upgrade_image() {
-
     local expected_image="$1"
     
     # expect error - ignore and continue. We only want to trigger the pre-upgrade container to run as a job so that we 
