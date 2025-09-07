@@ -62,17 +62,31 @@ func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 	// Populate the index with resources
 	for i, t := range typesArray {
 		if resourceType, ok := t.(*types.ResourceType); ok {
-			resourceName := resourceType.ResourceTypeID
-			apiVersion := resourceType.APIVersion
+			resourceName := resourceType.Name
 
-			// Create version map if it doesn't exist
-			if typeIndex.Resources[resourceName] == nil {
-				typeIndex.Resources[resourceName] = make(index.ResourceVersionMap)
+			// Extract resource type and API version from the full name
+			// Expected format: "Test.Resources/userTypeAlpha@2023-10-01-preview"
+			parts := strings.Split(resourceName, "@")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("invalid resource name format: %s", resourceName)
+			}
+
+			resourceTypeWithoutVersion := parts[0] // "Test.Resources/userTypeAlpha"
+			apiVersion := parts[1]                 // "2023-10-01-preview"
+
+			// Initialize the resource map if it doesn't exist
+			if typeIndex.Resources == nil {
+				typeIndex.Resources = make(map[string]index.ResourceVersionMap)
+			}
+
+			// Initialize the version map for this resource type if it doesn't exist
+			if typeIndex.Resources[resourceTypeWithoutVersion] == nil {
+				typeIndex.Resources[resourceTypeWithoutVersion] = make(index.ResourceVersionMap)
 			}
 
 			// Create cross-file type reference for this resource (to types.json)
 			typeRef := types.CrossFileTypeReference{Ref: i, RelativePath: "types.json"}
-			typeIndex.Resources[resourceName][apiVersion] = typeRef
+			typeIndex.Resources[resourceTypeWithoutVersion][apiVersion] = typeRef
 		}
 	}
 
@@ -123,7 +137,7 @@ func addResourceTypeForAPIVersion(
 	}
 
 	// Create the resource body type with standard Azure resource properties
-	bodyType := typeFactory.CreateObjectType(qualifiedName)
+	bodyType := typeFactory.CreateObjectType(qualifiedName, nil, nil, nil)
 	bodyType.Properties = map[string]types.ObjectTypeProperty{
 		"name": {
 			Type:        typeFactory.GetReference(typeFactory.CreateStringType()),
@@ -142,12 +156,12 @@ func addResourceTypeForAPIVersion(
 		},
 		"apiVersion": {
 			Type:        typeFactory.GetReference(typeFactory.CreateStringLiteralType(apiVersionName)),
-			Flags:       types.TypePropertyFlagsReadOnly | types.TypePropertyFlagsDeployTime | types.TypePropertyFlagsConstant,
+			Flags:       types.TypePropertyFlagsReadOnly | types.TypePropertyFlagsDeployTimeConstant,
 			Description: "The API version.",
 		},
 		"type": {
 			Type:        typeFactory.GetReference(typeFactory.CreateStringLiteralType(fmt.Sprintf("%s/%s", provider.Namespace, resourceTypeName))),
-			Flags:       types.TypePropertyFlagsReadOnly | types.TypePropertyFlagsDeployTime | types.TypePropertyFlagsConstant,
+			Flags:       types.TypePropertyFlagsReadOnly | types.TypePropertyFlagsDeployTimeConstant,
 			Description: "The resource type.",
 		},
 		"id": {
@@ -160,9 +174,10 @@ func addResourceTypeForAPIVersion(
 	// Create the resource type
 	resourceTypeRef := typeFactory.CreateResourceType(
 		qualifiedName,
-		fmt.Sprintf("%s/%s", provider.Namespace, resourceTypeName),
-		apiVersionName,
 		typeFactory.GetReference(bodyType),
+		types.ScopeTypeNone,
+		types.ScopeTypeNone,
+		nil,
 	)
 
 	return typeFactory.GetReference(resourceTypeRef), nil
@@ -215,10 +230,6 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 		boolType := typeFactory.CreateBooleanType()
 		return typeFactory.GetReference(boolType), nil
 
-	case "any":
-		anyType := typeFactory.CreateAnyType()
-		return typeFactory.GetReference(anyType), nil
-
 	case "array":
 		if schema.Items == nil {
 			return nil, fmt.Errorf("array type '%s' must have an 'items' property", name)
@@ -232,12 +243,12 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 			return nil, fmt.Errorf("failed to add object properties: %w", err)
 		}
 
-		objectType := typeFactory.CreateObjectType(name)
+		objectType := typeFactory.CreateObjectType(name, nil, nil, nil)
 		objectType.Properties = objectProperties
 
 		// Handle additionalProperties if specified
 		if schema.AdditionalProperties != nil {
-			additionalPropsRef, err := addSchemaType(schema.AdditionalProperties, name+"_AdditionalProperties", typeFactory)
+			additionalPropsRef, err := addSchemaType(schema.AdditionalProperties, name+"AdditionalProperties", typeFactory)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add additional properties: %w", err)
 			}
