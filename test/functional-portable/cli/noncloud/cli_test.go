@@ -817,3 +817,235 @@ func generateUniqueTag() string {
 	tag := fmt.Sprintf("test-%d-%d", timestamp, random)
 	return tag
 }
+
+func Test_GroupDelete(t *testing.T) {
+	name := "group-delete-test"
+	envName := "group-delete-test-env"
+	appName := "group-delete-test-app"
+	containerA := "group-delete-container-a"
+	containerB := "group-delete-container-b"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(
+				"testdata/corerp-group-delete-test.bicep",
+				testutil.GetMagpieImage(),
+			),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: envName,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: containerA,
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: containerB,
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default-group-delete-test-env-group-delete-test-app": {
+						validation.NewK8sPodForResource(appName, containerA),
+						validation.NewK8sPodForResource(appName, containerB),
+					},
+				},
+			},
+			PostStepVerify:       verifyGroupDeleteWithResources,
+			SkipResourceDeletion: true, // We'll delete via group delete
+		},
+	})
+
+	test.Test(t)
+}
+
+func verifyGroupDeleteWithResources(ctx context.Context, t *testing.T, test rp.RPTest) {
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	// Get the deployed resource names from the test
+	envName := test.Steps[0].RPResources.Resources[0].Name
+	appName := test.Steps[0].RPResources.Resources[1].Name
+	containerA := test.Steps[0].RPResources.Resources[2].Name
+	containerB := test.Steps[0].RPResources.Resources[3].Name
+
+	// The default resource group for the test
+	defaultGroupName := "default"
+
+	// Verify resources exist in the default group
+	output, err := cli.ResourceListInResourceGroup(ctx, defaultGroupName)
+	require.NoError(t, err, "Failed to list resources in default group")
+	require.Contains(t, output, "Applications.Core/containers")
+	require.Contains(t, output, containerA)
+	require.Contains(t, output, containerB)
+	require.Contains(t, output, "Applications.Core/environments")
+	require.Contains(t, output, envName)
+	require.Contains(t, output, "Applications.Core/applications")
+	require.Contains(t, output, appName)
+
+	// Count resources before deletion
+	lines := strings.Split(output, "\n")
+	initialResourceCount := 0
+	for _, line := range lines {
+		if strings.Contains(line, "Applications.Core") {
+			initialResourceCount++
+		}
+	}
+	require.GreaterOrEqual(t, initialResourceCount, 4, "Should have at least environment, application, and 2 containers")
+
+	// Delete the group with all its resources
+	err = cli.GroupDelete(ctx, defaultGroupName, true)
+	require.NoError(t, err, "Failed to delete resource group with resources")
+
+	// Verify group is deleted
+	_, err = cli.GroupShow(ctx, defaultGroupName)
+	require.Error(t, err, "Group should be deleted")
+	require.Contains(t, err.Error(), "not found")
+
+	// Verify all resources are deleted
+	_, err = cli.ApplicationShow(ctx, appName)
+	require.Error(t, err, "Application should be deleted")
+	require.Contains(t, err.Error(), "not found")
+
+	_, err = cli.EnvShow(ctx, envName)
+	require.Error(t, err, "Environment should be deleted")
+	require.Contains(t, err.Error(), "not found")
+
+	_, err = cli.ResourceShow(ctx, "Applications.Core/containers", containerA)
+	require.Error(t, err, "Container A should be deleted")
+
+	_, err = cli.ResourceShow(ctx, "Applications.Core/containers", containerB)
+	require.Error(t, err, "Container B should be deleted")
+
+	// Test 1: Delete empty resource group
+	emptyGroupName := fmt.Sprintf("test-empty-group-%s", generateUniqueTag())
+
+	// Create an empty resource group
+	err = cli.GroupCreate(ctx, emptyGroupName)
+	require.NoError(t, err, "Failed to create empty resource group")
+	t.Cleanup(func() {
+		// Clean up in case test fails
+		_ = cli.GroupDelete(context.Background(), emptyGroupName, true)
+	})
+
+	// Verify group was created
+	output, err = cli.GroupShow(ctx, emptyGroupName)
+	require.NoError(t, err)
+	require.Contains(t, output, emptyGroupName)
+
+	// List resources in the empty group
+	output, err = cli.ResourceListInResourceGroup(ctx, emptyGroupName)
+	require.NoError(t, err)
+	// Verify no resources are present
+	lines = strings.Split(output, "\n")
+	resourceCount := 0
+	for _, line := range lines {
+		if strings.Contains(line, "Applications.Core") || strings.Contains(line, "Applications.Dapr") ||
+			strings.Contains(line, "Applications.Datastores") || strings.Contains(line, "Applications.Messaging") {
+			resourceCount++
+		}
+	}
+	require.Equal(t, 0, resourceCount, "Empty group should have no resources")
+
+	// Delete the empty group with confirmation
+	err = cli.GroupDelete(ctx, emptyGroupName, true)
+	require.NoError(t, err)
+
+	// Verify group is deleted
+	_, err = cli.GroupShow(ctx, emptyGroupName)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+
+	// Test 2: Delete resource group with resources
+	groupWithResourcesName := fmt.Sprintf("test-group-resources-%s", generateUniqueTag())
+
+	// Create a resource group
+	err = cli.GroupCreate(ctx, groupWithResourcesName)
+	require.NoError(t, err, "Failed to create resource group")
+	t.Cleanup(func() {
+		// Clean up in case test fails
+		_ = cli.GroupDelete(context.Background(), groupWithResourcesName, true)
+	})
+
+	// Create an environment in the group
+	testEnvName := fmt.Sprintf("test-env-%s", generateUniqueTag())
+	envArgs := []string{"env", "create", testEnvName, "--group", groupWithResourcesName}
+	_, err = cli.RunCommand(ctx, envArgs)
+	require.NoError(t, err, "Failed to create environment")
+
+	// Create an application in the group
+	testAppName := fmt.Sprintf("test-app-%s", generateUniqueTag())
+	appArgs := []string{"app", "create", testAppName, "--group", groupWithResourcesName}
+	_, err = cli.RunCommand(ctx, appArgs)
+	require.NoError(t, err, "Failed to create application")
+
+	// List resources in the group to verify they exist
+	output, err = cli.ResourceListInResourceGroup(ctx, groupWithResourcesName)
+	require.NoError(t, err)
+	require.Contains(t, output, "Applications.Core/environments")
+	require.Contains(t, output, testEnvName)
+	require.Contains(t, output, "Applications.Core/applications")
+	require.Contains(t, output, testAppName)
+
+	// Delete the group with resources with confirmation
+	err = cli.GroupDelete(ctx, groupWithResourcesName, true)
+	require.NoError(t, err, "Failed to delete resource group with resources")
+
+	// Verify group and all resources are deleted
+	_, err = cli.GroupShow(ctx, groupWithResourcesName)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+
+	// Verify environment is deleted
+	_, err = cli.EnvShow(ctx, testEnvName)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+
+	// Verify application is deleted
+	_, err = cli.ApplicationShow(ctx, testAppName)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+
+	// Test 3: List resources in a group
+	listTestGroupName := fmt.Sprintf("test-list-group-%s", generateUniqueTag())
+	err = cli.GroupCreate(ctx, listTestGroupName)
+	require.NoError(t, err, "Failed to create resource group for list test")
+	t.Cleanup(func() {
+		_ = cli.GroupDelete(context.Background(), listTestGroupName, true)
+	})
+
+	// Create multiple resources in the group
+	listEnvName := fmt.Sprintf("test-list-env-%s", generateUniqueTag())
+	envArgs = []string{"env", "create", listEnvName, "--group", listTestGroupName}
+	_, err = cli.RunCommand(ctx, envArgs)
+	require.NoError(t, err)
+
+	listAppName := fmt.Sprintf("test-list-app-%s", generateUniqueTag())
+	appArgs = []string{"app", "create", listAppName, "--group", listTestGroupName}
+	_, err = cli.RunCommand(ctx, appArgs)
+	require.NoError(t, err)
+
+	// List all resources in the group
+	output, err = cli.ResourceListInResourceGroup(ctx, listTestGroupName)
+	require.NoError(t, err)
+
+	// Verify output contains all resources
+	lines = strings.Split(output, "\n")
+	resourceCount = 0
+	for _, line := range lines {
+		if strings.Contains(line, "Applications.Core") {
+			resourceCount++
+		}
+	}
+	require.GreaterOrEqual(t, resourceCount, 2, "Expected at least 2 resources in the group")
+	require.Contains(t, output, listEnvName)
+	require.Contains(t, output, listAppName)
+}
