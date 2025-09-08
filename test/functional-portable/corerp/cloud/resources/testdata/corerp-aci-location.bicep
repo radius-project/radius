@@ -36,20 +36,20 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: 'gateway'
+  name: 'aci-location-gateway'
   properties: {
     application: app.id
     routes: [
       {
         path: '/'
-        destination: 'http://frontend:3000'
+        destination: 'http://aci-location-frontend:3000'
       }
     ]
   }
 }
 
 resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'frontend'
+  name: 'aci-location-frontend'
   properties: {
     application: app.id
     container: {
@@ -80,7 +80,7 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
 }
 
 resource magpie 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'magpie'
+  name: 'aci-location-magpie'
   properties: {
     application: app.id
     container: {

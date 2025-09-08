@@ -46,9 +46,9 @@ func Test_ACI_ResourceGroupLocation(t *testing.T) {
 	// This test verifies that ACI resources are created in the same location
 	// as the resource group, not a hardcoded location
 	name := "aci-location-test"
-	containerResourceName := "frontend"
-	containerResourceName2 := "magpie"
-	gatewayResourceName := "gateway"
+	containerResourceName := "aci-location-frontend"
+	containerResourceName2 := "aci-location-magpie"
+	gatewayResourceName := "aci-location-gateway"
 	template := "testdata/corerp-aci-location.bicep"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
