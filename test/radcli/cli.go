@@ -141,6 +141,17 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 	return cli.RunCommand(ctx, args)
 }
 
+// EnvShow returns the output of running the "env show" command with the given environment name as
+// an argument, or an error if the command fails.
+func (cli *CLI) EnvShow(ctx context.Context, environmentName string) (string, error) {
+	args := []string{
+		"env",
+		"show",
+		"-e", environmentName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 // ApplicationDelete deletes the specified application deployed by Radius and returns an error if one occurs.
 func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
 	command := "application"
@@ -188,6 +199,65 @@ func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (strin
 		"list",
 		"Applications.Core/containers",
 		"-a", applicationName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// ResourceListInResourceGroup runs the "resource list --group" command to list all resources in a specific resource group
+// and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) ResourceListInResourceGroup(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"resource",
+		"list",
+		"--group", groupName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// GroupCreate creates a resource group with the given name and returns an error if the command fails.
+func (cli *CLI) GroupCreate(ctx context.Context, groupName string) error {
+	args := []string{
+		"group",
+		"create",
+		groupName,
+	}
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
+// GroupDelete deletes a resource group with the given name. If confirm is true, it will pass the --yes flag
+// to skip confirmation prompts. Returns an error if the command fails.
+func (cli *CLI) GroupDelete(ctx context.Context, groupName string, confirm bool) error {
+	args := []string{
+		"group",
+		"delete",
+		groupName,
+	}
+
+	if confirm {
+		args = append(args, "--yes")
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
+// GroupList lists all resource groups and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) GroupList(ctx context.Context) (string, error) {
+	args := []string{
+		"group",
+		"list",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// GroupShow shows details of a specific resource group and returns the output as a string,
+// returning an error if the command fails.
+func (cli *CLI) GroupShow(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"group",
+		"show",
+		groupName,
 	}
 	return cli.RunCommand(ctx, args)
 }
