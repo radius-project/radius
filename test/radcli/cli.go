@@ -84,6 +84,17 @@ func (err *CLIError) GetFirstErrorCode() string {
 // Deploy runs the rad deploy command. It checks if the template file path exists and runs the command with the
 // given parameters, returning an error if the command fails.
 func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, environment string, application string, parameters ...string) error {
+	return cli.deployInternal(ctx, templateFilePath, environment, application, "", parameters...)
+}
+
+// DeployWithGroup runs the rad deploy command with a specific resource group. It checks if the template file path exists
+// and runs the command with the given parameters, returning an error if the command fails.
+func (cli *CLI) DeployWithGroup(ctx context.Context, templateFilePath string, environment string, application string, group string, parameters ...string) error {
+	return cli.deployInternal(ctx, templateFilePath, environment, application, group, parameters...)
+}
+
+// deployInternal is the internal implementation for deploy commands with optional group support.
+func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, environment string, application string, group string, parameters ...string) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
@@ -100,6 +111,10 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, environment
 
 	if application != "" {
 		args = append(args, "--application", application)
+	}
+
+	if group != "" {
+		args = append(args, "--group", group)
 	}
 
 	for _, parameter := range parameters {
@@ -128,16 +143,69 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, environment
 	return cliErr
 }
 
-// ApplicationShow returns the output of running the "application show" command with the given application name as
-// an argument, or an error if the command fails.
-func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
-	command := "application"
+// ShowOptions provides flexible configuration for show commands
+type ShowOptions struct {
+	Group       string // The resource group name
+	Workspace   string // The workspace name
+	Output      string // Output format (json, table)
+	Application string // Application name (for resource show)
+}
 
+// ApplicationShow returns the output of running the "application show" command with flexible options.
+// The options parameter is optional and allows specifying group, workspace, and output format.
+func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string, opts ...ShowOptions) (string, error) {
 	args := []string{
-		command,
+		"application",
 		"show",
-		"-a", applicationName,
 	}
+
+	if applicationName != "" {
+		args = append(args, "-a", applicationName)
+	}
+
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// EnvShow returns the output of running the "env show" command with flexible options.
+// The options parameter is optional and allows specifying group, workspace, and output format.
+func (cli *CLI) EnvShow(ctx context.Context, environmentName string, opts ...ShowOptions) (string, error) {
+	args := []string{
+		"env",
+		"show",
+	}
+
+	if environmentName != "" {
+		args = append(args, "-e", environmentName)
+	}
+
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	}
+
 	return cli.RunCommand(ctx, args)
 }
 
@@ -167,16 +235,33 @@ func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 	return err
 }
 
-// ResourceShow runs the rad resource show command with the given resource type and name and returns the output
-// string or an error if the command fails.
-func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceName string) (string, error) {
+// ResourceShow runs the rad resource show command with flexible options.
+// The options parameter is optional and allows specifying group, workspace, output format, and application.
+func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceName string, opts ...ShowOptions) (string, error) {
 	args := []string{
 		"resource",
 		"show",
-		//"-a", applicationName, TODO: apply when application flag (-a) is re-enabled for rad resource show
 		resourceType,
 		resourceName,
 	}
+
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+		if opt.Application != "" {
+			args = append(args, "--application", opt.Application)
+		}
+	}
+
 	return cli.RunCommand(ctx, args)
 }
 
@@ -188,6 +273,65 @@ func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (strin
 		"list",
 		"Applications.Core/containers",
 		"-a", applicationName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// ResourceListInResourceGroup runs the "resource list --group" command to list all resources in a specific resource group
+// and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) ResourceListInResourceGroup(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"resource",
+		"list",
+		"--group", groupName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// GroupCreate creates a resource group with the given name and returns an error if the command fails.
+func (cli *CLI) GroupCreate(ctx context.Context, groupName string) error {
+	args := []string{
+		"group",
+		"create",
+		groupName,
+	}
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
+// GroupDelete deletes a resource group with the given name. If confirm is true, it will pass the --yes flag
+// to skip confirmation prompts. Returns an error if the command fails.
+func (cli *CLI) GroupDelete(ctx context.Context, groupName string, confirm bool) error {
+	args := []string{
+		"group",
+		"delete",
+		groupName,
+	}
+
+	if confirm {
+		args = append(args, "--yes")
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
+// GroupList lists all resource groups and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) GroupList(ctx context.Context) (string, error) {
+	args := []string{
+		"group",
+		"list",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// GroupShow shows details of a specific resource group and returns the output as a string,
+// returning an error if the command fails.
+func (cli *CLI) GroupShow(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"group",
+		"show",
+		groupName,
 	}
 	return cli.RunCommand(ctx, args)
 }
