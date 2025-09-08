@@ -624,9 +624,24 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 
 // DeleteResourceGroup deletes a resource group by its name.
 func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
-	// First, try to get all resources in the group
+	// First check if the resource group exists
+	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		if clientv2.Is404Error(err) {
+			// Resource group doesn't exist - idempotent success
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get resource group: %w", err)
+	}
+
+	// Get all resources in the group (we know it exists now)
 	resources, err := amc.ListResourcesInResourceGroup(ctx, planeName, resourceGroupName)
-	if err == nil && len(resources) > 0 {
+	if err != nil {
+		return false, fmt.Errorf("failed to list resources in resource group: %w", err)
+	}
+
+	// Delete all resources if there are any
+	if len(resources) > 0 {
 		// Delete all resources in parallel
 		g, groupCtx := errgroup.WithContext(ctx)
 		for _, resource := range resources {
@@ -667,6 +682,12 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 
 // ListResourcesInResourceGroup lists all resources in a specific resource group.
 func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error) {
+	// First check if the resource group exists
+	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Build the resource group scope
 	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
 
@@ -733,6 +754,12 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroupFiltered
 
 // ListResourcesOfTypeInResourceGroup lists resources of a specific type in a resource group.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resourceType string) ([]generated.GenericResource, error) {
+	// Check if resource group exists first
+	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
 	// Build the resource group scope
 	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
 
