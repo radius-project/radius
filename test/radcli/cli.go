@@ -192,6 +192,64 @@ func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (strin
 	return cli.RunCommand(ctx, args)
 }
 
+// ResourceListWithGroup runs the CLI command to list resources filtered by group.
+func (cli *CLI) ResourceListWithGroup(ctx context.Context, resourceType string, groupName string) (string, error) {
+	args := []string{
+		"resource",
+		"list",
+	}
+
+	if resourceType != "" {
+		args = append(args, resourceType)
+	}
+
+	args = append(args, "-g", groupName)
+
+	return cli.RunCommand(ctx, args)
+}
+
+// ResourceListWithEnvironment runs the CLI command to list resources filtered by environment.
+func (cli *CLI) ResourceListWithEnvironment(ctx context.Context, resourceType string, environmentName string) (string, error) {
+	args := []string{
+		"resource",
+		"list",
+	}
+
+	if resourceType != "" {
+		args = append(args, resourceType)
+	}
+
+	args = append(args, "-e", environmentName)
+
+	return cli.RunCommand(ctx, args)
+}
+
+// ResourceListWithFilters runs the CLI command to list resources with multiple filters.
+func (cli *CLI) ResourceListWithFilters(ctx context.Context, resourceType string, groupName string, environmentName string, applicationName string) (string, error) {
+	args := []string{
+		"resource",
+		"list",
+	}
+
+	if resourceType != "" {
+		args = append(args, resourceType)
+	}
+
+	if groupName != "" {
+		args = append(args, "-g", groupName)
+	}
+
+	if environmentName != "" {
+		args = append(args, "-e", environmentName)
+	}
+
+	if applicationName != "" {
+		args = append(args, "-a", applicationName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
 // ResourceLogs runs the CLI command to get the logs of a resource in an application.
 func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resourceName string) (string, error) {
 	args := []string{

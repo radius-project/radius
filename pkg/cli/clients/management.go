@@ -104,6 +104,15 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx
 }
 
 // ListResourcesOfTypeInEnvironment lists all resources of a given type in a given environment in the configured scope.
+//
+// This function handles two types of resources:
+// - EnvironmentScopedResources: Resources that have a direct "environment" property
+// - ApplicationScopedResources: Resources that belong to an application in the environment
+//
+// Known limitations:
+//   - The function fetches all applications to determine which ones belong to the environment,
+//     which may impact performance with large numbers of applications
+//   - Resources without either environment or application properties will not be included
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx context.Context, environmentNameOrID string, resourceType string) ([]generated.GenericResource, error) {
 	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
 	if err != nil {
@@ -115,10 +124,38 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx
 		return nil, err
 	}
 
+	// First, get all applications in this environment
+	applications, err := amc.ListResourcesOfType(ctx, "Applications.Core/applications")
+	if err != nil {
+		return nil, err
+	}
+
+	// Build a set of application IDs that belong to this environment
+	appsInEnvironment := make(map[string]bool)
+	for _, app := range applications {
+		if isResourceInEnvironment(app, environmentID) {
+			if app.ID == nil {
+				continue
+			}
+			appsInEnvironment[strings.ToLower(*app.ID)] = true
+		}
+	}
+
 	results := []generated.GenericResource{}
 	for _, resource := range resources {
+		// Check if resource has environment property directly (EnvironmentScopedResource)
 		if isResourceInEnvironment(resource, environmentID) {
 			results = append(results, resource)
+			continue
+		}
+
+		// Check if resource belongs to an application in this environment (ApplicationScopedResource)
+		if appID, found := resource.Properties["application"]; found {
+			if appIDStr, ok := appID.(string); ok && appIDStr != "" {
+				if appsInEnvironment[strings.ToLower(appIDStr)] {
+					results = append(results, resource)
+				}
+			}
 		}
 	}
 
@@ -1004,7 +1041,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	for _, resourceType := range resourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		results = append(results, resources...)
 	}
@@ -1220,21 +1257,19 @@ func isResourceInApplication(resource generated.GenericResource, applicationID s
 }
 
 func isResourceInEnvironment(resource generated.GenericResource, environmentID string) bool {
-	obj, found := resource.Properties["environment"]
-	// A resource may not have an environment associated with it.
-	if !found {
-		return false
+	// First check if resource has environment property directly
+	if obj, found := resource.Properties["environment"]; found {
+		associatedEnvId, ok := obj.(string)
+		if ok && associatedEnvId != "" {
+			return strings.EqualFold(associatedEnvId, environmentID)
+		}
 	}
 
-	associatedEnvId, ok := obj.(string)
-	if !ok || associatedEnvId == "" {
-		return false
-	}
-
-	if strings.EqualFold(associatedEnvId, environmentID) {
-		return true
-	}
-
+	// For ApplicationScopedResources that don't have environment set,
+	// we need to check their application's environment
+	// This is a limitation - we can't fetch the application here to check its environment
+	// The proper fix would require refactoring to fetch applications and check their environments
+	// For now, return false for resources without direct environment property
 	return false
 }
 

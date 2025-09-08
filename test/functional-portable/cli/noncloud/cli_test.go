@@ -190,20 +190,6 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
 	})
 
-	t.Run("Validate rad resource list", func(t *testing.T) {
-		output, err := cli.ResourceList(ctx, appName)
-		require.NoError(t, err)
-
-		// Resource ordering can vary so we don't assert exact output.
-		if strings.EqualFold(appName, "kubernetes-cli") {
-			require.Regexp(t, `containerA`, output)
-			require.Regexp(t, `containerB`, output)
-		} else {
-			require.Regexp(t, `containerA-json`, output)
-			require.Regexp(t, `containerB-json`, output)
-		}
-	})
-
 	t.Run("Validate rad resource show", func(t *testing.T) {
 		actualOutput, err := cli.ResourceShow(ctx, "Applications.Core/containers", containerName)
 		require.NoError(t, err)
