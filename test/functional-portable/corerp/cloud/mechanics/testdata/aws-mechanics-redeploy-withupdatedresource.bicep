@@ -1,13 +1,14 @@
 extension aws
 
-param creationTimestamp string
 param logGroupName string
+param retentionInDays int
+param creationTimestamp string
 
 resource logGroup 'AWS.Logs/LogGroup@default' = {
   alias: logGroupName
   properties: {
     LogGroupName: logGroupName
-    RetentionInDays: 7
+    RetentionInDays: retentionInDays
     Tags: [
       {
         Key: 'RadiusCreationTimestamp'

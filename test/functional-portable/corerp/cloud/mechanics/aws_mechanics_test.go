@@ -28,14 +28,13 @@ import (
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
-	t.Skip("Flaky tests: https://github.com/radius-project/radius/issues/5963")
-	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
-	name := "radiusfunctionaltestbucket-" + uuid.New().String()
+	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.bicep"
+	name := "radiusfunctionaltest-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name, "creationTimestamp="+creationTimestamp),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "logGroupName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=7"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -43,15 +42,12 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.AWSS3BucketResourceType,
+						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName": name,
+							"LogGroupName":    name,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
-								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue",
-								},
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,
@@ -63,22 +59,19 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name, "creationTimestamp="+creationTimestamp),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=14"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.AWSS3BucketResourceType,
+						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName": name,
+							"LogGroupName":    name,
+							"RetentionInDays": float64(14),
 							"Tags": []any{
-								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue2",
-								},
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,
