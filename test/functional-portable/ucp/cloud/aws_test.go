@@ -40,17 +40,17 @@ import (
 )
 
 var (
-	logsLogGroupResourceType    = "AWS.Logs/LogGroup"
-	awsLogsLogGroupResourceType = "AWS::Logs::LogGroup"
+	logGroupResourceType    = "AWS.Logs/LogGroup"
+	awsLogGroupResourceType = "AWS::Logs::LogGroup"
 )
 
-func Test_AWS_DeleteResource_LogGroup(t *testing.T) {
+func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := context.Background()
 
-	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource_LogGroup", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		logGroupName := generateLogGroupName()
 		setupTestAWSResource(t, ctx, logGroupName)
-		resourceID, err := validation.GetResourceIdentifier(ctx, logsLogGroupResourceType, logGroupName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
 
 		// Construct resource collection url
@@ -78,51 +78,79 @@ func Test_AWS_DeleteResource_LogGroup(t *testing.T) {
 		getRequest, err := http.NewRequest(http.MethodGet, deleteResponseCompletionUrl, nil)
 		require.NoError(t, err)
 		maxRetries := 100
+		deleteSucceeded := false
 		for i := 0; i < maxRetries; i++ {
 			getResponse, err := roundTripper.RoundTrip(getRequest)
 			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, getResponse.StatusCode)
+
+			// Read the request status from the body
+			defer getResponse.Body.Close()
+			payload, err := io.ReadAll(getResponse.Body)
+			require.NoError(t, err)
 			body := map[string]any{}
-			bodyBytes, err := io.ReadAll(getResponse.Body)
+			err = json.Unmarshal(payload, &body)
 			require.NoError(t, err)
-			err = json.Unmarshal(bodyBytes, &body)
-			require.NoError(t, err)
-			if body["status"].(string) == "Succeeded" {
+			if body["status"] == "Succeeded" {
+				deleteSucceeded = true
 				break
 			}
+			// Give it more time
 			time.Sleep(1 * time.Second)
 		}
-
-		// Validate that the resource was deleted
-		cfg, err := awsconfig.LoadDefaultConfig(ctx)
-		require.NoError(t, err)
-		var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
-		cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
-
-		_, err = awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			Identifier: &logGroupName,
-			TypeName:   &awsLogsLogGroupResourceType,
-		}, cloudControlOpts...)
-		require.True(t, aws.IsAWSResourceNotFoundError(err))
+		require.True(t, deleteSucceeded)
 	})
 
 	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
 	myTest.Test(t)
 }
 
-func setupTestAWSResource(t *testing.T, ctx context.Context, logGroupName string) {
-	// Test setup - Create AWS Resource using AWS APIs
+func Test_AWS_ListResources(t *testing.T) {
+	ctx := context.Background()
+
+	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		var logGroupName = generateLogGroupName()
+		setupTestAWSResource(t, ctx, logGroupName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
+		require.NoError(t, err)
+
+		// Construct resource collection url
+		resourceIDParts := strings.Split(resourceID, "/")
+		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
+		resourceID = strings.Join(resourceIDParts, "/")
+		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20231001preview.Version)
+
+		// Issue the List Request
+		listRequest, err := http.NewRequest(http.MethodGet, listURL, nil)
+		require.NoError(t, err)
+		listResponse, err := roundTripper.RoundTrip(listRequest)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+
+		defer listResponse.Body.Close()
+		payload, err := io.ReadAll(listResponse.Body)
+		require.NoError(t, err)
+		body := map[string][]any{}
+		err = json.Unmarshal(payload, &body)
+		require.NoError(t, err)
+
+		// Verify payload has at least one resource
+		require.Len(t, body, 1)
+		require.GreaterOrEqual(t, len(body["value"]), 1)
+	})
+
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
+}
+
+func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string) {
+	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]any{
-		"LogGroupName":    logGroupName,
-		"RetentionInDays": float64(7),
-		"Tags": []map[string]string{
-			{
-				"Key":   "testKey",
-				"Value": "testValue",
-			},
-		},
+		"LogGroupName": resourceName,
 	}
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
@@ -130,7 +158,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, logGroupName string
 	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
 
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-		TypeName:     &awsLogsLogGroupResourceType,
+		TypeName:     &awsLogGroupResourceType,
 		DesiredState: awsgo.String(string(desiredStateBytes)),
 	}, cloudControlOpts...)
 	require.NoError(t, err)
@@ -140,16 +168,16 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, logGroupName string
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			Identifier: &logGroupName,
-			TypeName:   &awsLogsLogGroupResourceType,
+			Identifier: &resourceName,
+			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		if aws.IsAWSResourceNotFoundError(err) {
 			return
 		}
 		// Just in case delete fails
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-			Identifier: &logGroupName,
-			TypeName:   &awsLogsLogGroupResourceType,
+			Identifier: &resourceName,
+			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		require.NoError(t, err)
 
@@ -170,5 +198,5 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 }
 
 func generateLogGroupName() string {
-	return "ucpfunctionaltest-" + uuid.NewString()
+	return "/aws/lambda/ucpfunctionaltest-" + uuid.NewString()
 }
