@@ -198,5 +198,5 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 }
 
 func generateLogGroupName() string {
-	return "/aws/lambda/ucpfunctionaltest-" + uuid.NewString()
+	return "ucpfunctionaltest-" + uuid.NewString()
 }
