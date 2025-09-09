@@ -132,8 +132,6 @@ const (
 	InternalLBSubnet        = "172.16.1.0/24"
 	AppGatewaySubnetName    = "app-gateway"
 	AppGatewaySubnet        = "172.16.2.0/24"
-
-	ResourceLocation string = "WestUS 3"
 )
 
 func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Context, resource *datamodel.Environment) error {
@@ -152,10 +150,12 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 	resourceGroupName := rgID.FindScope("resourceGroups")
 	subscriptionID := rgID.FindScope("subscriptions")
 
-	// Ensure resource group is created.
-	err = clientv2.EnsureResourceGroupIsCreated(ctx, subscriptionID, resourceGroupName, ResourceLocation, &e.Options().Arm.ClientOptions)
+	// Get the location of the resource group
+	resourceLocation, err := clientv2.GetResourceGroupLocation(ctx, subscriptionID, resourceGroupName, &e.Options().Arm.ClientOptions)
 	if err != nil {
-		return err
+		// If resource group doesn't exist, use a default location
+		// For now, we'll return an error requiring the user to create the resource group first
+		return fmt.Errorf("failed to get resource group location. Please ensure the resource group exists: %w", err)
 	}
 
 	networkClientFactory, err := armnetwork.NewClientFactory(subscriptionID, e.Options().Arm.ClientOptions.Cred, nil)
@@ -177,7 +177,7 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 			resourceGroupName,
 			vnetName,
 			armnetwork.VirtualNetwork{
-				Location: to.Ptr(ResourceLocation),
+				Location: resourceLocation,
 				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
 					AddressSpace: &armnetwork.AddressSpace{
 						AddressPrefixes: []*string{
@@ -210,7 +210,7 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 		resourceGroupName,
 		nsgName,
 		armnetwork.SecurityGroup{
-			Location: to.Ptr(ResourceLocation),
+			Location: resourceLocation,
 			Properties: &armnetwork.SecurityGroupPropertiesFormat{
 				SecurityRules: []*armnetwork.SecurityRule{
 					{
@@ -283,7 +283,7 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 					Name: to.Ptr(armnetwork.LoadBalancerSKUNameStandard),
 					Tier: to.Ptr(armnetwork.LoadBalancerSKUTierRegional),
 				},
-				Location: to.Ptr(ResourceLocation),
+				Location: resourceLocation,
 				Properties: &armnetwork.LoadBalancerPropertiesFormat{
 					// internal loadbalancer must have one frontend ip configuration.
 					FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
