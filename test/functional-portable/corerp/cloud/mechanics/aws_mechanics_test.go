@@ -17,7 +17,6 @@ limitations under the License.
 package mechanics_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -28,13 +27,13 @@ import (
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
-	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.bicep"
+	template := "testdata/aws-mechanics-redeploy-withupdatedresource.bicep"
 	name := "radiusfunctionaltest-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "logGroupName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=7"),
+			Executor:                               step.NewDeployExecutor(template, "logGroupName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=7"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -59,7 +58,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=14"),
+			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=14"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
