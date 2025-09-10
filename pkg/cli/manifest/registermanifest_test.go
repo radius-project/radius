@@ -20,18 +20,25 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRegisterDirectory(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		planeName                string
@@ -95,6 +102,8 @@ func TestRegisterDirectory(t *testing.T) {
 }
 
 func TestRegisterFile(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		planeName                string
@@ -150,6 +159,8 @@ func TestRegisterFile(t *testing.T) {
 }
 
 func TestRegisterType(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		planeName                string
@@ -225,6 +236,8 @@ func TestRegisterType(t *testing.T) {
 }
 
 func TestRegisterResourceProvider(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                     string
 		planeName                string
@@ -417,6 +430,8 @@ func TestRetryOperationWithContext(t *testing.T) {
 }
 
 func TestIs409ConflictError(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -470,6 +485,8 @@ func TestIs409ConflictError(t *testing.T) {
 }
 
 func TestEnsureResourceProviderExists(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		planeName            string
@@ -546,6 +563,8 @@ func TestEnsureResourceProviderExists(t *testing.T) {
 }
 
 func TestCreateEmptyResourceProvider(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		planeName            string
@@ -617,6 +636,8 @@ func TestCreateEmptyResourceProvider(t *testing.T) {
 }
 
 func TestValidateManifest(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		filePath             string
@@ -674,6 +695,8 @@ func TestValidateManifest(t *testing.T) {
 }
 
 func TestExtractLocationInfo(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		resourceProvider     ResourceProvider
@@ -738,6 +761,8 @@ func TestExtractLocationInfo(t *testing.T) {
 }
 
 func TestLogIfEnabled(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		logger         func(format string, args ...any)
@@ -789,6 +814,8 @@ func TestLogIfEnabled(t *testing.T) {
 
 // Test error scenarios for existing functions
 func TestRegisterResourceProvider_ErrorScenarios(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		resourceProvider     ResourceProvider
@@ -840,6 +867,8 @@ func TestRegisterResourceProvider_ErrorScenarios(t *testing.T) {
 }
 
 func TestRegisterType_ErrorScenarios(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		filePath             string
@@ -883,6 +912,8 @@ func TestRegisterType_ErrorScenarios(t *testing.T) {
 }
 
 func TestRegisterFile_ErrorScenarios(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		filePath             string
@@ -912,6 +943,412 @@ func TestRegisterFile_ErrorScenarios(t *testing.T) {
 			}, tt.expectError, tt.expectedErrorMessage)
 		})
 	}
+}
+
+func TestCreateResourceProviderResource(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                 string
+		planeName            string
+		resourceProvider     ResourceProvider
+		locationName         string
+		expectError          bool
+		expectedErrorMessage string
+		clientFactorySetup   func() (*v20231001preview.ClientFactory, error)
+	}{
+		{
+			name:      "Success_GlobalLocation",
+			planeName: "local",
+			resourceProvider: ResourceProvider{
+				Namespace: "TestCompany.CreateRPTest",
+			},
+			locationName: "global",
+			expectError:  false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return NewTestClientFactory(WithResourceProviderServerNoError)
+			},
+		},
+		{
+			name:      "Success_CustomLocation",
+			planeName: "local",
+			resourceProvider: ResourceProvider{
+				Namespace: "TestCompany.CustomLocationTest",
+			},
+			locationName: "eastus",
+			expectError:  false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return NewTestClientFactory(WithResourceProviderServerNoError)
+			},
+		},
+		{
+			name:      "Success_WithNilLogger",
+			planeName: "local",
+			resourceProvider: ResourceProvider{
+				Namespace: "TestCompany.NilLoggerTest",
+			},
+			locationName: "global",
+			expectError:  false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return NewTestClientFactory(WithResourceProviderServerNoError)
+			},
+		},
+		{
+			name:      "Error_CreateOrUpdateFailure",
+			planeName: "local",
+			resourceProvider: ResourceProvider{
+				Namespace: "TestCompany.ErrorTest",
+			},
+			locationName:         "global",
+			expectError:          true,
+			expectedErrorMessage: "test error",
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return createErrorResourceProviderClientFactory()
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clientFactory, err := tt.clientFactorySetup()
+			require.NoError(t, err)
+
+			var logger func(format string, args ...any)
+			var logBuffer bytes.Buffer
+
+			// For most tests, use a logger, but for one test use nil to ensure it handles nil loggers
+			if tt.name != "Success_WithNilLogger" {
+				logger = func(format string, args ...any) {
+					fmt.Fprintf(&logBuffer, format+"\n", args...)
+				}
+			}
+
+			err = createResourceProviderResource(context.Background(), clientFactory, tt.planeName, tt.resourceProvider, tt.locationName, logger)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.expectedErrorMessage != "" {
+					require.Contains(t, err.Error(), tt.expectedErrorMessage)
+				}
+			} else {
+				require.NoError(t, err)
+
+				// For successful operations, verify the resource provider was created by attempting to get it
+				if tt.name != "Success_WithNilLogger" {
+					// Verify the resource provider exists by checking the logs or calling the Get method
+					rp, getErr := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.resourceProvider.Namespace, nil)
+					require.NoError(t, getErr)
+					require.Equal(t, to.Ptr(tt.resourceProvider.Namespace), rp.Name)
+				}
+			}
+		})
+	}
+}
+
+func TestCreateLocationResource(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                 string
+		planeName            string
+		namespace            string
+		locationName         string
+		address              string
+		resourceTypes        map[string]*v20231001preview.LocationResourceType
+		expectError          bool
+		expectedErrorMessage string
+		clientFactorySetup   func() (*v20231001preview.ClientFactory, error)
+	}{
+		{
+			name:          "Success_EmptyResourceTypes",
+			planeName:     "local",
+			namespace:     "TestCompany.LocationTest",
+			locationName:  "global",
+			address:       "",
+			resourceTypes: map[string]*v20231001preview.LocationResourceType{},
+			expectError:   false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return NewTestClientFactory(WithResourceProviderServerNoError)
+			},
+		},
+		{
+			name:          "Success_WithAddress",
+			planeName:     "local",
+			namespace:     "TestCompany.AddressTest",
+			locationName:  "eastus",
+			address:       "http://localhost:8080",
+			resourceTypes: map[string]*v20231001preview.LocationResourceType{},
+			expectError:   false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return createLocationClientFactoryWithAddress()
+			},
+		},
+		{
+			name:         "Success_WithResourceTypes",
+			planeName:    "local",
+			namespace:    "TestCompany.ResourceTypesTest",
+			locationName: "global",
+			address:      "",
+			resourceTypes: map[string]*v20231001preview.LocationResourceType{
+				"testResource": {
+					APIVersions: map[string]map[string]any{
+						"2023-01-01": {},
+					},
+				},
+				"anotherResource": {
+					APIVersions: map[string]map[string]any{
+						"2023-01-01": {},
+						"2023-06-01": {},
+					},
+				},
+			},
+			expectError: false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return createLocationClientFactoryWithResourceTypes()
+			},
+		},
+		{
+			name:          "Success_WithNilLogger",
+			planeName:     "local",
+			namespace:     "TestCompany.NilLoggerLocationTest",
+			locationName:  "global",
+			address:       "",
+			resourceTypes: map[string]*v20231001preview.LocationResourceType{},
+			expectError:   false,
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return NewTestClientFactory(WithResourceProviderServerNoError)
+			},
+		},
+		{
+			name:                 "Error_CreateOrUpdateFailure",
+			planeName:            "local",
+			namespace:            "TestCompany.ErrorLocationTest",
+			locationName:         "global",
+			address:              "",
+			resourceTypes:        map[string]*v20231001preview.LocationResourceType{},
+			expectError:          true,
+			expectedErrorMessage: "location test error",
+			clientFactorySetup: func() (*v20231001preview.ClientFactory, error) {
+				return createErrorLocationClientFactory()
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clientFactory, err := tt.clientFactorySetup()
+			require.NoError(t, err)
+
+			var logger func(format string, args ...any)
+			var logBuffer bytes.Buffer
+
+			// For most tests, use a logger, but for one test use nil to ensure it handles nil loggers
+			if tt.name != "Success_WithNilLogger" {
+				logger = func(format string, args ...any) {
+					fmt.Fprintf(&logBuffer, format+"\n", args...)
+				}
+			}
+
+			err = createLocationResource(context.Background(), clientFactory, tt.planeName, tt.namespace, tt.locationName, tt.address, tt.resourceTypes, logger)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.expectedErrorMessage != "" {
+					require.Contains(t, err.Error(), tt.expectedErrorMessage)
+				}
+			} else {
+				require.NoError(t, err)
+
+				// For successful operations, verify the location was created by attempting to get it
+				if tt.name != "Success_WithNilLogger" {
+					location, getErr := clientFactory.NewLocationsClient().Get(context.Background(), tt.planeName, tt.namespace, tt.locationName, nil)
+					require.NoError(t, getErr)
+					require.Equal(t, to.Ptr(tt.locationName), location.Name)
+
+					// For specific tests, verify special behavior
+					if tt.name == "Success_WithAddress" {
+						require.NotNil(t, location.Properties.Address)
+						require.Equal(t, tt.address, *location.Properties.Address)
+					}
+
+					if tt.name == "Success_WithResourceTypes" {
+						require.NotNil(t, location.Properties.ResourceTypes)
+						require.Equal(t, len(tt.resourceTypes), len(location.Properties.ResourceTypes))
+						for resourceTypeName := range tt.resourceTypes {
+							_, exists := location.Properties.ResourceTypes[resourceTypeName]
+							require.True(t, exists, "Expected resource type %s to exist in location", resourceTypeName)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// Helper functions to create custom client factories for testing error scenarios
+func createErrorResourceProviderClientFactory() (*v20231001preview.ClientFactory, error) {
+	errorServer := ucpfake.ResourceProvidersServer{
+		BeginCreateOrUpdate: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			resource v20231001preview.ResourceProviderResource,
+			options *v20231001preview.ResourceProvidersClientBeginCreateOrUpdateOptions,
+		) (resp azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("test error"))
+			return
+		},
+		Get:                WithResourceProviderServerNoError().Get,
+		GetProviderSummary: WithResourceProviderServerNoError().GetProviderSummary,
+	}
+
+	serverFactory := ucpfake.ServerFactory{
+		ResourceProvidersServer: errorServer,
+		ResourceTypesServer:     WithResourceTypeServerNoError(),
+		APIVersionsServer:       WithAPIVersionServerNoError(),
+		LocationsServer:         WithLocationServerNoError(),
+	}
+
+	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
+
+	clientOptions := &armpolicy.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: serverFactoryTransport,
+		},
+	}
+
+	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
+}
+
+func createErrorLocationClientFactory() (*v20231001preview.ClientFactory, error) {
+	errorServer := ucpfake.LocationsServer{
+		BeginCreateOrUpdate: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			locationName string,
+			resource v20231001preview.LocationResource,
+			options *v20231001preview.LocationsClientBeginCreateOrUpdateOptions,
+		) (resp azfake.PollerResponder[v20231001preview.LocationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("location test error"))
+			return
+		},
+		Get: WithLocationServerNoError().Get,
+	}
+
+	serverFactory := ucpfake.ServerFactory{
+		ResourceProvidersServer: WithResourceProviderServerNoError(),
+		ResourceTypesServer:     WithResourceTypeServerNoError(),
+		APIVersionsServer:       WithAPIVersionServerNoError(),
+		LocationsServer:         errorServer,
+	}
+
+	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
+
+	clientOptions := &armpolicy.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: serverFactoryTransport,
+		},
+	}
+
+	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
+}
+
+func createLocationClientFactoryWithAddress() (*v20231001preview.ClientFactory, error) {
+	locationServer := ucpfake.LocationsServer{
+		BeginCreateOrUpdate: WithLocationServerNoError().BeginCreateOrUpdate,
+		Get: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			locationName string,
+			options *v20231001preview.LocationsClientGetOptions,
+		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.LocationsClientGetResponse{
+				LocationResource: v20231001preview.LocationResource{
+					Name: to.Ptr(locationName),
+					ID:   to.Ptr("id"),
+					Properties: &v20231001preview.LocationProperties{
+						Address:       to.Ptr("http://localhost:8080"),
+						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
+		},
+	}
+
+	serverFactory := ucpfake.ServerFactory{
+		ResourceProvidersServer: WithResourceProviderServerNoError(),
+		ResourceTypesServer:     WithResourceTypeServerNoError(),
+		APIVersionsServer:       WithAPIVersionServerNoError(),
+		LocationsServer:         locationServer,
+	}
+
+	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
+
+	clientOptions := &armpolicy.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: serverFactoryTransport,
+		},
+	}
+
+	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
+}
+
+func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFactory, error) {
+	locationServer := ucpfake.LocationsServer{
+		BeginCreateOrUpdate: WithLocationServerNoError().BeginCreateOrUpdate,
+		Get: func(
+			ctx context.Context,
+			planeName string,
+			resourceProviderName string,
+			locationName string,
+			options *v20231001preview.LocationsClientGetOptions,
+		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.LocationsClientGetResponse{
+				LocationResource: v20231001preview.LocationResource{
+					Name: to.Ptr(locationName),
+					ID:   to.Ptr("id"),
+					Properties: &v20231001preview.LocationProperties{
+						ResourceTypes: map[string]*v20231001preview.LocationResourceType{
+							"testResource": {
+								APIVersions: map[string]map[string]any{
+									"2023-01-01": {},
+								},
+							},
+							"anotherResource": {
+								APIVersions: map[string]map[string]any{
+									"2023-01-01": {},
+									"2023-06-01": {},
+								},
+							},
+						},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
+		},
+	}
+
+	serverFactory := ucpfake.ServerFactory{
+		ResourceProvidersServer: WithResourceProviderServerNoError(),
+		ResourceTypesServer:     WithResourceTypeServerNoError(),
+		APIVersionsServer:       WithAPIVersionServerNoError(),
+		LocationsServer:         locationServer,
+	}
+
+	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
+
+	clientOptions := &armpolicy.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: serverFactoryTransport,
+		},
+	}
+
+	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
 }
 
 // createTestClientFactory creates a standard test client factory with no errors
