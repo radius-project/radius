@@ -33,7 +33,6 @@ import (
 )
 
 const (
-	AWSS3BucketResourceType         = "AWS.S3/Bucket"
 	AWSMemoryDBClusterResourceType  = "AWS.MemoryDB/Cluster"
 	AWSRDSDBInstanceResourceType    = "AWS.RDS/DBInstance"
 	AWSLogsMetricFilterResourceType = "AWS.Logs/MetricFilter"
