@@ -48,13 +48,13 @@ jobs:
           ref: ${{ env.DOCS_BRANCH }}
       # Setup dependencies
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: radius/go.mod
           cache-dependency-path: radius/go.sum
           cache: true
       - name: Setup NodeJS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "18"
       - name: Install TypeSpec compiler
