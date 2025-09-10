@@ -15,11 +15,14 @@
     "Applications.Core/gateways@2023-10-01-preview": {
       "$ref": "applications/applications.core/2023-10-01-preview/types.json#/220"
     },
+    "Applications.Core/recipePacks@2023-10-01-preview": {
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/240"
+    },
     "Applications.Core/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/256"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/276"
     },
     "Applications.Core/volumes@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/294"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/314"
     },
     "Applications.Dapr/configurationStores@2023-10-01-preview": {
       "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/55"

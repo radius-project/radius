@@ -24,6 +24,7 @@ import "./gateways.tsp";
 import "./secretStores.tsp";
 import "./volumes.tsp";
 import "./extenders.tsp";
+import "./recipePacks.tsp";
 
 using TypeSpec.Versioning;
 using Azure.ResourceManager;

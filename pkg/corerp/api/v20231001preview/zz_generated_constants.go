@@ -295,6 +295,24 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// RecipeKind - The type of recipe
+type RecipeKind string
+
+const (
+// RecipeKindBicep - Bicep recipe
+	RecipeKindBicep RecipeKind = "bicep"
+// RecipeKindTerraform - Terraform recipe
+	RecipeKindTerraform RecipeKind = "terraform"
+)
+
+// PossibleRecipeKindValues returns the possible values for the RecipeKind const type.
+func PossibleRecipeKindValues() []RecipeKind {
+	return []RecipeKind{	
+		RecipeKindBicep,
+		RecipeKindTerraform,
+	}
+}
+
 // ResourceProvisioning - Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe',
 // where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user
 // manages the resource and provides the values.

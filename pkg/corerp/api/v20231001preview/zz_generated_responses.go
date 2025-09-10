@@ -173,6 +173,35 @@ type OperationsClientListResponse struct {
 	OperationListResult
 }
 
+// RecipePacksClientCreateOrUpdateResponse contains the response from method RecipePacksClient.CreateOrUpdate.
+type RecipePacksClientCreateOrUpdateResponse struct {
+// The recipe pack resource
+	RecipePackResource
+}
+
+// RecipePacksClientDeleteResponse contains the response from method RecipePacksClient.Delete.
+type RecipePacksClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// RecipePacksClientGetResponse contains the response from method RecipePacksClient.Get.
+type RecipePacksClientGetResponse struct {
+// The recipe pack resource
+	RecipePackResource
+}
+
+// RecipePacksClientListByScopeResponse contains the response from method RecipePacksClient.NewListByScopePager.
+type RecipePacksClientListByScopeResponse struct {
+// The response of a RecipePackResource list operation.
+	RecipePackResourceListResult
+}
+
+// RecipePacksClientUpdateResponse contains the response from method RecipePacksClient.Update.
+type RecipePacksClientUpdateResponse struct {
+// The recipe pack resource
+	RecipePackResource
+}
+
 // SecretStoresClientCreateOrUpdateResponse contains the response from method SecretStoresClient.BeginCreateOrUpdate.
 type SecretStoresClientCreateOrUpdateResponse struct {
 // Concrete tracked resource types can be created by aliasing this type using a specific property type.
