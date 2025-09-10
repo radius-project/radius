@@ -58,7 +58,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=14"),
+			Executor:                               step.NewDeployExecutor(template, "logGroupName="+name, "creationTimestamp="+creationTimestamp, "retentionInDays=14"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
