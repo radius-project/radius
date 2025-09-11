@@ -15,6 +15,10 @@ types:
     apiVersions:
       "2023-10-01-preview":
         schema: {}
+  recipePacks:
+   apiVersions:
+      "2023-10-01-preview":
+        schema: {}
   gateways:
     apiVersions:
       "2023-10-01-preview":

@@ -243,6 +243,23 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		},
 	})
 
+	_ = ns.AddResource("recipePacks", &builder.ResourceOption[*datamodel.RecipePack, datamodel.RecipePack]{
+		RequestConverter:  converter.RecipePackDataModelFromVersioned,
+		ResponseConverter: converter.RecipePackDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.RecipePack]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.RecipePack]{
+				rp_frontend.PrepareRadiusResource[*datamodel.RecipePack],
+			},
+		},
+		Patch: builder.Operation[datamodel.RecipePack]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.RecipePack]{
+				rp_frontend.PrepareRadiusResource[*datamodel.RecipePack],
+			},
+		},
+		Delete: builder.Operation[datamodel.RecipePack]{},
+	})
+
 	// Optional
 	ns.SetAvailableOperations(operationList)
 
