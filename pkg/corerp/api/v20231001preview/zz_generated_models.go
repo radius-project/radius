@@ -496,6 +496,9 @@ type EnvironmentProperties struct {
 // Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
+// The recipePacks property is an array of Recipe Pack IDs
+	RecipePacks *[]string
+
 // Simulated environment.
 	Simulated *bool
 

@@ -71,6 +71,9 @@ model EnvironmentProperties {
   @doc("The environment extension.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
+
+  @doc("The recipePacks property is an array of Recipe Pack IDs")
+  recipePacks?: Array<string>;
 }
 
 @doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")

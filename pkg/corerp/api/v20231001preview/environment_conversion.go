@@ -116,6 +116,10 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Extensions = extensions
 	}
 
+	if src.Properties.RecipePacks != nil {
+		converted.Properties.RecipePacks = *src.Properties.RecipePacks
+	}
+
 	return converted, nil
 }
 
@@ -177,6 +181,10 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 			extensions = append(extensions, fromEnvExtensionClassificationDataModel(e))
 		}
 		dst.Properties.Extensions = extensions
+	}
+
+	if env.Properties.RecipePacks != nil {
+		dst.Properties.RecipePacks = &env.Properties.RecipePacks
 	}
 
 	return nil
