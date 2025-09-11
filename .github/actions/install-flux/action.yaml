@@ -4,7 +4,7 @@ inputs:
   version:
     description: "Flux version to install"
     required: false
-    default: 2.6.4
+    default: "2.6.4"
 runs:
   using: "composite"
   steps:
