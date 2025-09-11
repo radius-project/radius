@@ -334,11 +334,6 @@ func GetCreationTimestamp() string {
 	return fmt.Sprintf("%d", time.Now().Unix())
 }
 
-// GenerateS3BucketName generates a unique S3 bucket name.
-func GenerateS3BucketName() string {
-	return "radiusfunctionaltestbucket-" + uuid.New().String()
-}
-
 // GetDockerRegistry returns the Docker registry from the environment variable DOCKER_REGISTRY or the default value
 // "ghcr.io/radius-project".
 func GetDockerRegistry() string {
@@ -348,7 +343,6 @@ func GetDockerRegistry() string {
 	}
 	return regName
 }
-
 
 // GetPodLogs retrieves logs from a specific pod and container.
 func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, containerName string) (string, error) {
