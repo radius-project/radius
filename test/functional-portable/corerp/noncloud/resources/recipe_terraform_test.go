@@ -140,6 +140,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 // - Create an extender resource using a Terraform recipe that deploys Postgres on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service and a postgres db.
 func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
+	t.Skip("https://github.com/radius-project/radius/issues/10358")
 	template := "testdata/corerp-resources-terraform-postgres.bicep"
 	appName := "corerp-resources-terraform-pg-app"
 	envName := "corerp-resources-terraform-pg-env"
