@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "ms-azuretools.vscode-bicep",
-    "golang.go"
+    "golang.go",
+    "GitHub.vscode-pull-request-github"
   ]
 }
