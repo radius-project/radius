@@ -118,7 +118,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
-          file: ./dist/unit_test/ut_coverage.out
+          files: ./dist/unit_test/ut_coverage.out
           fail_ci_if_error: false
           verbose: true
       - name: Process Unit Test Results
@@ -148,9 +148,10 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ env.GHCR_ACTOR }}
+          password: ${{ secrets.GH_RAD_CI_BOT_PAT || secrets.GITHUB_TOKEN }}
       - uses: oras-project/setup-oras@main
+        if: github.ref == 'refs/heads/main'
         with:
           version: ${{ env.ORAS_VERSION }}
       - name: Push latest rad cli binary to GHCR (unix-like)
@@ -179,12 +180,6 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -198,13 +193,27 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: Build container images (PR) # Don't push on PR, agent will not have permission.
-        run: |
-          make docker-multi-arch-build
+      - name: Build container images and create artifacts (PR)
         if: github.event_name == 'pull_request'
+        run: |
+          echo "Building images with registry: $DOCKER_REGISTRY and tag: $DOCKER_TAG_VERSION"
+          make docker-build
+          echo "Checking what images are available in Docker daemon:"
+          docker images
+          echo "Saving images to tarballs..."
+          make docker-save-images
+          echo "Contents of dist/images directory:"
+          ls -la ./dist/images/ || echo "dist/images directory not found"
         env:
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
+      - name: Upload container image artifacts (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-images-${{ env.REL_VERSION }}
+          path: ./dist/images/
+          retention-days: 1
       - name: Push container images (release)
         run: |
           make docker-multi-arch-push
