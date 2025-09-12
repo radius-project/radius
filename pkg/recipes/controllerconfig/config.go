@@ -28,6 +28,8 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/driver/bicep"
+	"github.com/radius-project/radius/pkg/recipes/driver/terraform"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/sdk/clients"
@@ -99,17 +101,17 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 		ConfigurationLoader: cfg.ConfigLoader,
 		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions),
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(
+			recipes.TemplateKindBicep: bicep.NewBicepDriver(
 				clientOptions,
 				cfg.DeploymentEngineClient,
 				processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.Kubernetes),
-				driver.BicepOptions{
+				bicep.BicepOptions{
 					DeleteRetryCount:        bicepDeleteRetryCount,
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
 				},
 			),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, secretprovider.NewSecretProvider(options.Config.SecretProvider),
-				driver.TerraformOptions{
+			recipes.TemplateKindTerraform: terraform.NewTerraformDriver(options.UCPConnection, secretprovider.NewSecretProvider(options.Config.SecretProvider),
+				terraform.TerraformOptions{
 					Path: options.Config.Terraform.Path,
 				}, *cfg.Kubernetes),
 		},

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package terraform
 
 import (
 	"context"
@@ -33,6 +33,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -45,10 +46,10 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
-var _ Driver = (*terraformDriver)(nil)
+var _ driver.Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options TerraformOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.SecretProvider, options TerraformOptions, kubernetesClients kubernetesclientprovider.KubernetesClientProvider) driver.Driver {
 	return &terraformDriver{
 		terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, kubernetesClients),
 		options:           options,
@@ -72,7 +73,7 @@ type terraformDriver struct {
 
 // Execute creates a unique directory for each execution of terraform and deploys the recipe using the
 // the Terraform CLI through terraform-exec. It returns a RecipeOutput or an error if the deployment fails.
-func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -125,7 +126,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 // Delete creates a unique directory for each execution of terraform and deletes the resources deployed by the Terraform module
 // using the Terraform CLI through terraform-exec. It returns an error if the deletion fails.
-func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error {
+func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -253,7 +254,7 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 }
 
 // GetRecipeMetadata returns the Terraform Recipe parameters by downloading the module and retrieving variable information
-func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOptions) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)

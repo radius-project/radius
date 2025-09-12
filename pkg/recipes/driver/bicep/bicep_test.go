@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package bicep
 
 import (
 	"fmt"
@@ -26,6 +26,7 @@ import (
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -303,8 +304,8 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		},
 	}
 
-	opts := ExecuteOptions{
-		BaseOptions: BaseOptions{
+	opts := driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
 			Definition: recipes.EnvironmentDefinition{
 				Name:         "mongo-azure",
 				Driver:       recipes.TemplateKindBicep,
@@ -395,7 +396,7 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 
 func Test_Bicep_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
-	driver, client := setupDeleteInputs(t)
+	driverBicep, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
 			LocalID: "RecipeResource0",
@@ -421,7 +422,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	}
 	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
-	err := driver.Delete(ctx, DeleteOptions{
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -429,7 +430,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 
 func Test_Bicep_Delete_Error(t *testing.T) {
 	ctx := testcontext.New(t)
-	driver, client := setupDeleteInputs(t)
+	driverBicep, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
 			ID: resources_kubernetes.IDFromParts(
@@ -452,7 +453,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
 		Times(1)
 
-	err := driver.Delete(ctx, DeleteOptions{
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
 		OutputResources: outputResources,
 	})
 	require.Error(t, err)
@@ -464,7 +465,7 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 	t.Cleanup(ts.CloseServer)
 
 	ctx := testcontext.New(t)
-	driver := &bicepDriver{RegistryClient: ts.TestServer.Client()}
+	driverBicep := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
@@ -477,7 +478,7 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 		"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
 	}
 
-	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+	recipeData, err := driverBicep.GetRecipeMetadata(ctx, driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: recipeDefinition,
 	})
@@ -491,7 +492,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	t.Cleanup(ts.CloseServer)
 
 	ctx := testcontext.New(t)
-	driver := &bicepDriver{RegistryClient: ts.TestServer.Client()}
+	driverBicep := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
@@ -499,7 +500,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
-	_, actualErr := driver.GetRecipeMetadata(ctx, BaseOptions{
+	_, actualErr := driverBicep.GetRecipeMetadata(ctx, driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: recipeDefinition,
 	})
@@ -557,8 +558,8 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := testcontext.New(t)
-	driver, client := setupDeleteInputs(t)
-	driver.options.DeleteRetryCount = 1
+	driverBicep, client := setupDeleteInputs(t)
+	driverBicep.options.DeleteRetryCount = 1
 
 	outputResources := []rpv1.OutputResource{
 		{
@@ -581,7 +582,7 @@ func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 			Return(nil),
 	)
 
-	err := driver.Delete(ctx, DeleteOptions{
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)

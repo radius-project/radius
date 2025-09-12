@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver
+package bicep
 
 import (
 	"context"
@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
@@ -52,10 +53,10 @@ const (
 	recipeParameters = "parameters"
 )
 
-var _ Driver = (*bicepDriver)(nil)
+var _ driver.Driver = (*bicepDriver)(nil)
 
 // NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) Driver {
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) driver.Driver {
 	return &bicepDriver{
 		ArmClientOptions: armOptions,
 		DeploymentClient: deploymentClient,
@@ -82,7 +83,7 @@ type bicepDriver struct {
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
 // a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
 // is done and prepares the recipe response.
-func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", opts.Definition.Name, opts.Definition.TemplatePath))
 
@@ -183,7 +184,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	}
 
 	// Deleting obsolete output resources.
-	err = d.Delete(ctx, DeleteOptions{
+	err = d.Delete(ctx, driver.DeleteOptions{
 		OutputResources: diff,
 	})
 	if err != nil {
@@ -201,7 +202,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 // retrying if necessary.
 // We don't have context on the dependency ordering here, so we need to try to delete them
 // all in parallel. Since some resources may depend on others, we may need to retry.
-func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
+func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Create a waitgroup to track the deletion of each output resource
@@ -256,7 +257,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 }
 
 // GetRecipeMetadata gets the Bicep recipe parameters information from the container registry
-func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOptions) (map[string]any, error) {
 	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
 	//	{
 	//		"parameters": {
