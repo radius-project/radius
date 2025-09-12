@@ -77,8 +77,7 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 		return false, err
 	}
 
-	summaryModel := model.(*summaryModel)
-	switch summaryModel.result {
+	switch model.(*summaryModel).result {
 	case resultConfimed:
 		return true, nil
 	case resultCanceled:
@@ -86,7 +85,7 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 	case resultQuit:
 		return false, &prompt.ErrExitConsole{}
 	default:
-		panic("unknown result " + summaryModel.result)
+		panic("unknown result " + model.(*summaryModel).result)
 	}
 }
 
