@@ -27,6 +27,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
@@ -52,45 +53,17 @@ func RegisterFile(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 // RegisterResourceProvider registers a resource provider
 func RegisterResourceProvider(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, resourceProvider ResourceProvider, logger func(format string, args ...any)) error {
-	var locationName string
-	var address string
+	locationName, address := extractLocationInfo(resourceProvider)
 
-	if resourceProvider.Location == nil {
-		locationName = v1.LocationGlobal
-	} else {
-		for locationName, address = range resourceProvider.Location {
-			// We support one location per resourceProvider
-			break
-		}
-	}
-
-	err := retryOperation(ctx, func() error {
-		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
-			ctx, planeName, resourceProvider.Namespace,
-			v20231001preview.ResourceProviderResource{
-				Location:   to.Ptr(locationName),
-				Properties: &v20231001preview.ResourceProviderProperties{},
-			}, nil)
-		if err != nil {
-			return err
-		}
-		_, err = resourceProviderPoller.PollUntilDone(ctx, nil)
-		if err != nil {
-			return err // also retried if error indicates a 409 conflict
-		}
-		return nil
-	}, logger)
+	// Create the resource provider itself
+	err := createResourceProviderResource(ctx, clientFactory, planeName, resourceProvider, locationName, logger)
 	if err != nil {
 		return err
 	}
 
 	// The location resource contains references to all of the resource types and API versions that the resource provider supports.
 	// We're instantiating the struct here so we can update it as we loop.
-	locationResource := v20231001preview.LocationResource{
-		Properties: &v20231001preview.LocationProperties{
-			ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
-		},
-	}
+	resourceTypes := map[string]*v20231001preview.LocationResourceType{}
 
 	for resourceTypeName, resourceType := range resourceProvider.Types {
 		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Namespace, resourceTypeName)
@@ -143,25 +116,12 @@ func RegisterResourceProvider(ctx context.Context, clientFactory *v20231001previ
 			locationResourceType.APIVersions[apiVersionName] = map[string]any{}
 		}
 
-		locationResource.Properties.ResourceTypes[resourceTypeName] = locationResourceType
+		resourceTypes[resourceTypeName] = locationResourceType
 	}
 
-	if address != "" {
-		locationResource.Properties.Address = to.Ptr(address)
-	}
-
+	// Create location with all resource types
 	logIfEnabled(logger, "Creating location %s/%s/%s", resourceProvider.Namespace, locationName, address)
-	err = retryOperation(ctx, func() error {
-		locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, locationName, locationResource, nil)
-		if err != nil {
-			return err
-		}
-		_, err = locationPoller.PollUntilDone(ctx, nil)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, logger)
+	err = createLocationResource(ctx, clientFactory, planeName, resourceProvider.Namespace, locationName, address, resourceTypes, logger)
 	if err != nil {
 		return err
 	}
@@ -210,6 +170,37 @@ func RegisterDirectory(ctx context.Context, clientFactory *v20231001preview.Clie
 	return nil
 }
 
+// EnsureResourceProviderExists ensures a resource provider exists, creating it if necessary
+func EnsureResourceProviderExists(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, resourceProvider ResourceProvider, logger func(format string, args ...any)) error {
+	_, err := clientFactory.NewResourceProvidersClient().Get(ctx, planeName, resourceProvider.Namespace, nil)
+	if clients.Is404Error(err) {
+		return CreateEmptyResourceProvider(ctx, clientFactory, planeName, resourceProvider, logger)
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateEmptyResourceProvider creates a resource provider with empty location (no types)
+func CreateEmptyResourceProvider(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, resourceProvider ResourceProvider, logger func(format string, args ...any)) error {
+	locationName, address := extractLocationInfo(resourceProvider)
+
+	// Create the resource provider itself
+	err := createResourceProviderResource(ctx, clientFactory, planeName, resourceProvider, locationName, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create resource provider: %w", err)
+	}
+
+	// Create empty location
+	err = createLocationResource(ctx, clientFactory, planeName, resourceProvider.Namespace, locationName, address,
+		map[string]*v20231001preview.LocationResourceType{}, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create location: %w", err)
+	}
+
+	return nil
+}
+
 // RegisterType registers a type specified in a manifest file
 func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, typeName string, logger func(format string, args ...any)) error {
 	if filePath == "" {
@@ -221,17 +212,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return err
 	}
 
-	var locationName string
-	var address string
-
-	if resourceProvider.Location == nil {
-		locationName = v1.LocationGlobal
-	} else {
-		for locationName, address = range resourceProvider.Location {
-			// We support one location per resourceProvider
-			break
-		}
-	}
+	locationName, address := extractLocationInfo(*resourceProvider)
 
 	resourceType, ok := resourceProvider.Types[typeName]
 	if !ok {
@@ -302,7 +283,6 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		locationResource.Properties.ResourceTypes[typeName].APIVersions[apiVersionName] = map[string]any{}
 	}
 
-	logIfEnabled(logger, "Updating location %s/%s with new resource type", resourceProvider.Namespace, locationName)
 	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, locationName, locationResource, nil)
 	if err != nil {
 		return err
@@ -377,4 +357,61 @@ func ValidateManifest(ctx context.Context, path string) (resourceProvider *Resou
 	}
 
 	return resourceProvider, nil
+}
+
+// extractLocationInfo extracts location name and address from resource provider
+func extractLocationInfo(resourceProvider ResourceProvider) (string, string) {
+	var locationName string
+	var address string
+
+	if resourceProvider.Location == nil {
+		locationName = v1.LocationGlobal
+	} else {
+		for name, addr := range resourceProvider.Location {
+			locationName = name
+			address = addr
+			break // We support one location per resourceProvider
+		}
+	}
+	return locationName, address
+}
+
+// createResourceProviderResource creates the resource provider entity
+func createResourceProviderResource(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, resourceProvider ResourceProvider, locationName string, logger func(format string, args ...any)) error {
+	return retryOperation(ctx, func() error {
+		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
+			ctx, planeName, resourceProvider.Namespace,
+			v20231001preview.ResourceProviderResource{
+				Location:   to.Ptr(locationName),
+				Properties: &v20231001preview.ResourceProviderProperties{},
+			}, nil)
+		if err != nil {
+			return err
+		}
+		_, err = resourceProviderPoller.PollUntilDone(ctx, nil)
+		return err
+	}, logger)
+}
+
+// createLocationResource creates a location resource with the given resource types
+func createLocationResource(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, namespace string, locationName string, address string, resourceTypes map[string]*v20231001preview.LocationResourceType, logger func(format string, args ...any)) error {
+	locationResource := v20231001preview.LocationResource{
+		Properties: &v20231001preview.LocationProperties{
+			ResourceTypes: resourceTypes,
+		},
+	}
+
+	if address != "" {
+		locationResource.Properties.Address = to.Ptr(address)
+	}
+
+	return retryOperation(ctx, func() error {
+		locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(
+			ctx, planeName, namespace, locationName, locationResource, nil)
+		if err != nil {
+			return err
+		}
+		_, err = locationPoller.PollUntilDone(ctx, nil)
+		return err
+	}, logger)
 }

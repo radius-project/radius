@@ -91,17 +91,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		err = runner.Run(context.Background())
-		require.NoError(t, err) // Verify the correct log messages are output
-		expectedLogs := []any{
-			output.LogOutput{
-				Format: "Creating resource type %s/%s.",
-				Params: []any{"MyCompany.Resources4", "testResources"},
-			},
-		}
-
-		for _, expectedLog := range expectedLogs {
-			require.Contains(t, outputSink.Writes, expectedLog, "Expected log message not found")
-		}
+		require.NoError(t, err)
 
 		// Verify RegisterType was called (should see specific log messages)
 		logOutput := logBuffer.String()
@@ -182,26 +172,10 @@ func Test_Run(t *testing.T) {
 
 		_ = runner.Run(context.Background())
 
-		// Verify the correct log messages are output
-		expectedLogs := []any{
-			output.LogOutput{
-				Format: "Creating resource type %s/%s.",
-				Params: []any{"MyCompany.Resources4", "testResources"},
-			},
-		}
-
-		// Verify no other ersource types are registered
-		shouldNotContain := []any{
-			output.LogOutput{
-				Format: "Creating resource type %s/%s.",
-				Params: []any{"MyCompany.Resources4", "prodResources"},
-			},
-		}
-
-		for _, expectedLog := range expectedLogs {
-			require.Contains(t, outputSink.Writes, expectedLog, "Expected log message not found")
-			require.NotContains(t, outputSink.Writes, shouldNotContain, "Log messages related to unspecified resource types should not be present")
-		}
+		// Verify RegisterResourceProvider was called with only the specified resource type
+		logOutput := logBuffer.String()
+		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
+		require.NotContains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "prodResources"))
 	})
 	t.Run("Get Resource provider Internal Error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
