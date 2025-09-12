@@ -12,18 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ------------------------------------------------------------
 
 name: Functional Tests (with Non-Cloud Resources)
 
 permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read # Required for listing the commits
-  packages: write # Required for uploading the package
-  checks: write # Required for creating a check run
+  id-token: write
+  contents: read
+  packages: write
+  checks: write
 
 on:
-  # Enable manual trigger
   workflow_dispatch:
     inputs:
       branch:
@@ -31,11 +29,8 @@ on:
         required: true
         default: "main"
   schedule:
-    # Run every 4 hours on weekdays.
     - cron: "30 0,4,8,12,16,20 * * 1-5"
-    # Run every 12 hours on weekends.
     - cron: "30 0,12 * * 0,6"
-  # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
   pull_request:
@@ -45,735 +40,588 @@ on:
       - release/*
 
 env:
-  # Helm version
   HELM_VER: "v3.15.3"
-  # KinD cluster version
   KIND_VER: "v0.29.0"
-  # Kubectl version
   KUBECTL_VER: "v1.30.0"
-  # Dapr CLI version
   DAPR_CLI_VER: "1.15.1"
-  # Dapr runtime version
   DAPR_RUNTIME_VER: "1.15.4"
-  # Dapr dashboard version
   DAPR_DASHBOARD_VER: "0.15.0"
-  # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 15m
-  # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
-  # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
-  # The current GitHub action link
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-  # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
-  # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
-  # Local Docker registry name
   LOCAL_REGISTRY_NAME: "radius-registry"
-  # Local Docker registry server
   LOCAL_REGISTRY_SERVER: "localhost"
-  # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
-  # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
-  # Gitea server URL
   GITEA_SERVER_URL: "http://localhost:30080"
-  # Gitea username
   GITEA_USERNAME: "testuser"
-  # Gitea email
   GITEA_EMAIL: "testuser@radapp.io"
-  # Gitea access token name
   GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
-  # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-    build:
-      name: Build Radius for test
-      runs-on: ubuntu-latest
-      env:
-        DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
-        DE_TAG: "latest"
-      outputs:
-        REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
-        DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
-        DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
-        RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
-      steps:
-        - name: Check out code
-          uses: actions/checkout@v5
-        - name: Set DE image and tag (repository_dispatch from de-functional-test)
-          if: github.event_name == 'repository_dispatch'
-          uses: actions/github-script@v7
-          with:
-            github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-            script: |
-              const clientPayload = context.payload.client_payload;
-              if (clientPayload && clientPayload.event_type === `de-functional-test`) {
-                var fs = require('fs');
-                // Set environment variables
-                fs.appendFileSync(process.env.GITHUB_ENV,
-                  `DE_IMAGE=${clientPayload.de_image}\n`+
-                  `DE_TAG=${clientPayload.de_tag}\n`+
-                  `CHECKOUT_REPO=${{ github.repository }}\n`+
-                  `CHECKOUT_REF=refs/heads/main`
-                );
-              }
+  build:
+    name: Build Radius for test
+    runs-on: ubuntu-latest
+    env:
+      DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
+      DE_TAG: "latest"
+    outputs:
+      REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
+      DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
+      RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
 
-        - name: Generate ID for release
-          id: gen-id
-          run: |
-            BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-            if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
-              # Add run number to randomize unique id for scheduled runs.
-              BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
-            fi
+      - name: Set DE image and tag (repository_dispatch from de-functional-test)
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const clientPayload = context.payload.client_payload;
+            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
+              var fs = require('fs');
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `DE_IMAGE=${clientPayload.de_image}\n`+
+                `DE_TAG=${clientPayload.de_tag}\n`+
+                `CHECKOUT_REPO=${{ github.repository }}\n`+
+                `CHECKOUT_REF=refs/heads/main`
+              );
+            }
+
+      - name: Generate ID for release
+        id: gen-id
+        run: |
+          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+            BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
+          fi
             UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-
-            # Set output variables to be used in the other jobs
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
             echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
             echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
             echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
 
-        - name: Setup Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: '18'
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
 
-        - name: Generate Bicep extensibility types from OpenAPI specs
-          run: |
-            make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
-        - name: Upload Radius Bicep types artifacts
-          uses: actions/upload-artifact@v4
-          with:
-            name: radius_bicep_types_noncloud
-            path: ./hack/bicep-types-radius/generated
-            if-no-files-found: error
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius_bicep_types
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
 
-        - name: Set up Go
-          uses: actions/setup-go@v5
-          with:
-            go-version-file: go.mod
-            cache-dependency-path: go.sum
-            cache: true
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
 
-        - name: Pull images from GHCR or build locally
-          run: |
-            # Try to pull images from GHCR dev registry first (for PRs) or main registry
-            PULL_SUCCESS=true
-            
-            # For PRs, try to pull from dev registry first
-            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-              echo "Attempting to pull PR images from ghcr.io/radius-project/dev..."
-              for image in applications-rp dynamic-rp controller ucpd; do
-                if ! docker pull "ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}"; then
-                  echo "Failed to pull ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}"
-                  PULL_SUCCESS=false
-                  break
-                fi
-                # Tag for local registry use
-                docker tag "ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}" "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/${image}:${{ env.REL_VERSION }}"
-              done
-            else
-              # For main/release branches, try to pull from main registry
-              echo "Attempting to pull images from ghcr.io/radius-project..."
-              for image in applications-rp dynamic-rp controller ucpd; do
-                if ! docker pull "ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}"; then
-                  echo "Failed to pull ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}"
-                  PULL_SUCCESS=false
-                  break
-                fi
-                # Tag for local registry use
-                docker tag "ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}" "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/${image}:${{ env.REL_VERSION }}"
-              done
-            fi
-            
-            # Fall back to building if pull failed
-            if [[ "$PULL_SUCCESS" == "false" ]]; then
-              echo "Image pull failed, building images locally..."
-              make artifacts-no-docker SKIP_HELM=1
-              make docker-build
-              # Ensure controller image exists; build it explicitly if missing
-              if ! docker image inspect "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller:${{ env.REL_VERSION }}" >/dev/null 2>&1; then
-                echo "Controller image missing after bulk build; building explicitly..."
-                make docker-build-controller \
-                  DOCKER_REGISTRY="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}" \
-                  DOCKER_TAG_VERSION="${{ env.REL_VERSION }}"
-              fi
-            fi
-            
-            # Always save images for upload
-            make docker-save-images
-          env:
-            DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
-            DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
-
-        - name: Verify built image tarballs exist
-          run: |
-            ls -l dist/images || true
-            missing=0
-            for img in controller ucpd applications-rp dynamic-rp bicep; do
-              if [ ! -f "dist/images/$img.tar" ]; then
-                echo "Missing dist/images/$img.tar"
-                missing=1
-              fi
-            done
-            if [ "$missing" -ne 0 ]; then
-              echo "Docker images present locally:"; docker images | head -n 200 || true
-              echo "docker-save-images likely skipped some tags. Failing early."
-              exit 1
-            fi
-
-        - name: Collect build metrics
-          run: |
-            make build-metrics METRICS_COLLECT_ONLY=1
-            echo '## Build metrics (noncloud)' >> $GITHUB_STEP_SUMMARY
-            cat dist/metrics/metrics.txt >> $GITHUB_STEP_SUMMARY
-
-        - name: Upload build metrics (noncloud)
-          if: always()
-          uses: actions/upload-artifact@v4
-          with:
-            name: build-metrics-noncloud-${{ github.run_id }}-${{ github.run_attempt }}
-            path: dist/metrics/*
-            retention-days: 14
-            if-no-files-found: warn
-
-        - name: Upload built images
-          uses: actions/upload-artifact@v4
-          with:
-            name: radius_images
-            path: |
-              ./dist/images/*.tar
-            if-no-files-found: error
-
-        - name: Upload CLI binary
-          uses: actions/upload-artifact@v4
-          with:
-            name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
-            path: |
-              ./dist/linux_amd64/release/rad
-
-    tests:
-      name: Run ${{ matrix.name }} functional tests
-      needs: build
-      strategy:
-        fail-fast: true
-        matrix:
-          os: [ubuntu-latest]
-          name:
-            [
-              cli-noncloud,
-              corerp-noncloud,
-              daprrp-noncloud,
-              kubernetes-noncloud,
-              msgrp-noncloud,
-              samples-noncloud,
-              ucp-noncloud,
-              datastoresrp-noncloud,
-              dynamicrp-noncloud,
-              upgrade-noncloud,
-            ]
-      runs-on: ${{ matrix.os }}
-      env:
-        REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-        BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-        DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
-        DE_TAG: ${{ needs.build.outputs.DE_TAG }}
-        RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
-      steps:
-        - name: Set up checkout target (scheduled)
-          if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
-          run: |
-            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
-
-        - name: Set up checkout target (pull_request)
-          if: github.event_name == 'pull_request'
-          run: |
-            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-
-        - name: Set up checkout target (workflow_dispatch)
-          if: github.event_name == 'workflow_dispatch'
-          run: |
-            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
-
-        - name: Check out code
-          uses: actions/checkout@v5
-
-        - name: Checkout samples repo
-          uses: actions/checkout@v5
-          if: matrix.name == 'samples-noncloud'
-          with:
-            repository: radius-project/samples
-            ref: refs/heads/edge
-            path: samples
-
-        - name: Set up Go
-          uses: actions/setup-go@v5
-          with:
-            go-version-file: go.mod
-            cache-dependency-path: go.sum
-            cache: true
-
-        - name: Setup Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: '18'
-
-        - name: Generate Bicep extensibility types from OpenAPI specs
-          run: |
-            make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
-
-        - name: Upload Radius Bicep types artifacts
-          uses: actions/upload-artifact@v4
-          with:
-            name: ${{ matrix.name }}_radius_bicep_types
-            path: ./hack/bicep-types-radius/generated
-            if-no-files-found: error
-
-        - name: Create a secure local registry
-          id: create-local-registry
-          uses: ./.github/actions/create-local-registry
-          with:
-            secure: "true"
-            registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
-            registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
-            registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
-
-        - name: Create a KinD cluster with a local registry
-          uses: ./.github/actions/create-kind-cluster
-          with:
-            secure: "true"
-            temp-cert-dir: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-            kind-version: ${{ env.KIND_VER }}
-            with-local-registry: "true"
-            registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
-            registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
-            registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
-
-        - name: Pre-install diagnostics (cluster, kubeconfig, registry, controller image)
-          env:
-            TAG: ${{ env.REL_VERSION }}
-            REG: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
-          run: |
-            set -x
-            echo "== kind version and clusters =="
-            (kind --version || true)
-            (kind get clusters || true)
-
-            echo "== kubeconfig basics =="
-            ls -la ~/.kube || true
-            kubectl config view || true
-            kubectl config current-context || true
-            kubectl version --short || true
-            kubectl cluster-info || true
-            kubectl get nodes -o wide || true
-
-            echo "== docker and registry =="
-            docker ps -a || true
-            docker inspect $REG --format '{{json .NetworkSettings.Networks.kind}}' || true
-            docker logs $REG | tail -n 200 || true
-
-            echo "== controller image local + registry =="
-            echo "Listing saved tars:"
-            ls -l dist/images || true
-            echo "Check tar for controller:"
-            [ -f "dist/images/controller.tar" ] && echo "controller.tar present" || echo "controller.tar MISSING"
-
-            echo "Try pulling from registry on runner:"
-            docker pull $REG/controller:$TAG || echo "runner docker pull failed"
-
-            echo "== containerd registry config inside node =="
-            NODE="kind-control-plane"
-            for path in \
-              "/etc/containerd/certs.d/localhost:${{ env.LOCAL_REGISTRY_PORT }}/hosts.toml" \
-              "/etc/containerd/certs.d/${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/hosts.toml"; do
-              echo "--- $path ---"
-              docker exec "$NODE" sh -c "cat $path" || true
-            done
-
-            echo "List images in node (first 200 lines):"
-            docker exec "$NODE" crictl images | sed -n '1,200p' || true
-
-            echo "Try crictl pull inside node (will reveal registry reachability):"
-            docker exec "$NODE" crictl pull $REG/controller:$TAG || echo "node crictl pull failed"
-
-        - name: Download built images
-          uses: actions/download-artifact@v5
-          with:
-            name: radius_images
-            path: dist/images
-
-        - name: Load images into local Docker and push to local registry
-          run: |
-            set -e
-            for f in dist/images/*.tar; do
-              [ -e "$f" ] || continue
-              name=$(basename "$f" .tar)
-              tag="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/$name:${{ env.REL_VERSION }}"
-              echo "Loading $f into Docker and pushing $tag"
-              docker load -i "$f"
-              # Ensure tag exists (no-op if already correct)
-              docker tag "$tag" "$tag" || true
-              docker push "$tag"
-            done
-
-        - name: Load images into KinD nodes
-          run: |
-            for f in dist/images/*.tar; do
-              [ -e "$f" ] || continue
-              echo "Loading $f to kind..."
-              kind load image-archive "$f" --name kind
-            done
-
-        - name: Verify images present in node
-          run: |
-            echo "Listing images in kind node"
-            docker exec kind-control-plane crictl images | sed -n '1,200p' || true
-            echo "Check key images present:"
-            for img in controller ucpd applications-rp dynamic-rp bicep; do
-              if docker exec kind-control-plane crictl images | grep -q "radius-registry:5000/$img:${{ env.REL_VERSION }}"; then
-                echo "Found radius-registry:5000/$img:${{ env.REL_VERSION }}"
-              else
-                echo "MISSING radius-registry:5000/$img:${{ env.REL_VERSION }}"; fi; done
-
-        - name: Download rad CLI
-          uses: actions/download-artifact@v5
-          with:
-            name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
-            path: bin
-
-        - name: Verify rad CLI
-          run: |
-            chmod +x ./bin/rad
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            which rad || { echo "cannot find rad"; exit 1; }
-            rad bicep download
-            rad version
-
-        - uses: azure/setup-helm@v4
-          with:
-            version: ${{ env.HELM_VER }}
-
-        - name: Setup and verify bicep CLI
-          run: |
-            curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-            chmod +x ./bicep
-            sudo mv ./bicep /usr/local/bin/bicep
-            bicep --version
-
-        - name: Publish bicep types
-          run: |
-            bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
-          env:
-            SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
-
-        - name: Install Radius
-          run: |
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            which rad || { echo "cannot find rad"; exit 1; }
-
-            # Check if Radius release exists and delete it if found
-            if helm status radius -n radius-system >/dev/null 2>&1; then
-              echo "The release 'radius' exists. Deleting the release..."
-              helm delete radius -n radius-system
-              if [ $? -eq 0 ]; then
-                echo "Release 'radius' deleted successfully."
-              else
-                echo "Failed to delete the release 'radius'."
-                exit 1
-              fi
-            else
-              echo "Radius release not found. Proceeding with installation."
-            fi
-
-            RAD_COMMAND="rad install kubernetes \
-              --chart ${{ env.RADIUS_CHART_LOCATION }} \
-              --set global.imageRegistry=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }} \
-              --set global.imageTag=${{ env.REL_VERSION }} \
-              --set global.imagePullPolicy=IfNotPresent \
-              --set dashboard.enabled=false \
-              --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
-
-            if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
-              RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt"
-            fi
-
-            echo "*** Installing Radius to Kubernetes ***"
-            eval $RAD_COMMAND
-
-            echo "*** Verify manifests are registered ***"
-            rm -f registermanifest_logs.txt
-            # Find the pod with container "ucp"
-            POD_NAME=$(\
-              kubectl get pods -n radius-system \
-                -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.containers[*].name}{"\n"}{end}' \
-              | grep "ucp" \
-              | head -n1 \
-              | cut -d" " -f1
-            )
-            echo "Found ucp pod: $POD_NAME"
-
-            if [ -z "$POD_NAME" ]; then
-              echo "No pod with container 'ucp' found in namespace radius-system."
-              exit 1
-            fi
-
-            # Poll logs for up to 3 minutes
-            for i in {1..6}; do
-              kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
-            
-              # Exit on error
-              if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
-                echo "Error found in ucp logs."
-                grep -i "Service initializer terminated with error" registermanifest_logs.txt
-                exit 1
-              fi
-
-              # Check for success
-              if grep -q "Successfully registered manifests" registermanifest_logs.txt; then
-                echo "Successfully registered manifests - message found."
+      - name: Pull images from GHCR or build locally (with fallback + controller check)
+        run: |
+          PULL_SUCCESS=true
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Attempting to pull PR images from ghcr.io/radius-project/dev..."
+            for image in applications-rp dynamic-rp controller ucpd; do
+              if ! docker pull "ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}"; then
+                echo "Failed to pull ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}"
+                PULL_SUCCESS=false
                 break
               fi
-
-              echo "Logs not ready, waiting 30 seconds..."
-              sleep 30
+              docker tag "ghcr.io/radius-project/dev/${image}:${{ env.REL_VERSION }}" "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/${image}:${{ env.REL_VERSION }}"
             done
-
-            # Final check to ensure success message was found
-            if ! grep -q "Successfully registered manifests" registermanifest_logs.txt; then
-              echo "Manifests not registered after 3 minutes."
-              exit 1
+          else
+            echo "Attempting to pull images from ghcr.io/radius-project..."
+            for image in applications-rp dynamic-rp controller ucpd; do
+              if ! docker pull "ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}"; then
+                echo "Failed to pull ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}"
+                PULL_SUCCESS=false
+                break
+              fi
+              docker tag "ghcr.io/radius-project/${image}:${{ env.REL_VERSION }}" "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/${image}:${{ env.REL_VERSION }}"
+            done
+          fi
+          if [[ "$PULL_SUCCESS" == "false" ]]; then
+            echo "Image pull failed, building images locally..."
+            make artifacts-no-docker SKIP_HELM=1
+            make docker-build
+            if ! docker image inspect "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller:${{ env.REL_VERSION }}" >/dev/null 2>&1; then
+              echo "Controller image missing after bulk build; building explicitly..."
+              make docker-build-controller \
+                DOCKER_REGISTRY="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}" \
+                DOCKER_TAG_VERSION="${{ env.REL_VERSION }}"
             fi
+          fi
+          make docker-save-images
+        env:
+          DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
-            echo "*** Create workspace, group and environment for test ***"
-            rad workspace create kubernetes
-            rad group create kind-radius
-            rad group switch kind-radius
+      - name: Verify built image tarballs exist (early fail)
+        run: |
+          ls -l dist/images || true
+          missing=0
+          for img in controller ucpd applications-rp dynamic-rp bicep; do
+            if [ ! -f "dist/images/$img.tar" ]; then
+              echo "Missing dist/images/$img.tar"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Docker images present locally:"; docker images | head -n 200 || true
+            echo "docker-save-images likely skipped some tags. Failing early."
+            exit 1
+          fi
 
-            # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-            rad env create kind-radius --namespace default
-            rad env switch kind-radius
-          env:
-            USE_CERT_FILE: "true"
-            TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+      - name: Collect build metrics
+        run: |
+          make build-metrics METRICS_COLLECT_ONLY=1
+          echo '## Build metrics' >> $GITHUB_STEP_SUMMARY
+          cat dist/metrics/metrics.txt >> $GITHUB_STEP_SUMMARY
 
-        - name: Debug install failure (noncloud)
-          if: failure()
-          run: |
-            echo "==== radius-system pods"
-            kubectl get pods -n radius-system -o wide || true
-            echo "==== radius-system events (latest)"
-            kubectl get events -n radius-system --sort-by=.lastTimestamp | tail -n 200 || true
-            echo "==== helm status"
-            helm status radius -n radius-system || true
-            echo "==== describe deployments"
-            kubectl describe deploy -n radius-system || true
-            echo "==== describe pods"
-            for p in $(kubectl get pods -n radius-system -o name); do
-              echo "---- $p ----"; kubectl describe "$p" -n radius-system || true; done
+      - name: Upload build metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metrics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/metrics/*
+          retention-days: 14
+          if-no-files-found: warn
 
-        - name: Install Flux Source Controller
-          if: matrix.name == 'kubernetes-noncloud'
-          uses: ./.github/actions/install-flux
+      - name: Upload built images
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius_images
+          path: ./dist/images/*.tar
+          if-no-files-found: error
 
-        - name: Install Gitea
-          if: matrix.name == 'kubernetes-noncloud'
-          id: install-gitea
-          uses: ./.github/actions/install-gitea
-          env:
-            GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
-          with:
-            gitea-username: ${{ env.GITEA_USERNAME }}
-            gitea-email: ${{ env.GITEA_EMAIL }}
-            gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
- 
-        - name: Port-forward to Gitea
-          if: matrix.name == 'kubernetes-noncloud'
-          run: |
-            # Start port forwarding in the background
-            kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
-          
-            # Wait for port forwarding to be established
-            sleep 5
-          
-            # Test the connection to ensure port forwarding is working
-            curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
-            echo "Port forwarding established successfully"
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+          path: ./dist/linux_amd64/release/rad
 
-        - name: Install Dapr CLI and control plane
-          if: matrix.name == 'daprrp-noncloud'
-          run: |
-            wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
-            dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_RUNTIME_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
+  tests:
+    name: Run ${{ matrix.name }} functional tests
+    needs: build
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        name:
+          [cli-noncloud, corerp-noncloud, daprrp-noncloud, kubernetes-noncloud, msgrp-noncloud, samples-noncloud, ucp-noncloud, datastoresrp-noncloud, dynamicrp-noncloud, upgrade-noncloud]
+    runs-on: ${{ matrix.os }}
+    env:
+      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
+    steps:
+      - name: Set up checkout target (scheduled)
+        if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
 
-        - name: Publish Terraform test recipes
-          run: |
-            make publish-test-terraform-recipes
+      - name: Set up checkout target (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
-        - name: Publish UDT types 
-          run: |
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            which rad || { echo "cannot find rad"; exit 1; }
-            rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+      - name: Set up checkout target (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
-        - name: Generate test bicepconfig.json
-          run: |
-            if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
-              RADIUS_VERSION="latest"
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Checkout samples repo
+        uses: actions/checkout@v5
+        if: matrix.name == 'samples-noncloud'
+        with:
+          repository: radius-project/samples
+          ref: refs/heads/edge
+          path: samples
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        run: |
+          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}_radius_bicep_types
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
+
+      - name: Create a secure local registry
+        id: create-local-registry
+        uses: ./.github/actions/create-local-registry
+        with:
+          secure: "true"
+          registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
+          registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
+          registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
+
+      - name: Create a KinD cluster with a local registry
+        uses: ./.github/actions/create-kind-cluster
+        with:
+          secure: "true"
+          temp-cert-dir: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+          kind-version: ${{ env.KIND_VER }}
+          with-local-registry: "true"
+          registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
+          registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
+          registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
+
+      - name: Pre-install diagnostics (cluster, kubeconfig, registry, controller image)
+        env:
+          TAG: ${{ env.REL_VERSION }}
+          REG: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
+        run: |
+          set -x
+          echo "== kind version and clusters =="
+          (kind --version || true)
+          (kind get clusters || true)
+          echo "== kubeconfig basics =="
+          ls -la ~/.kube || true
+          kubectl config view || true
+          kubectl config current-context || true
+            kubectl version --short || true
+          kubectl cluster-info || true
+          kubectl get nodes -o wide || true
+          echo "== docker and registry =="
+          docker ps -a || true
+          docker inspect $REG --format '{{json .NetworkSettings.Networks.kind}}' || true
+          docker logs $REG | tail -n 200 || true
+          echo "== controller image local + registry =="
+          ls -l dist/images || true
+          [ -f "dist/images/controller.tar" ] && echo "controller.tar present" || echo "controller.tar MISSING"
+          docker pull $REG/controller:$TAG || echo "runner docker pull failed"
+          NODE="kind-control-plane"
+          for path in \
+            "/etc/containerd/certs.d/localhost:${{ env.LOCAL_REGISTRY_PORT }}/hosts.toml" \
+            "/etc/containerd/certs.d/${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/hosts.toml"; do
+            echo "--- $path ---"; docker exec "$NODE" sh -c "cat $path" || true; done
+          docker exec "$NODE" crictl images | sed -n '1,200p' || true
+          docker exec "$NODE" crictl pull $REG/controller:$TAG || echo "node crictl pull failed"
+
+      - name: Download built images
+        uses: actions/download-artifact@v5
+        with:
+          name: radius_images
+          path: dist/images
+
+      - name: Load images into local Docker and push to local registry
+        run: |
+          set -e
+          for f in dist/images/*.tar; do
+            [ -e "$f" ] || continue
+            name=$(basename "$f" .tar)
+            tag="${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/$name:${{ env.REL_VERSION }}"
+            echo "Loading $f into Docker and pushing $tag"
+            docker load -i "$f"
+            docker tag "$tag" "$tag" || true
+            docker push "$tag"
+          done
+
+      - name: Load images into KinD nodes
+        run: |
+          for f in dist/images/*.tar; do
+            [ -e "$f" ] || continue
+            kind load image-archive "$f" --name kind
+          done
+
+      - name: Verify images present in node
+        run: |
+          docker exec kind-control-plane crictl images | sed -n '1,200p' || true
+          for img in controller ucpd applications-rp dynamic-rp bicep; do
+            if docker exec kind-control-plane crictl images | grep -q "radius-registry:5000/$img:${{ env.REL_VERSION }}"; then
+              echo "Found radius-registry:5000/$img:${{ env.REL_VERSION }}"
             else
-              RADIUS_VERSION="${{ env.REL_VERSION }}"
-            fi
-            cat <<EOF > ./test/bicepconfig.json
-            {
-              "experimentalFeaturesEnabled": {
-                "extensibility": true
-              },
-              "extensions": {
-                "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-                "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
-                "testresources": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:$RADIUS_VERSION"
-              }
+              echo "MISSING radius-registry:5000/$img:${{ env.REL_VERSION }}"; fi; done
+
+      - name: Download rad CLI
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
+          path: bin
+
+      - name: Verify rad CLI
+        run: |
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+          rad version
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VER }}
+
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+        env:
+          SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
+
+      - name: Install Radius
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          if helm status radius -n radius-system >/dev/null 2>&1; then
+            echo "The release 'radius' exists. Deleting the release..."
+            helm delete radius -n radius-system || exit 1
+          else
+            echo "Radius release not found. Proceeding with installation."
+          fi
+          RAD_COMMAND="rad install kubernetes \
+            --chart ${{ env.RADIUS_CHART_LOCATION }} \
+            --set global.imageRegistry=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }} \
+            --set global.imageTag=${{ env.REL_VERSION }} \
+            --set global.imagePullPolicy=IfNotPresent \
+            --set dashboard.enabled=false \
+            --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
+          if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
+            RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt"
+          fi
+          echo "*** Installing Radius to Kubernetes ***"
+          eval $RAD_COMMAND
+          echo "*** Verify manifests are registered ***"
+          rm -f registermanifest_logs.txt
+          POD_NAME=$(kubectl get pods -n radius-system -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.containers[*].name}{"\n"}{end}' | grep "ucp" | head -n1 | cut -d" " -f1)
+          echo "Found ucp pod: $POD_NAME"
+          if [ -z "$POD_NAME" ]; then
+            echo "No pod with container 'ucp' found in namespace radius-system."; exit 1; fi
+          for i in {1..6}; do
+            kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
+            if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
+              echo "Error found in ucp logs."; grep -i "Service initializer terminated with error" registermanifest_logs.txt; exit 1; fi
+            if grep -q "Successfully registered manifests" registermanifest_logs.txt; then
+              echo "Successfully registered manifests - message found."; break; fi
+            echo "Logs not ready, waiting 30 seconds..."; sleep 30
+          done
+          if ! grep -q "Successfully registered manifests" registermanifest_logs.txt; then
+            echo "Manifests not registered after 3 minutes."; exit 1; fi
+          echo "*** Create workspace, group and environment for test ***"
+          rad workspace create kubernetes
+          rad group create kind-radius
+          rad group switch kind-radius
+          rad env create kind-radius --namespace default
+          rad env switch kind-radius
+        env:
+          USE_CERT_FILE: "true"
+          TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+
+      - name: Install Flux (kubernetes-noncloud)
+        if: matrix.name == 'kubernetes-noncloud'
+        uses: ./.github/actions/install-flux
+
+      - name: Debug install failure (noncloud)
+        if: failure()
+        run: |
+          echo "==== radius-system pods"; kubectl get pods -n radius-system -o wide || true
+          echo "==== radius-system events (latest)"; kubectl get events -n radius-system --sort-by=.lastTimestamp | tail -n 200 || true
+          echo "==== helm status"; helm status radius -n radius-system || true
+          echo "==== describe deployments"; kubectl describe deploy -n radius-system || true
+          echo "==== describe pods"; for p in $(kubectl get pods -n radius-system -o name); do echo "---- $p ----"; kubectl describe "$p" -n radius-system || true; done
+
+      - name: Install Gitea
+        if: matrix.name == 'kubernetes-noncloud'
+        id: install-gitea
+        uses: ./.github/actions/install-gitea
+        env:
+          GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+        with:
+          gitea-username: ${{ env.GITEA_USERNAME }}
+          gitea-email: ${{ env.GITEA_EMAIL }}
+          gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+
+      - name: Port-forward to Gitea
+        if: matrix.name == 'kubernetes-noncloud'
+        run: |
+          kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
+          sleep 5
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+
+      - name: Install Dapr CLI and control plane
+        if: matrix.name == 'daprrp-noncloud'
+        run: |
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
+          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_RUNTIME_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
+
+      - name: Publish Terraform test recipes
+        run: make publish-test-terraform-recipes
+
+      - name: Publish UDT types
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+
+      - name: Generate test bicepconfig.json
+        run: |
+          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then RADIUS_VERSION="latest"; else RADIUS_VERSION="${{ env.REL_VERSION }}"; fi
+          cat <<EOF > ./test/bicepconfig.json
+          {
+            "experimentalFeaturesEnabled": { "extensibility": true },
+            "extensions": {
+              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
+              "testresources": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:$RADIUS_VERSION"
             }
-            EOF
+          }
+          EOF
+          cp -f ./test/bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
 
-            # Copy to the dynamicrp resources test directory
-            cp -f ./test/bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
+      - name: Publish Bicep Test Recipes
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          make publish-test-bicep-recipes
+        env:
+          BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+          TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
+          SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
-        - name: Publish Bicep Test Recipes
-          run: |
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            which rad || { echo "cannot find rad"; exit 1; }
-            make publish-test-bicep-recipes
-          env:
-            BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
-            BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-            TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-            SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
+      - name: Run functional tests
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          mkdir -p ./dist/functional_test
+          which rad || { echo "cannot find rad"; exit 1; }
+          make test-functional-${{ matrix.name }}
+        env:
+          DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
+          BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
+          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          RADIUS_TEST_FAST_CLEANUP: true
 
-        - name: Run functional tests
-          run: |
-            # Ensure rad cli is in path before running tests.
-            export PATH=$GITHUB_WORKSPACE/bin:$PATH
-            # Make directory to capture functional test results
-            mkdir -p ./dist/functional_test 
-            cd $GITHUB_WORKSPACE
+      - name: Process Functional Test Results
+        uses: ./.github/actions/process-test-results
+        if: failure() && github.repository == 'radius-project/radius'
+        with:
+          test_group_name: "Functional Tests - ${{ matrix.name }}"
+          artifact_name: "functional_test_results_${{ matrix.name }}"
+          result_directory: "dist/functional_test/"
 
-            which rad || { echo "cannot find rad"; exit 1; }
+      - name: Collect detailed Radius logs and events
+        id: radius-logs-events
+        if: always()
+        run: |
+          mkdir -p func-nc/radius-logs-events/${{ matrix.name }}
+          namespace="radius-system"
+          pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
+          for pod_name in "${pod_names[@]}"; do
+            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt 2>&1 || echo "Failed to get logs for pod: $pod_name" > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
+          done
+          kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
 
-            make test-functional-${{ matrix.name }}
-          env:
-            DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
-            TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
-            RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-            RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-            BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
-            BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-            GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
-            RADIUS_TEST_FAST_CLEANUP: true
+      - name: Upload Pod logs for failed tests
+        uses: actions/upload-artifact@v4
+        if: always() && steps.radius-logs-events.outcome == 'success'
+        with:
+          name: ${{ matrix.name }}-radius-pod-logs
+          path: func-nc/radius-logs-events/${{ matrix.name }}
+          retention-days: 30
+          if-no-files-found: error
 
-        - name: Process Functional Test Results
-          uses: ./.github/actions/process-test-results
-          # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-          if: failure() && github.repository == 'radius-project/radius'
-          with:
-            test_group_name: "Functional Tests - ${{ matrix.name }}"
-            artifact_name: "functional_test_results_${{ matrix.name }}"
-            result_directory: "dist/functional_test/"
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
 
-        - name: Collect detailed Radius logs and events
-          id: radius-logs-events
-          if: always()
-          run: |
-            # Create Radius logs directory
-            mkdir -p func-nc/radius-logs-events/${{ matrix.name }}
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}_container_logs
+          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
 
-            # Get pod logs and save to file
-            namespace="radius-system"
-            pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
-            for pod_name in "${pod_names[@]}"; do
-              kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt 2>&1 || echo "Failed to get logs for pod: $pod_name" > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
-            done
-            echo "Pod logs saved to func-nc/radius-logs-events/${{ matrix.name }}/"
-            # Get kubernetes events and save to file
-            kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
+      - name: Get Terraform recipe publishing logs
+        if: always()
+        run: |
+          mkdir -p recipes/pod-logs
+          namespace="radius-test-tf-module-server"
+          label="app.kubernetes.io/name=tf-module-server"
+          pod_names=($(kubectl get pods -l $label -n $namespace -o jsonpath='{.items[*].metadata.name}'))
+          for pod_name in "${pod_names[@]}"; do
+            kubectl logs $pod_name -n $namespace > recipes/pod-logs/${pod_name}.txt
+          done
+          kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
-        - name: Upload Pod logs for failed tests
-          uses: actions/upload-artifact@v4
-          if: always() && steps.radius-logs-events.outcome == 'success'
-          with:
-            name: ${{ matrix.name }}-radius-pod-logs
-            path: func-nc/radius-logs-events/${{ matrix.name }}
-            retention-days: 30
-            if-no-files-found: error
+      - name: Upload Terraform recipe publishing logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.name }}_recipes-pod-logs
+          path: recipes/pod-logs
+          if-no-files-found: error
 
-        - name: Collect Pod details
-          if: always()
-          run: |
-            POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
-            mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
-            echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
-            kubectl get pods -A >> $POD_STATE_LOG_FILENAME
-            echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
-            kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
-      
-        - name: Upload container logs
-          if: always()
-          uses: actions/upload-artifact@v4
-          with:
-            name: ${{ matrix.name }}_container_logs
-            path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-
-        - name: Get Terraform recipe publishing logs
-          if: always()
-          run: |
-            # Create pod-logs directory
-            mkdir -p recipes/pod-logs
-            # Get pod logs and save to file
-            namespace="radius-test-tf-module-server"
-            label="app.kubernetes.io/name=tf-module-server"
-            pod_names=($(kubectl get pods -l $label -n $namespace -o jsonpath='{.items[*].metadata.name}'))
-            for pod_name in "${pod_names[@]}"; do
-              kubectl logs $pod_name -n $namespace > recipes/pod-logs/${pod_name}.txt
-            done
-            echo "Pod logs saved to recipes/pod-logs/"
-            # Get kubernetes events and save to file
-            kubectl get events -n $namespace > recipes/pod-logs/events.txt
-
-        - name: Upload Terraform recipe publishing logs
-          uses: actions/upload-artifact@v4
-          if: always()
-          with:
-            name: ${{ matrix.name }}_recipes-pod-logs
-            path: recipes/pod-logs
-            if-no-files-found: error
-
-    report-failure:
-      name: Report test failure
-      needs: [build, tests]
-      runs-on: ubuntu-latest
-      if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
-      steps:
-        - name: Create failure issue for failing scheduled run
-          uses: actions/github-script@v7
-          with:
-            github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-            script: |
-              github.rest.issues.create({
-                ...context.repo,
-                title: `Scheduled functional test (noncloud) failed - Run ID: ${context.runId}`,
-                labels: ['test-failure'],
-                body: `## Bug information \n\nThis issue is automatically generated if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
-              })
-
+  report-failure:
+    name: Report test failure
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    steps:
+      - name: Create failure issue for failing scheduled run
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            github.rest.issues.create({
+              ...context.repo,
+              title: `Scheduled functional test (noncloud) failed - Run ID: ${context.runId}`,
+              labels: ['test-failure'],
+              body: `## Bug information \n\nThis issue is automatically generated if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+            })
