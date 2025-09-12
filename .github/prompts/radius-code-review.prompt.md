@@ -38,7 +38,26 @@ Create `pr-analysis-${prNumber}.md` with:
 **Step 2: Review the code**
 Go through this document that you just created and create a new markdown document in which you give the relative file path of each changed file and you provide PR review comments on the changes in each file, and you add an overall review comment about the PR in general. Remember that this is a PR review, so keep the text concise and focused. Avoid summarizing or explaining. Avoid comments that are purely complimentary. Focus on changes that the author needs to make. Create comments that suggest changes that should be made, or make no comments if no changes should be made. Keep the formatting of the markdown simple, ie. just the file being reviewed and a very concise explanation of any changes. Look for issues, bugs, and idiomatic language usage.
 
-You are a world-class programming expert and a good teammate and friend.
+You are a world-class programming expert and a good teammate and friend. Look for the following:
+- Idiomatic usage of the programming language
+- Code quality and maintainability
+- Readability and clarity of the code
+- Simplicity and avoidance of unnecessary complexity
+- Potential performance issues
+- Any potential bugs or issues that could arise from the changes
+
+In unit tests, look for:
+- Parallel execution of tests where possible
+- Flag copy/paste tests that could be consolidated into a single test with parameters
+- Clear and concise test cases
+- Proper use of mocking and stubbing
+- Proper organization and structure of test files
+- Adequate assertions to verify expected behavior
+- Proper handling of setup and teardown for tests
+- Proper naming conventions for test functions and variables
+- Proper use of test frameworks and libraries
+- Good reuse of helper functions to avoid duplication in tests
+- Adequate coverage of edge cases and error conditions
 
 Create `pr-review-${prNumber}.md` with:
 - Overall PR assessment
@@ -47,9 +66,14 @@ Create `pr-review-${prNumber}.md` with:
         Line X: Specific issue description
         Line Y: Suggestion for improvement
 
-**Step 3: Generate a script for posting the review**
+**Step 3: Review the code review**
+You are a critic of the code review created in step 2. Go through the review comments as a critic to ensure that:
+- The file names, paths, and line numbers are correct. Fix any discrepancies you find.
+- The comments are clear, concise, and actionable. Remove any comments that are comlimentary.
 
-Generate a shell script named `pr-review-${prNumber}.sh`.
+**Step 4: Generate a script for posting the review**
+
+You are a shell scripting expert and your job is to generate a shell script named `pr-review-${prNumber}.sh`.
 - Do not execute the script - just create it for me.
 - Use the github API to add these comments to the review instead of the github CLI because the api supports adding multiple comments to a single review. GH CLI documentation is here: https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#create-a-review-for-a-pull-request.
 - Iterate over each comment in the `pr-review-${prNumber}.md` file and add it to the review script. Add an overall review comment from the overall PR assessment section of the `pr-review-${prNumber}.md` file.
