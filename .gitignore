@@ -72,6 +72,7 @@ hack/bicep-types-radius/generated/**/*.md
 
 # Debug files
 debug_files/*
+drad
 
 # Demo app
 demo/*
