@@ -48,6 +48,10 @@ make debug-status
 - Set breakpoints in your code, then use F5 to attach to any component
 - Debug ports: UCP (40001), Controller (40002), Applications RP (40003), Dynamic RP (40004)
 
+**CLI Debugging Options:**
+- **Use `./drad` for convenience**: When you only need to test CLI commands against the debug environment without debugging the CLI code itself
+- **Use "Debug drad CLI (debug environment)" in VS Code**: When you need to debug CLI code with breakpoints, variable inspection, and step-through debugging
+
 **For code changes:**
 1. Use "Rebuild and Restart [Component]" task
 2. Re-attach debugger to new process
@@ -75,6 +79,32 @@ The automation checks for all required tools. Install any missing prerequisites:
 - **psql** - PostgreSQL client for database verification
 - **terraform** - Terraform CLI for recipe execution
 - **docker** - To host k3d
+
+#### Quick PostgreSQL Setup (if you don't already have one)
+If you just need a throwaway local PostgreSQL instance for debugging Radius you can run:
+
+```bash
+docker run --name radius-postgres \
+   -e POSTGRES_PASSWORD=radius_pass \
+   -p 5432:5432 \
+   -d postgres:15
+```
+
+Then create the expected users/databases (idempotent—safe to re-run):
+
+```bash
+cat <<'SQL' | psql "postgresql://postgres:radius_pass@localhost:5432/postgres"
+CREATE USER ucp            WITH PASSWORD 'radius_pass' LOGIN;      
+CREATE USER applications_rp WITH PASSWORD 'radius_pass' LOGIN;     
+CREATE USER radius_user    WITH PASSWORD 'radius_pass' LOGIN;      
+CREATE DATABASE ucp            OWNER ucp;                          
+CREATE DATABASE applications_rp OWNER applications_rp;             
+GRANT ALL PRIVILEGES ON DATABASE ucp            TO ucp;            
+GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp; 
+SQL
+```
+
+If you already have a locally installed PostgreSQL (brew / systemd) you can skip this. The automation will verify connectivity during `make debug-check-prereqs` and again when starting components.
 
 ### Optional Tools
 - **VS Code** - For integrated debugging experience
@@ -229,7 +259,16 @@ The following attach-based debug configurations are available in `.vscode/launch
 - **"Attach to Controller"** - Attach debugger to running Controller process
 - **"Attach to Dynamic RP"** - Attach debugger to running Dynamic RP process
 
-All configurations use the "attach" mode - they connect to already running processes started via `make debug-start`.
+**CLI Debug Configurations:**
+- **"Debug rad CLI"** - Basic CLI debugging with hardcoded 'version' command
+- **"Debug rad CLI (prompt for args)"** - CLI debugging with argument prompts (uses default rad config)
+- **"Debug drad CLI (debug environment)"** - CLI debugging with debug environment configuration (equivalent to `./drad` but debuggable)
+
+All server configurations use "attach" mode - they connect to already running processes started via `make debug-start`.
+
+**When to use each CLI option:**
+- **`./drad` command**: Use for quick CLI testing when you don't need to debug the CLI code itself. Perfect for testing server-side functionality while working on UCP, RP, or Controller code.
+- **"Debug drad CLI (debug environment)"**: Use when you need to debug CLI code with breakpoints and variable inspection while connected to your debug environment.
 
 ### Debugging Workflow in VS Code
 
@@ -246,7 +285,12 @@ This workflow separates process management (via make) from debugging (via VS Cod
    - Press F5 - VS Code will show a process picker
    - Select the component process (e.g., "ucpd")
 
-   **Method D: Attach to All Components**
+   **Method B: CLI Debugging**
+   - For CLI testing without debugging: Use `./drad <command>` 
+   - For CLI debugging with breakpoints: Select "Debug drad CLI (debug environment)" and press F5
+   - Enter your CLI command when prompted (e.g., `env list`, `app deploy app.bicep`)
+
+   **Method C: Attach to All Components**
    - Use compound configuration "Attach to All Components" for multi-component debugging
 
 3. **Code Changes**: 
