@@ -60,6 +60,7 @@ debug-help: ## Show debug automation help
 	@echo ""
 	@echo "Development Commands:"
 	@echo "  debug-build          - Build all components with debug symbols (incremental)"
+	@echo "    (alias of debug-build-all)"
 	@echo "  debug-build-ucpd     - Build only UCP daemon (only compiles changed code)"
 	@echo "  debug-build-applications-rp - Build only Applications RP (only compiles changed code)"
 	@echo "  debug-build-controller - Build only Controller (only compiles changed code)"
@@ -128,8 +129,14 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 		echo "   2. User '$(whoami)' has access to connect"; \
 		echo "   3. Authentication is properly configured"; \
 		echo ""; \
-		echo "   Try running: brew services start postgresql"; \
-		echo "   Or: pg_ctl -D /opt/homebrew/var/postgres start"; \
+		echo "   macOS (homebrew):  brew services start postgresql"; \
+		echo "   macOS manual:     pg_ctl -D /opt/homebrew/var/postgres start"; \
+		echo "   Linux (systemd):  sudo systemctl start postgresql"; \
+		echo ""; \
+		echo "   Quick one-off (Docker) alternative:"; \
+		echo "     docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
+		echo ""; \
+		echo "   After starting, re-run: make debug-check-prereqs"; \
 		exit 1; \
 	fi; \
 	echo "✅ PostgreSQL is accessible"; \
@@ -140,7 +147,10 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 	fi; \
 	echo "✅ All required tools are available"
 
-debug-build: build ## Build components with debug symbols for debugging
+## debug-build is maintained as an alias for debug-build-all to avoid confusion about which
+## target to use. The legacy behavior depended on the top-level 'build' target with DEBUG flags;
+## now we always explicitly build all debug binaries via the component-specific targets.
+debug-build: debug-build-all ## Alias: build all components with debug symbols (see debug-build-all)
 	@echo "Building Radius components with debug symbols..."
 	@mkdir -p $(DEBUG_DEV_ROOT)/bin
 

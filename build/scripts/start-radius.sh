@@ -12,62 +12,54 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-print_error() {
-    echo -e "${RED}❌${NC} $1"
-}
+# Output helper functions (aligned with test.sh)
+print_info() { echo -e "\033[0;34mℹ${NC} $1"; }
+print_success() { echo -e "${GREEN}✓${NC} $1"; }
+print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
+print_error() { echo -e "${RED}✗${NC} $1"; }
 
-print_warning() {
-    echo -e "${YELLOW}⚠️${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}✅${NC} $1"
-}
-
-# Check prerequisites
 check_prerequisites() {
-    echo "🔍 Checking prerequisites..."
-    local missing_tools=()
-    
-    # Check for required tools
-    if ! command -v dlv >/dev/null 2>&1; then
-        missing_tools+=("dlv (go install github.com/go-delve/delve/cmd/dlv@latest)")
+  echo "🔍 Checking prerequisites (idempotent)..."
+  local missing_tools=()
+  local advisory_msgs=()
+
+  # Required tools
+  command -v dlv >/dev/null 2>&1 || missing_tools+=("dlv -> go install github.com/go-delve/delve/cmd/dlv@latest")
+  command -v go >/dev/null 2>&1 || missing_tools+=("go -> https://golang.org/doc/install")
+  command -v k3d >/dev/null 2>&1 || missing_tools+=("k3d -> https://k3d.io/")
+  command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl -> https://kubernetes.io/docs/tasks/tools/")
+  command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform -> https://developer.hashicorp.com/terraform/install")
+  if ! command -v psql >/dev/null 2>&1; then
+    missing_tools+=("psql (PostgreSQL client) -> https://www.postgresql.org/download/")
+  else
+    if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
+      advisory_msgs+=("PostgreSQL not reachable as '$(whoami)'. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
     fi
-    
-    if ! command -v k3d >/dev/null 2>&1; then
-        missing_tools+=("k3d (https://k3d.io/)")
-    fi
-    
-    if ! command -v kubectl >/dev/null 2>&1; then
-        missing_tools+=("kubectl")
-    fi
-    
-    if ! command -v psql >/dev/null 2>&1; then
-        missing_tools+=("psql (PostgreSQL client)")
-    else
-        # Check if PostgreSQL is actually accessible
-        if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
-            print_error "PostgreSQL is not accessible as user '$(whoami)'"
-            echo "Please ensure PostgreSQL is running and properly configured"
-            exit 1
-        fi
-    fi
-    
-    if [ ${#missing_tools[@]} -ne 0 ]; then
-        print_error "Missing required tools:"
-        for tool in "${missing_tools[@]}"; do
-            echo "  - $tool"
-        done
-        exit 1
-    fi
-    
-    print_success "All prerequisites are available"
+  fi
+
+  if [ ${#missing_tools[@]} -ne 0 ]; then
+    print_error "Missing required tools (install then re-run 'make debug-start'):";
+    for tool in "${missing_tools[@]}"; do
+      echo "  - $tool"
+    done
+    echo ""
+    echo "Docs: docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md#prerequisites"
+    exit 1
+  fi
+
+  if [ ${#advisory_msgs[@]} -ne 0 ]; then
+    print_warning "Advisories:";
+    for msg in "${advisory_msgs[@]}"; do echo "  - $msg"; done
+    echo "(Continuing; DB init will attempt creation)"
+  fi
+
+  print_success "Prerequisite check complete"
 }
 
 # Check if we have the debug environment set up
 if [ ! -f "$DEBUG_ROOT/bin/ucpd" ]; then
-    print_error "Debug environment not found. Please run 'make debug-setup' first."
-    exit 1
+  print_error "Debug environment not found. Please run 'make debug-setup' first."
+  exit 1
 fi
 
 # Ensure logs directory exists
@@ -118,29 +110,30 @@ print_success "Cleanup complete"
 mkdir -p "$DEBUG_ROOT/logs"
 
 # Initialize PostgreSQL database if needed
-echo "🗄️  Initializing PostgreSQL database..."
+echo "🗄️  Initializing PostgreSQL database (idempotent)..."
 if command -v psql >/dev/null 2>&1; then
   # First check if we can connect to PostgreSQL
   if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
     print_error "Cannot connect to PostgreSQL as user '$(whoami)'"
-    echo "Please ensure:"
-    echo "1. PostgreSQL is running on localhost:5432"
-    echo "2. User '$(whoami)' has access to connect"
-    echo "3. Authentication is properly configured"
-    echo ""
-    echo "Try running: brew services start postgresql"
-    echo "Or: pg_ctl -D /opt/homebrew/var/postgres start"
+    echo "Troubleshooting:"
+    echo "  - macOS: brew services start postgresql"
+    echo "  - Linux: sudo systemctl start postgresql"
+    echo "  - Or run disposable container: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"
+    echo "Re-run: make debug-start"
+    echo "Docs: docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md#prerequisites"
     exit 1
   fi
   
   # Create applications_rp user if it doesn't exist
   if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER applications_rp WITH PASSWORD 'radius_pass';" 2>/dev/null; then
-    echo "User applications_rp already exists or cannot be created"
+    echo "(applications_rp user exists)"
+  else
+    echo "Created user applications_rp"
   fi
-  
-  # Create applications_rp database if it doesn't exist
   if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE applications_rp;" 2>/dev/null; then
-    echo "Database applications_rp already exists or cannot be created"
+    echo "(applications_rp database exists)"
+  else
+    echo "Created database applications_rp"
   fi
   
   # Grant privileges
@@ -160,15 +153,19 @@ if command -v psql >/dev/null 2>&1; then
   );
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
   " 2>/dev/null; then
-    print_warning "Could not set up applications_rp database tables"
+    print_warning "Could not verify/create applications_rp tables"
   fi
   
   # Also create UCP database for completeness
   if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER ucp WITH PASSWORD 'radius_pass';" 2>/dev/null; then
-    echo "User ucp already exists or cannot be created"
+    echo "(ucp user exists)"
+  else
+    echo "Created user ucp"
   fi
   if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE ucp;" 2>/dev/null; then
-    echo "Database ucp already exists or cannot be created"
+    echo "(ucp database exists)"
+  else
+    echo "Created database ucp"
   fi
   psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" 2>/dev/null || true
   
@@ -186,10 +183,10 @@ if command -v psql >/dev/null 2>&1; then
   );
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
   " 2>/dev/null; then
-    print_warning "Could not set up UCP database tables"
+    print_warning "Could not verify/create UCP tables"
   fi
   
-  print_success "Database initialization complete"
+  print_success "Database initialization complete (idempotent)"
 else
   print_error "psql not available - database cannot be initialized"
   exit 1

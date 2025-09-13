@@ -17,5 +17,6 @@
   },
   "terminal.integrated.env.windows": {
     "RADIUS_DEV_ROOT": "${workspaceFolder}/debug_files"
-  }
+  },
+  "makefile.configureOnOpen": false
 }
