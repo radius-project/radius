@@ -250,6 +250,11 @@ jobs:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+      - name: Azure get token
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az account get-access-token --scope https://containerregistry.azure.net/.default --output none
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
