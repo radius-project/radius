@@ -90,6 +90,18 @@ type ResourceMetadata struct {
 	// properties are inturn a map of key/value pairs, where the key is the property name and the value is the property value.
 	// these properties are passed into the recipe context.
 	ConnectedResourcesProperties map[string]map[string]any
+	// Nithya:	If you want to use a specific Recipe, you can specify the Recipe name in the recipe parameter:
+
+	// resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview'= {
+	//   name: 'myresource'
+	//   properties: {
+	//     environment: environment
+	//     application: application
+	//     recipe: {
+	//       name: 'azure-prod'
+	//     }
+	//   }
+	// }
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }
@@ -125,6 +137,28 @@ type RecipeOutput struct {
 type SecretData struct {
 	Type string            `json:"type"`
 	Data map[string]string `json:"data"`
+}
+
+// RecipePackResource represents a recipe pack resource with its recipes.
+type RecipePackResource struct {
+	// ID represents the fully qualified resource ID of the recipe pack
+	ID string
+	// Name represents the name of the recipe pack
+	Name string
+	// Description represents the description of the recipe pack
+	Description string
+	// Recipes represents the recipes available in this recipe pack
+	Recipes map[string]RecipePackDefinition
+}
+
+// RecipePackDefinition represents a recipe definition for a specific resource type in a recipe pack.
+type RecipePackDefinition struct {
+	// RecipeKind represents the type of recipe (e.g., terraform, bicep)
+	RecipeKind string
+	// RecipeLocation represents URL or path to the recipe source
+	RecipeLocation string
+	// Parameters represents parameters to pass to the recipe
+	Parameters map[string]any
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.

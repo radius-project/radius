@@ -175,3 +175,42 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 
 	return definition, nil
 }
+
+// fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs.
+func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions) ([]recipes.RecipePackResource, error) {
+	if recipePackIDs == nil {
+		return []recipes.RecipePackResource{}, nil
+	}
+
+	var recipePacks []recipes.RecipePackResource
+	for _, recipePackID := range recipePackIDs {
+		recipePackResource, err := FetchRecipePack(ctx, recipePackID, armOptions)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert the API resource to our recipes typegit
+		recipePack := recipes.RecipePackResource{
+			ID:   recipePackID,
+			Name: *recipePackResource.Name,
+		}
+
+		if recipePackResource.Properties.Description != nil {
+			recipePack.Description = *recipePackResource.Properties.Description
+		}
+
+		// Convert recipes map
+		recipePack.Recipes = make(map[string]recipes.RecipePackDefinition)
+		for resourceType, definition := range recipePackResource.Properties.Recipes {
+			recipePack.Recipes[resourceType] = recipes.RecipePackDefinition{
+				RecipeKind:     string(*definition.RecipeKind),
+				RecipeLocation: string(*definition.RecipeLocation),
+				Parameters:     definition.Parameters,
+			}
+		}
+
+		recipePacks = append(recipePacks, recipePack)
+	}
+
+	return recipePacks, nil
+}
