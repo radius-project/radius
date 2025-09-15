@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -131,7 +132,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 		return nil, err
 	}
 
-	envDefinition, err := getRecipeDefinition(environment, recipe)
+	envDefinition, err := getRecipeDefinition(ctx, environment, recipe, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -139,18 +140,42 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 	return envDefinition, err
 }
 
-func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
-	if environment.Properties.Recipes == nil {
-		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
-		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
-	}
-
+func getRecipeDefinition(ctx context.Context, environment *v20231001preview.EnvironmentResource, recipe *recipes.ResourceMetadata, armOptions *arm.ClientOptions) (*recipes.EnvironmentDefinition, error) {
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
 		err := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
-	recipeName := recipe.Name
+
+	// First try to find recipe in environment's recipe packs
+	env, err := environment.ConvertTo()
+	if err != nil {
+		return nil, err
+	}
+	envDatamodel := env.(*datamodel.Environment)
+
+	if envDatamodel.Properties.RecipePacks != nil {
+		recipePackDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
+		if err == nil {
+			// Found recipe in recipe pack
+			definition := &recipes.EnvironmentDefinition{
+				Name:         "default",
+				Driver:       recipePackDefinition.RecipeKind,
+				ResourceType: resource.Type(),
+				Parameters:   recipePackDefinition.Parameters,
+				TemplatePath: recipePackDefinition.RecipeLocation,
+			}
+			return definition, nil
+		}
+	}
+
+	// Fall back to environment.Properties.Recipes if recipe pack not found
+	if environment.Properties.Recipes == nil {
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
+
+	recipeName := "default"
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
 		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
@@ -176,41 +201,33 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 	return definition, nil
 }
 
-// fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs.
-func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions) ([]recipes.RecipePackResource, error) {
+// fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs and returns the first recipe pack that has a recipe for the specified resource type.
+func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions, resourceType string) (*recipes.RecipePackDefinition, error) {
 	if recipePackIDs == nil {
-		return []recipes.RecipePackResource{}, nil
+		return nil, fmt.Errorf("no recipe packs configured")
 	}
 
-	var recipePacks []recipes.RecipePackResource
+	if resourceType == "" {
+		return nil, fmt.Errorf("resource type cannot be empty")
+	}
+
 	for _, recipePackID := range recipePackIDs {
 		recipePackResource, err := FetchRecipePack(ctx, recipePackID, armOptions)
 		if err != nil {
 			return nil, err
 		}
 
-		// Convert the API resource to our recipes typegit
-		recipePack := recipes.RecipePackResource{
-			ID:   recipePackID,
-			Name: *recipePackResource.Name,
-		}
-
-		if recipePackResource.Properties.Description != nil {
-			recipePack.Description = *recipePackResource.Properties.Description
-		}
-
 		// Convert recipes map
-		recipePack.Recipes = make(map[string]recipes.RecipePackDefinition)
-		for resourceType, definition := range recipePackResource.Properties.Recipes {
-			recipePack.Recipes[resourceType] = recipes.RecipePackDefinition{
-				RecipeKind:     string(*definition.RecipeKind),
-				RecipeLocation: string(*definition.RecipeLocation),
-				Parameters:     definition.Parameters,
+		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
+			if strings.EqualFold(recipePackResourceType, resourceType) {
+				return &recipes.RecipePackDefinition{
+					RecipeKind:     string(*definition.RecipeKind),
+					RecipeLocation: string(*definition.RecipeLocation),
+					Parameters:     definition.Parameters,
+				}, nil
 			}
 		}
-
-		recipePacks = append(recipePacks, recipePack)
 	}
 
-	return recipePacks, nil
+	return nil, fmt.Errorf("no recipe pack found with recipe for resource type %q", resourceType)
 }
