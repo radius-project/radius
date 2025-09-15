@@ -3321,6 +3321,13 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "recipePacks": {
+          "type": "array",
+          "description": "The recipePacks property is an array of Recipe Pack IDs",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
