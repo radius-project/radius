@@ -493,11 +493,11 @@ type EnvironmentProperties struct {
 // Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 	RecipeConfig *RecipeConfigProperties
 
+// The recipePacks property is an array of Recipe Pack IDs
+	RecipePacks []*string
+
 // Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
-
-// The recipePacks property is an array of Recipe Pack IDs
-	RecipePacks *[]string
 
 // Simulated environment.
 	Simulated *bool
