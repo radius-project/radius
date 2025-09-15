@@ -6,6 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEBUG_ROOT="$REPO_ROOT/debug_files"
 
+# PostgreSQL connection strings - try Docker first, fallback to local user
+POSTGRES_ADMIN_CONNECTION="postgresql://postgres:radius_pass@localhost:5432/postgres"
+POSTGRES_FALLBACK_CONNECTION="postgresql://$(whoami)@localhost:5432/postgres"
+
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,6 +21,18 @@ print_info() { echo -e "\033[0;34mℹ${NC} $1"; }
 print_success() { echo -e "${GREEN}✓${NC} $1"; }
 print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 print_error() { echo -e "${RED}✗${NC} $1"; }
+
+# Helper function to execute PostgreSQL commands with proper connection
+psql_exec() {
+  local sql="$1"
+  if psql "$POSTGRES_ADMIN_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+    return 0
+  elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+    return 0
+  else
+    return 1
+  fi
+}
 
 check_prerequisites() {
   echo "🔍 Checking prerequisites (idempotent)..."
@@ -32,8 +48,12 @@ check_prerequisites() {
   if ! command -v psql >/dev/null 2>&1; then
     missing_tools+=("psql (PostgreSQL client) -> https://www.postgresql.org/download/")
   else
-    if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
-      advisory_msgs+=("PostgreSQL not reachable as '$(whoami)'. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
+    if psql "$POSTGRES_ADMIN_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+      print_info "PostgreSQL accessible via Docker (postgres user)"
+    elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+      print_info "PostgreSQL accessible via local user ($(whoami))"
+    else
+      advisory_msgs+=("PostgreSQL not reachable. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
     fi
   fi
 
@@ -113,8 +133,8 @@ mkdir -p "$DEBUG_ROOT/logs"
 echo "🗄️  Initializing PostgreSQL database (idempotent)..."
 if command -v psql >/dev/null 2>&1; then
   # First check if we can connect to PostgreSQL
-  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then
-    print_error "Cannot connect to PostgreSQL as user '$(whoami)'"
+  if ! psql_exec "SELECT 1;"; then
+    print_error "Cannot connect to PostgreSQL"
     echo "Troubleshooting:"
     echo "  - macOS: brew services start postgresql"
     echo "  - Linux: sudo systemctl start postgresql"
@@ -125,19 +145,19 @@ if command -v psql >/dev/null 2>&1; then
   fi
   
   # Create applications_rp user if it doesn't exist
-  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER applications_rp WITH PASSWORD 'radius_pass';" 2>/dev/null; then
+  if ! psql_exec "CREATE USER applications_rp WITH PASSWORD 'radius_pass';"; then
     echo "(applications_rp user exists)"
   else
     echo "Created user applications_rp"
   fi
-  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE applications_rp;" 2>/dev/null; then
+  if ! psql_exec "CREATE DATABASE applications_rp;"; then
     echo "(applications_rp database exists)"
   else
     echo "Created database applications_rp"
   fi
   
   # Grant privileges
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" 2>/dev/null || true
+  psql_exec "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" || true
   
   # Create the resources table in applications_rp database
   if ! psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "
@@ -157,17 +177,17 @@ if command -v psql >/dev/null 2>&1; then
   fi
   
   # Also create UCP database for completeness
-  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE USER ucp WITH PASSWORD 'radius_pass';" 2>/dev/null; then
+  if ! psql_exec "CREATE USER ucp WITH PASSWORD 'radius_pass';"; then
     echo "(ucp user exists)"
   else
     echo "Created user ucp"
   fi
-  if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "CREATE DATABASE ucp;" 2>/dev/null; then
+  if ! psql_exec "CREATE DATABASE ucp;"; then
     echo "(ucp database exists)"
   else
     echo "Created database ucp"
   fi
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" 2>/dev/null || true
+  psql_exec "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" || true
   
   # Create the resources table in ucp database too
   if ! psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "

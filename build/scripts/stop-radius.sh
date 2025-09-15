@@ -1,6 +1,22 @@
 #!/bin/bash
 set -e
 
+# PostgreSQL connection strings - try Docker first, fallback to local user
+POSTGRES_ADMIN_CONNECTION="postgresql://postgres:radius_pass@localhost:5432/postgres"
+POSTGRES_FALLBACK_CONNECTION="postgresql://$(whoami)@localhost:5432/postgres"
+
+# Helper function to execute PostgreSQL commands with proper connection
+psql_exec() {
+  local sql="$1"
+  if psql "$POSTGRES_ADMIN_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+    return 0
+  elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 echo "💣 Nuclear stop: destroying all Radius debug environment..."
 
 cd debug_files 2>/dev/null || {
@@ -53,15 +69,15 @@ if command -v psql >/dev/null 2>&1; then
   psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "TRUNCATE TABLE resources;" 2>/dev/null || true
   psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "TRUNCATE TABLE resources;" 2>/dev/null || true
   
-  # Drop databases if they exist
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS applications_rp;" 2>/dev/null || true
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS ucp;" 2>/dev/null || true
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS radius;" 2>/dev/null || true
+  # Drop databases if they exist using helper function
+  psql_exec "DROP DATABASE IF EXISTS applications_rp;" || true
+  psql_exec "DROP DATABASE IF EXISTS ucp;" || true
+  psql_exec "DROP DATABASE IF EXISTS radius;" || true
   
-  # Drop users if they exist
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "DROP USER IF EXISTS applications_rp;" 2>/dev/null || true
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "DROP USER IF EXISTS ucp;" 2>/dev/null || true
-  psql "postgresql://$(whoami)@localhost:5432/postgres" -c "DROP USER IF EXISTS radius;" 2>/dev/null || true
+  # Drop users if they exist using helper function
+  psql_exec "DROP USER IF EXISTS applications_rp;" || true
+  psql_exec "DROP USER IF EXISTS ucp;" || true
+  psql_exec "DROP USER IF EXISTS radius;" || true
   
   echo "✅ Database nuclear cleanup complete"
 else

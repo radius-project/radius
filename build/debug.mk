@@ -30,6 +30,10 @@ dump: ## Outputs the values of all variables in the makefile.
 DEBUG_CONFIG_FILE ?= build/debug-config.yaml
 DEBUG_DEV_ROOT ?= $(PWD)/debug_files
 
+# PostgreSQL connection - Try Docker first (postgres user), fallback to local user
+POSTGRES_ADMIN_CONNECTION ?= postgresql://postgres:radius_pass@localhost:5432/postgres
+POSTGRES_FALLBACK_CONNECTION ?= postgresql://$(shell whoami)@localhost:5432/postgres
+
 .PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init debug-check-prereqs
 
 debug-help: ## Show debug automation help
@@ -122,12 +126,16 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 		exit 1; \
 	fi; \
 	echo "🔍 Checking PostgreSQL connectivity..."; \
-	if ! psql "postgresql://$(whoami)@localhost:5432/postgres" -c "SELECT 1;" >/dev/null 2>&1; then \
-		echo "❌ Cannot connect to PostgreSQL as user '$(whoami)'"; \
+	if psql "$(POSTGRES_ADMIN_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
+		echo "✅ PostgreSQL accessible via Docker (postgres user)"; \
+	elif psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
+		echo "✅ PostgreSQL accessible via local user ($(shell whoami))"; \
+	else \
+		echo "❌ Cannot connect to PostgreSQL"; \
 		echo "   Please ensure:"; \
 		echo "   1. PostgreSQL is running on localhost:5432"; \
-		echo "   2. User '$(whoami)' has access to connect"; \
-		echo "   3. Authentication is properly configured"; \
+		echo "   2. Either Docker PostgreSQL (postgres/radius_pass) or local user access"; \
+		echo "   3. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
 		echo ""; \
 		echo "   macOS (homebrew):  brew services start postgresql"; \
 		echo "   macOS manual:     pg_ctl -D /opt/homebrew/var/postgres start"; \
@@ -243,8 +251,12 @@ debug-stop: ## Stop all running Radius components, destroy k3d cluster, and clea
 	@echo "Destroying k3d cluster..."
 	@k3d cluster delete radius-debug 2>/dev/null || echo "k3d cluster was not running"
 	@echo "Cleaning up PostgreSQL databases..."
-	@psql "postgresql://$(shell whoami)@localhost:5432/postgres" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || echo "Database cleanup completed or PostgreSQL not accessible"
-	@psql "postgresql://$(shell whoami)@localhost:5432/postgres" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || echo "User cleanup completed or PostgreSQL not accessible"
+	@(psql "$(POSTGRES_ADMIN_CONNECTION)" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || \
+	  psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || \
+	  echo "Database cleanup completed or PostgreSQL not accessible")
+	@(psql "$(POSTGRES_ADMIN_CONNECTION)" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || \
+	  psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || \
+	  echo "User cleanup completed or PostgreSQL not accessible")
 	@echo "Cleaning up debug files and symlinks..."
 	@rm -rf $(DEBUG_DEV_ROOT)/logs
 	@rm -f ./drad
@@ -375,18 +387,6 @@ debug-dev-start: debug-setup debug-start ## Complete development setup and start
 debug-dev-stop: debug-stop ## Stop development environment
 	@echo "🛑 Debug development environment stopped"
 
-# Prerequisite checks
-debug-check-prereqs:
-	@echo "Checking prerequisites for debug development..."
-	@command -v go >/dev/null 2>&1 || { echo "❌ Go not found. Please install Go 1.21+"; exit 1; }
-	@command -v dlv >/dev/null 2>&1 || { echo "❌ Delve debugger not found. Please install: go install github.com/go-delve/delve/cmd/dlv@latest"; exit 1; }
-	@command -v kubectl >/dev/null 2>&1 || { echo "❌ kubectl not found. Please install kubectl"; exit 1; }
-	@command -v psql >/dev/null 2>&1 || { echo "❌ PostgreSQL client not found. Please install PostgreSQL"; exit 1; }
-	@command -v terraform >/dev/null 2>&1 || { echo "❌ Terraform not found. Please install Terraform"; exit 1; }
-	@command -v docker >/dev/null 2>&1 || { echo "⚠️  Docker not found. Deployment Engine will not be available"; }
-	@if command -v docker >/dev/null 2>&1; then \
-		docker info >/dev/null 2>&1 || { echo "⚠️  Docker daemon not running. Start Docker to use Deployment Engine"; }; \
-	fi
-	@echo "✅ Core prerequisites found"
+# Prerequisite checks are handled by the main debug-check-prereqs target above
 
 .PHONY: debug-check-prereqs debug-validate debug-dev-start debug-dev-stop build-debug
