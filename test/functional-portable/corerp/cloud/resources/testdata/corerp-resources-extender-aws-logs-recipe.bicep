@@ -1,6 +1,6 @@
 extension radius
 
-param bucketName string
+param logGroupName string
 param creationTimestamp string
 param awsAccountId string
 param awsRegion string
@@ -8,13 +8,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'corerp-resources-extenders-aws-s3-recipe-env'
+  name: 'corerp-resources-extenders-aws-logs-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-extenders-aws-s3-recipe-env'
+      namespace: 'corerp-resources-extenders-aws-logs-recipe-env'
     }
     providers: {
       aws: {
@@ -23,11 +23,11 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
     }
     recipes: {
       'Applications.Core/extenders': {
-        s3: {
+        logs: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/extenders-aws-s3-recipe:${version}' 
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/extenders-aws-logs-recipe:${version}' 
           parameters: {
-            bucketName: bucketName
+            logGroupName: logGroupName
           }
         }
       }
@@ -36,29 +36,29 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
 }
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'corerp-resources-extenders-aws-s3-recipe-app'
+  name: 'corerp-resources-extenders-aws-logs-recipe-app'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-extenders-aws-s3-recipe-app'
+          namespace: 'corerp-resources-extenders-aws-logs-recipe-app'
       }
     ]
   }
 }
 
 resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'corerp-resources-extenders-aws-s3-recipe'
+  name: 'corerp-resources-extenders-aws-logs-recipe'
   properties: {
     environment: env.id
     application: app.id
     recipe: {
-      name: 's3'
+      name: 'logs'
       parameters: {
         creationTimestamp: creationTimestamp
-        bucketName: bucketName
+        logGroupName: logGroupName
       }
     }
   }
