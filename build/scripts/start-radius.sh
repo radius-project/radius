@@ -34,6 +34,20 @@ psql_exec() {
   fi
 }
 
+# Helper function to determine which PostgreSQL connection is working
+detect_postgres_connection() {
+  if psql "$POSTGRES_ADMIN_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+    echo "docker"
+    export POSTGRES_WORKING_CONNECTION="$POSTGRES_ADMIN_CONNECTION"
+  elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+    echo "local"
+    export POSTGRES_WORKING_CONNECTION="$POSTGRES_FALLBACK_CONNECTION"
+  else
+    echo "none"
+    export POSTGRES_WORKING_CONNECTION=""
+  fi
+}
+
 check_prerequisites() {
   echo "🔍 Checking prerequisites (idempotent)..."
   local missing_tools=()
@@ -48,13 +62,18 @@ check_prerequisites() {
   if ! command -v psql >/dev/null 2>&1; then
     missing_tools+=("psql (PostgreSQL client) -> https://www.postgresql.org/download/")
   else
-    if psql "$POSTGRES_ADMIN_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
-      print_info "PostgreSQL accessible via Docker (postgres user)"
-    elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
-      print_info "PostgreSQL accessible via local user ($(whoami))"
-    else
-      advisory_msgs+=("PostgreSQL not reachable. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
-    fi
+    postgres_type=$(detect_postgres_connection)
+    case $postgres_type in
+      "docker")
+        print_info "PostgreSQL accessible via Docker (postgres user)"
+        ;;
+      "local")
+        print_info "PostgreSQL accessible via local user ($(whoami))"
+        ;;
+      "none")
+        advisory_msgs+=("PostgreSQL not reachable. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
+        ;;
+    esac
   fi
 
   if [ ${#missing_tools[@]} -ne 0 ]; then
@@ -132,8 +151,9 @@ mkdir -p "$DEBUG_ROOT/logs"
 # Initialize PostgreSQL database if needed
 echo "🗄️  Initializing PostgreSQL database (idempotent)..."
 if command -v psql >/dev/null 2>&1; then
-  # First check if we can connect to PostgreSQL
-  if ! psql_exec "SELECT 1;"; then
+  # Detect which PostgreSQL connection is working
+  postgres_type=$(detect_postgres_connection)
+  if [ "$postgres_type" = "none" ]; then
     print_error "Cannot connect to PostgreSQL"
     echo "Troubleshooting:"
     echo "  - macOS: brew services start postgresql"
@@ -159,8 +179,8 @@ if command -v psql >/dev/null 2>&1; then
   # Grant privileges
   psql_exec "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" || true
   
-  # Create the resources table in applications_rp database
-  if ! psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "
+  # Create the resources table in applications_rp database using the working connection
+  if psql "$POSTGRES_WORKING_CONNECTION" -d applications_rp -c "
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY NOT NULL,
     original_id TEXT NOT NULL,
@@ -172,7 +192,13 @@ if command -v psql >/dev/null 2>&1; then
     resource_data jsonb NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
-  " 2>/dev/null; then
+  
+  -- Grant table-level permissions to the applications_rp user
+  GRANT ALL PRIVILEGES ON TABLE resources TO applications_rp;
+  GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO applications_rp;
+  " >/dev/null 2>&1; then
+    echo "✅ applications_rp tables created/verified"
+  else
     print_warning "Could not verify/create applications_rp tables"
   fi
   
@@ -189,8 +215,8 @@ if command -v psql >/dev/null 2>&1; then
   fi
   psql_exec "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" || true
   
-  # Create the resources table in ucp database too
-  if ! psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "
+  # Create the resources table in ucp database using the working connection
+  if psql "$POSTGRES_WORKING_CONNECTION" -d ucp -c "
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY NOT NULL,
     original_id TEXT NOT NULL,
@@ -202,7 +228,13 @@ if command -v psql >/dev/null 2>&1; then
     resource_data jsonb NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
-  " 2>/dev/null; then
+  
+  -- Grant table-level permissions to the ucp user
+  GRANT ALL PRIVILEGES ON TABLE resources TO ucp;
+  GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ucp;
+  " >/dev/null 2>&1; then
+    echo "✅ UCP tables created/verified"
+  else
     print_warning "Could not verify/create UCP tables"
   fi
   
