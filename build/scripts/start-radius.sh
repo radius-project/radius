@@ -1,14 +1,14 @@
 #!/bin/bash
+
+# PostgreSQL connection strings - try Docker first, then Homebrew local
+POSTGRES_DOCKER_CONNECTION="postgresql://postgres:radius_pass@localhost:5432/postgres"
+POSTGRES_HOMEBREW_CONNECTION="postgres"
 set -e
 
 # Get the script directory and repository root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEBUG_ROOT="$REPO_ROOT/debug_files"
-
-# PostgreSQL connection strings - try Docker first, fallback to local user
-POSTGRES_ADMIN_CONNECTION="postgresql://postgres:radius_pass@localhost:5432/postgres"
-POSTGRES_FALLBACK_CONNECTION="postgresql://$(whoami)@localhost:5432/postgres"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -25,9 +25,9 @@ print_error() { echo -e "${RED}✗${NC} $1"; }
 # Helper function to execute PostgreSQL commands with proper connection
 psql_exec() {
   local sql="$1"
-  if psql "$POSTGRES_ADMIN_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+  if psql "$POSTGRES_DOCKER_CONNECTION" -c "$sql" >/dev/null 2>&1; then
     return 0
-  elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+  elif psql "$POSTGRES_HOMEBREW_CONNECTION" -c "$sql" >/dev/null 2>&1; then
     return 0
   else
     return 1
@@ -36,12 +36,12 @@ psql_exec() {
 
 # Helper function to determine which PostgreSQL connection is working
 detect_postgres_connection() {
-  if psql "$POSTGRES_ADMIN_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+  if psql "$POSTGRES_DOCKER_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
     echo "docker"
-    export POSTGRES_WORKING_CONNECTION="$POSTGRES_ADMIN_CONNECTION"
-  elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
-    echo "local"
-    export POSTGRES_WORKING_CONNECTION="$POSTGRES_FALLBACK_CONNECTION"
+    export POSTGRES_WORKING_CONNECTION="$POSTGRES_DOCKER_CONNECTION"
+  elif psql "$POSTGRES_HOMEBREW_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+    echo "homebrew"
+    export POSTGRES_WORKING_CONNECTION="$POSTGRES_HOMEBREW_CONNECTION"
   else
     echo "none"
     export POSTGRES_WORKING_CONNECTION=""
@@ -67,8 +67,8 @@ check_prerequisites() {
       "docker")
         print_info "PostgreSQL accessible via Docker (postgres user)"
         ;;
-      "local")
-        print_info "PostgreSQL accessible via local user ($(whoami))"
+      "homebrew")
+        print_info "PostgreSQL accessible via Homebrew (local user)"
         ;;
       "none")
         advisory_msgs+=("PostgreSQL not reachable. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
@@ -180,7 +180,13 @@ if command -v psql >/dev/null 2>&1; then
   psql_exec "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" || true
   
   # Create the resources table in applications_rp database using the working connection
-  if psql "$POSTGRES_WORKING_CONNECTION" -d applications_rp -c "
+  if [ "$postgres_type" = "docker" ]; then
+    applications_rp_connection=$(echo "$POSTGRES_WORKING_CONNECTION" | sed 's|/postgres$|/applications_rp|')
+  else
+    applications_rp_connection="applications_rp"
+  fi
+  
+  if psql "$applications_rp_connection" -c "
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY NOT NULL,
     original_id TEXT NOT NULL,
@@ -216,7 +222,13 @@ if command -v psql >/dev/null 2>&1; then
   psql_exec "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" || true
   
   # Create the resources table in ucp database using the working connection
-  if psql "$POSTGRES_WORKING_CONNECTION" -d ucp -c "
+  if [ "$postgres_type" = "docker" ]; then
+    ucp_connection=$(echo "$POSTGRES_WORKING_CONNECTION" | sed 's|/postgres$|/ucp|')
+  else
+    ucp_connection="ucp"
+  fi
+  
+  if psql "$ucp_connection" -c "
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY NOT NULL,
     original_id TEXT NOT NULL,
