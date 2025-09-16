@@ -370,7 +370,7 @@ jobs:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
       
-      - name: Install Flux Source Controller
+      - name: Install Flux CLI and Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
 

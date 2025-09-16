@@ -552,11 +552,7 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
-      - name: Setup Flux CLI
-        uses: fluxcd/flux2/action@main
-        with:
-          version: '2.5.1'
-      - name: Install Flux Source Controller
+      - name: Install Flux CLI and Source Controller
         uses: ./.github/actions/install-flux
       - name: Install Gitea
         id: install-gitea
