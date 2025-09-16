@@ -48,19 +48,18 @@ on:
   workflow_dispatch:
     inputs:
       skip-build:
-        description: 'Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the main branch.'
+        description: "Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the main branch."
         required: false
-        default: 'true'
+        default: "true"
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - "true"
+          - "false"
   schedule:
     # Run every 4 hours
     - cron: "0 */4 * * *"
 
 env:
-
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -71,7 +70,7 @@ env:
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # ACR url for uploading test UDT Bicep types
-  TEST_BICEP_TYPES_REGISTRY: 'testuserdefinedbiceptypes.azurecr.io'
+  TEST_BICEP_TYPES_REGISTRY: "testuserdefinedbiceptypes.azurecr.io"
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -147,7 +146,7 @@ jobs:
               SKIP_BUILD="true"
             fi
           fi
-          
+
           # Check override in workflow_dispatch mode
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.skip-build }}" = "false" ]; then
             echo "Manual run with skip-build=false, forcing build"
@@ -431,7 +430,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: skip-delete-resources-list.txt
-          key: skip-delete-resources-list-file    
+          key: skip-delete-resources-list-file
       - name: Clean up cluster
         if: always()
         timeout-minutes: 60
@@ -567,13 +566,13 @@ jobs:
         run: |
           # Start port forwarding in the background
           kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
-          
+
           # Wait for port forwarding to be established
           sleep 5
-          
+
           # Test the connection to ensure port forwarding is working
           curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
+
           echo "Port forwarding established successfully"
       - name: Publish Terraform test recipes
         run: |
@@ -582,13 +581,20 @@ jobs:
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
       - name: Restore Bicep artifacts before running functional tests
-      # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
-      # so we can restore all Bicep artifacts before the tests start.
+        # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
+        # so we can restore all Bicep artifacts before the tests start.
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
-          # Restore AWS Bicep types 
+          # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
+      # Refresh Azure login to avoid token expiration during long-running tests
+      - name: Re-authenticate with Azure before tests
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
