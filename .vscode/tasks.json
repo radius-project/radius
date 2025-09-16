@@ -66,22 +66,6 @@
             "problemMatcher": []
         },
         {
-            "label": "Debug: Clean Environment",
-            "type": "shell",
-            "command": "make",
-            "args": ["debug-clean"],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "Build All Components",
             "type": "shell",
             "command": "make",
