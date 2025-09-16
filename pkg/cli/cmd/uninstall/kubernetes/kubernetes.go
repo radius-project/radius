@@ -18,15 +18,51 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
+	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
+
+const (
+	defaultPlaneScope   = "/planes/radius/local"
+	ucpAPIServiceName   = "v1alpha3.api.ucp.dev"
+	daprSystemNamespace = "dapr-system"
+	logWarningPrefix    = "Warning"
+)
+
+var radiusCRDs = []string{
+	"deploymentresources.radapp.io",
+	"deploymenttemplates.radapp.io",
+	"recipes.radapp.io",
+	"queuemessages.ucp.dev",
+	"resources.ucp.dev",
+}
+
+type environmentCleanup struct {
+	ID        string
+	Namespace string
+}
+
+type cleanupPlan struct {
+	HelmReleases       []string
+	Environments       []environmentCleanup
+	Namespaces         []string
+	CRDs               []string
+	APIServices        []string
+	EnvDiscoveryFailed bool
+}
 
 // NewCommand creates an instance of the `rad <fill in the blank>` command and runner.
 //
@@ -51,26 +87,33 @@ rad uninstall kubernetes --kubecontext my-kubecontext`,
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
 	cmd.Flags().BoolVar(&runner.Purge, "purge", false, "Delete all data stored by Radius.")
+	cmd.Flags().BoolVarP(&runner.AssumeYes, "yes", "y", false, "Automatically confirm uninstall prompts.")
 
 	return cmd, runner
 }
 
 // Runner is the Runner implementation for the `rad uninstall kubernetes` command.
 type Runner struct {
-	Helm       helm.Interface
-	Output     output.Interface
-	Kubernetes kubernetes.Interface
+	Helm        helm.Interface
+	Output      output.Interface
+	Kubernetes  kubernetes.Interface
+	Connections connections.Factory
+	Prompter    prompt.Interface
 
 	KubeContext string
 	Purge       bool
+	AssumeYes   bool
 }
 
 // NewRunner creates an instance of the runner for the `rad uninstall kubernetes` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Helm:       factory.GetHelmInterface(),
-		Output:     factory.GetOutput(),
-		Kubernetes: factory.GetKubernetesInterface(),
+		Helm:        factory.GetHelmInterface(),
+		Output:      factory.GetOutput(),
+		Kubernetes:  factory.GetKubernetesInterface(),
+		Connections: factory.GetConnectionFactory(),
+		Prompter:    factory.GetPrompter(),
+		AssumeYes:   false,
 	}
 }
 
@@ -97,14 +140,46 @@ func (r *Runner) Run(ctx context.Context) error {
 		return nil
 	}
 
+	plan, err := r.buildCleanupPlan(ctx, state)
+	if err != nil {
+		r.Output.LogInfo("%s: %v", logWarningPrefix, err)
+	}
+
+	r.describeCleanupPlan(plan)
+	confirmed := true
+	if !r.AssumeYes {
+		if r.Prompter == nil {
+			return fmt.Errorf("confirmation prompt unavailable; rerun with --yes to proceed non-interactively")
+		}
+		confirmed, err = prompt.YesOrNoPrompt("Continue uninstalling Radius?", prompt.ConfirmNo, r.Prompter)
+		if err != nil {
+			return err
+		}
+	} else {
+		r.Output.LogInfo("Skipping confirmation because --yes flag was provided.")
+	}
+	if !confirmed {
+		r.Output.LogInfo("Uninstall cancelled.")
+		return nil
+	}
+
+	if r.Purge {
+		if plan.EnvDiscoveryFailed {
+			r.Output.LogInfo("%s: skipping Radius environment deletion because the Radius management APIs could not be reached", logWarningPrefix)
+		} else {
+			if err := r.deleteEnvironments(ctx, plan.Environments); err != nil {
+				r.Output.LogInfo("%s: failed to delete environments via Radius APIs: %v", logWarningPrefix, err)
+			}
+		}
+	}
+
 	err = r.Helm.UninstallRadius(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
 	if err != nil {
 		return err
 	}
 
 	if r.Purge {
-		r.Output.LogInfo("Deleting namespace %s", helm.RadiusSystemNamespace)
-		if err := r.Kubernetes.DeleteNamespace(r.KubeContext); err != nil {
+		if err := r.performKubernetesCleanup(ctx, plan); err != nil {
 			return err
 		}
 		r.Output.LogInfo("Radius was fully uninstalled. Any existing data have been removed.")
@@ -112,4 +187,181 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.Output.LogInfo("Radius was uninstalled successfully. Any existing data will be retained for future installations. Local configuration is also retained. Use the `rad workspace` command if updates are needed to your configuration.")
 	return nil
+}
+
+func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) (cleanupPlan, error) {
+	plan := cleanupPlan{}
+	plan.HelmReleases = append(plan.HelmReleases, "radius")
+	if state.ContourInstalled {
+		plan.HelmReleases = append(plan.HelmReleases, "contour")
+	}
+
+	if !r.Purge {
+		return plan, nil
+	}
+
+	plan.CRDs = append(plan.CRDs, radiusCRDs...)
+	plan.APIServices = append(plan.APIServices, ucpAPIServiceName)
+	plan.Namespaces = append(plan.Namespaces, helm.RadiusSystemNamespace, daprSystemNamespace)
+
+	environments, err := r.fetchEnvironmentCleanupInfos(ctx)
+	if err != nil {
+		plan.EnvDiscoveryFailed = true
+		return plan, fmt.Errorf("unable to enumerate Radius environments via Radius APIs: %w", err)
+	}
+	plan.Environments = environments
+
+	return plan, nil
+}
+
+func (r *Runner) describeCleanupPlan(plan cleanupPlan) {
+	r.Output.LogInfo("About to uninstall Radius. This will remove:")
+	if len(plan.HelmReleases) > 0 {
+		r.Output.LogInfo("- Helm releases: %s", strings.Join(plan.HelmReleases, ", "))
+	}
+
+	if r.Purge {
+		if len(plan.Environments) > 0 {
+			r.Output.LogInfo("- Radius environments:")
+			for _, env := range plan.Environments {
+				r.Output.LogInfo("  • %s (namespace %s)", env.ID, env.Namespace)
+			}
+		} else if plan.EnvDiscoveryFailed {
+			r.Output.LogInfo("- Radius environments: unable to determine (Radius management APIs unreachable)")
+		} else {
+			r.Output.LogInfo("- Radius environments: none")
+		}
+
+		if len(plan.Namespaces) > 0 {
+			r.Output.LogInfo("- Kubernetes namespaces: %s", strings.Join(plan.Namespaces, ", "))
+		}
+		if len(plan.APIServices) > 0 {
+			r.Output.LogInfo("- Kubernetes API services: %s", strings.Join(plan.APIServices, ", "))
+		}
+		if len(plan.CRDs) > 0 {
+			r.Output.LogInfo("- Kubernetes custom resource definitions: %s", strings.Join(plan.CRDs, ", "))
+		}
+	}
+}
+
+func (r *Runner) fetchEnvironmentCleanupInfos(ctx context.Context) ([]environmentCleanup, error) {
+	workspace := workspaces.MakeFallbackWorkspace()
+	if workspace.Connection == nil {
+		workspace.Connection = map[string]any{}
+	}
+	workspace.Connection["context"] = r.KubeContext
+	workspace.Scope = defaultPlaneScope
+
+	client, err := r.Connections.CreateApplicationsManagementClient(ctx, *workspace)
+	if err != nil {
+		return nil, fmt.Errorf("creating applications client: %w", err)
+	}
+
+	environmentResources, err := client.ListEnvironmentsAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing environments: %w", err)
+	}
+
+	infos := make([]environmentCleanup, 0, len(environmentResources))
+	for _, env := range environmentResources {
+		namespace := getEnvironmentNamespace(env)
+		if namespace == "" {
+			continue
+		}
+
+		id := firstNonEmpty(derefString(env.ID), derefString(env.Name))
+		infos = append(infos, environmentCleanup{ID: id, Namespace: namespace})
+	}
+
+	return infos, nil
+}
+
+func (r *Runner) deleteEnvironments(ctx context.Context, environments []environmentCleanup) error {
+	if len(environments) == 0 {
+		return nil
+	}
+
+	workspace := workspaces.MakeFallbackWorkspace()
+	if workspace.Connection == nil {
+		workspace.Connection = map[string]any{}
+	}
+	workspace.Connection["context"] = r.KubeContext
+	workspace.Scope = defaultPlaneScope
+
+	client, err := r.Connections.CreateApplicationsManagementClient(ctx, *workspace)
+	if err != nil {
+		return fmt.Errorf("creating applications client: %w", err)
+	}
+
+	var errs []error
+	for _, env := range environments {
+		if env.ID == "" {
+			errs = append(errs, fmt.Errorf("environment targeting namespace %s is missing identifier", env.Namespace))
+			continue
+		}
+		r.Output.LogInfo("Deleting environment %s", env.ID)
+		if _, err := client.DeleteEnvironment(ctx, env.ID); err != nil {
+			errs = append(errs, fmt.Errorf("failed to delete environment %s: %w", env.ID, err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (r *Runner) performKubernetesCleanup(ctx context.Context, plan cleanupPlan) error {
+	var errs []error
+
+	for _, apiService := range plan.APIServices {
+		r.Output.LogInfo("Removing APIService %s", apiService)
+		if err := r.Kubernetes.DeleteAPIService(r.KubeContext, apiService); err != nil {
+			errs = append(errs, fmt.Errorf("deleting APIService %s: %w", apiService, err))
+		}
+	}
+
+	if len(plan.CRDs) > 0 {
+		r.Output.LogInfo("Removing Radius custom resource definitions")
+		if err := r.Kubernetes.DeleteCRDs(r.KubeContext, plan.CRDs); err != nil {
+			errs = append(errs, fmt.Errorf("deleting Radius CRDs: %w", err))
+		}
+	}
+
+	for _, ns := range plan.Namespaces {
+		r.Output.LogInfo("Deleting namespace %s", ns)
+		if err := r.Kubernetes.DeleteNamespaceWithName(r.KubeContext, ns); err != nil {
+			errs = append(errs, fmt.Errorf("deleting namespace %s: %w", ns, err))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func getEnvironmentNamespace(env corerpv20231001.EnvironmentResource) string {
+	if env.Properties == nil || env.Properties.Compute == nil {
+		return ""
+	}
+
+	switch compute := env.Properties.Compute.(type) {
+	case *corerpv20231001.KubernetesCompute:
+		if compute.Namespace != nil {
+			return *compute.Namespace
+		}
+	}
+
+	return ""
+}
+
+func derefString(str *string) string {
+	if str == nil {
+		return ""
+	}
+	return *str
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
