@@ -15,6 +15,18 @@ rules:
   - namespaces
   - serviceaccounts
   - pods
+  - persistentvolumes
+  - persistentvolumes/status
+  - persistentvolumeclaims
+  - persistentvolumeclaims/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
   verbs:
   - create
   - delete
