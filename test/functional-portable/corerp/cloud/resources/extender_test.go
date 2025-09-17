@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,13 +22,14 @@ import (
 
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
-func Test_Extender_RecipeAWS(t *testing.T) {
+func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set
@@ -37,18 +38,18 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
 	}
 
-	template := "testdata/corerp-resources-extender-aws-s3-recipe.bicep"
-	name := "corerp-resources-extenders-aws-s3-recipe"
-	appName := "corerp-resources-extenders-aws-s3-recipe-app"
-	bucketName := testutil.GenerateS3BucketName()
-	bucketID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.S3/Bucket/%s", awsAccountID, awsRegion, bucketName)
+	template := "testdata/corerp-resources-extender-aws-logs-recipe.bicep"
+	name := "corerp-resources-extenders-aws-logs-recipe"
+	appName := "corerp-resources-extenders-aws-logs-recipe-app"
+	logGroupName := "radiusfunctionaltest-" + uuid.New().String()
+	logGroupID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.Logs/LogGroup/%s", awsAccountID, awsRegion, logGroupName)
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(
 				template,
-				"bucketName="+bucketName,
+				"logGroupName="+logGroupName,
 				"creationTimestamp="+creationTimestamp,
 				testutil.GetAWSAccountId(),
 				testutil.GetAWSRegion(),
@@ -58,20 +59,20 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-extenders-aws-s3-recipe-env",
+						Name: "corerp-resources-extenders-aws-logs-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-extenders-aws-s3-recipe-app",
+						Name: "corerp-resources-extenders-aws-logs-recipe-app",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-extenders-aws-s3-recipe",
+						Name: "corerp-resources-extenders-aws-logs-recipe",
 						Type: validation.ExtendersResource,
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								ID: bucketID,
+								ID: logGroupID,
 							},
 						},
 					},
@@ -80,11 +81,11 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name:       bucketName,
-						Type:       validation.AWSS3BucketResourceType,
-						Identifier: bucketName,
+						Name:       logGroupName,
+						Type:       validation.AWSLogsLogGroupResourceType,
+						Identifier: logGroupName,
 						Properties: map[string]any{
-							"BucketName": bucketName,
+							"LogGroupName": logGroupName,
 							"Tags": []any{
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
@@ -100,5 +101,6 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 		},
 	})
 
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
 	test.Test(t)
 }
