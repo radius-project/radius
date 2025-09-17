@@ -39,6 +39,82 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// DeleteAPIService mocks base method.
+func (m *MockInterface) DeleteAPIService(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAPIService", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteAPIService indicates an expected call of DeleteAPIService.
+func (mr *MockInterfaceMockRecorder) DeleteAPIService(arg0, arg1 any) *MockInterfaceDeleteAPIServiceCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIService", reflect.TypeOf((*MockInterface)(nil).DeleteAPIService), arg0, arg1)
+	return &MockInterfaceDeleteAPIServiceCall{Call: call}
+}
+
+// MockInterfaceDeleteAPIServiceCall wrap *gomock.Call
+type MockInterfaceDeleteAPIServiceCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceDeleteAPIServiceCall) Return(arg0 error) *MockInterfaceDeleteAPIServiceCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceDeleteAPIServiceCall) Do(f func(string, string) error) *MockInterfaceDeleteAPIServiceCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceDeleteAPIServiceCall) DoAndReturn(f func(string, string) error) *MockInterfaceDeleteAPIServiceCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// DeleteCRDs mocks base method.
+func (m *MockInterface) DeleteCRDs(arg0 string, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCRDs", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCRDs indicates an expected call of DeleteCRDs.
+func (mr *MockInterfaceMockRecorder) DeleteCRDs(arg0, arg1 any) *MockInterfaceDeleteCRDsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCRDs", reflect.TypeOf((*MockInterface)(nil).DeleteCRDs), arg0, arg1)
+	return &MockInterfaceDeleteCRDsCall{Call: call}
+}
+
+// MockInterfaceDeleteCRDsCall wrap *gomock.Call
+type MockInterfaceDeleteCRDsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceDeleteCRDsCall) Return(arg0 error) *MockInterfaceDeleteCRDsCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceDeleteCRDsCall) Do(f func(string, []string) error) *MockInterfaceDeleteCRDsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceDeleteCRDsCall) DoAndReturn(f func(string, []string) error) *MockInterfaceDeleteCRDsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // DeleteNamespace mocks base method.
 func (m *MockInterface) DeleteNamespace(arg0 string) error {
 	m.ctrl.T.Helper()
@@ -111,82 +187,6 @@ func (c *MockInterfaceDeleteNamespaceWithNameCall) Do(f func(string, string) err
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockInterfaceDeleteNamespaceWithNameCall) DoAndReturn(f func(string, string) error) *MockInterfaceDeleteNamespaceWithNameCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// DeleteCRDs mocks base method.
-func (m *MockInterface) DeleteCRDs(arg0 string, arg1 []string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteCRDs", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteCRDs indicates an expected call of DeleteCRDs.
-func (mr *MockInterfaceMockRecorder) DeleteCRDs(arg0, arg1 any) *MockInterfaceDeleteCRDsCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCRDs", reflect.TypeOf((*MockInterface)(nil).DeleteCRDs), arg0, arg1)
-	return &MockInterfaceDeleteCRDsCall{Call: call}
-}
-
-// MockInterfaceDeleteCRDsCall wrap *gomock.Call
-type MockInterfaceDeleteCRDsCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockInterfaceDeleteCRDsCall) Return(arg0 error) *MockInterfaceDeleteCRDsCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockInterfaceDeleteCRDsCall) Do(f func(string, []string) error) *MockInterfaceDeleteCRDsCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceDeleteCRDsCall) DoAndReturn(f func(string, []string) error) *MockInterfaceDeleteCRDsCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// DeleteAPIService mocks base method.
-func (m *MockInterface) DeleteAPIService(arg0, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteAPIService", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteAPIService indicates an expected call of DeleteAPIService.
-func (mr *MockInterfaceMockRecorder) DeleteAPIService(arg0, arg1 any) *MockInterfaceDeleteAPIServiceCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIService", reflect.TypeOf((*MockInterface)(nil).DeleteAPIService), arg0, arg1)
-	return &MockInterfaceDeleteAPIServiceCall{Call: call}
-}
-
-// MockInterfaceDeleteAPIServiceCall wrap *gomock.Call
-type MockInterfaceDeleteAPIServiceCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockInterfaceDeleteAPIServiceCall) Return(arg0 error) *MockInterfaceDeleteAPIServiceCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockInterfaceDeleteAPIServiceCall) Do(f func(string, string) error) *MockInterfaceDeleteAPIServiceCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceDeleteAPIServiceCall) DoAndReturn(f func(string, string) error) *MockInterfaceDeleteAPIServiceCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
