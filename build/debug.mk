@@ -34,7 +34,7 @@ DEBUG_DEV_ROOT ?= $(PWD)/debug_files
 POSTGRES_ADMIN_CONNECTION ?= postgresql://postgres:radius_pass@localhost:5432/postgres
 POSTGRES_FALLBACK_CONNECTION ?= postgresql://$(shell whoami)@localhost:5432/postgres
 
-.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init debug-check-prereqs
+.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-deploy debug-deployment-engine-port-forward debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init debug-check-prereqs
 
 debug-help: ## Show debug automation help
 	@echo "Debug Development Automation Commands:"
@@ -246,17 +246,6 @@ debug-stop: ## Stop all running Radius components, destroy k3d cluster, and clea
 		echo "❌ Stop script not found at build/scripts/stop-radius.sh"; \
 		exit 1; \
 	fi
-	@echo "Stopping deployment engine..."
-	@$(MAKE) debug-deployment-engine-stop
-	@echo "Destroying k3d cluster..."
-	@k3d cluster delete radius-debug 2>/dev/null || echo "k3d cluster was not running"
-	@echo "Cleaning up PostgreSQL databases..."
-	@(psql "$(POSTGRES_ADMIN_CONNECTION)" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || \
-	  psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "DROP DATABASE IF EXISTS applications_rp; DROP DATABASE IF EXISTS ucp; DROP DATABASE IF EXISTS radius;" 2>/dev/null || \
-	  echo "Database cleanup completed or PostgreSQL not accessible")
-	@(psql "$(POSTGRES_ADMIN_CONNECTION)" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || \
-	  psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "DROP USER IF EXISTS applications_rp; DROP USER IF EXISTS ucp; DROP USER IF EXISTS radius_user;" 2>/dev/null || \
-	  echo "User cleanup completed or PostgreSQL not accessible")
 	@echo "Cleaning up debug files and symlinks..."
 	@rm -rf $(DEBUG_DEV_ROOT)/logs
 	@rm -f ./drad
@@ -290,34 +279,31 @@ debug-deployment-engine-pull: ## Pull latest deployment engine image from ghcr.i
 
 debug-deployment-engine-start: ## Start deployment engine in k3d cluster
 	@echo "Installing ONLY deployment engine to k3d cluster..."
+	@if kubectl --context k3d-radius-debug get deployment deployment-engine >/dev/null 2>&1 && \
+		kubectl --context k3d-radius-debug get deployment deployment-engine -o jsonpath='{.status.readyReplicas}' 2>/dev/null | grep -q "1" && \
+		curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
+		echo "✅ Deployment engine already running and healthy"; \
+	else \
+		$(MAKE) debug-deployment-engine-deploy; \
+		$(MAKE) debug-deployment-engine-port-forward; \
+	fi
+	@echo "✅ Deployment engine installed and ready in k3d cluster"
+
+debug-deployment-engine-deploy: ## Deploy deployment engine to k3d cluster
 	@echo "Applying deployment engine manifest to k3d cluster..."
 	@kubectl --context k3d-radius-debug apply -f build/configs/deployment-engine.yaml
 	@echo "Waiting for deployment engine to be ready..."
 	@kubectl --context k3d-radius-debug wait --for=condition=available deployment/deployment-engine --timeout=60s
-	@echo "Setting up port forwarding for deployment engine..."
-	@pkill -f "port-forward.*deployment-engine" 2>/dev/null || true
-	@kubectl --context k3d-radius-debug port-forward -n default service/deployment-engine 5017:5445 > $(DEBUG_DEV_ROOT)/logs/de-port-forward.log 2>&1 &
-	@echo "Waiting for deployment engine health check..."
-	@max_attempts=30; \
-	attempt=0; \
-	while [ $$attempt -lt $$max_attempts ]; do \
-		if curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
-			echo "✅ Deployment Engine is ready"; \
-			break; \
-		fi; \
-		echo "Waiting for Deployment Engine... (attempt $$((attempt + 1))/$$max_attempts)"; \
-		sleep 2; \
-		attempt=$$((attempt + 1)); \
-	done; \
-	if [ $$attempt -eq $$max_attempts ]; then \
-		echo "❌ Deployment Engine not ready after $$max_attempts attempts"; \
-		echo "💡 Check component logs with 'make debug-logs' and 'make debug-deployment-engine-logs'"; \
-		exit 1; \
-	fi
-	@echo "✅ Deployment engine installed and ready in k3d cluster"
+
+debug-deployment-engine-port-forward: ## Set up port forwarding for deployment engine
+	@build/scripts/setup-deployment-engine-port-forward.sh
 
 debug-deployment-engine-stop: ## Stop deployment engine in k3d cluster
 	@echo "Removing deployment engine from k3d cluster..."
+	@if [ -f $(DEBUG_DEV_ROOT)/logs/de-port-forward.pid ]; then \
+		kill $$(cat $(DEBUG_DEV_ROOT)/logs/de-port-forward.pid) 2>/dev/null || true; \
+		rm -f $(DEBUG_DEV_ROOT)/logs/de-port-forward.pid; \
+	fi
 	@pkill -f "port-forward.*deployment-engine" 2>/dev/null || true
 	@kubectl --context k3d-radius-debug delete deployment deployment-engine 2>/dev/null || echo "Deployment engine deployment not found"
 	@kubectl --context k3d-radius-debug delete service deployment-engine 2>/dev/null || echo "Deployment engine service not found"

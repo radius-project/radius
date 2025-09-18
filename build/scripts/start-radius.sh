@@ -153,6 +153,14 @@ echo "🗄️  Initializing PostgreSQL database (idempotent)..."
 if command -v psql >/dev/null 2>&1; then
   # Detect which PostgreSQL connection is working
   postgres_type=$(detect_postgres_connection)
+  # Manually set the working connection based on the type
+  if [ "$postgres_type" = "docker" ]; then
+    POSTGRES_WORKING_CONNECTION="$POSTGRES_DOCKER_CONNECTION"
+  elif [ "$postgres_type" = "homebrew" ]; then
+    POSTGRES_WORKING_CONNECTION="$POSTGRES_HOMEBREW_CONNECTION"
+  else
+    POSTGRES_WORKING_CONNECTION=""
+  fi
   if [ "$postgres_type" = "none" ]; then
     print_error "Cannot connect to PostgreSQL"
     echo "Troubleshooting:"
@@ -170,7 +178,7 @@ if command -v psql >/dev/null 2>&1; then
   else
     echo "Created user applications_rp"
   fi
-  if ! psql_exec "CREATE DATABASE applications_rp;"; then
+  if ! psql_exec "CREATE DATABASE applications_rp OWNER applications_rp;"; then
     echo "(applications_rp database exists)"
   else
     echo "Created database applications_rp"
@@ -202,7 +210,7 @@ if command -v psql >/dev/null 2>&1; then
   -- Grant table-level permissions to the applications_rp user
   GRANT ALL PRIVILEGES ON TABLE resources TO applications_rp;
   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO applications_rp;
-  " >/dev/null 2>&1; then
+  "; then
     echo "✅ applications_rp tables created/verified"
   else
     print_warning "Could not verify/create applications_rp tables"
@@ -214,7 +222,7 @@ if command -v psql >/dev/null 2>&1; then
   else
     echo "Created user ucp"
   fi
-  if ! psql_exec "CREATE DATABASE ucp;"; then
+  if ! psql_exec "CREATE DATABASE ucp OWNER ucp;"; then
     echo "(ucp database exists)"
   else
     echo "Created database ucp"
@@ -225,7 +233,7 @@ if command -v psql >/dev/null 2>&1; then
   if [ "$postgres_type" = "docker" ]; then
     ucp_connection=$(echo "$POSTGRES_WORKING_CONNECTION" | sed 's|/postgres$|/ucp|')
   else
-    ucp_connection="ucp"
+    ucp_connection="postgresql://ucp:radius_pass@localhost:5432/ucp"
   fi
   
   if psql "$ucp_connection" -c "
@@ -244,7 +252,7 @@ if command -v psql >/dev/null 2>&1; then
   -- Grant table-level permissions to the ucp user
   GRANT ALL PRIVILEGES ON TABLE resources TO ucp;
   GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ucp;
-  " >/dev/null 2>&1; then
+  "; then
     echo "✅ UCP tables created/verified"
   else
     print_warning "Could not verify/create UCP tables"

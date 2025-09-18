@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Get the project root directory (where this script is called from)
 PROJECT_ROOT="$(pwd)"
@@ -52,15 +51,22 @@ for recipe_spec in "${recipes[@]}"; do
     
     echo "Registering default recipe for $resource_type -> $template_path"
     
-    if "$RAD_WRAPPER" recipe register "default" \
+    # Try to register the recipe
+    output=$("$RAD_WRAPPER" recipe register "default" \
         --resource-type "$resource_type" \
         --template-kind "bicep" \
         --template-path "$template_path" \
-        --environment default >/dev/null 2>&1; then
+        --environment default 2>&1)
+    
+    if [ $? -eq 0 ]; then
         echo "✅ Registered: default recipe for $resource_type"
+        ((registered_count++))
+    elif echo "$output" | grep -q "already exists\|already registered"; then
+        echo "ℹ️  Already exists: default recipe for $resource_type"
         ((registered_count++))
     else
         echo "⚠️  Failed to register: default recipe for $resource_type"
+        echo "   Error: $output"
         ((failed_count++))
     fi
 done
@@ -75,4 +81,7 @@ fi
 echo ""
 echo "🎉 Recipe registration complete!"
 echo "💡 You can now deploy applications that use these resource types"
-echo "� All recipes are registered as 'default' so deployments will find them automatically"
+echo "📋 All recipes are registered as 'default' so deployments will find them automatically"
+
+# Explicitly exit with success
+exit 0
