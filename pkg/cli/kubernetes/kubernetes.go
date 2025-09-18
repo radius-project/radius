@@ -132,6 +132,7 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 func deleteNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	if err := client.CoreV1().Namespaces().
 		Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
+		// Treat a missing namespace as success so repeated cleanup stays idempotent.
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
@@ -196,12 +197,19 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 }
 
 //go:generate mockgen -typed -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
+type CleanupPlan struct {
+	Namespaces  []string
+	APIServices []string
+	CRDs        []string
+}
+
 type Interface interface {
 	GetKubeContext() (*api.Config, error)
 	DeleteNamespace(kubeContext string) error
 	DeleteNamespaceWithName(kubeContext, namespace string) error
 	DeleteCRDs(kubeContext string, crdNames []string) error
 	DeleteAPIService(kubeContext, name string) error
+	PerformRadiusCleanup(ctx context.Context, kubeContext string, plan CleanupPlan) error
 }
 
 type Impl struct {
@@ -264,4 +272,24 @@ func (i *Impl) DeleteAPIService(kubeContext, name string) error {
 		return err
 	}
 	return nil
+}
+
+func (i *Impl) PerformRadiusCleanup(ctx context.Context, kubeContext string, plan CleanupPlan) error {
+	var errs []error
+	for _, apiService := range plan.APIServices {
+		if err := i.DeleteAPIService(kubeContext, apiService); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(plan.CRDs) > 0 {
+		if err := i.DeleteCRDs(kubeContext, plan.CRDs); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, ns := range plan.Namespaces {
+		if err := i.DeleteNamespaceWithName(kubeContext, ns); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }

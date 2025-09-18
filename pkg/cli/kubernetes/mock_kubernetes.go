@@ -10,6 +10,7 @@
 package kubernetes
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -226,6 +227,44 @@ func (c *MockInterfaceGetKubeContextCall) Do(f func() (*api.Config, error)) *Moc
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockInterfaceGetKubeContextCall) DoAndReturn(f func() (*api.Config, error)) *MockInterfaceGetKubeContextCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// PerformRadiusCleanup mocks base method.
+func (m *MockInterface) PerformRadiusCleanup(arg0 context.Context, arg1 string, arg2 CleanupPlan) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PerformRadiusCleanup", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PerformRadiusCleanup indicates an expected call of PerformRadiusCleanup.
+func (mr *MockInterfaceMockRecorder) PerformRadiusCleanup(arg0, arg1, arg2 any) *MockInterfacePerformRadiusCleanupCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PerformRadiusCleanup", reflect.TypeOf((*MockInterface)(nil).PerformRadiusCleanup), arg0, arg1, arg2)
+	return &MockInterfacePerformRadiusCleanupCall{Call: call}
+}
+
+// MockInterfacePerformRadiusCleanupCall wrap *gomock.Call
+type MockInterfacePerformRadiusCleanupCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfacePerformRadiusCleanupCall) Return(arg0 error) *MockInterfacePerformRadiusCleanupCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfacePerformRadiusCleanupCall) Do(f func(context.Context, string, CleanupPlan) error) *MockInterfacePerformRadiusCleanupCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfacePerformRadiusCleanupCall) DoAndReturn(f func(context.Context, string, CleanupPlan) error) *MockInterfacePerformRadiusCleanupCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

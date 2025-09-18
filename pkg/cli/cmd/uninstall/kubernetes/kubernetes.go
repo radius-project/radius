@@ -166,10 +166,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.Purge {
 		if plan.EnvDiscoveryFailed {
 			r.Output.LogInfo("%s: skipping Radius environment deletion because the Radius management APIs could not be reached", logWarningPrefix)
-		} else {
-			if err := r.deleteEnvironments(ctx, plan.Environments); err != nil {
-				r.Output.LogInfo("%s: failed to delete environments via Radius APIs: %v", logWarningPrefix, err)
-			}
+		} else if err := r.deleteEnvironments(ctx, plan.Environments); err != nil {
+			r.Output.LogInfo("%s: failed to delete environments via Radius APIs: %v", logWarningPrefix, err)
 		}
 	}
 
@@ -179,10 +177,27 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.Purge {
-		if err := r.performKubernetesCleanup(ctx, plan); err != nil {
+		if len(plan.APIServices) > 0 {
+			for _, svc := range plan.APIServices {
+				r.Output.LogInfo("Removing APIService %s", svc)
+			}
+		}
+		if len(plan.CRDs) > 0 {
+			r.Output.LogInfo("Removing Radius custom resource definitions")
+		}
+		for _, ns := range plan.Namespaces {
+			r.Output.LogInfo("Deleting namespace %s", ns)
+		}
+
+		cleanupPlan := kubernetes.CleanupPlan{
+			Namespaces:  plan.Namespaces,
+			APIServices: plan.APIServices,
+			CRDs:        plan.CRDs,
+		}
+		if err := r.Kubernetes.PerformRadiusCleanup(ctx, r.KubeContext, cleanupPlan); err != nil {
 			return err
 		}
-		r.Output.LogInfo("Radius was fully uninstalled. Any existing data have been removed.")
+		r.Output.LogInfo("Radius was fully uninstalled. All data has been removed.")
 		return nil
 	}
 	r.Output.LogInfo("Radius was uninstalled successfully. Any existing data will be retained for future installations. Local configuration is also retained. Use the `rad workspace` command if updates are needed to your configuration.")
@@ -207,7 +222,8 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 	environments, err := r.fetchEnvironmentCleanupInfos(ctx)
 	if err != nil {
 		plan.EnvDiscoveryFailed = true
-		return plan, fmt.Errorf("unable to enumerate Radius environments via Radius APIs: %w", err)
+		r.Output.LogInfo("%s: unable to enumerate Radius environments via Radius APIs: %v", logWarningPrefix, err)
+		return plan, nil
 	}
 	plan.Environments = environments
 
@@ -245,12 +261,10 @@ func (r *Runner) describeCleanupPlan(plan cleanupPlan) {
 }
 
 func (r *Runner) fetchEnvironmentCleanupInfos(ctx context.Context) ([]environmentCleanup, error) {
-	workspace := workspaces.MakeFallbackWorkspace()
-	if workspace.Connection == nil {
-		workspace.Connection = map[string]any{}
+	workspace, err := r.workspaceForContext()
+	if err != nil {
+		return nil, err
 	}
-	workspace.Connection["context"] = r.KubeContext
-	workspace.Scope = defaultPlaneScope
 
 	client, err := r.Connections.CreateApplicationsManagementClient(ctx, *workspace)
 	if err != nil {
@@ -281,12 +295,10 @@ func (r *Runner) deleteEnvironments(ctx context.Context, environments []environm
 		return nil
 	}
 
-	workspace := workspaces.MakeFallbackWorkspace()
-	if workspace.Connection == nil {
-		workspace.Connection = map[string]any{}
+	workspace, err := r.workspaceForContext()
+	if err != nil {
+		return err
 	}
-	workspace.Connection["context"] = r.KubeContext
-	workspace.Scope = defaultPlaneScope
 
 	client, err := r.Connections.CreateApplicationsManagementClient(ctx, *workspace)
 	if err != nil {
@@ -308,31 +320,14 @@ func (r *Runner) deleteEnvironments(ctx context.Context, environments []environm
 	return errors.Join(errs...)
 }
 
-func (r *Runner) performKubernetesCleanup(ctx context.Context, plan cleanupPlan) error {
-	var errs []error
-
-	for _, apiService := range plan.APIServices {
-		r.Output.LogInfo("Removing APIService %s", apiService)
-		if err := r.Kubernetes.DeleteAPIService(r.KubeContext, apiService); err != nil {
-			errs = append(errs, fmt.Errorf("deleting APIService %s: %w", apiService, err))
-		}
+func (r *Runner) workspaceForContext() (*workspaces.Workspace, error) {
+	workspace := workspaces.MakeFallbackWorkspace()
+	if workspace.Connection == nil {
+		workspace.Connection = map[string]any{}
 	}
-
-	if len(plan.CRDs) > 0 {
-		r.Output.LogInfo("Removing Radius custom resource definitions")
-		if err := r.Kubernetes.DeleteCRDs(r.KubeContext, plan.CRDs); err != nil {
-			errs = append(errs, fmt.Errorf("deleting Radius CRDs: %w", err))
-		}
-	}
-
-	for _, ns := range plan.Namespaces {
-		r.Output.LogInfo("Deleting namespace %s", ns)
-		if err := r.Kubernetes.DeleteNamespaceWithName(r.KubeContext, ns); err != nil {
-			errs = append(errs, fmt.Errorf("deleting namespace %s: %w", ns, err))
-		}
-	}
-
-	return errors.Join(errs...)
+	workspace.Connection["context"] = r.KubeContext
+	workspace.Scope = defaultPlaneScope
+	return workspace, nil
 }
 
 func getEnvironmentNamespace(env corerpv20231001.EnvironmentResource) string {

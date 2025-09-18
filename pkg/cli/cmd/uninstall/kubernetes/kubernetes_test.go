@@ -202,10 +202,12 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		k8sMock.EXPECT().DeleteAPIService("test-context", ucpAPIServiceName).Return(nil).Times(1)
-		k8sMock.EXPECT().DeleteCRDs("test-context", radiusCRDs).Return(nil).Times(1)
-		k8sMock.EXPECT().DeleteNamespaceWithName("test-context", helm.RadiusSystemNamespace).Return(nil).Times(1)
-		k8sMock.EXPECT().DeleteNamespaceWithName("test-context", daprSystemNamespace).Return(nil).Times(1)
+		expectedCleanup := kubernetes.CleanupPlan{
+			Namespaces:  []string{helm.RadiusSystemNamespace, daprSystemNamespace},
+			APIServices: []string{ucpAPIServiceName},
+			CRDs:        radiusCRDs,
+		}
+		k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", expectedCleanup).Return(nil).Times(1)
 
 		err := runner.Run(ctx)
 		require.NoError(t, err)
@@ -257,7 +259,7 @@ func Test_Run(t *testing.T) {
 				Params: []any{daprSystemNamespace},
 			},
 			output.LogOutput{
-				Format: "Radius was fully uninstalled. Any existing data have been removed.",
+				Format: "Radius was fully uninstalled. All data has been removed.",
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
@@ -377,18 +379,20 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		k8sMock.EXPECT().DeleteAPIService("test-context", ucpAPIServiceName).Return(nil).Times(1)
-		k8sMock.EXPECT().DeleteCRDs("test-context", radiusCRDs).Return(nil).Times(1)
-		k8sMock.EXPECT().DeleteNamespaceWithName("test-context", helm.RadiusSystemNamespace).Return(nil).Times(1)
-		k8sMock.EXPECT().DeleteNamespaceWithName("test-context", daprSystemNamespace).Return(nil).Times(1)
+		expectedCleanup := kubernetes.CleanupPlan{
+			Namespaces:  []string{helm.RadiusSystemNamespace, daprSystemNamespace},
+			APIServices: []string{ucpAPIServiceName},
+			CRDs:        radiusCRDs,
+		}
+		k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", expectedCleanup).Return(nil).Times(1)
 
 		err := runner.Run(ctx)
 		require.NoError(t, err)
 
-		expectedWarningErr := fmt.Errorf("unable to enumerate Radius environments via Radius APIs: %w", fmt.Errorf("creating applications client: %w", envErr))
+		expectedWarningErr := fmt.Errorf("creating applications client: %w", envErr)
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: "%s: %v",
+				Format: "%s: unable to enumerate Radius environments via Radius APIs: %v",
 				Params: []any{logWarningPrefix, expectedWarningErr},
 			},
 			output.LogOutput{
@@ -436,7 +440,7 @@ func Test_Run(t *testing.T) {
 				Params: []any{daprSystemNamespace},
 			},
 			output.LogOutput{
-				Format: "Radius was fully uninstalled. Any existing data have been removed.",
+				Format: "Radius was fully uninstalled. All data has been removed.",
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
