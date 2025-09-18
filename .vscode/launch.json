@@ -9,7 +9,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+      // "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad/main.go",
       "cwd": "${workspaceFolder}",
       "args": []
@@ -19,7 +19,7 @@
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/rad",
       "args": "${input:cliArgs}",
       "console": "integratedTerminal"
@@ -37,7 +37,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/dynamic-rp/main.go"
     },
     {
@@ -45,7 +45,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+    //  "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/ucpd/main.go"
     },
     {
@@ -53,7 +53,7 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "preLaunchTask": "Build Radius (all)",
+     // "preLaunchTask": "Build Radius (all)",
       "program": "${workspaceFolder}/cmd/controller/main.go",
       "args": ["--cert-dir", ""]
     },

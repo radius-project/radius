@@ -1,0 +1,47 @@
+curl -X PUT \
+    "http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/default/providers/Applications.Core/recipePacks/testrecipepack?api-version=2023-10-01-preview" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "location": "global",
+      "properties": {
+        "description": "Test recipe pack with sample recipes",
+        "recipes": {
+          "Applications.Core/extenders": {
+            "recipeKind": "bicep",
+            "recipeLocation": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0",
+          },
+          "Applications.Datastores/redisCaches": {
+            "recipeKind": "bicep",
+            "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep",
+            "parameters": {
+              "tier": "basic"
+            }
+          }
+        }
+      }
+    }'
+
+    curl -X PUT \                                                                                                                                                                        
+    "http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default?api-version=2023-10-01-preview" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "location": "global",
+      "properties": {
+        "compute": {
+          "kind": "kubernetes",
+          "namespace": "default"
+        },
+        "recipePacks": [
+          "/planes/radius/local/resourceGroups/default/providers/Applications.Core/recipePacks/testrecipepack"
+        ],
+        "recipes": {
+            "Applications.Core/extenders": {
+                "default": {
+                "plainHttp": false,
+                "templateKind": "bicep",
+                "templatePath": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
+                }
+            }
+        }
+   }
+}'
