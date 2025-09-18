@@ -482,7 +482,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          # GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
           RADIUS_TEST_FAST_CLEANUP: true
 
       - name: Process Functional Test Results
