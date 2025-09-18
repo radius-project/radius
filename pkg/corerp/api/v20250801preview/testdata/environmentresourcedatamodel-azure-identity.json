@@ -1,0 +1,40 @@
+{
+  "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-aci-env",
+  "name": "my-aci-env",
+  "type": "Radius.Core/environments",
+  "location": "West US",
+  "tags": {
+    "env": "test"
+  },
+  "systemData": {
+    "createdBy": "test-user",
+    "createdByType": "User",
+    "createdAt": "2023-10-01T10:00:00Z",
+    "lastModifiedBy": "test-user",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2023-10-01T10:00:00Z"
+  },
+  "internalMetadata": {
+    "createdAPIVersion": "2025-08-01-preview",
+    "updatedAPIVersion": "2025-08-01-preview",
+    "asyncProvisioningState": "Succeeded"
+  },
+  "properties": {
+    "recipePacks": [
+      "/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"
+    ],
+    "providers": {
+      "azure": {
+        "subscriptionId": "00000000-0000-0000-0000-000000000000",
+        "resourceGroupName": "my-resource-group",
+        "identity": {
+          "kind": "userAssigned",
+          "managedIdentity": [
+            "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-identity"
+          ]
+        }
+      }
+    },
+    "simulated": false
+  }
+}
