@@ -81,7 +81,11 @@ The automation checks for all required tools. Install any missing prerequisites:
 - **docker** - To host k3d
 
 #### Quick PostgreSQL Setup (if you don't already have one)
-If you just need a throwaway local PostgreSQL instance for debugging Radius you can run:
+
+The automation automatically detects and works with different PostgreSQL setups:
+
+**Option 1: Docker PostgreSQL (Recommended for Development)**
+If you need a throwaway local PostgreSQL instance for debugging Radius:
 
 ```bash
 docker run --name radius-postgres \
@@ -90,21 +94,17 @@ docker run --name radius-postgres \
    -d postgres:15
 ```
 
-Then create the expected users/databases (idempotent—safe to re-run):
+**Option 2: Local PostgreSQL Installation (Homebrew/System)**
+If you already have PostgreSQL installed locally (via Homebrew, apt, etc.), the automation will detect and use it automatically.
 
-```bash
-cat <<'SQL' | psql "postgresql://postgres:radius_pass@localhost:5432/postgres"
-CREATE USER ucp            WITH PASSWORD 'radius_pass' LOGIN;      
-CREATE USER applications_rp WITH PASSWORD 'radius_pass' LOGIN;     
-CREATE USER radius_user    WITH PASSWORD 'radius_pass' LOGIN;      
-CREATE DATABASE ucp            OWNER ucp;                          
-CREATE DATABASE applications_rp OWNER applications_rp;             
-GRANT ALL PRIVILEGES ON DATABASE ucp            TO ucp;            
-GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp; 
-SQL
-```
+**Automatic Database Setup**
+The automation handles all database setup automatically when you run `make debug-start`:
+- Creates required users (`applications_rp`, `ucp`) with proper passwords
+- Creates databases with correct ownership
+- Sets up proper permissions and table structures
+- Works with both Docker and local PostgreSQL installations
 
-If you already have a locally installed PostgreSQL (brew / systemd) you can skip this. The automation will verify connectivity during `make debug-check-prereqs` and again when starting components.
+The automation will verify connectivity during `make debug-check-prereqs` and create all required users/databases during `make debug-start`. No manual database setup is required.
 
 ### Optional Tools
 - **VS Code** - For integrated debugging experience
@@ -358,7 +358,7 @@ make debug-check-prereqs
 
 **3. Database Connection Issues**
 
-The automation handles database setup verification. If you see database errors:
+The automation handles database setup automatically and works with your current user. If you see database errors:
 
 ```bash
 # Check if PostgreSQL is running
@@ -368,17 +368,24 @@ brew services start postgresql
 # Linux:
 sudo systemctl start postgresql
 
-# Verify connection manually
-psql "postgresql://radius_user:radius_pass@localhost:5432/radius" -c "SELECT 1;"
+# Docker:
+docker start radius-postgres  # If using Docker PostgreSQL
 
-# If database doesn't exist, create it manually:
-sudo -u postgres psql <<EOF
-CREATE DATABASE radius;
-CREATE USER radius_user WITH PASSWORD 'radius_pass';
-GRANT ALL PRIVILEGES ON DATABASE radius TO radius_user;
-GRANT CREATE ON SCHEMA public TO radius_user;
-\q
-EOF
+# The automation will automatically:
+# - Detect your PostgreSQL installation (Docker vs local)
+# - Create required users and databases
+# - Set up proper permissions and table structures
+
+# If you need to test connections manually:
+# For Docker PostgreSQL:
+psql "postgresql://postgres:radius_pass@localhost:5432/postgres" -c "SELECT 1;"
+
+# For local PostgreSQL (Homebrew/system):
+psql postgres -c "SELECT 1;"
+
+# Test the actual databases created by automation:
+psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "SELECT 1;"
+psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "SELECT 1;"
 ```
 
 **4. Port Conflicts**
