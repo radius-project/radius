@@ -17,7 +17,7 @@ psql_exec() {
   fi
 }
 
-echo "💣 Nuclear stop: destroying all Radius debug environment..."
+echo "🧹 Full environment cleanup: stopping debug processes, deleting k3d cluster, deleting PostgreSQL data and schema..."
 
 cd debug_files 2>/dev/null || {
   echo "⚠️  debug_files directory not found, stopping processes anyway..."
