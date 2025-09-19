@@ -30,8 +30,6 @@ Running these as OS processes enables:
 The simplest way to get debugging working:
 
 ### Prerequisites
-- Local Kubernetes cluster accessible via kubectl (Docker Desktop, k3d, minikube, etc.)
-- Current kubectl context must point to your **local** cluster
 - PostgreSQL database running locally
 
 ### Setup Commands
@@ -88,11 +86,24 @@ The automation automatically detects and works with different PostgreSQL setups:
 If you need a throwaway local PostgreSQL instance for debugging Radius:
 
 ```bash
+# Quick setup (uses postgres superuser - works with current automation)
 docker run --name radius-postgres \
    -e POSTGRES_PASSWORD=radius_pass \
    -p 5432:5432 \
    -d postgres:15
 ```
+
+**Alternative Docker setup with custom user:**
+```bash
+# Custom user setup (more production-like)
+docker run --name dev-postgres \
+  -e POSTGRES_USER=radius_user \
+  -e POSTGRES_PASSWORD=radius_pass \
+  -e POSTGRES_DB=radius \
+  -p 5432:5432 \
+  -d postgres
+```
+*Note: If using the custom user setup, you'll need to update the PostgreSQL connection variables in `build/scripts/start-radius.sh` to match.*
 
 **Option 2: Local PostgreSQL Installation (Homebrew/System)**
 If you already have PostgreSQL installed locally (via Homebrew, apt, etc.), the automation will detect and use it automatically.
@@ -162,7 +173,7 @@ make debug-check-prereqs
 
 ## Development Workflow
 
-### Automated Workflow (Recommended)
+### Step 1: Automated Setup and Process Management
 
 The automation handles all setup, configuration, and management tasks:
 
@@ -176,9 +187,16 @@ make debug-start
 # 3. Starts all components as OS processes
 # 4. Initializes a clean dev environment with default recipes
 
+# Check that everything is running
+make debug-status
+
 # Stop development environment when done
 make debug-stop
 ```
+
+### Step 2: VS Code Debugging (Optional)
+
+Once components are running via `make debug-start`, you can attach VS Code debuggers to debug specific components. See the [VS Code Debugging](#vs-code-debugging) section below for detailed instructions.
 
 ### Available Make Targets
 
@@ -248,6 +266,8 @@ And VS Code configuration files are already included in the repository:
 
 ## VS Code Debugging
 
+> 💡 **Prerequisites**: You must first complete the [Automated Workflow](#automated-workflow-recommended) to have components running before you can debug them. This section describes how to attach debuggers to the already-running processes.
+
 > 💡 **Quick Setup**: VS Code configuration files are included in the repository and ready to use.
 
 ### Available Debug Configurations
@@ -272,9 +292,13 @@ All server configurations use "attach" mode - they connect to already running pr
 
 ### Debugging Workflow in VS Code
 
+**Important**: This workflow assumes you have already completed the [Automated Workflow](#automated-workflow-recommended) and have components running via `make debug-start`.
+
 This workflow separates process management (via make) from debugging (via VS Code), making it much cleaner and more reliable.
 
-#### Debugging Workflow
+#### Step-by-Step Debugging Process
+
+**Prerequisites**: Components must be running via `make debug-start` before you can attach debuggers.
 
 1. **Set Breakpoints**: Add breakpoints in your code in VS Code
 
