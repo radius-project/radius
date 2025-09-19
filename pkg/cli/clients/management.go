@@ -1007,6 +1007,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 		if err != nil {
 			return nil, err
 		}
+
 		results = append(results, resources...)
 	}
 
