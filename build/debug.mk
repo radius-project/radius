@@ -149,9 +149,9 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 	fi; \
 	echo "✅ PostgreSQL is accessible"; \
 	if ! command -v docker >/dev/null 2>&1; then \
-		echo "⚠️  docker not available - deployment engine will not be available"; \
+		echo "⚠️ Docker not available - deployment engine will not be available"; \
 	elif ! docker info >/dev/null 2>&1; then \
-		echo "⚠️  Docker daemon not running - deployment engine will not be available"; \
+		echo "⚠️ Docker daemon not running - deployment engine will not be available"; \
 	fi; \
 	echo "✅ All required tools are available"
 
@@ -316,7 +316,7 @@ debug-deployment-engine-status: ## Check deployment engine status
 		if [ "$$replicas" = "1" ]; then \
 			echo "✅ Deployment Engine (k3d) - Running and ready"; \
 		else \
-			echo "⚠️  Deployment Engine (k3d) - Deployment exists but not ready"; \
+			echo "⚠️ Deployment Engine (k3d) - Deployment exists but not ready"; \
 		fi; \
 	else \
 		echo "❌ Deployment Engine - Not deployed to k3d cluster"; \
