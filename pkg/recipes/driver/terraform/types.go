@@ -38,8 +38,11 @@ func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePat
 			return "", err
 		}
 
+		hostname := strings.TrimPrefix(url.Hostname(), "www.")
 		// get the secret store id associated with the git domain of the template path.
-		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
+		if patConfig, ok := envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[hostname]; ok {
+			return patConfig.Secret, nil
+		}
 	}
 	return "", nil
 }
