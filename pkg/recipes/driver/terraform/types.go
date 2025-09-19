@@ -44,5 +44,6 @@ func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePat
 			return patConfig.Secret, nil
 		}
 	}
+
 	return "", nil
 }
