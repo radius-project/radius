@@ -1049,3 +1049,119 @@ func verifyGroupDeleteWithResources(ctx context.Context, t *testing.T, test rp.R
 	require.Contains(t, output, listEnvName)
 	require.Contains(t, output, listAppName)
 }
+
+func Test_EnvDelete(t *testing.T) {
+	name := "env-delete-test"
+	envName := "env-delete-test-env"
+	appName := "env-delete-test-app"
+	containerA := "env-delete-container-a"
+	containerB := "env-delete-container-b"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(
+				"testdata/corerp-env-delete-test.bicep",
+				testutil.GetMagpieImage(),
+			),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: envName,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: containerA,
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: containerB,
+						Type: validation.ContainersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default-env-delete-test-env-env-delete-test-app": {
+						validation.NewK8sPodForResource(appName, containerA),
+						validation.NewK8sPodForResource(appName, containerB),
+					},
+				},
+			},
+			PostStepVerify:       verifyEnvDeleteWithResources,
+			SkipResourceDeletion: true, // We'll delete via env delete
+		},
+	})
+
+	test.Test(t)
+}
+
+func verifyEnvDeleteWithResources(ctx context.Context, t *testing.T, test rp.RPTest) {
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	// Get the deployed resource names from the test
+	envName := test.Steps[0].RPResources.Resources[0].Name
+	appName := test.Steps[0].RPResources.Resources[1].Name
+	containerA := test.Steps[0].RPResources.Resources[2].Name
+	containerB := test.Steps[0].RPResources.Resources[3].Name
+
+	// Verify environment exists
+	output, err := cli.EnvShow(ctx, envName)
+	require.NoError(t, err, "Failed to show environment")
+	require.Contains(t, output, envName)
+
+	// Verify resources exist by checking the application
+	output, err = cli.ApplicationShow(ctx, appName)
+	require.NoError(t, err, "Failed to show application")
+	require.Contains(t, output, appName)
+
+	// Delete the environment with all its resources
+	err = cli.EnvDelete(ctx, envName)
+	require.NoError(t, err, "Failed to delete environment with resources")
+
+	// Verify environment is deleted
+	_, err = cli.EnvShow(ctx, envName)
+	require.Error(t, err, "Environment should be deleted")
+	require.Contains(t, err.Error(), "not found")
+
+	// Verify all associated resources are deleted
+	_, err = cli.ApplicationShow(ctx, appName)
+	require.Error(t, err, "Application should be deleted")
+	require.Contains(t, err.Error(), "not found")
+
+	_, err = cli.ResourceShow(ctx, "Applications.Core/containers", containerA)
+	require.Error(t, err, "Container A should be deleted")
+
+	_, err = cli.ResourceShow(ctx, "Applications.Core/containers", containerB)
+	require.Error(t, err, "Container B should be deleted")
+
+	// Test 2: Delete empty environment
+	emptyEnvName := fmt.Sprintf("test-empty-env-%s", generateUniqueTag())
+
+	// Create an empty environment
+	envArgs := []string{"env", "create", emptyEnvName}
+	_, err = cli.RunCommand(ctx, envArgs)
+	require.NoError(t, err, "Failed to create empty environment")
+	t.Cleanup(func() {
+		// Clean up in case test fails
+		_ = cli.EnvDelete(context.Background(), emptyEnvName)
+	})
+
+	// Verify environment exists
+	output, err = cli.EnvShow(ctx, emptyEnvName)
+	require.NoError(t, err)
+	require.Contains(t, output, emptyEnvName)
+
+	// Delete the empty environment
+	err = cli.EnvDelete(ctx, emptyEnvName)
+	require.NoError(t, err, "Failed to delete empty environment")
+
+	// Verify environment is deleted
+	_, err = cli.EnvShow(ctx, emptyEnvName)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+}
