@@ -1,0 +1,48 @@
+name: Nightly rad CLI tests
+
+on:
+  schedule:
+    # Run every day at 11:47 PM UTC
+    - cron: '47 23 * * *'
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/nightly-rad-CLI-tests.yaml
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            file: rad
+          - os: linux
+            arch: arm64
+            file: rad
+          - os: linux
+            arch: arm
+            file: rad
+          - os: darwin
+            arch: amd64
+            file: rad
+          - os: darwin
+            arch: arm64
+            file: rad
+          - os: windows
+            arch: amd64
+            file: rad
+            ext: .exe
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Test CLI download
+        run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }}
+      - name: Create GitHub issue on failure
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+        run: gh issue create --title "CLI nightly test failed - ${{ matrix.os }}-${{ matrix.arch }}" --body "Test failed on ${{ github.repository }} for ${{ matrix.os }}-${{ matrix.arch }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --label "test-failure" --repo ${{ github.repository }}
