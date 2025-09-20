@@ -1,0 +1,20 @@
+{
+  "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-k8s-env",
+  "name": "my-k8s-env",
+  "type": "Radius.Core/environments",
+  "location": "West US",
+  "tags": {
+    "env": "test"
+  },
+  "properties": {
+    "provisioningState": "Succeeded",
+    "recipePacks": [
+      "/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"
+    ],
+    "providers": {
+      "kubernetes": {
+        "namespace": "default"
+      }
+    }
+  }
+}
