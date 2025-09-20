@@ -28,9 +28,11 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s_runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
@@ -130,6 +132,10 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 func deleteNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	if err := client.CoreV1().Namespaces().
 		Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
+		// Treat a missing namespace as success so repeated cleanup stays idempotent.
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -191,9 +197,19 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 }
 
 //go:generate mockgen -typed -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
+type CleanupPlan struct {
+	Namespaces  []string
+	APIServices []string
+	CRDs        []string
+}
+
 type Interface interface {
 	GetKubeContext() (*api.Config, error)
-	DeleteNamespace(string) error
+	DeleteNamespace(kubeContext string) error
+	DeleteNamespaceWithName(kubeContext, namespace string) error
+	DeleteCRDs(kubeContext string, crdNames []string) error
+	DeleteAPIService(kubeContext, name string) error
+	PerformRadiusCleanup(ctx context.Context, kubeContext string, plan CleanupPlan) error
 }
 
 type Impl struct {
@@ -208,12 +224,72 @@ func (i *Impl) GetKubeContext() (*api.Config, error) {
 }
 
 func (i *Impl) DeleteNamespace(kubeContext string) error {
+	return i.DeleteNamespaceWithName(kubeContext, helm.RadiusSystemNamespace)
+}
+
+func (i *Impl) DeleteNamespaceWithName(kubeContext, namespace string) error {
 	clientSet, _, err := NewClientset(kubeContext)
 	if err != nil {
 		return err
 	}
-	if err := deleteNamespace(context.Background(), clientSet, helm.RadiusSystemNamespace); err != nil {
+	if err := deleteNamespace(context.Background(), clientSet, namespace); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (i *Impl) DeleteCRDs(kubeContext string, crdNames []string) error {
+	_, config, err := NewClientset(kubeContext)
+	if err != nil {
+		return err
+	}
+	client, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+	crdClient := client.ApiextensionsV1().CustomResourceDefinitions()
+	ctx := context.Background()
+	for _, name := range crdNames {
+		if err := crdClient.Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (i *Impl) DeleteAPIService(kubeContext, name string) error {
+	config, err := NewCLIClientConfig(kubeContext)
+	if err != nil {
+		return err
+	}
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	gvr := schema.GroupVersionResource{Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"}
+	if err := dynamicClient.Resource(gvr).Delete(ctx, name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
+func (i *Impl) PerformRadiusCleanup(ctx context.Context, kubeContext string, plan CleanupPlan) error {
+	var errs []error
+	for _, apiService := range plan.APIServices {
+		if err := i.DeleteAPIService(kubeContext, apiService); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(plan.CRDs) > 0 {
+		if err := i.DeleteCRDs(kubeContext, plan.CRDs); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, ns := range plan.Namespaces {
+		if err := i.DeleteNamespaceWithName(kubeContext, ns); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
