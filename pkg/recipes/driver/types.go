@@ -18,18 +18,9 @@ package driver
 
 import (
 	"context"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-)
-
-const (
-	TerraformAzureProvider            = "registry.terraform.io/hashicorp/azurerm"
-	TerraformAWSProvider              = "registry.terraform.io/hashicorp/aws"
-	TerraformKubernetesProvider       = "registry.terraform.io/hashicorp/kubernetes"
-	PrivateRegistrySecretKey_Pat      = "pat"
-	PrivateRegistrySecretKey_Username = "username"
 )
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
@@ -98,18 +89,4 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
-}
-
-// GetPrivateGitRepoSecretStoreID returns secretstore resource ID associated with git private terraform repository source.
-func GetPrivateGitRepoSecretStoreID(envConfig recipes.Configuration, templatePath string) (string, error) {
-	if strings.HasPrefix(templatePath, "git::") {
-		url, err := GetGitURL(templatePath)
-		if err != nil {
-			return "", err
-		}
-
-		// get the secret store id associated with the git domain of the template path.
-		return envConfig.RecipeConfig.Terraform.Authentication.Git.PAT[strings.TrimPrefix(url.Hostname(), "www.")].Secret, nil
-	}
-	return "", nil
 }
