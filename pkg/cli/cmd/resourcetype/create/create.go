@@ -37,7 +37,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create [input]",
+		Use:   "create [resource-type-name]",
 		Short: "Create or update a resource type",
 		Long: `Create or update a resource type from a resource type manifest.
 	
@@ -47,18 +47,21 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	
 	Input can be passed in using a JSON or YAML file using the --from-file option.
 
-	resource-type name argument is optional. If specified, only the specified type is created/updated. 
+	The resource-type-name argument is optional. If specified, only the specified type is created/updated. 
 	If not specified, all resource types in the referenced file are created/updated.
+	
+	The resource-type-name should be the simple name (e.g., 'testResources') as defined in the types 
+	section of your manifest file, not the fully qualified name.
 	`,
 		Example: `
-# Create a resource type from YAML file
+# Create a specific resource type from YAML file
 rad resource-type create myType --from-file /path/to/input.yaml
 
-# Create a resource type from JSON file
+# Create a specific resource type from JSON file
 rad resource-type create myType --from-file /path/to/input.json
 
 # Create all resource types from YAML file
-rad resource-type create  --from-file /path/to/input.yaml
+rad resource-type create --from-file /path/to/input.yaml
  
 # Create all resource types from JSON file
 rad resource-type create --from-file /path/to/input.json
