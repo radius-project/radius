@@ -265,6 +265,126 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
 
+	t.Run("Warning: Skip deleting default namespace", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+		k8sMock := kubernetes.NewMockInterface(ctrl)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		promptMock := prompt.NewMockInterface(ctrl)
+		connFactory := &connections.MockFactory{ApplicationsManagementClient: appManagementClient}
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:        helmMock,
+			Output:      outputMock,
+			Kubernetes:  k8sMock,
+			Connections: connFactory,
+			Prompter:    promptMock,
+
+			KubeContext: "test-context",
+			Purge:       true,
+		}
+
+		envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/test-env"
+		environment := corerpv20231001.EnvironmentResource{
+			ID:   to.Ptr(envID),
+			Name: to.Ptr("test-env"),
+			Properties: &corerpv20231001.EnvironmentProperties{
+				Compute: &corerpv20231001.KubernetesCompute{
+					Kind:      to.Ptr("Kubernetes"),
+					Namespace: to.Ptr("default"),
+				},
+			},
+		}
+
+		appManagementClient.EXPECT().ListEnvironmentsAll(ctx).
+			Return([]corerpv20231001.EnvironmentResource{environment}, nil).
+			Times(1)
+
+		appManagementClient.EXPECT().DeleteEnvironment(ctx, envID).
+			Return(true, nil).
+			Times(1)
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+
+		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
+			Return(prompt.ConfirmYes, nil).
+			Times(1)
+
+		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+			Return(nil).
+			Times(1)
+
+		expectedCleanup := kubernetes.CleanupPlan{
+			Namespaces:  []string{helm.RadiusSystemNamespace},
+			APIServices: []string{ucpAPIServiceName},
+			CRDs:        radiusCRDs,
+		}
+		k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", expectedCleanup).Return(nil).Times(1)
+
+		err := runner.Run(ctx)
+		require.NoError(t, err)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "About to uninstall Radius. This will remove:",
+			},
+			output.LogOutput{
+				Format: "- Helm releases: %s",
+				Params: []any{"radius"},
+			},
+			output.LogOutput{
+				Format: "- Radius environments:",
+			},
+			output.LogOutput{
+				Format: "  • %s (namespace %s)",
+				Params: []any{envID, "default"},
+			},
+			output.LogOutput{
+				Format: "- Kubernetes namespaces: %s",
+				Params: []any{"radius-system"},
+			},
+			output.LogOutput{
+				Format: "- Kubernetes namespaces (skipped): %s",
+				Params: []any{"default"},
+			},
+			output.LogOutput{
+				Format: "- Kubernetes API services: %s",
+				Params: []any{ucpAPIServiceName},
+			},
+			output.LogOutput{
+				Format: "- Kubernetes custom resource definitions: %s",
+				Params: []any{strings.Join(radiusCRDs, ", ")},
+			},
+			output.LogOutput{
+				Format: "Deleting environment %s",
+				Params: []any{envID},
+			},
+			output.LogOutput{
+				Format: "Removing APIService %s",
+				Params: []any{ucpAPIServiceName},
+			},
+			output.LogOutput{
+				Format: "Removing Radius custom resource definitions",
+			},
+			output.LogOutput{
+				Format: "Deleting namespace %s",
+				Params: []any{helm.RadiusSystemNamespace},
+			},
+			output.LogOutput{
+				Format: "%s: skipping deletion of namespace %s because Kubernetes does not allow deleting it",
+				Params: []any{logWarningPrefix, "default"},
+			},
+			output.LogOutput{
+				Format: "Radius was fully uninstalled. All data has been removed.",
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
+
 	t.Run("Cancel: User declines uninstall", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)

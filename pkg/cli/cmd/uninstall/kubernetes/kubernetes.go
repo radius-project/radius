@@ -39,6 +39,7 @@ const (
 	defaultPlaneScope = "/planes/radius/local"
 	ucpAPIServiceName = "v1alpha3.api.ucp.dev"
 	logWarningPrefix  = "Warning"
+	defaultNamespace  = "default"
 )
 
 var radiusCRDs = []string{
@@ -55,12 +56,13 @@ type environmentCleanup struct {
 }
 
 type cleanupPlan struct {
-	HelmReleases       []string
-	Environments       []environmentCleanup
-	Namespaces         []string
-	CRDs               []string
-	APIServices        []string
-	EnvDiscoveryFailed bool
+	HelmReleases        []string
+	Environments        []environmentCleanup
+	Namespaces          []string
+	ProtectedNamespaces []string
+	CRDs                []string
+	APIServices         []string
+	EnvDiscoveryFailed  bool
 }
 
 // NewCommand creates an instance of the `rad <fill in the blank>` command and runner.
@@ -188,6 +190,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		for _, ns := range plan.Namespaces {
 			r.Output.LogInfo("Deleting namespace %s", ns)
 		}
+		for _, ns := range plan.ProtectedNamespaces {
+			r.Output.LogInfo("%s: skipping deletion of namespace %s because Kubernetes does not allow deleting it", logWarningPrefix, ns)
+		}
 
 		cleanupPlan := kubernetes.CleanupPlan{
 			Namespaces:  plan.Namespaces,
@@ -220,6 +225,7 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 	namespaceSet := map[string]struct{}{
 		helm.RadiusSystemNamespace: {},
 	}
+	protectedNamespaceSet := map[string]struct{}{}
 	plan.Namespaces = append(plan.Namespaces, helm.RadiusSystemNamespace)
 
 	environments, err := r.fetchEnvironmentCleanupInfos(ctx)
@@ -234,6 +240,14 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 			continue
 		}
 		if _, exists := namespaceSet[env.Namespace]; exists {
+			continue
+		}
+		if env.Namespace == defaultNamespace {
+			if _, exists := protectedNamespaceSet[env.Namespace]; exists {
+				continue
+			}
+			protectedNamespaceSet[env.Namespace] = struct{}{}
+			plan.ProtectedNamespaces = append(plan.ProtectedNamespaces, env.Namespace)
 			continue
 		}
 		namespaceSet[env.Namespace] = struct{}{}
@@ -263,6 +277,9 @@ func (r *Runner) describeCleanupPlan(plan cleanupPlan) {
 
 		if len(plan.Namespaces) > 0 {
 			r.Output.LogInfo("- Kubernetes namespaces: %s", strings.Join(plan.Namespaces, ", "))
+		}
+		if len(plan.ProtectedNamespaces) > 0 {
+			r.Output.LogInfo("- Kubernetes namespaces (skipped): %s", strings.Join(plan.ProtectedNamespaces, ", "))
 		}
 		if len(plan.APIServices) > 0 {
 			r.Output.LogInfo("- Kubernetes API services: %s", strings.Join(plan.APIServices, ", "))
