@@ -12,12 +12,25 @@ Note, this only applies when we want to update the app core image, if we need to
    export DOCKER_REGISTRY=ghcr.io/your-registry
    ```
 
-1. Ensure you login to your container registry AND enable anonymous pull. The login command will need to be called every 3 hours as needed as it does log the user out frequently.
+1. Ensure you login to your container registry. The login command will need to be called every 3 hours as needed as it does log the user out frequently.
 
    ```console
    az acr login -n <registry>
-   az acr update --name <registry> --anonymous-pull-enabled
    ```
+
+   **Security Note**: For production environments, anonymous pull should be disabled for security reasons. Anonymous pull is disabled by default on ACR. To explicitly disable it (recommended for production):
+
+   ```console
+   az acr update --name <registry> --anonymous-pull-enabled false
+   ```
+
+   For local development and testing only, you may optionally enable anonymous pull to simplify image access:
+
+   ```console
+   az acr update --name <registry> --anonymous-pull-enabled true
+   ```
+
+   **Warning**: Only enable anonymous pull for development/testing registries. Never enable it for production registries containing sensitive or proprietary images.
 
 1. Build and push an initial version of all images in the Radius repo. This should push images for the applications-rp, the ucpd, etc that are required to run radius.
 
