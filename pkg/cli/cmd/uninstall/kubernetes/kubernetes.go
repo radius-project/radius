@@ -191,8 +191,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.Output.LogInfo("Deleting namespace %s", ns)
 		}
 		for _, ns := range plan.ProtectedNamespaces {
-			r.Output.LogInfo("%s: skipping deletion of namespace %s because Kubernetes does not allow deleting it", logWarningPrefix, ns)
+			r.Output.LogInfo("Skipping deletion of namespace %s because Kubernetes does not allow deletion", ns)
 		}
+		r.Output.LogInfo("Waiting for resource deletions to finish...")
 
 		cleanupPlan := kubernetes.CleanupPlan{
 			Namespaces:  plan.Namespaces,

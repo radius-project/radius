@@ -259,6 +259,9 @@ func Test_Run(t *testing.T) {
 				Params: []any{"testenv-ns"},
 			},
 			output.LogOutput{
+				Format: "Waiting for resource deletions to finish...",
+			},
+			output.LogOutput{
 				Format: "Radius was fully uninstalled. All data has been removed.",
 			},
 		}
@@ -375,8 +378,11 @@ func Test_Run(t *testing.T) {
 				Params: []any{helm.RadiusSystemNamespace},
 			},
 			output.LogOutput{
-				Format: "%s: skipping deletion of namespace %s because Kubernetes does not allow deleting it",
-				Params: []any{logWarningPrefix, "default"},
+				Format: "Skipping deletion of namespace %s because Kubernetes does not allow deletion",
+				Params: []any{"default"},
+			},
+			output.LogOutput{
+				Format: "Waiting for resource deletions to finish...",
 			},
 			output.LogOutput{
 				Format: "Radius was fully uninstalled. All data has been removed.",
@@ -554,6 +560,9 @@ func Test_Run(t *testing.T) {
 			output.LogOutput{
 				Format: "Deleting namespace %s",
 				Params: []any{helm.RadiusSystemNamespace},
+			},
+			output.LogOutput{
+				Format: "Waiting for resource deletions to finish...",
 			},
 			output.LogOutput{
 				Format: "Radius was fully uninstalled. All data has been removed.",
