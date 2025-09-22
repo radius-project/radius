@@ -36,10 +36,9 @@ import (
 )
 
 const (
-	defaultPlaneScope   = "/planes/radius/local"
-	ucpAPIServiceName   = "v1alpha3.api.ucp.dev"
-	daprSystemNamespace = "dapr-system"
-	logWarningPrefix    = "Warning"
+	defaultPlaneScope = "/planes/radius/local"
+	ucpAPIServiceName = "v1alpha3.api.ucp.dev"
+	logWarningPrefix  = "Warning"
 )
 
 var radiusCRDs = []string{
@@ -217,7 +216,7 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 
 	plan.CRDs = append(plan.CRDs, radiusCRDs...)
 	plan.APIServices = append(plan.APIServices, ucpAPIServiceName)
-	plan.Namespaces = append(plan.Namespaces, helm.RadiusSystemNamespace, daprSystemNamespace)
+	plan.Namespaces = append(plan.Namespaces, helm.RadiusSystemNamespace)
 
 	environments, err := r.fetchEnvironmentCleanupInfos(ctx)
 	if err != nil {
