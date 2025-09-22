@@ -166,6 +166,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		if plan.EnvDiscoveryFailed {
 			r.Output.LogInfo("%s: skipping Radius environment deletion because the Radius management APIs could not be reached", logWarningPrefix)
 		} else if err := r.deleteEnvironments(ctx, plan.Environments); err != nil {
+			// Environment removal via the management APIs is best-effort; namespace cleanup guarantees resources are gone.
 			r.Output.LogInfo("%s: failed to delete environments via Radius APIs: %v", logWarningPrefix, err)
 		}
 	}
@@ -216,6 +217,9 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 
 	plan.CRDs = append(plan.CRDs, radiusCRDs...)
 	plan.APIServices = append(plan.APIServices, ucpAPIServiceName)
+	namespaceSet := map[string]struct{}{
+		helm.RadiusSystemNamespace: {},
+	}
 	plan.Namespaces = append(plan.Namespaces, helm.RadiusSystemNamespace)
 
 	environments, err := r.fetchEnvironmentCleanupInfos(ctx)
@@ -225,6 +229,16 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 		return plan, nil
 	}
 	plan.Environments = environments
+	for _, env := range environments {
+		if env.Namespace == "" {
+			continue
+		}
+		if _, exists := namespaceSet[env.Namespace]; exists {
+			continue
+		}
+		namespaceSet[env.Namespace] = struct{}{}
+		plan.Namespaces = append(plan.Namespaces, env.Namespace)
+	}
 
 	return plan, nil
 }

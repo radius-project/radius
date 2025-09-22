@@ -203,7 +203,7 @@ func Test_Run(t *testing.T) {
 			Times(1)
 
 		expectedCleanup := kubernetes.CleanupPlan{
-			Namespaces:  []string{helm.RadiusSystemNamespace},
+			Namespaces:  []string{helm.RadiusSystemNamespace, "testenv-ns"},
 			APIServices: []string{ucpAPIServiceName},
 			CRDs:        radiusCRDs,
 		}
@@ -229,7 +229,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: "- Kubernetes namespaces: %s",
-				Params: []any{"radius-system"},
+				Params: []any{"radius-system, testenv-ns"},
 			},
 			output.LogOutput{
 				Format: "- Kubernetes API services: %s",
@@ -253,6 +253,10 @@ func Test_Run(t *testing.T) {
 			output.LogOutput{
 				Format: "Deleting namespace %s",
 				Params: []any{helm.RadiusSystemNamespace},
+			},
+			output.LogOutput{
+				Format: "Deleting namespace %s",
+				Params: []any{"testenv-ns"},
 			},
 			output.LogOutput{
 				Format: "Radius was fully uninstalled. All data has been removed.",
