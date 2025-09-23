@@ -19,17 +19,23 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/hashicorp/go-version"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/metrics"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/customsource"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -45,6 +51,73 @@ const (
 	defaultGlobalTerraformBinary = "/terraform/.terraform-global/terraform"
 	defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
 )
+
+// validateReleasesURL validates the releases API URL and ensures it uses HTTPS unless explicitly allowed
+func validateReleasesURL(ctx context.Context, releasesURL string, tlsConfig *datamodel.TLSConfig) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if releasesURL == "" {
+		logger.Info("No custom releases URL provided, using default HashiCorp releases site")
+		return nil // Default HashiCorp releases site will be used
+	}
+
+	logger.Info("Validating releases API URL", "url", releasesURL)
+	parsedURL, err := url.Parse(releasesURL)
+	if err != nil {
+		logger.Error(err, "Failed to parse releases API URL", "url", releasesURL)
+		return fmt.Errorf("invalid releases API URL: %w", err)
+	}
+
+	// Check if URL uses HTTP instead of HTTPS
+	if parsedURL.Scheme == "http" {
+		logger.Error(nil, "Releases API URL must use HTTPS for security", "url", releasesURL)
+		return fmt.Errorf("releases API URL must use HTTPS for security")
+	}
+
+	if parsedURL.Scheme != "https" {
+		logger.Error(nil, "Invalid URL scheme for releases API", "scheme", parsedURL.Scheme, "url", releasesURL)
+		return fmt.Errorf("releases API URL must use either HTTP or HTTPS scheme, got: %s", parsedURL.Scheme)
+	}
+
+	logger.Info("Releases API URL validation passed", "url", releasesURL)
+	return nil
+}
+
+// validateArchiveURL validates the archive URL and ensures it uses HTTPS unless explicitly allowed
+func validateArchiveURL(ctx context.Context, archiveURL string, tlsConfig *datamodel.TLSConfig) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if archiveURL == "" {
+		return nil
+	}
+
+	logger.Info("Validating archive URL", "url", archiveURL)
+	parsedURL, err := url.Parse(archiveURL)
+	if err != nil {
+		logger.Error(err, "Failed to parse archive URL", "url", archiveURL)
+		return fmt.Errorf("invalid archive URL: %w", err)
+	}
+
+	// Check if URL uses HTTP instead of HTTPS
+	if parsedURL.Scheme == "http" {
+		logger.Error(nil, "Archive URL must use HTTPS for security", "url", archiveURL)
+		return fmt.Errorf("archive URL must use HTTPS for security")
+	}
+
+	if parsedURL.Scheme != "https" {
+		logger.Error(nil, "Invalid URL scheme for archive", "scheme", parsedURL.Scheme, "url", archiveURL)
+		return fmt.Errorf("archive URL must use either HTTP or HTTPS scheme, got: %s", parsedURL.Scheme)
+	}
+
+	// Validate that the URL ends with .zip
+	if filepath.Ext(parsedURL.Path) != ".zip" {
+		logger.Error(nil, "Archive URL must point to a .zip file", "extension", filepath.Ext(parsedURL.Path), "url", archiveURL)
+		return fmt.Errorf("archive URL must point to a .zip file, got: %s", filepath.Ext(parsedURL.Path))
+	}
+
+	logger.Info("Archive URL validation passed", "url", archiveURL)
+	return nil
+}
 
 // getGlobalTerraformPaths returns the terraform paths, allowing override for testing
 func getGlobalTerraformPaths() (dir, binary, marker string) {
@@ -64,11 +137,11 @@ var (
 // Install installs Terraform using a global shared binary approach.
 // It uses a global mutex to ensure thread-safe access to the shared Terraform binary.
 // This approach prevents concurrent file system operations that were causing state lock errors.
-func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
+func Install(ctx context.Context, installer *install.Installer, tfDir string, terraformConfig datamodel.TerraformConfigProperties, secrets map[string]recipes.SecretData) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Use global shared binary approach with proper locking
-	execPath, err := ensureGlobalTerraformBinary(ctx, installer, logger)
+	execPath, err := ensureGlobalTerraformBinary(ctx, installer, logger, terraformConfig, secrets)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +160,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 
 // ensureGlobalTerraformBinary ensures a global shared Terraform binary is available.
 // Uses mutex-based locking to prevent race conditions during concurrent access.
-func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Installer, logger logr.Logger) (string, error) {
+func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Installer, logger logr.Logger, terraformConfig datamodel.TerraformConfigProperties, secrets map[string]recipes.SecretData) (string, error) {
 	// Get dynamic paths (allows testing override)
 	globalDir, globalBinary, globalMarker := getGlobalTerraformPaths()
 
@@ -144,21 +217,147 @@ func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Install
 		return "", fmt.Errorf("failed to create global terraform directory: %w", err)
 	}
 
+	// Validate the URLs
+	var tlsConfig *datamodel.TLSConfig
+	var useArchiveURL bool
+	if terraformConfig.Version != nil {
+		tlsConfig = terraformConfig.Version.TLS
+
+		// Check if releasesArchiveUrl is provided (takes precedence)
+		if terraformConfig.Version.ReleasesArchiveURL != "" {
+			if err := validateArchiveURL(ctx, terraformConfig.Version.ReleasesArchiveURL, tlsConfig); err != nil {
+				return "", err
+			}
+			useArchiveURL = true
+			logger.Info(fmt.Sprintf("Using direct archive URL: %s", terraformConfig.Version.ReleasesArchiveURL))
+		} else if err := validateReleasesURL(ctx, terraformConfig.Version.ReleasesAPIBaseURL, tlsConfig); err != nil {
+			return "", err
+		}
+	}
+
+	// Check if we need to use custom source for TLS configuration, authentication, or archive URL
+	needsCustomSource := useArchiveURL ||
+		(tlsConfig != nil && tlsConfig.CACertificate != nil) ||
+		(terraformConfig.Version != nil && terraformConfig.Version.Authentication != nil)
+
 	installStartTime := time.Now()
-	execPath, err := installer.Ensure(ctx, []src.Source{
-		&releases.LatestVersion{
-			Product:    product.Terraform,
-			InstallDir: globalDir,
+
+	var execPath string
+	var err error
+
+	if needsCustomSource {
+		logger.Info("Using custom source for Terraform installation due to TLS configuration or authentication")
+
+		// Log security warnings if applicable
+		if tlsConfig != nil && tlsConfig.CACertificate != nil {
+			logger.Info("Using custom CA certificate for Terraform releases")
+		}
+		if terraformConfig.Version != nil && terraformConfig.Version.Authentication != nil {
+			logger.Info("Using authentication for Terraform releases")
+		}
+		if useArchiveURL {
+			logger.Info("Using direct archive URL for Terraform download")
+		}
+
+		// Use custom installation method
+		execPath, err = customsource.InstallTerraformWithTLS(ctx, globalDir, terraformConfig, secrets)
+		if err != nil {
+			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
+				[]attribute.KeyValue{
+					metrics.TerraformVersionAttrKey.String(terraformConfig.Version.Version),
+					metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
+				},
+			)
+			return "", fmt.Errorf("failed to install terraform with custom TLS: %w", err)
+		}
+	} else {
+		// Use standard hc-install sources
+		var terraformSource src.Source
+
+		if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
+			logger.Info(fmt.Sprintf("Installing Terraform version: %s", terraformConfig.Version.Version))
+
+			version, err := version.NewVersion(terraformConfig.Version.Version)
+			if err != nil {
+				return "", fmt.Errorf("failed to parse terraform version: %w", err)
+			}
+
+			if terraformConfig.Version.ReleasesAPIBaseURL != "" {
+				logger.Info(fmt.Sprintf("Using custom releases API base URL: %s", terraformConfig.Version.ReleasesAPIBaseURL))
+
+				terraformSource = &releases.ExactVersion{
+					Product:    product.Terraform,
+					InstallDir: globalDir,
+					Version:    version,
+					ApiBaseURL: terraformConfig.Version.ReleasesAPIBaseURL,
+				}
+			} else {
+				logger.Info("Using default releases API base URL")
+
+				terraformSource = &releases.ExactVersion{
+					Product:    product.Terraform,
+					InstallDir: globalDir,
+					Version:    version,
+				}
+			}
+		} else {
+			logger.Info("Installing latest version of Terraform")
+
+			if terraformConfig.Version != nil && terraformConfig.Version.ReleasesAPIBaseURL != "" {
+				logger.Info(fmt.Sprintf("Using custom releases API base URL: %s", terraformConfig.Version.ReleasesAPIBaseURL))
+
+				terraformSource = &releases.LatestVersion{
+					Product:    product.Terraform,
+					InstallDir: globalDir,
+					ApiBaseURL: terraformConfig.Version.ReleasesAPIBaseURL,
+				}
+			} else {
+				logger.Info("Using default releases API base URL")
+
+				terraformSource = &releases.LatestVersion{
+					Product:    product.Terraform,
+					InstallDir: globalDir,
+				}
+			}
+		}
+
+		// Re-visit this: consider checking if an existing installation of same version of Terraform is available.
+		// For initial iteration we will always install Terraform for every execution of the recipe driver.
+		execPath, err = installer.Ensure(ctx, []src.Source{terraformSource})
+		if err != nil {
+			// Determine version for metrics
+			versionStr := "latest"
+			if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
+				versionStr = terraformConfig.Version.Version
+			}
+
+			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
+				[]attribute.KeyValue{
+					metrics.TerraformVersionAttrKey.String(versionStr),
+					metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
+				},
+			)
+			return "", fmt.Errorf("failed to install Terraform to global location: %w", err)
+		}
+	}
+
+	// Determine the version string for logging and metrics
+	versionStr := "latest"
+	if terraformConfig.Version != nil && terraformConfig.Version.Version != "" {
+		versionStr = terraformConfig.Version.Version
+	}
+
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
+		[]attribute.KeyValue{
+			metrics.TerraformVersionAttrKey.String(versionStr),
+			metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
 		},
-	})
-	if err != nil {
-		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
-			[]attribute.KeyValue{
-				metrics.TerraformVersionAttrKey.String("latest"),
-				metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
-			},
-		)
-		return "", fmt.Errorf("failed to install Terraform to global location: %w", err)
+	)
+
+	if versionStr == "latest" {
+		logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
+	} else {
+		logger.Info(fmt.Sprintf("Terraform version %s installed to: %q", versionStr, execPath))
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
