@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '18'
 
@@ -65,7 +65,7 @@ jobs:
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Create a temporary file system 
         run: |
           mkdir tmp-radius-bicep-extension

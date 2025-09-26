@@ -9,6 +9,10 @@ terraform {
       version = "1.22.0"
       configuration_aliases = [postgresql.pgdb-test]
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "0.12.1"
+    }
   }
 }
 
@@ -70,7 +74,7 @@ resource "kubernetes_service" "postgres" {
 }
 
 resource "time_sleep" "wait_120_seconds" {
-  depends_on = [kubernetes_service.postgres]
+  depends_on = [kubernetes_service.postgres, kubernetes_deployment.postgres]
   create_duration = "120s"
 }
 

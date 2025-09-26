@@ -37,25 +37,14 @@ func TestRadiusInstallationCheck_Run(t *testing.T) {
 		expectError   bool
 	}{
 		{
-			name: "radius and contour installed",
+			name: "radius installed",
 			installState: helm.InstallState{
 				RadiusInstalled:  true,
 				RadiusVersion:    "v0.43.0",
-				ContourInstalled: true,
-				ContourVersion:   "v1.25.0",
+				ContourInstalled: false, // Set to false now due to hard disable
 			},
 			expectSuccess: true,
-			expectMessage: "Radius is installed (version: v0.43.0), Contour is installed (version: v1.25.0)",
-		},
-		{
-			name: "radius installed but contour missing",
-			installState: helm.InstallState{
-				RadiusInstalled:  true,
-				RadiusVersion:    "v0.43.0",
-				ContourInstalled: false,
-			},
-			expectSuccess: true,
-			expectMessage: "Radius is installed (version: v0.43.0), Contour is not installed (will be installed during upgrade)",
+			expectMessage: "Radius is installed (version: v0.43.0) (Contour installation temporarily disabled due to Bitnami repository changes.)",
 		},
 		{
 			name: "radius not installed",

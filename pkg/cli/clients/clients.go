@@ -60,6 +60,16 @@ type DeploymentOptions struct {
 	ProgressChan chan<- ResourceProgress
 }
 
+// DeleteOptions is the options passed when deleting an application.
+type DeleteOptions struct {
+	// ApplicationNameOrID is the name or resource ID of the application to delete.
+	ApplicationNameOrID string
+	// ProgressText is the text to display during the deletion progress.
+	ProgressText string
+	// ProgressChan is a channel used to signal progress of the deletion operation.
+	ProgressChan chan<- ResourceProgress
+}
+
 type ResourceStatus string
 
 const (
@@ -214,6 +224,18 @@ type ApplicationsManagementClient interface {
 
 	// DeleteResourceGroup deletes a resource group by its name.
 	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+
+	// ListResourcesInResourceGroup lists all resources in a specific resource group.
+	ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error)
+
+	// ListResourcesInResourceGroupFiltered lists resources in a resource group, optionally filtered by environment and/or application.
+	ListResourcesInResourceGroupFiltered(ctx context.Context, planeName string, resourceGroupName string, environmentID string, applicationID string) ([]generated.GenericResource, error)
+
+	// ListResourcesOfTypeInResourceGroup lists resources of a specific type in a resource group.
+	ListResourcesOfTypeInResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resourceType string) ([]generated.GenericResource, error)
+
+	// ListResourcesOfTypeInResourceGroupFiltered lists resources of a specific type in a resource group, optionally filtered by environment and/or application.
+	ListResourcesOfTypeInResourceGroupFiltered(ctx context.Context, planeName string, resourceGroupName string, resourceType string, environmentID string, applicationID string) ([]generated.GenericResource, error)
 
 	// ListResourceProviders lists all resource providers in the configured scope.
 	ListResourceProviders(ctx context.Context, planeName string) ([]ucp_v20231001preview.ResourceProviderResource, error)

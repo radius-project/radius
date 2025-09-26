@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2025 The Radius Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,35 +19,33 @@ package resource_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
-func Test_AWS_S3Bucket(t *testing.T) {
-	template := "testdata/aws-s3-bucket.bicep"
-	name := testutil.GenerateS3BucketName()
+func Test_AWS_LogsLogGroup(t *testing.T) {
+	template := "testdata/aws-logs-loggroup.bicep"
+	name := "radiusfunctionaltest-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp),
+			Executor:                               step.NewDeployExecutor(template, "logGroupName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.AWSS3BucketResourceType,
+						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName": name,
+							"LogGroupName":    name,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
-								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue",
-								},
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,
@@ -64,15 +62,15 @@ func Test_AWS_S3Bucket(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_AWS_S3Bucket_Existing(t *testing.T) {
-	template := "testdata/aws-s3-bucket.bicep"
-	templateExisting := "testdata/aws-s3-bucket-existing.bicep"
-	name := testutil.GenerateS3BucketName()
+func Test_AWS_LogsLogGroup_Existing(t *testing.T) {
+	template := "testdata/aws-logs-loggroup.bicep"
+	templateExisting := "testdata/aws-logs-loggroup-existing.bicep"
+	name := "radiusfunctionaltest-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp),
+			Executor:                               step.NewDeployExecutor(template, "logGroupName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -80,15 +78,12 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.AWSS3BucketResourceType,
+						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName": name,
+							"LogGroupName":    name,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
-								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue",
-								},
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,
@@ -102,22 +97,19 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 		// The following step deploys an existing resource and validates that it retrieves the same
 		// resource as was deployed above
 		{
-			Executor:                               step.NewDeployExecutor(templateExisting, "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(templateExisting, "logGroupName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
 						Name:       name,
-						Type:       validation.AWSS3BucketResourceType,
+						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: name,
 						Properties: map[string]any{
-							"BucketName": name,
+							"LogGroupName":    name,
+							"RetentionInDays": float64(7),
 							"Tags": []any{
-								map[string]any{
-									"Key":   "testKey",
-									"Value": "testValue",
-								},
 								map[string]any{
 									"Key":   "RadiusCreationTimestamp",
 									"Value": creationTimestamp,

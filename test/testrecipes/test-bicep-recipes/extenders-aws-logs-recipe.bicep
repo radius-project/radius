@@ -1,12 +1,13 @@
 extension aws
 
 param creationTimestamp string
-param bucketName string
+param logGroupName string
 
-resource s3Bucket 'AWS.S3/Bucket@default' = {
-  alias: bucketName
+resource logGroup 'AWS.Logs/LogGroup@default' = {
+  alias: logGroupName
   properties: {
-    BucketName: bucketName
+    LogGroupName: logGroupName
+    RetentionInDays: 7
     Tags: [
       {
         Key: 'RadiusCreationTimestamp'

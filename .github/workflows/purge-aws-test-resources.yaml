@@ -34,9 +34,9 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.2.1
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
@@ -45,7 +45,7 @@ jobs:
         run: |
           ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
       - name: Create issue for failing purge aws test resources run
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: failure()
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
