@@ -411,6 +411,12 @@ func RequireResourceGroupNameArgs(cmd *cobra.Command, args []string, workspace *
 			return "", fmt.Errorf("resource group name is not provided or is empty ")
 		}
 	} else {
+		// Check if workspace has a default scope set
+		if workspace.Scope == "" {
+			return "", fmt.Errorf("no resource group name provided and no default resource group set, " +
+				"either pass in a resource group name or set a default resource group by using `rad group switch`")
+		}
+
 		id, err := resources.ParseScope(workspace.Scope)
 		if err != nil {
 			return "", err
