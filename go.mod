@@ -6,7 +6,8 @@ go 1.24.5
 // xref: https://github.com/opencontainers/go-digest/pull/66
 replace github.com/opencontainers/go-digest => github.com/opencontainers/go-digest v1.0.1-0.20220411205349-bde1400a84be
 
-replace github.com/radius-project/radius/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
+// replace github.com/radius-project/radius/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
+replace github.com/Azure/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.2
@@ -19,6 +20,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.3
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1
+	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-00010101000000-000000000000
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.7.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
@@ -75,7 +77,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/projectcontour/contour v1.32.1
 	github.com/prometheus/client_golang v1.23.0
-	github.com/radius-project/radius/bicep-types/src/bicep-types-go v0.0.0-00010101000000-000000000000
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
@@ -83,7 +84,6 @@ require (
 	github.com/stern/stern v1.32.0
 	github.com/stretchr/testify v1.10.0
 	github.com/wI2L/jsondiff v0.7.0
-	github.com/willdavsmith/bicep-tools-go v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.62.0
 	go.opentelemetry.io/otel v1.37.0
@@ -185,7 +185,6 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
-	github.com/willdavsmith/bicep-types-go v0.1.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/bicep-types/src/bicep-types-go/factory"
+	"github.com/Azure/bicep-types/src/bicep-types-go/index"
+	"github.com/Azure/bicep-types/src/bicep-types-go/types"
+	"github.com/Azure/bicep-types/src/bicep-types-go/writers"
 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
-	"github.com/radius-project/radius/bicep-types/src/bicep-types-go/factory"
-	"github.com/radius-project/radius/bicep-types/src/bicep-types-go/index"
-	"github.com/radius-project/radius/bicep-types/src/bicep-types-go/types"
-	"github.com/radius-project/radius/bicep-types/src/bicep-types-go/writers"
 )
 
 // ConversionResult represents the output of converting a manifest to Bicep types
