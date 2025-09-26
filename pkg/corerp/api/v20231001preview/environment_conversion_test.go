@@ -1175,3 +1175,127 @@ func Test_fromSecretReferenceDatamodel(t *testing.T) {
 		})
 	}
 }
+
+func Test_toFromTLSConfigDatamodel(t *testing.T) {
+	tests := []struct {
+		name              string
+		config            *RecipeConfigProperties
+		expectedDataModel *datamodel.TerraformVersionConfig
+	}{
+		{
+			name: "TLS config without skipVerify (only CA or empty)",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Version: &TerraformVersionConfig{
+						Version:            to.Ptr("1.7.0"),
+						ReleasesAPIBaseURL: to.Ptr("https://terraform.example.com"),
+						TLS:                &TLSConfig{
+							// SkipVerify removed
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformVersionConfig{
+				Version:            "1.7.0",
+				ReleasesAPIBaseURL: "https://terraform.example.com",
+				TLS:                &datamodel.TLSConfig{
+					// SkipVerify removed
+				},
+			},
+		},
+		{
+			name: "TLS config with CA certificate",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Version: &TerraformVersionConfig{
+						Version:            to.Ptr("1.8.0"),
+						ReleasesAPIBaseURL: to.Ptr("https://private.terraform.io"),
+						TLS: &TLSConfig{
+							// SkipVerify removed
+							CaCertificate: &SecretReference{
+								Source: to.Ptr("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets"),
+								Key:    to.Ptr("ca-cert"),
+							},
+						},
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformVersionConfig{
+				Version:            "1.8.0",
+				ReleasesAPIBaseURL: "https://private.terraform.io",
+				TLS: &datamodel.TLSConfig{
+					// SkipVerify removed
+					CACertificate: &datamodel.SecretReference{
+						Source: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/tlsSecrets",
+						Key:    "ca-cert",
+					},
+				},
+			},
+		},
+		{
+			name: "No TLS config",
+			config: &RecipeConfigProperties{
+				Terraform: &TerraformConfigProperties{
+					Version: &TerraformVersionConfig{
+						Version:            to.Ptr("1.9.0"),
+						ReleasesAPIBaseURL: to.Ptr("https://releases.hashicorp.com"),
+					},
+				},
+			},
+			expectedDataModel: &datamodel.TerraformVersionConfig{
+				Version:            "1.9.0",
+				ReleasesAPIBaseURL: "https://releases.hashicorp.com",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test conversion to datamodel
+			result := toRecipeConfigDatamodel(tt.config)
+
+			require.NotNil(t, result.Terraform.Version)
+			require.Equal(t, tt.expectedDataModel.Version, result.Terraform.Version.Version)
+			require.Equal(t, tt.expectedDataModel.ReleasesAPIBaseURL, result.Terraform.Version.ReleasesAPIBaseURL)
+
+			// Check TLS config
+			if tt.expectedDataModel.TLS != nil {
+				require.NotNil(t, result.Terraform.Version.TLS)
+				// SkipVerify removed from data model
+
+				if tt.expectedDataModel.TLS.CACertificate != nil {
+					require.NotNil(t, result.Terraform.Version.TLS.CACertificate)
+					require.Equal(t, tt.expectedDataModel.TLS.CACertificate.Source, result.Terraform.Version.TLS.CACertificate.Source)
+					require.Equal(t, tt.expectedDataModel.TLS.CACertificate.Key, result.Terraform.Version.TLS.CACertificate.Key)
+				} else {
+					require.Nil(t, result.Terraform.Version.TLS.CACertificate)
+				}
+			} else {
+				require.Nil(t, result.Terraform.Version.TLS)
+			}
+
+			// Test round-trip conversion back to versioned model
+			versioned := fromRecipeConfigDatamodel(result)
+
+			require.NotNil(t, versioned.Terraform.Version)
+			require.Equal(t, tt.config.Terraform.Version.Version, versioned.Terraform.Version.Version)
+			require.Equal(t, tt.config.Terraform.Version.ReleasesAPIBaseURL, versioned.Terraform.Version.ReleasesAPIBaseURL)
+
+			// Check TLS config after round-trip
+			if tt.config.Terraform.Version.TLS != nil {
+				require.NotNil(t, versioned.Terraform.Version.TLS)
+				// SkipVerify removed from versioned model
+
+				if tt.config.Terraform.Version.TLS.CaCertificate != nil {
+					require.NotNil(t, versioned.Terraform.Version.TLS.CaCertificate)
+					require.Equal(t, tt.config.Terraform.Version.TLS.CaCertificate.Source, versioned.Terraform.Version.TLS.CaCertificate.Source)
+					require.Equal(t, tt.config.Terraform.Version.TLS.CaCertificate.Key, versioned.Terraform.Version.TLS.CaCertificate.Key)
+				} else {
+					require.Nil(t, versioned.Terraform.Version.TLS.CaCertificate)
+				}
+			} else {
+				require.Nil(t, versioned.Terraform.Version.TLS)
+			}
+		})
+	}
+}

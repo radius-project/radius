@@ -2703,6 +2703,16 @@
         ]
       }
     },
+    "ClientCertConfig": {
+      "type": "object",
+      "description": "Client certificate (mTLS) configuration for authentication.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key. A secret named 'passphrase' is optional, containing the passphrase for the private key."
+        }
+      }
+    },
     "ConnectionProperties": {
       "type": "object",
       "description": "Connection Properties",
@@ -4247,6 +4257,23 @@
         "templatePath"
       ]
     },
+    "RegistryAuthConfig": {
+      "type": "object",
+      "description": "Authentication configuration for accessing private Terraform registry mirrors.",
+      "properties": {
+        "token": {
+          "$ref": "#/definitions/TokenConfig",
+          "description": "Token authentication configuration for registry authentication."
+        },
+        "additionalHosts": {
+          "type": "array",
+          "description": "Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "RegistrySecretConfig": {
       "type": "object",
       "description": "Registry Secret Configuration used to authenticate to private bicep registries.",
@@ -4703,6 +4730,16 @@
         }
       }
     },
+    "TLSConfig": {
+      "type": "object",
+      "description": "TLS configuration options for HTTPS connections.",
+      "properties": {
+        "caCertificate": {
+          "$ref": "#/definitions/SecretReference",
+          "description": "Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle."
+        }
+      }
+    },
     "TcpHealthProbeProperties": {
       "type": "object",
       "description": "Specifies the properties for readiness/liveness probe using TCP",
@@ -4741,6 +4778,10 @@
             "type": "array",
             "x-ms-identifiers": []
           }
+        },
+        "version": {
+          "$ref": "#/definitions/TerraformVersionConfig",
+          "description": "Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API."
         }
       }
     },
@@ -4759,6 +4800,32 @@
         }
       ],
       "x-ms-discriminator-value": "terraform"
+    },
+    "TerraformVersionConfig": {
+      "type": "object",
+      "description": "Configuration for Terraform binary installation. Allows specifying a version and an optional custom base URL for the releases API.",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example: '1.7.0'"
+        },
+        "releasesArchiveUrl": {
+          "type": "string",
+          "description": "Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this URL instead of using the releases API. This takes precedence over releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'"
+        },
+        "releasesApiBaseUrl": {
+          "type": "string",
+          "description": "Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site. The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'"
+        },
+        "tls": {
+          "$ref": "#/definitions/TLSConfig",
+          "description": "TLS configuration for connecting to the releases API."
+        },
+        "authentication": {
+          "$ref": "#/definitions/RegistryAuthConfig",
+          "description": "Authentication configuration for accessing the Terraform binary releases API."
+        }
+      }
     },
     "TlsMinVersion": {
       "type": "string",
@@ -4782,6 +4849,16 @@
             "description": "TLS Version 1.3"
           }
         ]
+      }
+    },
+    "TokenConfig": {
+      "type": "object",
+      "description": "Token authentication configuration.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token' containing the token value."
+        }
       }
     },
     "ValueFromProperties": {

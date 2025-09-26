@@ -287,6 +287,14 @@ type CertificateObjectProperties struct {
 	Version *string
 }
 
+// ClientCertConfig - Client certificate (mTLS) configuration for authentication.
+type ClientCertConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the client certificate and key. The secret store must have
+// secrets named 'cert' and 'key' containing the PEM-encoded certificate and
+// private key. A secret named 'passphrase' is optional, containing the passphrase for the private key.
+	Secret *string
+}
+
 // ConnectionProperties - Connection Properties
 type ConnectionProperties struct {
 // REQUIRED; The source of the connection
@@ -1261,6 +1269,16 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
+// RegistryAuthConfig - Authentication configuration for accessing private Terraform registry mirrors.
+type RegistryAuthConfig struct {
+// Additional hosts that should use the same authentication credentials. This is useful when a registry mirror redirects to
+// other hosts (e.g., GitLab Pages mirrors redirecting to gitlab.com).
+	AdditionalHosts []*string
+
+// Token authentication configuration for registry authentication.
+	Token *TokenConfig
+}
+
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
 type RegistrySecretConfig struct {
 // The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
@@ -1493,6 +1511,13 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 	}
 }
 
+// TLSConfig - TLS configuration options for HTTPS connections.
+type TLSConfig struct {
+// Reference to a secret containing a custom CA certificate bundle to use for TLS verification. The secret must contain a
+// key named 'ca-cert' with the PEM-encoded certificate bundle.
+	CaCertificate *SecretReference
+}
+
 // TerraformConfigProperties - Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as
 // part of Recipe deployment.
 type TerraformConfigProperties struct {
@@ -1503,6 +1528,9 @@ type TerraformConfigProperties struct {
 // other APIs. For more information, please see:
 // https://developer.hashicorp.com/terraform/language/providers/configuration.
 	Providers map[string][]*ProviderConfigProperties
+
+// Specifies the version of the Terraform binary to install and an optional custom base URL for the releases API.
+	Version *TerraformVersionConfig
 }
 
 // TerraformRecipeProperties - Represents Terraform recipe properties.
@@ -1528,6 +1556,37 @@ func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
 	}
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary installation. Allows specifying a version and an optional custom
+// base URL for the releases API.
+type TerraformVersionConfig struct {
+// Authentication configuration for accessing the Terraform binary releases API.
+	Authentication *RegistryAuthConfig
+
+// Optional base URL for a custom Terraform releases API. If set, Terraform will be downloaded from this base URL instead
+// of the default HashiCorp releases site. The directory structure of the custom URL
+// must match the HashiCorp releases site (including the index.json files). Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL *string
+
+// Optional direct URL to a Terraform binary archive (.zip file). If set, Terraform will be downloaded directly from this
+// URL instead of using the releases API. This takes precedence over
+// releasesApiBaseUrl. The URL must point to a valid Terraform release archive. Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform1.7.0linux_amd64.zip'
+	ReleasesArchiveURL *string
+
+// TLS configuration for connecting to the releases API.
+	TLS *TLSConfig
+
+// Specific version of the Terraform binary to install. If omitted, the system may default to the latest stable version. Example:
+// '1.7.0'
+	Version *string
+}
+
+// TokenConfig - Token authentication configuration.
+type TokenConfig struct {
+// The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret
+// named 'token' containing the token value.
+	Secret *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
