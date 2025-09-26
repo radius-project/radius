@@ -40,6 +40,7 @@ generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Messaging && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Datastores && npx$(CMD_EXT) tsp compile .
+	cd typespec/Radius.Core && npx$(CMD_EXT) tsp compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -80,6 +81,11 @@ generate-genericcliclient: generate-node-installed generate-autorest-installed
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/corerp/api/README.md --tag=core-2023-10-01-preview && rm pkg/corerp/api/v20231001preview/go.mod
+
+.PHONY: generate-rad-corerp-client-2025-08-01-preview
+generate-rad-corerp-client-2025-08-01-preview: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (Autorest).
+	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	autorest pkg/corerp/api/README.md --tag=core-2025-08-01-preview && rm pkg/corerp/api/v20250801preview/go.mod
 
 .PHONY: generate-rad-datastoresrp-client
 generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).

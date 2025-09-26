@@ -40,6 +40,15 @@ modelerfour:
   treat-type-object-as-anything: false
 ```
 
+#### Tag: core-2025-08-01-preview
+
+These settings apply only when `--tag=core-2025-08-01-preview` is specified on the command line.
+
+```yaml $(tag) == 'core-2025-08-01-preview'
+input-file:
+  - ../../../swagger/specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json
+```
+
 ### Common
 
 The following configuration generates track2 go models and client.
@@ -63,4 +72,12 @@ These settings apply only when `--tag=core-2023-10-01-preview` is specified on t
 
 ```yaml $(tag) == 'core-2023-10-01-preview'
 output-folder: ./v20231001preview
+```
+
+#### Tag: core-2025-08-01-preview
+
+These settings apply only when `--tag=core-2025-08-01-preview` is specified on the command line.
+
+```yaml $(tag) == 'core-2025-08-01-preview'
+output-folder: ./v20250801preview
 ```
