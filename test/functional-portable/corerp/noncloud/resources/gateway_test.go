@@ -47,6 +47,7 @@ type GatewayTestConfig struct {
 }
 
 func Test_GatewayDNS(t *testing.T) {
+	t.Skip("Skipping test temporarily due to Bitnami repo issues affecting Contour installation - issue #10484")
 	template := "testdata/corerp-resources-gateway-dns.bicep"
 	name := "corerp-resources-gateway-dns"
 	appNamespace := "default-corerp-resources-gateway-dns"
@@ -126,6 +127,7 @@ func Test_GatewayDNS(t *testing.T) {
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
+	t.Skip("Skipping test temporarily due to Bitnami repo issues affecting Contour installation - issue #10484")
 	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
 	name := "corerp-resources-gateway-sslpassthrough"
 	appNamespace := "default-corerp-resources-gateway-sslpassthrough"
@@ -192,6 +194,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 }
 
 func Test_Gateway_Timeout(t *testing.T) {
+	t.Skip("Skipping test temporarily due to Bitnami repo issues affecting Contour installation - issue #10484")
 	template := "testdata/corerp-resources-gateway-timeout.bicep"
 	appName := "gateway-timeout-app"
 	appNamespace := "default-gateway-timeout-app"
@@ -309,6 +312,7 @@ func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 }
 
 func Test_Gateway_TLSTermination(t *testing.T) {
+	t.Skip("Skipping test temporarily due to Bitnami repo issues affecting Contour installation - issue #10484")
 	template := "testdata/corerp-resources-gateway-tlstermination.bicep"
 	name := "corerp-resources-gateway-tlstermination"
 	appNamespace := "default-corerp-resources-gateway-tlstermination"
@@ -381,6 +385,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 }
 
 func Test_Gateway_Failure(t *testing.T) {
+	t.Skip("Skipping test temporarily due to Bitnami repo issues affecting Contour installation - issue #10484")
 	template := "testdata/corerp-resources-gateway-failure.bicep"
 	name := "corerp-resources-gateway-failure"
 	secret := "secret"
