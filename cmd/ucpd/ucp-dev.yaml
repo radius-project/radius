@@ -47,6 +47,7 @@ initialization:
       properties:
         resourceProviders:
           Applications.Core: "http://localhost:8080"
+          Radius.Core: "http://localhost:8080"
           Applications.Messaging: "http://localhost:8080"
           Applications.Dapr: "http://localhost:8080"
           Applications.Datastores: "http://localhost:8080"
