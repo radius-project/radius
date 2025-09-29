@@ -64,7 +64,7 @@ var (
 // Install installs Terraform using a global shared binary approach.
 // It uses a global mutex to ensure thread-safe access to the shared Terraform binary.
 // This approach prevents concurrent file system operations that were causing state lock errors.
-func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
+func Install(ctx context.Context, installer *install.Installer, tfDir string, logLevel string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Use global shared binary approach with proper locking
@@ -80,7 +80,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 	}
 
 	// Configure Terraform logs
-	configureTerraformLogs(ctx, tf)
+	configureTerraformLogs(ctx, tf, logLevel)
 
 	return tf, nil
 }
