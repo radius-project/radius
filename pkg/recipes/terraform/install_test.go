@@ -25,6 +25,7 @@ import (
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,7 +57,7 @@ func TestInstall_SuccessfulDownload(t *testing.T) {
 	installer := install.NewInstaller()
 
 	// Call Install function - should download to global location
-	tf, err := Install(ctx, installer, tmpDir)
+	tf, err := Install(ctx, installer, tmpDir, datamodel.TerraformConfigProperties{}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, tf)
 
@@ -102,7 +103,7 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir1)
 
-	tf1, err := Install(ctx, installer, tmpDir1)
+	tf1, err := Install(ctx, installer, tmpDir1, datamodel.TerraformConfigProperties{}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, tf1)
 
@@ -121,7 +122,7 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir2)
 
-	tf2, err := Install(ctx, installer, tmpDir2)
+	tf2, err := Install(ctx, installer, tmpDir2, datamodel.TerraformConfigProperties{}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, tf2)
 
@@ -165,11 +166,11 @@ func TestInstall_MultipleConcurrentCallsUseSameBinary(t *testing.T) {
 	defer os.RemoveAll(tmpDir2)
 
 	// Call Install from different execution contexts
-	tf1, err := Install(ctx, installer, tmpDir1)
+	tf1, err := Install(ctx, installer, tmpDir1, datamodel.TerraformConfigProperties{}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, tf1)
 
-	tf2, err := Install(ctx, installer, tmpDir2)
+	tf2, err := Install(ctx, installer, tmpDir2, datamodel.TerraformConfigProperties{}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, tf2)
 
@@ -237,7 +238,7 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 
 	for _, tmpDir := range tmpDirs {
 		go func(dir string) {
-			tf, err := Install(ctx, installer, dir)
+			tf, err := Install(ctx, installer, dir, datamodel.TerraformConfigProperties{}, nil)
 			if err != nil {
 				errors <- err
 				return

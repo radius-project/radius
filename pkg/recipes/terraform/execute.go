@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
@@ -63,12 +64,21 @@ type executor struct {
 	kubernetesClients kubernetesclientprovider.KubernetesClientProvider
 }
 
+// getEnvTerraformConfig extracts the terraform configuration from options, defaulting to empty if not configured
+func getEnvTerraformConfig(options Options) datamodel.TerraformConfigProperties {
+	if options.EnvConfig != nil {
+		return options.EnvConfig.RecipeConfig.Terraform
+	}
+	return datamodel.TerraformConfigProperties{}
+}
+
 // Deploy ensures Terraform is available, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	terraformConfig := getEnvTerraformConfig(options)
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +128,8 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	terraformConfig := getEnvTerraformConfig(options)
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	// Note: We use a global shared binary approach, so we should NOT call i.Remove()
 	// as it would remove the shared global binary that other operations might be using.
 	// The global binary will persist across operations to eliminate race conditions.
@@ -172,7 +183,8 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	terraformConfig := getEnvTerraformConfig(options)
+	tf, err := Install(ctx, i, options.RootDir, terraformConfig, options.Secrets)
 	if err != nil {
 		return nil, err
 	}
