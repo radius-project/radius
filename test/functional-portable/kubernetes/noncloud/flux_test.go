@@ -17,8 +17,10 @@ limitations under the License.
 package kubernetes_noncloud_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"strconv"
@@ -33,7 +35,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 
-	gitea "code.gitea.io/sdk/gitea"
 	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	git "github.com/go-git/go-git/v5"
@@ -46,20 +47,27 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/remotecommand"
 	watchtools "k8s.io/client-go/tools/watch"
 )
 
 const (
-	fluxSystemNamespace                 = "flux-system"
-	testGitServerURLEnvVariableName     = "GITEA_SERVER_URL"
-	testGitUsernameEnvVariableName      = "GITEA_USERNAME"
-	testGitEmailEnvVariableName         = "GITEA_EMAIL"
-	testGiteaAccessTokenEnvVariableName = "GITEA_ACCESS_TOKEN"
+	fluxSystemNamespace             = "flux-system"
+	testGitServerURLEnvVariableName = "GIT_HTTP_SERVER_URL"
+	testGitUsernameEnvVariableName  = "GIT_HTTP_USERNAME"
+	testGitEmailEnvVariableName     = "GIT_HTTP_EMAIL"
+	testGitPasswordEnvVariableName  = "GIT_HTTP_PASSWORD"
+
+	gitServerNamespace             = "githttpbackend"
+	gitServerLabelSelector         = "app=githttpbackend"
+	gitServerContainerName         = "githttpbackend"
+	gitServerInternalRepoURLFormat = "http://git-http.githttpbackend.svc.cluster.local:3000/%s.git"
 )
 
 func Test_Flux_Basic(t *testing.T) {
-	t.Skip("https://github.com/radius-project/radius/issues/10441")
+	// t.Skip("https://github.com/radius-project/radius/issues/10441")
 	testName := "flux-basic"
 	steps := []GitOpsTestStep{
 		{
@@ -136,25 +144,15 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	gitServerURL := os.Getenv(testGitServerURLEnvVariableName)
 	gitUsername := os.Getenv(testGitUsernameEnvVariableName)
 	gitEmail := os.Getenv(testGitEmailEnvVariableName)
-	giteaToken := os.Getenv(testGiteaAccessTokenEnvVariableName)
+	gitPassword := os.Getenv(testGitPasswordEnvVariableName)
 
-	// Create the Gitea client.
-	client, err := gitea.NewClient(gitServerURL, gitea.SetToken(giteaToken))
-	require.NoError(t, err)
+	require.NotEmpty(t, gitServerURL, fmt.Sprintf("%s must be set", testGitServerURLEnvVariableName))
+	require.NotEmpty(t, gitUsername, fmt.Sprintf("%s must be set", testGitUsernameEnvVariableName))
+	require.NotEmpty(t, gitEmail, fmt.Sprintf("%s must be set", testGitEmailEnvVariableName))
+	require.NotEmpty(t, gitPassword, fmt.Sprintf("%s must be set", testGitPasswordEnvVariableName))
 
-	// Create a new Git repository, and delete it after the test.
-	_, _, err = client.CreateRepo(gitea.CreateRepoOption{
-		Name: gitRepoName,
-	})
-	defer func() {
-		_, err := client.DeleteRepo(gitUsername, gitRepoName)
-		require.NoError(t, err)
-	}()
-	require.NoError(t, err)
-
-	// Get the repository to ensure it exists.
-	_, _, err = client.GetRepo(gitUsername, gitRepoName)
-	require.NoError(t, err)
+	cleanupGitRepo := ensureGitHTTPRepository(ctx, t, opts, gitRepoName)
+	defer cleanupGitRepo()
 
 	// Create a temp directory for the Git repository.
 	dir, err := os.MkdirTemp("", gitRepoName)
@@ -170,7 +168,8 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	require.NoError(t, err)
 
 	// Create the remote for the repository.
-	repoURL := fmt.Sprintf("%s/%s/%s.git", gitServerURL, gitUsername, gitRepoName)
+	trimmedGitServerURL := strings.TrimSuffix(gitServerURL, "/")
+	repoURL := fmt.Sprintf("%s/%s.git", trimmedGitServerURL, gitRepoName)
 	_, err = r.CreateRemote(&config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{repoURL},
@@ -194,7 +193,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		RemoteName: "origin",
 		Auth: &githttp.BasicAuth{
 			Username: gitUsername,
-			Password: giteaToken,
+			Password: gitPassword,
 		},
 	})
 	require.NoError(t, err)
@@ -206,8 +205,10 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			Name:      gitRepoName,
 			Namespace: fluxSystemNamespace,
 		},
+		Type: corev1.SecretTypeBasicAuth,
 		Data: map[string][]byte{
-			"bearerToken": []byte(giteaToken),
+			"username": []byte(gitUsername),
+			"password": []byte(gitPassword),
 		},
 	}
 	err = opts.Client.Create(ctx, secret)
@@ -224,7 +225,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			Namespace: fluxSystemNamespace,
 		},
 		Spec: sourcev1.GitRepositorySpec{
-			URL: fmt.Sprintf("http://gitea-http.gitea.svc.cluster.local:3000/%s/%s.git", gitUsername, gitRepoName),
+			URL: fmt.Sprintf(gitServerInternalRepoURLFormat, gitRepoName),
 			SecretRef: &meta.LocalObjectReference{
 				Name: gitRepoName,
 			},
@@ -265,7 +266,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			RemoteName: "origin",
 			Auth: &githttp.BasicAuth{
 				Username: gitUsername,
-				Password: giteaToken,
+				Password: gitPassword,
 			},
 		})
 		require.NoError(t, err)
@@ -419,4 +420,85 @@ func getValuesFromRadiusGitOpsConfig(configEntry reconciler.ConfigEntry) (name s
 	}
 
 	return name, namespace, resourceGroup, params
+}
+
+func ensureGitHTTPRepository(ctx context.Context, t *testing.T, opts rp.RPTestOptions, repoName string) func() {
+	podName := getGitHTTPServerPodName(ctx, t, opts)
+	repoRoot := getGitHTTPServerRepoRoot(ctx, t, opts, podName)
+
+	initCmd := fmt.Sprintf("set -euo pipefail; REPO_ROOT=%q; REPO_PATH=\"${REPO_ROOT}/%s.git\"; rm -rf \"${REPO_PATH}\"; mkdir -p \"${REPO_ROOT}\"; git init --bare \"${REPO_PATH}\"; chmod -R 777 \"${REPO_PATH}\"", repoRoot, repoName)
+	_, err := execGitHTTPCommand(ctx, opts, podName, []string{"/bin/sh", "-c", initCmd})
+	require.NoErrorf(t, err, "failed to initialize repository %s on git server", repoName)
+
+	return func() {
+		cleanupPod := getGitHTTPServerPodName(ctx, t, opts)
+		cleanupRoot := getGitHTTPServerRepoRoot(ctx, t, opts, cleanupPod)
+		cleanupCmd := fmt.Sprintf("set -euo pipefail; REPO_ROOT=%q; REPO_PATH=\"${REPO_ROOT}/%s.git\"; rm -rf \"${REPO_PATH}\"", cleanupRoot, repoName)
+		_, err := execGitHTTPCommand(ctx, opts, cleanupPod, []string{"/bin/sh", "-c", cleanupCmd})
+		require.NoErrorf(t, err, "failed to clean up repository %s on git server", repoName)
+	}
+}
+
+func getGitHTTPServerPodName(ctx context.Context, t *testing.T, opts rp.RPTestOptions) string {
+	podList, err := opts.K8sClient.CoreV1().Pods(gitServerNamespace).List(ctx, metav1.ListOptions{LabelSelector: gitServerLabelSelector})
+	require.NoError(t, err)
+	for _, pod := range podList.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+				return pod.Name
+			}
+		}
+	}
+	require.FailNowf(t, "git http backend not ready", "no ready pods found with selector %s in namespace %s", gitServerLabelSelector, gitServerNamespace)
+	return ""
+}
+
+func getGitHTTPServerRepoRoot(ctx context.Context, t *testing.T, opts rp.RPTestOptions, podName string) string {
+	output, err := execGitHTTPCommand(ctx, opts, podName, []string{"/bin/sh", "-c", "printenv GIT_SERVER_TEMP_DIR"})
+	require.NoError(t, err)
+	trimmed := strings.TrimSpace(output)
+	if trimmed == "" {
+		return "/tmp/git"
+	}
+	return trimmed
+}
+
+func execGitHTTPCommand(ctx context.Context, opts rp.RPTestOptions, podName string, command []string) (string, error) {
+	req := opts.K8sClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(gitServerNamespace).
+		SubResource("exec")
+
+	execOptions := &corev1.PodExecOptions{
+		Container: gitServerContainerName,
+		Command:   command,
+		Stdout:    true,
+		Stderr:    true,
+	}
+
+	req.VersionedParams(execOptions, scheme.ParameterCodec)
+
+	executor, err := remotecommand.NewSPDYExecutor(opts.K8sConfig, http.MethodPost, req.URL())
+	if err != nil {
+		return "", err
+	}
+
+	var stdout, stderr bytes.Buffer
+	streamErr := executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	if streamErr != nil {
+		stderrStr := strings.TrimSpace(stderr.String())
+		if stderrStr != "" {
+			return strings.TrimSpace(stdout.String()), fmt.Errorf("%w: %s", streamErr, stderrStr)
+		}
+		return strings.TrimSpace(stdout.String()), streamErr
+	}
+
+	return strings.TrimSpace(stdout.String()), nil
 }

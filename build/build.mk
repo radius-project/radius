@@ -122,6 +122,7 @@ BINARIES := docgen:./cmd/docgen \
 	ucpd:./cmd/ucpd \
 	controller:./cmd/controller \
 	testrp:./test/testrp \
+	githttpbackend:./test/githttpbackend \
 	magpiego:./test/magpiego \
 	pre-upgrade:./cmd/pre-upgrade
 
