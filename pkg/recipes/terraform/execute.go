@@ -392,7 +392,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 	if execPath := tf.ExecPath(); execPath != "" {
 		if _, err := os.Stat(execPath); err != nil {
 			logger.Info(fmt.Sprintf("ERROR: Terraform binary missing at state fetch: %s", err.Error()))
-			return nil, fmt.Errorf("terraform binary is not accessible: %w", err)
+			return nil, fmt.Errorf("terraform binary file not found: %w", err)
 		}
 	}
 
