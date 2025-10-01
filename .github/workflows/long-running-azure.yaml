@@ -555,13 +555,13 @@ jobs:
       - name: Install Flux CLI and Source Controller
         uses: ./.github/actions/install-flux
       # - name: Install Git HTTP backend
-      #   uses: ./.github/actions/install-githttpbackend
+      #   uses: ./.github/actions/install-git-http-backend
       #   with:
       #     git-username: ${{ env.GIT_HTTP_USERNAME }}
       #     git-password: ${{ secrets.GITEA_PASSWORD }}
       # - name: Port-forward to Git server
       #   run: |
-      #     kubectl port-forward -n githttpbackend svc/git-http 30080:3000 &
+      #     kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
           
       #     # Wait for port forwarding to be established
       #     sleep 5

@@ -376,7 +376,7 @@ jobs:
 
       - name: Install Git HTTP backend
         if: matrix.name == 'kubernetes-noncloud'
-        uses: ./.github/actions/install-githttpbackend
+        uses: ./.github/actions/install-git-http-backend
         with:
           git-username: ${{ env.GIT_HTTP_USERNAME }}
           git-password: ${{ secrets.GITEA_PASSWORD }}
@@ -460,7 +460,7 @@ jobs:
           }
 
           if [[ "${MATRIX_NAME}" == "kubernetes-noncloud" ]]; then
-            kubectl port-forward -n githttpbackend svc/git-http 30080:3000 >/tmp/git-http-forward.log 2>&1 &
+            kubectl port-forward -n git-http-backend svc/git-http 30080:3000 >/tmp/git-http-forward.log 2>&1 &
             PF_PID=$!
             trap cleanup_port_forward EXIT
 

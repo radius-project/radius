@@ -60,10 +60,10 @@ const (
 	testGitEmailEnvVariableName     = "GIT_HTTP_EMAIL"
 	testGitPasswordEnvVariableName  = "GIT_HTTP_PASSWORD"
 
-	gitServerNamespace             = "githttpbackend"
-	gitServerLabelSelector         = "app=githttpbackend"
-	gitServerContainerName         = "githttpbackend"
-	gitServerInternalRepoURLFormat = "http://git-http.githttpbackend.svc.cluster.local:3000/%s.git"
+	gitServerNamespace             = "git-http-backend"
+	gitServerLabelSelector         = "app=git-http-backend"
+	gitServerContainerName         = "git-http-backend"
+	gitServerInternalRepoURLFormat = "http://git-http.git-http-backend.svc.cluster.local:3000/%s.git"
 )
 
 func Test_Flux_Basic(t *testing.T) {
