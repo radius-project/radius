@@ -437,6 +437,7 @@ git --git-dir "${REPO_PATH}" config http.uploadpack true
 git --git-dir "${REPO_PATH}" update-server-info
 git --git-dir "${REPO_PATH}" symbolic-ref HEAD refs/heads/main || true
 touch "${REPO_PATH}/git-daemon-export-ok"
+chown -R nginx:nginx "${REPO_PATH}"
 chmod -R 777 "${REPO_PATH}"
 `,
 		repoRoot,
