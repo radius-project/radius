@@ -101,18 +101,10 @@ rad install kubernetes --reinstall
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
-	// Contour flags - hidden but retained for backward compatibility
-	cmd.Flags().BoolVar(&runner.ContourDisabled, "skip-contour-install", false, "Skip Contour ingress controller installation")
-	_ = cmd.Flags().MarkHidden("skip-contour-install")
-
+	cmd.Flags().BoolVar(&runner.ContourDisabled, "skip-contour-install", false, "Install Contour ingress controller (enabled by default)")
 	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
-	_ = cmd.Flags().MarkHidden("contour-chart")
-
-	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line")
-	_ = cmd.Flags().MarkHidden("contour-set")
-
-	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line")
-	_ = cmd.Flags().MarkHidden("contour-set-file")
+	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	return cmd, runner
 }

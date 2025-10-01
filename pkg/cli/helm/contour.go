@@ -14,11 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package helm contains Contour installation functionality.
-// NOTE: Contour installation is currently disabled in cluster.go due to Bitnami repository changes.
-// ref: https://community.broadcom.com/tanzu/blogs/beltran-rueda-borrego/2025/08/18/how-to-prepare-for-the-bitnami-changes-coming-soon
-// This code remains for future reactivation when the issue is resolved.
-
 package helm
 
 import (
@@ -33,9 +28,6 @@ const (
 	contourHelmRepo            = "https://charts.bitnami.com/bitnami"
 	contourReleaseName         = "contour"
 	ContourChartDefaultVersion = "11.1.1"
-
-	// ContourDisabledReason is the user-facing message explaining why Contour is disabled
-	ContourDisabledReason = "Contour installation temporarily disabled due to Bitnami repository changes."
 )
 
 type ContourChartOptions struct {
@@ -47,8 +39,6 @@ type ContourChartOptions struct {
 }
 
 // prepareContourChart prepares the Helm chart for Contour.
-//
-//lint:ignore U1000 Function temporarily unused due to Contour installation being disabled
 func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
 	var helmChart *chart.Chart
 
