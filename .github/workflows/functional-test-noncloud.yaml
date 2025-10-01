@@ -381,6 +381,20 @@ jobs:
           git-username: ${{ env.GIT_HTTP_USERNAME }}
           git-password: ${{ secrets.GITEA_PASSWORD }}
 
+      - name: Port-forward to Git server
+        if: matrix.name == 'kubernetes-noncloud'
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
+
+          # Wait for port forwarding to be established
+          sleep 5
+
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+
+          echo "Port forwarding established successfully"
+
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
         run: |

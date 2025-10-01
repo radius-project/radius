@@ -52,14 +52,6 @@ fi
 
 echo "## Recipes published to $REGISTRY_PATH" >>$GITHUB_STEP_SUMMARY
 
-BICEP_PLAIN_HTTP=${BICEP_PLAIN_HTTP:-}
-PLAIN_HTTP_FLAG=()
-case "${BICEP_PLAIN_HTTP}" in
-  1|[Tt][Rr][Uu][Ee])
-    PLAIN_HTTP_FLAG+=(--plain-http)
-    ;;
-esac
-
 for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
     FILENAME=$(basename $RECIPE)
     PUBLISH_REF="$REGISTRY_PATH/${FILENAME%.*}:$RECIPE_VERSION"
@@ -73,5 +65,5 @@ for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
 
     echo "Publishing $RECIPE to $PUBLISH_REF"
     echo "- $PUBLISH_REF" >>$GITHUB_STEP_SUMMARY
-    rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF" "${PLAIN_HTTP_FLAG[@]}"
+    rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
 done
