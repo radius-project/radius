@@ -376,7 +376,7 @@ jobs:
 
       - name: Install Git HTTP backend
         if: matrix.name == 'kubernetes-noncloud'
-        uses: ./.github/actions/install-git-http-backend
+        uses: ./.github/actions/install-githttpbackend
         with:
           git-username: ${{ env.GIT_HTTP_USERNAME }}
           git-password: ${{ secrets.GITEA_PASSWORD }}

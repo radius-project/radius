@@ -555,7 +555,7 @@ jobs:
       - name: Install Flux CLI and Source Controller
         uses: ./.github/actions/install-flux
       # - name: Install Git HTTP backend
-      #   uses: ./.github/actions/install-git-http-backend
+      #   uses: ./.github/actions/install-githttpbackend
       #   with:
       #     git-username: ${{ env.GIT_HTTP_USERNAME }}
       #     git-password: ${{ secrets.GITEA_PASSWORD }}

@@ -1,7 +1,7 @@
 # Radius Git HTTP Backend
 
 This directory contains a lightweight Git HTTP backend used by the Kubernetes
-functional tests. The binary wraps the upstream `git-http-backend`
+functional tests. The binary wraps the upstream `githttpbackend`
 executable, exposes it over HTTP with optional basic authentication, and can
 seed a bare repository on startup.
 

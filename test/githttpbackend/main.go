@@ -43,10 +43,10 @@ func main() {
 
 	backendPath, err := resolveGitHTTPBackend()
 	if err != nil {
-		log.Fatalf("unable to locate git-http-backend binary: %v", err)
+		log.Fatalf("unable to locate githttpbackend binary: %v", err)
 	}
 
-	log.Printf("Using git-http-backend at %s", backendPath)
+	log.Printf("Using githttpbackend at %s", backendPath)
 
 	handler := &cgi.Handler{
 		Path: backendPath,
@@ -152,7 +152,7 @@ func resolveGitHTTPBackend() (string, error) {
 	candidates := []string{}
 
 	if execPath := strings.TrimSpace(os.Getenv("GIT_EXEC_PATH")); execPath != "" {
-		candidates = append(candidates, filepath.Join(execPath, "git-http-backend"))
+		candidates = append(candidates, filepath.Join(execPath, "githttpbackend"))
 	}
 
 	if len(candidates) == 0 {
@@ -160,15 +160,15 @@ func resolveGitHTTPBackend() (string, error) {
 		if err == nil {
 			execPath := strings.TrimSpace(string(output))
 			if execPath != "" {
-				candidates = append(candidates, filepath.Join(execPath, "git-http-backend"))
+				candidates = append(candidates, filepath.Join(execPath, "githttpbackend"))
 			}
 		}
 	}
 
 	candidates = append(candidates,
-		"/usr/libexec/git-core/git-http-backend",
-		"/usr/lib/git-core/git-http-backend",
-		"/usr/local/libexec/git-core/git-http-backend",
+		"/usr/libexec/git-core/githttpbackend",
+		"/usr/lib/git-core/githttpbackend",
+		"/usr/local/libexec/git-core/githttpbackend",
 	)
 
 	for _, candidate := range candidates {
@@ -180,7 +180,7 @@ func resolveGitHTTPBackend() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("git-http-backend not found in expected locations: %v", candidates)
+	return "", fmt.Errorf("githttpbackend not found in expected locations: %v", candidates)
 }
 
 func basicAuthMiddleware(next http.Handler, username, password string) http.Handler {

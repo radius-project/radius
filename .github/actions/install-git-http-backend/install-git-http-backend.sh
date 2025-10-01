@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if [ "$#" -lt 2 ]; then
-  echo "Usage: install-git-http-backend.sh <git-username> <git-password> [namespace]"
+  echo "Usage: install-githttpbackend.sh <git-username> <git-password> [namespace]"
   exit 1
 fi
 

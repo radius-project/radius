@@ -67,7 +67,6 @@ const (
 )
 
 func Test_Flux_Basic(t *testing.T) {
-	// t.Skip("https://github.com/radius-project/radius/issues/10441")
 	testName := "flux-basic"
 	steps := []GitOpsTestStep{
 		{
@@ -94,7 +93,6 @@ func Test_Flux_Basic(t *testing.T) {
 }
 
 func Test_Flux_Complex(t *testing.T) {
-	t.Skip("https://github.com/radius-project/radius/issues/10441")
 	testName := "flux-complex"
 	steps := []GitOpsTestStep{
 		{

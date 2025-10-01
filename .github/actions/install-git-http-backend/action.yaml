@@ -1,5 +1,5 @@
 name: "Install Git HTTP Backend"
-description: "Installs a git-http-backend server, configures basic auth, and exposes it inside the cluster."
+description: "Installs a githttpbackend server, configures basic auth, and exposes it inside the cluster."
 inputs:
   git-username:
     description: "Username for basic authentication"
@@ -8,16 +8,16 @@ inputs:
     description: "Password for basic authentication"
     required: true
   namespace:
-    description: "Namespace to deploy the git-http-backend into"
+    description: "Namespace to deploy the githttpbackend into"
     required: false
     default: "githttpbackend"
   image:
-    description: "Container image for git-http-backend"
+    description: "Container image for githttpbackend"
     required: false
     default: "ghcr.io/radius-project/githttpbackend:latest"
 runs:
   using: "composite"
   steps:
-    - name: Install git-http-backend
+    - name: Install githttpbackend
       shell: bash
-      run: .github/actions/install-git-http-backend/install-git-http-backend.sh "${{ inputs.git-username }}" "${{ inputs.git-password }}" "${{ inputs.namespace }}" "${{ inputs.image }}"
+      run: .github/actions/install-githttpbackend/install-githttpbackend.sh "${{ inputs.git-username }}" "${{ inputs.git-password }}" "${{ inputs.namespace }}" "${{ inputs.image }}"
