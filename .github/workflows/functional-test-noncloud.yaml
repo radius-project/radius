@@ -381,20 +381,6 @@ jobs:
           git-username: ${{ env.GIT_HTTP_USERNAME }}
           git-password: ${{ secrets.GITEA_PASSWORD }}
 
-      - name: Port-forward to Git server
-        if: matrix.name == 'kubernetes-noncloud'
-        run: |
-          # Start port forwarding in the background
-          kubectl port-forward -n githttpbackend svc/git-http 30080:3000 &
-          
-          # Wait for port forwarding to be established
-          sleep 5
-          
-          # Test the connection to ensure port forwarding is working
-          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
-          echo "Port forwarding established successfully"
-
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
         run: |
@@ -466,8 +452,36 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
+          cleanup_port_forward() {
+            if [[ -n "${PF_PID:-}" ]]; then
+              kill "${PF_PID}" 2>/dev/null || true
+              wait "${PF_PID}" 2>/dev/null || true
+            fi
+          }
+
+          if [[ "${MATRIX_NAME}" == "kubernetes-noncloud" ]]; then
+            kubectl port-forward -n githttpbackend svc/git-http 30080:3000 >/tmp/git-http-forward.log 2>&1 &
+            PF_PID=$!
+            trap cleanup_port_forward EXIT
+
+            echo "Waiting for git HTTP port-forward to become ready..."
+            for attempt in {1..30}; do
+              if curl -s http://localhost:30080 > /dev/null; then
+                echo "Port forwarding established successfully"
+                break
+              fi
+              sleep 1
+            done
+
+            if ! curl -s http://localhost:30080 > /dev/null; then
+              echo "Port forwarding failed to establish"
+              exit 1
+            fi
+          fi
+
           make test-functional-${{ matrix.name }}
         env:
+          MATRIX_NAME: ${{ matrix.name }}
           DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
