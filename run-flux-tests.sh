@@ -5,12 +5,14 @@ CLUSTER_NAME=${CLUSTER_NAME:-radius}
 REGISTRY_NAME=${REGISTRY_NAME:-radius-registry}
 REGISTRY_HOST=${REGISTRY_HOST:-localhost}
 REGISTRY_PORT=${REGISTRY_PORT:-5000}
-REL_VERSION=${REL_VERSION:-dev}
+REL_VERSION=${REL_VERSION:-latest}
 FLUX_VERSION=${FLUX_VERSION:-2.6.4}
+USE_PREBUILT_IMAGES=${USE_PREBUILT_IMAGES:-true}
+IMAGE_REGISTRY=${IMAGE_REGISTRY:-ghcr.io/willdavsmith/radius}
 GIT_HTTP_USERNAME=${GIT_HTTP_USERNAME:-testuser}
 GIT_HTTP_PASSWORD=${GIT_HTTP_PASSWORD:-testpass}
 GIT_HTTP_EMAIL=${GIT_HTTP_EMAIL:-testuser@radapp.io}
-GIT_HTTP_IMAGE=${GIT_HTTP_IMAGE:-${REGISTRY_NAME}:${REGISTRY_PORT}/githttpbackend:${REL_VERSION}}
+GIT_HTTP_IMAGE=${GIT_HTTP_IMAGE:-}
 KEEP_CLUSTER=${KEEP_CLUSTER:-}
 
 WORKDIR=$(pwd)
@@ -61,20 +63,34 @@ kind delete cluster --name kind >/dev/null 2>&1 || true
 
 docker rm -f "${CLUSTER_NAME}-control-plane" "${CLUSTER_NAME}-worker" "${CLUSTER_NAME}-worker2" >/dev/null 2>&1 || true
 
-log "Removing existing registry container (if any)"
-docker rm -f "${REGISTRY_NAME}" >/dev/null 2>&1 || true
+if ! is_truthy "${USE_PREBUILT_IMAGES}"; then
+  log "Removing existing registry container (if any)"
+  docker rm -f "${REGISTRY_NAME}" >/dev/null 2>&1 || true
 
-log "Starting local registry container ${REGISTRY_NAME}"
-docker run -d \
-  -p "${REGISTRY_PORT}:5000" \
-  --restart=always \
-  --name "${REGISTRY_NAME}" \
-  registry:2 >/dev/null
-CLEANUP_CMDS+=("docker rm -f ${REGISTRY_NAME}")
+  log "Starting local registry container ${REGISTRY_NAME}"
+  docker run -d \
+    -p "${REGISTRY_PORT}:5000" \
+    --restart=always \
+    --name "${REGISTRY_NAME}" \
+    registry:2 >/dev/null
+  CLEANUP_CMDS+=("docker rm -f ${REGISTRY_NAME}")
+fi
 
 log "Creating KinD cluster ${CLUSTER_NAME}"
 KIND_CONFIG=$(mktemp)
-cat <<EOF > "${KIND_CONFIG}"
+if is_truthy "${USE_PREBUILT_IMAGES}"; then
+  cat <<EOF > "${KIND_CONFIG}"
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraPortMappings:
+    - containerPort: 30080
+      hostPort: 30080
+      protocol: TCP
+EOF
+else
+  cat <<EOF > "${KIND_CONFIG}"
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -88,63 +104,64 @@ containerdConfigPatches:
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."${REGISTRY_NAME}:${REGISTRY_PORT}"]
     endpoint = ["http://${REGISTRY_NAME}:${REGISTRY_PORT}"]
 EOF
+fi
 kind create cluster --name "${CLUSTER_NAME}" --config "${KIND_CONFIG}" || die "Failed to create KinD cluster"
 CLEANUP_CMDS+=("kind delete cluster --name ${CLUSTER_NAME}")
 rm -f "${KIND_CONFIG}"
 
-docker network connect kind "${REGISTRY_NAME}" >/dev/null 2>&1 || true
-REGISTRY_IP=$(docker inspect -f '{{if .NetworkSettings.Networks.kind}}{{.NetworkSettings.Networks.kind.IPAddress}}{{end}}' "${REGISTRY_NAME}")
-if [[ -z "${REGISTRY_IP}" ]]; then
-  die "Failed to determine registry IP on kind network"
-fi
-KIND_NODES=$(kind get nodes --name "${CLUSTER_NAME}" 2>/dev/null || true)
-if [[ -z "${KIND_NODES}" ]]; then
-  die "Failed to enumerate KinD nodes for cluster ${CLUSTER_NAME}"
-fi
+if ! is_truthy "${USE_PREBUILT_IMAGES}"; then
+  docker network connect kind "${REGISTRY_NAME}" >/dev/null 2>&1 || true
+  REGISTRY_IP=$(docker inspect -f '{{if .NetworkSettings.Networks.kind}}{{.NetworkSettings.Networks.kind.IPAddress}}{{end}}' "${REGISTRY_NAME}")
+  if [[ -z "${REGISTRY_IP}" ]]; then
+    die "Failed to determine registry IP on kind network"
+  fi
+  KIND_NODES=$(kind get nodes --name "${CLUSTER_NAME}" 2>/dev/null || true)
+  if [[ -z "${KIND_NODES}" ]]; then
+    die "Failed to enumerate KinD nodes for cluster ${CLUSTER_NAME}"
+  fi
 
-for node in ${KIND_NODES}; do
-  docker exec "${node}" /bin/sh -c "echo '${REGISTRY_IP} ${REGISTRY_NAME}' >> /etc/hosts"
-  docker exec "${node}" mkdir -p "/etc/containerd/certs.d/${REGISTRY_NAME}:${REGISTRY_PORT}"
-  cat <<NODECONF | docker exec -i "${node}" tee "/etc/containerd/certs.d/${REGISTRY_NAME}:${REGISTRY_PORT}/hosts.toml" >/dev/null
+  for node in ${KIND_NODES}; do
+    docker exec "${node}" /bin/sh -c "echo '${REGISTRY_IP} ${REGISTRY_NAME}' >> /etc/hosts"
+    docker exec "${node}" mkdir -p "/etc/containerd/certs.d/${REGISTRY_NAME}:${REGISTRY_PORT}"
+    cat <<NODECONF | docker exec -i "${node}" tee "/etc/containerd/certs.d/${REGISTRY_NAME}:${REGISTRY_PORT}/hosts.toml" >/dev/null
 [host."http://${REGISTRY_NAME}:${REGISTRY_PORT}"]
   capabilities = ["pull", "resolve", "push"]
   skip_verify = true
 NODECONF
-  docker exec "${node}" systemctl restart containerd
-done
+    docker exec "${node}" systemctl restart containerd
+  done
+fi
 
-log "Building project binaries"
-make build
+if is_truthy "${USE_PREBUILT_IMAGES}"; then
+  IMAGE_PREFIX="${IMAGE_REGISTRY}"
+else
+  IMAGE_PREFIX="${REGISTRY_NAME}:${REGISTRY_PORT}"
+fi
 
-log "Building Docker images"
-DOCKER_REGISTRY="${REGISTRY_HOST}:${REGISTRY_PORT}" DOCKER_TAG_VERSION="${REL_VERSION}" make docker-build
-
-log "Pushing Docker images to ${REGISTRY_HOST}:${REGISTRY_PORT}"
-DOCKER_REGISTRY="${REGISTRY_HOST}:${REGISTRY_PORT}" DOCKER_TAG_VERSION="${REL_VERSION}" make docker-push
-
-log "Publishing Bicep test recipes"
-BICEP_PLAIN_HTTP=false BICEP_RECIPE_REGISTRY="ghcr.io/willdavsmith/radius" BICEP_RECIPE_TAG_VERSION="${REL_VERSION}" make publish-test-bicep-recipes
-
-log "Publishing Terraform test recipes"
-make publish-test-terraform-recipes
+if [[ -z "${GIT_HTTP_IMAGE}" ]]; then
+  GIT_HTTP_IMAGE="${IMAGE_PREFIX}/githttpbackend:${REL_VERSION}"
+fi
 
 log "Installing Radius into cluster ${CLUSTER_NAME}"
 export PATH="${WORKDIR}/bin:${PATH}"
 RAD_CMD=(
   rad install kubernetes
   --chart deploy/Chart
-  --set rp.image="${REGISTRY_NAME}:${REGISTRY_PORT}/applications-rp",rp.tag="${REL_VERSION}"
-  --set dynamicrp.image="${REGISTRY_NAME}:${REGISTRY_PORT}/dynamic-rp",dynamicrp.tag="${REL_VERSION}"
-  --set controller.image="${REGISTRY_NAME}:${REGISTRY_PORT}/controller",controller.tag="${REL_VERSION}"
-  --set ucp.image="${REGISTRY_NAME}:${REGISTRY_PORT}/ucpd",ucp.tag="${REL_VERSION}"
-  --set bicep.image="${REGISTRY_NAME}:${REGISTRY_PORT}/bicep",bicep.tag="${REL_VERSION}"
-  --set preupgrade.image="${REGISTRY_NAME}:${REGISTRY_PORT}/pre-upgrade",preupgrade.tag="${REL_VERSION}"
+  --set rp.image="${IMAGE_PREFIX}/applications-rp",rp.tag="${REL_VERSION}"
+  --set dynamicrp.image="${IMAGE_PREFIX}/dynamic-rp",dynamicrp.tag="${REL_VERSION}"
+  --set controller.image="${IMAGE_PREFIX}/controller",controller.tag="${REL_VERSION}"
+  --set ucp.image="${IMAGE_PREFIX}/ucpd",ucp.tag="${REL_VERSION}"
+  --set bicep.image="${IMAGE_PREFIX}/bicep",bicep.tag="${REL_VERSION}"
+  --set preupgrade.image="${IMAGE_PREFIX}/pre-upgrade",preupgrade.tag="${REL_VERSION}"
   --reinstall
 )
 "${RAD_CMD[@]}"
 
 log "Waiting for Radius system pods to become ready"
 kubectl wait --for=condition=Ready pods --all -n radius-system --timeout=300s
+
+log "Ensuring Radius resource group kind-radius exists"
+rad group create kind-radius
 
 log "Installing Flux ${FLUX_VERSION}"
 ./.github/actions/install-flux/install-flux.sh "${FLUX_VERSION}"
@@ -158,11 +175,32 @@ kubectl port-forward -n githttpbackend svc/git-http 30080:3000 >/tmp/git-http-fo
 PORT_FORWARD_PID=$!
 sleep 5
 
-export GIT_HTTP_SERVER_URL="http://localhost:30080"
+log "Validating Git HTTP backend credentials"
+SECRET_USERNAME=$(kubectl get secret githttpbackend-auth -n githttpbackend -o jsonpath='{.data.username}' | base64 -d || true)
+SECRET_PASSWORD=$(kubectl get secret githttpbackend-auth -n githttpbackend -o jsonpath='{.data.password}' | base64 -d || true)
+
+if [[ "${SECRET_USERNAME}" != "${GIT_HTTP_USERNAME}" || "${SECRET_PASSWORD}" != "${GIT_HTTP_PASSWORD}" ]]; then
+  die "Git HTTP backend secret credentials do not match configured GIT_HTTP_USERNAME/GIT_HTTP_PASSWORD"
+fi
+
+AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u "${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}" "http://localhost:30080/" || true)
+case "${AUTH_STATUS}" in
+  401|403)
+    die "Git HTTP backend authentication check failed with status ${AUTH_STATUS}"
+    ;;
+  200)
+    log "Git HTTP backend authentication check succeeded"
+    ;;
+  *)
+    log "Git HTTP backend returned status ${AUTH_STATUS}; proceeding (non-401 implies credentials accepted)"
+    ;;
+esac
+
+export GIT_HTTP_SERVER_URL="http://${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}@localhost:30080"
 export GIT_HTTP_USERNAME="${GIT_HTTP_USERNAME}"
 export GIT_HTTP_EMAIL="${GIT_HTTP_EMAIL}"
 export GIT_HTTP_PASSWORD="${GIT_HTTP_PASSWORD}"
-export DOCKER_REGISTRY="${REGISTRY_NAME}:${REGISTRY_PORT}"
+export DOCKER_REGISTRY="${IMAGE_PREFIX}"
 export REL_VERSION="${REL_VERSION}"
 export BICEP_RECIPE_REGISTRY="ghcr.io/willdavsmith/radius"
 export BICEP_RECIPE_TAG_VERSION="${REL_VERSION}"

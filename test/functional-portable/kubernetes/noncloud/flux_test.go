@@ -176,6 +176,8 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	})
 	require.NoError(t, err)
 
+	waitForGitHTTPRepository(t, repoURL, gitUsername, gitPassword)
+
 	// Create an initial commit to the repository.
 	commit, err := w.Commit("Initial commit", &git.CommitOptions{
 		AllowEmptyCommits: true,
@@ -426,14 +428,33 @@ func ensureGitHTTPRepository(ctx context.Context, t *testing.T, opts rp.RPTestOp
 	podName := getGitHTTPServerPodName(ctx, t, opts)
 	repoRoot := getGitHTTPServerRepoRoot(ctx, t, opts, podName)
 
-	initCmd := fmt.Sprintf("set -euo pipefail; REPO_ROOT=%q; REPO_PATH=\"${REPO_ROOT}/%s.git\"; rm -rf \"${REPO_PATH}\"; mkdir -p \"${REPO_ROOT}\"; git init --bare \"${REPO_PATH}\"; chmod -R 777 \"${REPO_PATH}\"", repoRoot, repoName)
+	initCmd := fmt.Sprintf(`set -euo pipefail
+REPO_ROOT=%q
+REPO_PATH="${REPO_ROOT}/%s.git"
+rm -rf "${REPO_PATH}"
+mkdir -p "${REPO_ROOT}"
+git init --bare "${REPO_PATH}"
+git --git-dir "${REPO_PATH}" config http.receivepack true
+git --git-dir "${REPO_PATH}" config http.uploadpack true
+git --git-dir "${REPO_PATH}" update-server-info
+git --git-dir "${REPO_PATH}" symbolic-ref HEAD refs/heads/main || true
+touch "${REPO_PATH}/git-daemon-export-ok"
+chmod -R 777 "${REPO_PATH}"
+`,
+		repoRoot,
+		repoName,
+	)
 	_, err := execGitHTTPCommand(ctx, opts, podName, []string{"/bin/sh", "-c", initCmd})
 	require.NoErrorf(t, err, "failed to initialize repository %s on git server", repoName)
 
 	return func() {
 		cleanupPod := getGitHTTPServerPodName(ctx, t, opts)
 		cleanupRoot := getGitHTTPServerRepoRoot(ctx, t, opts, cleanupPod)
-		cleanupCmd := fmt.Sprintf("set -euo pipefail; REPO_ROOT=%q; REPO_PATH=\"${REPO_ROOT}/%s.git\"; rm -rf \"${REPO_PATH}\"", cleanupRoot, repoName)
+		cleanupCmd := fmt.Sprintf(`set -euo pipefail
+REPO_ROOT=%q
+REPO_PATH="${REPO_ROOT}/%s.git"
+rm -rf "${REPO_PATH}"
+`, cleanupRoot, repoName)
 		_, err := execGitHTTPCommand(ctx, opts, cleanupPod, []string{"/bin/sh", "-c", cleanupCmd})
 		require.NoErrorf(t, err, "failed to clean up repository %s on git server", repoName)
 	}
@@ -501,4 +522,29 @@ func execGitHTTPCommand(ctx context.Context, opts rp.RPTestOptions, podName stri
 	}
 
 	return strings.TrimSpace(stdout.String()), nil
+}
+
+func waitForGitHTTPRepository(t *testing.T, repoURL, username, password string) {
+	client := &http.Client{Timeout: 2 * time.Second}
+	require.Eventually(t, func() bool {
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/info/refs?service=git-receive-pack", repoURL), nil)
+		if err != nil {
+			t.Logf("failed to build git HTTP check request: %v", err)
+			return false
+		}
+		if username != "" {
+			req.SetBasicAuth(username, password)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Logf("git HTTP repo check error: %v", err)
+			return false
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound {
+			t.Logf("git HTTP repo %s not yet available (status %d)", repoURL, resp.StatusCode)
+			return false
+		}
+		return resp.StatusCode < http.StatusBadRequest
+	}, 10*time.Second, 500*time.Millisecond, "git HTTP repository %s never became available", repoURL)
 }
