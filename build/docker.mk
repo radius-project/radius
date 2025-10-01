@@ -105,7 +105,6 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	dynamic-rp:./deploy/images/dynamic-rp \
 	controller:./deploy/images/controller \
 	testrp:./test/testrp \
-	githttpbackend:./test/githttpbackend \
 	magpiego:./test/magpiego \
 	bicep:./deploy/images/bicep \
 	pre-upgrade:./deploy/images/pre-upgrade

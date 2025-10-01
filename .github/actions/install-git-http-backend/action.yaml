@@ -1,5 +1,5 @@
 name: "Install Git HTTP Backend"
-description: "Installs a githttpbackend server, configures basic auth, and exposes it inside the cluster."
+description: "Installs a git HTTP backend, configures basic auth, and exposes it inside the cluster using alpine/git."
 inputs:
   git-username:
     description: "Username for basic authentication"
@@ -12,12 +12,12 @@ inputs:
     required: false
     default: "githttpbackend"
   image:
-    description: "Container image for githttpbackend"
+    description: "Container image to use for the git backend"
     required: false
-    default: "ghcr.io/radius-project/githttpbackend:latest"
+    default: "alpine/git:2.45.2"
 runs:
   using: "composite"
   steps:
     - name: Install githttpbackend
       shell: bash
-      run: .github/actions/install-githttpbackend/install-githttpbackend.sh "${{ inputs.git-username }}" "${{ inputs.git-password }}" "${{ inputs.namespace }}" "${{ inputs.image }}"
+      run: hack/flux-tests/install-git-http-backend.sh "${{ inputs.git-username }}" "${{ inputs.git-password }}" "${{ inputs.namespace }}" "${{ inputs.image }}"
