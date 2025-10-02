@@ -66,7 +66,7 @@ rad resource-type create myType --from-file /path/to/input.json
 # Create all resource types from a YAML file
 rad resource-type create --from-file /path/to/input.yaml
  
-# Create all resource types from JSON file
+# Create all resource types from a JSON file
 rad resource-type create --from-file /path/to/input.json
 `,
 		Args: cobra.MaximumNArgs(1),
