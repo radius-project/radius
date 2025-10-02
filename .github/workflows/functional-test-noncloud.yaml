@@ -83,8 +83,6 @@ env:
   GIT_HTTP_USERNAME: "testuser"
   # Git email used for commit authorship during tests
   GIT_HTTP_EMAIL: "testuser@radapp.io"
-  # Git password injected at runtime from secrets
-  GIT_HTTP_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 
@@ -466,36 +464,8 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          cleanup_port_forward() {
-            if [[ -n "${PF_PID:-}" ]]; then
-              kill "${PF_PID}" 2>/dev/null || true
-              wait "${PF_PID}" 2>/dev/null || true
-            fi
-          }
-
-          if [[ "${MATRIX_NAME}" == "kubernetes-noncloud" ]]; then
-            kubectl port-forward -n git-http-backend svc/git-http 30080:3000 >/tmp/git-http-forward.log 2>&1 &
-            PF_PID=$!
-            trap cleanup_port_forward EXIT
-
-            echo "Waiting for git HTTP port-forward to become ready..."
-            for attempt in {1..30}; do
-              if curl -s http://localhost:30080 > /dev/null; then
-                echo "Port forwarding established successfully"
-                break
-              fi
-              sleep 1
-            done
-
-            if ! curl -s http://localhost:30080 > /dev/null; then
-              echo "Port forwarding failed to establish"
-              exit 1
-            fi
-          fi
-
           make test-functional-${{ matrix.name }}
         env:
-          MATRIX_NAME: ${{ matrix.name }}
           DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -505,7 +475,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
           RADIUS_TEST_FAST_CLEANUP: true
-          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
+          GIT_HTTP_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
