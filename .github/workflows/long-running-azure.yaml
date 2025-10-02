@@ -617,6 +617,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
       - name: Collect Pod details
         if: always()
         run: |
