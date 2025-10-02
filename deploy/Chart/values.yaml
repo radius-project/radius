@@ -26,6 +26,14 @@ global:
     # SSL_CERT_DIR is used to override the default root CA location.
     # Dotnet runtime and Go use this environment variable to load the root CA.
     sslCertDirEnvVar: "SSL_CERT_DIR"
+  
+  appendRootCA:
+    # Auto-enabled when global.rootCA.cert is provided via --set-file
+    # Init image to normalize and prepare certs directory
+    initImage: "alpine:latest"
+    # Working and target mount paths
+    workDir: "/work/certs"
+    targetMountPath: "/etc/ssl/certs"
 
   prometheus:
     enabled: true
