@@ -48,8 +48,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 Deleting a resource type will delete all resources of the specified resource type. For example, deleting 'Applications.Core/containers' will delete all containers.
 
-The resource type name argument must be a fully qualified resource type name in the format 
-'resource-provider/resource-type' (e.g., 'Applications.Core/containers', 'Applications.Dapr/daprPubSubBrokers').`,
+The resource type name argument must be a fully qualified resource type name in the format 'ResourceType.Namespace/resourceTypeName' (e.g., 'Radius.Compute/containers').
+`,
 		Example: `
 # Delete a resource type (fully qualified name required)
 rad resource-type delete Applications.Core/containers
