@@ -41,15 +41,15 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "delete [resource-type-name]",
+		Use:   "delete [resource type name]",
 		Short: "Delete resource type",
 		Long: `Delete resource type
-		
+
 Resource types are the entities that implement resource types such as 'Applications.Core/containers'. Each resource type can define multiple API versions, and each API version defines a schema that resource instances conform to. Resource providers can be created and deleted by users.
 
 Deleting a resource type will delete all resources of the specified resource type. For example, deleting 'Applications.Core/containers' will delete all containers.
 
-The resource-type-name argument must be a fully qualified resource type name in the format 
+The resource type name argument must be a fully qualified resource type name in the format 
 'resource-provider/resource-type' (e.g., 'Applications.Core/containers', 'Applications.Dapr/daprPubSubBrokers').`,
 		Example: `
 # Delete a resource type (fully qualified name required)
