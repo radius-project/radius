@@ -60,7 +60,7 @@ The resource type name argument is the simple name (e.g., 'testResources') not t
 # Create a specific resource type from a YAML file
 rad resource-type create myType --from-file /path/to/input.yaml
 
-# Create a specific resource type from JSON file
+# Create a specific resource type from a JSON file
 rad resource-type create myType --from-file /path/to/input.json
 
 # Create all resource types from YAML file
