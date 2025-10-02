@@ -52,7 +52,7 @@ The resource type name argument must be a fully qualified resource type name in 
 `,
 		Example: `
 # Delete a resource type (fully qualified name required)
-rad resource-type delete Applications.Core/containers
+rad resource-type delete Radius.Compute/containers
 
 # Delete a resource type (bypass confirmation)
 rad resource-type delete Applications.Core/containers --yes`,
