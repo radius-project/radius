@@ -22,7 +22,7 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@v3.0.0
+        uses: snok/container-retention-policy@v3.0.1
         with:
           account: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}

@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -30,6 +29,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
+)
+
+const (
+	defaultPlaneName              = "local"
+	msgNoResourceTypeNameProvided = "No resource type name provided. Creating all resource types in the manifest."
+	msgAllResourceTypesCreated    = "All resource types in the manifest created successfully"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -148,38 +153,46 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.ResourceTypeName == "" {
-		r.Output.LogInfo("No resource type name provided. Creating all resource types in the manifest.")
+		r.Output.LogInfo(msgNoResourceTypeNameProvided)
+		return r.registerTypes(ctx, nil) // Register all types
+	}
 
-		registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
-		if registerErr != nil {
-			return registerErr
-		}
+	return r.registerTypes(ctx, []string{r.ResourceTypeName}) // Register single type
+}
+
+// registerTypes registers the specified resource types (or all types if typeNames is nil)
+func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
+	// Always ensure the resource provider exists first
+	err := manifest.EnsureResourceProviderExists(ctx, r.UCPClientFactory, defaultPlaneName, *r.ResourceProvider, r.Logger)
+	if err != nil {
+		return err
+	}
+
+	// Determine which types to register
+	var typesToRegister []string
+	if typeNames != nil {
+		typesToRegister = typeNames
 	} else {
-		r.Output.LogInfo("Creating resource type %s/%s.", r.ResourceProvider.Namespace, r.ResourceTypeName)
-
-		_, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
-		if err != nil {
-			if clients.Is404Error(err) {
-				for key := range r.ResourceProvider.Types {
-					if key != r.ResourceTypeName {
-						delete(r.ResourceProvider.Types, key)
-					}
-				}
-				registerErr := manifest.RegisterResourceProvider(ctx, r.UCPClientFactory, "local", *r.ResourceProvider, r.Logger)
-				if registerErr != nil {
-					return registerErr
-				}
-			} else {
-				return err
-			}
-
-			r.Output.LogInfo("Resource type %s/%s created successfully", r.ResourceProvider.Namespace, r.ResourceTypeName)
-		} else {
-			registerErr := manifest.RegisterType(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.ResourceTypeName, r.Logger)
-			if registerErr != nil {
-				return registerErr
-			}
+		// Register all types in the manifest
+		typesToRegister = make([]string, 0, len(r.ResourceProvider.Types))
+		for typeName := range r.ResourceProvider.Types {
+			typesToRegister = append(typesToRegister, typeName)
 		}
+	}
+
+	// Register each type individually using the unified approach
+	for _, typeName := range typesToRegister {
+		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, r.Logger)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Provide appropriate success message
+	if len(typesToRegister) == 1 {
+		// Single type - success message already logged by RegisterType
+	} else {
+		r.Output.LogInfo(msgAllResourceTypesCreated)
 	}
 
 	return nil
