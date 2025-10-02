@@ -57,7 +57,7 @@ The resource type name argument is optional. If specified, only the specified ty
 The resource type name argument is the simple name (e.g., 'testResources') not the fully qualified name.
 `,
 		Example: `
-# Create a specific resource type from YAML file
+# Create a specific resource type from a YAML file
 rad resource-type create myType --from-file /path/to/input.yaml
 
 # Create a specific resource type from JSON file
