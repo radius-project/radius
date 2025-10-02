@@ -42,9 +42,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create [resource type name]",
+		Use:   "create [resource-type-name]",
 		Short: "Create or update a resource type",
-		Long: `Create or update a resource type from a resource type manifest.
+		Long: `Create or update a resource type from a resource type definition file.
 
 Resource types define the resources that Radius can deploy and the API for those resources. They are defined by a name, one or more API versions, and an OpenAPI schema. 
 
