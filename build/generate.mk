@@ -24,7 +24,7 @@ ifeq ($(GOOS),windows)
 endif
 
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
