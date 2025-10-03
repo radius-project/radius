@@ -1,9 +1,12 @@
 namespace: Radius.Core
 location:
-  global:
-    "http://localhost:8080"
+  global: "http://localhost:8080"
 types:
   environments:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+  recipePacks:
     apiVersions:
       "2025-08-01-preview":
         schema: {}
