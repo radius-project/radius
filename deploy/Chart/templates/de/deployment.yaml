@@ -30,6 +30,23 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: bicep-de
+      {{- if .Values.global.appendRootCA.cert }}
+      initContainers:
+      - name: append-root-ca
+        image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
+        command:
+        - sh
+        - -c
+        - |
+          mkdir -p /etc/radius-ssl/certs
+          cp /etc/ssl/certs/* /etc/radius-ssl/certs/
+          cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
+        {{ .Values.global.appendRootCA.cert | nindent 10 }}
+          CERTEOF
+        volumeMounts:
+        - name: ssl-certs
+          mountPath: /etc/radius-ssl/certs
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
@@ -43,6 +60,10 @@ spec:
           secret:
             secretName: {{ .Values.global.rootCA.secretName }}
         {{- end }}
+        {{- if .Values.global.appendRootCA.cert }}
+        - name: ssl-certs
+          emptyDir: {}
+        {{- end }}
       containers:
       - name: de
         image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
@@ -55,6 +76,11 @@ spec:
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
+          readOnly: true
+        {{- end }}
+        {{- if .Values.global.appendRootCA.cert }}
+        - name: ssl-certs
+          mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
         env:
