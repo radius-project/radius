@@ -48,8 +48,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 Resource types define the resources that Radius can deploy and the API for those resources. They are defined by a name, one or more API versions, and an OpenAPI schema. 
 
-The name is composed of a namespace which is typically 'Radius.*' and a camelcase, plural name such as 'testResources'. The API version must be in 'YYYY-MM-DD' format with an optional '-preview' suffix. 
-
 Input can be passed in using a JSON or YAML file using the --from-file option.
 
 The resource type name argument is optional. If specified, only the specified type is created/updated. If not specified, all resource types in the referenced file are created/updated.
