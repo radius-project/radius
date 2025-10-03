@@ -1,0 +1,15 @@
+{
+  "operationId": "RecipePacks_Delete",
+  "title": "Delete a recipe pack",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "recipePackName": "azure-container-pack",
+    "api-version": "2025-08-01-preview"
+  },
+  "responses": {
+    "200": {},
+    "204": {},
+    "404": {}
+
+  }
+}

@@ -125,3 +125,21 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// RecipeKind - The type of recipe
+type RecipeKind string
+
+const (
+// RecipeKindBicep - Bicep recipe
+	RecipeKindBicep RecipeKind = "bicep"
+// RecipeKindTerraform - Terraform recipe
+	RecipeKindTerraform RecipeKind = "terraform"
+)
+
+// PossibleRecipeKindValues returns the possible values for the RecipeKind const type.
+func PossibleRecipeKindValues() []RecipeKind {
+	return []RecipeKind{	
+		RecipeKindBicep,
+		RecipeKindTerraform,
+	}
+}
+
