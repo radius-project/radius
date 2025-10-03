@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -28,6 +29,18 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
+)
+
+const (
+	// scopeLocal is the constant for local scope
+	scopeLocal = "local"
+
+	// Message templates
+	msgResourceGroupDeleted       = "Resource group %s deleted."
+	msgResourceGroupNotFound      = "Resource group %s does not exist or has already been deleted."
+	msgResourceGroupNotDeleted    = "Resource group %q NOT deleted"
+	msgDeletingResourceGroup      = "Deleting resource group %s...\n"
+	msgDeletingResourcesWithCount = "Deleting %d resource(s) in group %s..."
 )
 
 // NewCommand creates an instance of the command and runner for the `rad group delete` command.
@@ -42,12 +55,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	cmd := &cobra.Command{
 		Use:   "delete resourcegroupname",
 		Short: "Delete a resource group",
-		Long: `Delete a resource group. 
-		
-Delete a resource group if it is empty. If not empty, delete the contents and try again`,
-		Example: `rad group delete rgprod`,
-		Args:    cobra.MaximumNArgs(1),
-		RunE:    framework.RunCommand(runner),
+		Long: `Delete a resource group and all its resources.
+
+The command will:
+- Check if the resource group contains any deployed resources
+- Show an appropriate confirmation prompt based on whether resources exist
+- Delete all resources in the group (if any) before deleting the group itself
+
+Use the --yes flag to skip confirmation prompts.`,
+		Example: `rad group delete rgprod
+rad group delete rgprod --yes`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
@@ -112,38 +131,66 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run checks if the user has confirmed the deletion of the resource group, and if so, deletes the resource group and
 // returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return fmt.Errorf("failed to create management client: %w", err)
+	}
 
-	// Prompt user to confirm deletion
+	// Always try to list resources to provide accurate information
+	resources, listErr := client.ListResourcesInResourceGroup(ctx, scopeLocal, r.UCPResourceGroupName)
+	hasResources := listErr == nil && len(resources) > 0
+
+	// Check if we encountered a real error (not a 404 which means group doesn't exist)
+	if listErr != nil && !clients.Is404Error(listErr) {
+		return fmt.Errorf("unable to verify resource group contents: %w", listErr)
+	}
+
+	// Handle confirmation prompts when --yes is not provided
 	if !r.Confirmation {
-		confirmed, err := prompt.YesOrNoPrompt(
-			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName),
-			prompt.ConfirmNo,
-			r.InputPrompter)
+		confirmed, err := r.promptForConfirmation(hasResources)
 		if err != nil {
 			return err
 		}
 
 		if !confirmed {
-			r.Output.LogInfo("resource group %q NOT deleted", r.UCPResourceGroupName)
+			r.Output.LogInfo(msgResourceGroupNotDeleted, r.UCPResourceGroupName)
 			return nil
 		}
 	}
 
-	r.Output.LogInfo("deleting resource group %q ...\n", r.UCPResourceGroupName)
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	// Show appropriate progress messages with resource count when available
+	if hasResources {
+		r.Output.LogInfo(msgDeletingResourcesWithCount, len(resources), r.UCPResourceGroupName)
 	}
+	r.Output.LogInfo(msgDeletingResourceGroup, r.UCPResourceGroupName)
 
-	deleted, err := client.DeleteResourceGroup(ctx, "local", r.UCPResourceGroupName)
+	// Actually delete the resource group (which will now handle resource deletion internally)
+	deleted, err := client.DeleteResourceGroup(ctx, scopeLocal, r.UCPResourceGroupName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete resource group %s: %w", r.UCPResourceGroupName, err)
 	}
 
 	if deleted {
-		r.Output.LogInfo("resource group %q deleted", r.UCPResourceGroupName)
+		r.Output.LogInfo(msgResourceGroupDeleted, r.UCPResourceGroupName)
 	} else {
-		r.Output.LogInfo("resource group %q does not exist or has already been deleted", r.UCPResourceGroupName)
+		r.Output.LogInfo(msgResourceGroupNotFound, r.UCPResourceGroupName)
 	}
+
 	return nil
+}
+
+// promptForConfirmation handles the confirmation prompts based on resource state
+func (r *Runner) promptForConfirmation(hasResources bool) (bool, error) {
+	var promptMsg string
+
+	// At this point, listErr is either nil or a 404 error (other errors are handled earlier)
+	if hasResources {
+		promptMsg = fmt.Sprintf("The resource group %s contains deployed resources. Are you sure you want to delete the resource group and its resources?",
+			r.UCPResourceGroupName)
+	} else {
+		promptMsg = fmt.Sprintf("The resource group %s is empty. Are you sure you want to delete the resource group?",
+			r.UCPResourceGroupName)
+	}
+
+	return prompt.YesOrNoPrompt(promptMsg, prompt.ConfirmNo, r.InputPrompter)
 }
