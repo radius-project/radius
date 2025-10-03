@@ -223,6 +223,89 @@ type ProvidersKubernetes struct {
 	Namespace *string
 }
 
+// RecipeDefinition - Recipe definition for a specific resource type
+type RecipeDefinition struct {
+// REQUIRED; The type of recipe (e.g., terraform, bicep)
+	RecipeKind *RecipeKind
+
+// REQUIRED; URL or path to the recipe source
+	RecipeLocation *string
+
+// Parameters to pass to the recipe
+	Parameters any
+
+// Connect to the location using HTTP (not-HTTPS). This should be used when the location is known not to support HTTPS, for
+// example in a locally-hosted registry for Bicep recipes. Defaults to false (use
+// HTTPS/TLS).
+	PlainHTTP *bool
+}
+
+// RecipePackProperties - Recipe Pack properties
+type RecipePackProperties struct {
+// REQUIRED; Map of resource types to their recipe configurations
+	Recipes map[string]*RecipeDefinition
+
+// Description of what this recipe pack provides
+	Description *string
+
+// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+// READ-ONLY; List of environment IDs that reference this recipe pack
+	ReferencedBy []*string
+}
+
+// RecipePackResource - The recipe pack resource
+type RecipePackResource struct {
+// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+// REQUIRED; The resource-specific properties for this resource.
+	Properties *RecipePackProperties
+
+// Resource tags.
+	Tags map[string]*string
+
+// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+// READ-ONLY; The name of the resource
+	Name *string
+
+// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// RecipePackResourceListResult - The response of a RecipePackResource list operation.
+type RecipePackResourceListResult struct {
+// REQUIRED; The RecipePackResource items on this page
+	Value []*RecipePackResource
+
+// The link to the next page of items
+	NextLink *string
+}
+
+// RecipePackResourceUpdate - The recipe pack resource
+type RecipePackResourceUpdate struct {
+// Resource tags.
+	Tags map[string]*string
+
+// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+// READ-ONLY; The name of the resource
+	Name *string
+
+// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 // READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}

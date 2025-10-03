@@ -49,3 +49,11 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 	}
 }
 
+// NewRecipePacksClient creates a new instance of RecipePacksClient.
+func (c *ClientFactory) NewRecipePacksClient() *RecipePacksClient {
+	return &RecipePacksClient{
+		rootScope: c.rootScope,
+		internal: c.internal,
+	}
+}
+
