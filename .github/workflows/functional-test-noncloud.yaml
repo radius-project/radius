@@ -83,6 +83,8 @@ env:
   GIT_HTTP_USERNAME: "testuser"
   # Git email used for commit authorship during tests
   GIT_HTTP_EMAIL: "testuser@radapp.io"
+  # Git password used for pushing commits during tests
+  GIT_HTTP_PASSWORD: "not-a-secret-password"
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 
@@ -475,7 +477,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
           RADIUS_TEST_FAST_CLEANUP: true
-          GIT_HTTP_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

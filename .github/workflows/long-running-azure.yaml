@@ -111,8 +111,8 @@ env:
   GIT_HTTP_USERNAME: "testuser"
   # Git email used for commit authorship during tests
   GIT_HTTP_EMAIL: "testuser@radapp.io"
-  # Git password injected at runtime
-  GIT_HTTP_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+  # Git password used for pushing commits during tests
+  GIT_HTTP_PASSWORD: "not-a-secret-password"
 
 jobs:
   build:
