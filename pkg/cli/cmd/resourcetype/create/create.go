@@ -42,30 +42,29 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create [input]",
+		Use:   "create [resource-type-name]",
 		Short: "Create or update a resource type",
-		Long: `Create or update a resource type from a resource type manifest.
-	
-	Resource types are user defined types such as 'Mycompany.Messaging/plaid'.
-	
-	Creating a resource type defines a new type that can be used in applications.
-	
-	Input can be passed in using a JSON or YAML file using the --from-file option.
+		Long: `Create or update a resource type from a resource type definition file.
 
-	resource-type name argument is optional. If specified, only the specified type is created/updated. 
-	If not specified, all resource types in the referenced file are created/updated.
-	`,
+Resource types define the resources that Radius can deploy and the API for those resources. They are defined by a name, one or more API versions, and an OpenAPI schema. 
+
+Input can be passed in using a JSON or YAML file using the --from-file option.
+
+The resource type name argument is optional. If specified, only the specified type is created/updated. If not specified, all resource types in the referenced file are created/updated.
+
+The resource type name argument is the simple name (e.g., 'testResources') not the fully qualified name.
+`,
 		Example: `
-# Create a resource type from YAML file
+# Create a specific resource type from a YAML file
 rad resource-type create myType --from-file /path/to/input.yaml
 
-# Create a resource type from JSON file
+# Create a specific resource type from a JSON file
 rad resource-type create myType --from-file /path/to/input.json
 
-# Create all resource types from YAML file
-rad resource-type create  --from-file /path/to/input.yaml
+# Create all resource types from a YAML file
+rad resource-type create --from-file /path/to/input.yaml
  
-# Create all resource types from JSON file
+# Create all resource types from a JSON file
 rad resource-type create --from-file /path/to/input.json
 `,
 		Args: cobra.MaximumNArgs(1),
