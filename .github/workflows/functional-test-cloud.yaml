@@ -247,14 +247,16 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
-          hide: true
-          hide_classify: "OUTDATED"
+          recreate: true
           message: |
             ## Radius functional test overview
 
             :mag: **[Go to test action run](${{ env.ACTION_LINK }})**
+
+            <details>
+            <summary> Click here to see the test run details</summary>
 
             | Name | Value |
             |------|-------|
@@ -262,10 +264,7 @@ jobs:
             |**Commit ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
             |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
             |**Image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
-
-            <details>
-            <summary> Click here to see the list of tools in the current test run</summary>
-
+            
             * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
