@@ -115,6 +115,10 @@ func builders(options hostoptions.HostOptions) ([]builder.Builder, error) {
 
 	return []builder.Builder{
 		corerp_setup.SetupNamespace(config).GenerateBuilder(),
+		// Eventually there will be only a single namespace Radius.Core for core resources.
+		// Fornow, we are adding a separate builder for the Radius.Core namespace to avoid
+		// any breaking changes.
+		// This can be removed once all core resources are moved to the Radius.Core namespace.
 		corerp_setup.SetupRadiusCoreNamespace(config).GenerateBuilder(),
 		daprrp_setup.SetupNamespace(config).GenerateBuilder(),
 		msgrp_setup.SetupNamespace(config).GenerateBuilder(),

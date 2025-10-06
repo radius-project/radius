@@ -40,7 +40,7 @@ func (src *RecipePackResource) ConvertTo() (v1.DataModelInterface, error) {
 				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.RecipePackProperties_v20250801preview{},
+		Properties: datamodel.RecipePackProperties{},
 	}
 
 	// Convert Recipes
@@ -96,15 +96,15 @@ func (dst *RecipePackResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamodel.RecipeDefinition_v20250801preview {
+func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamodel.RecipeDefinition {
 	if recipes == nil {
 		return nil
 	}
 
-	result := make(map[string]*datamodel.RecipeDefinition_v20250801preview)
+	result := make(map[string]*datamodel.RecipeDefinition)
 	for key, recipe := range recipes {
 		if recipe != nil {
-			result[key] = &datamodel.RecipeDefinition_v20250801preview{
+			result[key] = &datamodel.RecipeDefinition{
 				RecipeKind:     toRecipeKindDataModel(recipe.RecipeKind),
 				RecipeLocation: to.String(recipe.RecipeLocation),
 				Parameters:     recipe.Parameters,
@@ -115,7 +115,7 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 	return result
 }
 
-func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition_v20250801preview) map[string]*RecipeDefinition {
+func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[string]*RecipeDefinition {
 	if recipes == nil {
 		return nil
 	}
