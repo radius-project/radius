@@ -294,7 +294,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -319,7 +319,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -330,7 +330,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -341,7 +341,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -419,7 +419,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -430,7 +430,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -516,7 +516,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -624,7 +624,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -717,7 +717,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -843,7 +843,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -854,7 +854,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
@@ -865,7 +865,7 @@ jobs:
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
+          header: teststatus
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
