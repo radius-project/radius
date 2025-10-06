@@ -381,6 +381,18 @@ jobs:
           git-username: ${{ env.GIT_HTTP_USERNAME }}
           git-password: ${{ secrets.GITEA_PASSWORD }}
 
+      - name: Export Git HTTP password for tests
+        if: matrix.name == 'kubernetes-noncloud'
+        run: |
+          set -euo pipefail
+          if [[ -z "${PASSWORD:-}" ]]; then
+            echo "Git HTTP password secret not provided; using existing environment value"
+          else
+            echo "GIT_HTTP_PASSWORD=${PASSWORD}" >> "$GITHUB_ENV"
+          fi
+        env:
+          PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+
       - name: Port-forward to Git server
         if: matrix.name == 'kubernetes-noncloud'
         run: |
@@ -518,7 +530,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
           RADIUS_TEST_FAST_CLEANUP: true
-          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
