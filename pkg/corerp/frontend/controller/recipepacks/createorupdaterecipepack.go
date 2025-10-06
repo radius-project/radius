@@ -32,16 +32,16 @@ var _ ctrl.Controller = (*CreateOrUpdateRecipePack)(nil)
 
 // CreateOrUpdateRecipePack is the controller implementation to create or update recipe pack resource.
 type CreateOrUpdateRecipePack struct {
-	ctrl.Operation[*datamodel.RecipePack_v20250801preview, datamodel.RecipePack_v20250801preview]
+	ctrl.Operation[*datamodel.RecipePack, datamodel.RecipePack]
 }
 
 // NewCreateOrUpdateRecipePack creates a new controller for creating or updating a recipe pack resource.
 func NewCreateOrUpdateRecipePack(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateRecipePack{
 		ctrl.NewOperation(opts,
-			ctrl.ResourceOptions[datamodel.RecipePack_v20250801preview]{
-				RequestConverter:  converter.RecipePack20250801DataModelFromVersioned,
-				ResponseConverter: converter.RecipePack20250801DataModelToVersioned,
+			ctrl.ResourceOptions[datamodel.RecipePack]{
+				RequestConverter:  converter.RecipePackDataModelFromVersioned,
+				ResponseConverter: converter.RecipePackDataModelToVersioned,
 			},
 		),
 	}, nil
