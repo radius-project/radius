@@ -229,4 +229,34 @@ var operationList = []v1.Operation{
 		},
 		IsDataAction: false,
 	},
+	{
+		Name: "Applications.Core/recipePacks/read",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Applications.Core",
+			Resource:    "recipePacks",
+			Operation:   "Get/List recipe packs",
+			Description: "Gets/Lists recipe pack(s).",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Applications.Core/recipePacks/write",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Applications.Core",
+			Resource:    "recipePacks",
+			Operation:   "Create/Update recipe packs",
+			Description: "Creates or updates a recipe pack resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Applications.Core/recipePacks/delete",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Applications.Core",
+			Resource:    "recipePacks",
+			Operation:   "Delete recipe pack",
+			Description: "Deletes a recipe pack resource.",
+		},
+		IsDataAction: false,
+	},
 }
