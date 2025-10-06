@@ -373,7 +373,7 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		resource := resource
 		g.Go(func() error {
 			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)
-			if err != nil {
+			if err != nil && !clientv2.Is404Error(err) {
 				return err
 			}
 			return nil
