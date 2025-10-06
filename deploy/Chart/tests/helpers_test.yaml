@@ -463,3 +463,35 @@ tests:
           path: spec.template.spec.containers[0].image
           value: myregistry.io/ucpd:0.48
         template: ucp/deployment.yaml
+  - it: should add append-root-ca init container and mounts when cert provided
+    set:
+      dynamicrp.image: dynamic-rp
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: append-root-ca
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ssl-certs
+        template: dynamic-rp/deployment.yaml
+
+  - it: should omit append-root-ca init container when cert is not provided
+    set:
+      dynamicrp.image: dynamic-rp
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: terraform-init
+        template: dynamic-rp/deployment.yaml
