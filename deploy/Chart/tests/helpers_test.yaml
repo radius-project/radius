@@ -466,6 +466,7 @@ tests:
   - it: should add append-root-ca init container and mounts when cert provided
     set:
       dynamicrp.image: dynamic-rp
+      global.terraform.enabled: true
       global.appendRootCA.cert: |
         -----BEGIN CERT-----
         FAKECERTDATA
@@ -475,23 +476,266 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
+            image: applications-rp:latest
+            command:
+              - sh
+              - -c
+              - |
+                mkdir -p /etc/radius-ssl/certs
+                cp /etc/ssl/certs/* /etc/radius-ssl/certs/
+                cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
+
+                -----BEGIN CERT-----
+                FAKECERTDATA
+                -----END CERT-----
+
+                CERTEOF
+            volumeMounts:
+              - name: ssl-certs
+                mountPath: /etc/radius-ssl/certs
         template: dynamic-rp/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
         template: dynamic-rp/deployment.yaml
       - contains:
           path: spec.template.spec.volumes
           content:
             name: ssl-certs
+            emptyDir: {}
         template: dynamic-rp/deployment.yaml
 
   - it: should omit append-root-ca init container when cert is not provided
     set:
       dynamicrp.image: dynamic-rp
+      global.terraform.enabled: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: terraform-init
         template: dynamic-rp/deployment.yaml
+
+  - it: should add append-root-ca init container and mounts for controller when cert provided
+    set:
+      controller.image: controller
+      bicep.image: bicep
+      rp.image: applications-rp
+      rp.tag: latest
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: append-root-ca
+            image: applications-rp:latest
+            command:
+              - sh
+              - -c
+              - |
+                mkdir -p /etc/radius-ssl/certs
+                cp /etc/ssl/certs/* /etc/radius-ssl/certs/
+                cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
+
+                -----BEGIN CERT-----
+                FAKECERTDATA
+                -----END CERT-----
+
+                CERTEOF
+            volumeMounts:
+              - name: ssl-certs
+                mountPath: /etc/radius-ssl/certs
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ssl-certs
+            emptyDir: {}
+        template: controller/deployment.yaml
+
+  - it: should omit append-root-ca init container for controller when cert is not provided
+    set:
+      controller.image: controller
+      bicep.image: bicep
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: bicep
+        template: controller/deployment.yaml
+      - isNull:
+          path: spec.template.spec.initContainers[1]
+        template: controller/deployment.yaml
+
+  - it: should add append-root-ca init container and mounts for applications-rp when cert provided
+    set:
+      rp.image: applications-rp
+      rp.tag: latest
+      global.terraform.enabled: true
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: append-root-ca
+            image: applications-rp:latest
+            command:
+              - sh
+              - -c
+              - |
+                mkdir -p /etc/radius-ssl/certs
+                cp /etc/ssl/certs/* /etc/radius-ssl/certs/
+                cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
+
+                -----BEGIN CERT-----
+                FAKECERTDATA
+                -----END CERT-----
+
+                CERTEOF
+            volumeMounts:
+              - name: ssl-certs
+                mountPath: /etc/radius-ssl/certs
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ssl-certs
+            emptyDir: {}
+        template: rp/deployment.yaml
+
+  - it: should omit append-root-ca init container for applications-rp when cert is not provided
+    set:
+      rp.image: applications-rp
+      global.terraform.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: terraform-init
+        template: rp/deployment.yaml
+
+  - it: should add append-root-ca init container and mounts for ucp when cert provided
+    set:
+      ucp.image: ucpd
+      ucp.tag: latest
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: append-root-ca
+            image: applications-rp:latest
+            command:
+              - sh
+              - -c
+              - |
+                mkdir -p /etc/radius-ssl/certs
+                cp /etc/ssl/certs/* /etc/radius-ssl/certs/
+                cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
+
+                -----BEGIN CERT-----
+                FAKECERTDATA
+                -----END CERT-----
+
+                CERTEOF
+            volumeMounts:
+              - name: ssl-certs
+                mountPath: /etc/radius-ssl/certs
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ssl-certs
+            emptyDir: {}
+        template: ucp/deployment.yaml
+
+  - it: should omit append-root-ca init container for ucp when cert is not provided
+    set:
+      ucp.image: ucpd
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+        template: ucp/deployment.yaml
+
+  - it: should add append-root-ca init container and mounts for bicep-de when cert provided
+    set:
+      de.image: bicep-de
+      de.tag: latest
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: append-root-ca
+            image: applications-rp:latest
+            command:
+              - sh
+              - -c
+              - |
+                mkdir -p /etc/radius-ssl/certs
+                cp /etc/ssl/certs/* /etc/radius-ssl/certs/
+                cat >> /etc/radius-ssl/certs/ca-certificates.crt <<'CERTEOF'
+
+                -----BEGIN CERT-----
+                FAKECERTDATA
+                -----END CERT-----
+
+                CERTEOF
+            volumeMounts:
+              - name: ssl-certs
+                mountPath: /etc/radius-ssl/certs
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: ssl-certs
+            emptyDir: {}
+        template: de/deployment.yaml
+
+  - it: should omit append-root-ca init container for bicep-de when cert is not provided
+    set:
+      de.image: bicep-de
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+        template: de/deployment.yaml
