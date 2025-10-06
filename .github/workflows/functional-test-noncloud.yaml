@@ -402,7 +402,7 @@ jobs:
           fi
 
           # Test the connection to ensure port forwarding is working
-          curl -fsS http://localhost:30080 > /dev/null || {
+          curl -sS http://localhost:30080 > /dev/null || {
             echo "Port forwarding failed"
             cat "${PF_LOG}" || true
             exit 1
@@ -489,7 +489,7 @@ jobs:
             exit 1
           fi
 
-          curl -fsS http://localhost:30080 > /dev/null || {
+          curl -sS http://localhost:30080 > /dev/null || {
             echo "Git HTTP port-forward is unreachable"
             cat "${PF_LOG}" || true
             exit 1
