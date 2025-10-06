@@ -20,25 +20,25 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
-const RecipePackResourceType_v20250801preview = "Radius.Core/recipePacks"
+const RecipePackResourceType = "Radius.Core/recipePacks"
 
 // RecipePack represents the 2025-08-01-preview recipe pack resource.
 type RecipePack struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
-	Properties RecipePackProperties_v20250801preview `json:"properties"`
+	Properties RecipePackProperties `json:"properties"`
 }
 
 // ResourceTypeName returns the resource type of the RecipePack instance.
 func (r *RecipePack) ResourceTypeName() string {
-	return RecipePackResourceType_v20250801preview
+	return RecipePackResourceType
 }
 
-// RecipePackProperties_v20250801preview represents the properties of the recipe pack resource.
-type RecipePackProperties_v20250801preview struct {
+// RecipePackProperties represents the properties of the recipe pack resource.
+type RecipePackProperties struct {
 	// Recipes is a map of resource types to their recipe configurations.
-	Recipes map[string]*RecipeDefinition_v20250801preview `json:"recipes"`
+	Recipes map[string]*RecipeDefinition `json:"recipes"`
 
 	// Description of what this recipe pack provides.
 	Description string `json:"description,omitempty"`
@@ -47,8 +47,8 @@ type RecipePackProperties_v20250801preview struct {
 	ReferencedBy []string `json:"referencedBy,omitempty"`
 }
 
-// RecipeDefinition_v20250801preview represents a recipe definition in the datamodel.
-type RecipeDefinition_v20250801preview struct {
+// RecipeDefinition represents a recipe definition in the datamodel.
+type RecipeDefinition struct {
 	// RecipeKind is the type of recipe (e.g., terraform, bicep).
 	RecipeKind string `json:"recipeKind"`
 
