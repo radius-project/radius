@@ -230,7 +230,7 @@ var operationList = []v1.Operation{
 		IsDataAction: false,
 	},
 	{
-		Name: "Applications.Core/recipePacks/read",
+		Name: "Radius.Core/recipePacks/read",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Core",
 			Resource:    "recipePacks",
@@ -240,9 +240,9 @@ var operationList = []v1.Operation{
 		IsDataAction: false,
 	},
 	{
-		Name: "Applications.Core/recipePacks/write",
+		Name: "Radius.Core/recipePacks/write",
 		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Core",
+			Provider:    "Radius.Core",
 			Resource:    "recipePacks",
 			Operation:   "Create/Update recipe packs",
 			Description: "Creates or updates a recipe pack resource.",
@@ -250,7 +250,7 @@ var operationList = []v1.Operation{
 		IsDataAction: false,
 	},
 	{
-		Name: "Applications.Core/recipePacks/delete",
+		Name: "Radius.Core/recipePacks/delete",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Core",
 			Resource:    "recipePacks",
