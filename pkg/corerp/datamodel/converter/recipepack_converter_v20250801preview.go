@@ -24,8 +24,8 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
-// RecipePack20250801DataModelToVersioned converts the 2025-08-01-preview recipe pack datamodel to versioned model.
-func RecipePack20250801DataModelToVersioned(model *datamodel.RecipePack_v20250801preview, version string) (v1.VersionedModelInterface, error) {
+// RecipePackDataModelToVersioned converts the 2025-08-01-preview recipe pack datamodel to versioned model.
+func RecipePackDataModelToVersioned(model *datamodel.RecipePack, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20250801preview.Version:
 		versioned := &v20250801preview.RecipePackResource{}
@@ -39,8 +39,8 @@ func RecipePack20250801DataModelToVersioned(model *datamodel.RecipePack_v2025080
 	}
 }
 
-// RecipePack20250801DataModelFromVersioned converts versioned recipe pack model to the 2025-08-01-preview datamodel.
-func RecipePack20250801DataModelFromVersioned(content []byte, version string) (*datamodel.RecipePack_v20250801preview, error) {
+// RecipePackDataModelFromVersioned converts versioned recipe pack model to the 2025-08-01-preview datamodel.
+func RecipePackDataModelFromVersioned(content []byte, version string) (*datamodel.RecipePack, error) {
 	switch version {
 	case v20250801preview.Version:
 		am := &v20250801preview.RecipePackResource{}
@@ -51,7 +51,7 @@ func RecipePack20250801DataModelFromVersioned(content []byte, version string) (*
 		if err != nil {
 			return nil, err
 		}
-		return dm.(*datamodel.RecipePack_v20250801preview), nil
+		return dm.(*datamodel.RecipePack), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

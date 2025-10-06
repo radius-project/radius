@@ -22,8 +22,8 @@ import (
 
 const RecipePackResourceType_v20250801preview = "Radius.Core/recipePacks"
 
-// RecipePack_v20250801preview represents the 2025-08-01-preview recipe pack resource.
-type RecipePack_v20250801preview struct {
+// RecipePack represents the 2025-08-01-preview recipe pack resource.
+type RecipePack struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
@@ -31,7 +31,7 @@ type RecipePack_v20250801preview struct {
 }
 
 // ResourceTypeName returns the resource type of the RecipePack instance.
-func (r *RecipePack_v20250801preview) ResourceTypeName() string {
+func (r *RecipePack) ResourceTypeName() string {
 	return RecipePackResourceType_v20250801preview
 }
 

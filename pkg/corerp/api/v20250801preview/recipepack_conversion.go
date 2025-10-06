@@ -25,7 +25,7 @@ import (
 // ConvertTo converts from the versioned RecipePack resource to version-agnostic datamodel.
 func (src *RecipePackResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	converted := &datamodel.RecipePack_v20250801preview{
+	converted := &datamodel.RecipePack{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID:       to.String(src.ID),
@@ -63,7 +63,7 @@ func (src *RecipePackResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned RecipePack resource.
 func (dst *RecipePackResource) ConvertFrom(src v1.DataModelInterface) error {
-	recipePack, ok := src.(*datamodel.RecipePack_v20250801preview)
+	recipePack, ok := src.(*datamodel.RecipePack)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
