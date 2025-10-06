@@ -391,8 +391,8 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 	// Verify terraform binary is still accessible before state operation
 	if execPath := tf.ExecPath(); execPath != "" {
 		if _, err := os.Stat(execPath); err != nil {
-			logger.Info(fmt.Sprintf("ERROR: Terraform binary missing at %s during state fetch: %s", execPath, err.Error()))
-			return nil, fmt.Errorf("terraform binary disappeared at %s: %w", execPath, err)
+			logger.Info(fmt.Sprintf("ERROR: Terraform binary missing at state fetch: %s", err.Error()))
+			return nil, fmt.Errorf("terraform binary file not found: %w", err)
 		}
 	}
 
