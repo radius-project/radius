@@ -275,16 +275,20 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		t.Log(t, "Pushed changes successfully")
 
 		// Reconcile the GitRepository by updating the reconcile.fluxcd.io/requestedAt annotation.
-		err = opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, fluxGitRepository)
+		reconciledRepo := &sourcev1.GitRepository{}
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, reconciledRepo)
 		require.NoError(t, err)
-		annotations := fluxGitRepository.GetAnnotations()
+		annotations := reconciledRepo.GetAnnotations()
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
 		annotations["reconcile.fluxcd.io/requestedAt"] = strconv.FormatInt(time.Now().Unix(), 10)
-		fluxGitRepository.SetAnnotations(annotations)
-		err = opts.Client.Update(ctx, fluxGitRepository)
+		reconciledRepo.SetAnnotations(annotations)
+		err = opts.Client.Update(ctx, reconciledRepo)
 		require.NoError(t, err)
+
+		// Update our reference to the latest resource version for future delete calls.
+		fluxGitRepository = reconciledRepo.DeepCopy()
 
 		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
 		require.NoError(t, err)
