@@ -55,7 +55,6 @@ func TestCreateOrUpdateRecipePackRun_CreateNew(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
 
 	recipePackInput, recipePackDataModel, expectedOutput := getTestModels()
 	w := httptest.NewRecorder()
