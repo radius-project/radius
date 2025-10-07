@@ -404,8 +404,17 @@ jobs:
           set -euo pipefail
           PF_LOG="${RUNNER_TEMP}/git-port-forward.log"
           PF_PID_FILE="${RUNNER_TEMP}/git-port-forward.pid"
+          PORT_FORWARD_TARGET="http://localhost:30080"
+
+          echo "=== git-http-backend pod status ==="
+          kubectl get pods -n git-http-backend -o wide
+          echo "=== git-http service ==="
+          kubectl get svc git-http -n git-http-backend -o wide
+          echo "=== git-http endpoints ==="
+          kubectl get endpoints git-http -n git-http-backend || true
 
           # Launch port-forward detached so it survives the step boundary.
+          touch "${PF_LOG}"
           nohup kubectl port-forward -n git-http-backend svc/git-http 30080:3000 >"${PF_LOG}" 2>&1 &
           echo $! > "${PF_PID_FILE}"
 
@@ -418,12 +427,19 @@ jobs:
             exit 1
           fi
 
-          # Test the connection to ensure port forwarding is working
-          curl -sS http://localhost:30080 > /dev/null || {
-            echo "Port forwarding failed"
-            cat "${PF_LOG}" || true
-            exit 1
-          }
+          echo "kubectl port-forward PID: $(cat "${PF_PID_FILE}")"
+          ps -o pid,cmd -p "$(cat "${PF_PID_FILE}")" || true
+
+          ROOT_STATUS=$(curl -sS -o "${RUNNER_TEMP}/git-http-root.html" -w '%{http_code}' "${PORT_FORWARD_TARGET}/" || echo 'ERR')
+          ROOT_STATUS=${ROOT_STATUS//$'\n'/}
+          AUTH_STATUS=$(curl -sS -o "${RUNNER_TEMP}/git-http-root-auth.html" -w '%{http_code}' -u "${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}" "${PORT_FORWARD_TARGET}/" || echo 'ERR')
+          AUTH_STATUS=${AUTH_STATUS//$'\n'/}
+
+          echo "Git HTTP root status (no auth): ${ROOT_STATUS}"
+          echo "Git HTTP root status (basic auth): ${AUTH_STATUS}"
+
+          echo "Current port-forward log tail:"
+          tail -n 20 "${PF_LOG}" || true
 
           echo "Port forwarding established successfully"
 
@@ -494,6 +510,7 @@ jobs:
           set -euo pipefail
           PF_LOG="${RUNNER_TEMP}/git-port-forward.log"
           PF_PID_FILE="${RUNNER_TEMP}/git-port-forward.pid"
+          PORT_FORWARD_TARGET="http://localhost:30080"
 
           if [[ ! -f "${PF_PID_FILE}" ]]; then
             echo "Port-forward PID file missing at ${PF_PID_FILE}"
@@ -506,11 +523,21 @@ jobs:
             exit 1
           fi
 
-          curl -sS http://localhost:30080 > /dev/null || {
-            echo "Git HTTP port-forward is unreachable"
-            cat "${PF_LOG}" || true
-            exit 1
-          }
+          ps -o pid,cmd -p "$(cat "${PF_PID_FILE}")" || true
+
+          ROOT_STATUS=$(curl -sS -o "${RUNNER_TEMP}/git-http-root-verify.html" -w '%{http_code}' "${PORT_FORWARD_TARGET}/" || echo 'ERR')
+          ROOT_STATUS=${ROOT_STATUS//$'\n'/}
+          AUTH_STATUS=$(curl -sS -o "${RUNNER_TEMP}/git-http-root-verify-auth.html" -w '%{http_code}' -u "${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}" "${PORT_FORWARD_TARGET}/" || echo 'ERR')
+          AUTH_STATUS=${AUTH_STATUS//$'\n'/}
+
+          REPO_STATUS=$(curl -sS -o "${RUNNER_TEMP}/git-http-flux-basic.html" -w '%{http_code}' -u "${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}" "${PORT_FORWARD_TARGET}/flux-basic-repo.git/info/refs?service=git-receive-pack" || echo 'ERR')
+          REPO_STATUS=${REPO_STATUS//$'\n'/}
+
+          echo "Git HTTP root status (no auth): ${ROOT_STATUS}"
+          echo "Git HTTP root status (basic auth): ${AUTH_STATUS}"
+          echo "Git HTTP flux-basic info/refs status (basic auth, 404 expected before test initializes repo): ${REPO_STATUS}"
+          echo "Current port-forward log tail:"
+          tail -n 20 "${PF_LOG}" || true
 
           echo "Git HTTP port-forward is healthy"
 

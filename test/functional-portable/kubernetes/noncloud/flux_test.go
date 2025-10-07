@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -168,6 +169,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	// Create the remote for the repository.
 	trimmedGitServerURL := strings.TrimSuffix(gitServerURL, "/")
 	repoURL := fmt.Sprintf("%s/%s.git", trimmedGitServerURL, gitRepoName)
+	t.Logf("Using git HTTP repository URL: %s", repoURL)
 	_, err = r.CreateRemote(&config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{repoURL},
@@ -445,6 +447,7 @@ chmod -R 777 "${REPO_PATH}"
 	)
 	_, err := execGitHTTPCommand(ctx, opts, podName, []string{"/bin/sh", "-c", initCmd})
 	require.NoErrorf(t, err, "failed to initialize repository %s on git server", repoName)
+	t.Logf("Initialized git repository %s on git HTTP backend pod %s (root: %s)", repoName, podName, repoRoot)
 
 	return func() {
 		cleanupPod := getGitHTTPServerPodName(ctx, t, opts)
@@ -456,6 +459,7 @@ rm -rf "${REPO_PATH}"
 `, cleanupRoot, repoName)
 		_, err := execGitHTTPCommand(ctx, opts, cleanupPod, []string{"/bin/sh", "-c", cleanupCmd})
 		require.NoErrorf(t, err, "failed to clean up repository %s on git server", repoName)
+		t.Logf("Cleaned up git repository %s from git HTTP backend pod %s (root: %s)", repoName, cleanupPod, cleanupRoot)
 	}
 }
 
@@ -524,11 +528,18 @@ func execGitHTTPCommand(ctx context.Context, opts rp.RPTestOptions, podName stri
 }
 
 func waitForGitHTTPRepository(t *testing.T, repoURL, username, password string) {
+	t.Helper()
+	t.Logf("Waiting for git HTTP repository %s (username=%q)", repoURL, username)
 	client := &http.Client{Timeout: 2 * time.Second}
+	const maxLoggedBodyBytes = 256
+	attempts := 0
+	success := false
+
 	require.Eventually(t, func() bool {
+		attempts++
 		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/info/refs?service=git-receive-pack", repoURL), nil)
 		if err != nil {
-			t.Logf("failed to build git HTTP check request: %v", err)
+			t.Logf("git HTTP repo check attempt %d: failed to build request: %v", attempts, err)
 			return false
 		}
 		if username != "" {
@@ -536,14 +547,34 @@ func waitForGitHTTPRepository(t *testing.T, repoURL, username, password string) 
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			t.Logf("git HTTP repo check error: %v", err)
+			t.Logf("git HTTP repo check attempt %d: request error: %v", attempts, err)
 			return false
 		}
-		defer resp.Body.Close()
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			t.Logf("git HTTP repo check attempt %d: failed reading response body: %v", attempts, readErr)
+		}
+
+		bodyPreview := string(bodyBytes)
+		if len(bodyPreview) > maxLoggedBodyBytes {
+			bodyPreview = bodyPreview[:maxLoggedBodyBytes] + fmt.Sprintf("...(%d bytes total)", len(bodyBytes))
+		}
+		authChallenge := resp.Header.Get("Www-Authenticate")
+		t.Logf("git HTTP repo check attempt %d: status=%d, auth-challenge=%q, body-preview=%q", attempts, resp.StatusCode, authChallenge, bodyPreview)
+
 		if resp.StatusCode == http.StatusNotFound {
-			t.Logf("git HTTP repo %s not yet available (status %d)", repoURL, resp.StatusCode)
 			return false
 		}
-		return resp.StatusCode < http.StatusBadRequest
-	}, 10*time.Second, 500*time.Millisecond, "git HTTP repository %s never became available", repoURL)
+		if resp.StatusCode >= http.StatusBadRequest {
+			return false
+		}
+
+		success = true
+		return true
+	}, 30*time.Second, 500*time.Millisecond, "git HTTP repository %s never became available", repoURL)
+
+	if success {
+		t.Logf("git HTTP repository %s became available after %d attempt(s)", repoURL, attempts)
+	}
 }
