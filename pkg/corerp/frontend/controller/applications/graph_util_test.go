@@ -17,6 +17,7 @@ limitations under the License.
 package applications
 
 import (
+	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -207,6 +208,55 @@ func TestFindSourceResource(t *testing.T) {
 			parsedSource, err := findSourceResource(tc.source, resources)
 			require.Equal(t, tc.parsedSource, parsedSource)
 			require.ErrorIs(t, err, tc.wantErr)
+		})
+	}
+}
+
+// Test_getAPIVersionForResourceType_Validation tests the resource type format validation
+func Test_getAPIVersionForResourceType_Validation(t *testing.T) {
+	tests := []struct {
+		name         string
+		resourceType string
+		wantErr      bool
+		errContains  string
+	}{
+		{
+			name:         "returns error for invalid resource type format - no slash",
+			resourceType: "InvalidFormat",
+			wantErr:      true,
+			errContains:  "invalid resource type format",
+		},
+		{
+			name:         "returns error for invalid resource type format - too many slashes",
+			resourceType: "Test.Resources/postgres/extra",
+			wantErr:      true,
+			errContains:  "invalid resource type format",
+		},
+		{
+			name:         "returns error for empty resource type",
+			resourceType: "",
+			wantErr:      true,
+			errContains:  "invalid resource type format",
+		},
+		{
+			name:         "returns error for only slash",
+			resourceType: "/",
+			wantErr:      true,
+			errContains:  "invalid resource type format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// For validation tests, we just need to check the parsing logic
+			// We'll use a nil clientOptions since validation happens first
+			_, err := getAPIVersionForResourceType(context.Background(), tt.resourceType, nil)
+
+			// Verify results
+			require.Error(t, err)
+			if tt.errContains != "" {
+				require.Contains(t, err.Error(), tt.errContains)
+			}
 		})
 	}
 }
