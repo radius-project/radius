@@ -105,8 +105,6 @@ func TestCreateOrUpdateRecipePackRun_UpdateExisting(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
-
 	recipePackInput, recipePackDataModel, expectedOutput := getTestModels()
 	w := httptest.NewRecorder()
 
@@ -115,7 +113,7 @@ func TestCreateOrUpdateRecipePackRun_UpdateExisting(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/default/providers/Radius.Core/recipePacks/testrecipepack?api-version=2025-08-01-preview", strings.NewReader(string(jsonPayload)))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
-	ctx = rpctest.NewARMRequestContext(req)
+	ctx := rpctest.NewARMRequestContext(req)
 
 	databaseClient.
 		EXPECT().
