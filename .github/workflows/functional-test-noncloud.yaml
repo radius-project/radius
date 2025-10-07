@@ -118,6 +118,13 @@ jobs:
               );
             }
 
+      - name: Copy Deployment Engine image to GHCR
+        if: github.event_name == 'repository_dispatch'
+        uses: ./.github/actions/copy-deployment-engine-image
+        with:
+          tag: ${{ env.DE_TAG }}
+          ghcr-password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      
       - name: Generate ID for release
         id: gen-id
         run: |
