@@ -11,7 +11,7 @@
         "description": "Azure container recipes for common container patterns",
         "recipes": {
           "Applications.Core/containers": {
-            "recipeKind": "terraform",
+            "recipeKind": "bicep",
             "recipeLocation": "ghcr.io/radius-project/recipes/azure-container-apps:latest",
             "parameters": {
               "cpu": "1.0",
