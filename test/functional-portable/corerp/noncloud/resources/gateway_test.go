@@ -392,7 +392,7 @@ func Test_Gateway_Failure(t *testing.T) {
 			Details: []step.DeploymentErrorDetail{
 				{
 					Code:            "Internal",
-					MessageContains: "invalid TLS certificate",
+					MessageContains: "Error - Type: TLSError",
 				},
 			},
 		},
