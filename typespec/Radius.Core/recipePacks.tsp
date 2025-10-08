@@ -66,7 +66,7 @@ model RecipeDefinition {
   @doc("Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS).")
   plainHttp?: boolean;
 
-  @doc("Path to the template provided by the recipe.")
+  @doc("URL path to the recipe.")
   recipeLocation: string;
 
   @doc("Parameters to pass to the recipe")
