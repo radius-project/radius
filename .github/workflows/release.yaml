@@ -131,6 +131,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: radius-project/radius
+          ref: main
       - name: Checkout radius-project/radius@main
         uses: actions/checkout@v5
         with:
