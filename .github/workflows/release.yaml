@@ -242,6 +242,7 @@ jobs:
       - name: Copy Deployment Engine image to GHCR
         if: success() && steps.release-branch-exists.outputs.result == 'false'
         uses: ./.github/actions/copy-deployment-engine-image
+        env:
+          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
         with:
           tag: ${{ steps.get-version.outputs.release-channel }}
-          ghcr-password: ${{ secrets.GH_RAD_CI_BOT_PAT }}

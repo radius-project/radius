@@ -24,9 +24,6 @@ inputs:
     description: Username to authenticate against the destination registry.
     required: false
     default: rad-ci-bot
-  ghcr-password:
-    description: Password or PAT to authenticate against the destination registry.
-    required: true
 
 runs:
   using: composite
@@ -44,7 +41,7 @@ runs:
       with:
         registry: ${{ inputs.destination-registry }}
         username: ${{ inputs.ghcr-username }}
-        password: ${{ inputs.ghcr-password }}
+        password: ${{ env.GHCR_PASSWORD }}
 
     - name: Copy Deployment Engine image from ACR to GHCR
       shell: bash
