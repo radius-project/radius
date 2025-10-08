@@ -34,7 +34,7 @@ namespace Radius.Core;
 @doc("The recipe pack resource")
 model RecipePackResource
   is TrackedResourceRequired<RecipePackProperties, "recipePacks"> {
-  @doc("recipe pack name")
+  @doc("Recipe pack name")
   @key("recipePackName")
   @path
   @segment("recipePacks")
@@ -60,10 +60,10 @@ model RecipePackProperties {
 
 @doc("Recipe definition for a specific resource type")
 model RecipeDefinition {
-  @doc("The type of recipe (e.g., terraform, bicep)")
+  @doc("The type of recipe (e.g., Terraform, Bicep)")
   recipeKind: RecipeKind;
 
-  @doc("Connect to the location using HTTP (not-HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally-hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS).")
+  @doc("Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS).")
   plainHttp?: boolean;
 
   @doc("URL or path to the recipe source")
