@@ -228,7 +228,7 @@ type RecipeDefinition struct {
 // REQUIRED; The type of recipe (e.g., Terraform, Bicep)
 	RecipeKind *RecipeKind
 
-// REQUIRED; URL or path to the recipe source
+// REQUIRED; URL path to the recipe
 	RecipeLocation *string
 
 // Parameters to pass to the recipe
