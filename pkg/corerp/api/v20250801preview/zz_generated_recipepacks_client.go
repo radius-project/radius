@@ -45,7 +45,7 @@ func NewRecipePacksClient(rootScope string, credential azcore.TokenCredential, o
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - recipePackName - recipe pack name
+//   - recipePackName - Recipe pack name
 //   - resource - Resource create parameters.
 //   - options - RecipePacksClientCreateOrUpdateOptions contains the optional parameters for the RecipePacksClient.CreateOrUpdate
 //     method.
@@ -104,7 +104,7 @@ func (client *RecipePacksClient) createOrUpdateHandleResponse(resp *http.Respons
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - recipePackName - recipe pack name
+//   - recipePackName - Recipe pack name
 //   - options - RecipePacksClientDeleteOptions contains the optional parameters for the RecipePacksClient.Delete method.
 func (client *RecipePacksClient) Delete(ctx context.Context, recipePackName string, options *RecipePacksClientDeleteOptions) (RecipePacksClientDeleteResponse, error) {
 	var err error
@@ -148,7 +148,7 @@ func (client *RecipePacksClient) deleteCreateRequest(ctx context.Context, recipe
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - recipePackName - recipe pack name
+//   - recipePackName - Recipe pack name
 //   - options - RecipePacksClientGetOptions contains the optional parameters for the RecipePacksClient.Get method.
 func (client *RecipePacksClient) Get(ctx context.Context, recipePackName string, options *RecipePacksClientGetOptions) (RecipePacksClientGetResponse, error) {
 	var err error
@@ -253,7 +253,7 @@ func (client *RecipePacksClient) listByScopeHandleResponse(resp *http.Response) 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - recipePackName - recipe pack name
+//   - recipePackName - Recipe pack name
 //   - properties - The resource properties to be updated.
 //   - options - RecipePacksClientUpdateOptions contains the optional parameters for the RecipePacksClient.Update method.
 func (client *RecipePacksClient) Update(ctx context.Context, recipePackName string, properties RecipePackResourceUpdate, options *RecipePacksClientUpdateOptions) (RecipePacksClientUpdateResponse, error) {

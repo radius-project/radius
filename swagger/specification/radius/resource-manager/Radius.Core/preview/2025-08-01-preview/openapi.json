@@ -329,7 +329,7 @@
           {
             "name": "recipePackName",
             "in": "path",
-            "description": "recipe pack name",
+            "description": "Recipe pack name",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -372,7 +372,7 @@
           {
             "name": "recipePackName",
             "in": "path",
-            "description": "recipe pack name",
+            "description": "Recipe pack name",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -430,7 +430,7 @@
           {
             "name": "recipePackName",
             "in": "path",
-            "description": "recipe pack name",
+            "description": "Recipe pack name",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -477,7 +477,7 @@
           {
             "name": "recipePackName",
             "in": "path",
-            "description": "recipe pack name",
+            "description": "Recipe pack name",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -835,11 +835,11 @@
       "properties": {
         "recipeKind": {
           "$ref": "#/definitions/RecipeKind",
-          "description": "The type of recipe (e.g., terraform, bicep)"
+          "description": "The type of recipe (e.g., Terraform, Bicep)"
         },
         "plainHttp": {
           "type": "boolean",
-          "description": "Connect to the location using HTTP (not-HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally-hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)."
+          "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)."
         },
         "recipeLocation": {
           "type": "string",
