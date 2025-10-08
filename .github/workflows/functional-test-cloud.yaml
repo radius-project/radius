@@ -211,6 +211,9 @@ jobs:
         uses: ./.github/actions/copy-deployment-engine-image
         env:
           GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
+          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
+          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
       
