@@ -64,8 +64,13 @@ func (r *RadiusInstallationCheck) Run(ctx context.Context) (bool, string, error)
 
 	message := fmt.Sprintf("Radius is installed (version: %s)", state.RadiusVersion)
 
-	// Note: Contour status checking is disabled due to Bitnami repository changes
-	message += " (" + helm.ContourDisabledReason + ")"
+	// Also check if Contour is installed
+	if state.ContourInstalled {
+		message += fmt.Sprintf(", Contour is installed (version: %s)", state.ContourVersion)
+	} else {
+		// This is a warning, not an error, as upgrade might install Contour
+		message += ", Contour is not installed (will be installed during upgrade)"
+	}
 
 	return true, message, nil
 }
