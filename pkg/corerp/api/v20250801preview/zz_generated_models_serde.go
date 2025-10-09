@@ -598,7 +598,7 @@ func (p *ProvidersKubernetes) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeDefinition.
 func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populateAny(objectMap, "parameters", r.Parameters)
+	populate(objectMap, "parameters", r.Parameters)
 	populate(objectMap, "plainHttp", r.PlainHTTP)
 	populate(objectMap, "recipeKind", r.RecipeKind)
 	populate(objectMap, "recipeLocation", r.RecipeLocation)

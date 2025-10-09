@@ -232,7 +232,7 @@ type RecipeDefinition struct {
 	RecipeLocation *string
 
 // Parameters to pass to the recipe
-	Parameters any
+	Parameters map[string]any
 
 // Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for
 // example in a locally hosted registry for Bicep recipes. Defaults to false (use

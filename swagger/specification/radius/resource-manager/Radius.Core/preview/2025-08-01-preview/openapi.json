@@ -847,7 +847,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Parameters to pass to the recipe"
+          "description": "Parameters to pass to the recipe",
+          "additionalProperties": {}
         }
       },
       "required": [

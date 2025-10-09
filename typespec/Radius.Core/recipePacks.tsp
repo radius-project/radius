@@ -70,7 +70,7 @@ model RecipeDefinition {
   recipeLocation: string;
 
   @doc("Parameters to pass to the recipe")
-  parameters?: {};
+  parameters?: Record<unknown>;
 }
 
 @doc("The type of recipe")
