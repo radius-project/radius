@@ -49,15 +49,19 @@ func Test_AWS_DeleteResource(t *testing.T) {
 
 	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		logGroupName := generateLogGroupName()
+		t.Logf("Setting up test AWS resource with log group name: %s", logGroupName)
 		setupTestAWSResource(t, ctx, logGroupName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
+		t.Logf("Retrieved resource ID: %s", resourceID)
 
 		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
 		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20231001preview.Version)
+		t.Logf("DELETE operation URL: %s", deleteURL)
+		
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
 				"LogGroupName": logGroupName,
@@ -65,21 +69,27 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		}
 		deleteBody, err := json.Marshal(deleteRequestBody)
 		require.NoError(t, err)
+		t.Logf("DELETE request body: %s", string(deleteBody))
+
 
 		// Issue the Delete Request
 		deleteRequest, err := http.NewRequest(http.MethodPost, deleteURL, bytes.NewBuffer(deleteBody))
 		require.NoError(t, err)
+		t.Logf("Sending DELETE request to: %s", deleteRequest.URL.String())
 		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
+		t.Logf("DELETE request completed with status: %d", deleteResponse.StatusCode)
 
 		// Get the operation status url from the Azure-Asyncoperation header
 		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
+		t.Logf("DELETE operation completion URL: %s", deleteResponseCompletionUrl)
 		getRequest, err := http.NewRequest(http.MethodGet, deleteResponseCompletionUrl, nil)
 		require.NoError(t, err)
 		maxRetries := 100
 		deleteSucceeded := false
 		for i := 0; i < maxRetries; i++ {
+			t.Logf("Polling DELETE operation status (attempt %d/%d): %s", i+1, maxRetries, deleteResponseCompletionUrl)
 			getResponse, err := roundTripper.RoundTrip(getRequest)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, getResponse.StatusCode)
@@ -91,8 +101,10 @@ func Test_AWS_DeleteResource(t *testing.T) {
 			body := map[string]any{}
 			err = json.Unmarshal(payload, &body)
 			require.NoError(t, err)
+			t.Logf("DELETE operation status response: %s", string(payload))
 			if body["status"] == "Succeeded" {
 				deleteSucceeded = true
+				t.Logf("DELETE operation succeeded after %d attempts", i+1)
 				break
 			}
 			// Give it more time
@@ -110,27 +122,33 @@ func Test_AWS_ListResources(t *testing.T) {
 
 	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		var logGroupName = generateLogGroupName()
+		t.Logf("Setting up test AWS resource with log group name: %s", logGroupName)
 		setupTestAWSResource(t, ctx, logGroupName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
+		t.Logf("Retrieved resource ID: %s", resourceID)
 
 		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
 		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20231001preview.Version)
+		t.Logf("LIST operation URL: %s", listURL)
 
 		// Issue the List Request
 		listRequest, err := http.NewRequest(http.MethodGet, listURL, nil)
 		require.NoError(t, err)
+		t.Logf("Sending LIST request to: %s", listRequest.URL.String())
 		listResponse, err := roundTripper.RoundTrip(listRequest)
 		require.NoError(t, err)
 
 		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+		t.Logf("LIST request completed with status: %d", listResponse.StatusCode)
 
 		defer listResponse.Body.Close()
 		payload, err := io.ReadAll(listResponse.Body)
 		require.NoError(t, err)
+		t.Logf("LIST response body: %s", string(payload))
 		body := map[string][]any{}
 		err = json.Unmarshal(payload, &body)
 		require.NoError(t, err)
@@ -138,6 +156,7 @@ func Test_AWS_ListResources(t *testing.T) {
 		// Verify payload has at least one resource
 		require.Len(t, body, 1)
 		require.GreaterOrEqual(t, len(body["value"]), 1)
+		t.Logf("LIST operation returned %d resources", len(body["value"]))
 	})
 
 	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
@@ -146,6 +165,7 @@ func Test_AWS_ListResources(t *testing.T) {
 
 func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string) {
 	// Test setup - Create AWS resource using AWS APIs
+	t.Logf("Starting AWS resource setup for: %s", resourceName)
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
@@ -154,17 +174,22 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	}
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
+	t.Logf("CREATE AWS resource desired state: %s", string(desiredStateBytes))
 
 	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
 
+	t.Logf("Creating AWS resource via AWS SDK: %s (type: %s)", resourceName, awsLogGroupResourceType)
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 		TypeName:     &awsLogGroupResourceType,
 		DesiredState: awsgo.String(string(desiredStateBytes)),
 	}, cloudControlOpts...)
 	require.NoError(t, err)
+	t.Logf("AWS CREATE resource request submitted, request token: %s", *response.ProgressEvent.RequestToken)
 	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
+	t.Logf("AWS resource creation completed successfully: %s", resourceName)
 
 	t.Cleanup(func() {
+		t.Logf("Starting cleanup for AWS resource: %s", resourceName)
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -172,29 +197,35 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		if aws.IsAWSResourceNotFoundError(err) {
+			t.Logf("AWS resource not found during cleanup, skipping delete: %s", resourceName)
 			return
 		}
 		// Just in case delete fails
+		t.Logf("Deleting AWS resource via AWS SDK: %s", resourceName)
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		require.NoError(t, err)
+		t.Logf("AWS DELETE resource request submitted, request token: %s", *deleteOutput.ProgressEvent.RequestToken)
 
 		// Ignoring status of delete since AWS command fails if the resource does not already exist
 		waitForSuccess(t, ctx, awsClient, deleteOutput.ProgressEvent.RequestToken)
+		t.Logf("AWS resource cleanup completed: %s", resourceName)
 	})
 	// End of test setup
 }
 
 func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudControlClient, requestToken *string) {
 	// Wait till the create is complete
+	t.Logf("Waiting for AWS operation to complete, request token: %s", *requestToken)
 	maxWaitTime := 300 * time.Second
 	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(awsClient)
 	err := waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: requestToken,
 	}, maxWaitTime)
 	require.NoError(t, err)
+	t.Logf("AWS operation completed successfully, request token: %s", *requestToken)
 }
 
 func generateLogGroupName() string {
