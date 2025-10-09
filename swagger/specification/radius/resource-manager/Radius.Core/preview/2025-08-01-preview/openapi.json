@@ -839,7 +839,7 @@
         },
         "plainHttp": {
           "type": "boolean",
-          "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)."
+          "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
         },
         "recipeLocation": {
           "type": "string",
@@ -886,7 +886,7 @@
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "The status of the asynchronous operation.",
+          "description": "The status of the asynchronous operation",
           "readOnly": true
         },
         "description": {

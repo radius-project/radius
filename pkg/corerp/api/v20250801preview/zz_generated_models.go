@@ -236,7 +236,7 @@ type RecipeDefinition struct {
 
 // Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for
 // example in a locally hosted registry for Bicep recipes. Defaults to false (use
-// HTTPS/TLS).
+// HTTPS/TLS)
 	PlainHTTP *bool
 }
 
@@ -248,7 +248,7 @@ type RecipePackProperties struct {
 // Description of what this recipe pack provides
 	Description *string
 
-// READ-ONLY; The status of the asynchronous operation.
+// READ-ONLY; The status of the asynchronous operation
 	ProvisioningState *ProvisioningState
 
 // READ-ONLY; List of environment IDs that reference this recipe pack
