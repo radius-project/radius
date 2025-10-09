@@ -31,54 +31,54 @@ using TypeSpec.Rest;
 
 namespace Radius.Core;
 
-@doc("The recipe pack resource")
+@doc("The recipe pack resource.")
 model RecipePackResource
   is TrackedResourceRequired<RecipePackProperties, "recipePacks"> {
-  @doc("Recipe pack name")
+  @doc("Recipe pack name.")
   @key("recipePackName")
   @path
   @segment("recipePacks")
   name: ResourceNameString;
 }
 
-@doc("Recipe Pack properties")
+@doc("Recipe Pack properties.")
 model RecipePackProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Description of what this recipe pack provides")
+  @doc("Description of what this recipe pack provides.")
   description?: string;
 
-  @doc("List of environment IDs that reference this recipe pack")
+  @doc("List of environment IDs that reference this recipe pack.")
   @visibility("read")
   referencedBy?: string[];
 
-  @doc("Map of resource types to their recipe configurations")
+  @doc("Map of resource types to their recipe configurations.")
   recipes: Record<RecipeDefinition>;
 }
 
-@doc("Recipe definition for a specific resource type")
+@doc("Recipe definition for a specific resource type.")
 model RecipeDefinition {
-  @doc("The type of recipe (e.g., Terraform, Bicep)")
+  @doc("The type of recipe (e.g., Terraform, Bicep).")
   recipeKind: RecipeKind;
 
   @doc("Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS).")
   plainHttp?: boolean;
 
-  @doc("URL path to the recipe")
+  @doc("URL path to the recipe.")
   recipeLocation: string;
 
-  @doc("Parameters to pass to the recipe")
+  @doc("Parameters to pass to the recipe.")
   parameters?: Record<unknown>;
 }
 
-@doc("The type of recipe")
+@doc("The type of recipe.")
 enum RecipeKind {
-  @doc("Terraform recipe")
+  @doc("Terraform recipe.")
   terraform: "terraform",
 
-  @doc("Bicep recipe")
+  @doc("Bicep recipe.")
   bicep: "bicep",
 }
 
