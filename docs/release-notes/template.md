@@ -25,24 +25,8 @@ Welcome to our new contributors who have merged their first PR in this release!
 <!-- PASTE THE OUTPUT OF THE GENERATED CONTRIBUTOR LIST HERE -->
 
 ## Upgrading to Radius vX.Y.Z
-<!-- REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT -->
 
-During our preview stage, an upgrade to Radius vX.Y.Z requires a full reinstallation of the Radius control-plane, rad CLI, and all Radius apps. Stay tuned for an in-place upgrade path in the future.
-<!-- REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT -->
-
-1. Delete any environments you have created:
-   ```bash
-   rad env delete <env-name>
-   ```
-1. Uninstall the previous version of the Radius control-plane:
-   ```bash
-   rad uninstall kubernetes
-   ```
-1. Visit the [Radius installation guide](https://docs.radapp.io/getting-started/install/) to install the latest CLI, or download a binary below
-1. Install the latest version of the Radius control-plane:
-   ```bash
-   rad install kubernetes
-   ```
+You can upgrade to this release by upgrading your Radius CLI then running `rad upgrade kubernetes`. Only incremental version upgrades are supported. Consult the [upgrade documentation](https://docs.radapp.io/guides/operations/kubernetes/kubernetes-upgrade/) for full details.
 
 ## Full changelog
 
