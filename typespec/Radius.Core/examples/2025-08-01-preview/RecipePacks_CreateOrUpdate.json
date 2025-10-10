@@ -1,0 +1,68 @@
+{
+  "operationId": "RecipePacks_CreateOrUpdate",
+  "title": "Create or Update a recipe pack",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "recipePackName": "azure-container-pack",
+    "api-version": "2025-08-01-preview",
+    "RecipePackResource": {
+      "location": "West US",
+      "properties": {
+        "description": "Azure container recipes for common container patterns",
+        "recipes": {
+          "Applications.Core/containers": {
+            "recipeKind": "terraform",
+            "recipeLocation": "ghcr.io/radius-project/recipes/azure-container-apps:latest",
+            "parameters": {
+              "cpu": "1.0",
+              "memory": "2Gi"
+            }
+          },
+          "Applications.Dapr/stateStores": {
+            "recipeKind": "bicep",
+            "recipeLocation": "br:myregistry.azurecr.io/bicep/recipes/cosmosdb:v1.0",
+            "parameters": {
+              "databaseName": "radius-db",
+              "throughput": 400
+            }
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/recipePacks/azure-container-pack",
+        "name": "azure-container-pack",
+        "type": "Radius.Core/recipePacks",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "description": "Azure container recipes for common container patterns",
+          "referencedBy": [
+            "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-env"
+          ],
+          "recipes": {
+            "Applications.Core/containers": {
+              "recipeKind": "bicep",
+              "recipeLocation": "ghcr.io/radius-project/recipes/azure-container-apps:latest",
+              "parameters": {
+                "cpu": "1.0",
+                "memory": "2Gi"
+              }
+            },
+            "Applications.Dapr/stateStores": {
+              "recipeKind": "bicep",
+              "recipeLocation": "br:myregistry.azurecr.io/bicep/recipes/cosmosdb:v1.0",
+              "parameters": {
+                "databaseName": "radius-db",
+                "throughput": 400
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

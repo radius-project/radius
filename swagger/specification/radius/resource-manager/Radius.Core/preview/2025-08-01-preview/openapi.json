@@ -44,6 +44,9 @@
     },
     {
       "name": "Environments"
+    },
+    {
+      "name": "RecipePacks"
     }
   ],
   "paths": {
@@ -266,6 +269,238 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/recipePacks": {
+      "get": {
+        "operationId": "RecipePacks_ListByScope",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "List RecipePackResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List recipe packs by scope": {
+            "$ref": "./examples/RecipePacks_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/recipePacks/{recipePackName}": {
+      "get": {
+        "operationId": "RecipePacks_Get",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Get a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a recipe pack": {
+            "$ref": "./examples/RecipePacks_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "RecipePacks_CreateOrUpdate",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Create a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RecipePackResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RecipePackResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update a recipe pack": {
+            "$ref": "./examples/RecipePacks_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "RecipePacks_Update",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Update a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RecipePackResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "RecipePacks_Delete",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Delete a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a recipe pack": {
+            "$ref": "./examples/RecipePacks_Delete.json"
           }
         }
       }
@@ -593,6 +828,142 @@
         ]
       },
       "readOnly": true
+    },
+    "RecipeDefinition": {
+      "type": "object",
+      "description": "Recipe definition for a specific resource type",
+      "properties": {
+        "recipeKind": {
+          "$ref": "#/definitions/RecipeKind",
+          "description": "The type of recipe (e.g., terraform, bicep)"
+        },
+        "plainHttp": {
+          "type": "boolean",
+          "description": "Connect to the location using HTTP (not-HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally-hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)."
+        },
+        "recipeLocation": {
+          "type": "string",
+          "description": "URL or path to the recipe source"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters to pass to the recipe"
+        }
+      },
+      "required": [
+        "recipeKind",
+        "recipeLocation"
+      ]
+    },
+    "RecipeKind": {
+      "type": "string",
+      "description": "The type of recipe",
+      "enum": [
+        "terraform",
+        "bicep"
+      ],
+      "x-ms-enum": {
+        "name": "RecipeKind",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "terraform",
+            "value": "terraform",
+            "description": "Terraform recipe"
+          },
+          {
+            "name": "bicep",
+            "value": "bicep",
+            "description": "Bicep recipe"
+          }
+        ]
+      }
+    },
+    "RecipePackProperties": {
+      "type": "object",
+      "description": "Recipe Pack properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what this recipe pack provides"
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "List of environment IDs that reference this recipe pack",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
+        },
+        "recipes": {
+          "type": "object",
+          "description": "Map of resource types to their recipe configurations",
+          "additionalProperties": {
+            "$ref": "#/definitions/RecipeDefinition"
+          }
+        }
+      },
+      "required": [
+        "recipes"
+      ]
+    },
+    "RecipePackResource": {
+      "type": "object",
+      "description": "The recipe pack resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RecipePackProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "RecipePackResourceListResult": {
+      "type": "object",
+      "description": "The response of a RecipePackResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The RecipePackResource items on this page",
+          "items": {
+            "$ref": "#/definitions/RecipePackResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "RecipePackResourceUpdate": {
+      "type": "object",
+      "description": "The recipe pack resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
     }
   },
   "parameters": {

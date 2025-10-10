@@ -34,3 +34,28 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RecipePacksClientCreateOrUpdateOptions contains the optional parameters for the RecipePacksClient.CreateOrUpdate method.
+type RecipePacksClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientDeleteOptions contains the optional parameters for the RecipePacksClient.Delete method.
+type RecipePacksClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientGetOptions contains the optional parameters for the RecipePacksClient.Get method.
+type RecipePacksClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientListByScopeOptions contains the optional parameters for the RecipePacksClient.NewListByScopePager method.
+type RecipePacksClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientUpdateOptions contains the optional parameters for the RecipePacksClient.Update method.
+type RecipePacksClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
