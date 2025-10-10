@@ -118,6 +118,22 @@ jobs:
               );
             }
 
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Copy Deployment Engine image to GHCR
+        if: github.event_name == 'repository_dispatch'
+        uses: ./.github/actions/copy-deployment-engine-image
+        env:
+          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
+          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
+          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
+        with:
+          tag: ${{ env.DE_TAG }}
+      
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -374,30 +390,32 @@ jobs:
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
 
-      - name: Install Gitea
-        if: matrix.name == 'kubernetes-noncloud'
-        id: install-gitea
-        uses: ./.github/actions/install-gitea
-        env:
-          GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
-        with:
-          gitea-username: ${{ env.GITEA_USERNAME }}
-          gitea-email: ${{ env.GITEA_EMAIL }}
-          gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+      # https://github.com/radius-project/radius/issues/10441
+      # - name: Install Gitea
+      #   if: matrix.name == 'kubernetes-noncloud'
+      #   id: install-gitea
+      #   uses: ./.github/actions/install-gitea
+      #   env:
+      #     GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
+      #   with:
+      #     gitea-username: ${{ env.GITEA_USERNAME }}
+      #     gitea-email: ${{ env.GITEA_EMAIL }}
+      #     gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
  
-      - name: Port-forward to Gitea
-        if: matrix.name == 'kubernetes-noncloud'
-        run: |
-          # Start port forwarding in the background
-          kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
+      # https://github.com/radius-project/radius/issues/10441
+      # - name: Port-forward to Gitea
+      #   if: matrix.name == 'kubernetes-noncloud'
+      #   run: |
+      #     # Start port forwarding in the background
+      #     kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
           
-          # Wait for port forwarding to be established
-          sleep 5
+      #     # Wait for port forwarding to be established
+      #     sleep 5
           
-          # Test the connection to ensure port forwarding is working
-          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+      #     # Test the connection to ensure port forwarding is working
+      #     curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
           
-          echo "Port forwarding established successfully"
+      #     echo "Port forwarding established successfully"
 
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
@@ -480,7 +498,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          # GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
           RADIUS_TEST_FAST_CLEANUP: true
 
       - name: Process Functional Test Results

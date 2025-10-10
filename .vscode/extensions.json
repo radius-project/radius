@@ -1,9 +1,7 @@
 {
   "recommendations": [
+    "ms-azuretools.vscode-bicep",
     "golang.go",
-    "ms-vscode.vscode-json",
-    "redhat.vscode-yaml",
-    "ms-kubernetes-tools.vscode-kubernetes-tools",
-    "ms-azuretools.vscode-bicep"
+    "GitHub.vscode-pull-request-github"
   ]
 }

@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	contourHelmRepo            = "https://charts.bitnami.com/bitnami"
+	contourHelmRepo            = "https://projectcontour.github.io/helm-charts"
 	contourReleaseName         = "contour"
-	ContourChartDefaultVersion = "11.1.1"
+	ContourChartDefaultVersion = "0.1.0"
 )
 
 type ContourChartOptions struct {
@@ -75,7 +75,7 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error {
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
-		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
+		// https://github.com/projectcontour/helm-charts/blob/81304159bb794a6d5ec874d1f29c696f63cff6ad/charts/contour/values.yaml#L962
 		envoyNode := helmChart.Values["envoy"].(map[string]any)
 		if envoyNode == nil {
 			return fmt.Errorf("envoy node not found in chart values")

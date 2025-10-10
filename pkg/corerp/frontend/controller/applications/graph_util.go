@@ -20,18 +20,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/go-openapi/jsonpointer"
+	"golang.org/x/exp/maps"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
+	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -81,11 +84,62 @@ func listAllResourcesOfTypeInApplication(ctx context.Context, applicationID reso
 	return results, nil
 }
 
+// getAPIVersionForResourceType retrieves the default API version for a given resource type.
+// If no default is set, it returns the first available API version from the resource type's API versions.
+func getAPIVersionForResourceType(ctx context.Context, resourceType string, clientOptions *policy.ClientOptions) (string, error) {
+	// Validate and parse the resource type (must be in format "Provider/Type")
+	parts := strings.Split(resourceType, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", fmt.Errorf("invalid resource type format %q, expected format 'Provider/Type'", resourceType)
+	}
+	provider := parts[0]
+	resType := parts[1]
+
+	// Create a client to query the resource provider summary
+	client, err := ucpv20231001preview.NewResourceProvidersClient(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return "", fmt.Errorf("failed to create resource provider client: %w", err)
+	}
+
+	summary, err := client.GetProviderSummary(ctx, "local", provider, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to get resource provider summary for %q: %w", provider, err)
+	}
+
+	resourceTypeSummary, ok := summary.ResourceTypes[resType]
+	if !ok {
+		return "", fmt.Errorf("resource type %q not found in resource provider %q", resType, provider)
+	}
+
+	// Prioritize the default API version if it's set
+	if resourceTypeSummary.DefaultAPIVersion != nil && *resourceTypeSummary.DefaultAPIVersion != "" {
+		return *resourceTypeSummary.DefaultAPIVersion, nil
+	}
+
+	// Fall back to any available API version
+	apiVersions := maps.Keys(resourceTypeSummary.APIVersions)
+	if len(apiVersions) == 0 {
+		return "", fmt.Errorf("no API versions found for resource type %q", resourceType)
+	}
+
+	return apiVersions[0], nil
+}
+
 // listAllResourcesByType takes in a context, a root scope and a resource type and returns a slice of GenericResources and an error if one occurs.
 func listAllResourcesByType(ctx context.Context, rootScope string, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 
-	client, err := generated.NewGenericResourcesClient(rootScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
+	// Get the appropriate API version for this resource type
+	apiVersion, err := getAPIVersionForResourceType(ctx, resourceType, clientOptions)
+	if err != nil {
+		return []generated.GenericResource{}, err
+	}
+
+	// Set the API version in the client options
+	clientOptionsWithAPIVersion := *clientOptions
+	clientOptionsWithAPIVersion.APIVersion = apiVersion
+
+	client, err := generated.NewGenericResourcesClient(rootScope, resourceType, &aztoken.AnonymousCredential{}, &clientOptionsWithAPIVersion)
 	if err != nil {
 		return []generated.GenericResource{}, err
 	}

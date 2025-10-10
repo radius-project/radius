@@ -68,7 +68,7 @@ type executor struct {
 func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
 	// Note: We use a global shared binary approach, so we should NOT call i.Remove()
 	// as it would remove the shared global binary that other operations might be using.
 	// The global binary will persist across operations to eliminate race conditions.
@@ -172,7 +172,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, options.RootDir)
+	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
 	if err != nil {
 		return nil, err
 	}
@@ -391,8 +391,8 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 	// Verify terraform binary is still accessible before state operation
 	if execPath := tf.ExecPath(); execPath != "" {
 		if _, err := os.Stat(execPath); err != nil {
-			logger.Info(fmt.Sprintf("ERROR: Terraform binary missing at %s during state fetch: %s", execPath, err.Error()))
-			return nil, fmt.Errorf("terraform binary disappeared at %s: %w", execPath, err)
+			logger.Info(fmt.Sprintf("ERROR: Terraform binary missing at state fetch: %s", err.Error()))
+			return nil, fmt.Errorf("terraform binary file not found: %w", err)
 		}
 	}
 
