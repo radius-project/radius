@@ -1,0 +1,52 @@
+{
+  "operationId": "RecipePacks_ListByScope",
+  "title": "List recipe packs by scope",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2025-08-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/recipePacks/azure-container-pack",
+            "name": "azure-container-pack",
+            "type": "Radius.Core/recipePacks",
+            "location": "West US",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Azure container recipes for common container patterns",
+              "referencedBy": [
+                "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-env"
+              ],
+              "recipes": {
+                "Applications.Core/containers": {
+                  "recipeKind": "bicep",
+                  "recipeLocation": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
+                }
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/recipePacks/kubernetes-pack",
+            "name": "kubernetes-pack",
+            "type": "Radius.Core/recipePacks",
+            "location": "East US",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "description": "Kubernetes native recipes",
+              "referencedBy": [],
+              "recipes": {
+                "Applications.Core/containers": {
+                  "recipeKind": "bicep",
+                  "recipeLocation": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
