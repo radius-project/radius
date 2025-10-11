@@ -51,7 +51,7 @@ func Test_GroupDelete(t *testing.T) {
 	t.Cleanup(func() {
 		// Try to delete the test group if it still exists
 		// Ignore errors as the group might have been successfully deleted
-		_ = cli.GroupDelete(context.Background(), uniqueGroupName, true)
+		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true})
 	})
 
 	// Create the unique resource group
@@ -82,7 +82,7 @@ func Test_GroupDelete(t *testing.T) {
 
 	// Delete the resource group with all its resources
 	t.Logf("Deleting resource group: %s", uniqueGroupName)
-	err = cli.GroupDelete(ctx, uniqueGroupName, true)
+	err = cli.GroupDelete(ctx, uniqueGroupName, radcli.DeleteOptions{Confirm: true})
 	require.NoError(t, err, "Failed to delete resource group with resources")
 
 	// Verify group is deleted
