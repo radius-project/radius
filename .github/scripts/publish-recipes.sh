@@ -51,6 +51,7 @@ if [[ -z "$GITHUB_STEP_SUMMARY" ]]; then
 fi
 
 echo "## Recipes published to $REGISTRY_PATH" >>$GITHUB_STEP_SUMMARY
+
 for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
     FILENAME=$(basename $RECIPE)
     PUBLISH_REF="$REGISTRY_PATH/${FILENAME%.*}:$RECIPE_VERSION"
