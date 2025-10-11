@@ -28,6 +28,7 @@ import (
 
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/spec"
+	"github.com/go-openapi/swag/loading"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -118,7 +119,7 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 		// Load OpenAPI Spec
 		specDoc, err := loads.Spec(
 			path,
-			loads.WithDocLoader(func(path string) (json.RawMessage, error) {
+			loads.WithDocLoader(func(path string, _ ...loading.Option) (json.RawMessage, error) {
 				data, err := fs.ReadFile(l.specFiles, path)
 				return json.RawMessage(data), err
 			}))
