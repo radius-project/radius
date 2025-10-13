@@ -205,6 +205,11 @@ jobs:
                 `CHECKOUT_REF=refs/heads/main`
               );
             }
+
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
       
       - name: Copy Deployment Engine image to GHCR
         if: github.event_name == 'repository_dispatch'
