@@ -13,7 +13,7 @@ git config --global --add safe.directory /workspaces/radius
 curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.64.8
 
 # Other go tools
-go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.19.0 
+go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0 
 go install go.uber.org/mock/mockgen@v0.4.0
 
 # Prerequisites for Code Generation, see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites#code-generation
