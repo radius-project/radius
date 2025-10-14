@@ -49,6 +49,12 @@
       "name": "Environments"
     },
     {
+      "name": "TerraformSettings"
+    },
+    {
+      "name": "BicepSettings"
+    },
+    {
       "name": "RecipePacks"
     }
   ],
@@ -327,6 +333,218 @@
             "schema": {
               "$ref": "#/definitions/ApplicationGraphResponse"
             }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/bicepSettings": {
+      "get": {
+        "operationId": "BicepSettings_ListByScope",
+        "tags": [
+          "BicepSettings"
+        ],
+        "description": "List BicepSettingsResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}": {
+      "get": {
+        "operationId": "BicepSettings_Get",
+        "tags": [
+          "BicepSettings"
+        ],
+        "description": "Get a BicepSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "bicepSettingsName",
+            "in": "path",
+            "description": "Bicep settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "BicepSettings_CreateOrUpdate",
+        "tags": [
+          "BicepSettings"
+        ],
+        "description": "Create a BicepSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "bicepSettingsName",
+            "in": "path",
+            "description": "Bicep settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'BicepSettingsResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'BicepSettingsResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "BicepSettings_Update",
+        "tags": [
+          "BicepSettings"
+        ],
+        "description": "Update a BicepSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "bicepSettingsName",
+            "in": "path",
+            "description": "Bicep settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/BicepSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "BicepSettings_Delete",
+        "tags": [
+          "BicepSettings"
+        ],
+        "description": "Delete a BicepSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "bicepSettingsName",
+            "in": "path",
+            "description": "Bicep settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
           },
           "default": {
             "description": "An unexpected error response.",
@@ -792,6 +1010,218 @@
         }
       }
     },
+    "/{rootScope}/providers/Radius.Core/terraformSettings": {
+      "get": {
+        "operationId": "TerraformSettings_ListByScope",
+        "tags": [
+          "TerraformSettings"
+        ],
+        "description": "List TerraformSettingsResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}": {
+      "get": {
+        "operationId": "TerraformSettings_Get",
+        "tags": [
+          "TerraformSettings"
+        ],
+        "description": "Get a TerraformSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "terraformSettingsName",
+            "in": "path",
+            "description": "Terraform settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "TerraformSettings_CreateOrUpdate",
+        "tags": [
+          "TerraformSettings"
+        ],
+        "description": "Create a TerraformSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "terraformSettingsName",
+            "in": "path",
+            "description": "Terraform settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'TerraformSettingsResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'TerraformSettingsResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "TerraformSettings_Update",
+        "tags": [
+          "TerraformSettings"
+        ],
+        "description": "Update a TerraformSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "terraformSettingsName",
+            "in": "path",
+            "description": "Terraform settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TerraformSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "TerraformSettings_Delete",
+        "tags": [
+          "TerraformSettings"
+        ],
+        "description": "Delete a TerraformSettingsResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "terraformSettingsName",
+            "in": "path",
+            "description": "Terraform settings resource name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/providers/Radius.Core/operations": {
       "get": {
         "operationId": "Operations_List",
@@ -1044,6 +1474,151 @@
       ],
       "x-ms-discriminator-value": "aci"
     },
+    "BicepAuthenticationConfiguration": {
+      "type": "object",
+      "description": "Authentication configuration for Bicep registries.",
+      "properties": {
+        "registries": {
+          "type": "object",
+          "description": "Authentication entries keyed by registry hostname.",
+          "additionalProperties": {
+            "$ref": "#/definitions/BicepRegistryAuthentication"
+          }
+        }
+      }
+    },
+    "BicepAwsIrsaAuthentication": {
+      "type": "object",
+      "description": "AWS IRSA configuration for a Bicep registry.",
+      "properties": {
+        "roleArn": {
+          "type": "string",
+          "description": "ARN of the AWS IAM role used for IRSA."
+        },
+        "secret": {
+          "type": "string",
+          "description": "Resource ID of the Radius.Security/secrets entry containing the IRSA token."
+        }
+      }
+    },
+    "BicepAzureWorkloadIdentityAuthentication": {
+      "type": "object",
+      "description": "Azure Workload Identity configuration for a Bicep registry.",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "Client ID used for Azure Workload Identity."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Tenant ID used for Azure Workload Identity."
+        },
+        "secret": {
+          "type": "string",
+          "description": "Resource ID of the Radius.Security/secrets entry containing the workload identity token."
+        }
+      }
+    },
+    "BicepBasicAuthentication": {
+      "type": "object",
+      "description": "Basic authentication configuration for a Bicep registry.",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Username for basic authentication."
+        },
+        "secret": {
+          "type": "string",
+          "description": "Resource ID of the Radius.Security/secrets entry containing the password."
+        }
+      }
+    },
+    "BicepRegistryAuthentication": {
+      "type": "object",
+      "description": "Registry authentication options for a private Bicep registry.",
+      "properties": {
+        "basic": {
+          "$ref": "#/definitions/BicepBasicAuthentication",
+          "description": "Basic authentication settings for a registry."
+        },
+        "azureWorkloadIdentity": {
+          "$ref": "#/definitions/BicepAzureWorkloadIdentityAuthentication",
+          "description": "Azure Workload Identity authentication settings for a registry."
+        },
+        "awsIrsa": {
+          "$ref": "#/definitions/BicepAwsIrsaAuthentication",
+          "description": "AWS IRSA authentication settings for a registry."
+        }
+      }
+    },
+    "BicepSettingsProperties": {
+      "type": "object",
+      "description": "Bicep settings properties.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the asynchronous operation.",
+          "readOnly": true
+        },
+        "authentication": {
+          "$ref": "#/definitions/BicepAuthenticationConfiguration",
+          "description": "Authentication settings for private registries."
+        }
+      }
+    },
+    "BicepSettingsResource": {
+      "type": "object",
+      "description": "Bicep settings resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/BicepSettingsProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "BicepSettingsResourceListResult": {
+      "type": "object",
+      "description": "The response of a BicepSettingsResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The BicepSettingsResource items on this page",
+          "items": {
+            "$ref": "#/definitions/BicepSettingsResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "BicepSettingsResourceUpdate": {
+      "type": "object",
+      "description": "Bicep settings resource.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
+    },
     "Direction": {
       "type": "string",
       "description": "The direction of a connection.",
@@ -1098,6 +1673,14 @@
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the asynchronous operation.",
           "readOnly": true
+        },
+        "terraformSettings": {
+          "type": "string",
+          "description": "Resource ID of the Terraform settings applied to this environment."
+        },
+        "bicepSettings": {
+          "type": "string",
+          "description": "Resource ID of the Bicep settings applied to this environment."
         },
         "recipePacks": {
           "type": "array",
@@ -1577,6 +2160,257 @@
           "x-ms-identifiers": []
         }
       }
+    },
+    "TerraformBackendConfiguration": {
+      "type": "object",
+      "description": "Terraform backend configuration matching the terraform block.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Backend type (for example 'kubernetes')."
+        },
+        "config": {
+          "type": "object",
+          "description": "Backend-specific configuration values.",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      ]
+    },
+    "TerraformCliConfiguration": {
+      "type": "object",
+      "description": "Terraform CLI configuration matching the terraformrc file.",
+      "properties": {
+        "provider_installation": {
+          "$ref": "#/definitions/TerraformProviderInstallationConfiguration",
+          "description": "Provider installation configuration controlling how Terraform installs providers."
+        },
+        "credentials": {
+          "type": "object",
+          "description": "Credentials keyed by registry or module source hostname.",
+          "additionalProperties": {
+            "$ref": "#/definitions/TerraformCredentialConfiguration"
+          }
+        }
+      }
+    },
+    "TerraformCredentialConfiguration": {
+      "type": "object",
+      "description": "Credential configuration for Terraform provider or module sources.",
+      "properties": {
+        "secret": {
+          "type": "string",
+          "description": "Resource ID of the Radius.Security/secrets entry containing the credential values (for example token)."
+        }
+      }
+    },
+    "TerraformDirectConfiguration": {
+      "type": "object",
+      "description": "Direct installation configuration for Terraform providers.",
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Provider addresses included when falling back to direct installation.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Provider addresses excluded from direct installation.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TerraformLogLevel": {
+      "type": "string",
+      "description": "Terraform log verbosity levels.",
+      "enum": [
+        "TRACE",
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR",
+        "FATAL"
+      ],
+      "x-ms-enum": {
+        "name": "TerraformLogLevel",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "trace",
+            "value": "TRACE"
+          },
+          {
+            "name": "debug",
+            "value": "DEBUG"
+          },
+          {
+            "name": "info",
+            "value": "INFO"
+          },
+          {
+            "name": "warn",
+            "value": "WARN"
+          },
+          {
+            "name": "error",
+            "value": "ERROR"
+          },
+          {
+            "name": "fatal",
+            "value": "FATAL"
+          }
+        ]
+      }
+    },
+    "TerraformLoggingConfiguration": {
+      "type": "object",
+      "description": "Logging options for Terraform executions.",
+      "properties": {
+        "level": {
+          "$ref": "#/definitions/TerraformLogLevel",
+          "description": "Terraform log verbosity (maps to TF_LOG)."
+        },
+        "path": {
+          "type": "string",
+          "description": "Destination file path for Terraform logs (maps to TF_LOG_PATH)."
+        }
+      }
+    },
+    "TerraformNetworkMirrorConfiguration": {
+      "type": "object",
+      "description": "Network mirror configuration for Terraform providers.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Mirror URL used to download providers."
+        },
+        "include": {
+          "type": "array",
+          "description": "Provider addresses included in this mirror.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Provider addresses excluded from this mirror.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "TerraformProviderInstallationConfiguration": {
+      "type": "object",
+      "description": "Provider installation options for Terraform.",
+      "properties": {
+        "network_mirror": {
+          "$ref": "#/definitions/TerraformNetworkMirrorConfiguration",
+          "description": "Network mirror configuration used to download providers."
+        },
+        "direct": {
+          "$ref": "#/definitions/TerraformDirectConfiguration",
+          "description": "Direct installation rules controlling when Terraform reaches public registries."
+        }
+      }
+    },
+    "TerraformSettingsProperties": {
+      "type": "object",
+      "description": "Terraform settings properties.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the asynchronous operation.",
+          "readOnly": true
+        },
+        "terraformrc": {
+          "$ref": "#/definitions/TerraformCliConfiguration",
+          "description": "Terraform CLI configuration equivalent to the terraformrc file."
+        },
+        "backend": {
+          "$ref": "#/definitions/TerraformBackendConfiguration",
+          "description": "Terraform backend configuration."
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables injected into the Terraform process.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "logging": {
+          "$ref": "#/definitions/TerraformLoggingConfiguration",
+          "description": "Logging configuration applied to Terraform executions."
+        }
+      }
+    },
+    "TerraformSettingsResource": {
+      "type": "object",
+      "description": "Terraform settings resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TerraformSettingsProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "TerraformSettingsResourceListResult": {
+      "type": "object",
+      "description": "The response of a TerraformSettingsResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The TerraformSettingsResource items on this page",
+          "items": {
+            "$ref": "#/definitions/TerraformSettingsResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "TerraformSettingsResourceUpdate": {
+      "type": "object",
+      "description": "Terraform settings resource.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
     }
   },
   "parameters": {

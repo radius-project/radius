@@ -156,3 +156,27 @@ func PossibleRecipeKindValues() []RecipeKind {
 		RecipeKindTerraform,
 	}
 }
+
+// TerraformLogLevel - Terraform log verbosity levels.
+type TerraformLogLevel string
+
+const (
+	TerraformLogLevelDebug TerraformLogLevel = "DEBUG"
+	TerraformLogLevelError TerraformLogLevel = "ERROR"
+	TerraformLogLevelFatal TerraformLogLevel = "FATAL"
+	TerraformLogLevelInfo  TerraformLogLevel = "INFO"
+	TerraformLogLevelTrace TerraformLogLevel = "TRACE"
+	TerraformLogLevelWarn  TerraformLogLevel = "WARN"
+)
+
+// PossibleTerraformLogLevelValues returns the possible values for the TerraformLogLevel const type.
+func PossibleTerraformLogLevelValues() []TerraformLogLevel {
+	return []TerraformLogLevel{
+		TerraformLogLevelDebug,
+		TerraformLogLevelError,
+		TerraformLogLevelFatal,
+		TerraformLogLevelInfo,
+		TerraformLogLevelTrace,
+		TerraformLogLevelWarn,
+	}
+}
