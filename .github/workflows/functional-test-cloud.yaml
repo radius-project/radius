@@ -168,6 +168,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: "Download PR data artifacts"
         if: github.event_name == 'workflow_run'

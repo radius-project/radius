@@ -16,10 +16,7 @@ var (
 )
 
 func main() {
-	if err := newRootCommand().Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	cobra.CheckErr(newRootCommand().Execute())
 }
 
 func newRootCommand() *cobra.Command {
