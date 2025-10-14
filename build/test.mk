@@ -61,7 +61,7 @@ test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes contr
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."
-	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.19.0)
 	@echo "$(ARROW) Instructions:"
 	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
 	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
