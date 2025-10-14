@@ -51,6 +51,12 @@ model EnvironmentProperties {
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
+  @doc("Resource ID of the Terraform settings applied to this environment.")
+  terraformSettings?: string;
+
+  @doc("Resource ID of the Bicep settings applied to this environment.")
+  bicepSettings?: string;
+
   @doc("List of Recipe Pack resource IDs linked to this environment.")
   recipePacks?: string[];
 
