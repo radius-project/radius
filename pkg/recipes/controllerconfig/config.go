@@ -112,7 +112,8 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 			),
 			recipes.TemplateKindTerraform: terraform.NewTerraformDriver(options.UCPConnection, secretprovider.NewSecretProvider(options.Config.SecretProvider),
 				terraform.TerraformOptions{
-					Path: options.Config.Terraform.Path,
+					Path:     options.Config.Terraform.Path,
+					LogLevel: options.Config.Terraform.LogLevel,
 				}, *cfg.Kubernetes),
 		},
 	})
