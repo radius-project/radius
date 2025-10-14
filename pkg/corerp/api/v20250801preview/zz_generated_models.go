@@ -161,6 +161,73 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 	Type *string
 }
 
+// BicepRegistrySecretConfig - Registry secret configuration used to authenticate to private Bicep registries.
+type BicepRegistrySecretConfig struct {
+	// Resource ID of the Radius.Security/secrets entry containing credential data (for example username/password, Azure workload
+	// identity, AWS IRSA).
+	Secret *string
+}
+
+// BicepSettingsProperties - Bicep settings properties.
+type BicepSettingsProperties struct {
+	// Authentication settings keyed by registry hostname.
+	RegistryAuthentication map[string]*BicepRegistrySecretConfig
+
+	// READ-ONLY; Provisioning state of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// BicepSettingsResource - Bicep settings resource.
+type BicepSettingsResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *BicepSettingsProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// BicepSettingsResourceListResult - The response of a BicepSettingsResource list operation.
+type BicepSettingsResourceListResult struct {
+	// REQUIRED; The BicepSettingsResource items on this page
+	Value []*BicepSettingsResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// BicepSettingsResourceUpdate - Bicep settings resource.
+type BicepSettingsResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.
@@ -178,6 +245,9 @@ func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { retur
 
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
+	// Resource ID of the Bicep settings applied to this environment.
+	BicepSettings *string
+
 	// Cloud provider configuration for the environment.
 	Providers *Providers
 
@@ -186,6 +256,9 @@ type EnvironmentProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+
+	// Resource ID of the Terraform settings applied to this environment.
+	TerraformSettings *string
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -553,6 +626,141 @@ type SystemData struct {
 
 	// The type of identity that last modified the resource.
 	LastModifiedByType *CreatedByType
+}
+
+// TerraformBackendConfiguration - Terraform backend configuration matching the terraform block.
+type TerraformBackendConfiguration struct {
+	// REQUIRED; Backend type (for example 'kubernetes').
+	Type *string
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]any
+
+	// Backend-specific configuration values.
+	Config map[string]any
+}
+
+// TerraformCliConfiguration - Terraform CLI configuration matching the terraformrc file.
+type TerraformCliConfiguration struct {
+	// Credentials keyed by registry or module source hostname.
+	Credentials map[string]*TerraformCredentialConfiguration
+
+	// Provider installation configuration controlling how Terraform installs providers.
+	ProviderInstallation *TerraformProviderInstallationConfiguration
+}
+
+// TerraformCredentialConfiguration - Credential configuration for Terraform provider or module sources.
+type TerraformCredentialConfiguration struct {
+	// Resource ID of the Radius.Security/secrets entry containing the credential values (for example token).
+	Secret *string
+}
+
+// TerraformDirectConfiguration - Direct installation configuration for Terraform providers.
+type TerraformDirectConfiguration struct {
+	// Provider addresses excluded from direct installation.
+	Exclude []*string
+
+	// Provider addresses included when falling back to direct installation.
+	Include []*string
+}
+
+// TerraformLoggingConfiguration - Logging options for Terraform executions.
+type TerraformLoggingConfiguration struct {
+	// Terraform log verbosity (maps to TF_LOG).
+	Level *TerraformLogLevel
+
+	// Destination file path for Terraform logs (maps to TFLOGPATH).
+	Path *string
+}
+
+// TerraformNetworkMirrorConfiguration - Network mirror configuration for Terraform providers.
+type TerraformNetworkMirrorConfiguration struct {
+	// REQUIRED; Mirror URL used to download providers.
+	URL *string
+
+	// Provider addresses excluded from this mirror.
+	Exclude []*string
+
+	// Provider addresses included in this mirror.
+	Include []*string
+}
+
+// TerraformProviderInstallationConfiguration - Provider installation options for Terraform.
+type TerraformProviderInstallationConfiguration struct {
+	// Direct installation rules controlling when Terraform reaches public registries.
+	Direct *TerraformDirectConfiguration
+
+	// Network mirror configuration used to download providers.
+	NetworkMirror *TerraformNetworkMirrorConfiguration
+}
+
+// TerraformSettingsProperties - Terraform settings properties.
+type TerraformSettingsProperties struct {
+	// Terraform backend configuration.
+	Backend *TerraformBackendConfiguration
+
+	// Environment variables injected into the Terraform process.
+	Env map[string]*string
+
+	// Logging configuration applied to Terraform executions.
+	Logging *TerraformLoggingConfiguration
+
+	// Terraform CLI configuration equivalent to the terraformrc file.
+	Terraformrc *TerraformCliConfiguration
+
+	// READ-ONLY; Provisioning state of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// TerraformSettingsResource - Terraform settings resource.
+type TerraformSettingsResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *TerraformSettingsProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// TerraformSettingsResourceListResult - The response of a TerraformSettingsResource list operation.
+type TerraformSettingsResourceListResult struct {
+	// REQUIRED; The TerraformSettingsResource items on this page
+	Value []*TerraformSettingsResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// TerraformSettingsResourceUpdate - Terraform settings resource.
+type TerraformSettingsResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
