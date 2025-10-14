@@ -24,13 +24,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/radius-project/radius/bicep-tools/generator"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
@@ -142,28 +142,29 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
+	return generator.RunGenerate(inputFilePath, outputDirectoryPath)
 	// npx @radius-project/manifest-to-bicep-extension generate <resource provider> <temp>
-	bicepExtension := "@radius-project/manifest-to-bicep-extension@edge"
-	if isValidSemver(version.Release()) {
-		bicepExtension = "@radius-project/manifest-to-bicep-extension@" + version.Release()
-	}
+	// bicepExtension := "@radius-project/manifest-to-bicep-extension@edge"
+	// if isValidSemver(version.Release()) {
+	// 	bicepExtension = "@radius-project/manifest-to-bicep-extension@" + version.Release()
+	// }
 
-	args := []string{
-		bicepExtension,
-		"generate",
-		inputFilePath,
-		outputDirectoryPath,
-	}
-	cmd := exec.CommandContext(ctx, "npx", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// args := []string{
+	// 	bicepExtension,
+	// 	"generate",
+	// 	inputFilePath,
+	// 	outputDirectoryPath,
+	// }
+	// cmd := exec.CommandContext(ctx, "npx", args...)
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to generate Bicep extension")
-	}
+	// err := cmd.Run()
+	// if err != nil {
+	// 	return clierrors.MessageWithCause(err, "Failed to generate Bicep extension")
+	// }
 
-	return nil
+	// return nil
 }
 
 func publishExtension(ctx context.Context, inputDirectoryPath string, target string, force bool) error {
