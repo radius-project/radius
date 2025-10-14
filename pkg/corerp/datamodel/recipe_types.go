@@ -40,6 +40,15 @@ type TerraformConfigProperties struct {
 
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
+
+	// ProviderMirror specifies the Terraform provider mirror configuration.
+	ProviderMirror *TerraformProviderMirrorConfig `json:"providerMirror,omitempty"`
+
+	// ModuleRegistries specifies configuration for Terraform module registries (e.g., Terraform Cloud/Enterprise).
+	ModuleRegistries map[string]*TerraformModuleRegistryConfig `json:"moduleRegistries,omitempty"`
+
+	// Version specifies the Terraform binary version and the URL to download it from.
+	Version *TerraformVersionConfig `json:"version,omitempty"`
 }
 
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe
@@ -48,6 +57,9 @@ type BicepConfigProperties struct {
 	// Authentication holds the information used to access private bicep registries, which is a map of registry hostname to secret config
 	// that contains credential information.
 	Authentication map[string]RegistrySecretConfig
+
+	// RegistryAuthentication contains richer authentication data keyed by registry hostname (Basic, Azure Workload Identity, AWS IRSA).
+	RegistryAuthentication map[string]*BicepRegistryAuthentication `json:"registryAuthentication,omitempty"`
 }
 
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
@@ -77,6 +89,14 @@ type SecretConfig struct {
 	Secret string `json:"secret,omitempty"`
 }
 
+// ClientCertConfig - Client certificate (mTLS) configuration for authentication.
+type ClientCertConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the client certificate and key.
+	// The secret store must have secrets named 'cert' and 'key' containing the PEM-encoded certificate and private key.
+	// A secret named 'passphrase' is optional, containing the passphrase for the private key.
+	Secret string `json:"secret,omitempty"`
+}
+
 // EnvironmentVariables represents the environment variables to be set for the recipe execution.
 type EnvironmentVariables struct {
 	// AdditionalProperties represents the non-sensitive environment variables to be set for the recipe execution.
@@ -98,4 +118,108 @@ type SecretReference struct {
 
 	// Key represents the key of the secret.
 	Key string `json:"key"`
+}
+
+// TerraformProviderMirrorConfig - Configuration for Terraform provider mirrors.
+type TerraformProviderMirrorConfig struct {
+	// Type of mirror. DEPRECATED: This field is deprecated. All provider mirrors now use the network mirror protocol.
+	Type string `json:"type,omitempty"`
+
+	// URL to the mirror server implementing the provider network mirror protocol.
+	URL string `json:"url,omitempty"`
+
+	// ProviderMappings is used to translate between official and custom provider identifiers.
+	ProviderMappings map[string]string `json:"providerMappings,omitempty"`
+
+	// Authentication configuration for accessing private Terraform provider mirrors.
+	Authentication ProviderMirrorAuthConfig `json:"authentication,omitempty"`
+
+	// TLS configuration for connecting to the Terraform provider mirror.
+	TLS *TLSConfig `json:"tls,omitempty"`
+}
+
+// TerraformModuleRegistryConfig - Configuration for Terraform module registries.
+type TerraformModuleRegistryConfig struct {
+	// URL is the URL of the module registry.
+	// Example: 'app.terraform.io' for Terraform Cloud or 'terraform.example.com' for Terraform Enterprise
+	URL string `json:"url,omitempty"`
+
+	// Authentication configuration for accessing private module registries.
+	Authentication ModuleRegistryAuthConfig `json:"authentication,omitempty"`
+
+	// TLS configuration for connecting to the module registry.
+	TLS *TLSConfig `json:"tls,omitempty"`
+}
+
+// TokenConfig - Token authentication configuration.
+type TokenConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the authentication token.
+	// The secret store must have a secret named 'token' containing the token value.
+	Secret string `json:"secret,omitempty"`
+}
+
+// ProviderMirrorAuthConfig - Authentication configuration for Terraform provider mirrors.
+// Separate from other auth configs for future-proofing: provider mirrors, module registries,
+// and release downloads may evolve different authentication requirements.
+type ProviderMirrorAuthConfig struct {
+	// Token is the token authentication configuration.
+	Token *TokenConfig `json:"token,omitempty"`
+
+	// AdditionalHosts is a list of additional hosts that should use the same credentials.
+	AdditionalHosts []string `json:"additionalHosts,omitempty"`
+}
+
+// ModuleRegistryAuthConfig - Authentication configuration for Terraform module registries.
+// Separate from other auth configs for future-proofing: provider mirrors, module registries,
+// and release downloads may evolve different authentication requirements.
+type ModuleRegistryAuthConfig struct {
+	// Token is the token authentication configuration.
+	Token *TokenConfig `json:"token,omitempty"`
+
+	// AdditionalHosts is a list of additional hosts that should use the same credentials.
+	AdditionalHosts []string `json:"additionalHosts,omitempty"`
+}
+
+// ReleasesAuthConfig - Authentication configuration for Terraform binary releases.
+// Separate from other auth configs for future-proofing: provider mirrors, module registries,
+// and release downloads may evolve different authentication requirements.
+type ReleasesAuthConfig struct {
+	// Token is the token authentication configuration.
+	Token *TokenConfig `json:"token,omitempty"`
+
+	// AdditionalHosts is a list of additional hosts that should use the same credentials.
+	AdditionalHosts []string `json:"additionalHosts,omitempty"`
+}
+
+// TerraformVersionConfig - Configuration for Terraform binary.
+type TerraformVersionConfig struct {
+	// Version is the version of the Terraform binary to use. Example: '1.0.0'.
+	// If omitted, the system may default to the latest stable version.
+	Version string `json:"version,omitempty"`
+
+	// ReleasesArchiveURL is an optional direct URL to a Terraform binary archive (.zip file).
+	// If set, Terraform will be downloaded directly from this URL instead of using the releases API.
+	// This takes precedence over ReleasesAPIBaseURL.
+	// The URL must point to a valid Terraform release archive.
+	// Example: 'https://my-mirror.example.com/terraform/1.7.0/terraform_1.7.0_linux_amd64.zip'
+	ReleasesArchiveURL string `json:"releasesArchiveUrl,omitempty"`
+
+	// ReleasesAPIBaseURL is an optional base URL for a custom Terraform releases API.
+	// If set, Terraform will be downloaded from this base URL instead of the default HashiCorp releases site.
+	// The directory structure of the custom URL must match the HashiCorp releases site (including the index.json files).
+	// Example: 'https://my-terraform-mirror.example.com'
+	ReleasesAPIBaseURL string `json:"releasesApiBaseUrl,omitempty"`
+
+	// TLS contains TLS configuration for connecting to the releases API.
+	TLS *TLSConfig `json:"tls,omitempty"`
+
+	// Authentication configuration for accessing the Terraform binary releases API.
+	Authentication *ReleasesAuthConfig `json:"authentication,omitempty"`
+}
+
+// TLSConfig - TLS configuration options for HTTPS connections.
+type TLSConfig struct {
+	// CACertificate is a reference to a secret containing a custom CA certificate bundle to use for TLS verification.
+	// The secret must contain a key named 'ca-cert' with the PEM-encoded certificate bundle.
+	CACertificate *SecretReference `json:"caCertificate,omitempty"`
 }
