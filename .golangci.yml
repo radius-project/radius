@@ -15,6 +15,7 @@ linters:
         - io.Copy
         - (io.Closer).Close
         - (io.ReadCloser).Close
+        - (io.WriteCloser).Close
         - (*os.File).Close
         - (*database/sql.Rows).Close
         - (*database/sql.Stmt).Close
@@ -22,6 +23,8 @@ linters:
         - fmt.Fprintf
         - fmt.Fprintln
         - (net.Conn).Close
+        - (net.Listener).Close
+        - (*archive/zip.Writer).Close
         - os.Remove
         - os.RemoveAll
         - os.Setenv
@@ -55,9 +58,11 @@ linters:
     
     staticcheck:
       # Use the same checks as v1 (disable newer style/quickfix checks)
+      # QF rules are "quickfix" suggestions that weren't in v1
+      # ST rules are style checks that are often too pedantic
       checks: ["all", 
         "-ST1000", "-ST1003", "-ST1005", "-ST1016", "-ST1019", "-ST1020", "-ST1021", "-ST1022", "-ST1023",
-        "-QF1003", "-QF1004", "-QF1008"]
+        "-QF1001", "-QF1003", "-QF1004", "-QF1007", "-QF1008", "-QF1011", "-QF1012"]
     
     forbidigo:
       # Forbid the following identifiers (list of regexp)
