@@ -212,6 +212,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
       
       - name: Copy Deployment Engine image to GHCR
         if: github.event_name == 'repository_dispatch'
@@ -229,6 +230,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -500,6 +502,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
 
       - name: Checkout Samples repository
         uses: actions/checkout@v5
