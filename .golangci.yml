@@ -1,7 +1,6 @@
 # see https://golangci-lint.run/usage/configuration/ for documentation
 version: "2"
 linters:
-  default: none  # Don't enable any linters by default - only use what we explicitly enable
   enable:
   - forbidigo
   settings:
