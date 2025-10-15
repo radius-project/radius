@@ -35,7 +35,7 @@ const (
 
 	manifestResourceTypeListResponseFixture = "testdata/resourcetype_manifest_list_responsebody.json"
 
-	registerManifestWaitDuration = 60 * time.Second
+	registerManifestWaitDuration = 30 * time.Second
 	registerManifestWaitInterval = 3 * time.Second
 )
 
