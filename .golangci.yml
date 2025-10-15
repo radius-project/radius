@@ -24,6 +24,8 @@ linters:
         - fmt.Fprintln
         - (net.Conn).Close
         - (net.Listener).Close
+        - (*net.TCPListener).Close
+        - (*crypto/tls.Conn).Close
         - (*archive/zip.Writer).Close
         - os.Remove
         - os.RemoveAll
