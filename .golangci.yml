@@ -1,9 +1,64 @@
 # see https://golangci-lint.run/usage/configuration/ for documentation
 version: "2"
 linters:
+  # Only enable forbidigo explicitly. The v2 defaults (errcheck, gosimple, govet, 
+  # ineffassign, staticcheck, unused) are implicitly enabled to match v1 behavior.
   enable:
   - forbidigo
   settings:
+    # Configure default linters to match v1 behavior (less strict)
+    errcheck:
+      # Don't check for errors in defer statements and common safe-to-ignore functions
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - io.Copy
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (*os.File).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.Stmt).Close
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (net.Conn).Close
+        - os.Remove
+        - os.RemoveAll
+        - os.Setenv
+        - os.Unsetenv
+    
+    govet:
+      # Only run a subset of analyzers to match v1 behavior
+      enable:
+        - asmdecl
+        - assign
+        - atomic
+        - bools
+        - buildtag
+        - cgocall
+        - composites
+        - copylocks
+        - errorsas
+        - httpresponse
+        - loopclosure
+        - lostcancel
+        - nilfunc
+        - printf
+        - shift
+        - stdmethods
+        - structtag
+        - tests
+        - unmarshal
+        - unreachable
+        - unsafeptr
+        - unusedresult
+    
+    staticcheck:
+      # Use the same checks as v1 (disable newer style/quickfix checks)
+      checks: ["all", 
+        "-ST1000", "-ST1003", "-ST1005", "-ST1016", "-ST1019", "-ST1020", "-ST1021", "-ST1022", "-ST1023",
+        "-QF1003", "-QF1004", "-QF1008"]
+    
     forbidigo:
       # Forbid the following identifiers (list of regexp)
       #
