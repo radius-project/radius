@@ -56,7 +56,7 @@ type RecipeDefinition struct {
 	RecipeLocation string `json:"recipeLocation"`
 
 	// Parameters to pass to the recipe.
-	Parameters any `json:"parameters,omitempty"`
+	Parameters map[string]any `json:"parameters,omitempty"`
 
 	// PlainHTTP connects to the location using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
