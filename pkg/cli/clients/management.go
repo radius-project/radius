@@ -942,6 +942,8 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 	// Lowercase is used to avoid case sensitivity issues.
 	excludedResourceTypesList := []string{
 		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+		"radius.core/environments",
+		"radius.core/recipePacks", // exclude radius.core for now
 	}
 
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
