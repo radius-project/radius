@@ -9,6 +9,8 @@ replace github.com/opencontainers/go-digest => github.com/opencontainers/go-dige
 // replace github.com/radius-project/radius/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
 replace github.com/Azure/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
 
+replace github.com/stretchr/testify => github.com/stretchr/testify v1.10.0
+
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.2
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.11.0
