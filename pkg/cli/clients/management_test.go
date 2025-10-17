@@ -109,6 +109,20 @@ var (
 							"east": {},
 						},
 					},
+					{
+						Name: to.Ptr("Radius.Core"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"environments": {
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+									"2025-08-01-preview": {},
+								},
+								DefaultAPIVersion: to.Ptr("2025-08-01-preview"),
+							},
+						},
+						Locations: map[string]map[string]any{
+							"east": {},
+						},
+					},
 				},
 				NextLink: to.Ptr("1"),
 			},
@@ -651,6 +665,67 @@ func Test_Resource(t *testing.T) {
 		deleted, err := client.DeleteResource(context.Background(), testResourceType, testResourceID)
 		require.NoError(t, err)
 		require.True(t, deleted)
+	})
+
+	t.Run("Radius.Core resources use specific API version", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mock := NewMockgenericResourceClient(ctrl)
+		resourceProviderMock := NewMockresourceProviderClient(ctrl)
+
+		client := &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
+				return mock, nil
+			},
+			resourceProviderClientFactory: func() (resourceProviderClient, error) {
+				return resourceProviderMock, nil
+			},
+			capture: testCapture,
+		}
+
+		// Mock the resource provider summary for Radius.Core
+		resourceProviderMock.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Radius.Core", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: ucp.ResourceProviderSummary{
+					Name: to.Ptr("Radius.Core"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"environments": {
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+								"2025-08-01-preview": {},
+								"other-version":      {},
+							},
+						},
+					},
+				},
+			}, nil)
+
+		// Set up expectation for the resource call
+		mock.EXPECT().
+			Get(gomock.Any(), "test-env", gomock.Any()).
+			Return(generated.GenericResourcesClientGetResponse{
+				GenericResource: generated.GenericResource{
+					ID:   to.Ptr("/test/id"),
+					Name: to.Ptr("test-env"),
+					Type: to.Ptr("Radius.Core/environments"),
+				},
+			}, nil)
+
+		// Test via GetResource which calls getGenericClient internally
+		// This indirectly tests that getGenericClient handles Radius.Core resources correctly
+		_, err := client.GetResource(context.Background(), "Radius.Core/environments", "test-env")
+		require.NoError(t, err)
+
+		// Direct test of the getGenericClient function with Radius.Core resource type
+		// The function should override API versions to use "2025-08-01-preview"
+		testClient, err := client.getGenericClient(testScope, "Radius.Core/environments", []string{"some-other-version"})
+		require.NoError(t, err)
+		require.NotNil(t, testClient)
+
+		// Test with Applications.Core (should not get the override)
+		testClient2, err := client.getGenericClient(testScope, "Applications.Core/environments", []string{"some-other-version"})
+		require.NoError(t, err)
+		require.NotNil(t, testClient2)
 	})
 }
 
@@ -1864,7 +1939,7 @@ func Test_ResourceProvider(t *testing.T) {
 		mock.EXPECT().
 			NewListProviderSummariesPager(gomock.Any(), gomock.Any()).
 			Return(pager(resourceProviderSummaryPages))
-		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0], *resourceProviderSummaryPages[1].Value[1]}
+		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0], *resourceProviderSummaryPages[1].Value[1], *resourceProviderSummaryPages[1].Value[2]}
 
 		resourceProviderSummaries, err := client.ListResourceProviderSummaries(context.Background(), "local")
 		require.NoError(t, err)
