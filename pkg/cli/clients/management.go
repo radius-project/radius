@@ -55,64 +55,43 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
-	fmt.Printf("[DEBUG] ListResourcesOfType: Starting for resourceType: %s\n", resourceType)
-	fmt.Printf("[DEBUG] ListResourcesOfType: RootScope: %s\n", amc.RootScope)
-	
 	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
 	if err != nil {
-		fmt.Printf("[DEBUG] ListResourcesOfType: Error getting API versions for %s: %v\n", resourceType, err)
 		return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
 	}
-	fmt.Printf("[DEBUG] ListResourcesOfType: Got API versions for %s: %v\n", resourceType, apiVersions)
-	
 	results := []generated.GenericResource{}
 
-	fmt.Printf("[DEBUG] ListResourcesOfType: Creating generic client for scope: %s, resourceType: %s\n", amc.RootScope, resourceType)
 	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions)
 	if err != nil {
-		fmt.Printf("[DEBUG] ListResourcesOfType: Error creating client for %s: %v\n", resourceType, err)
 		return nil, err
 	}
 
-	fmt.Printf("[DEBUG] ListResourcesOfType: About to make HTTP request via pager for: %s\n", resourceType)
 	pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
-	pageCount := 0
 	for pager.More() {
-		pageCount++
-		fmt.Printf("[DEBUG] ListResourcesOfType: Requesting page %d for: %s\n", pageCount, resourceType)
 		page, err := pager.NextPage(ctx)
 		if err != nil {
-			fmt.Printf("[DEBUG] ListResourcesOfType: Error on page %d for %s: %v\n", pageCount, resourceType, err)
 			return nil, err
 		}
-		fmt.Printf("[DEBUG] ListResourcesOfType: Page %d returned %d resources for: %s\n", pageCount, len(page.Value), resourceType)
 
 		for _, resource := range page.Value {
 			results = append(results, *resource)
 		}
 	}
 
-	fmt.Printf("[DEBUG] ListResourcesOfType: Completed successfully for %s, total resources: %d\n", resourceType, len(results))
 	return results, nil
 }
 
 // ListResourcesOfTypeInApplication lists all resources of a given type in a given application in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx context.Context, applicationNameOrID string, resourceType string) ([]generated.GenericResource, error) {
-	fmt.Printf("[DEBUG] ListResourcesOfTypeInApplication: Starting for application: %s, resourceType: %s\n", applicationNameOrID, resourceType)
-	
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
 	if err != nil {
-		fmt.Printf("[DEBUG] ListResourcesOfTypeInApplication: Error qualifying ID: %v\n", err)
 		return nil, err
 	}
 
-	fmt.Printf("[DEBUG] ListResourcesOfTypeInApplication: Calling ListResourcesOfType for: %s\n", resourceType)
 	resources, err := amc.ListResourcesOfType(ctx, resourceType)
 	if err != nil {
-		fmt.Printf("[DEBUG] ListResourcesOfTypeInApplication: Error from ListResourcesOfType for %s: %v\n", resourceType, err)
 		return nil, err
 	}
-	fmt.Printf("[DEBUG] ListResourcesOfTypeInApplication: ListResourcesOfType returned %d resources for: %s\n", len(resources), resourceType)
 
 	results := []generated.GenericResource{}
 	for _, resource := range resources {
@@ -121,7 +100,6 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx
 		}
 	}
 
-	fmt.Printf("[DEBUG] ListResourcesOfTypeInApplication: Filtered to %d resources in application for: %s\n", len(results), resourceType)
 	return results, nil
 }
 
@@ -960,93 +938,53 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 
 // ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
-	fmt.Printf("[DEBUG] ListAllResourceTypesNames: Starting for plane: %s\n", planeName)
-	
 	// excludedResourceTypesList contains resource types that should be excluded
 	// Lowercase is used to avoid case sensitivity issues.
 	excludedResourceTypesList := []string{
 		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
-		"radius.core/environments",
-		"radius.core/recipePacks", // exclude radius.core for now
 	}
-	fmt.Printf("[DEBUG] ListAllResourceTypesNames: Excluded types: %v\n", excludedResourceTypesList)
 
-	fmt.Printf("[DEBUG] ListAllResourceTypesNames: Getting resource provider summaries...\n")
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
-		fmt.Printf("[DEBUG] ListAllResourceTypesNames: Error getting provider summaries: %v\n", err)
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
 	}
-	fmt.Printf("[DEBUG] ListAllResourceTypesNames: Found %d resource providers\n", len(resourceProviderSummaries))
 
 	resourceTypeNames := []string{}
-	for i, resourceProvider := range resourceProviderSummaries {
+	for _, resourceProvider := range resourceProviderSummaries {
 		resourceProviderName := *resourceProvider.Name
-		fmt.Printf("[DEBUG] ListAllResourceTypesNames: Processing provider %d/%d: %s\n", i+1, len(resourceProviderSummaries), resourceProviderName)
-		
 		for typeName := range resourceProvider.ResourceTypes {
 			fullResourceName := resourceProviderName + "/" + typeName
 			if !slices.Contains(excludedResourceTypesList, strings.ToLower(fullResourceName)) {
-				fmt.Printf("[DEBUG] ListAllResourceTypesNames: Adding resource type: %s\n", fullResourceName)
 				resourceTypeNames = append(resourceTypeNames, fullResourceName)
-			} else {
-				fmt.Printf("[DEBUG] ListAllResourceTypesNames: Excluding resource type: %s\n", fullResourceName)
 			}
 		}
 	}
 
-	fmt.Printf("[DEBUG] ListAllResourceTypesNames: Completed, returning %d resource types: %v\n", len(resourceTypeNames), resourceTypeNames)
 	return resourceTypeNames, nil
 }
 
 // ListResourcesInApplication lists all resources in a given application in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
-	fmt.Printf("[DEBUG] ListResourcesInApplication: Starting for application: %s\n", applicationNameOrID)
-
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
 	if err != nil {
-		fmt.Printf("[DEBUG] ListResourcesInApplication: Error qualifying ID: %v\n", err)
 		return nil, err
 	}
-	fmt.Printf("[DEBUG] ListResourcesInApplication: Qualified application ID: %s\n", applicationID)
 
-	// excludedResourceTypesList contains resource types that should be excluded
-	// Lowercase is used to avoid case sensitivity issues.
-	excludedResourceTypesList := []string{
-		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
-		"radius.core/environments",
-		"radius.core/recipePacks", // exclude radius.core for now
-	}
-
-	fmt.Printf("[DEBUG] ListResourcesInApplication: Getting all resource types...\n")
 	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
 	if err != nil {
-		fmt.Printf("[DEBUG] ListResourcesInApplication: Error getting resource types: %v\n", err)
 		return nil, err
 	}
-	fmt.Printf("[DEBUG] ListResourcesInApplication: Found %d resource types: %v\n", len(resourceTypesList), resourceTypesList)
 
 	results := []generated.GenericResource{}
-	for i, resourceType := range resourceTypesList {
-		fmt.Printf("[DEBUG] ListResourcesInApplication: Processing resource type %d/%d: %s\n", i+1, len(resourceTypesList), resourceType)
-
-		if slices.Contains(excludedResourceTypesList, strings.ToLower(resourceType)) {
-			fmt.Printf("[DEBUG] ListResourcesInApplication: Skipping excluded resource type: %s\n", resourceType)
-			continue
-		}
-
-		fmt.Printf("[DEBUG] ListResourcesInApplication: Calling ListResourcesOfTypeInApplication for type: %s\n", resourceType)
+	for _, resourceType := range resourceTypesList {
 		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
 		if err != nil {
-			fmt.Printf("[DEBUG] ListResourcesInApplication: Error listing resources for type %s: %v\n", resourceType, err)
 			return nil, err
 		}
-		fmt.Printf("[DEBUG] ListResourcesInApplication: Found %d resources for type: %s\n", len(resources), resourceType)
 
 		results = append(results, resources...)
 	}
 
-	fmt.Printf("[DEBUG] ListResourcesInApplication: Completed successfully, total resources: %d\n", len(results))
 	return results, nil
 }
 
@@ -1331,15 +1269,8 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 // getGenericClient returns a generic resource client for the specified scope and resource type.
 // if apiVersions is empty, it uses the default version i.e 2023-10-01-preview else uses any version supported by the resource type.
 func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
-	if strings.HasPrefix(resourceType, "Radius.Core") {
-		apiVersions = []string{"2025-08-01-preview"}
-	}
 	if len(apiVersions) == 0 {
-		// if the type starts with "Radius.Core" then the apiVresions should be hardcoded to
-		// 2025-08-01-preview
-
 		client, err = amc.createGenericClient(scope, resourceType)
-
 	} else {
 		client, err = amc.createGenericClient(scope, resourceType, apiVersions[0])
 	}
