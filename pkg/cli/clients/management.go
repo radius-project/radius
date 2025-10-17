@@ -942,6 +942,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 	// Lowercase is used to avoid case sensitivity issues.
 	excludedResourceTypesList := []string{
 		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+		"radius.core/environments",
 	}
 
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
@@ -1273,8 +1274,8 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
 	if strings.HasPrefix(resourceType, "Radius.Core") {
-        apiVersions = []string{"2025-08-01-preview"}
-    }
+		apiVersions = []string{"2025-08-01-preview"}
+	}
 	if len(apiVersions) == 0 {
 		client, err = amc.createGenericClient(scope, resourceType)
 	} else {
