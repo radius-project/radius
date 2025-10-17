@@ -57,13 +57,20 @@ func Test_ResourceList(t *testing.T) {
 	listResources := func(t *testing.T, resourceType string) {
 		clientOptions := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ClientOptions
 		ctx, cancel := testcontext.NewWithCancel(t)
+		var client *generated.GenericResourcesClient
 		t.Cleanup(cancel)
+		// Radius.Core resources use a different API version.
+		// Once Applications.Core namespace is deprecated, we can remove this special case.
+		// Then the NewGenericResourcesClient will by default use the correct API version 2025-08-01-preview.
 		if strings.HasPrefix(resourceType, "Radius.Core") {
-			clientOptions.APIVersion = "2025-08-01-preview"
+			radiusCoreClientOptions := *clientOptions
+			radiusCoreClientOptions.APIVersion = "2025-08-01-preview"
+			client, err = generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, &radiusCoreClientOptions)
+			require.NoError(t, err)
+		} else {
+			client, err = generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
+			require.NoError(t, err)
 		}
-		client, err := generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
-		require.NoError(t, err)
-
 		pager := client.NewListByRootScopePager(nil)
 		for pager.More() {
 			nextPage, err := pager.NextPage(ctx)
