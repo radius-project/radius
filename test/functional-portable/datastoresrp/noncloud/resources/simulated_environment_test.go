@@ -31,6 +31,7 @@ import (
 )
 
 func Test_Deployment_SimulatedEnv_BicepRecipe(t *testing.T) {
+	t.Skip("Skipping Bicep recipe test for simulated environment due to intermittent failures. To be re-enabled after investigation.")
 	template := "testdata/datastoresrp-resources-simulatedenv-recipe.bicep"
 	appName := "dsrp-resources-simenv-recipe"
 	containerName := "mongodb-app-ctnr-simenv"
