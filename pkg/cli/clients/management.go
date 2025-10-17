@@ -972,6 +972,14 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 		return nil, err
 	}
 
+	// excludedResourceTypesList contains resource types that should be excluded
+	// Lowercase is used to avoid case sensitivity issues.
+	excludedResourceTypesList := []string{
+		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+		"radius.core/environments",
+		"radius.core/recipePacks", // exclude radius.core for now
+	}
+
 	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
 	if err != nil {
 		return nil, err
@@ -979,6 +987,9 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 
 	results := []generated.GenericResource{}
 	for _, resourceType := range resourceTypesList {
+		if slices.Contains(excludedResourceTypesList, strings.ToLower(resourceType)) {
+			continue
+		}
 		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
 		if err != nil {
 			return nil, err
