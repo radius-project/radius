@@ -4,6 +4,36 @@
 
 package v20250801preview
 
+// ApplicationsClientCreateOrUpdateOptions contains the optional parameters for the ApplicationsClient.CreateOrUpdate method.
+type ApplicationsClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
+type ApplicationsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientGetGraphOptions contains the optional parameters for the ApplicationsClient.GetGraph method.
+type ApplicationsClientGetGraphOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
+type ApplicationsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.NewListByScopePager method.
+type ApplicationsClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
+type ApplicationsClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate method.
 type EnvironmentsClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters

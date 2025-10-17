@@ -8,6 +8,7 @@ import "@azure-tools/typespec-azure-resource-manager";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "../radius/v1/trackedresource.tsp";
+import "./applications.tsp";
 import "./environments.tsp";
 import "./recipePacks.tsp";
 
