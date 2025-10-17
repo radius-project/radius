@@ -1,6 +1,6 @@
 namespace: Radius.Core
 location:
-  global: "http://localhost:8080"
+  global: "http://applications-rp.radius-system:5443"
 types:
   environments:
     apiVersions:
