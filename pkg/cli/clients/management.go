@@ -1269,6 +1269,12 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 // getGenericClient returns a generic resource client for the specified scope and resource type.
 // if apiVersions is empty, it uses the default version i.e 2023-10-01-preview else uses any version supported by the resource type.
 func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
+	// Radius.Core resources require a specific API version.
+	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
+	// Then we will not need this special case.
+	if strings.HasPrefix(resourceType, "Radius.Core") {
+        apiVersions = []string{"2025-08-01-preview"}
+    }
 	if len(apiVersions) == 0 {
 		client, err = amc.createGenericClient(scope, resourceType)
 	} else {
