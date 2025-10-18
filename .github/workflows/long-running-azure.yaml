@@ -203,6 +203,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
       - name: Set up Go
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/setup-go@v6
@@ -364,6 +365,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
       - name: Checkout samples repo
         uses: actions/checkout@v5
         with:

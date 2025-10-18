@@ -208,7 +208,8 @@ jobs:
               );
             }
 
-      - uses: actions/checkout@v5
+      - name: Check out code
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}

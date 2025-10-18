@@ -173,6 +173,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go
@@ -267,6 +269,8 @@ jobs:
     steps: 
       - name: Check out code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Set up Go

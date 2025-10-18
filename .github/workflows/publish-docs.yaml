@@ -31,6 +31,7 @@ jobs:
         with:
           repository: radius-project/radius
           path: radius
+          submodules: recursive
       - name: Parse release version and set environment variables
         run: python radius/.github/scripts/get_release_version.py
       - name: Generate docs release branch name
