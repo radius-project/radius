@@ -1,0 +1,28 @@
+{
+  "operationId": "Applications_Update",
+  "title": "Update (Patch) an application resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "applicationName": "app0",
+    "api-version": "2025-08-01-preview",
+    "ApplicationResource": {
+      "location": "West US",
+      "properties": {
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/env0"
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/applications/app0",
+        "name": "app0",
+        "type": "Radius.Core/applications",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/env0"
+        }
+      }
+    }
+  }
+}

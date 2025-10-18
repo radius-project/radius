@@ -4,6 +4,41 @@
 
 package v20250801preview
 
+// ApplicationsClientCreateOrUpdateResponse contains the response from method ApplicationsClient.CreateOrUpdate.
+type ApplicationsClientCreateOrUpdateResponse struct {
+// Radius Application resource
+	ApplicationResource
+}
+
+// ApplicationsClientDeleteResponse contains the response from method ApplicationsClient.Delete.
+type ApplicationsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ApplicationsClientGetGraphResponse contains the response from method ApplicationsClient.GetGraph.
+type ApplicationsClientGetGraphResponse struct {
+// Describes the application architecture and its dependencies.
+	ApplicationGraphResponse
+}
+
+// ApplicationsClientGetResponse contains the response from method ApplicationsClient.Get.
+type ApplicationsClientGetResponse struct {
+// Radius Application resource
+	ApplicationResource
+}
+
+// ApplicationsClientListByScopeResponse contains the response from method ApplicationsClient.NewListByScopePager.
+type ApplicationsClientListByScopeResponse struct {
+// The response of a ApplicationResource list operation.
+	ApplicationResourceListResult
+}
+
+// ApplicationsClientUpdateResponse contains the response from method ApplicationsClient.Update.
+type ApplicationsClientUpdateResponse struct {
+// Radius Application resource
+	ApplicationResource
+}
+
 // EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
 type EnvironmentsClientCreateOrUpdateResponse struct {
 // The environment resource

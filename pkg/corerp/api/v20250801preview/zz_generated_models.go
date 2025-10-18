@@ -6,6 +6,142 @@ package v20250801preview
 
 import "time"
 
+// ApplicationGraphConnection - Describes the connection between two resources.
+type ApplicationGraphConnection struct {
+// REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
+// 'Inbound' indicates indicates this connection specifies the ID of the source.
+	Direction *Direction
+
+// REQUIRED; The resource ID
+	ID *string
+}
+
+// ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.
+type ApplicationGraphOutputResource struct {
+// REQUIRED; The resource ID.
+	ID *string
+
+// REQUIRED; The resource name.
+	Name *string
+
+// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResource - Describes a resource in the application graph.
+type ApplicationGraphResource struct {
+// REQUIRED; The connections between resources in the application graph.
+	Connections []*ApplicationGraphConnection
+
+// REQUIRED; The resource ID.
+	ID *string
+
+// REQUIRED; The resource name.
+	Name *string
+
+// REQUIRED; The resources that comprise this resource.
+	OutputResources []*ApplicationGraphOutputResource
+
+// REQUIRED; provisioningState of this resource.
+	ProvisioningState *string
+
+// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResponse - Describes the application architecture and its dependencies.
+type ApplicationGraphResponse struct {
+// REQUIRED; The resources in the application graph.
+	Resources []*ApplicationGraphResource
+}
+
+// ApplicationProperties - Application properties
+type ApplicationProperties struct {
+// REQUIRED; Fully qualified resource ID for the environment that the application is linked to
+	Environment *string
+
+// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
+}
+
+// ApplicationResource - Radius Application resource
+type ApplicationResource struct {
+// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+// REQUIRED; The resource-specific properties for this resource.
+	Properties *ApplicationProperties
+
+// Resource tags.
+	Tags map[string]*string
+
+// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+// READ-ONLY; The name of the resource
+	Name *string
+
+// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// ApplicationResourceListResult - The response of a ApplicationResource list operation.
+type ApplicationResourceListResult struct {
+// REQUIRED; The ApplicationResource items on this page
+	Value []*ApplicationResource
+
+// The link to the next page of items
+	NextLink *string
+}
+
+// ApplicationResourceUpdate - Radius Application resource
+type ApplicationResourceUpdate struct {
+// Resource tags.
+	Tags map[string]*string
+
+// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+// READ-ONLY; The name of the resource
+	Name *string
+
+// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// AzureContainerInstanceCompute - The Azure container instance compute configuration
+type AzureContainerInstanceCompute struct {
+// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+// The resource group to use for the environment.
+	ResourceGroup *string
+
+// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
+func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity: a.Identity,
+		Kind: a.Kind,
+		ResourceID: a.ResourceID,
+	}
+}
+
 // AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
 // top level resource which has 'tags' and a 'location'
 type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
@@ -24,6 +160,21 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 // READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
+
+// EnvironmentCompute - Represents backing compute resource
+type EnvironmentCompute struct {
+// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
@@ -140,6 +291,30 @@ type IdentitySettings struct {
 	Resource *string
 }
 
+// KubernetesCompute - The Kubernetes compute configuration
+type KubernetesCompute struct {
+// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+// REQUIRED; The namespace to use for the environment.
+	Namespace *string
+
+// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
+func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity: k.Identity,
+		Kind: k.Kind,
+		ResourceID: k.ResourceID,
+	}
+}
+
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API
 type Operation struct {
 // Localized display information for this particular operation.
@@ -187,6 +362,20 @@ type OperationListResult struct {
 
 // READ-ONLY; List of operations supported by the resource provider
 	Value []*Operation
+}
+
+// OutputResource - Properties of an output resource.
+type OutputResource struct {
+// The UCP resource ID of the underlying resource.
+	ID *string
+
+// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
+// relationship. LocalIDs do not have any particular format or meaning beyond
+// being compared to determine dependency relationships.
+	LocalID *string
+
+// Determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool
 }
 
 type Providers struct {
@@ -306,6 +495,18 @@ type RecipePackResourceUpdate struct {
 	Type *string
 }
 
+// RecipeStatus - Recipe status at deployment time for a resource.
+type RecipeStatus struct {
+// REQUIRED; TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
+	TemplateKind *string
+
+// REQUIRED; TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
+	TemplatePath *string
+
+// TemplateVersion is the version number of the template.
+	TemplateVersion *string
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 // READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -319,6 +520,18 @@ type Resource struct {
 
 // READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+// The compute resource associated with the resource.
+	Compute EnvironmentComputeClassification
+
+// Properties of an output resource
+	OutputResources []*OutputResource
+
+// READ-ONLY; The recipe data at the time of deployment
+	Recipe *RecipeStatus
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
