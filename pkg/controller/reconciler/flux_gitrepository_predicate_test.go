@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 )
 
@@ -58,7 +59,7 @@ func TestGitRepositoryRevisionChangePredicate_Create(t *testing.T) {
 						Name: "test-repo",
 					},
 					Status: sourcev1.GitRepositoryStatus{
-						Artifact: &sourcev1.Artifact{
+						Artifact: &meta.Artifact{
 							Revision: "test-revision",
 						},
 					},
@@ -154,7 +155,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 						Name: "test-repo",
 					},
 					Status: sourcev1.GitRepositoryStatus{
-						Artifact: &sourcev1.Artifact{
+						Artifact: &meta.Artifact{
 							Revision: "test-revision",
 						},
 					},
@@ -164,7 +165,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 						Name: "test-repo",
 					},
 					Status: sourcev1.GitRepositoryStatus{
-						Artifact: &sourcev1.Artifact{
+						Artifact: &meta.Artifact{
 							Revision: "test-revision",
 						},
 					},
@@ -180,7 +181,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 						Name: "test-repo",
 					},
 					Status: sourcev1.GitRepositoryStatus{
-						Artifact: &sourcev1.Artifact{
+						Artifact: &meta.Artifact{
 							Revision: "test-revision",
 						},
 					},
@@ -190,7 +191,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 						Name: "test-repo",
 					},
 					Status: sourcev1.GitRepositoryStatus{
-						Artifact: &sourcev1.Artifact{
+						Artifact: &meta.Artifact{
 							Revision: "test-revision-different",
 						},
 					},
