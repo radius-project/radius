@@ -18,7 +18,6 @@ package publishextension
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -107,9 +106,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad bicep publish-extension` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// This command performs three steps:
-    // 1. Run the generator (bicep-tools/generator) to build the Bicep extension "index"
-    // 2. We use `bicep publish-extension` to publish the extension "index" to the "target"
-    // 3. We can clean up the "index" directory after publishing.
+	// 1. Run the generator (bicep-tools/generator) to build the Bicep extension "index"
+	// 2. We use `bicep publish-extension` to publish the extension "index" to the "target"
+	// 3. We can clean up the "index" directory after publishing.
 
 	temp, err := os.MkdirTemp("", "bicep-extension-*")
 	if err != nil {
