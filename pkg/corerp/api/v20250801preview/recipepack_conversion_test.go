@@ -18,22 +18,21 @@ package v20250801preview
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	// Load test data
-	data, err := os.ReadFile("testdata/recipepackresource.json")
-	require.NoError(t, err)
+	data := testutil.ReadFixture("recipepackresource.json")
 
 	// Unmarshal into versioned resource
 	var versionedResource RecipePackResource
-	err = json.Unmarshal(data, &versionedResource)
+	err := json.Unmarshal(data, &versionedResource)
 	require.NoError(t, err)
 
 	// Convert to data model
@@ -58,12 +57,11 @@ func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 
 func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
 	// Load test data
-	data, err := os.ReadFile("testdata/recipepackresourcedatamodel.json")
-	require.NoError(t, err)
+	data := testutil.ReadFixture("recipepackresourcedatamodel.json")
 
 	// Unmarshal into datamodel
 	var dataModel datamodel.RecipePack
-	err = json.Unmarshal(data, &dataModel)
+	err := json.Unmarshal(data, &dataModel)
 	require.NoError(t, err)
 
 	// Convert to versioned resource
