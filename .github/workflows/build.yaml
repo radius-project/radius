@@ -280,7 +280,7 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '18'
       - name: Generate Bicep extensibility types from OpenAPI specs
