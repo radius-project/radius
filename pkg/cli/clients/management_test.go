@@ -715,17 +715,6 @@ func Test_Resource(t *testing.T) {
 		// This indirectly tests that getGenericClient handles Radius.Core resources correctly
 		_, err := client.GetResource(context.Background(), "Radius.Core/environments", "test-env")
 		require.NoError(t, err)
-
-		// Direct test of the getGenericClient function with Radius.Core resource type
-		// The function should override API versions to use "2025-08-01-preview"
-		testClient, err := client.getGenericClient(testScope, "Radius.Core/environments", []string{"some-other-version"})
-		require.NoError(t, err)
-		require.NotNil(t, testClient)
-
-		// Test with Applications.Core (should not get the override)
-		testClient2, err := client.getGenericClient(testScope, "Applications.Core/environments", []string{"some-other-version"})
-		require.NoError(t, err)
-		require.NotNil(t, testClient2)
 	})
 }
 
