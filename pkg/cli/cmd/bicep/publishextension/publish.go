@@ -106,17 +106,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad bicep publish-extension` command.
 func (r *Runner) Run(ctx context.Context) error {
-	// This command ties together two separate shell commands:
-	// 1. We use NPX to run https://github.com/radius-project/bicep-tools/tree/main/packages/manifest-to-bicep-extension
-	//       - This generates a Bicep extension "index"
-	// 2. We use `bicep publish-extension` to publish the extension "index" to the "target"
-	//
-	// 3. We can clean up the "index" directory after publishing.
-
-	_, err := exec.LookPath("npx")
-	if errors.Is(err, exec.ErrNotFound) {
-		return clierrors.Message("The command 'npx' was not found on the PATH. Please install Node.js 16+ to use this command.")
-	}
+	// This command performs three steps:
+    // 1. Run the generator (bicep-tools/generator) to build the Bicep extension "index"
+    // 2. We use `bicep publish-extension` to publish the extension "index" to the "target"
+    // 3. We can clean up the "index" directory after publishing.
 
 	temp, err := os.MkdirTemp("", "bicep-extension-*")
 	if err != nil {
