@@ -1,7 +1,7 @@
 {
   "id": "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/mypack",
   "name": "mypack",
-  "type": "Radius.Core/recipePacks", 
+  "type": "Radius.Core/recipePacks",
   "location": "global",
   "tags": {
     "env": "production",
@@ -9,7 +9,7 @@
   },
   "systemData": {
     "createdBy": "test-user",
-    "createdByType": "User", 
+    "createdByType": "User",
     "createdAt": "2023-10-01T10:00:00Z",
     "lastModifiedBy": "test-user",
     "lastModifiedByType": "User",
@@ -37,7 +37,7 @@
         "plainHTTP": false
       },
       "Applications.Dapr/stateStores": {
-        "recipeKind": "Terraform", 
+        "recipeKind": "Terraform",
         "recipeLocation": "oci://ghcr.io/radius-project/recipes/terraform/redis:latest",
         "parameters": {
           "size": "small"
