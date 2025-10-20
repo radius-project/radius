@@ -1,168 +1,92 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v20250801preview
 
 import (
-	"reflect"
+	"encoding/json"
+	"os"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/stretchr/testify/require"
 )
 
-func TestConvertTo_Minimal(t *testing.T) {
-	recipe := &RecipePackResource{
-		ID:       toPtr("/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/foo"),
-		Name:     toPtr("foo"),
-		Type:     toPtr("Radius.Core/recipePacks"),
-		Location: toPtr("global"),
-		Tags:     map[string]*string{"env": toPtr("dev")},
-		Properties: &RecipePackProperties{
-			ProvisioningState: toProvisioningStatePtr(ProvisioningStateSucceeded),
-		},
-	}
-	model, err := recipe.ConvertTo()
-	if err != nil {
-		t.Fatalf("ConvertTo failed: %v", err)
-	}
-	m, ok := model.(*datamodel.RecipePack)
-	if !ok {
-		t.Fatalf("ConvertTo did not return RecipePack")
-	}
-	if m.ID != *recipe.ID || m.Name != *recipe.Name || m.Type != *recipe.Type || m.Location != *recipe.Location {
-		t.Errorf("Basic fields not converted correctly")
-	}
-	if m.BaseResource.InternalMetadata.AsyncProvisioningState != "Succeeded" {
-		t.Errorf("ProvisioningState not converted")
-	}
+func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
+	// Load test data
+	data, err := os.ReadFile("testdata/recipepackresource.json")
+	require.NoError(t, err)
+
+	// Unmarshal into versioned resource
+	var versionedResource RecipePackResource
+	err = json.Unmarshal(data, &versionedResource)
+	require.NoError(t, err)
+
+	// Convert to data model
+	dm, err := versionedResource.ConvertTo()
+	require.NoError(t, err)
+	require.NotNil(t, dm)
+
+	// Verify it's the right type
+	recipePack, ok := dm.(*datamodel.RecipePack)
+	require.True(t, ok)
+
+	// Basic validations
+	require.Equal(t, *versionedResource.ID, recipePack.ID)
+	require.Equal(t, *versionedResource.Name, recipePack.Name)
+	require.Equal(t, *versionedResource.Type, recipePack.Type)
+	require.Equal(t, *versionedResource.Location, recipePack.Location)
+
+	// Validate API version metadata
+	require.Equal(t, Version, recipePack.InternalMetadata.CreatedAPIVersion)
+	require.Equal(t, Version, recipePack.InternalMetadata.UpdatedAPIVersion)
 }
 
-func TestConvertTo_Full(t *testing.T) {
-	desc := "desc"
-	referenced := []*string{toPtr("/foo"), toPtr("/bar")}
-	recipes := map[string]*RecipeDefinition{
-		"r1": {
-			RecipeKind:     toRecipeKindPtr("Container"),
-			RecipeLocation: toPtr("/location"),
-			Parameters:     map[string]any{"p": "v"},
-			PlainHTTP:      toPtr(true),
-		},
-	}
-	recipe := &RecipePackResource{
-		ID:       toPtr("/id"),
-		Name:     toPtr("name"),
-		Type:     toPtr("type"),
-		Location: toPtr("loc"),
-		Tags:     map[string]*string{"t": toPtr("v")},
-		Properties: &RecipePackProperties{
-			ProvisioningState: toProvisioningStatePtr(ProvisioningStateProvisioning),
-			Description:       &desc,
-			ReferencedBy:      referenced,
-			Recipes:           recipes,
-		},
-	}
-	model, err := recipe.ConvertTo()
-	if err != nil {
-		t.Fatalf("ConvertTo failed: %v", err)
-	}
-	m := model.(*datamodel.RecipePack)
-	if m.Properties.Description != desc {
-		t.Errorf("Description not converted")
-	}
-	if !reflect.DeepEqual(m.Properties.ReferencedBy, []string{"/foo", "/bar"}) {
-		t.Errorf("ReferencedBy not converted")
-	}
-	if len(m.Properties.Recipes) != 1 {
-		t.Errorf("Recipes not converted")
-	}
-	if m.Properties.Recipes["r1"].RecipeKind != "Container" {
-		t.Errorf("RecipeKind not converted")
-	}
-	if m.Properties.Recipes["r1"].PlainHTTP != true {
-		t.Errorf("PlainHTTP not converted")
-	}
+func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
+	// Load test data
+	data, err := os.ReadFile("testdata/recipepackresourcedatamodel.json")
+	require.NoError(t, err)
+
+	// Unmarshal into datamodel
+	var dataModel datamodel.RecipePack
+	err = json.Unmarshal(data, &dataModel)
+	require.NoError(t, err)
+
+	// Convert to versioned resource
+	var versionedResource RecipePackResource
+	err = versionedResource.ConvertFrom(&dataModel)
+	require.NoError(t, err)
+
+	// Basic validations
+	require.Equal(t, dataModel.ID, *versionedResource.ID)
+	require.Equal(t, dataModel.Name, *versionedResource.Name)
+	require.Equal(t, dataModel.Type, *versionedResource.Type)
+	require.Equal(t, dataModel.Location, *versionedResource.Location)
+	require.NotNil(t, versionedResource.Properties)
 }
 
-func TestConvertFrom_Minimal(t *testing.T) {
-	dm := &datamodel.RecipePack{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       "/id",
-				Name:     "name",
-				Type:     "type",
-				Location: "loc",
-				Tags:     map[string]string{"t": "v"},
-			},
-			InternalMetadata: v1.InternalMetadata{
-				AsyncProvisioningState: "Provisioning",
-			},
-		},
-		Properties: datamodel.RecipePackProperties{},
-	}
-	var dst RecipePackResource
-	err := dst.ConvertFrom(dm)
-	if err != nil {
-		t.Fatalf("ConvertFrom failed: %v", err)
-	}
-	if *dst.ID != dm.ID || *dst.Name != dm.Name || *dst.Type != dm.Type || *dst.Location != dm.Location {
-		t.Errorf("Basic fields not converted correctly")
-	}
-	if dst.Properties.ProvisioningState == nil || *dst.Properties.ProvisioningState != ProvisioningStateProvisioning {
-		t.Errorf("ProvisioningState not converted")
-	}
-}
+func TestRecipePackConvertInvalidModel(t *testing.T) {
+	t.Run("invalid model type", func(t *testing.T) {
+		var versionedResource RecipePackResource
 
-func TestConvertFrom_Full(t *testing.T) {
-	desc := "desc"
-	referenced := []string{"/foo", "/bar"}
-	recipes := map[string]*datamodel.RecipeDefinition{
-		"r1": {
-			RecipeKind:     "Container",
-			RecipeLocation: "/location",
-			Parameters:     map[string]any{"p": "v"},
-			PlainHTTP:      true,
-		},
-	}
-	dm := &datamodel.RecipePack{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       "/id",
-				Name:     "name",
-				Type:     "type",
-				Location: "loc",
-				Tags:     map[string]string{"t": "v"},
-			},
-			InternalMetadata: v1.InternalMetadata{
-				AsyncProvisioningState: "Provisioning",
-			},
-		},
-		Properties: datamodel.RecipePackProperties{
-			Description:  desc,
-			ReferencedBy: referenced,
-			Recipes:      recipes,
-		},
-	}
-	var dst RecipePackResource
-	err := dst.ConvertFrom(dm)
-	if err != nil {
-		t.Fatalf("ConvertFrom failed: %v", err)
-	}
-	if dst.Properties.Description == nil || *dst.Properties.Description != desc {
-		t.Errorf("Description not converted")
-	}
-	if len(dst.Properties.ReferencedBy) != 2 {
-		t.Errorf("ReferencedBy not converted")
-	}
-	if len(dst.Properties.Recipes) != 1 {
-		t.Errorf("Recipes not converted")
-	}
-	if *dst.Properties.Recipes["r1"].RecipeKind != RecipeKind("Container") {
-		t.Errorf("RecipeKind not converted")
-	}
-	if dst.Properties.Recipes["r1"].PlainHTTP == nil || *dst.Properties.Recipes["r1"].PlainHTTP != true {
-		t.Errorf("PlainHTTP not converted")
-	}
+		// Try to convert from wrong model type
+		invalidModel := &datamodel.Environment{}
+		err := versionedResource.ConvertFrom(invalidModel)
+		require.Error(t, err)
+		require.Equal(t, v1.ErrInvalidModelConversion, err)
+	})
 }
-
-// helpers
-func toPtr[T any](v T) *T                                           { return &v }
-func toRecipeKindPtr(s string) *RecipeKind                          { k := RecipeKind(s); return &k }
-func toProvisioningStatePtr(s ProvisioningState) *ProvisioningState { return &s }

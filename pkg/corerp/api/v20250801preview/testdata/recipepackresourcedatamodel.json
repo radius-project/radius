@@ -1,0 +1,49 @@
+{
+  "id": "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/mypack",
+  "name": "mypack",
+  "type": "Radius.Core/recipePacks", 
+  "location": "global",
+  "tags": {
+    "env": "production",
+    "team": "platform"
+  },
+  "systemData": {
+    "createdBy": "test-user",
+    "createdByType": "User", 
+    "createdAt": "2023-10-01T10:00:00Z",
+    "lastModifiedBy": "test-user",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2023-10-01T10:00:00Z"
+  },
+  "internalMetadata": {
+    "createdAPIVersion": "2025-08-01-preview",
+    "updatedAPIVersion": "2025-08-01-preview",
+    "asyncProvisioningState": "Succeeded"
+  },
+  "properties": {
+    "description": "A comprehensive recipe pack for containerized applications",
+    "referencedBy": [
+      "/planes/radius/local/resourceGroups/app-rg/providers/Radius.Core/environments/prod-env",
+      "/planes/radius/local/resourceGroups/app-rg/providers/Radius.Core/environments/staging-env"
+    ],
+    "recipes": {
+      "Applications.Core/containers": {
+        "recipeKind": "Bicep",
+        "recipeLocation": "br:ghcr.io/radius-project/recipes/kubernetes-container:latest",
+        "parameters": {
+          "port": 8080,
+          "replicas": 3
+        },
+        "plainHTTP": false
+      },
+      "Applications.Dapr/stateStores": {
+        "recipeKind": "Terraform", 
+        "recipeLocation": "oci://ghcr.io/radius-project/recipes/terraform/redis:latest",
+        "parameters": {
+          "size": "small"
+        },
+        "plainHTTP": true
+      }
+    }
+  }
+}
