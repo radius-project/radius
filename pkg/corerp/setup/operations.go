@@ -232,7 +232,7 @@ var operationList = []v1.Operation{
 	{
 		Name: "Radius.Core/recipePacks/read",
 		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Core",
+			Provider:    "Radius.Core",
 			Resource:    "recipePacks",
 			Operation:   "Get/List recipe packs",
 			Description: "Gets/Lists recipe pack(s).",
@@ -252,7 +252,7 @@ var operationList = []v1.Operation{
 	{
 		Name: "Radius.Core/recipePacks/delete",
 		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Core",
+			Provider:    "Radius.Core",
 			Resource:    "recipePacks",
 			Operation:   "Delete recipe pack",
 			Description: "Deletes a recipe pack resource.",
