@@ -1,5 +1,5 @@
 # see https://golangci-lint.run/usage/configuration/ for documentation
-version: "2"
+version: "2.5.0"
 linters:
   # Only enable forbidigo explicitly. The v2 defaults (errcheck, gosimple, govet, 
   # ineffassign, staticcheck, unused) are implicitly enabled to match v1 behavior.
