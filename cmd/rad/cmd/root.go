@@ -65,6 +65,7 @@ import (
 	resourceprovider_show "github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/show"
 	resourcetype_create "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/create"
 	resourcetype_delete "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/delete"
+	resourcetype_learn "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/learn"
 	resourcetype_list "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/list"
 	resourcetype_show "github.com/radius-project/radius/pkg/cli/cmd/resourcetype/show"
 	"github.com/radius-project/radius/pkg/cli/cmd/rollback"
@@ -290,6 +291,9 @@ func initSubCommands() {
 
 	resourceTypeCreateCmd, _ := resourcetype_create.NewCommand(framework)
 	resourceTypeCmd.AddCommand(resourceTypeCreateCmd)
+
+	resourceTypeLearnCmd, _ := resourcetype_learn.NewCommand(framework)
+	resourceTypeCmd.AddCommand(resourceTypeLearnCmd)
 
 	listRecipeCmd, _ := recipe_list.NewCommand(framework)
 	recipeCmd.AddCommand(listRecipeCmd)
