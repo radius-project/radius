@@ -242,11 +242,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Update (Patch) an application resource": {
-            "$ref": "./examples/Applications_Update.json"
-          }
         }
       },
       "delete": {
