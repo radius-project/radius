@@ -178,3 +178,171 @@ func GenerateModuleName(gitURL string) string {
 	}
 	return "terraform-module"
 }
+
+// InferNamespaceFromModule attempts to infer a meaningful namespace from the module
+func InferNamespaceFromModule(module *TerraformModule, gitURL string) string {
+	moduleName := GenerateModuleName(gitURL)
+	
+	// Extract provider/cloud from module name patterns
+	provider := extractProvider(moduleName)
+	category := extractCategory(moduleName)
+	
+	// Build namespace in format Provider.Category
+	if provider != "" && category != "" {
+		return titleCase(provider) + "." + titleCase(category)
+	} else if provider != "" {
+		return titleCase(provider) + ".Resources"
+	} else if category != "" {
+		return "Custom." + titleCase(category)
+	}
+	
+	// Fallback to analyzing variables for hints
+	if namespace := inferFromVariableNames(module.Variables); namespace != "" {
+		return namespace
+	}
+	
+	// Final fallback
+	return "Custom.Resources"
+}
+
+// extractProvider identifies cloud provider from module name
+func extractProvider(moduleName string) string {
+	lower := strings.ToLower(moduleName)
+	
+	patterns := map[string]string{
+		"aws":     "AWS",
+		"amazon":  "AWS", 
+		"azure":   "Azure",
+		"gcp":     "GCP",
+		"google":  "GCP",
+		"k8s":     "Kubernetes",
+		"kubernetes": "Kubernetes",
+		"docker":  "Docker",
+		"helm":    "Helm",
+	}
+	
+	for pattern, provider := range patterns {
+		if strings.Contains(lower, pattern) {
+			return provider
+		}
+	}
+	
+	return ""
+}
+
+// extractCategory identifies resource category from module name
+func extractCategory(moduleName string) string {
+	lower := strings.ToLower(moduleName)
+	
+	patterns := map[string]string{
+		"vpc":         "Network",
+		"network":     "Network", 
+		"subnet":      "Network",
+		"database":    "Data",
+		"db":          "Data",
+		"rds":         "Data",
+		"postgres":    "Data",
+		"mysql":       "Data",
+		"storage":     "Storage",
+		"s3":          "Storage",
+		"blob":        "Storage",
+		"compute":     "Compute",
+		"vm":          "Compute",
+		"instance":    "Compute",
+		"container":   "Compute",
+		"k8s":         "Orchestration",
+		"kubernetes":  "Orchestration",
+		"aks":         "Orchestration",
+		"eks":         "Orchestration",
+		"gke":         "Orchestration",
+		"security":    "Security",
+		"iam":         "Security",
+		"monitoring":  "Observability",
+		"logging":     "Observability",
+		"metric":      "Observability",
+	}
+	
+	for pattern, category := range patterns {
+		if strings.Contains(lower, pattern) {
+			return category
+		}
+	}
+	
+	return ""
+}
+
+// inferFromVariableNames analyzes variable names for namespace hints
+func inferFromVariableNames(variables []TerraformVariable) string {
+	providerHints := make(map[string]int)
+	categoryHints := make(map[string]int)
+	
+	for _, variable := range variables {
+		varName := strings.ToLower(variable.Name)
+		
+		// Check for provider hints in variable names
+		if strings.Contains(varName, "aws") || strings.Contains(varName, "region") {
+			providerHints["AWS"]++
+		}
+		if strings.Contains(varName, "azure") || strings.Contains(varName, "resource_group") {
+			providerHints["Azure"]++
+		}
+		if strings.Contains(varName, "gcp") || strings.Contains(varName, "project") {
+			providerHints["GCP"]++
+		}
+		
+		// Check for category hints
+		if strings.Contains(varName, "vpc") || strings.Contains(varName, "subnet") || strings.Contains(varName, "cidr") {
+			categoryHints["Network"]++
+		}
+		if strings.Contains(varName, "db") || strings.Contains(varName, "database") {
+			categoryHints["Data"]++
+		}
+		if strings.Contains(varName, "storage") || strings.Contains(varName, "bucket") {
+			categoryHints["Storage"]++
+		}
+	}
+	
+	// Find the most common provider and category
+	var topProvider, topCategory string
+	var maxProviderCount, maxCategoryCount int
+	
+	for provider, count := range providerHints {
+		if count > maxProviderCount {
+			maxProviderCount = count
+			topProvider = provider
+		}
+	}
+	
+	for category, count := range categoryHints {
+		if count > maxCategoryCount {
+			maxCategoryCount = count
+			topCategory = category
+		}
+	}
+	
+	if topProvider != "" && topCategory != "" {
+		return topProvider + "." + topCategory
+	} else if topProvider != "" {
+		return topProvider + ".Resources"
+	} else if topCategory != "" {
+		return "Custom." + topCategory
+	}
+	
+	return ""
+}
+
+// titleCase converts a string to title case, handling common acronyms
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	
+	// Handle common acronyms that should remain uppercase
+	upper := strings.ToUpper(s)
+	switch upper {
+	case "AWS", "GCP", "API", "HTTP", "HTTPS", "DNS", "VPC", "IAM":
+		return upper
+	}
+	
+	return strings.ToUpper(string(s[0])) + strings.ToLower(s[1:])
+}

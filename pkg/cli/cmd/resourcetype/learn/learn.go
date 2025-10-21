@@ -38,15 +38,16 @@ This command analyzes a Terraform module from a Git repository and generates a R
 - Property types converted from Terraform types to JSON schema types  
 - Required properties based on variables without default values
 - Standard Radius application and environment properties
+- Auto-inferred namespace based on module name and provider patterns (e.g., AWS.Network, Azure.Storage)
 
 The generated YAML can be used with 'rad resource-type create' to register the new resource type.
 `
 
 	learnExample = `
-# Generate resource type from a Terraform module
+# Generate resource type from a Terraform module (namespace auto-inferred)
 rad resource-type learn --git-url https://github.com/example/terraform-aws-vpc
 
-# Generate with custom namespace and type name
+# Override auto-inferred namespace and type name
 rad resource-type learn --git-url https://github.com/example/terraform-aws-vpc --namespace "MyCompany.AWS" --type-name "vpc"
 
 # Generate and save to specific file
@@ -68,7 +69,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	}
 
 	cmd.Flags().StringVar(&runner.GitURL, "git-url", "", "Git repository URL containing the Terraform module (required)")
-	cmd.Flags().StringVar(&runner.Namespace, "namespace", "Custom.Resources", "Namespace for the generated resource type")
+	cmd.Flags().StringVar(&runner.Namespace, "namespace", "", "Namespace for the generated resource type (auto-inferred if not provided)")
 	cmd.Flags().StringVar(&runner.TypeName, "type-name", "", "Name for the resource type (auto-generated if not provided)")
 	cmd.Flags().StringVar(&runner.OutputFile, "output", "", "Output file path (prints to stdout if not provided)")
 
@@ -147,9 +148,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.Output.LogInfo("Generated resource type name: %s", typeName)
 	}
 
+	// Infer namespace if not provided
+	namespace := r.Namespace
+	if namespace == "" {
+		namespace = InferNamespaceFromModule(module, r.GitURL)
+		r.Output.LogInfo("Inferred namespace: %s", namespace)
+	}
+
 	// Generate the resource type schema
 	r.Output.LogInfo("Generating resource type schema...")
-	schema, err := GenerateResourceTypeSchema(module, r.Namespace, typeName)
+	schema, err := GenerateResourceTypeSchema(module, namespace, typeName)
 	if err != nil {
 		return fmt.Errorf("failed to generate resource type schema: %w", err)
 	}
