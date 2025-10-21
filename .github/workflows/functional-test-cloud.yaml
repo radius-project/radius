@@ -47,7 +47,7 @@ env:
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.12.0
+  GOTESTSUM_VER: 1.13.0
 
   # Helm version
   HELM_VER: "v3.12.0"

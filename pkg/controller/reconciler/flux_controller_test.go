@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
@@ -299,7 +300,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 		// Clean up namespaces at the end of the test using fresh context
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		
+
 		for ns := range namespacesToCleanup {
 			t.Logf("Cleaning up namespace: %s", ns)
 			namespace := &corev1.Namespace{
@@ -374,7 +375,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 			// Update the Status subresource
 			updatedStatus := sourcev1.GitRepositoryStatus{
 				ObservedGeneration: int64(stepNumber),
-				Artifact: &sourcev1.Artifact{
+				Artifact: &meta.Artifact{
 					URL:      opts.testGitRepoURL,
 					Digest:   opts.testGitRepoSHA,
 					Revision: fmt.Sprintf("v%d", stepNumber),

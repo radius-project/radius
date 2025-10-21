@@ -82,7 +82,7 @@ func Test_E2E(t *testing.T) {
 		"\n" +
 		"> " + testPlaceholder + "\n" +
 		"\n" +
-		"(ctrl+c to quit)"
+		"(ctrl+c to quit)\r"
 
 	setup := func(t *testing.T) *teatest.TestModel {
 		options := TextModelOptions{

@@ -126,7 +126,7 @@ func Test_summaryModel(t *testing.T) {
 			"🌏 Use existing environment test-environment\n" +
 			"📋 Update local configuration\n" +
 			"\n" +
-			"(press enter to confirm or esc to restart)\n"
+			"(press enter to confirm or esc to restart)\n\r"
 
 		viewTest(t, options, expected)
 	})
@@ -155,7 +155,7 @@ func Test_summaryModel(t *testing.T) {
 			"🌏 Use existing environment test-environment\n" +
 			"📋 Update local configuration\n" +
 			"\n" +
-			"(press enter to confirm or esc to restart)\n"
+			"(press enter to confirm or esc to restart)\n\r"
 
 		viewTest(t, options, expected)
 	})
