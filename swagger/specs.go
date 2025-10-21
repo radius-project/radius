@@ -29,6 +29,7 @@ var (
 	//go:embed specification/applications/resource-manager/Applications.Dapr/preview/2023-10-01-preview/*.json
 	//go:embed specification/applications/resource-manager/Applications.Messaging/preview/2023-10-01-preview/*.json
 	//go:embed specification/applications/resource-manager/Applications.Core/preview/2023-10-01-preview/openapi.json
+	//go:embed specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/*.json
 	//go:embed specification/common-types/resource-management/v2/types.json
 	//go:embed specification/common-types/resource-management/v3/types.json
 	SpecFiles embed.FS

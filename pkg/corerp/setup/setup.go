@@ -30,6 +30,7 @@ import (
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
 	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
+	rp_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/recipepacks"
 	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 	ext_processor "github.com/radius-project/radius/pkg/corerp/processors/extenders"
@@ -245,6 +246,25 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 
 	// Optional
 	ns.SetAvailableOperations(operationList)
+
+	return ns
+}
+
+// SetupRadiusCoreNamespace builds the Radius.Core namespace for recipe packs.
+func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeControllerConfig) *builder.Namespace {
+	ns := builder.NewNamespace("Radius.Core")
+
+	_ = ns.AddResource("recipePacks", &builder.ResourceOption[*datamodel.RecipePack, datamodel.RecipePack]{
+		RequestConverter:  converter.RecipePackDataModelFromVersioned,
+		ResponseConverter: converter.RecipePackDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.RecipePack]{
+			APIController: rp_ctrl.NewCreateOrUpdateRecipePack,
+		},
+		Patch: builder.Operation[datamodel.RecipePack]{
+			APIController: rp_ctrl.NewCreateOrUpdateRecipePack,
+		},
+	})
 
 	return ns
 }
