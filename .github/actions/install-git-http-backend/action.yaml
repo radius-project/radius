@@ -1,0 +1,23 @@
+name: "Install Git HTTP Backend"
+description: "Installs a git HTTP backend, configures basic auth, and exposes it inside the cluster using alpine/git."
+inputs:
+  git-username:
+    description: "Username for basic authentication"
+    required: true
+  git-password:
+    description: "Password for basic authentication"
+    required: true
+  namespace:
+    description: "Namespace to deploy the git-http-backend into"
+    required: false
+    default: "git-http-backend"
+  image:
+    description: "Container image to use for the git backend"
+    required: false
+    default: "alpine/git:2.45.2"
+runs:
+  using: "composite"
+  steps:
+    - name: Install git-http-backend
+      shell: bash
+      run: .github/actions/install-git-http-backend/install-git-http-backend.sh "${{ inputs.git-username }}" "${{ inputs.git-password }}" "${{ inputs.namespace }}" "${{ inputs.image }}"
