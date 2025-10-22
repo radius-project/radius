@@ -1,15 +1,80 @@
 # see https://golangci-lint.run/usage/configuration/ for documentation
+version: "2"
 linters:
+  # Only enable forbidigo explicitly. The v2 defaults (errcheck, gosimple, govet, 
+  # ineffassign, staticcheck, unused) are implicitly enabled to match v1 behavior.
   enable:
   - forbidigo
-linters-settings:
-  forbidigo:
-    # Forbid the following identifiers (list of regexp)
-    #
-    # Add a comment to the offending line with '//nolint:forbidigo' to suppress the rule if
-    # you're working inside the main() function.
-    forbid:
-      # These APIs exit the process. These are OK to use in the main() function,
-      # and not ANYWHERE else.
-      - 'os\.Exit(# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct.)?'
-      - 'log\.Fatal(f|ln)?(# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct.)?'
+  settings:
+    # Configure default linters to match v1 behavior (less strict)
+    errcheck:
+      # Don't check for errors in defer statements and common safe-to-ignore functions
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - io.Copy
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (io.WriteCloser).Close
+        - (*os.File).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.Stmt).Close
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (net.Conn).Close
+        - (net.Listener).Close
+        - (*net.TCPListener).Close
+        - (*crypto/tls.Conn).Close
+        - (*archive/zip.Writer).Close
+        - os.Remove
+        - os.RemoveAll
+        - os.Setenv
+        - os.Unsetenv
+    
+    govet:
+      # Only run a subset of analyzers to match v1 behavior
+      enable:
+        - asmdecl
+        - assign
+        - atomic
+        - bools
+        - buildtag
+        - cgocall
+        - composites
+        - copylocks
+        - errorsas
+        - httpresponse
+        - loopclosure
+        - lostcancel
+        - nilfunc
+        - printf
+        - shift
+        - stdmethods
+        - structtag
+        - tests
+        - unmarshal
+        - unreachable
+        - unsafeptr
+        - unusedresult
+    
+    staticcheck:
+      # Use the same checks as v1 (disable newer style/quickfix checks)
+      # QF rules are "quickfix" suggestions that weren't in v1
+      # ST rules are style checks that are often too pedantic
+      checks: ["all", 
+        "-ST1000", "-ST1003", "-ST1005", "-ST1016", "-ST1019", "-ST1020", "-ST1021", "-ST1022", "-ST1023",
+        "-QF1001", "-QF1003", "-QF1004", "-QF1007", "-QF1008", "-QF1011", "-QF1012"]
+    
+    forbidigo:
+      # Forbid the following identifiers (list of regexp)
+      #
+      # Add a comment to the offending line with '//nolint:forbidigo' to suppress the rule if
+      # you're working inside the main() function.
+      forbid:
+        # These APIs exit the process. These are OK to use in the main() function,
+        # and not ANYWHERE else.
+        - pattern: 'os\.Exit'
+          msg: '# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct.'
+        - pattern: 'log\.Fatal(f|ln)?'
+          msg: '# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct.'

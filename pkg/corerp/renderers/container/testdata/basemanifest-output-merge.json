@@ -3,7 +3,6 @@
   "apiVersion": "apps/v1",
   "metadata": {
     "name": "test-container",
-    "creationTimestamp": null,
     "labels": {
       "app": "test-container",
       "app.kubernetes.io/managed-by": "radius-rp",
@@ -29,7 +28,6 @@
     },
     "template": {
       "metadata": {
-        "creationTimestamp": null,
         "labels": {
           "app": "test-container",
           "app.kubernetes.io/managed-by": "radius-rp",
