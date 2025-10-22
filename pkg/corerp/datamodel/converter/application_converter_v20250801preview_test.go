@@ -21,12 +21,12 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	v20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
 
-func TestApplicationDataModelToVersioned(t *testing.T) {
+func TestApplication20250801DataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
@@ -34,12 +34,11 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20231001preview/testdata/applicationresourcedatamodel.json",
-			"2023-10-01-preview",
-			&v20231001preview.ApplicationResource{},
+			"../../api/v20250801preview/testdata/applicationresourcedatamodel.json",
+			"2025-08-01-preview",
+			&v20250801preview.ApplicationResource{},
 			nil,
 		},
-		// TODO: add new conversion tests.
 		{
 			"",
 			"unsupported",
@@ -51,9 +50,9 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
-			dm := &datamodel.Application{}
+			dm := &datamodel.Application_v20250801preview{}
 			_ = json.Unmarshal(c, dm)
-			am, err := ApplicationDataModelToVersioned(dm, tc.apiVersion)
+			am, err := Application20250801DataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
@@ -64,18 +63,17 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func TestApplicationDataModelFromVersioned(t *testing.T) {
+func TestApplication20250801DataModelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string
 		apiVersion         string
 		err                error
 	}{
 		{
-			"../../api/v20231001preview/testdata/applicationresource.json",
-			"2023-10-01-preview",
+			"../../api/v20250801preview/testdata/applicationresource.json",
+			"2025-08-01-preview",
 			nil,
 		},
-		// TODO: add new conversion tests.
 		{
 			"",
 			"unsupported",
@@ -86,7 +84,7 @@ func TestApplicationDataModelFromVersioned(t *testing.T) {
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
 			c := loadTestData(tc.versionedModelFile)
-			dm, err := ApplicationDataModelFromVersioned(c, tc.apiVersion)
+			dm, err := Application20250801DataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
