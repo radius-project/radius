@@ -44,7 +44,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.10.2
-	github.com/charmbracelet/x/exp/teatest v0.0.0-20240408110044-525ba71bb562
+	github.com/charmbracelet/x/exp/teatest v0.0.0-20251020183722-ee4914f58d13
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.18.0
 	github.com/fluxcd/pkg/apis/meta v1.22.0
