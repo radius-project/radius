@@ -19,6 +19,22 @@ DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
+# Enable GitHub Actions cache by default in CI environments
+DOCKER_CACHE_GHA?=$(if $(CI),1,0)
+
+# Check if we can push to GHCR (only from main repo, not forks)
+CAN_PUSH_GHCR?=$(shell \
+	if [ "$(CI)" = "true" ] && [ "$(GITHUB_REPOSITORY)" = "radius-project/radius" ]; then \
+		echo 1; \
+	else \
+		echo 0; \
+	fi \
+)
+
+# Helpers for flags that include commas (avoid splitting Make conditionals on ',')
+COMMA := ,
+CACHE_GHA_FLAGS := --cache-from=type=gha --cache-to=type=gha$(COMMA)mode=max
+
 ##@ Docker Images
 
 # Generate a target for each image we define
@@ -33,22 +49,25 @@ docker-build-$(1): build-$(1)-linux-amd64
 	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
-	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
+	cd $(OUT_DIR) && docker build -f ./Dockerfile-$(1) \
 		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		$(2)
 else
 docker-build-$(1):
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
-	docker build $(2) -f $(3) \
+	docker build -f $(3) \
+		$(if $(filter 1,$(DOCKER_CACHE_GHA)),--cache-from=type=gha) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		$(2)
 endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
@@ -64,6 +83,7 @@ docker-multi-arch-build-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 buil
 
 	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
 		--platform linux/amd64,linux/arm64,linux/arm \
+		$(if $(filter 1,$(DOCKER_CACHE_GHA)),$(CACHE_GHA_FLAGS)) \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
@@ -80,6 +100,7 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 	# to build and add --push.
 	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
 		--platform linux/amd64,linux/arm64,linux/arm \
+		$(if $(filter 1,$(DOCKER_CACHE_GHA)),$(CACHE_GHA_FLAGS)) \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
@@ -158,3 +179,33 @@ docker-multi-arch-build: copy-manifests $(DOCKER_BUILD_MULTI_TARGETS) ## Builds 
 
 .PHONY: docker-multi-arch-push
 docker-multi-arch-push: copy-manifests $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.
+
+##@ Docker Image Artifacts
+
+# Extract just the image names from APPS_MAP
+APP_NAMES := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) $(NAME))
+
+.PHONY: docker-save-images
+docker-save-images: ## Save built images to tarballs in dist/images for reuse across jobs
+	@echo "$(ARROW) Saving images to tarballs"
+	@mkdir -p $(OUT_DIR)/images
+	@set -e; \
+	for name in $(APP_NAMES); do \
+	  tag="$(DOCKER_REGISTRY)/$$name:$(DOCKER_TAG_VERSION)"; \
+	  if docker image inspect "$$tag" > /dev/null 2>&1; then \
+	    echo "Saving $$tag -> $(OUT_DIR)/images/$$name.tar"; \
+	    docker save -o "$(OUT_DIR)/images/$$name.tar" "$$tag"; \
+	  else \
+	    echo "Image not found, skipping: $$tag"; \
+	  fi; \
+	done
+
+.PHONY: docker-load-images
+docker-load-images: ## Load all image tarballs from dist/images back into Docker
+	@echo "$(ARROW) Loading images from tarballs"
+	@set -e; \
+	for tarball in $(OUT_DIR)/images/*.tar; do \
+	  [ -e "$$tarball" ] || { echo "No image tarballs found in $(OUT_DIR)/images"; exit 0; }; \
+	  echo "Loading $$tarball"; \
+	  docker load -i "$$tarball"; \
+	done
