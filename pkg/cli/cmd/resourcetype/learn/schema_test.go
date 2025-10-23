@@ -162,3 +162,40 @@ func TestExtractCategory(t *testing.T) {
 		})
 	}
 }
+func TestShouldSkipVariable(t *testing.T) {
+	tests := []struct {
+		variableName string
+		shouldSkip   bool
+	}{
+		// Only context should be skipped (recipe context)
+		{"context", true},
+		{"Context", true},
+		{"CONTEXT", true},
+
+		// Everything else should NOT be skipped
+		{"vpc_name", false},
+		{"vpc_cidr", false},
+		{"aws_region", false},
+		{"resource_id", false},
+		{"id", false},
+		{"metadata", false},
+		{"status", false},
+		{"radius_context", false},
+		{"provision_state", false},
+		{"provisioning_state", false},
+		{"created_time", false},
+		{"updated_time", false},
+		{"last_modified", false},
+		{"etag", false},
+		{"system_data", false},
+		{"custom_context", false}, // Contains "context" but not exact match
+		{"my_context", false},     // Contains "context" but not exact match
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.variableName, func(t *testing.T) {
+			result := shouldSkipVariable(tt.variableName)
+			require.Equal(t, tt.shouldSkip, result)
+		})
+	}
+}

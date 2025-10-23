@@ -22,8 +22,8 @@ import (
 
 // ResourceTypeSchema represents the structure for a resource type definition
 type ResourceTypeSchema struct {
-	Namespace string                    `yaml:"namespace"`
-	Types     map[string]ResourceType   `yaml:"types"`
+	Namespace string                  `yaml:"namespace"`
+	Types     map[string]ResourceType `yaml:"types"`
 }
 
 // ResourceType represents a single resource type with its API versions
@@ -38,9 +38,9 @@ type APIVersionSchema struct {
 
 // SchemaDefinition represents the OpenAPI-style schema definition
 type SchemaDefinition struct {
-	Type       string                      `yaml:"type"`
+	Type       string                        `yaml:"type"`
 	Properties map[string]PropertyDefinition `yaml:"properties"`
-	Required   []string                    `yaml:"required,omitempty"`
+	Required   []string                      `yaml:"required,omitempty"`
 }
 
 // PropertyDefinition represents a single property in the schema
@@ -77,6 +77,11 @@ func GenerateResourceTypeSchema(module *TerraformModule, namespace, resourceType
 
 	// Convert Terraform variables to schema properties
 	for _, variable := range module.Variables {
+		// Skip server-side auto-generated properties that shouldn't be user inputs
+		if shouldSkipVariable(variable.Name) {
+			continue
+		}
+
 		prop := PropertyDefinition{
 			Type:        ConvertTerraformTypeToJSONSchema(variable.Type),
 			Description: variable.Description,
@@ -182,11 +187,11 @@ func GenerateModuleName(gitURL string) string {
 // InferNamespaceFromModule attempts to infer a meaningful namespace from the module
 func InferNamespaceFromModule(module *TerraformModule, gitURL string) string {
 	moduleName := GenerateModuleName(gitURL)
-	
+
 	// Extract provider/cloud from module name patterns
 	provider := extractProvider(moduleName)
 	category := extractCategory(moduleName)
-	
+
 	// Build namespace in format Provider.Category
 	if provider != "" && category != "" {
 		return titleCase(provider) + "." + titleCase(category)
@@ -195,12 +200,12 @@ func InferNamespaceFromModule(module *TerraformModule, gitURL string) string {
 	} else if category != "" {
 		return "Custom." + titleCase(category)
 	}
-	
+
 	// Fallback to analyzing variables for hints
 	if namespace := inferFromVariableNames(module.Variables); namespace != "" {
 		return namespace
 	}
-	
+
 	// Final fallback
 	return "Custom.Resources"
 }
@@ -208,66 +213,66 @@ func InferNamespaceFromModule(module *TerraformModule, gitURL string) string {
 // extractProvider identifies cloud provider from module name
 func extractProvider(moduleName string) string {
 	lower := strings.ToLower(moduleName)
-	
+
 	patterns := map[string]string{
-		"aws":     "AWS",
-		"amazon":  "AWS", 
-		"azure":   "Azure",
-		"gcp":     "GCP",
-		"google":  "GCP",
-		"k8s":     "Kubernetes",
+		"aws":        "AWS",
+		"amazon":     "AWS",
+		"azure":      "Azure",
+		"gcp":        "GCP",
+		"google":     "GCP",
+		"k8s":        "Kubernetes",
 		"kubernetes": "Kubernetes",
-		"docker":  "Docker",
-		"helm":    "Helm",
+		"docker":     "Docker",
+		"helm":       "Helm",
 	}
-	
+
 	for pattern, provider := range patterns {
 		if strings.Contains(lower, pattern) {
 			return provider
 		}
 	}
-	
+
 	return ""
 }
 
 // extractCategory identifies resource category from module name
 func extractCategory(moduleName string) string {
 	lower := strings.ToLower(moduleName)
-	
+
 	patterns := map[string]string{
-		"vpc":         "Network",
-		"network":     "Network", 
-		"subnet":      "Network",
-		"database":    "Data",
-		"db":          "Data",
-		"rds":         "Data",
-		"postgres":    "Data",
-		"mysql":       "Data",
-		"storage":     "Storage",
-		"s3":          "Storage",
-		"blob":        "Storage",
-		"compute":     "Compute",
-		"vm":          "Compute",
-		"instance":    "Compute",
-		"container":   "Compute",
-		"k8s":         "Orchestration",
-		"kubernetes":  "Orchestration",
-		"aks":         "Orchestration",
-		"eks":         "Orchestration",
-		"gke":         "Orchestration",
-		"security":    "Security",
-		"iam":         "Security",
-		"monitoring":  "Observability",
-		"logging":     "Observability",
-		"metric":      "Observability",
+		"vpc":        "Network",
+		"network":    "Network",
+		"subnet":     "Network",
+		"database":   "Data",
+		"db":         "Data",
+		"rds":        "Data",
+		"postgres":   "Data",
+		"mysql":      "Data",
+		"storage":    "Storage",
+		"s3":         "Storage",
+		"blob":       "Storage",
+		"compute":    "Compute",
+		"vm":         "Compute",
+		"instance":   "Compute",
+		"container":  "Compute",
+		"k8s":        "Orchestration",
+		"kubernetes": "Orchestration",
+		"aks":        "Orchestration",
+		"eks":        "Orchestration",
+		"gke":        "Orchestration",
+		"security":   "Security",
+		"iam":        "Security",
+		"monitoring": "Observability",
+		"logging":    "Observability",
+		"metric":     "Observability",
 	}
-	
+
 	for pattern, category := range patterns {
 		if strings.Contains(lower, pattern) {
 			return category
 		}
 	}
-	
+
 	return ""
 }
 
@@ -275,10 +280,10 @@ func extractCategory(moduleName string) string {
 func inferFromVariableNames(variables []TerraformVariable) string {
 	providerHints := make(map[string]int)
 	categoryHints := make(map[string]int)
-	
+
 	for _, variable := range variables {
 		varName := strings.ToLower(variable.Name)
-		
+
 		// Check for provider hints in variable names
 		if strings.Contains(varName, "aws") || strings.Contains(varName, "region") {
 			providerHints["AWS"]++
@@ -289,7 +294,7 @@ func inferFromVariableNames(variables []TerraformVariable) string {
 		if strings.Contains(varName, "gcp") || strings.Contains(varName, "project") {
 			providerHints["GCP"]++
 		}
-		
+
 		// Check for category hints
 		if strings.Contains(varName, "vpc") || strings.Contains(varName, "subnet") || strings.Contains(varName, "cidr") {
 			categoryHints["Network"]++
@@ -301,25 +306,25 @@ func inferFromVariableNames(variables []TerraformVariable) string {
 			categoryHints["Storage"]++
 		}
 	}
-	
+
 	// Find the most common provider and category
 	var topProvider, topCategory string
 	var maxProviderCount, maxCategoryCount int
-	
+
 	for provider, count := range providerHints {
 		if count > maxProviderCount {
 			maxProviderCount = count
 			topProvider = provider
 		}
 	}
-	
+
 	for category, count := range categoryHints {
 		if count > maxCategoryCount {
 			maxCategoryCount = count
 			topCategory = category
 		}
 	}
-	
+
 	if topProvider != "" && topCategory != "" {
 		return topProvider + "." + topCategory
 	} else if topProvider != "" {
@@ -327,7 +332,7 @@ func inferFromVariableNames(variables []TerraformVariable) string {
 	} else if topCategory != "" {
 		return "Custom." + topCategory
 	}
-	
+
 	return ""
 }
 
@@ -336,13 +341,28 @@ func titleCase(s string) string {
 	if s == "" {
 		return s
 	}
-	
+
 	// Handle common acronyms that should remain uppercase
 	upper := strings.ToUpper(s)
 	switch upper {
 	case "AWS", "GCP", "API", "HTTP", "HTTPS", "DNS", "VPC", "IAM":
 		return upper
 	}
-	
+
 	return strings.ToUpper(string(s[0])) + strings.ToLower(s[1:])
+}
+
+// shouldSkipVariable determines if a Terraform variable should be excluded from the schema
+// because it represents server-side auto-generated properties
+func shouldSkipVariable(variableName string) bool {
+	// Convert to lowercase for case-insensitive comparison
+	name := strings.ToLower(variableName)
+
+	// Skip recipe context which is auto-generated by Radius
+	// See: https://github.com/radius-project/radius/blob/main/pkg/recipes/recipecontext/types.go#L31
+	if name == "context" {
+		return true
+	}
+
+	return false
 }
