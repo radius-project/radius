@@ -4,7 +4,7 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "Radius.Core/environments"
+    "value": "Radius.Core/applications"
   },
   {
     "$type": "StringLiteralType",
@@ -12,7 +12,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Radius.Core/environments",
+    "name": "Radius.Core/applications",
     "properties": {
       "id": {
         "type": {
@@ -47,11 +47,11 @@
           "$ref": "#/4"
         },
         "flags": 1,
-        "description": "Environment properties"
+        "description": "Application properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -65,7 +65,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/33"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -74,7 +74,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "EnvironmentProperties",
+    "name": "ApplicationProperties",
     "properties": {
       "provisioningState": {
         "type": {
@@ -83,25 +83,19 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
-      "recipePacks": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the application is linked to"
+      },
+      "status": {
         "type": {
           "$ref": "#/14"
         },
-        "flags": 0,
-        "description": "List of Recipe Pack resource IDs linked to this environment."
-      },
-      "providers": {
-        "type": {
-          "$ref": "#/15"
-        },
-        "flags": 0
-      },
-      "simulated": {
-        "type": {
-          "$ref": "#/27"
-        },
-        "flags": 0,
-        "description": "Simulated environment."
+        "flags": 2,
+        "description": "Status of a resource."
       }
     }
   },
@@ -167,61 +161,58 @@
     ]
   },
   {
-    "$type": "ArrayType",
-    "itemType": {
-      "$ref": "#/0"
-    }
-  },
-  {
     "$type": "ObjectType",
-    "name": "Providers",
+    "name": "ResourceStatus",
     "properties": {
-      "azure": {
+      "compute": {
         "type": {
-          "$ref": "#/16"
+          "$ref": "#/15"
         },
         "flags": 0,
-        "description": "The Azure cloud provider definition."
+        "description": "Represents backing compute resource"
       },
-      "kubernetes": {
+      "recipe": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/28"
         },
-        "flags": 0
+        "flags": 2,
+        "description": "Recipe status at deployment time for a resource."
       },
-      "aws": {
+      "outputResources": {
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/31"
         },
         "flags": 0,
-        "description": "The AWS cloud provider definition."
+        "description": "Properties of an output resource"
       }
     }
   },
   {
-    "$type": "ObjectType",
-    "name": "ProvidersAzure",
-    "properties": {
-      "subscriptionId": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Azure subscription ID hosting deployed resources."
-      },
-      "resourceGroupName": {
+    "$type": "DiscriminatedObjectType",
+    "name": "EnvironmentCompute",
+    "discriminator": "kind",
+    "baseProperties": {
+      "resourceId": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Optional resource group name."
+        "description": "The resource id of the compute resource for application environment."
       },
       "identity": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/16"
         },
         "flags": 0,
         "description": "IdentitySettings is the external identity setting."
+      }
+    },
+    "elements": {
+      "aci": {
+        "$ref": "#/24"
+      },
+      "kubernetes": {
+        "$ref": "#/26"
       }
     }
   },
@@ -231,7 +222,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/22"
         },
         "flags": 1,
         "description": "IdentitySettingKind is the kind of supported external identity setting"
@@ -252,7 +243,7 @@
       },
       "managedIdentity": {
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/23"
         },
         "flags": 0,
         "description": "The list of user assigned managed identities"
@@ -283,6 +274,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/17"
+      },
+      {
         "$ref": "#/18"
       },
       {
@@ -293,9 +287,6 @@
       },
       {
         "$ref": "#/21"
-      },
-      {
-        "$ref": "#/22"
       }
     ]
   },
@@ -307,32 +298,114 @@
   },
   {
     "$type": "ObjectType",
-    "name": "ProvidersKubernetes",
+    "name": "AzureContainerInstanceCompute",
+    "properties": {
+      "resourceGroup": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The resource group to use for the environment."
+      },
+      "kind": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 1,
+        "description": "Discriminator property for EnvironmentCompute."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "aci"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "KubernetesCompute",
     "properties": {
       "namespace": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "Kubernetes namespace to deploy workloads into."
+        "description": "The namespace to use for the environment."
+      },
+      "kind": {
+        "type": {
+          "$ref": "#/27"
+        },
+        "flags": 1,
+        "description": "Discriminator property for EnvironmentCompute."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "kubernetes"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RecipeStatus",
+    "properties": {
+      "templateKind": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "TemplateKind is the kind of the recipe template used by the portable resource upon deployment."
+      },
+      "templatePath": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
+      },
+      "templateVersion": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "TemplateVersion is the version number of the template."
       }
     }
   },
   {
     "$type": "ObjectType",
-    "name": "ProvidersAws",
+    "name": "OutputResource",
     "properties": {
-      "scope": {
+      "localId": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1,
-        "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
+        "flags": 0,
+        "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+      },
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The UCP resource ID of the underlying resource."
+      },
+      "radiusManaged": {
+        "type": {
+          "$ref": "#/30"
+        },
+        "flags": 0,
+        "description": "Determines whether Radius manages the lifecycle of the underlying resource."
       }
     }
   },
   {
     "$type": "BooleanType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/29"
+    }
   },
   {
     "$type": "ObjectType",
@@ -355,7 +428,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/38"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -376,7 +449,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/43"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -410,16 +483,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/30"
+        "$ref": "#/34"
       },
       {
-        "$ref": "#/31"
+        "$ref": "#/35"
       },
       {
-        "$ref": "#/32"
+        "$ref": "#/36"
       },
       {
-        "$ref": "#/33"
+        "$ref": "#/37"
       }
     ]
   },
@@ -443,24 +516,291 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/35"
+        "$ref": "#/39"
       },
       {
-        "$ref": "#/36"
+        "$ref": "#/40"
       },
       {
-        "$ref": "#/37"
+        "$ref": "#/41"
       },
       {
-        "$ref": "#/38"
+        "$ref": "#/42"
       }
     ]
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/environments@2025-08-01-preview",
+    "name": "Radius.Core/applications@2025-08-01-preview",
     "body": {
       "$ref": "#/3"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Core/environments"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Core/environments",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/45"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/46"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/48"
+        },
+        "flags": 1,
+        "description": "Environment properties"
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/63"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "EnvironmentProperties",
+    "properties": {
+      "provisioningState": {
+        "type": {
+          "$ref": "#/57"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "recipePacks": {
+        "type": {
+          "$ref": "#/58"
+        },
+        "flags": 0,
+        "description": "List of Recipe Pack resource IDs linked to this environment."
+      },
+      "providers": {
+        "type": {
+          "$ref": "#/59"
+        },
+        "flags": 0
+      },
+      "simulated": {
+        "type": {
+          "$ref": "#/30"
+        },
+        "flags": 0,
+        "description": "Simulated environment."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/49"
+      },
+      {
+        "$ref": "#/50"
+      },
+      {
+        "$ref": "#/51"
+      },
+      {
+        "$ref": "#/52"
+      },
+      {
+        "$ref": "#/53"
+      },
+      {
+        "$ref": "#/54"
+      },
+      {
+        "$ref": "#/55"
+      },
+      {
+        "$ref": "#/56"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Providers",
+    "properties": {
+      "azure": {
+        "type": {
+          "$ref": "#/60"
+        },
+        "flags": 0,
+        "description": "The Azure cloud provider definition."
+      },
+      "kubernetes": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0
+      },
+      "aws": {
+        "type": {
+          "$ref": "#/62"
+        },
+        "flags": 0,
+        "description": "The AWS cloud provider definition."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ProvidersAzure",
+    "properties": {
+      "subscriptionId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Azure subscription ID hosting deployed resources."
+      },
+      "resourceGroupName": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Optional resource group name."
+      },
+      "identity": {
+        "type": {
+          "$ref": "#/16"
+        },
+        "flags": 0,
+        "description": "IdentitySettings is the external identity setting."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ProvidersKubernetes",
+    "properties": {
+      "namespace": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Kubernetes namespace to deploy workloads into."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ProvidersAws",
+    "properties": {
+      "scope": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Radius.Core/environments@2025-08-01-preview",
+    "body": {
+      "$ref": "#/47"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -494,28 +834,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/65"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/42"
+          "$ref": "#/66"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/44"
+          "$ref": "#/68"
         },
         "flags": 1,
         "description": "Recipe Pack properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/62"
+          "$ref": "#/86"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -529,7 +869,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/33"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -542,7 +882,7 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/77"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -556,14 +896,14 @@
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/78"
         },
         "flags": 2,
         "description": "List of environment IDs that reference this recipe pack"
       },
       "recipes": {
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/85"
         },
         "flags": 1,
         "description": "Map of resource types to their recipe configurations"
@@ -606,28 +946,28 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/45"
+        "$ref": "#/69"
       },
       {
-        "$ref": "#/46"
+        "$ref": "#/70"
       },
       {
-        "$ref": "#/47"
+        "$ref": "#/71"
       },
       {
-        "$ref": "#/48"
+        "$ref": "#/72"
       },
       {
-        "$ref": "#/49"
+        "$ref": "#/73"
       },
       {
-        "$ref": "#/50"
+        "$ref": "#/74"
       },
       {
-        "$ref": "#/51"
+        "$ref": "#/75"
       },
       {
-        "$ref": "#/52"
+        "$ref": "#/76"
       }
     ]
   },
@@ -643,14 +983,14 @@
     "properties": {
       "recipeKind": {
         "type": {
-          "$ref": "#/58"
+          "$ref": "#/82"
         },
         "flags": 1,
         "description": "The type of recipe"
       },
       "plainHttp": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
@@ -664,7 +1004,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/84"
         },
         "flags": 0,
         "description": "Parameters to pass to the recipe"
@@ -683,10 +1023,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/56"
+        "$ref": "#/80"
       },
       {
-        "$ref": "#/57"
+        "$ref": "#/81"
       }
     ]
   },
@@ -698,7 +1038,7 @@
     "name": "RecipeDefinitionParameters",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/59"
+      "$ref": "#/83"
     }
   },
   {
@@ -706,7 +1046,7 @@
     "name": "RecipePackPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/55"
+      "$ref": "#/79"
     }
   },
   {
@@ -721,7 +1061,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/43"
+      "$ref": "#/67"
     },
     "readableScopes": 0,
     "writableScopes": 0,
