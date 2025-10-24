@@ -127,6 +127,28 @@ type SecretData struct {
 	Data map[string]string `json:"data"`
 }
 
+// RecipePackResource represents a recipe pack resource with its recipes.
+type RecipePackResource struct {
+	// ID represents the fully qualified resource ID of the recipe pack
+	ID string
+	// Name represents the name of the recipe pack
+	Name string
+	// Description represents the description of the recipe pack
+	Description string
+	// Recipes represents the recipes available in this recipe pack
+	Recipes map[string]RecipePackDefinition
+}
+
+// RecipePackDefinition represents a recipe definition for a specific resource type in a recipe pack.
+type RecipePackDefinition struct {
+	// RecipeKind represents the type of recipe (e.g., terraform, bicep)
+	RecipeKind string
+	// RecipeLocation represents URL or path to the recipe source
+	RecipeLocation string
+	// Parameters represents parameters to pass to the recipe
+	Parameters map[string]any
+}
+
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
 // outputs map is the value of "result" output from the recipe deployment response.
 func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error {
