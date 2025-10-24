@@ -1,0 +1,28 @@
+{
+  "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-k8s-env",
+  "name": "my-k8s-env",
+  "type": "Radius.Core/environments",
+  "location": "West US",
+  "tags": {
+    "env": "test"
+  },
+  "systemData": {
+    "createdBy": "test-user",
+    "createdByType": "User",
+    "createdAt": "2023-10-01T10:00:00Z",
+    "lastModifiedBy": "test-user", 
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2023-10-01T10:00:00Z"
+  },
+  "properties": {
+    "provisioningState": "Succeeded",
+    "recipePacks": [
+      "/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"
+    ],
+    "providers": {
+      "kubernetes": {
+        "namespace": "default"
+      }
+    }
+  }
+}

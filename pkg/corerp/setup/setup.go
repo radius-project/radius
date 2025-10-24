@@ -28,6 +28,7 @@ import (
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
+	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments_v20250801preview"
 	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
 	rp_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/recipepacks"
@@ -250,7 +251,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 	return ns
 }
 
-// SetupRadiusCoreNamespace builds the Radius.Core namespace for recipe packs.
+// SetupRadiusCoreNamespace builds the namespace for core resource provider.
 func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeControllerConfig) *builder.Namespace {
 	ns := builder.NewNamespace("Radius.Core")
 
@@ -263,6 +264,18 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		},
 		Patch: builder.Operation[datamodel.RecipePack]{
 			APIController: rp_ctrl.NewCreateOrUpdateRecipePack,
+		},
+	})
+
+	_ = ns.AddResource("environments", &builder.ResourceOption[*datamodel.Environment_v20250801preview, datamodel.Environment_v20250801preview]{
+		RequestConverter:  converter.Environment20250801DataModelFromVersioned,
+		ResponseConverter: converter.Environment20250801DataModelToVersioned,
+
+		Put: builder.Operation[datamodel.Environment_v20250801preview]{
+			APIController: env_v20250801_ctrl.NewCreateOrUpdateEnvironmentv20250801preview,
+		},
+		Patch: builder.Operation[datamodel.Environment_v20250801preview]{
+			APIController: env_v20250801_ctrl.NewCreateOrUpdateEnvironmentv20250801preview,
 		},
 	})
 
