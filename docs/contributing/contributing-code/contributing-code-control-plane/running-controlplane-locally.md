@@ -1,5 +1,15 @@
 # Running Radius control plane provider locally
 
+> ⚠️ **Deprecated / Legacy Guide**
+>
+> This document describes an older, mostly manual workflow for running and debugging the Radius control plane. A newer, automated OS process debugging workflow is now available and is the recommended approach for most contributors.
+>
+> ✅ **Use this instead:** `docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md`
+>
+> The new guide provides: automated environment setup, incremental debug builds, attach-based VS Code configurations, recipe registration, k3d cluster management, and streamlined database initialization. This legacy document is retained temporarily for reference and will be removed after the transition period.
+>
+> If you find information here that's missing from the new guide, please open an issue so we can incorporate it.
+
 Radius consists of a few processes that get deployed inside a Kubernetes cluster.
 
 This includes:
