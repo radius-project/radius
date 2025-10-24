@@ -20,19 +20,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 var (
 	ErrUnsupportedComputeKind = errors.New("unsupported compute kind in environment resource")
+	ErrBadEnvID               = errors.New("could not parse environment ID")
 )
 
 //go:generate mockgen -typed -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
@@ -126,16 +130,32 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 
 // LoadRecipe fetches the recipe information from the environment. It returns an error if the environment cannot be fetched.
 func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
-	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
+	envID, err := resources.Parse(recipe.EnvironmentID)
 	if err != nil {
-		return nil, err
+		return nil, ErrBadEnvID
 	}
+	var envDefinition *recipes.EnvironmentDefinition
+	if strings.EqualFold(envID.FindScope("providers"), radius.NamespaceApplicationsCore) {
+		environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
+		if err != nil {
+			return nil, err
+		}
+		envDefinition, err = getRecipeDefinition(environment, recipe)
+		if err != nil {
+			return nil, err
+		}
 
-	envDefinition, err := getRecipeDefinition(environment, recipe)
-	if err != nil {
-		return nil, err
+	} else {
+		environment, err := util.FetchEnvironmentV20250801(ctx, recipe.EnvironmentID, e.ArmClientOptions)
+		if err != nil {
+			return nil, err
+		}
+		envDefinition, err = getRecipeDefinitionFromEnvironmentV20250801(ctx, environment, recipe, e.ArmClientOptions)
+		if err != nil {
+			return nil, err
+		}
+
 	}
-
 	return envDefinition, err
 }
 
@@ -174,4 +194,66 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 	}
 
 	return definition, nil
+}
+
+func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environment *v20250801preview.EnvironmentResource, recipe *recipes.ResourceMetadata, armOptions *arm.ClientOptions) (*recipes.EnvironmentDefinition, error) {
+	resource, err := resources.ParseResource(recipe.ResourceID)
+	if err != nil {
+		err := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
+
+	// First try to find recipe in environment's recipe packs
+	env, err := environment.ConvertTo()
+	if err != nil {
+		return nil, err
+	}
+	envDatamodel := env.(*datamodel.Environment_v20250801preview)
+
+	if envDatamodel.Properties.RecipePacks != nil {
+		recipePackDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
+		if err == nil {
+			// Found recipe in recipe pack
+			definition := &recipes.EnvironmentDefinition{
+				Name:         "default",
+				Driver:       recipePackDefinition.RecipeKind,
+				ResourceType: resource.Type(),
+				Parameters:   recipePackDefinition.Parameters,
+				TemplatePath: recipePackDefinition.RecipeLocation,
+			}
+			return definition, nil
+		}
+	}
+	return nil, fmt.Errorf("could not find any recipe pack for %q in environment %q", resource.Type(), recipe.EnvironmentID)
+}
+
+// fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs and returns the first recipe pack that has a recipe for the specified resource type.
+func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions, resourceType string) (*recipes.RecipePackDefinition, error) {
+	if recipePackIDs == nil {
+		return nil, fmt.Errorf("no recipe packs configured")
+	}
+
+	if resourceType == "" {
+		return nil, fmt.Errorf("resource type cannot be empty")
+	}
+
+	for _, recipePackID := range recipePackIDs {
+		recipePackResource, err := FetchRecipePack(ctx, recipePackID, armOptions)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert recipes map
+		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
+			if strings.EqualFold(recipePackResourceType, resourceType) {
+				return &recipes.RecipePackDefinition{
+					RecipeKind:     string(*definition.RecipeKind),
+					RecipeLocation: string(*definition.RecipeLocation),
+					Parameters:     definition.Parameters,
+				}, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no recipe pack found with recipe for resource type %q", resourceType)
 }
