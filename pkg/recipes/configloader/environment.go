@@ -57,20 +57,44 @@ type environmentLoader struct {
 // LoadConfiguration fetches an environment and an application (if provided) and returns a configuration based on them. It returns
 // an error if either the environment or the application (if provided) cannot be fetched.
 func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.Configuration, error) {
-	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
+	envID, err := resources.Parse(recipe.EnvironmentID)
 	if err != nil {
-		return nil, err
+		return nil, ErrBadEnvID
 	}
 
-	var application *v20231001preview.ApplicationResource
-	if recipe.ApplicationID != "" {
-		application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
+	var environment *v20231001preview.EnvironmentResource
+	if strings.EqualFold(envID.FindScope("providers"), radius.NamespaceApplicationsCore) {
+		environment, err = util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
 		}
+
+		var application *v20231001preview.ApplicationResource
+		if recipe.ApplicationID != "" {
+			application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return getConfiguration(environment, application)
+	} else {
+		envV20250801, err := util.FetchEnvironmentV20250801(ctx, recipe.EnvironmentID, e.ArmClientOptions)
+		if err != nil {
+			return nil, err
+		}
+
+		var application *v20231001preview.ApplicationResource
+		if recipe.ApplicationID != "" {
+			application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return getConfigurationV20250801(envV20250801, application)
 	}
 
-	return getConfiguration(environment, application)
 }
 
 func getConfiguration(environment *v20231001preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
@@ -91,15 +115,9 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 			return nil, err
 		}
 
-		if application != nil {
-			config.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// Use environment-scoped namespace if application is not set.
-			config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
-		}
+		// Use environment-scoped namespace
+		config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+
 	case *v20231001preview.AzureContainerInstanceCompute:
 		config.Runtime.AzureContainerInstances = &recipes.AzureContainerInstancesRuntime{}
 	default:
@@ -120,6 +138,73 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	if environment.Properties.RecipeConfig != nil {
 		config.RecipeConfig = envDatamodel.Properties.RecipeConfig
 	}
+
+	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
+		config.Simulated = true
+	}
+
+	return &config, nil
+}
+
+func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
+	config := recipes.Configuration{
+		Runtime:      recipes.RuntimeConfiguration{},
+		Providers:    datamodel.Providers{},
+		RecipeConfig: datamodel.RecipeConfigProperties{},
+	}
+
+	// For v20250801preview, we default to Kubernetes runtime since Compute field is not available
+	config.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
+
+	// Fetch namespace from environment configuration
+	var err error
+	config.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResourceV20250801(environment)
+	if err != nil {
+		return nil, err
+	}
+
+	// if application != nil {
+	// 	var err error
+	// 	config.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// } else {
+	// Use environment-scoped namespace if application is not set.
+	config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+	//}
+
+	// convert versioned Environment resource to internal datamodel.
+	env, err := environment.ConvertTo()
+	if err != nil {
+		return nil, err
+	}
+
+	envDatamodel := env.(*datamodel.Environment_v20250801preview)
+	if environment.Properties.Providers != nil {
+		// Convert v20250801preview providers to standard providers format
+		if envDatamodel.Properties.Providers != nil {
+			if envDatamodel.Properties.Providers.Azure != nil {
+				config.Providers.Azure = datamodel.ProvidersAzure{
+					Scope: envDatamodel.Properties.Providers.Azure.SubscriptionId,
+				}
+			}
+			if envDatamodel.Properties.Providers.AWS != nil {
+				config.Providers.AWS = datamodel.ProvidersAWS{
+					Scope: envDatamodel.Properties.Providers.AWS.Scope,
+				}
+			}
+			if envDatamodel.Properties.Providers.Kubernetes != nil {
+				// The namespace has already been set from FetchNamespaceFromEnvironmentResourceV20250801
+				// Update application namespace if no application is set
+				if application == nil {
+					config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+				}
+			}
+		}
+	}
+
+	// RecipeConfig is not available in v20250801preview, skip setting it
 
 	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
 		config.Simulated = true

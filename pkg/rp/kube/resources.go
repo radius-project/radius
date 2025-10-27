@@ -24,6 +24,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	cdm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -41,31 +42,48 @@ func FindNamespaceByEnvID(ctx context.Context, databaseClient database.Client, e
 		return
 	}
 
-	if !strings.EqualFold(id.Type(), "Applications.Core/environments") {
-		err = errors.New("invalid Applications.Core/environments resource id")
-		return
+	if strings.EqualFold(id.Type(), "Applications.Core/environments") {
+		// Handle Applications.Core/environments (v20231001preview)
+		env := &cdm.Environment{}
+		res, err := databaseClient.Get(ctx, id.String())
+		if err != nil {
+			return "", err
+		}
+		if err = res.As(env); err != nil {
+			return "", err
+		}
+
+		if env.Properties.Compute.Kind != rpv1.KubernetesComputeKind {
+			return "", ErrNonKubernetesEnvironment
+		}
+
+		namespace = id.Name()
+		if env.Properties.Compute.KubernetesCompute.Namespace != "" {
+			namespace = env.Properties.Compute.KubernetesCompute.Namespace
+		}
+
+		return namespace, nil
+	} else if strings.EqualFold(id.Type(), "Radius.Core/environments") {
+		// Handle Radius.Core/environments (v20250801preview)
+		env := &cdm.Environment_v20250801preview{}
+		res, err := databaseClient.Get(ctx, id.String())
+		if err != nil {
+			return "", err
+		}
+		if err = res.As(env); err != nil {
+			return "", err
+		}
+
+		// For Radius.Core/environments, default to the environment name as namespace
+		namespace = id.Name()
+		if env.Properties.Providers != nil && env.Properties.Providers.Kubernetes != nil {
+			namespace = env.Properties.Providers.Kubernetes.Namespace
+		}
+
+		return namespace, nil
 	}
 
-	env := &cdm.Environment{}
-	res, err := databaseClient.Get(ctx, id.String())
-	if err != nil {
-		return
-	}
-	if err = res.As(env); err != nil {
-		return
-	}
-
-	if env.Properties.Compute.Kind != rpv1.KubernetesComputeKind {
-		err = ErrNonKubernetesEnvironment
-		return
-	}
-
-	namespace = id.Name()
-	if env.Properties.Compute.KubernetesCompute.Namespace != "" {
-		namespace = env.Properties.Compute.KubernetesCompute.Namespace
-	}
-
-	return
+	return "", errors.New("invalid environment resource id - must be Applications.Core/environments or Radius.Core/environments")
 }
 
 // FetchNamespaceFromEnvironmentResource finds the environment-scope Kubernetes namespace from EnvironmentResource.
@@ -79,7 +97,17 @@ func FetchNamespaceFromEnvironmentResource(environment *v20231001preview.Environ
 		return *kubernetes.Namespace, nil
 	}
 	return "", errors.New("unable to fetch namespace information")
+}
 
+// FetchNamespaceFromEnvironmentResourceV20250801 finds the environment-scope Kubernetes namespace from v20250801preview EnvironmentResource.
+// If no namespace is found, it returns "default" as the fallback.
+func FetchNamespaceFromEnvironmentResourceV20250801(environment *v20250801preview.EnvironmentResource) (string, error) {
+	if environment.Properties.Providers != nil && environment.Properties.Providers.Kubernetes != nil {
+		if environment.Properties.Providers.Kubernetes.Namespace != nil {
+			return *environment.Properties.Providers.Kubernetes.Namespace, nil
+		}
+	}
+	return "", errors.New("unable to fetch namespace information. Please ensure the namespace exists and is created by the operator using kubectl commands")
 }
 
 // FetchNamespaceFromApplicationResource finds the application-scope Kubernetes namespace from ApplicationResource.

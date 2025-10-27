@@ -48,15 +48,27 @@ func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 		fields := strings.Split(filter.Field, ".")
 		for i, field := range fields {
 			value = value.MapIndex(reflect.ValueOf(field))
+			if !value.IsValid() {
+				// Field doesn't exist, can't match
+				return false, nil
+			}
 			if i < len(fields)-1 {
 				// Need to go further into the nested fields
+				if value.IsZero() {
+					// Zero value, can't continue traversing
+					return false, nil
+				}
 				value = reflect.ValueOf(value.Interface())
 			}
 		}
 		comparator := reflect.ValueOf(filter.Value)
 
-		if value.Type().Kind() == reflect.Interface {
+		if value.IsValid() && value.Type().Kind() == reflect.Interface {
 			// Unwrap interface{}
+			if value.IsZero() {
+				// Zero interface value, can't unwrap
+				return false, nil
+			}
 			value = reflect.ValueOf(value.Interface())
 		}
 
