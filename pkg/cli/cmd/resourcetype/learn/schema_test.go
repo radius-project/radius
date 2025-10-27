@@ -66,6 +66,18 @@ func TestInferNamespaceFromModule(t *testing.T) {
 			expected: "GCP.Data",
 		},
 		{
+			name:   "Kubernetes Redis module",
+			gitURL: "https://github.com/squareops/terraform-kubernetes-redis",
+			module: &TerraformModule{
+				Name: "terraform-kubernetes-redis",
+				Variables: []TerraformVariable{
+					{Name: "redis_name", Type: "string"},
+					{Name: "namespace", Type: "string"},
+				},
+			},
+			expected: "Custom.Data", // redis is detected as Data category
+		},
+		{
 			name:   "Kubernetes deployment",
 			gitURL: "https://github.com/company/terraform-k8s-app",
 			module: &TerraformModule{
@@ -75,7 +87,7 @@ func TestInferNamespaceFromModule(t *testing.T) {
 					{Name: "namespace", Type: "string"},
 				},
 			},
-			expected: "Kubernetes.Orchestration", // k8s is detected as Orchestration, not just Resources
+			expected: "Custom.Resources", // k8s is not a provider, no specific category detected
 		},
 		{
 			name:   "Generic module with variable hints",
@@ -120,8 +132,8 @@ func TestExtractProvider(t *testing.T) {
 		{"azure-storage-module", "Azure"},
 		{"gcp-compute-instance", "GCP"},
 		{"google-cloud-sql", "GCP"},
-		{"k8s-deployment", "Kubernetes"},
-		{"kubernetes-ingress", "Kubernetes"},
+		{"k8s-deployment", ""}, // k8s is not a cloud provider
+		{"kubernetes-ingress", ""}, // kubernetes is not a cloud provider
 		{"docker-container", "Docker"},
 		{"helm-chart", "Helm"},
 		{"generic-module", ""},
@@ -144,14 +156,16 @@ func TestExtractCategory(t *testing.T) {
 		{"azure-network-security", "Network"}, // network appears first in the name
 		{"rds-database", "Data"},
 		{"postgres-db", "Data"},
+		{"kubernetes-redis", "Data"}, // redis is detected as Data, not Orchestration
 		{"s3-storage", "Storage"},
 		{"blob-storage", "Storage"},
 		{"ec2-instance", "Compute"},
 		{"vm-compute", "Compute"},
-		{"eks-cluster", "Orchestration"},
-		{"aks-kubernetes", "Orchestration"},
+		{"eks-cluster", "Orchestration"}, // actual k8s cluster is orchestration
+		{"aks-kubernetes", "Orchestration"}, // actual k8s cluster is orchestration
 		{"iam-security", "Security"},
 		{"monitoring-logs", "Observability"},
+		{"k8s-app", ""}, // just k8s without specific resource type
 		{"generic-module", ""},
 	}
 

@@ -220,8 +220,6 @@ func extractProvider(moduleName string) string {
 		"azure":      "Azure",
 		"gcp":        "GCP",
 		"google":     "GCP",
-		"k8s":        "Kubernetes",
-		"kubernetes": "Kubernetes",
 		"docker":     "Docker",
 		"helm":       "Helm",
 	}
@@ -240,28 +238,47 @@ func extractCategory(moduleName string) string {
 	lower := strings.ToLower(moduleName)
 
 	patterns := map[string]string{
-		"vpc":        "Network",
-		"network":    "Network",
-		"subnet":     "Network",
+		// Data/Database resources (check these first for specificity)
+		"redis":      "Data",
 		"database":   "Data",
 		"db":         "Data",
 		"rds":        "Data",
 		"postgres":   "Data",
 		"mysql":      "Data",
+		"mongodb":    "Data",
+		"cassandra":  "Data",
+		"elasticsearch": "Data",
+		
+		// Storage resources
 		"storage":    "Storage",
 		"s3":         "Storage",
 		"blob":       "Storage",
+		
+		// Network resources
+		"vpc":        "Network",
+		"network":    "Network",
+		"subnet":     "Network",
+		"ingress":    "Network",
+		"loadbalancer": "Network",
+		
+		// Compute resources
 		"compute":    "Compute",
 		"vm":         "Compute",
 		"instance":   "Compute",
 		"container":  "Compute",
-		"k8s":        "Orchestration",
-		"kubernetes": "Orchestration",
+		
+		// Orchestration (only for actual orchestration tools, not apps on k8s)
 		"aks":        "Orchestration",
 		"eks":        "Orchestration",
 		"gke":        "Orchestration",
+		"cluster":    "Orchestration",
+		
+		// Security resources
 		"security":   "Security",
 		"iam":        "Security",
+		"rbac":       "Security",
+		
+		// Observability resources
 		"monitoring": "Observability",
 		"logging":    "Observability",
 		"metric":     "Observability",
