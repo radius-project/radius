@@ -69,10 +69,16 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	if newResource.Properties.Providers != nil && newResource.Properties.Providers.Kubernetes != nil {
 		namespace := newResource.Properties.Providers.Kubernetes.Namespace
+		//	logger.Info("Checking for namespace conflicts", "namespace", namespace, "resourceID", serviceCtx.ResourceID.String())
+
+		// BREAKPOINT: Set breakpoint here to debug namespace query
+		// This is where the reflection error occurs during database filtering
 		result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.providers.kubernetes.namespace", namespace, e.DatabaseClient())
 		if err != nil {
+			logger.Error(err, "Failed to query for existing environments with same namespace", "namespace", namespace)
 			return nil, err
 		}
+		logger.Info("Namespace conflict check completed", "foundItems", len(result.Items), "namespace", namespace)
 
 		if len(result.Items) > 0 {
 			env := &datamodel.Environment_v20250801preview{}
