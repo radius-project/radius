@@ -142,7 +142,7 @@ jobs:
           mkdir ${{ env.RELEASE_PATH }}
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: ${{ env.RELEASE_PATH }}
@@ -287,7 +287,7 @@ jobs:
         run: |
           make generate-bicep-types VERSION=${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }}
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: radius-bicep-types
           path: ./hack/bicep-types-radius/generated
@@ -324,7 +324,7 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: rad_cli_*
           merge-multiple: true
