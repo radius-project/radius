@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
@@ -34,7 +35,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient
+//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
@@ -96,4 +97,12 @@ type apiVersionClient interface {
 // locationClient is an interface for mocking the generated SDK client for locations.
 type locationClient interface {
 	BeginCreateOrUpdate(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource ucpv20231001.LocationResource, options *ucpv20231001.LocationsClientBeginCreateOrUpdateOptions) (*runtime.Poller[ucpv20231001.LocationsClientCreateOrUpdateResponse], error)
+}
+
+// recipePackResourceClient is an interface for mocking the generated SDK client for recipePack resources.
+type recipePackResourceClient interface {
+	CreateOrUpdate(ctx context.Context, recipePackName string, resource corerpv20250801.RecipePackResource, options *corerpv20250801.RecipePacksClientCreateOrUpdateOptions) (corerpv20250801.RecipePacksClientCreateOrUpdateResponse, error)
+	Delete(ctx context.Context, recipePackName string, options *corerpv20250801.RecipePacksClientDeleteOptions) (corerpv20250801.RecipePacksClientDeleteResponse, error)
+	Get(ctx context.Context, recipePackName string, options *corerpv20250801.RecipePacksClientGetOptions) (corerpv20250801.RecipePacksClientGetResponse, error)
+	NewListByScopePager(options *corerpv20250801.RecipePacksClientListByScopeOptions) *runtime.Pager[corerpv20250801.RecipePacksClientListByScopeResponse]
 }

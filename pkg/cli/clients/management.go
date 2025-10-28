@@ -32,6 +32,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
@@ -43,6 +44,7 @@ type UCPApplicationsManagementClient struct {
 	genericResourceClientFactory     func(scope string, resourceType string) (genericResourceClient, error)
 	applicationResourceClientFactory func(scope string) (applicationResourceClient, error)
 	environmentResourceClientFactory func(scope string) (environmentResourceClient, error)
+	recipePackResourceClientFactory  func(scope string) (recipePackResourceClient, error)
 	resourceGroupClientFactory       func() (resourceGroupClient, error)
 	resourceProviderClientFactory    func() (resourceProviderClient, error)
 	resourceTypeClientFactory        func() (resourceTypeClient, error)
@@ -402,6 +404,61 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return response.StatusCode != 204, nil
 }
 
+func (amc *UCPApplicationsManagementClient) ListRecipePacksInResourceGroup(ctx context.Context) ([]corerpv20250801.RecipePackResource, error) {
+	client, err := amc.createRecipePackClient(amc.RootScope)
+	if err != nil {
+		return nil, err
+	}
+
+	result := []corerpv20250801.RecipePackResource{}
+	pager := client.NewListByScopePager(&corerpv20250801.RecipePacksClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, rp := range page.RecipePackResourceListResult.Value {
+			result = append(result, *rp)
+		}
+	}
+
+	return result, nil
+}
+
+func (amc *UCPApplicationsManagementClient) ListRecipePacks(ctx context.Context) ([]corerpv20250801.RecipePackResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return []corerpv20250801.RecipePackResource{}, err
+	}
+
+	// Query at plane scope, not resource group scope. We don't enforce the exact structure of the scope, so handle both cases.
+	//
+	// - /planes/radius/local
+	// - /planes/radius/local/resourceGroups/my-group
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
+		scope = scope.Truncate()
+	}
+
+	client, err := amc.createRecipePackClient(scope.String())
+	if err != nil {
+		return nil, err
+	}
+
+	result := []corerpv20250801.RecipePackResource{}
+	pager := client.NewListByScopePager(&corerpv20250801.RecipePacksClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, rp := range page.RecipePackResourceListResult.Value {
+			result = append(result, *rp)
+		}
+	}
+
+	return result, nil
+}
+
 // ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
 func (amc *UCPApplicationsManagementClient) ListEnvironments(ctx context.Context) ([]corerpv20231001.EnvironmentResource, error) {
 	client, err := amc.createEnvironmentClient(amc.RootScope)
@@ -479,6 +536,26 @@ func (amc *UCPApplicationsManagementClient) GetEnvironment(ctx context.Context, 
 	}
 
 	return response.EnvironmentResource, nil
+}
+
+// GetRecipePack retrieves a recipe pack by name (in the configured scope) or full resource ID.
+func (amc *UCPApplicationsManagementClient) GetRecipePack(ctx context.Context, recipePackNameOrID string) (corerpv20250801.RecipePackResource, error) {
+	scope, name, err := amc.extractScopeAndName(recipePackNameOrID)
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, err
+	}
+
+	client, err := amc.createRecipePackClient(scope)
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, err
+	}
+
+	resp, err := client.Get(ctx, name, &corerpv20250801.RecipePacksClientGetOptions{})
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, err
+	}
+
+	return resp.RecipePackResource, nil
 }
 
 // GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
@@ -1104,6 +1181,13 @@ func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string
 	}
 
 	return amc.applicationResourceClientFactory(scope)
+}
+
+func (amc *UCPApplicationsManagementClient) createRecipePackClient(scope string) (recipePackResourceClient, error) {
+	if amc.recipePackResourceClientFactory == nil {
+		return corerpv20250801.NewRecipePacksClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+	return amc.recipePackResourceClientFactory(scope)
 }
 
 func (amc *UCPApplicationsManagementClient) createEnvironmentClient(scope string) (environmentResourceClient, error) {
