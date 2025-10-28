@@ -67,7 +67,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 	}
 
 	var environment *v20231001preview.EnvironmentResource
-	if strings.EqualFold(envID.FindScope(providersScope), radius.NamespaceApplicationsCore) {
+	if strings.EqualFold(envID.ProviderNamespace(), radius.NamespaceApplicationsCore) {
 		environment, err = util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
@@ -215,7 +215,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 		return nil, ErrBadEnvID
 	}
 	var envDefinition *recipes.EnvironmentDefinition
-	if strings.EqualFold(envID.FindScope(providersScope), radius.NamespaceApplicationsCore) {
+	if strings.EqualFold(envID.ProviderNamespace(), radius.NamespaceApplicationsCore) {
 		environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
