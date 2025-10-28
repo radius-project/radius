@@ -100,7 +100,7 @@ func FetchNamespaceFromEnvironmentResource(environment *v20231001preview.Environ
 }
 
 // FetchNamespaceFromEnvironmentResourceV20250801 finds the environment-scope Kubernetes namespace from v20250801preview EnvironmentResource.
-// If no namespace is found, it returns "default" as the fallback.
+// If no namespace is found, it returns "" instead of error. This is because, Radius might still be able to deploy resources if recipe handles the namespace.
 func FetchNamespaceFromEnvironmentResourceV20250801(environment *v20250801preview.EnvironmentResource) string {
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Kubernetes != nil {
 		if environment.Properties.Providers.Kubernetes.Namespace != nil {
