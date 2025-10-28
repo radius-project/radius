@@ -34,10 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
-const (
-	providersScope = "providers"
-)
-
 var (
 	ErrUnsupportedComputeKind = errors.New("unsupported compute kind in environment resource")
 	ErrBadEnvID               = errors.New("could not parse environment ID")
