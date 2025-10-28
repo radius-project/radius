@@ -202,10 +202,13 @@ type ApplicationsManagementClient interface {
 	// ListEnvironmentsAll lists all environments across resource groups.
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 
+	// ListRecipePacksInResourceGroup lists all recipe packs in the configured scope (assumes configured scope is a resource group).
 	ListRecipePacksInResourceGroup(ctx context.Context) ([]radiuscore.RecipePackResource, error)
 
+	// ListRecipePacks lists all recipe packs in all resource groups.
 	ListRecipePacks(ctx context.Context) ([]radiuscore.RecipePackResource, error)
 
+	// GetRecipePack retrieves a recipe pack by its name (in the configured scope) or resource ID.
 	GetRecipePack(ctx context.Context, recipePackNameOrID string) (radiuscore.RecipePackResource, error)
 
 	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.

@@ -404,6 +404,7 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return response.StatusCode != 204, nil
 }
 
+// ListRecipePacksInResourceGroup lists all recipe packs in the configured scope (assumes configured scope is a resource group).
 func (amc *UCPApplicationsManagementClient) ListRecipePacksInResourceGroup(ctx context.Context) ([]corerpv20250801.RecipePackResource, error) {
 	client, err := amc.createRecipePackClient(amc.RootScope)
 	if err != nil {
@@ -425,6 +426,7 @@ func (amc *UCPApplicationsManagementClient) ListRecipePacksInResourceGroup(ctx c
 	return result, nil
 }
 
+// ListRecipePacks lists all recipe packs in all resource groups.
 func (amc *UCPApplicationsManagementClient) ListRecipePacks(ctx context.Context) ([]corerpv20250801.RecipePackResource, error) {
 	scope, err := resources.ParseScope(amc.RootScope)
 	if err != nil {

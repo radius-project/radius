@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad recipe list` command.
+// NewCommand creates an instance of the command and runner for the `rad recipe-pack list` command.
 //
 
 // NewCommand creates a new Cobra command and a Runner object, configures the command with flags and arguments, and
@@ -73,7 +73,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad recipe list` command.
+// Validate runs validation for the `rad recipe-pack list` command.
 //
 
 // Validate checks the command line arguments for a workspace, environment name, and output format, and sets the corresponding
@@ -107,10 +107,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad recipe list` command.
+// Run runs the `rad recipe-pack list` command.
 //
-
-// Run retrieves environment recipes from the given workspace and writes them to the output in the specified format.
+// Run retrieves recipe packs from the given workspace and writes them to the output in the specified format.
 // It returns an error if the connection to the workspace fails or if there is an error writing to the output.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)

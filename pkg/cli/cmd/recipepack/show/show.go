@@ -69,7 +69,7 @@ type Runner struct {
 	RecipePackName    string
 }
 
-// NewRunner creates a new instance of the `rad env show` runner.
+// NewRunner creates a new instance of the `rad recipe-pack show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
