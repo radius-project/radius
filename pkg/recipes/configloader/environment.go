@@ -119,8 +119,15 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 			return nil, err
 		}
 
-		// Use environment-scoped namespace
-		config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+		if application != nil {
+			config.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// Use environment-scoped namespace if application is not set.
+			config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+		}
 
 	case *v20231001preview.AzureContainerInstanceCompute:
 		config.Runtime.AzureContainerInstances = &recipes.AzureContainerInstancesRuntime{}
@@ -145,6 +152,14 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 
 	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
 		config.Simulated = true
+	}
+
+	// Validate application resource if provided
+	if application != nil {
+		_, err := application.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &config, nil
