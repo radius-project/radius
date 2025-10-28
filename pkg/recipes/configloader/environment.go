@@ -34,6 +34,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
+const (
+	providersScope = "providers"
+)
+
 var (
 	ErrUnsupportedComputeKind = errors.New("unsupported compute kind in environment resource")
 	ErrBadEnvID               = errors.New("could not parse environment ID")
@@ -63,7 +67,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 	}
 
 	var environment *v20231001preview.EnvironmentResource
-	if strings.EqualFold(envID.FindScope("providers"), radius.NamespaceApplicationsCore) {
+	if strings.EqualFold(envID.FindScope(providersScope), radius.NamespaceApplicationsCore) {
 		environment, err = util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
@@ -153,28 +157,11 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 		RecipeConfig: datamodel.RecipeConfigProperties{},
 	}
 
-	// For v20250801preview, we default to Kubernetes runtime since Compute field is not available
 	config.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 
-	// Fetch namespace from environment configuration
 	var err error
-	config.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResourceV20250801(environment)
-	if err != nil {
-		return nil, err
-	}
+	config.Runtime.Kubernetes.EnvironmentNamespace = kube.FetchNamespaceFromEnvironmentResourceV20250801(environment)
 
-	// if application != nil {
-	// 	var err error
-	// 	config.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// } else {
-	// Use environment-scoped namespace if application is not set.
-	config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
-	//}
-
-	// convert versioned Environment resource to internal datamodel.
 	env, err := environment.ConvertTo()
 	if err != nil {
 		return nil, err
@@ -182,7 +169,6 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
 	if environment.Properties.Providers != nil {
-		// Convert v20250801preview providers to standard providers format
 		if envDatamodel.Properties.Providers != nil {
 			if envDatamodel.Properties.Providers.Azure != nil {
 				config.Providers.Azure = datamodel.ProvidersAzure{
@@ -194,17 +180,11 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 					Scope: envDatamodel.Properties.Providers.AWS.Scope,
 				}
 			}
-			if envDatamodel.Properties.Providers.Kubernetes != nil {
-				// The namespace has already been set from FetchNamespaceFromEnvironmentResourceV20250801
-				// Update application namespace if no application is set
-				if application == nil {
-					config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
-				}
+			if envDatamodel.Properties.Providers.Kubernetes != nil && config.Runtime.Kubernetes.EnvironmentNamespace != "" {
+				config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
 			}
 		}
 	}
-
-	// RecipeConfig is not available in v20250801preview, skip setting it
 
 	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
 		config.Simulated = true
@@ -220,7 +200,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 		return nil, ErrBadEnvID
 	}
 	var envDefinition *recipes.EnvironmentDefinition
-	if strings.EqualFold(envID.FindScope("providers"), radius.NamespaceApplicationsCore) {
+	if strings.EqualFold(envID.FindScope(providersScope), radius.NamespaceApplicationsCore) {
 		environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err

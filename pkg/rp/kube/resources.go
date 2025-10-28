@@ -101,13 +101,13 @@ func FetchNamespaceFromEnvironmentResource(environment *v20231001preview.Environ
 
 // FetchNamespaceFromEnvironmentResourceV20250801 finds the environment-scope Kubernetes namespace from v20250801preview EnvironmentResource.
 // If no namespace is found, it returns "default" as the fallback.
-func FetchNamespaceFromEnvironmentResourceV20250801(environment *v20250801preview.EnvironmentResource) (string, error) {
+func FetchNamespaceFromEnvironmentResourceV20250801(environment *v20250801preview.EnvironmentResource) string {
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Kubernetes != nil {
 		if environment.Properties.Providers.Kubernetes.Namespace != nil {
-			return *environment.Properties.Providers.Kubernetes.Namespace, nil
+			return *environment.Properties.Providers.Kubernetes.Namespace
 		}
 	}
-	return "", errors.New("unable to fetch namespace information. Please ensure the namespace exists and is created by the operator using kubectl commands")
+	return ""
 }
 
 // FetchNamespaceFromApplicationResource finds the application-scope Kubernetes namespace from ApplicationResource.
