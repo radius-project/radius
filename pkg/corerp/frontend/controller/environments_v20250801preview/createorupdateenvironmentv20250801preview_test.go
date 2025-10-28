@@ -32,6 +32,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
@@ -97,9 +99,14 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 					})
 			}
 
+			defaultNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil),
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, defaultNamespace),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
@@ -174,9 +181,14 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 					})
 			}
 
+			defaultNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil),
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, defaultNamespace),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
@@ -238,9 +250,14 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 					})
 			}
 
+			defaultNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil),
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, defaultNamespace),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
@@ -308,9 +325,14 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 					})
 			}
 
+			defaultNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil),
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, defaultNamespace),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
