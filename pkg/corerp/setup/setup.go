@@ -254,16 +254,6 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeControllerConfig) *builder.Namespace {
 	ns := builder.NewNamespace("Radius.Core")
 
-	_ = ns.AddResource("environments", &builder.ResourceOption[*datamodel.Environment_v20250801preview, datamodel.Environment_v20250801preview]{
-		RequestConverter:  converter.Environment20250801DataModelFromVersioned,
-		ResponseConverter: converter.Environment20250801DataModelToVersioned,
-	})
-
-	_ = ns.AddResource("applications", &builder.ResourceOption[*datamodel.Application_v20250801preview, datamodel.Application_v20250801preview]{
-		RequestConverter:  converter.Application20250801DataModelFromVersioned,
-		ResponseConverter: converter.Application20250801DataModelToVersioned,
-	})
-
 	_ = ns.AddResource("recipePacks", &builder.ResourceOption[*datamodel.RecipePack, datamodel.RecipePack]{
 		RequestConverter:  converter.RecipePackDataModelFromVersioned,
 		ResponseConverter: converter.RecipePackDataModelToVersioned,
