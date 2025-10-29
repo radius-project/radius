@@ -9,7 +9,7 @@ types:
   applications:
     apiVersions:
       "2025-08-01-preview":
-        schema: {}      
+        schema: {}
   recipePacks:
     apiVersions:
       "2025-08-01-preview":
