@@ -46,6 +46,60 @@ func GetResourceTableFormat() output.FormatterOptions {
 	}
 }
 
+func GetRecipePackTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "RECIPE PACK",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:     "GROUP",
+				JSONPath:    "{ .ID }",
+				Transformer: &ResourceIDToResourceGroupNameTransformer{},
+			},
+		},
+	}
+}
+
+func GetRecipeFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "RESOURCE TYPE",
+				JSONPath: "{ .ResourceType }",
+			},
+			{
+				Heading:  "RECIPE KIND",
+				JSONPath: "{ .RecipeKind }",
+			},
+			{
+				Heading:  "RECIPE LOCATION",
+				JSONPath: "{ .RecipeLocation }",
+			},
+		},
+	}
+}
+
+func GetRecipeFormatWithoutHeadings() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "",
+				JSONPath: "{ .ResourceType }",
+			},
+			{
+				Heading:  "",
+				JSONPath: "{ .RecipeKind }",
+			},
+			{
+				Heading:  "",
+				JSONPath: "{ .RecipeLocation }",
+			},
+		},
+	}
+}
+
 // GetGenericResourceTableFormat returns the fields to output from a generic resource object.
 // This function should be used with the Go type GenericResource.
 // The difference between this function and the GetResourceTableFormat function above is that

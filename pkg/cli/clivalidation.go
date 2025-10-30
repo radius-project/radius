@@ -616,6 +616,16 @@ func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	return args[0], nil
 }
 
+// RequireRecipePackNameArgs checks if the provided arguments contain at least one string, and if not, returns an error. If the
+//
+//	arguments contain a string, it is returned.
+func RequireRecipePackNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) < 1 {
+		return "", errors.New("no recipe pack name provided")
+	}
+	return args[0], nil
+}
+
 // GetResourceType retrieves the resource type flag from the given command and returns it, or an error if the flag is not set.
 func GetResourceType(cmd *cobra.Command) (string, error) {
 	resourceType, err := cmd.Flags().GetString(ResourceTypeFlag)

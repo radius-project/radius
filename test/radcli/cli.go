@@ -466,6 +466,33 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 	return cli.RunCommand(ctx, args)
 }
 
+// RecipePackList runs the "recipe-pack list" command with the given environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackList(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"list",
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackShow runs the "recipe-pack show" command with the given recipe pack name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"show",
+		recipepackName,
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 // RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and
 // resource type, and returns the output string or an error.
 func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, resourceType string, plainHTTP bool) (string, error) {
