@@ -215,13 +215,13 @@ func extractProvider(moduleName string) string {
 	lower := strings.ToLower(moduleName)
 
 	patterns := map[string]string{
-		"aws":        "AWS",
-		"amazon":     "AWS",
-		"azure":      "Azure",
-		"gcp":        "GCP",
-		"google":     "GCP",
-		"docker":     "Docker",
-		"helm":       "Helm",
+		"aws":    "AWS",
+		"amazon": "AWS",
+		"azure":  "Azure",
+		"gcp":    "GCP",
+		"google": "GCP",
+		"docker": "Docker",
+		"helm":   "Helm",
 	}
 
 	for pattern, provider := range patterns {
@@ -237,56 +237,60 @@ func extractProvider(moduleName string) string {
 func extractCategory(moduleName string) string {
 	lower := strings.ToLower(moduleName)
 
-	patterns := map[string]string{
-		// Data/Database resources (check these first for specificity)
-		"redis":      "Data",
-		"database":   "Data",
-		"db":         "Data",
-		"rds":        "Data",
-		"postgres":   "Data",
-		"mysql":      "Data",
-		"mongodb":    "Data",
-		"cassandra":  "Data",
-		"elasticsearch": "Data",
-		
+	// Order matters: check more specific patterns first
+	patterns := []struct {
+		pattern  string
+		category string
+	}{
+		// Network patterns (check before "security" to handle "network-security" correctly)
+		{"vpc", "Network"},
+		{"network", "Network"},
+		{"subnet", "Network"},
+		{"ingress", "Network"},
+		{"loadbalancer", "Network"},
+
+		// Data/Database resources
+		{"redis", "Data"},
+		{"database", "Data"},
+		{"db", "Data"},
+		{"rds", "Data"},
+		{"postgres", "Data"},
+		{"mysql", "Data"},
+		{"mongodb", "Data"},
+		{"cassandra", "Data"},
+		{"elasticsearch", "Data"},
+
 		// Storage resources
-		"storage":    "Storage",
-		"s3":         "Storage",
-		"blob":       "Storage",
-		
-		// Network resources
-		"vpc":        "Network",
-		"network":    "Network",
-		"subnet":     "Network",
-		"ingress":    "Network",
-		"loadbalancer": "Network",
-		
+		{"storage", "Storage"},
+		{"s3", "Storage"},
+		{"blob", "Storage"},
+
 		// Compute resources
-		"compute":    "Compute",
-		"vm":         "Compute",
-		"instance":   "Compute",
-		"container":  "Compute",
-		
+		{"compute", "Compute"},
+		{"vm", "Compute"},
+		{"instance", "Compute"},
+		{"container", "Compute"},
+
 		// Orchestration (only for actual orchestration tools, not apps on k8s)
-		"aks":        "Orchestration",
-		"eks":        "Orchestration",
-		"gke":        "Orchestration",
-		"cluster":    "Orchestration",
-		
-		// Security resources
-		"security":   "Security",
-		"iam":        "Security",
-		"rbac":       "Security",
-		
+		{"aks", "Orchestration"},
+		{"eks", "Orchestration"},
+		{"gke", "Orchestration"},
+		{"cluster", "Orchestration"},
+
+		// Security resources (check after network to avoid "network-security" conflicts)
+		{"security", "Security"},
+		{"iam", "Security"},
+		{"rbac", "Security"},
+
 		// Observability resources
-		"monitoring": "Observability",
-		"logging":    "Observability",
-		"metric":     "Observability",
+		{"monitoring", "Observability"},
+		{"logging", "Observability"},
+		{"metric", "Observability"},
 	}
 
-	for pattern, category := range patterns {
-		if strings.Contains(lower, pattern) {
-			return category
+	for _, p := range patterns {
+		if strings.Contains(lower, p.pattern) {
+			return p.category
 		}
 	}
 

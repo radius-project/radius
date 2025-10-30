@@ -72,27 +72,18 @@ func ParseTerraformModule(modulePath string) (*TerraformModule, error) {
 		Variables: []TerraformVariable{},
 	}
 
-	// Find all .tf files in the directory
-	err := filepath.Walk(modulePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	// Find variable files only at the root level (not in subdirectories)
+	variableFiles := []string{"variables.tf", "vars.tf"}
+
+	for _, filename := range variableFiles {
+		filePath := filepath.Join(modulePath, filename)
+		if _, err := os.Stat(filePath); err == nil {
+			variables, err := parseVariablesFromFile(filePath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse file %s: %w", filePath, err)
+			}
+			module.Variables = append(module.Variables, variables...)
 		}
-
-		if !strings.HasSuffix(path, ".tf") {
-			return nil
-		}
-
-		variables, err := parseVariablesFromFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to parse file %s: %w", path, err)
-		}
-
-		module.Variables = append(module.Variables, variables...)
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
 
 	return module, nil
@@ -165,18 +156,18 @@ func parseTypeFromBlock(varBlock string) string {
 	}
 
 	typeContent := strings.TrimSpace(typeMatch[1])
-	
+
 	// If it starts with object(, we need to find the matching closing parenthesis
 	if strings.HasPrefix(typeContent, "object(") {
 		return extractCompleteObjectType(typeContent)
 	}
-	
+
 	// For simple types, take everything until newline or next field
 	lines := strings.Split(typeContent, "\n")
 	if len(lines) > 0 {
 		return strings.TrimSpace(lines[0])
 	}
-	
+
 	return "string"
 }
 
@@ -184,10 +175,10 @@ func parseTypeFromBlock(varBlock string) string {
 func extractCompleteObjectType(content string) string {
 	parenCount := 0
 	var result strings.Builder
-	
+
 	for i, char := range content {
 		result.WriteRune(char)
-		
+
 		if char == '(' {
 			parenCount++
 		} else if char == ')' {
@@ -197,7 +188,7 @@ func extractCompleteObjectType(content string) string {
 				return strings.TrimSpace(result.String())
 			}
 		}
-		
+
 		// Stop if we hit a newline followed by a field that's not part of the object
 		if char == '\n' && i+1 < len(content) {
 			remaining := content[i+1:]
@@ -206,7 +197,7 @@ func extractCompleteObjectType(content string) string {
 			}
 		}
 	}
-	
+
 	return strings.TrimSpace(result.String())
 }
 
