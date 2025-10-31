@@ -33,11 +33,11 @@ import (
 )
 
 const (
-	testEnvID         = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env"
-	testEnvIDV2       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Radius.Core/environments/env"
-	namespace         = "default"
-	appNamespace      = "app-default"
-	customNamespace   = "custom-ns"
+	testEnvID       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env"
+	testEnvIDV2     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Radius.Core/environments/env"
+	namespace       = "default"
+	appNamespace    = "app-default"
+	customNamespace = "custom-ns"
 )
 
 func fakeStoreObject(dm v1.DataModelInterface) *database.Object {
@@ -154,10 +154,10 @@ func TestFindNamespaceByEnvID_V20250801Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 
 	tests := []struct {
-		desc                  string
-		environment           *datamodel.Environment_v20250801preview
-		expectedNamespace     string
-		expectedError         string
+		desc              string
+		environment       *datamodel.Environment_v20250801preview
+		expectedNamespace string
+		expectedError     string
 	}{
 		{
 			desc: "namespace is defined in kubernetes provider",
@@ -173,25 +173,27 @@ func TestFindNamespaceByEnvID_V20250801Preview(t *testing.T) {
 			expectedNamespace: customNamespace,
 		},
 		{
-			desc: "kubernetes provider is nil - defaults to environment name",
+			desc: "kubernetes provider is nil - returns empty string",
+			environment: &datamodel.Environment_v20250801preview{
+				Properties: datamodel.EnvironmentProperties_v20250801preview{
+					Providers: &datamodel.Providers_v20250801preview{
+						Kubernetes: nil,
+					},
+				},
+			},
+			expectedNamespace: "",
+		},
+		{
+			desc: "providers is nil - returns empty string",
 			environment: &datamodel.Environment_v20250801preview{
 				Properties: datamodel.EnvironmentProperties_v20250801preview{
 					Providers: nil,
 				},
 			},
-			expectedNamespace: "env",
+			expectedNamespace: "",
 		},
 		{
-			desc: "providers is nil - defaults to environment name",
-			environment: &datamodel.Environment_v20250801preview{
-				Properties: datamodel.EnvironmentProperties_v20250801preview{
-					Providers: nil,
-				},
-			},
-			expectedNamespace: "env",
-		},
-		{
-			desc: "kubernetes provider exists but namespace is empty - uses empty namespace",
+			desc: "kubernetes provider exists but namespace is empty - returns empty string",
 			environment: &datamodel.Environment_v20250801preview{
 				Properties: datamodel.EnvironmentProperties_v20250801preview{
 					Providers: &datamodel.Providers_v20250801preview{
@@ -227,7 +229,7 @@ func TestFindNamespaceByEnvID_InvalidResourceType(t *testing.T) {
 	mockSC := database.NewMockClient(mctrl)
 
 	invalidEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Invalid.Type/environments/env"
-	
+
 	_, err := FindNamespaceByEnvID(context.Background(), mockSC, invalidEnvID)
 	require.Error(t, err)
 	require.Equal(t, "invalid environment resource id - must be Applications.Core/environments or Radius.Core/environments", err.Error())
@@ -254,9 +256,9 @@ func TestFindNamespaceByEnvID_NonKubernetesEnvironment(t *testing.T) {
 
 func TestFetchNamespaceFromEnvironmentResourceV20250801(t *testing.T) {
 	tests := []struct {
-		desc                  string
-		environment           *v20250801preview.EnvironmentResource
-		expectedNamespace     string
+		desc              string
+		environment       *v20250801preview.EnvironmentResource
+		expectedNamespace string
 	}{
 		{
 			desc: "namespace is defined in kubernetes provider",

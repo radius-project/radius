@@ -32,6 +32,7 @@ import (
 
 var (
 	ErrNonKubernetesEnvironment = errors.New("cannot get namespace because the current environment is not Kubernetes")
+	ErrNoNamespaceInEnvironment = errors.New("no namespace found in the environment resource. Please configure providers.kubernetes.namespace in the environment resource")
 )
 
 // FindNamespaceByEnvID finds the environment-scope Kubernetes namespace. If the environment ID is invalid or the environment is not a Kubernetes
@@ -43,7 +44,6 @@ func FindNamespaceByEnvID(ctx context.Context, databaseClient database.Client, e
 	}
 
 	if strings.EqualFold(id.Type(), "Applications.Core/environments") {
-		// Handle Applications.Core/environments (v20231001preview)
 		env := &cdm.Environment{}
 		res, err := databaseClient.Get(ctx, id.String())
 		if err != nil {
@@ -74,12 +74,10 @@ func FindNamespaceByEnvID(ctx context.Context, databaseClient database.Client, e
 			return "", err
 		}
 
-		// For Radius.Core/environments, default to the environment name as namespace
-		namespace = id.Name()
 		if env.Properties.Providers != nil && env.Properties.Providers.Kubernetes != nil {
 			namespace = env.Properties.Providers.Kubernetes.Namespace
+			return namespace, nil
 		}
-
 		return namespace, nil
 	}
 
