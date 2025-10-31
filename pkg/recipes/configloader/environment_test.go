@@ -512,7 +512,7 @@ func TestGetConfigurationV20250801(t *testing.T) {
 
 	for _, tc := range configTests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := getConfigurationV20250801(tc.envResource)
+			result, err := getConfigurationV20250801(tc.envResource, tc.appResource)
 			if tc.errString != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.errString)
