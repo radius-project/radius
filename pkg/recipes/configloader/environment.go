@@ -62,9 +62,8 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 		return nil, ErrBadEnvID
 	}
 
-	var environment *v20231001preview.EnvironmentResource
 	if strings.EqualFold(envID.ProviderNamespace(), radius.NamespaceApplicationsCore) {
-		environment, err = util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
+		environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -84,15 +83,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 			return nil, err
 		}
 
-		var application *v20231001preview.ApplicationResource
-		if recipe.ApplicationID != "" {
-			application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		return getConfigurationV20250801(envV20250801, application)
+		return getConfigurationV20250801(envV20250801)
 	}
 
 }
@@ -150,18 +141,10 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 		config.Simulated = true
 	}
 
-	// Validate application resource if provided
-	if application != nil {
-		_, err := application.ConvertTo()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return &config, nil
 }
 
-func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
+func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
@@ -279,7 +262,6 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
-	// First try to find recipe in environment's recipe packs
 	env, err := environment.ConvertTo()
 	if err != nil {
 		return nil, err
@@ -288,19 +270,21 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 
 	if envDatamodel.Properties.RecipePacks != nil {
 		recipePackDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
-		if err == nil {
-			// Found recipe in recipe pack
-			definition := &recipes.EnvironmentDefinition{
-				Name:         "default",
-				Driver:       recipePackDefinition.RecipeKind,
-				ResourceType: resource.Type(),
-				Parameters:   recipePackDefinition.Parameters,
-				TemplatePath: recipePackDefinition.RecipeLocation,
-			}
-			return definition, nil
+		if err != nil {
+			return nil, err
 		}
+
+		definition := &recipes.EnvironmentDefinition{
+			Name:         "default",
+			Driver:       recipePackDefinition.RecipeKind,
+			ResourceType: resource.Type(),
+			Parameters:   recipePackDefinition.Parameters,
+			TemplatePath: recipePackDefinition.RecipeLocation,
+		}
+		return definition, nil
 	}
-	return nil, fmt.Errorf("could not find any recipe pack for %q in environment %q", resource.Type(), recipe.EnvironmentID)
+	err = fmt.Errorf("could not find any recipe pack in environment %q", recipe.EnvironmentID)
+	return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 }
 
 // fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs and returns the first recipe pack that has a recipe for the specified resource type.
