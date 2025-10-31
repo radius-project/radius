@@ -45,9 +45,8 @@ type SchemaDefinition struct {
 
 // PropertyDefinition represents a single property in the schema
 type PropertyDefinition struct {
-	Type        string      `yaml:"type"`
-	Description string      `yaml:"description,omitempty"`
-	Default     interface{} `yaml:"default,omitempty"`
+	Type        string `yaml:"type"`
+	Description string `yaml:"description,omitempty"`
 }
 
 // GenerateResourceTypeSchema converts a Terraform module to a resource type schema
@@ -82,13 +81,18 @@ func GenerateResourceTypeSchema(module *TerraformModule, namespace, resourceType
 			continue
 		}
 
-		prop := PropertyDefinition{
-			Type:        ConvertTerraformTypeToJSONSchema(variable.Type),
-			Description: variable.Description,
+		description := variable.Description
+		if variable.Default != nil {
+			if description != "" {
+				description += " (default: " + formatDefaultValue(variable.Default) + ")"
+			} else {
+				description = "Default: " + formatDefaultValue(variable.Default)
+			}
 		}
 
-		if variable.Default != nil {
-			prop.Default = variable.Default
+		prop := PropertyDefinition{
+			Type:        ConvertTerraformTypeToJSONSchema(variable.Type),
+			Description: description,
 		}
 
 		properties[variable.Name] = prop
@@ -386,4 +390,35 @@ func shouldSkipVariable(variableName string) bool {
 	}
 
 	return false
+}
+
+// formatDefaultValue converts a default value to a readable string representation
+func formatDefaultValue(defaultValue interface{}) string {
+	if defaultValue == nil {
+		return "null"
+	}
+
+	// Convert to string first since Terraform parsing stores it as a string
+	str := strings.TrimSpace(defaultValue.(string))
+
+	// Remove surrounding quotes if they exist from Terraform parsing
+	if strings.HasPrefix(str, "\"") && strings.HasSuffix(str, "\"") && len(str) > 1 {
+		return str[1 : len(str)-1]
+	}
+
+	// For multi-line objects, format them more compactly
+	if strings.Contains(str, "\n") && strings.Contains(str, "{") {
+		// Remove extra whitespace and format on single line for better readability
+		lines := strings.Split(str, "\n")
+		var cleanedLines []string
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" {
+				cleanedLines = append(cleanedLines, trimmed)
+			}
+		}
+		return strings.Join(cleanedLines, " ")
+	}
+
+	return str
 }

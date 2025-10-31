@@ -135,8 +135,9 @@ func parseVariablesFromContent(content string) ([]TerraformVariable, error) {
 		}
 
 		// Parse default value
-		if defaultMatch := regexp.MustCompile(`default\s*=\s*([^\n]+)`).FindStringSubmatch(varBlock); len(defaultMatch) == 2 {
-			variable.Default = strings.TrimSpace(defaultMatch[1])
+		defaultValue := parseDefaultValue(varBlock)
+		if defaultValue != "" {
+			variable.Default = defaultValue
 			variable.Required = false // Has default, so not required
 		}
 
@@ -225,4 +226,91 @@ func ConvertTerraformTypeToJSONSchema(tfType string) string {
 	default:
 		return "string" // Default fallback
 	}
+}
+
+// parseDefaultValue extracts the complete default value including multi-line objects
+func parseDefaultValue(varBlock string) string {
+	// Find the start of the default value
+	defaultRegex := regexp.MustCompile(`default\s*=\s*`)
+	match := defaultRegex.FindStringIndex(varBlock)
+	if match == nil {
+		return ""
+	}
+
+	// Start parsing from after "default = "
+	start := match[1]
+	content := varBlock[start:]
+
+	// Check if it's an object (starts with {)
+	trimmedContent := strings.TrimSpace(content)
+	if strings.HasPrefix(trimmedContent, "{") {
+		return parseCompleteObject(content)
+	}
+
+	// For non-objects, take content until next field or end of block
+	lines := strings.Split(content, "\n")
+	if len(lines) > 0 {
+		firstLine := strings.TrimSpace(lines[0])
+
+		// Check if this line contains the complete value
+		// Look for patterns like: value followed by a new terraform field
+		for i, line := range lines {
+			trimmedLine := strings.TrimSpace(line)
+			if i > 0 && (strings.HasPrefix(trimmedLine, "description") ||
+				strings.HasPrefix(trimmedLine, "validation") ||
+				strings.HasPrefix(trimmedLine, "type") ||
+				trimmedLine == "}" ||
+				strings.HasPrefix(trimmedLine, "variable")) {
+				// Combine all lines up to this point
+				return strings.TrimSpace(strings.Join(lines[:i], "\n"))
+			}
+		}
+
+		return firstLine
+	}
+
+	return ""
+}
+
+// parseCompleteObject extracts a complete object value with balanced braces
+func parseCompleteObject(content string) string {
+	braceCount := 0
+	inString := false
+	escaped := false
+	var result strings.Builder
+
+	for _, char := range content {
+		if escaped {
+			escaped = false
+			result.WriteRune(char)
+			continue
+		}
+
+		if char == '\\' && inString {
+			escaped = true
+			result.WriteRune(char)
+			continue
+		}
+
+		if char == '"' {
+			inString = !inString
+		}
+
+		if !inString {
+			if char == '{' {
+				braceCount++
+			} else if char == '}' {
+				braceCount--
+			}
+		}
+
+		result.WriteRune(char)
+
+		// If we've closed all braces, we're done
+		if braceCount == 0 && char == '}' {
+			break
+		}
+	}
+
+	return strings.TrimSpace(result.String())
 }
