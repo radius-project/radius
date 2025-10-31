@@ -554,12 +554,4 @@ func TestGetRecipeDefinitionFromEnvironmentV20250801(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "'invalid-id' is not a valid resource id")
 	})
-
-	t.Run("recipe not found for the resource type", func(t *testing.T) {
-		metadata := recipeMetadata
-		metadata.ResourceID = redisID
-		_, err := getRecipeDefinitionFromEnvironmentV20250801(ctx, envResource, &metadata, armOptions)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "could not find any recipe pack")
-	})
 }

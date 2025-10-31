@@ -272,18 +272,21 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 
 	if envDatamodel.Properties.RecipePacks != nil {
 		recipePackDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
-		if err == nil {
-			// Found recipe in recipe pack
-			definition := &recipes.EnvironmentDefinition{
-				Name:         "default",
-				Driver:       recipePackDefinition.RecipeKind,
-				ResourceType: resource.Type(),
-				Parameters:   recipePackDefinition.Parameters,
-				TemplatePath: recipePackDefinition.RecipeLocation,
-			}
-			return definition, nil
+		if err != nil {
+			return nil, err
 		}
+		// TODO: For now, we can set it to default as recipe packs don't have named recipes.
+		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
+		definition := &recipes.EnvironmentDefinition{
+			Name:         "default",
+			Driver:       recipePackDefinition.RecipeKind,
+			ResourceType: resource.Type(),
+			Parameters:   recipePackDefinition.Parameters,
+			TemplatePath: recipePackDefinition.RecipeLocation,
+		}
+		return definition, nil
 	}
+
 	return nil, fmt.Errorf("could not find any recipe pack for %q in environment %q", resource.Type(), recipe.EnvironmentID)
 }
 
