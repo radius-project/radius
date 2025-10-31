@@ -132,7 +132,7 @@ func TestExtractProvider(t *testing.T) {
 		{"azure-storage-module", "Azure"},
 		{"gcp-compute-instance", "GCP"},
 		{"google-cloud-sql", "GCP"},
-		{"k8s-deployment", ""}, // k8s is not a cloud provider
+		{"k8s-deployment", ""},     // k8s is not a cloud provider
 		{"kubernetes-ingress", ""}, // kubernetes is not a cloud provider
 		{"docker-container", "Docker"},
 		{"helm-chart", "Helm"},
@@ -161,7 +161,7 @@ func TestExtractCategory(t *testing.T) {
 		{"blob-storage", "Storage"},
 		{"ec2-instance", "Compute"},
 		{"vm-compute", "Compute"},
-		{"eks-cluster", "Orchestration"}, // actual k8s cluster is orchestration
+		{"eks-cluster", "Orchestration"},    // actual k8s cluster is orchestration
 		{"aks-kubernetes", "Orchestration"}, // actual k8s cluster is orchestration
 		{"iam-security", "Security"},
 		{"monitoring-logs", "Observability"},
@@ -210,6 +210,105 @@ func TestShouldSkipVariable(t *testing.T) {
 		t.Run(tt.variableName, func(t *testing.T) {
 			result := shouldSkipVariable(tt.variableName)
 			require.Equal(t, tt.shouldSkip, result)
+		})
+	}
+}
+
+func TestFormatDefaultValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected string
+	}{
+		{
+			name:     "nil value",
+			input:    nil,
+			expected: "null",
+		},
+		{
+			name:     "string value",
+			input:    "hello world",
+			expected: "hello world",
+		},
+		{
+			name:     "string with quotes",
+			input:    `"quoted string"`,
+			expected: "quoted string",
+		},
+		{
+			name:     "boolean true",
+			input:    true,
+			expected: "true",
+		},
+		{
+			name:     "boolean false",
+			input:    false,
+			expected: "false",
+		},
+		{
+			name:     "integer",
+			input:    42,
+			expected: "42",
+		},
+		{
+			name:     "float",
+			input:    3.14,
+			expected: "3.14",
+		},
+		{
+			name:     "empty array",
+			input:    []interface{}{},
+			expected: "[]",
+		},
+		{
+			name:     "string array",
+			input:    []interface{}{"item1", "item2", "item3"},
+			expected: "[item1, item2, item3]",
+		},
+		{
+			name:     "mixed array",
+			input:    []interface{}{"string", 42, true},
+			expected: "[string, 42, true]",
+		},
+		{
+			name:     "empty object",
+			input:    map[string]interface{}{},
+			expected: "{}",
+		},
+		{
+			name: "simple object",
+			input: map[string]interface{}{
+				"name":    "test",
+				"enabled": true,
+				"count":   5,
+			},
+			expected: "{ count = 5, enabled = true, name = test }",
+		},
+		{
+			name: "nested object",
+			input: map[string]interface{}{
+				"config": map[string]interface{}{
+					"timeout": 30,
+					"retry":   true,
+				},
+				"name": "service",
+			},
+			expected: "{ config = { retry = true, timeout = 30 }, name = service }",
+		},
+		{
+			name: "object with array",
+			input: map[string]interface{}{
+				"tags":  []interface{}{"prod", "web"},
+				"count": 3,
+			},
+			expected: "{ count = 3, tags = [prod, web] }",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatDefaultValue(tt.input)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }

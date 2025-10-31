@@ -17,6 +17,8 @@ limitations under the License.
 package learn
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -398,27 +400,52 @@ func formatDefaultValue(defaultValue interface{}) string {
 		return "null"
 	}
 
-	// Convert to string first since Terraform parsing stores it as a string
-	str := strings.TrimSpace(defaultValue.(string))
-
-	// Remove surrounding quotes if they exist from Terraform parsing
-	if strings.HasPrefix(str, "\"") && strings.HasSuffix(str, "\"") && len(str) > 1 {
-		return str[1 : len(str)-1]
-	}
-
-	// For multi-line objects, format them more compactly
-	if strings.Contains(str, "\n") && strings.Contains(str, "{") {
-		// Remove extra whitespace and format on single line for better readability
-		lines := strings.Split(str, "\n")
-		var cleanedLines []string
-		for _, line := range lines {
-			trimmed := strings.TrimSpace(line)
-			if trimmed != "" {
-				cleanedLines = append(cleanedLines, trimmed)
-			}
+	switch v := defaultValue.(type) {
+	case string:
+		// Remove surrounding quotes if they exist from Terraform parsing
+		if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") && len(v) > 1 {
+			return v[1 : len(v)-1]
 		}
-		return strings.Join(cleanedLines, " ")
-	}
+		return v
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case int, int8, int16, int32, int64:
+		return fmt.Sprintf("%d", v)
+	case uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", v)
+	case float32, float64:
+		return fmt.Sprintf("%g", v)
+	case []interface{}:
+		if len(v) == 0 {
+			return "[]"
+		}
+		// Format array elements
+		var elements []string
+		for _, item := range v {
+			elements = append(elements, formatDefaultValue(item))
+		}
+		return "[" + strings.Join(elements, ", ") + "]"
+	case map[string]interface{}:
+		if len(v) == 0 {
+			return "{}"
+		}
+		// Format object properties with sorted keys for deterministic output
+		var keys []string
+		for key := range v {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
 
-	return str
+		var props []string
+		for _, key := range keys {
+			props = append(props, key+" = "+formatDefaultValue(v[key]))
+		}
+		return "{ " + strings.Join(props, ", ") + " }"
+	default:
+		// For any other type, convert to string
+		return fmt.Sprintf("%v", v)
+	}
 }
