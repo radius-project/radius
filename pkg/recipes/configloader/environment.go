@@ -84,15 +84,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 			return nil, err
 		}
 
-		var application *v20231001preview.ApplicationResource
-		if recipe.ApplicationID != "" {
-			application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		return getConfigurationV20250801(envV20250801, application)
+		return getConfigurationV20250801(envV20250801)
 	}
 
 }
@@ -150,18 +142,10 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 		config.Simulated = true
 	}
 
-	// Validate application resource if provided
-	if application != nil {
-		_, err := application.ConvertTo()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return &config, nil
 }
 
-func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
+func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
