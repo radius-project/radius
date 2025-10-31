@@ -17,9 +17,12 @@ limitations under the License.
 package configloader
 
 import (
+	"context"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	model "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	modelv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
@@ -384,5 +387,171 @@ func TestGetRecipeDefinition(t *testing.T) {
 		_, err := getRecipeDefinition(&envResourceNilRecipe, &recipeMetadata)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
+	})
+}
+
+func TestGetConfigurationV20250801(t *testing.T) {
+	configTests := []struct {
+		name           string
+		envResource    *modelv20250801.EnvironmentResource
+		appResource    *model.ApplicationResource
+		expectedConfig *recipes.Configuration
+		errString      string
+	}{
+		{
+			name: "azure provider with env resource v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Azure: &modelv20250801.ProvidersAzure{
+							SubscriptionID: to.Ptr("test-subscription-id"),
+						},
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: to.Ptr(envNamespace),
+						},
+					},
+					Simulated: to.Ptr(false),
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Providers: datamodel.Providers{
+					Azure: datamodel.ProvidersAzure{
+						Scope: "test-subscription-id",
+					},
+				},
+				Simulated: false,
+			},
+		},
+		{
+			name: "aws provider with env resource v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Aws: &modelv20250801.ProvidersAws{
+							Scope: to.Ptr(awsScope),
+						},
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: to.Ptr(envNamespace),
+						},
+					},
+					Simulated: to.Ptr(false),
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: awsScope,
+					},
+				},
+				Simulated: false,
+			},
+		},
+		{
+			name: "simulated env v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: to.Ptr(envNamespace),
+						},
+					},
+					Simulated: to.Ptr(true),
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Simulated: true,
+			},
+		},
+		{
+			name: "environment with recipe packs v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: to.Ptr(envNamespace),
+						},
+					},
+					RecipePacks: []*string{
+						to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"),
+					},
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Simulated: false,
+			},
+		},
+	}
+
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := getConfigurationV20250801(tc.envResource)
+			if tc.errString != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errString)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedConfig, result)
+			}
+		})
+	}
+}
+
+func TestGetRecipeDefinitionFromEnvironmentV20250801(t *testing.T) {
+	ctx := context.Background()
+	armOptions := &arm.ClientOptions{}
+
+	envResource := &modelv20250801.EnvironmentResource{
+		Properties: &modelv20250801.EnvironmentProperties{
+			Providers: &modelv20250801.Providers{
+				Kubernetes: &modelv20250801.ProvidersKubernetes{
+					Namespace: to.Ptr(envNamespace),
+				},
+			},
+			RecipePacks: []*string{
+				to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"),
+			},
+		},
+	}
+
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          recipeName,
+		EnvironmentID: envResourceId,
+		ResourceID:    mongoResourceID,
+	}
+
+	t.Run("invalid resource id", func(t *testing.T) {
+		metadata := recipeMetadata
+		metadata.ResourceID = "invalid-id"
+		_, err := getRecipeDefinitionFromEnvironmentV20250801(ctx, envResource, &metadata, armOptions)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "'invalid-id' is not a valid resource id")
 	})
 }
