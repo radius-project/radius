@@ -45,6 +45,11 @@ func AddOutputFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("output", "o", output.DefaultFormat, description)
 }
 
+func AddOutputFlagWithPlainText(cmd *cobra.Command) {
+	description := fmt.Sprintf("output format (supported formats are %s)", strings.Join([]string{output.FormatPlainText, output.FormatJson}, ", "))
+	cmd.Flags().StringP("output", "o", output.FormatPlainText, description)
+}
+
 // AddWorkspaceFlag adds a flag to the given command that allows the user to specify a workspace name.
 func AddWorkspaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("workspace", "w", "", "The workspace name")

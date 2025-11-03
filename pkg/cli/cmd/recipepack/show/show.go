@@ -52,7 +52,7 @@ rad recipe-show show my-recipe-pack --group my-group
 		RunE: framework.RunCommand(runner),
 	}
 
-	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddOutputFlagWithPlainText(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 
