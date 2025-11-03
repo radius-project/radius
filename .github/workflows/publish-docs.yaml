@@ -84,7 +84,7 @@ jobs:
       - name: Generate resource reference docs
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
       - name: Upload resource reference docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: resource-docs
           path: docs/docs/content/reference/resources
@@ -95,7 +95,7 @@ jobs:
           cd radius
           go run cmd/docgen/main.go ../docs/docs/content/reference/cli
       - name: Upload CLI docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli

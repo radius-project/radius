@@ -1022,6 +1022,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 	excludedResourceTypesList := []string{
 		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
 		"radius.core/environments",
+		"radius.core/applications",
 	}
 
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
