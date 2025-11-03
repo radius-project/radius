@@ -14,19 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package output
+package cmd
 
-const (
-	FormatJson      = "json"
-	FormatTable     = "table"
-	FormatPlainText = "plain-text"
-	DefaultFormat   = FormatTable
+import (
+	"github.com/spf13/cobra"
 )
 
-// SupportedFormats returns a slice of strings containing the supported formats for a request.
-func SupportedFormats() []string {
-	return []string{
-		FormatJson,
-		FormatTable,
+func init() {
+	RootCmd.AddCommand(recipePackCmd)
+	recipePackCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
+}
+
+func NewRecipePackCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "recipe-pack",
+		Short: "Manage recipe-packs",
+		Long: `Manage recipe-packs
+		Recipe-packs automate the deployment of infrastructure and configuration of radius resources.`,
 	}
 }

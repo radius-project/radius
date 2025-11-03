@@ -147,7 +147,7 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 type ShowOptions struct {
 	Group       string // The resource group name
 	Workspace   string // The workspace name
-	Output      string // Output format (json, table)
+	Output      string // Output format (json, table, plain-text)
 	Application string // Application name (for resource show)
 }
 
@@ -462,6 +462,33 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 		"recipe",
 		"list",
 		"--environment", envName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackList runs the "recipe-pack list" command with the given environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackList(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"list",
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackShow runs the "recipe-pack show" command with the given recipe pack name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"show",
+		recipepackName,
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
 	}
 	return cli.RunCommand(ctx, args)
 }

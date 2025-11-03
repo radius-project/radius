@@ -55,6 +55,8 @@ import (
 	recipe_register "github.com/radius-project/radius/pkg/cli/cmd/recipe/register"
 	recipe_show "github.com/radius-project/radius/pkg/cli/cmd/recipe/show"
 	recipe_unregister "github.com/radius-project/radius/pkg/cli/cmd/recipe/unregister"
+	recipe_pack_list "github.com/radius-project/radius/pkg/cli/cmd/recipepack/list"
+	recipe_pack_show "github.com/radius-project/radius/pkg/cli/cmd/recipepack/show"
 	resource_create "github.com/radius-project/radius/pkg/cli/cmd/resource/create"
 	resource_delete "github.com/radius-project/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/radius-project/radius/pkg/cli/cmd/resource/list"
@@ -124,6 +126,7 @@ var resourceCmd = NewResourceCommand()
 var resourceProviderCmd = NewResourceProviderCommand()
 var resourceTypeCmd = NewResourceTypeCommand()
 var recipeCmd = NewRecipeCommand()
+var recipePackCmd = NewRecipePackCommand()
 var envCmd = NewEnvironmentCommand()
 var workspaceCmd = NewWorkspaceCommand()
 
@@ -302,6 +305,12 @@ func initSubCommands() {
 
 	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
 	recipeCmd.AddCommand(unregisterRecipeCmd)
+
+	listRecipePackCmd, _ := recipe_pack_list.NewCommand(framework)
+	recipePackCmd.AddCommand(listRecipePackCmd)
+
+	showRecipePackCmd, _ := recipe_pack_show.NewCommand(framework)
+	recipePackCmd.AddCommand(showRecipePackCmd)
 
 	providerCmd := credential.NewCommand(framework)
 	RootCmd.AddCommand(providerCmd)
