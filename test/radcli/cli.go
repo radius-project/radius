@@ -147,7 +147,7 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 type ShowOptions struct {
 	Group       string // The resource group name
 	Workspace   string // The workspace name
-	Output      string // Output format (json, table)
+	Output      string // Output format (json, table, plain-text)
 	Application string // Application name (for resource show)
 }
 

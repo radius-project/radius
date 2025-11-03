@@ -130,13 +130,17 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, recipePack, objectformats.GetRecipePackTableFormat())
-	if err != nil {
-		return err
-	}
-
 	if r.Format != "json" {
+		err = r.Output.WriteFormatted(output.FormatTable, recipePack, objectformats.GetRecipePackTableFormat())
+		if err != nil {
+			return err
+		}
 		err = r.display(recipePack)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = r.Output.WriteFormatted(r.Format, recipePack, objectformats.GetRecipePackTableFormat())
 		if err != nil {
 			return err
 		}
