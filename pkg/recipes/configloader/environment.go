@@ -157,6 +157,8 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 	var err error
 	config.Runtime.Kubernetes.EnvironmentNamespace = kube.FetchNamespaceFromEnvironmentResourceV20250801(environment)
 
+	config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+
 	env, err := environment.ConvertTo()
 	if err != nil {
 		return nil, err
@@ -175,8 +177,8 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 					Scope: envDatamodel.Properties.Providers.AWS.Scope,
 				}
 			}
-			if envDatamodel.Properties.Providers.Kubernetes != nil && config.Runtime.Kubernetes.EnvironmentNamespace != "" {
-				config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
+			if envDatamodel.Properties.Providers.Kubernetes != nil && envDatamodel.Properties.Providers.Kubernetes.Namespace != "" {
+				config.Runtime.Kubernetes.Namespace = envDatamodel.Properties.Providers.Kubernetes.Namespace
 			}
 		}
 	}

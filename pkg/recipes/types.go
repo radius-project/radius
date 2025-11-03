@@ -45,7 +45,7 @@ type RuntimeConfiguration struct {
 // KubernetesRuntime represents application and environment namespaces.
 type KubernetesRuntime struct {
 	// Namespace is set to the application namespace when the portable resource is application-scoped, and set to the environment namespace when it is environment scoped
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
