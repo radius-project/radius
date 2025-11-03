@@ -54,7 +54,7 @@ rad recipe-show show my-recipe-pack --group my-group
 
 	commonflags.AddOutputFlagWithPlainText(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	commonflags.AddOutputFlag(cmd)
+	commonflags.AddWorkspaceFlag(cmd)
 
 	return cmd, runner
 }
