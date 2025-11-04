@@ -468,6 +468,45 @@ func (c *MockApplicationsManagementClientDeleteEnvironmentCall) DoAndReturn(f fu
 	return c
 }
 
+// DeleteRecipePack mocks base method.
+func (m *MockApplicationsManagementClient) DeleteRecipePack(arg0 context.Context, arg1 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRecipePack", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteRecipePack indicates an expected call of DeleteRecipePack.
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteRecipePack(arg0, arg1 any) *MockApplicationsManagementClientDeleteRecipePackCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRecipePack", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteRecipePack), arg0, arg1)
+	return &MockApplicationsManagementClientDeleteRecipePackCall{Call: call}
+}
+
+// MockApplicationsManagementClientDeleteRecipePackCall wrap *gomock.Call
+type MockApplicationsManagementClientDeleteRecipePackCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientDeleteRecipePackCall) Return(arg0 bool, arg1 error) *MockApplicationsManagementClientDeleteRecipePackCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientDeleteRecipePackCall) Do(f func(context.Context, string) (bool, error)) *MockApplicationsManagementClientDeleteRecipePackCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientDeleteRecipePackCall) DoAndReturn(f func(context.Context, string) (bool, error)) *MockApplicationsManagementClientDeleteRecipePackCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // DeleteResource mocks base method.
 func (m *MockApplicationsManagementClient) DeleteResource(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()

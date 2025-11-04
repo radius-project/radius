@@ -844,4 +844,13 @@ func Test_RecipePack(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, output, packName)
 	})
+
+	t.Run("delete recipe pack", func(t *testing.T) {
+		err := cli.RecipePackDelete(ctx, packName, radcli.DeleteOptions{Confirm: true})
+		require.NoError(t, err)
+
+		output, err := cli.RecipePackList(ctx, "")
+		require.NoError(t, err)
+		require.NotContains(t, output, packName)
+	})
 }

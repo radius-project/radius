@@ -493,6 +493,37 @@ func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName st
 	return cli.RunCommand(ctx, args)
 }
 
+// RecipePackDelete runs the "recipe-pack delete" command for the specified recipe pack name.
+// The options parameter is optional and allows specifying group, workspace, and confirmation bypass.
+func (cli *CLI) RecipePackDelete(ctx context.Context, recipepackName string, opts ...DeleteOptions) error {
+	args := []string{
+		"recipe-pack",
+		"delete",
+		recipepackName,
+	}
+
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Confirm {
+			args = append(args, "--yes")
+		}
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	} else {
+		args = append(args, "--yes")
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
 // RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and
 // resource type, and returns the output string or an error.
 func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, resourceType string, plainHTTP bool) (string, error) {
