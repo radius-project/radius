@@ -48,6 +48,10 @@ func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 		fields := strings.Split(filter.Field, ".")
 		for i, field := range fields {
 			value = value.MapIndex(reflect.ValueOf(field))
+			if !value.IsValid() {
+				// Field doesn't exist, no match
+				return false, nil
+			}
 			if i < len(fields)-1 {
 				// Need to go further into the nested fields
 				value = reflect.ValueOf(value.Interface())

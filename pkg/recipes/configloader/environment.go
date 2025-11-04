@@ -153,11 +153,7 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 	}
 
 	config.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
-
 	var err error
-	config.Runtime.Kubernetes.EnvironmentNamespace = kube.FetchNamespaceFromEnvironmentResourceV20250801(environment)
-
-	config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
 
 	env, err := environment.ConvertTo()
 	if err != nil {
@@ -165,25 +161,27 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 	}
 
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
-	if environment.Properties.Providers != nil {
-		if envDatamodel.Properties.Providers != nil {
-			if envDatamodel.Properties.Providers.Azure != nil {
-				config.Providers.Azure = datamodel.ProvidersAzure{
-					Scope: envDatamodel.Properties.Providers.Azure.SubscriptionId,
-				}
+	if envDatamodel.Properties.Providers != nil {
+		if envDatamodel.Properties.Providers.Azure != nil {
+			config.Providers.Azure = datamodel.ProvidersAzure{
+				Scope: envDatamodel.Properties.Providers.Azure.SubscriptionId,
 			}
-			if envDatamodel.Properties.Providers.AWS != nil {
-				config.Providers.AWS = datamodel.ProvidersAWS{
-					Scope: envDatamodel.Properties.Providers.AWS.Scope,
-				}
-			}
-			if envDatamodel.Properties.Providers.Kubernetes != nil && envDatamodel.Properties.Providers.Kubernetes.Namespace != "" {
-				config.Runtime.Kubernetes.Namespace = envDatamodel.Properties.Providers.Kubernetes.Namespace
+		}
+		if envDatamodel.Properties.Providers.AWS != nil {
+			config.Providers.AWS = datamodel.ProvidersAWS{
+				Scope: envDatamodel.Properties.Providers.AWS.Scope,
 			}
 		}
 	}
+	// Radius enables keying in of a preexisting namespace for kubernetes resources using
+	// properties.providers.kubernetes.namespace. However, it does not mandate configuring a
+	// Kubernetes provider since the recipe can have the namespace details and deploy resources successfully.
+	// We should converge EnvironmentNamespace and Namespace once we remove Applications.Core support, since
+	// We no longer have Application Namespaces.
+	config.Runtime.Kubernetes.EnvironmentNamespace = kube.FetchNamespaceFromEnvironmentResourceV20250801(environment)
+	config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
 
-	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
+	if envDatamodel.Properties.Simulated {
 		config.Simulated = true
 	}
 
