@@ -9,38 +9,38 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMqQueuesClientBeginCreateOrUpdateOptions contains the optional parameters for the RabbitMqQueuesClient.BeginCreateOrUpdate
+// RabbitMQQueuesClientBeginCreateOrUpdateOptions contains the optional parameters for the RabbitMQQueuesClient.BeginCreateOrUpdate
 // method.
-type RabbitMqQueuesClientBeginCreateOrUpdateOptions struct {
+type RabbitMQQueuesClientBeginCreateOrUpdateOptions struct {
 // Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
-// RabbitMqQueuesClientBeginDeleteOptions contains the optional parameters for the RabbitMqQueuesClient.BeginDelete method.
-type RabbitMqQueuesClientBeginDeleteOptions struct {
+// RabbitMQQueuesClientBeginDeleteOptions contains the optional parameters for the RabbitMQQueuesClient.BeginDelete method.
+type RabbitMQQueuesClientBeginDeleteOptions struct {
 // Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
-// RabbitMqQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMqQueuesClient.BeginUpdate method.
-type RabbitMqQueuesClientBeginUpdateOptions struct {
+// RabbitMQQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMQQueuesClient.BeginUpdate method.
+type RabbitMQQueuesClientBeginUpdateOptions struct {
 // Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
-// RabbitMqQueuesClientGetOptions contains the optional parameters for the RabbitMqQueuesClient.Get method.
-type RabbitMqQueuesClientGetOptions struct {
+// RabbitMQQueuesClientGetOptions contains the optional parameters for the RabbitMQQueuesClient.Get method.
+type RabbitMQQueuesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMqQueuesClientListByScopeOptions contains the optional parameters for the RabbitMqQueuesClient.NewListByScopePager
+// RabbitMQQueuesClientListByScopeOptions contains the optional parameters for the RabbitMQQueuesClient.NewListByScopePager
 // method.
-type RabbitMqQueuesClientListByScopeOptions struct {
+type RabbitMQQueuesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMqQueuesClientListSecretsOptions contains the optional parameters for the RabbitMqQueuesClient.ListSecrets method.
-type RabbitMqQueuesClientListSecretsOptions struct {
+// RabbitMQQueuesClientListSecretsOptions contains the optional parameters for the RabbitMQQueuesClient.ListSecrets method.
+type RabbitMQQueuesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 

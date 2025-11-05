@@ -4,11 +4,6 @@
 
 package v20231001preview
 
-const (
-	moduleName = "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	moduleVersion = "v0.0.1"
-)
-
 // AWSCredentialKind - AWS credential kind
 type AWSCredentialKind string
 

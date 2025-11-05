@@ -126,7 +126,7 @@ func (a *AwsPlanesServerTransport) dispatchBeginCreateOrUpdate(req *http.Request
 	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
+	if len(matches) < 2 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResource](req)
@@ -170,7 +170,7 @@ func (a *AwsPlanesServerTransport) dispatchBeginDelete(req *http.Request) (*http
 	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
+	if len(matches) < 2 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -208,7 +208,7 @@ func (a *AwsPlanesServerTransport) dispatchGet(req *http.Request) (*http.Respons
 	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
+	if len(matches) < 2 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -266,7 +266,7 @@ func (a *AwsPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*http
 	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
+	if len(matches) < 2 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResourceTagsUpdate](req)

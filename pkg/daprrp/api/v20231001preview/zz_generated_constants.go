@@ -4,11 +4,6 @@
 
 package v20231001preview
 
-const (
-	moduleName = "github.com/radius-project/radius/pkg/daprrp/api/v20231001preview"
-	moduleVersion = "v0.0.1"
-)
-
 // ActionType - Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
 type ActionType string
 
