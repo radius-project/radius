@@ -64,9 +64,9 @@ jobs:
           npm ci
           popd
       - name: Install autorest
-        run: npm install -g autorest@3.7.1
+        run: npm install -g autorest@3.7.2
       - name: Install oav
-        run: npm install -g oav@3.3.5
+        run: npm install -g oav@4.0.2
       - name: Install mockgen
         run: |
           cd radius

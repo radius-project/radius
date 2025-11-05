@@ -25,7 +25,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service({
+@service(#{
   title: "Applications.Datastores Resource Management APIs",
 })
 @doc("REST APIs for Applications.Datastores")
@@ -37,7 +37,5 @@ interface Operations extends Azure.ResourceManager.Operations {}
 @doc("Supported API versions for the Applications.Databases resource provider.")
 enum Versions {
   @doc("2023-10-01-preview")
-  @useDependency(Azure.Core.Versions.v1_0_Preview_2)
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2023_10_01_preview: "2023-10-01-preview",
 }

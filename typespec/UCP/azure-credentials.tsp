@@ -75,7 +75,7 @@ model AzureCredentialProperties {
   kind: AzureCredentialKind;
 
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 

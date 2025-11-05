@@ -25,7 +25,7 @@ endif
 
 # generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-fix-version generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
@@ -52,7 +52,7 @@ generate-node-installed:
 .PHONY: generate-autorest-installed
 generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
-	@which autorest > /dev/null || { echo "run 'npm install -g autorest' to install autorest"; exit 1; }
+	@which autorest > /dev/null || { echo "run 'npm install -g autorest@3.7.2' to install autorest"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-controller-gen-installed
@@ -73,10 +73,22 @@ generate-controller: generate-controller-gen-installed ## Generates the CRDs for
 	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
 	controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
 
+.PHONY: generate-cleanup
+generate-cleanup: ## Deletes all generated code.
+	@echo "$(ARROW) Deleting generated code..."
+	find . -type f -name 'zz_*.go' ! -name 'zz_*.deepcopy.go' -delete
+	@echo "$(ARROW) Done."
+
+.PHONY: generate-fix-version
+generate-fix-version: ## Fixes the module version in generated files.
+	@echo "$(ARROW) Fixing module version..."
+	grep -rl --include \zz_*.go 'moduleVersion = "v0.1.0"' | xargs -r sed -i "s/moduleVersion = \"v0.1.0\"/moduleVersion = \"v$(AUTOREST_MODULE_VERSION)\"/"
+	@echo "$(ARROW) Done."
+
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-node-installed generate-autorest-installed
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/cli/clients_new/README.md --tag=2023-10-01-preview
+	autorest pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod
 
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).

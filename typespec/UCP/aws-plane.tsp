@@ -56,7 +56,7 @@ model AwsPlaneResource
 @doc("The Plane properties.")
 model AwsPlaneResourceProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 
@@ -66,6 +66,7 @@ interface AwsPlanes {
   @doc("List AWS planes")
   @get
   @route("/aws")
+  @list
   @armResourceList(AwsPlaneResource)
   list(
     ...ApiVersionParameter,
