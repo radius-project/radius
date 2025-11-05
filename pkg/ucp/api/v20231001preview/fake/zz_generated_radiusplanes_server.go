@@ -19,7 +19,7 @@ import (
 )
 
 // RadiusPlanesServer is a fake server for instances of the v20231001preview.RadiusPlanesClient type.
-type RadiusPlanesServer struct{
+type RadiusPlanesServer struct {
 	// BeginCreateOrUpdate is the fake for method RadiusPlanesClient.BeginCreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	BeginCreateOrUpdate func(ctx context.Context, planeName string, resource v20231001preview.RadiusPlaneResource, options *v20231001preview.RadiusPlanesClientBeginCreateOrUpdateOptions) (resp azfake.PollerResponder[v20231001preview.RadiusPlanesClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -39,7 +39,6 @@ type RadiusPlanesServer struct{
 	// BeginUpdate is the fake for method RadiusPlanesClient.BeginUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted
 	BeginUpdate func(ctx context.Context, planeName string, properties v20231001preview.RadiusPlaneResourceTagsUpdate, options *v20231001preview.RadiusPlanesClientBeginUpdateOptions) (resp azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse], errResp azfake.ErrorResponder)
-
 }
 
 // NewRadiusPlanesServerTransport creates a new instance of RadiusPlanesServerTransport with the provided implementation.
@@ -47,22 +46,22 @@ type RadiusPlanesServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewRadiusPlanesServerTransport(srv *RadiusPlanesServer) *RadiusPlanesServerTransport {
 	return &RadiusPlanesServerTransport{
-		srv: srv,
+		srv:                 srv,
 		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientCreateOrUpdateResponse]](),
-		beginDelete: newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse]](),
-		newListPager: newTracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]](),
-		beginUpdate: newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse]](),
+		beginDelete:         newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse]](),
+		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]](),
+		beginUpdate:         newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse]](),
 	}
 }
 
 // RadiusPlanesServerTransport connects instances of v20231001preview.RadiusPlanesClient to instances of RadiusPlanesServer.
 // Don't use this type directly, use NewRadiusPlanesServerTransport instead.
 type RadiusPlanesServerTransport struct {
-	srv *RadiusPlanesServer
+	srv                 *RadiusPlanesServer
 	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientCreateOrUpdateResponse]]
-	beginDelete *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse]]
-	newListPager *tracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]]
-	beginUpdate *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse]]
+	beginDelete         *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse]]
+	newListPager        *tracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]]
+	beginUpdate         *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse]]
 }
 
 // Do implements the policy.Transporter interface for RadiusPlanesServerTransport.
@@ -83,8 +82,8 @@ func (r *RadiusPlanesServerTransport) dispatchToMethodFake(req *http.Request, me
 	go func() {
 		var intercepted bool
 		var res result
-		 if radiusPlanesServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = radiusPlanesServerTransportInterceptor.Do(req)
+		if radiusPlanesServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = radiusPlanesServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -98,8 +97,8 @@ func (r *RadiusPlanesServerTransport) dispatchToMethodFake(req *http.Request, me
 				res.resp, res.err = r.dispatchNewListPager(req)
 			case "RadiusPlanesClient.BeginUpdate":
 				res.resp, res.err = r.dispatchBeginUpdate(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -123,24 +122,24 @@ func (r *RadiusPlanesServerTransport) dispatchBeginCreateOrUpdate(req *http.Requ
 	}
 	beginCreateOrUpdate := r.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.RadiusPlaneResource](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := r.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.RadiusPlaneResource](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := r.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginCreateOrUpdate = &respr
 		r.beginCreateOrUpdate.add(req, beginCreateOrUpdate)
 	}
@@ -167,20 +166,20 @@ func (r *RadiusPlanesServerTransport) dispatchBeginDelete(req *http.Request) (*h
 	}
 	beginDelete := r.beginDelete.get(req)
 	if beginDelete == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := r.srv.BeginDelete(req.Context(), planeNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := r.srv.BeginDelete(req.Context(), planeNameParam, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginDelete = &respr
 		r.beginDelete.add(req, beginDelete)
 	}
@@ -236,7 +235,7 @@ func (r *RadiusPlanesServerTransport) dispatchNewListPager(req *http.Request) (*
 	}
 	newListPager := r.newListPager.get(req)
 	if newListPager == nil {
-resp := r.srv.NewListPager(nil)
+		resp := r.srv.NewListPager(nil)
 		newListPager = &resp
 		r.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.RadiusPlanesClientListResponse, createLink func() string) {
@@ -263,24 +262,24 @@ func (r *RadiusPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*h
 	}
 	beginUpdate := r.beginUpdate.get(req)
 	if beginUpdate == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.RadiusPlaneResourceTagsUpdate](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := r.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.RadiusPlaneResourceTagsUpdate](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := r.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginUpdate = &respr
 		r.beginUpdate.add(req, beginUpdate)
 	}

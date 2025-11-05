@@ -19,7 +19,7 @@ import (
 // RabbitMQQueuesClient contains the methods for the RabbitMQQueues group.
 // Don't use this type directly, use NewRabbitMQQueuesClient() instead.
 type RabbitMQQueuesClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewRabbitMQQueuesClient(rootScope string, credential azcore.TokenCredential
 	}
 	client := &RabbitMQQueuesClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *RabbitMQQueuesClient) BeginCreateOrUpdate(ctx context.Context, rab
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *RabbitMQQueuesClient) createOrUpdateCreateRequest(ctx context.Cont
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a RabbitMQQueueResource
@@ -127,7 +127,7 @@ func (client *RabbitMQQueuesClient) BeginDelete(ctx context.Context, rabbitMQQue
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -238,7 +238,7 @@ func (client *RabbitMQQueuesClient) getHandleResponse(resp *http.Response) (Rabb
 // Generated from API version 2023-10-01-preview
 //   - options - RabbitMQQueuesClientListByScopeOptions contains the optional parameters for the RabbitMQQueuesClient.NewListByScopePager
 //     method.
-func (client *RabbitMQQueuesClient) NewListByScopePager(options *RabbitMQQueuesClientListByScopeOptions) (*runtime.Pager[RabbitMQQueuesClientListByScopeResponse]) {
+func (client *RabbitMQQueuesClient) NewListByScopePager(options *RabbitMQQueuesClientListByScopeOptions) *runtime.Pager[RabbitMQQueuesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[RabbitMQQueuesClientListByScopeResponse]{
 		More: func(page RabbitMQQueuesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -255,7 +255,7 @@ func (client *RabbitMQQueuesClient) NewListByScopePager(options *RabbitMQQueuesC
 				return RabbitMQQueuesClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -329,9 +329,9 @@ func (client *RabbitMQQueuesClient) listSecretsCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
@@ -359,7 +359,7 @@ func (client *RabbitMQQueuesClient) BeginUpdate(ctx context.Context, rabbitMQQue
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -409,8 +409,7 @@ func (client *RabbitMQQueuesClient) updateCreateRequest(ctx context.Context, rab
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

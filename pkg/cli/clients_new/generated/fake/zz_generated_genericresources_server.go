@@ -19,7 +19,7 @@ import (
 )
 
 // GenericResourcesServer is a fake server for instances of the generated.GenericResourcesClient type.
-type GenericResourcesServer struct{
+type GenericResourcesServer struct {
 	// BeginCreateOrUpdate is the fake for method GenericResourcesClient.BeginCreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	BeginCreateOrUpdate func(ctx context.Context, resourceName string, genericResourceParameters generated.GenericResource, options *generated.GenericResourcesClientBeginCreateOrUpdateOptions) (resp azfake.PollerResponder[generated.GenericResourcesClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -39,7 +39,6 @@ type GenericResourcesServer struct{
 	// ListSecrets is the fake for method GenericResourcesClient.ListSecrets
 	// HTTP status codes to indicate success: http.StatusOK
 	ListSecrets func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientListSecretsOptions) (resp azfake.Responder[generated.GenericResourcesClientListSecretsResponse], errResp azfake.ErrorResponder)
-
 }
 
 // NewGenericResourcesServerTransport creates a new instance of GenericResourcesServerTransport with the provided implementation.
@@ -47,9 +46,9 @@ type GenericResourcesServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewGenericResourcesServerTransport(srv *GenericResourcesServer) *GenericResourcesServerTransport {
 	return &GenericResourcesServerTransport{
-		srv: srv,
-		beginCreateOrUpdate: newTracker[azfake.PollerResponder[generated.GenericResourcesClientCreateOrUpdateResponse]](),
-		beginDelete: newTracker[azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse]](),
+		srv:                     srv,
+		beginCreateOrUpdate:     newTracker[azfake.PollerResponder[generated.GenericResourcesClientCreateOrUpdateResponse]](),
+		beginDelete:             newTracker[azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse]](),
 		newListByRootScopePager: newTracker[azfake.PagerResponder[generated.GenericResourcesClientListByRootScopeResponse]](),
 	}
 }
@@ -57,9 +56,9 @@ func NewGenericResourcesServerTransport(srv *GenericResourcesServer) *GenericRes
 // GenericResourcesServerTransport connects instances of generated.GenericResourcesClient to instances of GenericResourcesServer.
 // Don't use this type directly, use NewGenericResourcesServerTransport instead.
 type GenericResourcesServerTransport struct {
-	srv *GenericResourcesServer
-	beginCreateOrUpdate *tracker[azfake.PollerResponder[generated.GenericResourcesClientCreateOrUpdateResponse]]
-	beginDelete *tracker[azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse]]
+	srv                     *GenericResourcesServer
+	beginCreateOrUpdate     *tracker[azfake.PollerResponder[generated.GenericResourcesClientCreateOrUpdateResponse]]
+	beginDelete             *tracker[azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse]]
 	newListByRootScopePager *tracker[azfake.PagerResponder[generated.GenericResourcesClientListByRootScopeResponse]]
 }
 
@@ -81,8 +80,8 @@ func (g *GenericResourcesServerTransport) dispatchToMethodFake(req *http.Request
 	go func() {
 		var intercepted bool
 		var res result
-		 if genericResourcesServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = genericResourcesServerTransportInterceptor.Do(req)
+		if genericResourcesServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = genericResourcesServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -96,8 +95,8 @@ func (g *GenericResourcesServerTransport) dispatchToMethodFake(req *http.Request
 				res.resp, res.err = g.dispatchNewListByRootScopePager(req)
 			case "GenericResourcesClient.ListSecrets":
 				res.resp, res.err = g.dispatchListSecrets(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -121,24 +120,24 @@ func (g *GenericResourcesServerTransport) dispatchBeginCreateOrUpdate(req *http.
 	}
 	beginCreateOrUpdate := g.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 4 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[generated.GenericResource](req)
-	if err != nil {
-		return nil, err
-	}
-	resourceNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := g.srv.BeginCreateOrUpdate(req.Context(), resourceNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[generated.GenericResource](req)
+		if err != nil {
+			return nil, err
+		}
+		resourceNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := g.srv.BeginCreateOrUpdate(req.Context(), resourceNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginCreateOrUpdate = &respr
 		g.beginCreateOrUpdate.add(req, beginCreateOrUpdate)
 	}
@@ -165,20 +164,20 @@ func (g *GenericResourcesServerTransport) dispatchBeginDelete(req *http.Request)
 	}
 	beginDelete := g.beginDelete.get(req)
 	if beginDelete == nil {
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 4 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	resourceNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := g.srv.BeginDelete(req.Context(), resourceNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		resourceNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := g.srv.BeginDelete(req.Context(), resourceNameParam, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginDelete = &respr
 		g.beginDelete.add(req, beginDelete)
 	}
@@ -234,13 +233,13 @@ func (g *GenericResourcesServerTransport) dispatchNewListByRootScopePager(req *h
 	}
 	newListByRootScopePager := g.newListByRootScopePager.get(req)
 	if newListByRootScopePager == nil {
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 3 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-resp := g.srv.NewListByRootScopePager(nil)
+		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 3 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		resp := g.srv.NewListByRootScopePager(nil)
 		newListByRootScopePager = &resp
 		g.newListByRootScopePager.add(req, newListByRootScopePager)
 		server.PagerResponderInjectNextLinks(newListByRootScopePager, req, func(page *generated.GenericResourcesClientListByRootScopeResponse, createLink func() string) {

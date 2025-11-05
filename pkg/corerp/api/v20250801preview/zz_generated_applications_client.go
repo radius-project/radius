@@ -19,7 +19,7 @@ import (
 // ApplicationsClient contains the methods for the Applications group.
 // Don't use this type directly, use NewApplicationsClient() instead.
 type ApplicationsClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &ApplicationsClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -86,9 +86,9 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -242,9 +242,9 @@ func (client *ApplicationsClient) getGraphCreateRequest(ctx context.Context, app
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // getGraphHandleResponse handles the GetGraph response.
@@ -261,7 +261,7 @@ func (client *ApplicationsClient) getGraphHandleResponse(resp *http.Response) (A
 // Generated from API version 2025-08-01-preview
 //   - options - ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.NewListByScopePager
 //     method.
-func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) (*runtime.Pager[ApplicationsClientListByScopeResponse]) {
+func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) *runtime.Pager[ApplicationsClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ApplicationsClientListByScopeResponse]{
 		More: func(page ApplicationsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -278,7 +278,7 @@ func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClien
 				return ApplicationsClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -351,9 +351,9 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, appli
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -364,4 +364,3 @@ func (client *ApplicationsClient) updateHandleResponse(resp *http.Response) (App
 	}
 	return result, nil
 }
-

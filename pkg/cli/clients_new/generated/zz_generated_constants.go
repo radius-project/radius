@@ -8,19 +8,18 @@ package generated
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
 		CreatedByTypeUser,
 	}
 }
-

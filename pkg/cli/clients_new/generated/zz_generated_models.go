@@ -8,120 +8,119 @@ import "time"
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
-// READ-ONLY; The additional info.
+	// READ-ONLY; The additional info.
 	Info map[string]any
 
-// READ-ONLY; The additional info type.
+	// READ-ONLY; The additional info type.
 	Type *string
 }
 
 // ErrorDetail - The error detail.
 type ErrorDetail struct {
-// READ-ONLY; The error additional info.
+	// READ-ONLY; The error additional info.
 	AdditionalInfo []*ErrorAdditionalInfo
 
-// READ-ONLY; The error code.
+	// READ-ONLY; The error code.
 	Code *string
 
-// READ-ONLY; The error details.
+	// READ-ONLY; The error details.
 	Details []*ErrorDetail
 
-// READ-ONLY; The error message.
+	// READ-ONLY; The error message.
 	Message *string
 
-// READ-ONLY; The error target.
+	// READ-ONLY; The error target.
 	Target *string
 }
 
 // ErrorResponse - Common error response for all Azure Resource Manager APIs to return error details for failed operations.
 // (This also follows the OData error response format.).
 type ErrorResponse struct {
-// The error object.
+	// The error object.
 	Error *ErrorDetail
 }
 
 // GenericResource - Generic resource
 type GenericResource struct {
-// REQUIRED; The geo-location where the resource lives
+	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-// REQUIRED; Any object
+	// REQUIRED; Any object
 	Properties map[string]any
 
-// Resource tags.
+	// Resource tags.
 	Tags map[string]*string
 
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
 // GenericResourcesList - Object that includes an array of GenericResources and a possible link for next set
 type GenericResourcesList struct {
-// The link used to fetch the next page of resource list.
+	// The link used to fetch the next page of resource list.
 	NextLink *string
 
-// List of GenericResources resources
+	// List of GenericResources resources
 	Value []*GenericResource
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
 type SystemData struct {
-// The timestamp of resource creation (UTC).
+	// The timestamp of resource creation (UTC).
 	CreatedAt *time.Time
 
-// The identity that created the resource.
+	// The identity that created the resource.
 	CreatedBy *string
 
-// The type of identity that created the resource.
+	// The type of identity that created the resource.
 	CreatedByType *CreatedByType
 
-// The timestamp of resource last modification (UTC)
+	// The timestamp of resource last modification (UTC)
 	LastModifiedAt *time.Time
 
-// The identity that last modified the resource.
+	// The identity that last modified the resource.
 	LastModifiedBy *string
 
-// The type of identity that last modified the resource.
+	// The type of identity that last modified the resource.
 	LastModifiedByType *CreatedByType
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
 // and a 'location'
 type TrackedResource struct {
-// REQUIRED; The geo-location where the resource lives
+	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-// Resource tags.
+	// Resource tags.
 	Tags map[string]*string
 
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
-

@@ -19,7 +19,7 @@ import (
 )
 
 // APIVersionsServer is a fake server for instances of the v20231001preview.APIVersionsClient type.
-type APIVersionsServer struct{
+type APIVersionsServer struct {
 	// BeginCreateOrUpdate is the fake for method APIVersionsClient.BeginCreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	BeginCreateOrUpdate func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource v20231001preview.APIVersionResource, options *v20231001preview.APIVersionsClientBeginCreateOrUpdateOptions) (resp azfake.PollerResponder[v20231001preview.APIVersionsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -35,7 +35,6 @@ type APIVersionsServer struct{
 	// NewListPager is the fake for method APIVersionsClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(planeName string, resourceProviderName string, resourceTypeName string, options *v20231001preview.APIVersionsClientListOptions) (resp azfake.PagerResponder[v20231001preview.APIVersionsClientListResponse])
-
 }
 
 // NewAPIVersionsServerTransport creates a new instance of APIVersionsServerTransport with the provided implementation.
@@ -43,20 +42,20 @@ type APIVersionsServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewAPIVersionsServerTransport(srv *APIVersionsServer) *APIVersionsServerTransport {
 	return &APIVersionsServerTransport{
-		srv: srv,
+		srv:                 srv,
 		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.APIVersionsClientCreateOrUpdateResponse]](),
-		beginDelete: newTracker[azfake.PollerResponder[v20231001preview.APIVersionsClientDeleteResponse]](),
-		newListPager: newTracker[azfake.PagerResponder[v20231001preview.APIVersionsClientListResponse]](),
+		beginDelete:         newTracker[azfake.PollerResponder[v20231001preview.APIVersionsClientDeleteResponse]](),
+		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.APIVersionsClientListResponse]](),
 	}
 }
 
 // APIVersionsServerTransport connects instances of v20231001preview.APIVersionsClient to instances of APIVersionsServer.
 // Don't use this type directly, use NewAPIVersionsServerTransport instead.
 type APIVersionsServerTransport struct {
-	srv *APIVersionsServer
+	srv                 *APIVersionsServer
 	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.APIVersionsClientCreateOrUpdateResponse]]
-	beginDelete *tracker[azfake.PollerResponder[v20231001preview.APIVersionsClientDeleteResponse]]
-	newListPager *tracker[azfake.PagerResponder[v20231001preview.APIVersionsClientListResponse]]
+	beginDelete         *tracker[azfake.PollerResponder[v20231001preview.APIVersionsClientDeleteResponse]]
+	newListPager        *tracker[azfake.PagerResponder[v20231001preview.APIVersionsClientListResponse]]
 }
 
 // Do implements the policy.Transporter interface for APIVersionsServerTransport.
@@ -77,8 +76,8 @@ func (a *APIVersionsServerTransport) dispatchToMethodFake(req *http.Request, met
 	go func() {
 		var intercepted bool
 		var res result
-		 if apiVersionsServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = apiVersionsServerTransportInterceptor.Do(req)
+		if apiVersionsServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = apiVersionsServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -90,8 +89,8 @@ func (a *APIVersionsServerTransport) dispatchToMethodFake(req *http.Request, met
 				res.resp, res.err = a.dispatchGet(req)
 			case "APIVersionsClient.NewListPager":
 				res.resp, res.err = a.dispatchNewListPager(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -115,36 +114,36 @@ func (a *APIVersionsServerTransport) dispatchBeginCreateOrUpdate(req *http.Reque
 	}
 	beginCreateOrUpdate := a.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 5 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.APIVersionResource](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
-	if err != nil {
-		return nil, err
-	}
-	apiVersionNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("apiVersionName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := a.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, resourceProviderNameParam, resourceTypeNameParam, apiVersionNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 5 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.APIVersionResource](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
+		if err != nil {
+			return nil, err
+		}
+		apiVersionNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("apiVersionName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := a.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, resourceProviderNameParam, resourceTypeNameParam, apiVersionNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginCreateOrUpdate = &respr
 		a.beginCreateOrUpdate.add(req, beginCreateOrUpdate)
 	}
@@ -171,32 +170,32 @@ func (a *APIVersionsServerTransport) dispatchBeginDelete(req *http.Request) (*ht
 	}
 	beginDelete := a.beginDelete.get(req)
 	if beginDelete == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 5 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
-	if err != nil {
-		return nil, err
-	}
-	apiVersionNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("apiVersionName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := a.srv.BeginDelete(req.Context(), planeNameParam, resourceProviderNameParam, resourceTypeNameParam, apiVersionNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 5 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
+		if err != nil {
+			return nil, err
+		}
+		apiVersionNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("apiVersionName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := a.srv.BeginDelete(req.Context(), planeNameParam, resourceProviderNameParam, resourceTypeNameParam, apiVersionNameParam, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginDelete = &respr
 		a.beginDelete.add(req, beginDelete)
 	}
@@ -264,25 +263,25 @@ func (a *APIVersionsServerTransport) dispatchNewListPager(req *http.Request) (*h
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 4 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
-	if err != nil {
-		return nil, err
-	}
-resp := a.srv.NewListPager(planeNameParam, resourceProviderNameParam, resourceTypeNameParam, nil)
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := a.srv.NewListPager(planeNameParam, resourceProviderNameParam, resourceTypeNameParam, nil)
 		newListPager = &resp
 		a.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.APIVersionsClientListResponse, createLink func() string) {

@@ -58,4 +58,3 @@ type VolumePropertiesClassification interface {
 	// GetVolumeProperties returns the VolumeProperties content of the underlying type.
 	GetVolumeProperties() *VolumeProperties
 }
-

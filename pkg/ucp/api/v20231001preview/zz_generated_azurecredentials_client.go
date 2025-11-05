@@ -31,7 +31,7 @@ func NewAzureCredentialsClient(credential azcore.TokenCredential, options *arm.C
 		return nil, err
 	}
 	client := &AzureCredentialsClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -84,9 +84,9 @@ func (client *AzureCredentialsClient) createOrUpdateCreateRequest(ctx context.Co
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -208,13 +208,13 @@ func (client *AzureCredentialsClient) getHandleResponse(resp *http.Response) (Az
 //   - planeName - The name of the plane
 //   - options - AzureCredentialsClientListOptions contains the optional parameters for the AzureCredentialsClient.NewListPager
 //     method.
-func (client *AzureCredentialsClient) NewListPager(planeName string, options *AzureCredentialsClientListOptions) (*runtime.Pager[AzureCredentialsClientListResponse]) {
+func (client *AzureCredentialsClient) NewListPager(planeName string, options *AzureCredentialsClientListOptions) *runtime.Pager[AzureCredentialsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[AzureCredentialsClientListResponse]{
 		More: func(page AzureCredentialsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AzureCredentialsClientListResponse) (AzureCredentialsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzureCredentialsClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzureCredentialsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -226,7 +226,7 @@ func (client *AzureCredentialsClient) NewListPager(planeName string, options *Az
 				return AzureCredentialsClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -302,9 +302,9 @@ func (client *AzureCredentialsClient) updateCreateRequest(ctx context.Context, p
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -315,4 +315,3 @@ func (client *AzureCredentialsClient) updateHandleResponse(resp *http.Response) 
 	}
 	return result, nil
 }
-

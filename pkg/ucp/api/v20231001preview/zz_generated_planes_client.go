@@ -28,7 +28,7 @@ func NewPlanesClient(credential azcore.TokenCredential, options *arm.ClientOptio
 		return nil, err
 	}
 	client := &PlanesClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -37,13 +37,13 @@ func NewPlanesClient(credential azcore.TokenCredential, options *arm.ClientOptio
 //
 // Generated from API version 2023-10-01-preview
 //   - options - PlanesClientListPlanesOptions contains the optional parameters for the PlanesClient.NewListPlanesPager method.
-func (client *PlanesClient) NewListPlanesPager(options *PlanesClientListPlanesOptions) (*runtime.Pager[PlanesClientListPlanesResponse]) {
+func (client *PlanesClient) NewListPlanesPager(options *PlanesClientListPlanesOptions) *runtime.Pager[PlanesClientListPlanesResponse] {
 	return runtime.NewPager(runtime.PagingHandler[PlanesClientListPlanesResponse]{
 		More: func(page PlanesClientListPlanesResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *PlanesClientListPlanesResponse) (PlanesClientListPlanesResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "PlanesClient.NewListPlanesPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "PlanesClient.NewListPlanesPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -55,7 +55,7 @@ func (client *PlanesClient) NewListPlanesPager(options *PlanesClientListPlanesOp
 				return PlanesClientListPlanesResponse{}, err
 			}
 			return client.listPlanesHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -82,4 +82,3 @@ func (client *PlanesClient) listPlanesHandleResponse(resp *http.Response) (Plane
 	}
 	return result, nil
 }
-

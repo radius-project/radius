@@ -7,19 +7,19 @@ package v20231001preview
 // MongoDatabasesClientBeginCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.BeginCreateOrUpdate
 // method.
 type MongoDatabasesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.
 type MongoDatabasesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // MongoDatabasesClientBeginUpdateOptions contains the optional parameters for the MongoDatabasesClient.BeginUpdate method.
 type MongoDatabasesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -47,19 +47,19 @@ type OperationsClientListOptions struct {
 // RedisCachesClientBeginCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.BeginCreateOrUpdate
 // method.
 type RedisCachesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // RedisCachesClientBeginDeleteOptions contains the optional parameters for the RedisCachesClient.BeginDelete method.
 type RedisCachesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // RedisCachesClientBeginUpdateOptions contains the optional parameters for the RedisCachesClient.BeginUpdate method.
 type RedisCachesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -81,19 +81,19 @@ type RedisCachesClientListSecretsOptions struct {
 // SQLDatabasesClientBeginCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginCreateOrUpdate
 // method.
 type SQLDatabasesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // SQLDatabasesClientBeginDeleteOptions contains the optional parameters for the SQLDatabasesClient.BeginDelete method.
 type SQLDatabasesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // SQLDatabasesClientBeginUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginUpdate method.
 type SQLDatabasesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -111,4 +111,3 @@ type SQLDatabasesClientListByScopeOptions struct {
 type SQLDatabasesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
-

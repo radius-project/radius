@@ -7,13 +7,13 @@ package v20231001preview
 // APIVersionsClientBeginCreateOrUpdateOptions contains the optional parameters for the APIVersionsClient.BeginCreateOrUpdate
 // method.
 type APIVersionsClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // APIVersionsClientBeginDeleteOptions contains the optional parameters for the APIVersionsClient.BeginDelete method.
 type APIVersionsClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -56,19 +56,19 @@ type AwsCredentialsClientUpdateOptions struct {
 // AwsPlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the AwsPlanesClient.BeginCreateOrUpdate
 // method.
 type AwsPlanesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // AwsPlanesClientBeginDeleteOptions contains the optional parameters for the AwsPlanesClient.BeginDelete method.
 type AwsPlanesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // AwsPlanesClientBeginUpdateOptions contains the optional parameters for the AwsPlanesClient.BeginUpdate method.
 type AwsPlanesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -111,19 +111,19 @@ type AzureCredentialsClientUpdateOptions struct {
 // AzurePlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the AzurePlanesClient.BeginCreateOrUpdate
 // method.
 type AzurePlanesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // AzurePlanesClientBeginDeleteOptions contains the optional parameters for the AzurePlanesClient.BeginDelete method.
 type AzurePlanesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // AzurePlanesClientBeginUpdateOptions contains the optional parameters for the AzurePlanesClient.BeginUpdate method.
 type AzurePlanesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -140,13 +140,13 @@ type AzurePlanesClientListOptions struct {
 // LocationsClientBeginCreateOrUpdateOptions contains the optional parameters for the LocationsClient.BeginCreateOrUpdate
 // method.
 type LocationsClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // LocationsClientBeginDeleteOptions contains the optional parameters for the LocationsClient.BeginDelete method.
 type LocationsClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -168,19 +168,19 @@ type PlanesClientListPlanesOptions struct {
 // RadiusPlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the RadiusPlanesClient.BeginCreateOrUpdate
 // method.
 type RadiusPlanesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // RadiusPlanesClientBeginDeleteOptions contains the optional parameters for the RadiusPlanesClient.BeginDelete method.
 type RadiusPlanesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // RadiusPlanesClientBeginUpdateOptions contains the optional parameters for the RadiusPlanesClient.BeginUpdate method.
 type RadiusPlanesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -223,14 +223,14 @@ type ResourceGroupsClientUpdateOptions struct {
 // ResourceProvidersClientBeginCreateOrUpdateOptions contains the optional parameters for the ResourceProvidersClient.BeginCreateOrUpdate
 // method.
 type ResourceProvidersClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // ResourceProvidersClientBeginDeleteOptions contains the optional parameters for the ResourceProvidersClient.BeginDelete
 // method.
 type ResourceProvidersClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -259,13 +259,13 @@ type ResourceProvidersClientListProviderSummariesOptions struct {
 // ResourceTypesClientBeginCreateOrUpdateOptions contains the optional parameters for the ResourceTypesClient.BeginCreateOrUpdate
 // method.
 type ResourceTypesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // ResourceTypesClientBeginDeleteOptions contains the optional parameters for the ResourceTypesClient.BeginDelete method.
 type ResourceTypesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -283,4 +283,3 @@ type ResourceTypesClientListOptions struct {
 type ResourcesClientListOptions struct {
 	// placeholder for future optional parameters
 }
-

@@ -19,8 +19,8 @@ import (
 // GenericResourcesClient contains the methods for the GenericResources group.
 // Don't use this type directly, use NewGenericResourcesClient() instead.
 type GenericResourcesClient struct {
-	internal *arm.Client
-	rootScope string
+	internal     *arm.Client
+	rootScope    string
 	resourceType string
 }
 
@@ -35,9 +35,9 @@ func NewGenericResourcesClient(rootScope string, resourceType string, credential
 		return nil, err
 	}
 	client := &GenericResourcesClient{
-		rootScope: rootScope,
+		rootScope:    rootScope,
 		resourceType: resourceType,
-	internal: cl,
+		internal:     cl,
 	}
 	return client, nil
 }
@@ -58,7 +58,7 @@ func (client *GenericResourcesClient) BeginCreateOrUpdate(ctx context.Context, r
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GenericResourcesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -111,9 +111,9 @@ func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Co
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, genericResourceParameters); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Deletes an existing Generic resource
@@ -131,7 +131,7 @@ func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceN
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GenericResourcesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -248,13 +248,13 @@ func (client *GenericResourcesClient) getHandleResponse(resp *http.Response) (Ge
 // Generated from API version 2023-10-01-preview
 //   - options - GenericResourcesClientListByRootScopeOptions contains the optional parameters for the GenericResourcesClient.NewListByRootScopePager
 //     method.
-func (client *GenericResourcesClient) NewListByRootScopePager(options *GenericResourcesClientListByRootScopeOptions) (*runtime.Pager[GenericResourcesClientListByRootScopeResponse]) {
+func (client *GenericResourcesClient) NewListByRootScopePager(options *GenericResourcesClientListByRootScopeOptions) *runtime.Pager[GenericResourcesClientListByRootScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[GenericResourcesClientListByRootScopeResponse]{
 		More: func(page GenericResourcesClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *GenericResourcesClientListByRootScopeResponse) (GenericResourcesClientListByRootScopeResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "GenericResourcesClient.NewListByRootScopePager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "GenericResourcesClient.NewListByRootScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -266,7 +266,7 @@ func (client *GenericResourcesClient) NewListByRootScopePager(options *GenericRe
 				return GenericResourcesClientListByRootScopeResponse{}, err
 			}
 			return client.listByRootScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -353,4 +353,3 @@ func (client *GenericResourcesClient) listSecretsHandleResponse(resp *http.Respo
 	}
 	return result, nil
 }
-

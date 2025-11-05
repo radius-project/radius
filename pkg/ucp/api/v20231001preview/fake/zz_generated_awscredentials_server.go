@@ -19,7 +19,7 @@ import (
 )
 
 // AwsCredentialsServer is a fake server for instances of the v20231001preview.AwsCredentialsClient type.
-type AwsCredentialsServer struct{
+type AwsCredentialsServer struct {
 	// CreateOrUpdate is the fake for method AwsCredentialsClient.CreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	CreateOrUpdate func(ctx context.Context, planeName string, credentialName string, resource v20231001preview.AwsCredentialResource, options *v20231001preview.AwsCredentialsClientCreateOrUpdateOptions) (resp azfake.Responder[v20231001preview.AwsCredentialsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -39,7 +39,6 @@ type AwsCredentialsServer struct{
 	// Update is the fake for method AwsCredentialsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
 	Update func(ctx context.Context, planeName string, credentialName string, properties v20231001preview.AwsCredentialResourceTagsUpdate, options *v20231001preview.AwsCredentialsClientUpdateOptions) (resp azfake.Responder[v20231001preview.AwsCredentialsClientUpdateResponse], errResp azfake.ErrorResponder)
-
 }
 
 // NewAwsCredentialsServerTransport creates a new instance of AwsCredentialsServerTransport with the provided implementation.
@@ -47,7 +46,7 @@ type AwsCredentialsServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewAwsCredentialsServerTransport(srv *AwsCredentialsServer) *AwsCredentialsServerTransport {
 	return &AwsCredentialsServerTransport{
-		srv: srv,
+		srv:          srv,
 		newListPager: newTracker[azfake.PagerResponder[v20231001preview.AwsCredentialsClientListResponse]](),
 	}
 }
@@ -55,7 +54,7 @@ func NewAwsCredentialsServerTransport(srv *AwsCredentialsServer) *AwsCredentials
 // AwsCredentialsServerTransport connects instances of v20231001preview.AwsCredentialsClient to instances of AwsCredentialsServer.
 // Don't use this type directly, use NewAwsCredentialsServerTransport instead.
 type AwsCredentialsServerTransport struct {
-	srv *AwsCredentialsServer
+	srv          *AwsCredentialsServer
 	newListPager *tracker[azfake.PagerResponder[v20231001preview.AwsCredentialsClientListResponse]]
 }
 
@@ -77,8 +76,8 @@ func (a *AwsCredentialsServerTransport) dispatchToMethodFake(req *http.Request, 
 	go func() {
 		var intercepted bool
 		var res result
-		 if awsCredentialsServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = awsCredentialsServerTransportInterceptor.Do(req)
+		if awsCredentialsServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = awsCredentialsServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -92,8 +91,8 @@ func (a *AwsCredentialsServerTransport) dispatchToMethodFake(req *http.Request, 
 				res.resp, res.err = a.dispatchNewListPager(req)
 			case "AwsCredentialsClient.Update":
 				res.resp, res.err = a.dispatchUpdate(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -220,17 +219,17 @@ func (a *AwsCredentialsServerTransport) dispatchNewListPager(req *http.Request) 
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-resp := a.srv.NewListPager(planeNameParam, nil)
+		const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := a.srv.NewListPager(planeNameParam, nil)
 		newListPager = &resp
 		a.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.AwsCredentialsClientListResponse, createLink func() string) {

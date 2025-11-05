@@ -12,9 +12,9 @@ import (
 // ClientFactory is a client factory used to create any client in this module.
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
-	rootScope string
+	rootScope    string
 	resourceType string
-	internal *arm.Client
+	internal     *arm.Client
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -29,18 +29,17 @@ func NewClientFactory(rootScope string, resourceType string, credential azcore.T
 		return nil, err
 	}
 	return &ClientFactory{
-		rootScope: rootScope,
+		rootScope:    rootScope,
 		resourceType: resourceType,
-		internal: internal,
+		internal:     internal,
 	}, nil
 }
 
 // NewGenericResourcesClient creates a new instance of GenericResourcesClient.
 func (c *ClientFactory) NewGenericResourcesClient() *GenericResourcesClient {
 	return &GenericResourcesClient{
-		rootScope: c.rootScope,
+		rootScope:    c.rootScope,
 		resourceType: c.resourceType,
-		internal: c.internal,
+		internal:     c.internal,
 	}
 }
-

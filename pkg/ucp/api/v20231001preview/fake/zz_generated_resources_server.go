@@ -18,11 +18,10 @@ import (
 )
 
 // ResourcesServer is a fake server for instances of the v20231001preview.ResourcesClient type.
-type ResourcesServer struct{
+type ResourcesServer struct {
 	// NewListPager is the fake for method ResourcesClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(planeName string, resourceGroupName string, options *v20231001preview.ResourcesClientListOptions) (resp azfake.PagerResponder[v20231001preview.ResourcesClientListResponse])
-
 }
 
 // NewResourcesServerTransport creates a new instance of ResourcesServerTransport with the provided implementation.
@@ -30,7 +29,7 @@ type ResourcesServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewResourcesServerTransport(srv *ResourcesServer) *ResourcesServerTransport {
 	return &ResourcesServerTransport{
-		srv: srv,
+		srv:          srv,
 		newListPager: newTracker[azfake.PagerResponder[v20231001preview.ResourcesClientListResponse]](),
 	}
 }
@@ -38,7 +37,7 @@ func NewResourcesServerTransport(srv *ResourcesServer) *ResourcesServerTransport
 // ResourcesServerTransport connects instances of v20231001preview.ResourcesClient to instances of ResourcesServer.
 // Don't use this type directly, use NewResourcesServerTransport instead.
 type ResourcesServerTransport struct {
-	srv *ResourcesServer
+	srv          *ResourcesServer
 	newListPager *tracker[azfake.PagerResponder[v20231001preview.ResourcesClientListResponse]]
 }
 
@@ -60,15 +59,15 @@ func (r *ResourcesServerTransport) dispatchToMethodFake(req *http.Request, metho
 	go func() {
 		var intercepted bool
 		var res result
-		 if resourcesServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = resourcesServerTransportInterceptor.Do(req)
+		if resourcesServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = resourcesServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
 			case "ResourcesClient.NewListPager":
 				res.resp, res.err = r.dispatchNewListPager(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -92,21 +91,21 @@ func (r *ResourcesServerTransport) dispatchNewListPager(req *http.Request) (*htt
 	}
 	newListPager := r.newListPager.get(req)
 	if newListPager == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups/(?P<resourceGroupName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resources`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 3 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceGroupNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceGroupName")])
-	if err != nil {
-		return nil, err
-	}
-resp := r.srv.NewListPager(planeNameParam, resourceGroupNameParam, nil)
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups/(?P<resourceGroupName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resources`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 3 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceGroupNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceGroupName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := r.srv.NewListPager(planeNameParam, resourceGroupNameParam, nil)
 		newListPager = &resp
 		r.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.ResourcesClientListResponse, createLink func() string) {

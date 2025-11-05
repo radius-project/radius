@@ -12,19 +12,19 @@ type OperationsClientListOptions struct {
 // RabbitMQQueuesClientBeginCreateOrUpdateOptions contains the optional parameters for the RabbitMQQueuesClient.BeginCreateOrUpdate
 // method.
 type RabbitMQQueuesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // RabbitMQQueuesClientBeginDeleteOptions contains the optional parameters for the RabbitMQQueuesClient.BeginDelete method.
 type RabbitMQQueuesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // RabbitMQQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMQQueuesClient.BeginUpdate method.
 type RabbitMQQueuesClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -43,4 +43,3 @@ type RabbitMQQueuesClientListByScopeOptions struct {
 type RabbitMQQueuesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
-

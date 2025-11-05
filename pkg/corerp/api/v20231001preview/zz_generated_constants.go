@@ -13,7 +13,7 @@ const (
 
 // PossibleActionTypeValues returns the possible values for the ActionType const type.
 func PossibleActionTypeValues() []ActionType {
-	return []ActionType{	
+	return []ActionType{
 		ActionTypeInternal,
 	}
 }
@@ -22,15 +22,15 @@ func PossibleActionTypeValues() []ActionType {
 type CertificateFormats string
 
 const (
-// CertificateFormatsPem - PEM Certificate format
+	// CertificateFormatsPem - PEM Certificate format
 	CertificateFormatsPem CertificateFormats = "pem"
-// CertificateFormatsPfx - PFX Certificate format
+	// CertificateFormatsPfx - PFX Certificate format
 	CertificateFormatsPfx CertificateFormats = "pfx"
 )
 
 // PossibleCertificateFormatsValues returns the possible values for the CertificateFormats const type.
 func PossibleCertificateFormatsValues() []CertificateFormats {
-	return []CertificateFormats{	
+	return []CertificateFormats{
 		CertificateFormatsPem,
 		CertificateFormatsPfx,
 	}
@@ -40,17 +40,17 @@ func PossibleCertificateFormatsValues() []CertificateFormats {
 type CertificateTypes string
 
 const (
-// CertificateTypesCertificate - Certificate type
+	// CertificateTypesCertificate - Certificate type
 	CertificateTypesCertificate CertificateTypes = "certificate"
-// CertificateTypesPrivatekey - Private Key type
+	// CertificateTypesPrivatekey - Private Key type
 	CertificateTypesPrivatekey CertificateTypes = "privatekey"
-// CertificateTypesPublickey - Public Key type
+	// CertificateTypesPublickey - Public Key type
 	CertificateTypesPublickey CertificateTypes = "publickey"
 )
 
 // PossibleCertificateTypesValues returns the possible values for the CertificateTypes const type.
 func PossibleCertificateTypesValues() []CertificateTypes {
-	return []CertificateTypes{	
+	return []CertificateTypes{
 		CertificateTypesCertificate,
 		CertificateTypesPrivatekey,
 		CertificateTypesPublickey,
@@ -63,15 +63,15 @@ func PossibleCertificateTypesValues() []CertificateTypes {
 type ContainerResourceProvisioning string
 
 const (
-// ContainerResourceProvisioningInternal - The resource lifecycle will be managed internally by Radius
+	// ContainerResourceProvisioningInternal - The resource lifecycle will be managed internally by Radius
 	ContainerResourceProvisioningInternal ContainerResourceProvisioning = "internal"
-// ContainerResourceProvisioningManual - The resource lifecycle will be managed by the user
+	// ContainerResourceProvisioningManual - The resource lifecycle will be managed by the user
 	ContainerResourceProvisioningManual ContainerResourceProvisioning = "manual"
 )
 
 // PossibleContainerResourceProvisioningValues returns the possible values for the ContainerResourceProvisioning const type.
 func PossibleContainerResourceProvisioningValues() []ContainerResourceProvisioning {
-	return []ContainerResourceProvisioning{	
+	return []ContainerResourceProvisioning{
 		ContainerResourceProvisioningInternal,
 		ContainerResourceProvisioningManual,
 	}
@@ -81,15 +81,15 @@ func PossibleContainerResourceProvisioningValues() []ContainerResourceProvisioni
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -101,15 +101,15 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 type DaprSidecarExtensionProtocol string
 
 const (
-// DaprSidecarExtensionProtocolGrpc - gRPC protocol
+	// DaprSidecarExtensionProtocolGrpc - gRPC protocol
 	DaprSidecarExtensionProtocolGrpc DaprSidecarExtensionProtocol = "grpc"
-// DaprSidecarExtensionProtocolHTTP - HTTP protocol
+	// DaprSidecarExtensionProtocolHTTP - HTTP protocol
 	DaprSidecarExtensionProtocolHTTP DaprSidecarExtensionProtocol = "http"
 )
 
 // PossibleDaprSidecarExtensionProtocolValues returns the possible values for the DaprSidecarExtensionProtocol const type.
 func PossibleDaprSidecarExtensionProtocolValues() []DaprSidecarExtensionProtocol {
-	return []DaprSidecarExtensionProtocol{	
+	return []DaprSidecarExtensionProtocol{
 		DaprSidecarExtensionProtocolGrpc,
 		DaprSidecarExtensionProtocolHTTP,
 	}
@@ -119,16 +119,16 @@ func PossibleDaprSidecarExtensionProtocolValues() []DaprSidecarExtensionProtocol
 type Direction string
 
 const (
-// DirectionInbound - The resource defining this connection accepts inbound connections from the resource specified by this
-// id.
+	// DirectionInbound - The resource defining this connection accepts inbound connections from the resource specified by this
+	// id.
 	DirectionInbound Direction = "Inbound"
-// DirectionOutbound - The resource defining this connection makes an outbound connection resource specified by this id.
+	// DirectionOutbound - The resource defining this connection makes an outbound connection resource specified by this id.
 	DirectionOutbound Direction = "Outbound"
 )
 
 // PossibleDirectionValues returns the possible values for the Direction const type.
 func PossibleDirectionValues() []Direction {
-	return []Direction{	
+	return []Direction{
 		DirectionInbound,
 		DirectionOutbound,
 	}
@@ -138,14 +138,14 @@ func PossibleDirectionValues() []Direction {
 type IAMKind string
 
 const (
-// IAMKindAzure - Azure Active Directory
-	IAMKindAzure IAMKind = "azure"
+	// IAMKindAzure - Azure Active Directory
+	IAMKindAzure  IAMKind = "azure"
 	IAMKindString IAMKind = "string"
 )
 
 // PossibleIAMKindValues returns the possible values for the IAMKind const type.
 func PossibleIAMKindValues() []IAMKind {
-	return []IAMKind{	
+	return []IAMKind{
 		IAMKindAzure,
 		IAMKindString,
 	}
@@ -155,21 +155,21 @@ func PossibleIAMKindValues() []IAMKind {
 type IdentitySettingKind string
 
 const (
-// IdentitySettingKindAzureComWorkload - azure ad workload identity
+	// IdentitySettingKindAzureComWorkload - azure ad workload identity
 	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
-// IdentitySettingKindSystemAssigned - System assigned managed identity
+	// IdentitySettingKindSystemAssigned - System assigned managed identity
 	IdentitySettingKindSystemAssigned IdentitySettingKind = "systemAssigned"
-// IdentitySettingKindSystemAssignedUserAssigned - System assigned and user assigned managed identity
+	// IdentitySettingKindSystemAssignedUserAssigned - System assigned and user assigned managed identity
 	IdentitySettingKindSystemAssignedUserAssigned IdentitySettingKind = "systemAssignedUserAssigned"
-// IdentitySettingKindUndefined - undefined identity
+	// IdentitySettingKindUndefined - undefined identity
 	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
-// IdentitySettingKindUserAssigned - User assigned managed identity
+	// IdentitySettingKindUserAssigned - User assigned managed identity
 	IdentitySettingKindUserAssigned IdentitySettingKind = "userAssigned"
 )
 
 // PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
 func PossibleIdentitySettingKindValues() []IdentitySettingKind {
-	return []IdentitySettingKind{	
+	return []IdentitySettingKind{
 		IdentitySettingKindAzureComWorkload,
 		IdentitySettingKindSystemAssigned,
 		IdentitySettingKindSystemAssignedUserAssigned,
@@ -182,17 +182,17 @@ func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 type ImagePullPolicy string
 
 const (
-// ImagePullPolicyAlways - Always
+	// ImagePullPolicyAlways - Always
 	ImagePullPolicyAlways ImagePullPolicy = "Always"
-// ImagePullPolicyIfNotPresent - IfNotPresent
+	// ImagePullPolicyIfNotPresent - IfNotPresent
 	ImagePullPolicyIfNotPresent ImagePullPolicy = "IfNotPresent"
-// ImagePullPolicyNever - Never
+	// ImagePullPolicyNever - Never
 	ImagePullPolicyNever ImagePullPolicy = "Never"
 )
 
 // PossibleImagePullPolicyValues returns the possible values for the ImagePullPolicy const type.
 func PossibleImagePullPolicyValues() []ImagePullPolicy {
-	return []ImagePullPolicy{	
+	return []ImagePullPolicy{
 		ImagePullPolicyAlways,
 		ImagePullPolicyIfNotPresent,
 		ImagePullPolicyNever,
@@ -203,15 +203,15 @@ func PossibleImagePullPolicyValues() []ImagePullPolicy {
 type ManagedStore string
 
 const (
-// ManagedStoreDisk - Disk store
+	// ManagedStoreDisk - Disk store
 	ManagedStoreDisk ManagedStore = "disk"
-// ManagedStoreMemory - Memory store
+	// ManagedStoreMemory - Memory store
 	ManagedStoreMemory ManagedStore = "memory"
 )
 
 // PossibleManagedStoreValues returns the possible values for the ManagedStore const type.
 func PossibleManagedStoreValues() []ManagedStore {
-	return []ManagedStore{	
+	return []ManagedStore{
 		ManagedStoreDisk,
 		ManagedStoreMemory,
 	}
@@ -222,14 +222,14 @@ func PossibleManagedStoreValues() []ManagedStore {
 type Origin string
 
 const (
-	OriginSystem Origin = "system"
-	OriginUser Origin = "user"
+	OriginSystem     Origin = "system"
+	OriginUser       Origin = "user"
 	OriginUserSystem Origin = "user,system"
 )
 
 // PossibleOriginValues returns the possible values for the Origin const type.
 func PossibleOriginValues() []Origin {
-	return []Origin{	
+	return []Origin{
 		OriginSystem,
 		OriginUser,
 		OriginUserSystem,
@@ -240,15 +240,15 @@ func PossibleOriginValues() []Origin {
 type PortProtocol string
 
 const (
-// PortProtocolTCP - TCP protocol
+	// PortProtocolTCP - TCP protocol
 	PortProtocolTCP PortProtocol = "TCP"
-// PortProtocolUDP - UDP protocol
+	// PortProtocolUDP - UDP protocol
 	PortProtocolUDP PortProtocol = "UDP"
 )
 
 // PossiblePortProtocolValues returns the possible values for the PortProtocol const type.
 func PossiblePortProtocolValues() []PortProtocol {
-	return []PortProtocol{	
+	return []PortProtocol{
 		PortProtocolTCP,
 		PortProtocolUDP,
 	}
@@ -258,27 +258,27 @@ func PossiblePortProtocolValues() []PortProtocol {
 type ProvisioningState string
 
 const (
-// ProvisioningStateAccepted - The resource create request has been accepted
+	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
-// ProvisioningStateCanceled - The resource provisioning has been canceled
+	// ProvisioningStateCanceled - The resource provisioning has been canceled
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
-// ProvisioningStateCreating - The resource is being created
+	// ProvisioningStateCreating - The resource is being created
 	ProvisioningStateCreating ProvisioningState = "Creating"
-// ProvisioningStateDeleting - The resource is being deleted
+	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
-// ProvisioningStateFailed - The resource provisioning has failed
+	// ProvisioningStateFailed - The resource provisioning has failed
 	ProvisioningStateFailed ProvisioningState = "Failed"
-// ProvisioningStateProvisioning - The resource is being provisioned
+	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-// ProvisioningStateSucceeded - The resource has been successfully provisioned
+	// ProvisioningStateSucceeded - The resource has been successfully provisioned
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
-// ProvisioningStateUpdating - The resource is being updated
+	// ProvisioningStateUpdating - The resource is being updated
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
 
 // PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
 func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{	
+	return []ProvisioningState{
 		ProvisioningStateAccepted,
 		ProvisioningStateCanceled,
 		ProvisioningStateCreating,
@@ -296,15 +296,15 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 type ResourceProvisioning string
 
 const (
-// ResourceProvisioningManual - The resource lifecycle will be managed by the user
+	// ResourceProvisioningManual - The resource lifecycle will be managed by the user
 	ResourceProvisioningManual ResourceProvisioning = "manual"
-// ResourceProvisioningRecipe - The resource lifecycle will be managed by Radius
+	// ResourceProvisioningRecipe - The resource lifecycle will be managed by Radius
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
 )
 
 // PossibleResourceProvisioningValues returns the possible values for the ResourceProvisioning const type.
 func PossibleResourceProvisioningValues() []ResourceProvisioning {
-	return []ResourceProvisioning{	
+	return []ResourceProvisioning{
 		ResourceProvisioningManual,
 		ResourceProvisioningRecipe,
 	}
@@ -314,17 +314,17 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 type RestartPolicy string
 
 const (
-// RestartPolicyAlways - Always
+	// RestartPolicyAlways - Always
 	RestartPolicyAlways RestartPolicy = "Always"
-// RestartPolicyNever - Never
+	// RestartPolicyNever - Never
 	RestartPolicyNever RestartPolicy = "Never"
-// RestartPolicyOnFailure - OnFailure
+	// RestartPolicyOnFailure - OnFailure
 	RestartPolicyOnFailure RestartPolicy = "OnFailure"
 )
 
 // PossibleRestartPolicyValues returns the possible values for the RestartPolicy const type.
 func PossibleRestartPolicyValues() []RestartPolicy {
-	return []RestartPolicy{	
+	return []RestartPolicy{
 		RestartPolicyAlways,
 		RestartPolicyNever,
 		RestartPolicyOnFailure,
@@ -335,24 +335,24 @@ func PossibleRestartPolicyValues() []RestartPolicy {
 type SecretStoreDataType string
 
 const (
-// SecretStoreDataTypeAwsIRSA - awsIRSA type is used to represent authentication using AWS IRSA (IAM Roles for Service accounts)
-// and the secretstore resource is expected to have the key 'roleARN'.
+	// SecretStoreDataTypeAwsIRSA - awsIRSA type is used to represent authentication using AWS IRSA (IAM Roles for Service accounts)
+	// and the secretstore resource is expected to have the key 'roleARN'.
 	SecretStoreDataTypeAwsIRSA SecretStoreDataType = "awsIRSA"
-// SecretStoreDataTypeAzureWorkloadIdentity - azureWorkloadIdentity type is used to represent authentication using azure federated
-// identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'.
+	// SecretStoreDataTypeAzureWorkloadIdentity - azureWorkloadIdentity type is used to represent authentication using azure federated
+	// identity and the secretstore resource is expected to have the keys 'clientId' and 'tenantId'.
 	SecretStoreDataTypeAzureWorkloadIdentity SecretStoreDataType = "azureWorkloadIdentity"
-// SecretStoreDataTypeBasicAuthentication - basicAuthentication type is used to represent username and password based authentication
-// and the secretstore resource is expected to have the keys 'username' and 'password'.
+	// SecretStoreDataTypeBasicAuthentication - basicAuthentication type is used to represent username and password based authentication
+	// and the secretstore resource is expected to have the keys 'username' and 'password'.
 	SecretStoreDataTypeBasicAuthentication SecretStoreDataType = "basicAuthentication"
-// SecretStoreDataTypeCertificate - Certificate secret data type
+	// SecretStoreDataTypeCertificate - Certificate secret data type
 	SecretStoreDataTypeCertificate SecretStoreDataType = "certificate"
-// SecretStoreDataTypeGeneric - Generic secret data type
+	// SecretStoreDataTypeGeneric - Generic secret data type
 	SecretStoreDataTypeGeneric SecretStoreDataType = "generic"
 )
 
 // PossibleSecretStoreDataTypeValues returns the possible values for the SecretStoreDataType const type.
 func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
-	return []SecretStoreDataType{	
+	return []SecretStoreDataType{
 		SecretStoreDataTypeAwsIRSA,
 		SecretStoreDataTypeAzureWorkloadIdentity,
 		SecretStoreDataTypeBasicAuthentication,
@@ -365,15 +365,15 @@ func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 type SecretValueEncoding string
 
 const (
-// SecretValueEncodingBase64 - The base64-encoded secret value
+	// SecretValueEncodingBase64 - The base64-encoded secret value
 	SecretValueEncodingBase64 SecretValueEncoding = "base64"
-// SecretValueEncodingRaw - The raw secret value
+	// SecretValueEncodingRaw - The raw secret value
 	SecretValueEncodingRaw SecretValueEncoding = "raw"
 )
 
 // PossibleSecretValueEncodingValues returns the possible values for the SecretValueEncoding const type.
 func PossibleSecretValueEncodingValues() []SecretValueEncoding {
-	return []SecretValueEncoding{	
+	return []SecretValueEncoding{
 		SecretValueEncodingBase64,
 		SecretValueEncodingRaw,
 	}
@@ -383,15 +383,15 @@ func PossibleSecretValueEncodingValues() []SecretValueEncoding {
 type TLSMinVersion string
 
 const (
-// TLSMinVersionTls12 - TLS Version 1.2
+	// TLSMinVersionTls12 - TLS Version 1.2
 	TLSMinVersionTls12 TLSMinVersion = "1.2"
-// TLSMinVersionTls13 - TLS Version 1.3
+	// TLSMinVersionTls13 - TLS Version 1.3
 	TLSMinVersionTls13 TLSMinVersion = "1.3"
 )
 
 // PossibleTLSMinVersionValues returns the possible values for the TLSMinVersion const type.
 func PossibleTLSMinVersionValues() []TLSMinVersion {
-	return []TLSMinVersion{	
+	return []TLSMinVersion{
 		TLSMinVersionTls12,
 		TLSMinVersionTls13,
 	}
@@ -401,15 +401,15 @@ func PossibleTLSMinVersionValues() []TLSMinVersion {
 type VolumePermission string
 
 const (
-// VolumePermissionRead - Read only
+	// VolumePermissionRead - Read only
 	VolumePermissionRead VolumePermission = "read"
-// VolumePermissionWrite - Read and write
+	// VolumePermissionWrite - Read and write
 	VolumePermissionWrite VolumePermission = "write"
 )
 
 // PossibleVolumePermissionValues returns the possible values for the VolumePermission const type.
 func PossibleVolumePermissionValues() []VolumePermission {
-	return []VolumePermission{	
+	return []VolumePermission{
 		VolumePermissionRead,
 		VolumePermissionWrite,
 	}
@@ -419,20 +419,19 @@ func PossibleVolumePermissionValues() []VolumePermission {
 type VolumeSecretEncodings string
 
 const (
-// VolumeSecretEncodingsBase64 - Base64 encoding
+	// VolumeSecretEncodingsBase64 - Base64 encoding
 	VolumeSecretEncodingsBase64 VolumeSecretEncodings = "base64"
-// VolumeSecretEncodingsHex - Hex encoding
+	// VolumeSecretEncodingsHex - Hex encoding
 	VolumeSecretEncodingsHex VolumeSecretEncodings = "hex"
-// VolumeSecretEncodingsUTF8 - UTF-8 encoding
+	// VolumeSecretEncodingsUTF8 - UTF-8 encoding
 	VolumeSecretEncodingsUTF8 VolumeSecretEncodings = "utf-8"
 )
 
 // PossibleVolumeSecretEncodingsValues returns the possible values for the VolumeSecretEncodings const type.
 func PossibleVolumeSecretEncodingsValues() []VolumeSecretEncodings {
-	return []VolumeSecretEncodings{	
+	return []VolumeSecretEncodings{
 		VolumeSecretEncodingsBase64,
 		VolumeSecretEncodingsHex,
 		VolumeSecretEncodingsUTF8,
 	}
 }
-

@@ -19,7 +19,7 @@ import (
 // ContainersClient contains the methods for the Containers group.
 // Don't use this type directly, use NewContainersClient() instead.
 type ContainersClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewContainersClient(rootScope string, credential azcore.TokenCredential, op
 	}
 	client := &ContainersClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *ContainersClient) BeginCreateOrUpdate(ctx context.Context, contain
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context,
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a ContainerResource
@@ -126,7 +126,7 @@ func (client *ContainersClient) BeginDelete(ctx context.Context, containerName s
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -237,7 +237,7 @@ func (client *ContainersClient) getHandleResponse(resp *http.Response) (Containe
 // Generated from API version 2023-10-01-preview
 //   - options - ContainersClientListByScopeOptions contains the optional parameters for the ContainersClient.NewListByScopePager
 //     method.
-func (client *ContainersClient) NewListByScopePager(options *ContainersClientListByScopeOptions) (*runtime.Pager[ContainersClientListByScopeResponse]) {
+func (client *ContainersClient) NewListByScopePager(options *ContainersClientListByScopeOptions) *runtime.Pager[ContainersClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ContainersClientListByScopeResponse]{
 		More: func(page ContainersClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -254,7 +254,7 @@ func (client *ContainersClient) NewListByScopePager(options *ContainersClientLis
 				return ContainersClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -298,7 +298,7 @@ func (client *ContainersClient) BeginUpdate(ctx context.Context, containerName s
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -348,8 +348,7 @@ func (client *ContainersClient) updateCreateRequest(ctx context.Context, contain
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

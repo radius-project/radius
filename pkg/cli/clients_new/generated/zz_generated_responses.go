@@ -6,7 +6,7 @@ package generated
 
 // GenericResourcesClientCreateOrUpdateResponse contains the response from method GenericResourcesClient.BeginCreateOrUpdate.
 type GenericResourcesClientCreateOrUpdateResponse struct {
-// Generic resource
+	// Generic resource
 	GenericResource
 }
 
@@ -17,19 +17,18 @@ type GenericResourcesClientDeleteResponse struct {
 
 // GenericResourcesClientGetResponse contains the response from method GenericResourcesClient.Get.
 type GenericResourcesClientGetResponse struct {
-// Generic resource
+	// Generic resource
 	GenericResource
 }
 
 // GenericResourcesClientListByRootScopeResponse contains the response from method GenericResourcesClient.NewListByRootScopePager.
 type GenericResourcesClientListByRootScopeResponse struct {
-// Object that includes an array of GenericResources and a possible link for next set
+	// Object that includes an array of GenericResources and a possible link for next set
 	GenericResourcesList
 }
 
 // GenericResourcesClientListSecretsResponse contains the response from method GenericResourcesClient.ListSecrets.
 type GenericResourcesClientListSecretsResponse struct {
-// Response to a list secrets request
+	// Response to a list secrets request
 	Value map[string]*string
 }
-

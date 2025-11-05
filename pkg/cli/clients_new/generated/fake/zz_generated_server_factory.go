@@ -17,7 +17,6 @@ import (
 type ServerFactory struct {
 	// GenericResourcesServer contains the fakes for client GenericResourcesClient
 	GenericResourcesServer GenericResourcesServer
-
 }
 
 // NewServerFactoryTransport creates a new instance of ServerFactoryTransport with the provided implementation.
@@ -32,8 +31,8 @@ func NewServerFactoryTransport(srv *ServerFactory) *ServerFactoryTransport {
 // ServerFactoryTransport connects instances of generated.ClientFactory to instances of ServerFactory.
 // Don't use this type directly, use NewServerFactoryTransport instead.
 type ServerFactoryTransport struct {
-	srv *ServerFactory
-	trMu sync.Mutex
+	srv                      *ServerFactory
+	trMu                     sync.Mutex
 	trGenericResourcesServer *GenericResourcesServerTransport
 }
 
@@ -51,7 +50,9 @@ func (s *ServerFactoryTransport) Do(req *http.Request) (*http.Response, error) {
 
 	switch client {
 	case "GenericResourcesClient":
-		initServer(s, &s.trGenericResourcesServer, func() *GenericResourcesServerTransport { return NewGenericResourcesServerTransport(&s.srv.GenericResourcesServer) })
+		initServer(s, &s.trGenericResourcesServer, func() *GenericResourcesServerTransport {
+			return NewGenericResourcesServerTransport(&s.srv.GenericResourcesServer)
+		})
 		resp, err = s.trGenericResourcesServer.Do(req)
 	default:
 		err = fmt.Errorf("unhandled client %s", client)

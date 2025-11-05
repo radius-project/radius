@@ -19,7 +19,7 @@ import (
 // SQLDatabasesClient contains the methods for the SQLDatabases group.
 // Don't use this type directly, use NewSQLDatabasesClient() instead.
 type SQLDatabasesClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewSQLDatabasesClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &SQLDatabasesClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *SQLDatabasesClient) BeginCreateOrUpdate(ctx context.Context, sqlDa
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a SqlDatabaseResource
@@ -127,7 +127,7 @@ func (client *SQLDatabasesClient) BeginDelete(ctx context.Context, sqlDatabaseNa
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -238,7 +238,7 @@ func (client *SQLDatabasesClient) getHandleResponse(resp *http.Response) (SQLDat
 // Generated from API version 2023-10-01-preview
 //   - options - SQLDatabasesClientListByScopeOptions contains the optional parameters for the SQLDatabasesClient.NewListByScopePager
 //     method.
-func (client *SQLDatabasesClient) NewListByScopePager(options *SQLDatabasesClientListByScopeOptions) (*runtime.Pager[SQLDatabasesClientListByScopeResponse]) {
+func (client *SQLDatabasesClient) NewListByScopePager(options *SQLDatabasesClientListByScopeOptions) *runtime.Pager[SQLDatabasesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[SQLDatabasesClientListByScopeResponse]{
 		More: func(page SQLDatabasesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -255,7 +255,7 @@ func (client *SQLDatabasesClient) NewListByScopePager(options *SQLDatabasesClien
 				return SQLDatabasesClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -329,9 +329,9 @@ func (client *SQLDatabasesClient) listSecretsCreateRequest(ctx context.Context, 
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
@@ -359,7 +359,7 @@ func (client *SQLDatabasesClient) BeginUpdate(ctx context.Context, sqlDatabaseNa
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -409,8 +409,7 @@ func (client *SQLDatabasesClient) updateCreateRequest(ctx context.Context, sqlDa
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

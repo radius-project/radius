@@ -31,7 +31,7 @@ func NewRadiusPlanesClient(credential azcore.TokenCredential, options *arm.Clien
 		return nil, err
 	}
 	client := &RadiusPlanesClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -52,7 +52,7 @@ func (client *RadiusPlanesClient) BeginCreateOrUpdate(ctx context.Context, plane
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -103,9 +103,9 @@ func (client *RadiusPlanesClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a plane
@@ -123,7 +123,7 @@ func (client *RadiusPlanesClient) BeginDelete(ctx context.Context, planeName str
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -235,13 +235,13 @@ func (client *RadiusPlanesClient) getHandleResponse(resp *http.Response) (Radius
 //
 // Generated from API version 2023-10-01-preview
 //   - options - RadiusPlanesClientListOptions contains the optional parameters for the RadiusPlanesClient.NewListPager method.
-func (client *RadiusPlanesClient) NewListPager(options *RadiusPlanesClientListOptions) (*runtime.Pager[RadiusPlanesClientListResponse]) {
+func (client *RadiusPlanesClient) NewListPager(options *RadiusPlanesClientListOptions) *runtime.Pager[RadiusPlanesClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[RadiusPlanesClientListResponse]{
 		More: func(page RadiusPlanesClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *RadiusPlanesClientListResponse) (RadiusPlanesClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RadiusPlanesClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RadiusPlanesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -253,7 +253,7 @@ func (client *RadiusPlanesClient) NewListPager(options *RadiusPlanesClientListOp
 				return RadiusPlanesClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -297,7 +297,7 @@ func (client *RadiusPlanesClient) BeginUpdate(ctx context.Context, planeName str
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -348,8 +348,7 @@ func (client *RadiusPlanesClient) updateCreateRequest(ctx context.Context, plane
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

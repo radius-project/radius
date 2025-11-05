@@ -19,7 +19,7 @@ import (
 )
 
 // AwsPlanesServer is a fake server for instances of the v20231001preview.AwsPlanesClient type.
-type AwsPlanesServer struct{
+type AwsPlanesServer struct {
 	// BeginCreateOrUpdate is the fake for method AwsPlanesClient.BeginCreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	BeginCreateOrUpdate func(ctx context.Context, planeName string, resource v20231001preview.AwsPlaneResource, options *v20231001preview.AwsPlanesClientBeginCreateOrUpdateOptions) (resp azfake.PollerResponder[v20231001preview.AwsPlanesClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -39,7 +39,6 @@ type AwsPlanesServer struct{
 	// BeginUpdate is the fake for method AwsPlanesClient.BeginUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted
 	BeginUpdate func(ctx context.Context, planeName string, properties v20231001preview.AwsPlaneResourceTagsUpdate, options *v20231001preview.AwsPlanesClientBeginUpdateOptions) (resp azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse], errResp azfake.ErrorResponder)
-
 }
 
 // NewAwsPlanesServerTransport creates a new instance of AwsPlanesServerTransport with the provided implementation.
@@ -47,22 +46,22 @@ type AwsPlanesServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewAwsPlanesServerTransport(srv *AwsPlanesServer) *AwsPlanesServerTransport {
 	return &AwsPlanesServerTransport{
-		srv: srv,
+		srv:                 srv,
 		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientCreateOrUpdateResponse]](),
-		beginDelete: newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse]](),
-		newListPager: newTracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]](),
-		beginUpdate: newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse]](),
+		beginDelete:         newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse]](),
+		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]](),
+		beginUpdate:         newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse]](),
 	}
 }
 
 // AwsPlanesServerTransport connects instances of v20231001preview.AwsPlanesClient to instances of AwsPlanesServer.
 // Don't use this type directly, use NewAwsPlanesServerTransport instead.
 type AwsPlanesServerTransport struct {
-	srv *AwsPlanesServer
+	srv                 *AwsPlanesServer
 	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientCreateOrUpdateResponse]]
-	beginDelete *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse]]
-	newListPager *tracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]]
-	beginUpdate *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse]]
+	beginDelete         *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse]]
+	newListPager        *tracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]]
+	beginUpdate         *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse]]
 }
 
 // Do implements the policy.Transporter interface for AwsPlanesServerTransport.
@@ -83,8 +82,8 @@ func (a *AwsPlanesServerTransport) dispatchToMethodFake(req *http.Request, metho
 	go func() {
 		var intercepted bool
 		var res result
-		 if awsPlanesServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = awsPlanesServerTransportInterceptor.Do(req)
+		if awsPlanesServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = awsPlanesServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -98,8 +97,8 @@ func (a *AwsPlanesServerTransport) dispatchToMethodFake(req *http.Request, metho
 				res.resp, res.err = a.dispatchNewListPager(req)
 			case "AwsPlanesClient.BeginUpdate":
 				res.resp, res.err = a.dispatchBeginUpdate(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -123,24 +122,24 @@ func (a *AwsPlanesServerTransport) dispatchBeginCreateOrUpdate(req *http.Request
 	}
 	beginCreateOrUpdate := a.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResource](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := a.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResource](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := a.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginCreateOrUpdate = &respr
 		a.beginCreateOrUpdate.add(req, beginCreateOrUpdate)
 	}
@@ -167,20 +166,20 @@ func (a *AwsPlanesServerTransport) dispatchBeginDelete(req *http.Request) (*http
 	}
 	beginDelete := a.beginDelete.get(req)
 	if beginDelete == nil {
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := a.srv.BeginDelete(req.Context(), planeNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := a.srv.BeginDelete(req.Context(), planeNameParam, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginDelete = &respr
 		a.beginDelete.add(req, beginDelete)
 	}
@@ -236,7 +235,7 @@ func (a *AwsPlanesServerTransport) dispatchNewListPager(req *http.Request) (*htt
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-resp := a.srv.NewListPager(nil)
+		resp := a.srv.NewListPager(nil)
 		newListPager = &resp
 		a.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.AwsPlanesClientListResponse, createLink func() string) {
@@ -263,24 +262,24 @@ func (a *AwsPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*http
 	}
 	beginUpdate := a.beginUpdate.get(req)
 	if beginUpdate == nil {
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResourceTagsUpdate](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := a.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResourceTagsUpdate](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := a.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginUpdate = &respr
 		a.beginUpdate.add(req, beginUpdate)
 	}

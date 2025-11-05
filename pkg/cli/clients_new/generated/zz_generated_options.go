@@ -7,13 +7,13 @@ package generated
 // GenericResourcesClientBeginCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.BeginCreateOrUpdate
 // method.
 type GenericResourcesClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // GenericResourcesClientBeginDeleteOptions contains the optional parameters for the GenericResourcesClient.BeginDelete method.
 type GenericResourcesClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -32,4 +32,3 @@ type GenericResourcesClientListByRootScopeOptions struct {
 type GenericResourcesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
-
