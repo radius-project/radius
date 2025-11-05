@@ -24,8 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -75,170 +73,129 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run_DeleteConfirmed(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func Test_Run(t *testing.T) {
+	t.Parallel()
 
-	appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appMgmtClient.EXPECT().DeleteRecipePack(gomock.Any(), "sample-pack").Return(true, nil)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
-		Workspace:         &workspaces.Workspace{Name: "test", Scope: "/planes/radius/local/resourceGroups/test-group"},
-		Output:            outputSink,
-		InputPrompter:     prompt.NewMockInterface(ctrl),
-		RecipePackName:    "sample-pack",
-		Confirm:           true,
+	cases := []struct {
+		name           string
+		confirm        bool
+		promptChoice   string
+		expectDelete   bool
+		deleteReturn   bool
+		deleteErr      error
+		workspaceScope string
+		expectedLogs   []output.LogOutput
+		expectedErrMsg string
+	}{
+		{
+			name:           "confirm flag bypasses prompt",
+			confirm:        true,
+			expectDelete:   true,
+			deleteReturn:   true,
+			workspaceScope: "/planes/radius/local/resourceGroups/test-group",
+			expectedLogs: []output.LogOutput{
+				{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
+				{Format: msgRecipePackDeleted, Params: []any{"sample-pack"}},
+			},
+		},
+		{
+			name:           "prompt confirms deletion",
+			confirm:        false,
+			promptChoice:   prompt.ConfirmYes,
+			expectDelete:   true,
+			deleteReturn:   true,
+			workspaceScope: "/planes/radius/local/resourceGroups/test-group",
+			expectedLogs: []output.LogOutput{
+				{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
+				{Format: msgRecipePackDeleted, Params: []any{"sample-pack"}},
+			},
+		},
+		{
+			name:           "prompt declines deletion",
+			confirm:        false,
+			promptChoice:   prompt.ConfirmNo,
+			expectDelete:   false,
+			workspaceScope: "/planes/radius/local/resourceGroups/test-group",
+			expectedLogs: []output.LogOutput{
+				{Format: msgRecipePackNotDeleted, Params: []any{"sample-pack"}},
+			},
+		},
+		{
+			name:           "delete returns not found",
+			confirm:        true,
+			expectDelete:   true,
+			deleteReturn:   false,
+			workspaceScope: "/planes/radius/local",
+			expectedLogs: []output.LogOutput{
+				{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
+				{Format: msgRecipePackNotFound, Params: []any{"sample-pack"}},
+			},
+		},
+		{
+			name:           "delete returns error",
+			confirm:        true,
+			expectDelete:   true,
+			deleteReturn:   false,
+			deleteErr:      fmt.Errorf("error"),
+			workspaceScope: "/planes/radius/local",
+			expectedErrMsg: "failed to delete resource group sample-pack: error",
+			expectedLogs: []output.LogOutput{
+				{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
+			},
+		},
+		{
+			name:           "delete returns 404",
+			confirm:        true,
+			expectDelete:   true,
+			deleteReturn:   false,
+			deleteErr:      nil,
+			workspaceScope: "/planes/radius/local",
+			expectedLogs: []output.LogOutput{
+				{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
+				{Format: msgRecipePackNotFound, Params: []any{"sample-pack"}},
+			},
+		},
 	}
 
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	expected := []any{
-		output.LogOutput{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
-		output.LogOutput{Format: msgRecipePackDeleted, Params: []any{"sample-pack"}},
+			promptMock := prompt.NewMockInterface(ctrl)
+			if !tc.confirm {
+				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationMsg, "sample-pack")).Return(tc.promptChoice, nil)
+			}
+
+			appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
+			if tc.expectDelete {
+				appMgmtClient.EXPECT().DeleteRecipePack(gomock.Any(), "sample-pack").Return(tc.deleteReturn, tc.deleteErr)
+			}
+
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
+				Workspace:         &workspaces.Workspace{Name: "test", Scope: tc.workspaceScope},
+				Output:            outputSink,
+				InputPrompter:     promptMock,
+				RecipePackName:    "sample-pack",
+				Confirm:           tc.confirm,
+			}
+
+			err := runner.Run(context.Background())
+			if tc.expectedErrMsg != "" {
+				require.Error(t, err)
+				require.EqualError(t, err, tc.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+			}
+
+			expected := make([]any, len(tc.expectedLogs))
+			for i, log := range tc.expectedLogs {
+				expected[i] = log
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
 	}
-	require.Equal(t, expected, outputSink.Writes)
-}
-
-func Test_Run_DeleteWithPromptConfirmed(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	promptMock := prompt.NewMockInterface(ctrl)
-	promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationMsg, "sample-pack")).Return(prompt.ConfirmYes, nil)
-
-	appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appMgmtClient.EXPECT().DeleteRecipePack(gomock.Any(), "sample-pack").Return(true, nil)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
-		Workspace:         &workspaces.Workspace{Name: "test", Scope: "/planes/radius/local/resourceGroups/test-group"},
-		Output:            outputSink,
-		InputPrompter:     promptMock,
-		RecipePackName:    "sample-pack",
-		Confirm:           false,
-	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-
-	expected := []any{
-		output.LogOutput{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
-		output.LogOutput{Format: msgRecipePackDeleted, Params: []any{"sample-pack"}},
-	}
-	require.Equal(t, expected, outputSink.Writes)
-}
-
-func Test_Run_DeleteWithPromptDeclined(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	promptMock := prompt.NewMockInterface(ctrl)
-	promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationMsg, "sample-pack")).Return(prompt.ConfirmNo, nil)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: clients.NewMockApplicationsManagementClient(ctrl)},
-		Workspace:         &workspaces.Workspace{Name: "test", Scope: "/planes/radius/local/resourceGroups/test-group"},
-		Output:            outputSink,
-		InputPrompter:     promptMock,
-		RecipePackName:    "sample-pack",
-		Confirm:           false,
-	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-
-	expected := []any{
-		output.LogOutput{Format: msgRecipePackNotDeleted, Params: []any{"sample-pack"}},
-	}
-	require.Equal(t, expected, outputSink.Writes)
-}
-
-func Test_Run_DeleteNotFound(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appMgmtClient.EXPECT().DeleteRecipePack(gomock.Any(), "sample-pack").Return(false, nil)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
-		Workspace:         &workspaces.Workspace{Name: "test", Scope: "/planes/radius/local"},
-		Output:            outputSink,
-		InputPrompter:     prompt.NewMockInterface(ctrl),
-		RecipePackName:    "sample-pack",
-		Confirm:           true,
-	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-
-	expected := []any{
-		output.LogOutput{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
-		output.LogOutput{Format: msgRecipePackNotFound, Params: []any{"sample-pack"}},
-	}
-	require.Equal(t, expected, outputSink.Writes)
-}
-
-func Test_Run_DeleteError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	deleteErr := fmt.Errorf("boom")
-
-	appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appMgmtClient.EXPECT().DeleteRecipePack(gomock.Any(), "sample-pack").Return(false, deleteErr)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
-		Workspace:         &workspaces.Workspace{Name: "test", Scope: "/planes/radius/local"},
-		Output:            outputSink,
-		InputPrompter:     prompt.NewMockInterface(ctrl),
-		RecipePackName:    "sample-pack",
-		Confirm:           true,
-	}
-
-	err := runner.Run(context.Background())
-	require.Error(t, err)
-	require.Equal(t, deleteErr, err)
-
-	expected := []any{
-		output.LogOutput{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
-	}
-	require.Equal(t, expected, outputSink.Writes)
-}
-
-func Test_Run_DeleteError404(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	notFoundErr := &azcore.ResponseError{StatusCode: 404, ErrorCode: v1.CodeNotFound}
-
-	appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appMgmtClient.EXPECT().DeleteRecipePack(gomock.Any(), "sample-pack").Return(false, notFoundErr)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
-		Workspace:         &workspaces.Workspace{Name: "test", Scope: "/planes/radius/local"},
-		Output:            outputSink,
-		InputPrompter:     prompt.NewMockInterface(ctrl),
-		RecipePackName:    "sample-pack",
-		Confirm:           true,
-	}
-
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-
-	expected := []any{
-		output.LogOutput{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
-		output.LogOutput{Format: msgRecipePackNotFound, Params: []any{"sample-pack"}},
-	}
-	require.Equal(t, expected, outputSink.Writes)
 }
