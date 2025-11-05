@@ -519,16 +519,29 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 }
 
 func resolveConnections(resource generated.GenericResource, jsonRefPath string, converter resolver) []*corerpv20231001preview.ApplicationGraphConnection {
-	// We need to access the connections in a weakly-typed way since the data type we're
-	// working with is a property bag.
-	p, err := jsonpointer.New(jsonRefPath)
-	if err != nil {
-		// This should never fail since we're hard-coding the path.
-		panic("parsing JSON pointer should not fail: " + err.Error())
+	// Access data directly from the property bag instead of using jsonpointer on the struct.
+	// The jsonpointer approach failed to locate '/properties/...' because the struct field is
+	// named 'Properties' and does not serialize to a lowercase key until marshalled. Tests
+	// provide raw JSON with lowercase keys, so direct map access is more reliable.
+	var raw any
+	switch jsonRefPath {
+	case connectionsPath:
+		raw = resource.Properties["connections"]
+	case routesPath:
+		raw = resource.Properties["routes"]
+	default:
+		p, err := jsonpointer.New(jsonRefPath)
+		if err != nil {
+			// This should never fail since we're hard-coding the path.
+			panic("parsing JSON pointer should not fail: " + err.Error())
+		}
+		val, _, err := p.Get(&resource)
+		if err == nil {
+			raw = val
+		}
 	}
 
-	raw, _, err := p.Get(&resource)
-	if err != nil {
+	if raw == nil {
 		// Not found, this is fine.
 		return []*corerpv20231001preview.ApplicationGraphConnection{}
 	}
@@ -543,6 +556,8 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 		for _, v := range conn {
 			items = append(items, v)
 		}
+	default:
+		return []*corerpv20231001preview.ApplicationGraphConnection{}
 	}
 
 	if len(items) == 0 {
