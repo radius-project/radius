@@ -24,7 +24,7 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 )
 
-const testHeaderfilev20250801preview = "requestheadersv20250801preview.json"
+const testHeaderfilev20250801preview = "requestheaderspreview.json"
 
 func getTestModelsv20250801preview() (*v20250801preview.EnvironmentResource, *datamodel.Environment_v20250801preview, *v20250801preview.EnvironmentResource) {
 	rawInput := testutil.ReadFixture("environmentresource_input.json")
