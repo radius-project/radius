@@ -31,7 +31,7 @@ func getTestModelsv20250801preview() (*v20250801preview.EnvironmentResource, *da
 	envInput := &v20250801preview.EnvironmentResource{}
 	_ = json.Unmarshal(rawInput, envInput)
 
-	rawDataModel := testutil.ReadFixture("environmentresourcev20250801preview_datamodel.json")
+	rawDataModel := testutil.ReadFixture("environmentresource_datamodel.json")
 	envDataModel := &datamodel.Environment_v20250801preview{}
 	_ = json.Unmarshal(rawDataModel, envDataModel)
 
