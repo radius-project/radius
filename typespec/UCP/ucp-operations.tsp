@@ -67,7 +67,7 @@ op UcpResourceCreateOrUpdateAsync<
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
-  @body
+  @bodyRoot
   resource: TResource,
 ): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedResponse<TResource> | ErrorResponse;
 
@@ -124,7 +124,7 @@ op UcpResourceCreateOrUpdateSync<
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
-  @body
+  @bodyRoot
   resource: TResource,
 ): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedSyncResponse<TResource> | ErrorResponse;
 

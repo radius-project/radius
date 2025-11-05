@@ -87,6 +87,7 @@ interface RadiusPlanes {
   >;
 
   @doc("Update a plane")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchAsync<
     RadiusPlaneResource,
     PlaneBaseParameters<RadiusPlaneResource>

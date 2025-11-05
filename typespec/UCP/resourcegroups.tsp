@@ -94,6 +94,7 @@ interface ResourceGroups {
   >;
 
   @doc("Update a resource group")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>

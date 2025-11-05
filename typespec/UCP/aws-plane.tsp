@@ -85,6 +85,7 @@ interface AwsPlanes {
   >;
 
   @doc("Update a plane")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchAsync<
     AwsPlaneResource,
     PlaneBaseParameters<AwsPlaneResource>

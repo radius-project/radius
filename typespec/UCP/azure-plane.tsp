@@ -88,6 +88,7 @@ interface AzurePlanes {
   >;
 
   @doc("Update a plane")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchAsync<
     AzurePlaneResource,
     PlaneBaseParameters<AzurePlaneResource>

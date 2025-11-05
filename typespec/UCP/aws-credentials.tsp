@@ -136,6 +136,7 @@ interface AwsCredentials {
   >;
 
   @doc("Update an AWS credential")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>
