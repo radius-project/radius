@@ -27,7 +27,7 @@ import (
 const testHeaderfilev20250801preview = "requestheadersv20250801preview.json"
 
 func getTestModelsv20250801preview() (*v20250801preview.EnvironmentResource, *datamodel.Environment_v20250801preview, *v20250801preview.EnvironmentResource) {
-	rawInput := testutil.ReadFixture("environmentresourcev20250801preview_input.json")
+	rawInput := testutil.ReadFixture("environmentresource_input.json")
 	envInput := &v20250801preview.EnvironmentResource{}
 	_ = json.Unmarshal(rawInput, envInput)
 
@@ -35,7 +35,7 @@ func getTestModelsv20250801preview() (*v20250801preview.EnvironmentResource, *da
 	envDataModel := &datamodel.Environment_v20250801preview{}
 	_ = json.Unmarshal(rawDataModel, envDataModel)
 
-	rawExpectedOutput := testutil.ReadFixture("environmentresourcev20250801preview_output.json")
+	rawExpectedOutput := testutil.ReadFixture("environmentresource_output.json")
 	expectedOutput := &v20250801preview.EnvironmentResource{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
