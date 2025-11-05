@@ -21,9 +21,7 @@ using Azure.Core;
 using OpenAPI;
 
 @armProviderNamespace
-@service(#{
-  title: "Radius Core Resource Provider",
-})
+@service(#{ title: "Radius Core Resource Provider" })
 @doc("REST APIs for next-generation Radius Core resources (preview).")
 @versioned(Versions)
 namespace Radius.Core;

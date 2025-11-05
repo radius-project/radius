@@ -23,9 +23,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service(#{
-  title: "Applications.Messaging Resource Management APIs",
-})
+@service(#{ title: "Applications.Messaging Resource Management APIs" })
 @doc("REST APIs for Applications.Messaging")
 @versioned(Versions)
 namespace Applications.Messaging;

@@ -35,9 +35,7 @@ using Azure.ResourceManager;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/missing-operations-endpoint"
 @armProviderNamespace
-@service(#{
-  title: "Universal Control Plane Resource Management APIs",
-})
+@service(#{ title: "Universal Control Plane Resource Management APIs" })
 @doc("REST APIs for Universal Control Plane")
 @versioned(Versions)
 namespace Ucp;

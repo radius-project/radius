@@ -29,9 +29,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service(#{
-  title: "Applications.Core Management APIs",
-})
+@service(#{ title: "Applications.Core Management APIs" })
 @doc("REST APIs for Applications.Core")
 @versioned(Versions)
 namespace Applications.Core;

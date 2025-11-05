@@ -26,9 +26,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service(#{
-  title: "Applications.Dapr Resource Management APIs",
-})
+@service(#{ title: "Applications.Dapr Resource Management APIs" })
 @doc("REST API for Applications.Dapr")
 @versioned(Versions)
 namespace Applications.Dapr;

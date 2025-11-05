@@ -26,9 +26,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service(#{
-  title: "Test.Resource Resource Management APIs",
-})
+@service(#{ title: "Test.Resource Resource Management APIs" })
 @doc("REST APIs for Test.Resource")
 @versioned(Versions)
 namespace Test.Resource;

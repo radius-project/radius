@@ -56,9 +56,7 @@ op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
-  #{
-    `final-state-via`: "azure-async-operation",
-  }
+  #{ `final-state-via`: "azure-async-operation" }
 )
 @armResourceCreateOrUpdate(TResource)
 @put
@@ -79,9 +77,7 @@ op UcpResourceCreateOrUpdateAsync<
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
-  #{
-    `final-state-via`: "location",
-  }
+  #{ `final-state-via`: "location" }
 )
 @armResourceUpdate(TResource)
 @patch
@@ -103,9 +99,7 @@ op UcpCustomPatchAsync<
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
-  #{
-    `final-state-via`: "location",
-  }
+  #{ `final-state-via`: "location" }
 )
 @armResourceDelete(TResource)
 @delete
