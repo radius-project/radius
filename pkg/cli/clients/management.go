@@ -580,14 +580,11 @@ func (amc *UCPApplicationsManagementClient) DeleteRecipePack(ctx context.Context
 		if Is404Error(err) {
 			return false, nil
 		}
+
 		return false, err
 	}
 
-	if response != nil && response.StatusCode == http.StatusNoContent {
-		return false, nil
-	}
-
-	return true, nil
+	return response.StatusCode != 204, nil
 }
 
 // GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
