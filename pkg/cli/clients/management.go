@@ -577,10 +577,6 @@ func (amc *UCPApplicationsManagementClient) DeleteRecipePack(ctx context.Context
 
 	_, err = client.Delete(ctx, name, nil)
 	if err != nil {
-		if Is404Error(err) {
-			return false, nil
-		}
-
 		return false, err
 	}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -141,6 +142,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	deleted, err := client.DeleteRecipePack(ctx, r.RecipePackName)
 	if err != nil {
+		if clients.Is404Error(err) {
+			r.Output.LogInfo(msgRecipePackNotFound, r.RecipePackName)
+			return nil
+		}
 		return fmt.Errorf("failed to delete resource group %s: %w", r.RecipePackName, err)
 	}
 

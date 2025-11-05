@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -148,7 +150,7 @@ func Test_Run(t *testing.T) {
 			confirm:        true,
 			expectDelete:   true,
 			deleteReturn:   false,
-			deleteErr:      nil,
+			deleteErr:      &azcore.ResponseError{StatusCode: 404, ErrorCode: v1.CodeNotFound},
 			workspaceScope: "/planes/radius/local",
 			expectedLogs: []output.LogOutput{
 				{Format: msgDeletingRecipePack, Params: []any{"sample-pack"}},
