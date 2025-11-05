@@ -33,11 +33,11 @@ import (
 )
 
 const (
-	testEnvID       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env"
-	testEnvIDV2     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Radius.Core/environments/env"
-	namespace       = "default"
-	appNamespace    = "app-default"
-	customNamespace = "custom-ns"
+	testAppCoreEnvID    = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env"
+	testRadiusCoreEnvID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Radius.Core/environments/env"
+	namespace           = "default"
+	appNamespace        = "app-default"
+	customNamespace     = "custom-ns"
 )
 
 func fakeStoreObject(dm v1.DataModelInterface) *database.Object {
@@ -67,13 +67,13 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 			prop: rpv1.KubernetesComputeProperties{
 				Namespace: "default-ns",
 			},
-			id:  testEnvID,
+			id:  testAppCoreEnvID,
 			out: "default-ns",
 		},
 		{
 			desc: "undefined namespace",
 			prop: rpv1.KubernetesComputeProperties{},
-			id:   testEnvID,
+			id:   testAppCoreEnvID,
 			out:  "env",
 		},
 	}
@@ -92,7 +92,7 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 			mockSC := database.NewMockClient(mctrl)
 			mockSC.EXPECT().Get(gomock.Any(), tc.id, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
 
-			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testEnvID)
+			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testAppCoreEnvID)
 			require.NoError(t, err)
 			require.Equal(t, tc.out, ns)
 		})
@@ -210,9 +210,9 @@ func TestFindNamespaceByEnvID_V20250801Preview(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			mockSC := database.NewMockClient(mctrl)
-			mockSC.EXPECT().Get(gomock.Any(), testEnvIDV2, gomock.Any()).Return(fakeStoreObject(tc.environment), nil).Times(1)
+			mockSC.EXPECT().Get(gomock.Any(), testRadiusCoreEnvID, gomock.Any()).Return(fakeStoreObject(tc.environment), nil).Times(1)
 
-			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testEnvIDV2)
+			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testRadiusCoreEnvID)
 			if tc.expectedError != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.expectedError)
@@ -247,9 +247,9 @@ func TestFindNamespaceByEnvID_NonKubernetesEnvironment(t *testing.T) {
 	}
 
 	mockSC := database.NewMockClient(mctrl)
-	mockSC.EXPECT().Get(gomock.Any(), testEnvID, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
+	mockSC.EXPECT().Get(gomock.Any(), testAppCoreEnvID, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
 
-	_, err := FindNamespaceByEnvID(context.Background(), mockSC, testEnvID)
+	_, err := FindNamespaceByEnvID(context.Background(), mockSC, testAppCoreEnvID)
 	require.Error(t, err)
 	require.Equal(t, ErrNonKubernetesEnvironment, err)
 }
