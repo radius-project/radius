@@ -19,7 +19,6 @@ package delete
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -32,8 +31,10 @@ import (
 )
 
 const (
-	warnDependencies   = "There are currently application(s) or resource(s) associated with this environment."
-	deleteConfirmation = "Are you sure you want to delete environment '%v'?"
+	msgEnvironmentDeleted    = "Environment deleted"
+	msgEnvironmentNotFound   = "Environment '%s' does not exist or has already been deleted."
+	msgDeletingEnvironment   = "Deleting environment %s...\n"
+	msgDeletingResourceCount = "Deleting %d resource(s) in environment %s...\n"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
@@ -97,9 +98,6 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad env delete` command.
-//
-
 // Validate takes in a command and a slice of strings and sets the workspace, scope, environment name, confirmation and output
 // format of the runner based on the command and the strings. It returns an error if any of these values cannot be set.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -136,9 +134,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad env delete` command.
-//
-
 // Run prompts the user to confirm the deletion of an environment, creates an applications management client, and
 // deletes the environment if confirmed. It returns an error if the prompt or client creation fails.
 func (r *Runner) Run(ctx context.Context) error {
@@ -147,34 +142,40 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Get resource counts for better user feedback
+	resourcesInEnvironment, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+	if err != nil {
+		return err
+	}
+
+	totalResourceCount := len(resourcesInEnvironment)
+
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		// Doesn't list applications
-		resourcesInEnvironment, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
-		if err != nil {
-			return err
+		var promptMsg string
+		if totalResourceCount > 0 {
+			promptMsg = fmt.Sprintf("The environment %s contains %d deployed resource(s). Are you sure you want to delete the environment and its resources?",
+				r.EnvironmentName, totalResourceCount)
+		} else {
+			promptMsg = fmt.Sprintf("The environment %s is empty. Are you sure you want to delete the environment?",
+				r.EnvironmentName)
 		}
 
-		appsInEnvironment, err := client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, "Applications.Core/applications")
-		if err != nil {
-			return err
-		}
-
-		var promptBuilder strings.Builder
-		if len(appsInEnvironment) > 0 || len(resourcesInEnvironment) > 0 {
-			promptBuilder.WriteString(warnDependencies)
-			promptBuilder.WriteString(" ")
-		}
-		promptBuilder.WriteString(fmt.Sprintf(deleteConfirmation, r.EnvironmentName))
-
-		confirmed, err := prompt.YesOrNoPrompt(promptBuilder.String(), prompt.ConfirmNo, r.InputPrompter)
+		confirmed, err := prompt.YesOrNoPrompt(promptMsg, prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
+			r.Output.LogInfo("Environment %q NOT deleted", r.EnvironmentName)
 			return nil
 		}
 	}
+
+	// Show progress messages
+	if totalResourceCount > 0 {
+		r.Output.LogInfo(msgDeletingResourceCount, totalResourceCount, r.EnvironmentName)
+	}
+	r.Output.LogInfo(msgDeletingEnvironment, r.EnvironmentName)
 
 	deleted, err := client.DeleteEnvironment(ctx, r.EnvironmentName)
 	if err != nil {
@@ -182,9 +183,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if deleted {
-		r.Output.LogInfo("Environment deleted")
+		r.Output.LogInfo(msgEnvironmentDeleted)
 	} else {
-		r.Output.LogInfo("Environment '%s' does not exist or has already been deleted.", r.EnvironmentName)
+		r.Output.LogInfo(msgEnvironmentNotFound, r.EnvironmentName)
 	}
 
 	return nil

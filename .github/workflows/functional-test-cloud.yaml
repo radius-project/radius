@@ -31,10 +31,8 @@ on:
         required: true
         default: "main"
   schedule:
-    # Run every 4 hours on weekdays.
-    - cron: "30 0,4,8,12,16,20 * * 1-5"
-    # Run every 12 hours on weekends.
-    - cron: "30 0,12 * * 0,6"
+    # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
+    - cron: "0 1,13,19 * * *"
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
@@ -47,7 +45,7 @@ env:
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.12.0
+  GOTESTSUM_VER: 1.13.0
 
   # Helm version
   HELM_VER: "v3.12.0"
@@ -170,6 +168,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: "Download PR data artifacts"
         if: github.event_name == 'workflow_run'
@@ -208,10 +208,12 @@ jobs:
               );
             }
 
-      - uses: actions/checkout@v5
+      - name: Check out code
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
       
       - name: Copy Deployment Engine image to GHCR
         if: github.event_name == 'repository_dispatch'
@@ -229,6 +231,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -402,7 +405,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
           path: |
@@ -442,7 +445,7 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: "18"
 
@@ -451,7 +454,7 @@ jobs:
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: radius_bicep_types_cloud
           path: ./hack/bicep-types-radius/generated
@@ -540,7 +543,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest-m]
+        os: [ubuntu-latest]
         name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
@@ -577,6 +580,7 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
 
       - name: Checkout Samples repository
         uses: actions/checkout@v5
@@ -594,7 +598,7 @@ jobs:
           cache: true
 
       - name: Download rad CLI
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
@@ -635,7 +639,7 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@v5.0.0
+        uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -907,7 +911,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -929,7 +933,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs

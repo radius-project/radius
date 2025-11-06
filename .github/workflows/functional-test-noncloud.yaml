@@ -29,8 +29,9 @@ on:
         required: true
         default: "main"
   schedule:
-    - cron: "30 0,4,8,12,16,20 * * 1-5"
-    - cron: "30 0,12 * * 0,6"
+    # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
+    - cron: "0 1,13,19 * * *"
+  # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
   pull_request:
@@ -95,7 +96,8 @@ jobs:
               );
             }
 
-      - uses: actions/checkout@v5
+      - name: Check out code
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -270,6 +272,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: Checkout samples repo
         uses: actions/checkout@v5
@@ -287,7 +291,7 @@ jobs:
           cache: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '18'
 
@@ -296,7 +300,7 @@ jobs:
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
@@ -588,7 +592,7 @@ jobs:
           kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
 
       - name: Upload Pod logs for failed tests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always() && steps.radius-logs-events.outcome == 'success'
         with:
           name: ${{ matrix.name }}-radius-pod-logs
@@ -608,7 +612,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -626,7 +630,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs

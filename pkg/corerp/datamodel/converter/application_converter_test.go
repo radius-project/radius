@@ -26,9 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// NOTE: this test is to validate the type conversion between versioned model and data model.
-// Converted content must be tested in ConvertFrom and ConvertTo tests in api models under /pkg/api/[api-version].
-
 func TestApplicationDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string

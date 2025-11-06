@@ -23,8 +23,9 @@ ifeq ($(GOOS),windows)
    CMD_EXT = .cmd
 endif
 
+# generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
@@ -57,7 +58,7 @@ generate-autorest-installed:
 .PHONY: generate-controller-gen-installed
 generate-controller-gen-installed:
 	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0'"; exit 1; }
+	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0'"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-ucp-crd

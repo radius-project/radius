@@ -31,6 +31,7 @@ jobs:
         with:
           repository: radius-project/radius
           path: radius
+          submodules: recursive
       - name: Parse release version and set environment variables
         run: python radius/.github/scripts/get_release_version.py
       - name: Generate docs release branch name
@@ -54,7 +55,7 @@ jobs:
           cache-dependency-path: radius/go.sum
           cache: true
       - name: Setup NodeJS
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: "18"
       - name: Install TypeSpec compiler
@@ -73,7 +74,7 @@ jobs:
       - name: Install controller-gen
         run: |
           cd radius
-          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.0
+          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
       # Generate Bicep docs
       - name: Generate Bicep docs
         run: |
@@ -83,7 +84,7 @@ jobs:
       - name: Generate resource reference docs
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
       - name: Upload resource reference docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: resource-docs
           path: docs/docs/content/reference/resources
@@ -94,7 +95,7 @@ jobs:
           cd radius
           go run cmd/docgen/main.go ../docs/docs/content/reference/cli
       - name: Upload CLI docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli

@@ -43,6 +43,25 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
+// Direction - The direction of a connection.
+type Direction string
+
+const (
+// DirectionInbound - The resource defining this connection accepts inbound connections from the resource specified by this
+// id.
+	DirectionInbound Direction = "Inbound"
+// DirectionOutbound - The resource defining this connection makes an outbound connection resource specified by this id.
+	DirectionOutbound Direction = "Outbound"
+)
+
+// PossibleDirectionValues returns the possible values for the Direction const type.
+func PossibleDirectionValues() []Direction {
+	return []Direction{	
+		DirectionInbound,
+		DirectionOutbound,
+	}
+}
+
 // IdentitySettingKind - IdentitySettingKind is the kind of supported external identity setting
 type IdentitySettingKind string
 
@@ -122,6 +141,24 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
+	}
+}
+
+// RecipeKind - The type of recipe
+type RecipeKind string
+
+const (
+// RecipeKindBicep - Bicep recipe
+	RecipeKindBicep RecipeKind = "bicep"
+// RecipeKindTerraform - Terraform recipe
+	RecipeKindTerraform RecipeKind = "terraform"
+)
+
+// PossibleRecipeKindValues returns the possible values for the RecipeKind const type.
+func PossibleRecipeKindValues() []RecipeKind {
+	return []RecipeKind{	
+		RecipeKindBicep,
+		RecipeKindTerraform,
 	}
 }
 
