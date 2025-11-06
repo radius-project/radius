@@ -560,6 +560,29 @@ func (amc *UCPApplicationsManagementClient) GetRecipePack(ctx context.Context, r
 	return resp.RecipePackResource, nil
 }
 
+// DeleteRecipePack deletes a recipe pack by its name (in the configured scope) or resource ID.
+func (amc *UCPApplicationsManagementClient) DeleteRecipePack(ctx context.Context, recipePackNameOrID string) (bool, error) {
+	scope, name, err := amc.extractScopeAndName(recipePackNameOrID)
+	if err != nil {
+		return false, err
+	}
+
+	client, err := amc.createRecipePackClient(scope)
+	if err != nil {
+		return false, err
+	}
+
+	var response *http.Response
+	ctx = amc.captureResponse(ctx, &response)
+
+	_, err = client.Delete(ctx, name, nil)
+	if err != nil {
+		return false, err
+	}
+
+	return response.StatusCode != 204, nil
+}
+
 // GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
 func (amc *UCPApplicationsManagementClient) GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipeMetadata corerpv20231001.RecipeGetMetadata) (corerpv20231001.RecipeGetMetadataResponse, error) {
 	scope, name, err := amc.extractScopeAndName(environmentNameOrID)
