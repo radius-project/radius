@@ -13,7 +13,7 @@ import (
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
 	rootScope string
-	internal *arm.Client
+	internal  *arm.Client
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -30,7 +30,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}
 	return &ClientFactory{
 		rootScope: rootScope,
-		internal: internal,
+		internal:  internal,
 	}, nil
 }
 
@@ -38,7 +38,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 func (c *ClientFactory) NewConfigurationStoresClient() *ConfigurationStoresClient {
 	return &ConfigurationStoresClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -53,7 +53,7 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 func (c *ClientFactory) NewPubSubBrokersClient() *PubSubBrokersClient {
 	return &PubSubBrokersClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -61,7 +61,7 @@ func (c *ClientFactory) NewPubSubBrokersClient() *PubSubBrokersClient {
 func (c *ClientFactory) NewSecretStoresClient() *SecretStoresClient {
 	return &SecretStoresClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -69,7 +69,6 @@ func (c *ClientFactory) NewSecretStoresClient() *SecretStoresClient {
 func (c *ClientFactory) NewStateStoresClient() *StateStoresClient {
 	return &StateStoresClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
-

@@ -19,7 +19,7 @@ import (
 // SecretStoresClient contains the methods for the SecretStores group.
 // Don't use this type directly, use NewSecretStoresClient() instead.
 type SecretStoresClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewSecretStoresClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &SecretStoresClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *SecretStoresClient) BeginCreateOrUpdate(ctx context.Context, secre
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a DaprSecretStoreResource
@@ -127,7 +127,7 @@ func (client *SecretStoresClient) BeginDelete(ctx context.Context, secretStoreNa
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -238,7 +238,7 @@ func (client *SecretStoresClient) getHandleResponse(resp *http.Response) (Secret
 // Generated from API version 2023-10-01-preview
 //   - options - SecretStoresClientListByScopeOptions contains the optional parameters for the SecretStoresClient.NewListByScopePager
 //     method.
-func (client *SecretStoresClient) NewListByScopePager(options *SecretStoresClientListByScopeOptions) (*runtime.Pager[SecretStoresClientListByScopeResponse]) {
+func (client *SecretStoresClient) NewListByScopePager(options *SecretStoresClientListByScopeOptions) *runtime.Pager[SecretStoresClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[SecretStoresClientListByScopeResponse]{
 		More: func(page SecretStoresClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -255,7 +255,7 @@ func (client *SecretStoresClient) NewListByScopePager(options *SecretStoresClien
 				return SecretStoresClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -300,7 +300,7 @@ func (client *SecretStoresClient) BeginUpdate(ctx context.Context, secretStoreNa
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -350,8 +350,7 @@ func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, secre
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

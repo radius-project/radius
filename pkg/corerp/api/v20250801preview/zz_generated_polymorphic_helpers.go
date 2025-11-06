@@ -28,4 +28,3 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	}
 	return b, nil
 }
-

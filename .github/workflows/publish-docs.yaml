@@ -57,16 +57,16 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: "18"
+          node-version: "22"
       - name: Install TypeSpec compiler
         run: |
           pushd radius/typespec
           npm ci
           popd
       - name: Install autorest
-        run: npm install -g autorest@3.7.1
+        run: npm install -g autorest@3.7.2
       - name: Install oav
-        run: npm install -g oav@3.3.5
+        run: npm install -g oav@4.0.2
       - name: Install mockgen
         run: |
           cd radius

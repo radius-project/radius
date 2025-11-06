@@ -35,9 +35,7 @@ using Azure.ResourceManager;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/missing-operations-endpoint"
 @armProviderNamespace
-@service({
-  title: "Universal Control Plane Resource Management APIs",
-})
+@service(#{ title: "Universal Control Plane Resource Management APIs" })
 @doc("REST APIs for Universal Control Plane")
 @versioned(Versions)
 namespace Ucp;
@@ -45,7 +43,5 @@ namespace Ucp;
 @doc("Supported API versions for Universal Control Plane resource provider.")
 enum Versions {
   @doc("2023-10-01-preview")
-  @useDependency(Azure.Core.Versions.v1_0_Preview_2)
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2023_10_01_preview: "2023-10-01-preview",
 }

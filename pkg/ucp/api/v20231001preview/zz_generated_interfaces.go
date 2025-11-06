@@ -30,4 +30,3 @@ type CredentialStoragePropertiesClassification interface {
 	// GetCredentialStorageProperties returns the CredentialStorageProperties content of the underlying type.
 	GetCredentialStorageProperties() *CredentialStorageProperties
 }
-

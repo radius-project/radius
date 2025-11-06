@@ -31,7 +31,7 @@ func NewResourceProvidersClient(credential azcore.TokenCredential, options *arm.
 		return nil, err
 	}
 	client := &ResourceProvidersClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -53,7 +53,7 @@ func (client *ResourceProvidersClient) BeginCreateOrUpdate(ctx context.Context, 
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ResourceProvidersClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -108,9 +108,9 @@ func (client *ResourceProvidersClient) createOrUpdateCreateRequest(ctx context.C
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a resource provider
@@ -129,7 +129,7 @@ func (client *ResourceProvidersClient) BeginDelete(ctx context.Context, planeNam
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ResourceProvidersClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -314,13 +314,13 @@ func (client *ResourceProvidersClient) getProviderSummaryHandleResponse(resp *ht
 //   - planeName - The plane name.
 //   - options - ResourceProvidersClientListOptions contains the optional parameters for the ResourceProvidersClient.NewListPager
 //     method.
-func (client *ResourceProvidersClient) NewListPager(planeName string, options *ResourceProvidersClientListOptions) (*runtime.Pager[ResourceProvidersClientListResponse]) {
+func (client *ResourceProvidersClient) NewListPager(planeName string, options *ResourceProvidersClientListOptions) *runtime.Pager[ResourceProvidersClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ResourceProvidersClientListResponse]{
 		More: func(page ResourceProvidersClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceProvidersClientListResponse) (ResourceProvidersClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -332,7 +332,7 @@ func (client *ResourceProvidersClient) NewListPager(planeName string, options *R
 				return ResourceProvidersClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -371,13 +371,13 @@ func (client *ResourceProvidersClient) listHandleResponse(resp *http.Response) (
 //   - planeName - The plane name.
 //   - options - ResourceProvidersClientListProviderSummariesOptions contains the optional parameters for the ResourceProvidersClient.NewListProviderSummariesPager
 //     method.
-func (client *ResourceProvidersClient) NewListProviderSummariesPager(planeName string, options *ResourceProvidersClientListProviderSummariesOptions) (*runtime.Pager[ResourceProvidersClientListProviderSummariesResponse]) {
+func (client *ResourceProvidersClient) NewListProviderSummariesPager(planeName string, options *ResourceProvidersClientListProviderSummariesOptions) *runtime.Pager[ResourceProvidersClientListProviderSummariesResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ResourceProvidersClientListProviderSummariesResponse]{
 		More: func(page ResourceProvidersClientListProviderSummariesResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceProvidersClientListProviderSummariesResponse) (ResourceProvidersClientListProviderSummariesResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.NewListProviderSummariesPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.NewListProviderSummariesPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -389,7 +389,7 @@ func (client *ResourceProvidersClient) NewListProviderSummariesPager(planeName s
 				return ResourceProvidersClientListProviderSummariesResponse{}, err
 			}
 			return client.listProviderSummariesHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -420,4 +420,3 @@ func (client *ResourceProvidersClient) listProviderSummariesHandleResponse(resp 
 	}
 	return result, nil
 }
-

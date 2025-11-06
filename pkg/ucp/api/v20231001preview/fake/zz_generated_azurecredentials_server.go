@@ -19,7 +19,7 @@ import (
 )
 
 // AzureCredentialsServer is a fake server for instances of the v20231001preview.AzureCredentialsClient type.
-type AzureCredentialsServer struct{
+type AzureCredentialsServer struct {
 	// CreateOrUpdate is the fake for method AzureCredentialsClient.CreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	CreateOrUpdate func(ctx context.Context, planeName string, credentialName string, resource v20231001preview.AzureCredentialResource, options *v20231001preview.AzureCredentialsClientCreateOrUpdateOptions) (resp azfake.Responder[v20231001preview.AzureCredentialsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -39,7 +39,6 @@ type AzureCredentialsServer struct{
 	// Update is the fake for method AzureCredentialsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
 	Update func(ctx context.Context, planeName string, credentialName string, properties v20231001preview.AzureCredentialResourceTagsUpdate, options *v20231001preview.AzureCredentialsClientUpdateOptions) (resp azfake.Responder[v20231001preview.AzureCredentialsClientUpdateResponse], errResp azfake.ErrorResponder)
-
 }
 
 // NewAzureCredentialsServerTransport creates a new instance of AzureCredentialsServerTransport with the provided implementation.
@@ -47,7 +46,7 @@ type AzureCredentialsServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewAzureCredentialsServerTransport(srv *AzureCredentialsServer) *AzureCredentialsServerTransport {
 	return &AzureCredentialsServerTransport{
-		srv: srv,
+		srv:          srv,
 		newListPager: newTracker[azfake.PagerResponder[v20231001preview.AzureCredentialsClientListResponse]](),
 	}
 }
@@ -55,7 +54,7 @@ func NewAzureCredentialsServerTransport(srv *AzureCredentialsServer) *AzureCrede
 // AzureCredentialsServerTransport connects instances of v20231001preview.AzureCredentialsClient to instances of AzureCredentialsServer.
 // Don't use this type directly, use NewAzureCredentialsServerTransport instead.
 type AzureCredentialsServerTransport struct {
-	srv *AzureCredentialsServer
+	srv          *AzureCredentialsServer
 	newListPager *tracker[azfake.PagerResponder[v20231001preview.AzureCredentialsClientListResponse]]
 }
 
@@ -77,8 +76,8 @@ func (a *AzureCredentialsServerTransport) dispatchToMethodFake(req *http.Request
 	go func() {
 		var intercepted bool
 		var res result
-		 if azureCredentialsServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = azureCredentialsServerTransportInterceptor.Do(req)
+		if azureCredentialsServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = azureCredentialsServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -92,8 +91,8 @@ func (a *AzureCredentialsServerTransport) dispatchToMethodFake(req *http.Request
 				res.resp, res.err = a.dispatchNewListPager(req)
 			case "AzureCredentialsClient.Update":
 				res.resp, res.err = a.dispatchUpdate(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -118,7 +117,7 @@ func (a *AzureCredentialsServerTransport) dispatchCreateOrUpdate(req *http.Reque
 	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	body, err := server.UnmarshalRequestAsJSON[v20231001preview.AzureCredentialResource](req)
@@ -155,7 +154,7 @@ func (a *AzureCredentialsServerTransport) dispatchDelete(req *http.Request) (*ht
 	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -188,7 +187,7 @@ func (a *AzureCredentialsServerTransport) dispatchGet(req *http.Request) (*http.
 	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -220,17 +219,17 @@ func (a *AzureCredentialsServerTransport) dispatchNewListPager(req *http.Request
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-resp := a.srv.NewListPager(planeNameParam, nil)
+		const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := a.srv.NewListPager(planeNameParam, nil)
 		newListPager = &resp
 		a.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.AzureCredentialsClientListResponse, createLink func() string) {
@@ -258,7 +257,7 @@ func (a *AzureCredentialsServerTransport) dispatchUpdate(req *http.Request) (*ht
 	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	body, err := server.UnmarshalRequestAsJSON[v20231001preview.AzureCredentialResourceTagsUpdate](req)

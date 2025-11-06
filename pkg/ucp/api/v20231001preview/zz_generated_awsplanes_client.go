@@ -31,7 +31,7 @@ func NewAwsPlanesClient(credential azcore.TokenCredential, options *arm.ClientOp
 		return nil, err
 	}
 	client := &AwsPlanesClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -52,7 +52,7 @@ func (client *AwsPlanesClient) BeginCreateOrUpdate(ctx context.Context, planeNam
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AwsPlanesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -103,9 +103,9 @@ func (client *AwsPlanesClient) createOrUpdateCreateRequest(ctx context.Context, 
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a plane
@@ -122,7 +122,7 @@ func (client *AwsPlanesClient) BeginDelete(ctx context.Context, planeName string
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AwsPlanesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -234,13 +234,13 @@ func (client *AwsPlanesClient) getHandleResponse(resp *http.Response) (AwsPlanes
 //
 // Generated from API version 2023-10-01-preview
 //   - options - AwsPlanesClientListOptions contains the optional parameters for the AwsPlanesClient.NewListPager method.
-func (client *AwsPlanesClient) NewListPager(options *AwsPlanesClientListOptions) (*runtime.Pager[AwsPlanesClientListResponse]) {
+func (client *AwsPlanesClient) NewListPager(options *AwsPlanesClientListOptions) *runtime.Pager[AwsPlanesClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[AwsPlanesClientListResponse]{
 		More: func(page AwsPlanesClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AwsPlanesClientListResponse) (AwsPlanesClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AwsPlanesClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AwsPlanesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -252,7 +252,7 @@ func (client *AwsPlanesClient) NewListPager(options *AwsPlanesClientListOptions)
 				return AwsPlanesClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -295,7 +295,7 @@ func (client *AwsPlanesClient) BeginUpdate(ctx context.Context, planeName string
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AwsPlanesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -346,8 +346,7 @@ func (client *AwsPlanesClient) updateCreateRequest(ctx context.Context, planeNam
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-
