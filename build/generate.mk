@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -25,7 +25,7 @@ endif
 
 # generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-fix-version generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
@@ -36,7 +36,7 @@ generate-tsp-installed:
 .PHONY: generate-openapi-spec
 generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 	@echo  "Generating openapi specs from typespec models."
-	cd typespec/UCP && npx$(CMD_EXT) tsp compile . 
+	cd typespec/UCP && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Messaging && npx$(CMD_EXT) tsp compile .
@@ -79,45 +79,44 @@ generate-cleanup: ## Deletes all generated code.
 	find . -type f -name 'zz_*.go' ! -name 'zz_*.deepcopy.go' -delete
 	@echo "$(ARROW) Done."
 
-.PHONY: generate-fix-version
-generate-fix-version: ## Fixes the module version in generated files.
-	@echo "$(ARROW) Fixing module version..."
-	grep -rl --include \zz_*.go 'moduleVersion = "v0.1.0"' | xargs -r sed -i "s/moduleVersion = \"v0.1.0\"/moduleVersion = \"v$(AUTOREST_MODULE_VERSION)\"/"
-	@echo "$(ARROW) Done."
-
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-node-installed generate-autorest-installed
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
 	autorest pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod && go fmt ./pkg/cli/clients_new/generated/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	@echo "$(ARROW) Generating 'pkg/corerp/api/v20231001preview'"
 	autorest pkg/corerp/api/README.md --tag=core-2023-10-01-preview && rm pkg/corerp/api/v20231001preview/go.mod && go fmt ./pkg/corerp/api/v20231001preview/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client-2025-08-01-preview
 generate-rad-corerp-client-2025-08-01-preview: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (Autorest).
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	@echo "$(ARROW) Generating 'pkg/corerp/api/v20250801preview'"
 	autorest pkg/corerp/api/README.md --tag=core-2025-08-01-preview && rm pkg/corerp/api/v20250801preview/go.mod && go fmt ./pkg/corerp/api/v20250801preview/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-datastoresrp-client
 generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	@echo "$(ARROW) Generating 'pkg/datastoresrp/api/v20231001preview'"
 	autorest pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview && rm pkg/datastoresrp/api/v20231001preview/go.mod && go fmt ./pkg/datastoresrp/api/v20231001preview/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-messagingrp-client
 generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	@echo "$(ARROW) Generating 'pkg/messagingrp/api/v20231001preview'"
 	autorest pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview && rm pkg/messagingrp/api/v20231001preview/go.mod && go fmt ./pkg/messagingrp/api/v20231001preview/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-daprrp-client
 generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	@echo "$(ARROW) Generating 'pkg/daprrp/api/v20231001preview'"
 	autorest pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview && rm pkg/daprrp/api/v20231001preview/go.mod && go fmt ./pkg/daprrp/api/v20231001preview/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
-	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview && rm pkg/ucp/api/v20231001preview/go.mod && go fmt ./pkg/ucp/api/v20231001preview/...
 
 .PHONY: generate-mockgen-installed
