@@ -28,7 +28,7 @@ import (
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
-	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments_v20250801preview"
+	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments/v20250801preview"
 	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
 	rp_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/recipepacks"
