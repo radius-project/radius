@@ -5,5 +5,5 @@ package generated
 
 const (
 	moduleName    = "github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	moduleVersion = "v0.0.1"
+	moduleVersion = "v0.1.0"
 )
