@@ -321,6 +321,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download release artifacts

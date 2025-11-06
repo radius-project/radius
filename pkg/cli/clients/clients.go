@@ -211,6 +211,9 @@ type ApplicationsManagementClient interface {
 	// GetRecipePack retrieves a recipe pack by its name (in the configured scope) or resource ID.
 	GetRecipePack(ctx context.Context, recipePackNameOrID string) (radiuscore.RecipePackResource, error)
 
+	// DeleteRecipePack deletes a recipe pack by its name (in the configured scope) or resource ID.
+	DeleteRecipePack(ctx context.Context, recipePackNameOrID string) (bool, error)
+
 	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.
 	GetEnvironment(ctx context.Context, environmentNameOrID string) (corerp.EnvironmentResource, error)
 
