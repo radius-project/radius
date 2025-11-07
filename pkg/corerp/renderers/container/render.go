@@ -248,7 +248,11 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(*resource, appId.Name(), secretData, options))
+		secretResource, err := r.makeSecret(*resource, appId.Name(), secretData, options)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		outputResources = append(outputResources, secretResource)
 	}
 
 	var servicePorts []corev1.ServicePort
@@ -267,7 +271,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
-		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
+		basesrv, err := getServiceBase(baseManifest, appId.Name(), resource, &options)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
 		serviceResource, err := r.makeService(basesrv, resource, servicePorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -305,7 +312,11 @@ SKIPINSERT:
 		base.Spec.Ports = append(base.Spec.Ports, newPort)
 	}
 
-	base.Spec.Selector = kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
+	selectorLabels, err := kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
+	if err != nil {
+		return rpv1.OutputResource{}, err
+	}
+	base.Spec.Selector = selectorLabels
 	base.Spec.Type = corev1.ServiceTypeClusterIP
 
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, base, base.ObjectMeta), nil
@@ -325,9 +336,15 @@ func (r Renderer) makeDeployment(
 	dependencies := options.Dependencies
 	properties := resource.Properties
 
-	normalizedName := kubernetes.NormalizeResourceName(resource.Name)
+	normalizedName, err := kubernetes.NormalizeResourceName(resource.Name)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 
-	deployment := getDeploymentBase(manifest, applicationName, resource, &options)
+	deployment, err := getDeploymentBase(manifest, applicationName, resource, &options)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 	podSpec := &deployment.Spec.Template.Spec
 
 	container := &podSpec.Containers[0]
@@ -357,7 +374,6 @@ func (r Renderer) makeDeployment(
 		container.ImagePullPolicy = corev1.PullPolicy(properties.Container.ImagePullPolicy)
 	}
 
-	var err error
 	if !properties.Container.ReadinessProbe.IsEmpty() {
 		container.ReadinessProbe, err = r.makeHealthProbe(properties.Container.ReadinessProbe)
 		if err != nil {
@@ -394,7 +410,10 @@ func (r Renderer) makeDeployment(
 	outputResources := []rpv1.OutputResource{}
 	deps := []string{}
 
-	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	podLabels, err := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 
 	// Add volumes
 	volumes := []corev1.Volume{}
@@ -405,7 +424,10 @@ func (r Renderer) makeDeployment(
 
 	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
 	// To avoid the naming conflicts, we add the application name prefix to resource name.
-	azIdentityName := azrenderer.MakeResourceName(applicationName, resource.Name, azrenderer.Separator)
+	azIdentityName, err := azrenderer.MakeResourceName(applicationName, resource.Name, azrenderer.Separator)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 
 	for volumeName, volumeProperties := range properties.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
@@ -460,7 +482,10 @@ func (r Renderer) makeDeployment(
 					return []rpv1.OutputResource{}, nil, err
 				}
 
-				spcName := kubernetes.NormalizeResourceName(vol.Name)
+				spcName, err := kubernetes.NormalizeResourceName(vol.Name)
+				if err != nil {
+					return []rpv1.OutputResource{}, nil, err
+				}
 				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, vol, objectSpec, &options.Environment)
 				if err != nil {
 					return []rpv1.OutputResource{}, nil, err
@@ -499,7 +524,10 @@ func (r Renderer) makeDeployment(
 		}
 	}
 
-	serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)
+	serviceAccountBase, err := getServiceAccountBase(manifest, applicationName, resource, &options)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
@@ -576,11 +604,17 @@ func (r Renderer) makeDeployment(
 	}
 
 	// Create the role and role bindings for SA.
-	role := makeRBACRole(applicationName, kubeIdentityName, options.Environment.Namespace, resource)
+	role, err := makeRBACRole(applicationName, kubeIdentityName, options.Environment.Namespace, resource)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 	outputResources = append(outputResources, *role)
 	deps = append(deps, rpv1.LocalIDKubernetesRole)
 
-	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, podSpec.ServiceAccountName, options.Environment.Namespace, resource)
+	roleBinding, err := makeRBACRoleBinding(applicationName, kubeIdentityName, podSpec.ServiceAccountName, options.Environment.Namespace, resource)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 	outputResources = append(outputResources, *roleBinding)
 	deps = append(deps, rpv1.LocalIDKubernetesRoleBinding)
 
@@ -588,8 +622,12 @@ func (r Renderer) makeDeployment(
 		Labels: podLabels,
 	})
 
+	selectorLabels, err := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
+	if err != nil {
+		return []rpv1.OutputResource{}, nil, err
+	}
 	deployment.Spec.Selector = mergeLabelSelector(deployment.Spec.Selector, &metav1.LabelSelector{
-		MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
+		MatchLabels: selectorLabels,
 	})
 
 	podSpec.Volumes = append(podSpec.Volumes, volumes...)
@@ -707,6 +745,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 	// We'll store each value in a secret named with the same name as the resource.
 	// We'll use the environment variable names as keys.
 	// Float is used by the JSON serializer
+	var err error
 	for name, con := range properties.Connections {
 		properties := dependencies[con.Source]
 		if !con.GetDisableDefaultEnvVars() {
@@ -734,14 +773,20 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 				continue
 			}
 
-			env, secretData = updateEnvAndSecretData(name, resource.Name, properties.ComputedValues, env, secretData)
+			env, secretData, err = updateEnvAndSecretData(name, resource.Name, properties.ComputedValues, env, secretData)
+			if err != nil {
+				return nil, nil, err
+			}
 
 			if !resources.IsBuiltInType(con.Source) {
 				partialResource, err := resourceutil.GetPropertiesFromResource(properties.Resource)
 				if err != nil {
 					return nil, nil, err
 				}
-				env, secretData = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
+				env, secretData, err = updateEnvAndSecretData(name, resource.Name, partialResource, env, secretData)
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
@@ -749,7 +794,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, dependencies
 	return env, secretData, nil
 }
 
-func updateEnvAndSecretData(connName string, resourceName string, environmentVariablesInfo map[string]any, env map[string]corev1.EnvVar, secretData map[string][]byte) (updatedEnv map[string]corev1.EnvVar, updatedSecretData map[string][]byte) {
+func updateEnvAndSecretData(connName string, resourceName string, environmentVariablesInfo map[string]any, env map[string]corev1.EnvVar, secretData map[string][]byte) (updatedEnv map[string]corev1.EnvVar, updatedSecretData map[string][]byte, err error) {
 	for key, value := range environmentVariablesInfo {
 		if slices.Contains(resourceutil.BasicProperties, key) {
 			continue
@@ -758,17 +803,20 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 		if _, exists := env[name]; exists {
 			continue
 		}
+		normalizedResourceName, err := kubernetes.NormalizeResourceName(resourceName)
+		if err != nil {
+			return nil, nil, err
+		}
 		source := corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: kubernetes.NormalizeResourceName(resourceName),
+					Name: normalizedResourceName,
 				},
 				Key: name,
 			},
 		}
 
 		var secretValue []byte
-		var err error
 
 		// We store primitives (strings, integers, floats) as their string representations in the secret.
 		// Ex: 123 is converted to "123", 12.34 is converted to "12.34".
@@ -808,7 +856,7 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 		secretData[name] = secretValue
 		env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 	}
-	return env, secretData
+	return env, secretData, nil
 }
 
 func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Probe, error) {
@@ -894,23 +942,33 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makeSecret(resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
+func (r Renderer) makeSecret(resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) (rpv1.OutputResource, error) {
+	normalizedName, err := kubernetes.NormalizeResourceName(resource.Name)
+	if err != nil {
+		return rpv1.OutputResource{}, err
+	}
+	
+	labels, err := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	if err != nil {
+		return rpv1.OutputResource{}, err
+	}
+	
 	secret := corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(resource.Name),
+			Name:      normalizedName,
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
+			Labels:    labels,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: secrets,
 	}
 
 	output := rpv1.NewKubernetesOutputResource(rpv1.LocalIDSecret, &secret, secret.ObjectMeta)
-	return output
+	return output, nil
 }
 
 func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
