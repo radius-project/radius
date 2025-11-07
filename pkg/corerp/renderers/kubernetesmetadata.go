@@ -23,10 +23,15 @@ import (
 
 // GetLabels merges cumulative label values from Environment, Application, Container and InputExt kubernetes metadata and
 // returns a map of labels.
-func GetLabels(options RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
+func GetLabels(options RenderOptions, applicationName string, resourceName string, resourceTypeName string) (map[string]string, error) {
 	// Create KubernetesMetadata struct to merge labels
+	descriptiveLabels, err := kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resourceTypeName)
+	if err != nil {
+		return nil, err
+	}
+	
 	lblMap := kube.Metadata{
-		ObjectMetadata: kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resourceTypeName),
+		ObjectMetadata: descriptiveLabels,
 	}
 	envOpts := &options.Environment
 	appOpts := &options.Application
@@ -41,10 +46,10 @@ func GetLabels(options RenderOptions, applicationName string, resourceName strin
 	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, Env->App->Container->InputExt
 	// values are merged in that order. Spec labels are not updated.
 	if metaLabels, _ := lblMap.Merge(); len(metaLabels) > 0 {
-		return metaLabels
+		return metaLabels, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 // GetAnnotations returns the merged annotations from Environment and Application KubernetesMetadata.

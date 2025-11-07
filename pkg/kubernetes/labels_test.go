@@ -76,9 +76,9 @@ func TestConvertLabelToResourceType(t *testing.T) {
 
 func TestNormalizeResoureName(t *testing.T) {
 	nameTests := []struct {
-		in    string
-		out   string
-		panic bool
+		in      string
+		out     string
+		wantErr bool
 	}{
 		{
 			in:  "resource",
@@ -89,9 +89,9 @@ func TestNormalizeResoureName(t *testing.T) {
 			out: "resource",
 		},
 		{
-			in:    "panic_",
-			out:   "",
-			panic: true,
+			in:      "panic_",
+			out:     "",
+			wantErr: true,
 		},
 		{
 			in:  "",
@@ -101,12 +101,12 @@ func TestNormalizeResoureName(t *testing.T) {
 
 	for _, tt := range nameTests {
 		t.Run(tt.in, func(t *testing.T) {
-			if tt.panic {
-				require.Panics(t, func() {
-					NormalizeResourceName(tt.in)
-				})
+			result, err := NormalizeResourceName(tt.in)
+			if tt.wantErr {
+				require.Error(t, err)
 			} else {
-				require.Equal(t, tt.out, NormalizeResourceName(tt.in))
+				require.NoError(t, err)
+				require.Equal(t, tt.out, result)
 			}
 		})
 	}
@@ -114,9 +114,9 @@ func TestNormalizeResoureName(t *testing.T) {
 
 func TestNormalizeResourceNameDapr(t *testing.T) {
 	nameTests := []struct {
-		in    string
-		out   string
-		panic bool
+		in      string
+		out     string
+		wantErr bool
 	}{
 		{
 			in:  "pub.sub",
@@ -131,20 +131,20 @@ func TestNormalizeResourceNameDapr(t *testing.T) {
 			out: "resource",
 		},
 		{
-			in:    "pub_sub",
-			out:   "pub_sub",
-			panic: true,
+			in:      "pub_sub",
+			out:     "pub_sub",
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range nameTests {
 		t.Run(tt.in, func(t *testing.T) {
-			if tt.panic {
-				require.Panics(t, func() {
-					NormalizeDaprResourceName(tt.in)
-				})
+			result, err := NormalizeDaprResourceName(tt.in)
+			if tt.wantErr {
+				require.Error(t, err)
 			} else {
-				require.Equal(t, tt.out, NormalizeDaprResourceName(tt.in))
+				require.NoError(t, err)
+				require.Equal(t, tt.out, result)
 			}
 		})
 	}

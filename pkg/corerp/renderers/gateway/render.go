@@ -79,7 +79,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
 	}
 	applicationName := appId.Name()
-	gatewayName := kubernetes.NormalizeResourceName(gateway.Name)
+	gatewayName, err := kubernetes.NormalizeResourceName(gateway.Name)
+	if err != nil {
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid gateway name: %s", err.Error()))
+	}
 	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options.Environment.Gateway)
 
 	var publicEndpoint string
@@ -203,7 +206,10 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 			return rpv1.OutputResource{}, err
 		}
 
-		routeResourceName := kubernetes.NormalizeResourceName(routeName)
+		routeResourceName, err := kubernetes.NormalizeResourceName(routeName)
+		if err != nil {
+			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid route name: %s", err.Error()))
+		}
 		prefix := route.Path
 
 		if sslPassthrough {
@@ -250,14 +256,29 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 			return rpv1.OutputResource{}, err
 		}
 
+		normalizedRouteName, err := kubernetes.NormalizeResourceName(routeName)
+		if err != nil {
+			return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid route name: %s", err.Error()))
+		}
+
 		tcpProxy = &contourv1.TCPProxy{
 			Services: []contourv1.Service{
 				{
-					Name: kubernetes.NormalizeResourceName(routeName),
+					Name: normalizedRouteName,
 					Port: int(port),
 				},
 			},
 		}
+	}
+
+	normalizedResourceName, err := kubernetes.NormalizeResourceName(resourceName)
+	if err != nil {
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid resource name: %s", err.Error()))
+	}
+
+	labels, err := renderers.GetLabels(options, applicationName, resourceName, gateway.ResourceTypeName())
+	if err != nil {
+		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to generate labels: %s", err.Error()))
 	}
 
 	// The root HTTPProxy object acts as the Gateway
@@ -267,9 +288,9 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 			APIVersion: contourv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        kubernetes.NormalizeResourceName(resourceName),
+			Name:        normalizedResourceName,
 			Namespace:   options.Environment.Namespace,
-			Labels:      renderers.GetLabels(options, applicationName, resourceName, gateway.ResourceTypeName()),
+			Labels:      labels,
 			Annotations: renderers.GetAnnotations(options),
 		},
 		Spec: contourv1.HTTPProxySpec{
@@ -315,7 +336,10 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 
 		// Create unique localID for dependency graph
 		localID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpProxy, routeName)
-		routeResourceName := kubernetes.NormalizeResourceName(routeName)
+		routeResourceName, err := kubernetes.NormalizeResourceName(routeName)
+		if err != nil {
+			return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid route name: %s", err.Error()))
+		}
 
 		var pathRewritePolicy *contourv1.PathRewritePolicy
 		if route.ReplacePrefix != "" {
@@ -375,6 +399,11 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 			continue
 		}
 
+		labels, err := renderers.GetLabels(options, applicationName, routeName, resource.ResourceTypeName())
+		if err != nil {
+			return []rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to generate labels: %s", err.Error()))
+		}
+
 		httpProxyObject := &contourv1.HTTPProxy{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "HTTPProxy",
@@ -383,7 +412,7 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        routeResourceName,
 				Namespace:   options.Environment.Namespace,
-				Labels:      renderers.GetLabels(options, applicationName, routeName, resource.ResourceTypeName()),
+				Labels:      labels,
 				Annotations: renderers.GetAnnotations(options),
 			},
 			Spec: contourv1.HTTPProxySpec{
