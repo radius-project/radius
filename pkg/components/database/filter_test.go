@@ -113,6 +113,12 @@ func Test_MatchesFilters(t *testing.T) {
 			Filters:       []QueryFilter{{Field: "properties.value", Value: "warm"}},
 			ExpectedMatch: false,
 		},
+		{
+			Description:   "field_does_not_exist",
+			Obj:           &Object{Data: map[string]any{"value": "cool"}},
+			Filters:       []QueryFilter{{Field: "value", Value: "hot"}},
+			ExpectedMatch: false,
+		},
 	}
 
 	for _, testcase := range cases {
