@@ -62,7 +62,8 @@ func mustMakeDescriptiveLabels(t *testing.T, app, resource, resourceType string)
 }
 
 func mustMakeSelectorLabels(t *testing.T, app, resource string) map[string]string {
-	labels := mustMakeSelectorLabels(t, app, resource)
+	labels, err := kubernetes.MakeSelectorLabels(app, resource)
+	require.NoError(t, err)
 	return labels
 }
 const (
