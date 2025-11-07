@@ -47,6 +47,24 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+
+// Test helper functions
+func mustNormalize(t *testing.T, name string) string {
+	normalized, err := kubernetes.NormalizeResourceName(name)
+	require.NoError(t, err)
+	return normalized
+}
+
+func mustMakeDescriptiveLabels(t *testing.T, app, resource, resourceType string) map[string]string {
+	labels, err := kubernetes.MakeDescriptiveLabels(app, resource, resourceType)
+	require.NoError(t, err)
+	return labels
+}
+
+func mustMakeSelectorLabels(t *testing.T, app, resource string) map[string]string {
+	labels := mustMakeSelectorLabels(t, app, resource)
+	return labels
+}
 const (
 	applicationName       = "test-app"
 	applicationResourceID = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
@@ -395,8 +413,8 @@ func Test_Render_Basic(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-	matchLabels := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
+	labels := mustMakeDescriptiveLabels(t, applicationName, resource.Name, resource.ResourceTypeName())
+	matchLabels := mustMakeSelectorLabels(t, applicationName, resource.Name)
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
@@ -515,8 +533,8 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-	matchLabels := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
+	labels := mustMakeDescriptiveLabels(t, applicationName, resource.Name, resource.ResourceTypeName())
+	matchLabels := mustMakeSelectorLabels(t, applicationName, resource.Name)
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
@@ -688,7 +706,7 @@ func Test_Render_Connections(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	labels := mustMakeDescriptiveLabels(t, applicationName, resource.Name, resource.ResourceTypeName())
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, _ := kubernetes.FindDeployment(output.Resources)
@@ -1781,9 +1799,9 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		expectedOutputResource := rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta)
 
 		require.Equal(t, expectedOutputResource, outputResource)
-		require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)
+		require.Equal(t, mustNormalize(t, resource.Name), service.Name)
 		require.Equal(t, "", service.Namespace)
-		require.Equal(t, kubernetes.MakeSelectorLabels(applicationName, resource.Name), service.Spec.Selector)
+		require.Equal(t, mustMakeSelectorLabels(t, applicationName, resource.Name), service.Spec.Selector)
 		require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
 		require.Len(t, service.Spec.Ports, 1)
 
@@ -2198,7 +2216,7 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 				secretData[k] = v
 			}
 
-			updatedEnv, updatedSecretData := updateEnvAndSecretData(
+			updatedEnv, updatedSecretData, err := updateEnvAndSecretData(
 				tc.connName,
 				tc.resourceName,
 				tc.environmentVariablesInfo,
@@ -2206,6 +2224,7 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 				secretData,
 			)
 
+require.NoError(t, err)
 			actualEnvKeys := []string{}
 			for key := range updatedEnv {
 				actualEnvKeys = append(actualEnvKeys, key)
@@ -2234,7 +2253,7 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 				require.Equal(t, key, envVar.Name)
 				require.NotNil(t, envVar.ValueFrom)
 				require.NotNil(t, envVar.ValueFrom.SecretKeyRef)
-				require.Equal(t, kubernetes.NormalizeResourceName(tc.resourceName), envVar.ValueFrom.SecretKeyRef.Name)
+				require.Equal(t, mustNormalize(t, tc.resourceName), envVar.ValueFrom.SecretKeyRef.Name)
 				require.Equal(t, key, envVar.ValueFrom.SecretKeyRef.Key)
 			}
 		})

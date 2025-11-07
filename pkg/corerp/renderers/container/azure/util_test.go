@@ -47,7 +47,9 @@ func TestMakeResourceName(t *testing.T) {
 
 	for _, tt := range nameTests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.out, MakeResourceName(tt.prefix, tt.name, Separator))
+			result, err := MakeResourceName(tt.prefix, tt.name, Separator)
+			require.NoError(t, err)
+			require.Equal(t, tt.out, result)
 		})
 	}
 }

@@ -388,7 +388,7 @@ func TestGetDeploymentBase(t *testing.T) {
 
 	for _, tc := range deploymentTests {
 		t.Run(tc.name, func(t *testing.T) {
-			deploy := getDeploymentBase(tc.manifest, "test", testResource, testOptions)
+			deploy, err := getDeploymentBase(tc.manifest, "test", testResource, testOptions); require.NoError(t, err)
 			require.Equal(t, tc.expected, deploy)
 		})
 	}
@@ -481,7 +481,8 @@ func TestGetServiceBase(t *testing.T) {
 
 	for _, tc := range serviceTests {
 		t.Run(tc.name, func(t *testing.T) {
-			deploy := getServiceBase(tc.manifest, "test", testResource, testOptions)
+			deploy, err := getServiceBase(tc.manifest, "test", testResource, testOptions)
+			require.NoError(t, err)
 			require.Equal(t, tc.expected, deploy)
 		})
 	}
@@ -564,7 +565,8 @@ func TestGetServiceAccountBase(t *testing.T) {
 
 	for _, tc := range accountTests {
 		t.Run(tc.name, func(t *testing.T) {
-			deploy := getServiceAccountBase(tc.manifest, "test", testResource, testOptions)
+			deploy, err := getServiceAccountBase(tc.manifest, "test", testResource, testOptions)
+			require.NoError(t, err)
 			require.Equal(t, tc.expected, deploy)
 		})
 	}
