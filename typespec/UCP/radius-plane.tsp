@@ -55,7 +55,7 @@ model RadiusPlaneResource
 @doc("The Plane properties.")
 model RadiusPlaneResourceProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Resource Providers for UCP Native Plane")
@@ -68,6 +68,7 @@ interface RadiusPlanes {
   @doc("List Radius planes")
   @get
   @route("/radius")
+  @list
   @armResourceList(RadiusPlaneResource)
   list(
     ...ApiVersionParameter,
@@ -86,6 +87,7 @@ interface RadiusPlanes {
   >;
 
   @doc("Update a plane")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchAsync<
     RadiusPlaneResource,
     PlaneBaseParameters<RadiusPlaneResource>

@@ -6,7 +6,7 @@ This is the AutoRest configuration file for Radius.
 
 ## Getting Started
 
-To build the SDKs for My API, simply install AutoRest via `npm` (`npm install -g autorest`) and then run:
+To build the SDKs for My API, simply install AutoRest via `npm` (`npm install -g autorest@3.7.2`) and then run:
 
 > `autorest readme.md`
 

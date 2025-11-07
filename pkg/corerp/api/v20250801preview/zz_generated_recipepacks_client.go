@@ -19,7 +19,7 @@ import (
 // RecipePacksClient contains the methods for the RecipePacks group.
 // Don't use this type directly, use NewRecipePacksClient() instead.
 type RecipePacksClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewRecipePacksClient(rootScope string, credential azcore.TokenCredential, o
 	}
 	client := &RecipePacksClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -86,9 +86,9 @@ func (client *RecipePacksClient) createOrUpdateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -203,7 +203,7 @@ func (client *RecipePacksClient) getHandleResponse(resp *http.Response) (RecipeP
 // Generated from API version 2025-08-01-preview
 //   - options - RecipePacksClientListByScopeOptions contains the optional parameters for the RecipePacksClient.NewListByScopePager
 //     method.
-func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientListByScopeOptions) (*runtime.Pager[RecipePacksClientListByScopeResponse]) {
+func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientListByScopeOptions) *runtime.Pager[RecipePacksClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[RecipePacksClientListByScopeResponse]{
 		More: func(page RecipePacksClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -220,7 +220,7 @@ func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientL
 				return RecipePacksClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -293,9 +293,9 @@ func (client *RecipePacksClient) updateCreateRequest(ctx context.Context, recipe
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -306,4 +306,3 @@ func (client *RecipePacksClient) updateHandleResponse(resp *http.Response) (Reci
 	}
 	return result, nil
 }
-

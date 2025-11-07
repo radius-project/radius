@@ -75,7 +75,7 @@ model AzureCredentialProperties {
   kind: AzureCredentialKind;
 
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 
@@ -143,6 +143,7 @@ interface AzureCredentials {
   >;
 
   @doc("Update an Azure credential")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchSync<
     AzureCredentialResource,
     AzureCredentialBaseParameter<AzureCredentialResource>

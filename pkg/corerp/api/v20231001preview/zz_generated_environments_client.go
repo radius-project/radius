@@ -19,7 +19,7 @@ import (
 // EnvironmentsClient contains the methods for the Environments group.
 // Don't use this type directly, use NewEnvironmentsClient() instead.
 type EnvironmentsClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &EnvironmentsClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -86,9 +86,9 @@ func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -243,9 +243,9 @@ func (client *EnvironmentsClient) getMetadataCreateRequest(ctx context.Context, 
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // getMetadataHandleResponse handles the GetMetadata response.
@@ -262,7 +262,7 @@ func (client *EnvironmentsClient) getMetadataHandleResponse(resp *http.Response)
 // Generated from API version 2023-10-01-preview
 //   - options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.NewListByScopePager
 //     method.
-func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) (*runtime.Pager[EnvironmentsClientListByScopeResponse]) {
+func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) *runtime.Pager[EnvironmentsClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[EnvironmentsClientListByScopeResponse]{
 		More: func(page EnvironmentsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -279,7 +279,7 @@ func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClien
 				return EnvironmentsClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -352,9 +352,9 @@ func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, envir
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -365,4 +365,3 @@ func (client *EnvironmentsClient) updateHandleResponse(resp *http.Response) (Env
 	}
 	return result, nil
 }
-

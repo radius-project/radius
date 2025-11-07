@@ -19,7 +19,7 @@ import (
 // RedisCachesClient contains the methods for the RedisCaches group.
 // Don't use this type directly, use NewRedisCachesClient() instead.
 type RedisCachesClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewRedisCachesClient(rootScope string, credential azcore.TokenCredential, o
 	}
 	client := &RedisCachesClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *RedisCachesClient) BeginCreateOrUpdate(ctx context.Context, redisC
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a RedisCacheResource
@@ -126,7 +126,7 @@ func (client *RedisCachesClient) BeginDelete(ctx context.Context, redisCacheName
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -237,7 +237,7 @@ func (client *RedisCachesClient) getHandleResponse(resp *http.Response) (RedisCa
 // Generated from API version 2023-10-01-preview
 //   - options - RedisCachesClientListByScopeOptions contains the optional parameters for the RedisCachesClient.NewListByScopePager
 //     method.
-func (client *RedisCachesClient) NewListByScopePager(options *RedisCachesClientListByScopeOptions) (*runtime.Pager[RedisCachesClientListByScopeResponse]) {
+func (client *RedisCachesClient) NewListByScopePager(options *RedisCachesClientListByScopeOptions) *runtime.Pager[RedisCachesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[RedisCachesClientListByScopeResponse]{
 		More: func(page RedisCachesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -254,7 +254,7 @@ func (client *RedisCachesClient) NewListByScopePager(options *RedisCachesClientL
 				return RedisCachesClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -327,9 +327,9 @@ func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, r
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
@@ -356,7 +356,7 @@ func (client *RedisCachesClient) BeginUpdate(ctx context.Context, redisCacheName
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -406,8 +406,7 @@ func (client *RedisCachesClient) updateCreateRequest(ctx context.Context, redisC
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

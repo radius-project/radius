@@ -26,9 +26,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service({
-  title: "Test.Resource Resource Management APIs",
-})
+@service(#{ title: "Test.Resource Resource Management APIs" })
 @doc("REST APIs for Test.Resource")
 @versioned(Versions)
 namespace Test.Resource;
@@ -38,12 +36,8 @@ interface Operations extends Azure.ResourceManager.Operations {}
 @doc("Supported API versions for the Test.Resource resource provider.")
 enum Versions {
   @doc("2022-08-19-preview")
-  @useDependency(Azure.Core.Versions.v1_0_Preview_2)
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2022_08_19_preview: "2022-08-19-preview",
 
   @doc("2023-08-19")
-  @useDependency(Azure.Core.Versions.v1_0_Preview_2)
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2023_08_19: "2023-08-19",
 }

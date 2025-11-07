@@ -19,7 +19,7 @@ import (
 )
 
 // ResourceProvidersServer is a fake server for instances of the v20231001preview.ResourceProvidersClient type.
-type ResourceProvidersServer struct{
+type ResourceProvidersServer struct {
 	// BeginCreateOrUpdate is the fake for method ResourceProvidersClient.BeginCreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	BeginCreateOrUpdate func(ctx context.Context, planeName string, resourceProviderName string, resource v20231001preview.ResourceProviderResource, options *v20231001preview.ResourceProvidersClientBeginCreateOrUpdateOptions) (resp azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -43,7 +43,6 @@ type ResourceProvidersServer struct{
 	// NewListProviderSummariesPager is the fake for method ResourceProvidersClient.NewListProviderSummariesPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListProviderSummariesPager func(planeName string, options *v20231001preview.ResourceProvidersClientListProviderSummariesOptions) (resp azfake.PagerResponder[v20231001preview.ResourceProvidersClientListProviderSummariesResponse])
-
 }
 
 // NewResourceProvidersServerTransport creates a new instance of ResourceProvidersServerTransport with the provided implementation.
@@ -51,10 +50,10 @@ type ResourceProvidersServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewResourceProvidersServerTransport(srv *ResourceProvidersServer) *ResourceProvidersServerTransport {
 	return &ResourceProvidersServerTransport{
-		srv: srv,
-		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse]](),
-		beginDelete: newTracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientDeleteResponse]](),
-		newListPager: newTracker[azfake.PagerResponder[v20231001preview.ResourceProvidersClientListResponse]](),
+		srv:                           srv,
+		beginCreateOrUpdate:           newTracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse]](),
+		beginDelete:                   newTracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientDeleteResponse]](),
+		newListPager:                  newTracker[azfake.PagerResponder[v20231001preview.ResourceProvidersClientListResponse]](),
 		newListProviderSummariesPager: newTracker[azfake.PagerResponder[v20231001preview.ResourceProvidersClientListProviderSummariesResponse]](),
 	}
 }
@@ -62,10 +61,10 @@ func NewResourceProvidersServerTransport(srv *ResourceProvidersServer) *Resource
 // ResourceProvidersServerTransport connects instances of v20231001preview.ResourceProvidersClient to instances of ResourceProvidersServer.
 // Don't use this type directly, use NewResourceProvidersServerTransport instead.
 type ResourceProvidersServerTransport struct {
-	srv *ResourceProvidersServer
-	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse]]
-	beginDelete *tracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientDeleteResponse]]
-	newListPager *tracker[azfake.PagerResponder[v20231001preview.ResourceProvidersClientListResponse]]
+	srv                           *ResourceProvidersServer
+	beginCreateOrUpdate           *tracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientCreateOrUpdateResponse]]
+	beginDelete                   *tracker[azfake.PollerResponder[v20231001preview.ResourceProvidersClientDeleteResponse]]
+	newListPager                  *tracker[azfake.PagerResponder[v20231001preview.ResourceProvidersClientListResponse]]
 	newListProviderSummariesPager *tracker[azfake.PagerResponder[v20231001preview.ResourceProvidersClientListProviderSummariesResponse]]
 }
 
@@ -87,8 +86,8 @@ func (r *ResourceProvidersServerTransport) dispatchToMethodFake(req *http.Reques
 	go func() {
 		var intercepted bool
 		var res result
-		 if resourceProvidersServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = resourceProvidersServerTransportInterceptor.Do(req)
+		if resourceProvidersServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = resourceProvidersServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -104,8 +103,8 @@ func (r *ResourceProvidersServerTransport) dispatchToMethodFake(req *http.Reques
 				res.resp, res.err = r.dispatchNewListPager(req)
 			case "ResourceProvidersClient.NewListProviderSummariesPager":
 				res.resp, res.err = r.dispatchNewListProviderSummariesPager(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -129,28 +128,28 @@ func (r *ResourceProvidersServerTransport) dispatchBeginCreateOrUpdate(req *http
 	}
 	beginCreateOrUpdate := r.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.ResourceProviderResource](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := r.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, resourceProviderNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 3 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.ResourceProviderResource](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := r.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, resourceProviderNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginCreateOrUpdate = &respr
 		r.beginCreateOrUpdate.add(req, beginCreateOrUpdate)
 	}
@@ -177,24 +176,24 @@ func (r *ResourceProvidersServerTransport) dispatchBeginDelete(req *http.Request
 	}
 	beginDelete := r.beginDelete.get(req)
 	if beginDelete == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := r.srv.BeginDelete(req.Context(), planeNameParam, resourceProviderNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 3 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := r.srv.BeginDelete(req.Context(), planeNameParam, resourceProviderNameParam, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginDelete = &respr
 		r.beginDelete.add(req, beginDelete)
 	}
@@ -222,7 +221,7 @@ func (r *ResourceProvidersServerTransport) dispatchGet(req *http.Request) (*http
 	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -255,7 +254,7 @@ func (r *ResourceProvidersServerTransport) dispatchGetProviderSummary(req *http.
 	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -287,17 +286,17 @@ func (r *ResourceProvidersServerTransport) dispatchNewListPager(req *http.Reques
 	}
 	newListPager := r.newListPager.get(req)
 	if newListPager == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-resp := r.srv.NewListPager(planeNameParam, nil)
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := r.srv.NewListPager(planeNameParam, nil)
 		newListPager = &resp
 		r.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.ResourceProvidersClientListResponse, createLink func() string) {
@@ -324,17 +323,17 @@ func (r *ResourceProvidersServerTransport) dispatchNewListProviderSummariesPager
 	}
 	newListProviderSummariesPager := r.newListProviderSummariesPager.get(req)
 	if newListProviderSummariesPager == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 1 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-resp := r.srv.NewListProviderSummariesPager(planeNameParam, nil)
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := r.srv.NewListProviderSummariesPager(planeNameParam, nil)
 		newListProviderSummariesPager = &resp
 		r.newListProviderSummariesPager.add(req, newListProviderSummariesPager)
 		server.PagerResponderInjectNextLinks(newListProviderSummariesPager, req, func(page *v20231001preview.ResourceProvidersClientListProviderSummariesResponse, createLink func() string) {

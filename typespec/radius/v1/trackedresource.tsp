@@ -15,8 +15,10 @@ limitations under the License.
 */
 
 import "@typespec/openapi";
+import "@typespec/http";
 
 using OpenAPI;
+using TypeSpec.Http;
 
 /* Using Azure.ResoureManager namespace here is a workaround for typespec bug: https://github.com/Azure/typespec-azure/issues/110"
    ARM TrackedResource resource has "properties" field optional. We do not want this because the user can skip the
@@ -27,7 +29,7 @@ namespace Azure.ResourceManager;
 
 @doc("Concrete tracked resource types can be created by aliasing this type using a specific property type.")
 @Azure.ResourceManager.Private.armResourceInternal(TProperties)
-@TypeSpec.Http.includeInapplicableMetadataInPayload(false)
+@Http.Private.includeInapplicableMetadataInPayload(false)
 model TrackedResourceRequired<
   TProperties extends {},
   TResourceType extends valueof string,
@@ -36,7 +38,7 @@ model TrackedResourceRequired<
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-invalid-envelope-property" "template"
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
   @doc("The resource-specific properties for this resource.")
-  @visibility("read", "create")
+  @visibility(Lifecycle.Read, Lifecycle.Create)
   @extension("x-ms-client-flatten", true)
   properties: TProperties;
 }

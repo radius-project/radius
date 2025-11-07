@@ -48,7 +48,7 @@ model ResourceGroupResource is TrackedResource<ResourceGroupProperties> {
 @doc("The resource group resource properties")
 model ResourceGroupProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 
@@ -59,7 +59,7 @@ model GenericResource extends ProxyResource<ResourceProperties> {
   @path
   @key("resourceName")
   @segment("resources")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   name: ResourceNameString;
 }
 
@@ -94,6 +94,7 @@ interface ResourceGroups {
   >;
 
   @doc("Update a resource group")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>

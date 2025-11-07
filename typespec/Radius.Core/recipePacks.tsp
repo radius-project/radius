@@ -44,14 +44,14 @@ model RecipePackResource
 @doc("Recipe Pack properties")
 model RecipePackProperties {
   @doc("The status of the asynchronous operation")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Description of what this recipe pack provides")
   description?: string;
 
   @doc("List of environment IDs that reference this recipe pack")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
   @doc("Map of resource types to their recipe configurations")

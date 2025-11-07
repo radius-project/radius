@@ -19,7 +19,7 @@ import (
 )
 
 // LocationsServer is a fake server for instances of the v20231001preview.LocationsClient type.
-type LocationsServer struct{
+type LocationsServer struct {
 	// BeginCreateOrUpdate is the fake for method LocationsClient.BeginCreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
 	BeginCreateOrUpdate func(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource v20231001preview.LocationResource, options *v20231001preview.LocationsClientBeginCreateOrUpdateOptions) (resp azfake.PollerResponder[v20231001preview.LocationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
@@ -35,7 +35,6 @@ type LocationsServer struct{
 	// NewListPager is the fake for method LocationsClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(planeName string, resourceProviderName string, options *v20231001preview.LocationsClientListOptions) (resp azfake.PagerResponder[v20231001preview.LocationsClientListResponse])
-
 }
 
 // NewLocationsServerTransport creates a new instance of LocationsServerTransport with the provided implementation.
@@ -43,20 +42,20 @@ type LocationsServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewLocationsServerTransport(srv *LocationsServer) *LocationsServerTransport {
 	return &LocationsServerTransport{
-		srv: srv,
+		srv:                 srv,
 		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.LocationsClientCreateOrUpdateResponse]](),
-		beginDelete: newTracker[azfake.PollerResponder[v20231001preview.LocationsClientDeleteResponse]](),
-		newListPager: newTracker[azfake.PagerResponder[v20231001preview.LocationsClientListResponse]](),
+		beginDelete:         newTracker[azfake.PollerResponder[v20231001preview.LocationsClientDeleteResponse]](),
+		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.LocationsClientListResponse]](),
 	}
 }
 
 // LocationsServerTransport connects instances of v20231001preview.LocationsClient to instances of LocationsServer.
 // Don't use this type directly, use NewLocationsServerTransport instead.
 type LocationsServerTransport struct {
-	srv *LocationsServer
+	srv                 *LocationsServer
 	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.LocationsClientCreateOrUpdateResponse]]
-	beginDelete *tracker[azfake.PollerResponder[v20231001preview.LocationsClientDeleteResponse]]
-	newListPager *tracker[azfake.PagerResponder[v20231001preview.LocationsClientListResponse]]
+	beginDelete         *tracker[azfake.PollerResponder[v20231001preview.LocationsClientDeleteResponse]]
+	newListPager        *tracker[azfake.PagerResponder[v20231001preview.LocationsClientListResponse]]
 }
 
 // Do implements the policy.Transporter interface for LocationsServerTransport.
@@ -77,8 +76,8 @@ func (l *LocationsServerTransport) dispatchToMethodFake(req *http.Request, metho
 	go func() {
 		var intercepted bool
 		var res result
-		 if locationsServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = locationsServerTransportInterceptor.Do(req)
+		if locationsServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = locationsServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
@@ -90,8 +89,8 @@ func (l *LocationsServerTransport) dispatchToMethodFake(req *http.Request, metho
 				res.resp, res.err = l.dispatchGet(req)
 			case "LocationsClient.NewListPager":
 				res.resp, res.err = l.dispatchNewListPager(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -115,32 +114,32 @@ func (l *LocationsServerTransport) dispatchBeginCreateOrUpdate(req *http.Request
 	}
 	beginCreateOrUpdate := l.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations/(?P<locationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 3 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	body, err := server.UnmarshalRequestAsJSON[v20231001preview.LocationResource](req)
-	if err != nil {
-		return nil, err
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	locationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("locationName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := l.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, resourceProviderNameParam, locationNameParam, body, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations/(?P<locationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.LocationResource](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		locationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("locationName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := l.srv.BeginCreateOrUpdate(req.Context(), planeNameParam, resourceProviderNameParam, locationNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginCreateOrUpdate = &respr
 		l.beginCreateOrUpdate.add(req, beginCreateOrUpdate)
 	}
@@ -167,28 +166,28 @@ func (l *LocationsServerTransport) dispatchBeginDelete(req *http.Request) (*http
 	}
 	beginDelete := l.beginDelete.get(req)
 	if beginDelete == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations/(?P<locationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 3 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-	locationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("locationName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := l.srv.BeginDelete(req.Context(), planeNameParam, resourceProviderNameParam, locationNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations/(?P<locationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 4 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		locationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("locationName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := l.srv.BeginDelete(req.Context(), planeNameParam, resourceProviderNameParam, locationNameParam, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
 		beginDelete = &respr
 		l.beginDelete.add(req, beginDelete)
 	}
@@ -216,7 +215,7 @@ func (l *LocationsServerTransport) dispatchGet(req *http.Request) (*http.Respons
 	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations/(?P<locationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 3 {
+	if len(matches) < 4 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
@@ -252,21 +251,21 @@ func (l *LocationsServerTransport) dispatchNewListPager(req *http.Request) (*htt
 	}
 	newListPager := l.newListPager.get(req)
 	if newListPager == nil {
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if matches == nil || len(matches) < 2 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-	if err != nil {
-		return nil, err
-	}
-	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
-	if err != nil {
-		return nil, err
-	}
-resp := l.srv.NewListPager(planeNameParam, resourceProviderNameParam, nil)
+		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/locations`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 3 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+		if err != nil {
+			return nil, err
+		}
+		resp := l.srv.NewListPager(planeNameParam, resourceProviderNameParam, nil)
 		newListPager = &resp
 		l.newListPager.add(req, newListPager)
 		server.PagerResponderInjectNextLinks(newListPager, req, func(page *v20231001preview.LocationsClientListResponse, createLink func() string) {

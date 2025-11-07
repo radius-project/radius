@@ -19,7 +19,7 @@ import (
 // ConfigurationStoresClient contains the methods for the ConfigurationStores group.
 // Don't use this type directly, use NewConfigurationStoresClient() instead.
 type ConfigurationStoresClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewConfigurationStoresClient(rootScope string, credential azcore.TokenCrede
 	}
 	client := &ConfigurationStoresClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *ConfigurationStoresClient) BeginCreateOrUpdate(ctx context.Context
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *ConfigurationStoresClient) createOrUpdateCreateRequest(ctx context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a DaprConfigurationStoreResource
@@ -127,7 +127,7 @@ func (client *ConfigurationStoresClient) BeginDelete(ctx context.Context, config
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -238,7 +238,7 @@ func (client *ConfigurationStoresClient) getHandleResponse(resp *http.Response) 
 // Generated from API version 2023-10-01-preview
 //   - options - ConfigurationStoresClientListByScopeOptions contains the optional parameters for the ConfigurationStoresClient.NewListByScopePager
 //     method.
-func (client *ConfigurationStoresClient) NewListByScopePager(options *ConfigurationStoresClientListByScopeOptions) (*runtime.Pager[ConfigurationStoresClientListByScopeResponse]) {
+func (client *ConfigurationStoresClient) NewListByScopePager(options *ConfigurationStoresClientListByScopeOptions) *runtime.Pager[ConfigurationStoresClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ConfigurationStoresClientListByScopeResponse]{
 		More: func(page ConfigurationStoresClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -255,7 +255,7 @@ func (client *ConfigurationStoresClient) NewListByScopePager(options *Configurat
 				return ConfigurationStoresClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -300,7 +300,7 @@ func (client *ConfigurationStoresClient) BeginUpdate(ctx context.Context, config
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -350,8 +350,7 @@ func (client *ConfigurationStoresClient) updateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

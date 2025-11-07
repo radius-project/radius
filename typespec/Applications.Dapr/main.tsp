@@ -26,9 +26,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
 @armProviderNamespace
-@service({
-  title: "Applications.Dapr Resource Management APIs",
-})
+@service(#{ title: "Applications.Dapr Resource Management APIs" })
 @doc("REST API for Applications.Dapr")
 @versioned(Versions)
 namespace Applications.Dapr;
@@ -38,7 +36,5 @@ interface Operations extends Azure.ResourceManager.Operations {}
 @doc("Supported API versions for the Applications.Dapr resource provider.")
 enum Versions {
   @doc("2023-10-01-preview")
-  @useDependency(Azure.Core.Versions.v1_0_Preview_2)
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2023_10_01_preview: "2023-10-01-preview",
 }

@@ -60,8 +60,8 @@ model ContainerProperties {
   identity?: IdentitySettings;
 
   @doc("Extensions spec of the resource")
-  @extension("x-ms-identifiers", [])
-  extensions?: Extension[];
+  @extension("x-ms-identifiers", #[])
+  extensions?: global.Extension[];
 
   @doc("Specifies how the underlying container resource is provisioned and managed.")
   resourceProvisioning?: ContainerResourceProvisioning;

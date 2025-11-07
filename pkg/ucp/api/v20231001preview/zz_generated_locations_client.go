@@ -31,7 +31,7 @@ func NewLocationsClient(credential azcore.TokenCredential, options *arm.ClientOp
 		return nil, err
 	}
 	client := &LocationsClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -55,7 +55,7 @@ func (client *LocationsClient) BeginCreateOrUpdate(ctx context.Context, planeNam
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[LocationsClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -115,9 +115,9 @@ func (client *LocationsClient) createOrUpdateCreateRequest(ctx context.Context, 
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a location. The location resource represents a logical location where the resource provider operates.
@@ -136,7 +136,7 @@ func (client *LocationsClient) BeginDelete(ctx context.Context, planeName string
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[LocationsClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -268,13 +268,13 @@ func (client *LocationsClient) getHandleResponse(resp *http.Response) (Locations
 //   - planeName - The plane name.
 //   - resourceProviderName - The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.
 //   - options - LocationsClientListOptions contains the optional parameters for the LocationsClient.NewListPager method.
-func (client *LocationsClient) NewListPager(planeName string, resourceProviderName string, options *LocationsClientListOptions) (*runtime.Pager[LocationsClientListResponse]) {
+func (client *LocationsClient) NewListPager(planeName string, resourceProviderName string, options *LocationsClientListOptions) *runtime.Pager[LocationsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[LocationsClientListResponse]{
 		More: func(page LocationsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *LocationsClientListResponse) (LocationsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "LocationsClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "LocationsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -286,7 +286,7 @@ func (client *LocationsClient) NewListPager(planeName string, resourceProviderNa
 				return LocationsClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -321,4 +321,3 @@ func (client *LocationsClient) listHandleResponse(resp *http.Response) (Location
 	}
 	return result, nil
 }
-

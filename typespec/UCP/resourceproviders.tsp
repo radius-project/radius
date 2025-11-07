@@ -71,7 +71,7 @@ model ResourceProviderResource
 @doc("The properties of a resource provider.")
 model ResourceProviderProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 
@@ -93,7 +93,7 @@ scalar Capability extends string;
 @doc("The properties of a resource type.")
 model ResourceTypeProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("The resource type capabilities.")
@@ -119,7 +119,7 @@ model ApiVersionResource
 @doc("The properties of an API version.")
 model ApiVersionProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Schema is the schema for the resource type.")
@@ -139,7 +139,7 @@ model LocationResource
 @doc("The properties of a location.")
 model LocationProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Address of a resource provider implementation.")
@@ -249,6 +249,7 @@ interface ResourceProviders {
 
   @doc("List resource provider summaries. The resource provider summary aggregates the most commonly used information including locations, api versions and resource types.")
   @segment("providers")
+  @list
   listProviderSummaries(
     ...PlaneBaseParameters<RadiusPlaneResource>,
   ): Azure.Core.Page<ResourceProviderSummary> | ErrorResponse;
