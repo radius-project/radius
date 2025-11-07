@@ -68,7 +68,10 @@ func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, re
 		return armrpcrest.NewNoContentResponse(), nil
 	}
 
-	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
+	secretName, err := credentials.GetSecretName(serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
 
 	// Delete the credential secret.
 	err = c.secretClient.Delete(ctx, secretName)

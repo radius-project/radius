@@ -252,8 +252,13 @@ func getSpecificReplica(ctx context.Context, client *k8s.Clientset, namespace st
 func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace string, application string, resource string) (*corev1.Pod, error) {
 	// Right now this connects to a pod related to a resource. We can find the pods with the labels
 	// and then choose one that's in the running state.
+	selectorLabels, err := k8slabels.MakeSelectorLabels(application, resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create selector labels: %w", err)
+	}
+	
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(k8slabels.MakeSelectorLabels(application, resource)),
+		LabelSelector: labels.FormatLabels(selectorLabels),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list running replicas for resource %v: %w", resource, err)
@@ -271,8 +276,13 @@ func getRunningReplica(ctx context.Context, client *k8s.Clientset, namespace str
 func getRunningReplicas(ctx context.Context, client *k8s.Clientset, namespace string, application string, resource string) ([]corev1.Pod, error) {
 	// Right now this connects to a pod related to a resource. We can find the pods with the labels
 	// and then choose one that's in the running state.
+	selectorLabels, err := k8slabels.MakeSelectorLabels(application, resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create selector labels: %w", err)
+	}
+	
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, v1.ListOptions{
-		LabelSelector: labels.FormatLabels(k8slabels.MakeSelectorLabels(application, resource)),
+		LabelSelector: labels.FormatLabels(selectorLabels),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list running replicas for resource %v: %w", resource, err)

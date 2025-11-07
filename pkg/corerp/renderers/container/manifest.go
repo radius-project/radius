@@ -58,8 +58,11 @@ func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest,
 // getDeploymentBase returns the deployment resource based on the given base manifest.
 // If the container has a base manifest, get the deployment resource from the base manifest.
 // Otherwise, populate default resources.
-func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *appsv1.Deployment {
-	name := kubernetes.NormalizeResourceName(r.Name)
+func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) (*appsv1.Deployment, error) {
+	name, err := kubernetes.NormalizeResourceName(r.Name)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource name: %w", err)
+	}
 
 	defaultDeployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
@@ -88,7 +91,11 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 		defaultDeployment = resource.(*appsv1.Deployment)
 	}
 
-	defaultDeployment.ObjectMeta = getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	objectMeta, err := getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	if err != nil {
+		return nil, err
+	}
+	defaultDeployment.ObjectMeta = objectMeta
 	if defaultDeployment.Spec.Selector == nil {
 		defaultDeployment.Spec.Selector = &metav1.LabelSelector{}
 	}
@@ -117,13 +124,13 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 		podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, corev1.Container{Name: name})
 	}
 
-	return defaultDeployment
+	return defaultDeployment, nil
 }
 
 // getServiceBase returns the service resource based on the given base manifest.
 // If the service has a base manifest, get the service resource from the base manifest.
 // Otherwise, populate default resources.
-func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.Service {
+func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) (*corev1.Service, error) {
 	defaultService := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -137,14 +144,18 @@ func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamod
 	if resource := manifest.GetFirst(corev1.SchemeGroupVersion.WithKind("Service")); resource != nil {
 		defaultService = resource.(*corev1.Service)
 	}
-	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
-	return defaultService
+	objectMeta, err := getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	if err != nil {
+		return nil, err
+	}
+	defaultService.ObjectMeta = objectMeta
+	return defaultService, nil
 }
 
 // getServiceAccountBase returns the service account resource based on the given base manifest.
 // If the service account has a base manifest, get the service account resource from the base manifest.
 // Otherwise, populate default resources.
-func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.ServiceAccount {
+func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) (*corev1.ServiceAccount, error) {
 	defaultAccount := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ServiceAccount",
@@ -156,9 +167,13 @@ func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *
 		defaultAccount = resource.(*corev1.ServiceAccount)
 	}
 
-	defaultAccount.ObjectMeta = getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	objectMeta, err := getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	if err != nil {
+		return nil, err
+	}
+	defaultAccount.ObjectMeta = objectMeta
 
-	return defaultAccount
+	return defaultAccount, nil
 }
 
 // populateAllBaseResources populates all remaining resources from manifest into outputResources.
@@ -250,13 +265,23 @@ func mergeObjectMeta(base metav1.ObjectMeta, cur metav1.ObjectMeta) metav1.Objec
 	}
 }
 
-func getObjectMeta(base metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
+func getObjectMeta(base metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) (metav1.ObjectMeta, error) {
+	normalizedName, err := kubernetes.NormalizeResourceName(resourceName)
+	if err != nil {
+		return metav1.ObjectMeta{}, fmt.Errorf("invalid resource name: %w", err)
+	}
+	
+	labels, err := renderers.GetLabels(options, appName, resourceName, resourceType)
+	if err != nil {
+		return metav1.ObjectMeta{}, fmt.Errorf("failed to generate labels: %w", err)
+	}
+	
 	cur := metav1.ObjectMeta{
-		Name:        kubernetes.NormalizeResourceName(resourceName),
+		Name:        normalizedName,
 		Namespace:   options.Environment.Namespace,
-		Labels:      renderers.GetLabels(options, appName, resourceName, resourceType),
+		Labels:      labels,
 		Annotations: renderers.GetAnnotations(options),
 	}
 
-	return mergeObjectMeta(base, cur)
+	return mergeObjectMeta(base, cur), nil
 }

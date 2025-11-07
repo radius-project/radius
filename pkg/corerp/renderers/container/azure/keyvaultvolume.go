@@ -114,12 +114,12 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 
 	normalizedName, err := kubernetes.NormalizeResourceName(name)
 	if err != nil {
-		return corev1.Volume{}, rpv1.OutputResource{}, err
+		return nil, err
 	}
 	
 	labels, err := kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type)
 	if err != nil {
-		return corev1.Volume{}, rpv1.OutputResource{}, err
+		return nil, err
 	}
 
 	secretProvider := &csiv1.SecretProviderClass{

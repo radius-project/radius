@@ -69,7 +69,10 @@ func (c *DeleteAzureCredential) Run(ctx context.Context, w http.ResponseWriter, 
 		return armrpc_rest.NewNoContentResponse(), nil
 	}
 
-	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
+	secretName, err := credentials.GetSecretName(serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
 
 	// Delete the credential secret.
 	err = c.secretClient.Delete(ctx, secretName)

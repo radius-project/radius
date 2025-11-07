@@ -25,8 +25,16 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-func makeRBACRole(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
-	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
+func makeRBACRole(appName, name, namespace string, resource *datamodel.ContainerResource) (*rpv1.OutputResource, error) {
+	labels, err := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate labels: %w", err)
+	}
+	
+	normalizedName, err := kubernetes.NormalizeResourceName(name)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource name: %w", err)
+	}
 
 	role := &rbacv1.Role{
 		TypeMeta: metav1.TypeMeta{
@@ -34,7 +42,7 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
+			Name:      normalizedName,
 			Namespace: namespace,
 			Labels:    labels,
 		},
@@ -50,11 +58,24 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 
 	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDKubernetesRole, role, role.ObjectMeta)
 
-	return &or
+	return &or, nil
 }
 
-func makeRBACRoleBinding(appName, name, saName, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
-	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
+func makeRBACRoleBinding(appName, name, saName, namespace string, resource *datamodel.ContainerResource) (*rpv1.OutputResource, error) {
+	labels, err := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate labels: %w", err)
+	}
+	
+	normalizedName, err := kubernetes.NormalizeResourceName(name)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource name: %w", err)
+	}
+	
+	normalizedRoleName, err := kubernetes.NormalizeResourceName(name)
+	if err != nil {
+		return nil, fmt.Errorf("invalid role name: %w", err)
+	}
 
 	bindings := &rbacv1.RoleBinding{
 		TypeMeta: metav1.TypeMeta{
@@ -62,13 +83,13 @@ func makeRBACRoleBinding(appName, name, saName, namespace string, resource *data
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
+			Name:      normalizedName,
 			Namespace: namespace,
 			Labels:    labels,
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
-			Name:     kubernetes.NormalizeResourceName(name),
+			Name:     normalizedRoleName,
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 		Subjects: []rbacv1.Subject{
@@ -82,5 +103,5 @@ func makeRBACRoleBinding(appName, name, saName, namespace string, resource *data
 	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDKubernetesRoleBinding, bindings, bindings.ObjectMeta)
 
 	or.CreateResource.Dependencies = []string{rpv1.LocalIDKubernetesRole}
-	return &or
+	return &or, nil
 }

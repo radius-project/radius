@@ -75,7 +75,11 @@ func (c *CreateOrUpdateAzureCredential) Run(ctx context.Context, w http.Response
 		return r, err
 	}
 
-	secretName := credentials.GetSecretName(serviceCtx.ResourceID)
+	secretName, err := credentials.GetSecretName(serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+	
 	if newResource.Properties.Storage.Kind == datamodel.InternalStorageKind {
 		newResource.Properties.Storage.InternalCredential.SecretName = secretName
 	}

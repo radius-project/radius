@@ -83,14 +83,24 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 	})
 
 	// Translate into Dapr State Store schema
+	normalizedName, err := kubernetes.NormalizeDaprResourceName(componentName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid component name: %w", err)
+	}
+	
+	labels, err := kubernetes.MakeDescriptiveDaprLabels(applicationName, resourceName, resourceType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate labels: %w", err)
+	}
+	
 	item := unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": DaprAPIVersion,
 			"kind":       DaprKind,
 			"metadata": map[string]any{
 				"namespace": namespace,
-				"name":      kubernetes.NormalizeDaprResourceName(componentName),
-				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationName, resourceName, resourceType),
+				"name":      normalizedName,
+				"labels":    labels,
 			},
 			"spec": map[string]any{
 				"type":     *daprGeneric.Type,
