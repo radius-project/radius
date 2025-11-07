@@ -32,6 +32,7 @@ type DeploymentResourceStatus struct {
 	Id string `json:"id,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed for this DeploymentResource.
+	// +kubebuilder:validation:Format=""
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
 	// Operation tracks the status of an in-progress provisioning operation.

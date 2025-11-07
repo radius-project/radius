@@ -88,7 +88,6 @@ spec:
                 description: |-
                   ObservedGeneration is the most recent generation observed for this Recipe. It corresponds to the
                   Recipe's generation, which is updated on mutation by the API Server.
-                format: int64
                 type: integer
               operation:
                 description: Operation tracks the status of an in-progress provisioning
