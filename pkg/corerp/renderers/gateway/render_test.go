@@ -79,6 +79,14 @@ const (
 	resourcetypeGtwyVal = "applications.core-gateways"
 )
 
+// mustNormalize is a helper function for tests that normalizes a resource name.
+// It panics if the normalization fails, which is appropriate for test setup.
+func mustNormalize(t *testing.T, name string) string {
+	normalized, err := kubernetes.NormalizeResourceName(name)
+	require.NoError(t, err)
+	return normalized
+}
+
 type setupMaps struct {
 	envKubeMetadataExt *datamodel.KubeMetadataExtension
 	appKubeMetadataExt *datamodel.KubeMetadataExtension
@@ -123,7 +131,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 func Test_Render_WithIPAndNoHostname(t *testing.T) {
 	r := &Renderer{}
 
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -155,7 +163,7 @@ func Test_Render_WithIPAndPrefix(t *testing.T) {
 	r := &Renderer{}
 
 	prefix := "prefix"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			Prefix: prefix,
 		},
@@ -191,7 +199,7 @@ func Test_Render_WithIPAndFQHostname(t *testing.T) {
 
 	expectedHostname := "test-fqdn.contoso.com"
 	expectedPublicEndpoint := "http://test-fqdn.contoso.com"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			FullyQualifiedHostname: expectedHostname,
 		},
@@ -225,7 +233,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	expectedHostname := "test-fqdn.contoso.com"
 	expectedPublicEndpoint := "http://test-fqdn.contoso.com"
 	prefix := "test-prefix"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			Prefix:                 prefix,
 			FullyQualifiedHostname: expectedHostname,
@@ -257,7 +265,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 func Test_Render_PublicEndpointOverride(t *testing.T) {
 	r := &Renderer{}
 
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -286,7 +294,7 @@ func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
 	r := &Renderer{}
 
 	expectedPublicEndpoint := "this_CouldbeAnyString"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -320,7 +328,7 @@ func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
 
 	expectedPublicEndpoint := "www.contoso.com"
 	expectedFQDN := "www.contoso.com"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -350,7 +358,7 @@ func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 
 	expectedFQDN := "localhost"
 	expectedPublicEndpoint := "http://localhost:8080"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -379,7 +387,7 @@ func Test_Render_Hostname(t *testing.T) {
 	r := &Renderer{}
 
 	expectedPublicEndpoint := fmt.Sprintf("http://%s", testHostname)
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -409,7 +417,7 @@ func Test_Render_Hostname_WithPort(t *testing.T) {
 
 	expectedFQDN := "www.contoso.com"
 	expectedPublicEndpoint := "http://www.contoso.com:32434"
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -440,7 +448,7 @@ func Test_Render_Hostname_WithPrefix(t *testing.T) {
 	prefix := "test"
 	expectedFQDN := fmt.Sprintf("%s.%s", prefix, testHostname)
 	expectedPublicEndpoint := fmt.Sprintf("http://%s", expectedFQDN)
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -474,7 +482,7 @@ func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
 	prefix := "test"
 	expectedFQDN := fmt.Sprintf("%s.%s", prefix, testHostname)
 	expectedPublicEndpoint := fmt.Sprintf("http://%s:%s", expectedFQDN, testPort)
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -505,7 +513,7 @@ func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
 func Test_Render_WithMissingPublicIP(t *testing.T) {
 	r := &Renderer{}
 
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -636,7 +644,7 @@ func Test_Render_WithTimeoutPolicy(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -656,7 +664,7 @@ func Test_Render_WithTimeoutPolicy(t *testing.T) {
 		Response: "10s",
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, expectedTimoutPolicy, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, expectedTimoutPolicy, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
@@ -695,7 +703,7 @@ func Test_Render_WithUnsetBackendRequestTimeoutPolicy(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -715,7 +723,7 @@ func Test_Render_WithUnsetBackendRequestTimeoutPolicy(t *testing.T) {
 		Response: "10s",
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, expectedTimoutPolicy, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, expectedTimoutPolicy, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
@@ -779,7 +787,7 @@ func Test_Render_FQDNOverride(t *testing.T) {
 	r := &Renderer{}
 
 	expectedPublicEndpoint := fmt.Sprintf("http://%s", testHostname)
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -810,7 +818,7 @@ func Test_Render_FQDNOverride(t *testing.T) {
 func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
 	r := &Renderer{}
 
-	properties, _ := makeTestGateway(datamodel.GatewayProperties{
+	properties, _ := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -858,7 +866,7 @@ func Test_Render_Single_Route(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -874,7 +882,7 @@ func Test_Render_Single_Route(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, nil, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
@@ -911,7 +919,7 @@ func TestRender_SingleRoute_EnableWebsockets(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -927,7 +935,7 @@ func TestRender_SingleRoute_EnableWebsockets(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, nil, true)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, true)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
@@ -965,7 +973,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: "/",
@@ -975,7 +983,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 	}
 
 	// Create unique localID for dependency graph
-	routeResourceName := kubernetes.NormalizeResourceName("A")
+	routeResourceName := mustNormalize(t, "A")
 
 	expectedTCPProxy := &contourv1.TCPProxy{
 		Services: []contourv1.Service{
@@ -997,7 +1005,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, nil, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
@@ -1039,7 +1047,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeAPath,
@@ -1047,7 +1055,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.NormalizeResourceName("B"),
+			Name: mustNormalize(t, "B"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeBPath,
@@ -1063,8 +1071,8 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpecA := createExpectedHTTPRouteSpec("A", 80, nil, nil, false)
-	expectedHTTPRouteSpecB := createExpectedHTTPRouteSpec("B", 80, nil, nil, false)
+	expectedHTTPRouteSpecA := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, false)
+	expectedHTTPRouteSpecB := createExpectedHTTPRouteSpec(t, "B", 80, nil, nil, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpecA, "")
@@ -1103,7 +1111,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -1130,7 +1138,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 		},
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, expectedPathRewritePolicy, nil, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, expectedPathRewritePolicy, nil, false)
 
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
 }
@@ -1187,7 +1195,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeAPath,
@@ -1195,7 +1203,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.NormalizeResourceName("B"),
+			Name: mustNormalize(t, "B"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeBPath,
@@ -1203,7 +1211,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.NormalizeResourceName("B"),
+			Name: mustNormalize(t, "B"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeCPath,
@@ -1211,7 +1219,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.NormalizeResourceName("B"),
+			Name: mustNormalize(t, "B"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeDPath,
@@ -1242,8 +1250,8 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 		},
 	}
 
-	expectedHTTPRouteSpecA := createExpectedHTTPRouteSpec("A", 80, nil, nil, false)
-	expectedHTTPRouteSpecB := createExpectedHTTPRouteSpec("B", 80, expectedPathRewritePolicy, nil, false)
+	expectedHTTPRouteSpecA := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, false)
+	expectedHTTPRouteSpecB := createExpectedHTTPRouteSpec(t, "B", 80, expectedPathRewritePolicy, nil, false)
 
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpecA, "")
 	validateContourHTTPRoute(t, output.Resources, "B", expectedHTTPRouteSpecB, "")
@@ -1301,7 +1309,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("a"),
+			Name: mustNormalize(t, "a"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routePath,
@@ -1320,7 +1328,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 81, nil, nil, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 81, nil, nil, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, "")
@@ -1356,7 +1364,7 @@ func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -1372,7 +1380,7 @@ func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, nil, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, envKubeMetadata)
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, envKubeMetadata)
@@ -1409,7 +1417,7 @@ func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -1425,7 +1433,7 @@ func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec("A", 80, nil, nil, false)
+	expectedHTTPRouteSpec := createExpectedHTTPRouteSpec(t, "A", 80, nil, nil, false)
 
 	validateContourHTTPProxy(t, output.Resources, expectedGatewaySpec, envAppKubeMetadata)
 	validateContourHTTPRoute(t, output.Resources, "A", expectedHTTPRouteSpec, envAppKubeMetadata)
@@ -1466,7 +1474,7 @@ func Test_RenderDNS_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) 
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName(routeName),
+			Name: mustNormalize(t, routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -1519,7 +1527,7 @@ func Test_RenderDNS_WithEnvironment_KubernetesMetadata(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName(routeName),
+			Name: mustNormalize(t, routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -1543,7 +1551,7 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 
 	secretName := "myapp-tls-secret"
 	secretStoreResourceId := makeSecretStoreResourceID(secretName)
-	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+	properties, expectedIncludes := makeTestGateway(t, datamodel.GatewayProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
@@ -1685,10 +1693,12 @@ func validateContourHTTPProxy(t *testing.T, outputResources []rpv1.OutputResourc
 	slices.Sort(httpProxyOutputResource.CreateResource.Dependencies)
 
 	require.Equal(t, expectedHTTPProxyOutputResource, httpProxyOutputResource)
-	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), httpProxy.Name)
+	require.Equal(t, mustNormalize(t, resourceName), httpProxy.Name)
 	require.Equal(t, applicationName, httpProxy.Namespace)
 	if !(kmeOption == envKubeMetadata || kmeOption == envAppKubeMetadata) {
-		require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType), httpProxy.Labels)
+		expectedLabels, err := kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType)
+		require.NoError(t, err)
+		require.Equal(t, expectedLabels, httpProxy.Labels)
 	} else {
 		require.Equal(t, getExpectedMaps(true, kmeOption).metaAnn, httpProxy.Annotations)
 		require.Equal(t, getExpectedMaps(true, kmeOption).metaLbl, httpProxy.Labels)
@@ -1707,7 +1717,7 @@ func validateContourHTTPRoute(t *testing.T, outputResources []rpv1.OutputResourc
 	require.Equal(t, expectedOutputResource, httpRouteOutputResource)
 
 	// Validate the HTTP route name and namespace
-	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)
+	require.Equal(t, mustNormalize(t, expectedRouteName), httpRoute.Name)
 	require.Equal(t, applicationName, httpRoute.Namespace)
 
 	// Validate the metadata
@@ -1720,7 +1730,8 @@ func validateContourHTTPRoute(t *testing.T, outputResources []rpv1.OutputResourc
 // validateMetadata validates the metadata of a HTTP route.
 func validateMetadata(t *testing.T, httpRoute *contourv1.HTTPProxy, metadataOption string) {
 	if metadataOption != envKubeMetadata && metadataOption != envAppKubeMetadata {
-		expectedLabels := kubernetes.MakeDescriptiveLabels(applicationName, httpRoute.Name, ResourceType)
+		expectedLabels, err := kubernetes.MakeDescriptiveLabels(applicationName, httpRoute.Name, ResourceType)
+		require.NoError(t, err)
 		require.Equal(t, expectedLabels, httpRoute.Labels)
 	} else {
 		expectedMaps := getExpectedMaps(false, metadataOption)
@@ -1730,8 +1741,8 @@ func validateMetadata(t *testing.T, httpRoute *contourv1.HTTPProxy, metadataOpti
 }
 
 // createExpectedHTTPRouteSpec creates the expected HTTP route spec for validation.
-func createExpectedHTTPRouteSpec(routeName string, port int32, rewrite *contourv1.PathRewritePolicy, timeout *contourv1.TimeoutPolicy, enableWebsockets bool) contourv1.HTTPProxySpec {
-	serviceName := kubernetes.NormalizeResourceName(routeName)
+func createExpectedHTTPRouteSpec(t *testing.T, routeName string, port int32, rewrite *contourv1.PathRewritePolicy, timeout *contourv1.TimeoutPolicy, enableWebsockets bool) contourv1.HTTPProxySpec {
+	serviceName := mustNormalize(t, routeName)
 	return contourv1.HTTPProxySpec{
 		Routes: []contourv1.Route{
 			{
@@ -1778,7 +1789,7 @@ func makeSecretStoreResource(properties datamodel.SecretStoreProperties) *datamo
 	}
 }
 
-func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayProperties, []contourv1.Include) {
+func makeTestGateway(t *testing.T, config datamodel.GatewayProperties) (datamodel.GatewayProperties, []contourv1.Include) {
 	routePath := "/"
 	defaultRoute := datamodel.GatewayRoute{
 		Destination: "http://A",
@@ -1787,7 +1798,7 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 
 	includes := []contourv1.Include{
 		{
-			Name: kubernetes.NormalizeResourceName("A"),
+			Name: mustNormalize(t, "A"),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routePath,

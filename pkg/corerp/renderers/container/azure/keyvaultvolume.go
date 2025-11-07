@@ -112,15 +112,25 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 		return nil, errUnsupportedIdentityKind
 	}
 
+	normalizedName, err := kubernetes.NormalizeResourceName(name)
+	if err != nil {
+		return corev1.Volume{}, rpv1.OutputResource{}, err
+	}
+	
+	labels, err := kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type)
+	if err != nil {
+		return corev1.Volume{}, rpv1.OutputResource{}, err
+	}
+
 	secretProvider := &csiv1.SecretProviderClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SecretProviderClass",
 			APIVersion: "secrets-store.csi.x-k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
+			Name:      normalizedName,
 			Namespace: envOpt.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type),
+			Labels:    labels,
 			Annotations: map[string]string{
 				kubernetes.AnnotationIdentityType: string(envOpt.Identity.Kind),
 			},

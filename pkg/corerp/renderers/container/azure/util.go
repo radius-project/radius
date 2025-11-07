@@ -31,7 +31,7 @@ const (
 // which is specified by environment resource. In this case,
 // RP uses application name as prefix to avoid the name conflict in the same
 // resource group.
-func MakeResourceName(prefix, name, separator string) string {
+func MakeResourceName(prefix, name, separator string) (string, error) {
 	if name == "" {
 		panic("name is empty.")
 	}
