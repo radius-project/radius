@@ -32,6 +32,10 @@ type ResourceTypesServer struct{
 	// HTTP status codes to indicate success: http.StatusOK
 	Get func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder)
 
+	// Learn is the fake for method ResourceTypesClient.Learn
+	// HTTP status codes to indicate success: http.StatusOK
+	Learn func(ctx context.Context, planeName string, resourceProviderName string, request v20231001preview.ResourceTypeLearnRequest, options *v20231001preview.ResourceTypesClientLearnOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientLearnResponse], errResp azfake.ErrorResponder)
+
 	// NewListPager is the fake for method ResourceTypesClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(planeName string, resourceProviderName string, options *v20231001preview.ResourceTypesClientListOptions) (resp azfake.PagerResponder[v20231001preview.ResourceTypesClientListResponse])
@@ -88,6 +92,8 @@ func (r *ResourceTypesServerTransport) dispatchToMethodFake(req *http.Request, m
 				res.resp, res.err = r.dispatchBeginDelete(req)
 			case "ResourceTypesClient.Get":
 				res.resp, res.err = r.dispatchGet(req)
+			case "ResourceTypesClient.Learn":
+				res.resp, res.err = r.dispatchLearn(req)
 			case "ResourceTypesClient.NewListPager":
 				res.resp, res.err = r.dispatchNewListPager(req)
 				default:
@@ -240,6 +246,43 @@ func (r *ResourceTypesServerTransport) dispatchGet(req *http.Request) (*http.Res
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
 	}
 	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).ResourceTypeResource, req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (r *ResourceTypesServerTransport) dispatchLearn(req *http.Request) (*http.Response, error) {
+	if r.srv.Learn == nil {
+		return nil, &nonRetriableError{errors.New("fake for method Learn not implemented")}
+	}
+	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/learn`
+	regex := regexp.MustCompile(regexStr)
+	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+	if matches == nil || len(matches) < 2 {
+		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+	}
+	body, err := server.UnmarshalRequestAsJSON[v20231001preview.ResourceTypeLearnRequest](req)
+	if err != nil {
+		return nil, err
+	}
+	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+	if err != nil {
+		return nil, err
+	}
+	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+	if err != nil {
+		return nil, err
+	}
+	respr, errRespr := r.srv.Learn(req.Context(), planeNameParam, resourceProviderNameParam, body, nil)
+	if respErr := server.GetError(errRespr, req); respErr != nil {
+		return nil, respErr
+	}
+	respContent := server.GetResponseContent(respr)
+	if !contains([]int{http.StatusOK}, respContent.HTTPStatus) {
+		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
+	}
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).ResourceTypeLearnResult, req)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,13 +42,10 @@ type TerraformModule struct {
 	Variables []TerraformVariable
 }
 
-// GitRepository clones a git repository and returns the local path
+// CloneGitRepository clones a git repository and returns the local path
 func CloneGitRepository(gitURL, tempDir string) (string, error) {
 	repoName := filepath.Base(gitURL)
-	if strings.HasSuffix(repoName, ".git") {
-		repoName = strings.TrimSuffix(repoName, ".git")
-	}
-
+	repoName = strings.TrimSuffix(repoName, ".git")
 	localPath := filepath.Join(tempDir, repoName)
 
 	// Remove existing directory if it exists
@@ -68,7 +65,6 @@ func CloneGitRepository(gitURL, tempDir string) (string, error) {
 
 // ParseTerraformModule parses Terraform files in the given directory using terraform-config-inspect
 func ParseTerraformModule(modulePath string) (*TerraformModule, error) {
-	// Use terraform-config-inspect to load and parse the module
 	mod, diags := tfconfig.LoadModule(modulePath)
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading terraform module: %w", diags.Err())
@@ -94,7 +90,6 @@ func ParseTerraformModule(modulePath string) (*TerraformModule, error) {
 		return sortedVariables[i].Pos.Filename < sortedVariables[j].Pos.Filename
 	})
 
-	// Convert tfconfig variables to our TerraformVariable format
 	for _, variable := range sortedVariables {
 		tfVar := TerraformVariable{
 			Name:        variable.Name,
@@ -103,7 +98,6 @@ func ParseTerraformModule(modulePath string) (*TerraformModule, error) {
 			Required:    variable.Required,
 		}
 
-		// Handle default value
 		if variable.Default != nil {
 			tfVar.Default = variable.Default
 		}
@@ -116,14 +110,11 @@ func ParseTerraformModule(modulePath string) (*TerraformModule, error) {
 
 // convertTfConfigTypeToString converts tfconfig type to string representation
 func convertTfConfigTypeToString(tfType string) string {
-	// tfconfig already provides the type as a string, just return it
-	// The tfconfig library handles the complexity of parsing Terraform types
 	return tfType
 }
 
 // ConvertTerraformTypeToJSONSchema converts Terraform types to JSON Schema types
 func ConvertTerraformTypeToJSONSchema(tfType string) string {
-	// Clean up the type string
 	tfType = strings.TrimSpace(tfType)
 	tfType = strings.ToLower(tfType)
 
@@ -143,6 +134,6 @@ func ConvertTerraformTypeToJSONSchema(tfType string) string {
 	case strings.HasPrefix(tfType, "object("):
 		return "object"
 	default:
-		return "string" // Default fallback
+		return "string"
 	}
 }

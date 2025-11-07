@@ -2541,6 +2541,60 @@
         "x-ms-long-running-operation": true
       }
     },
+    "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/learn": {
+      "post": {
+        "operationId": "ResourceTypes_Learn",
+        "tags": [
+          "ResourceTypes"
+        ],
+        "description": "Generate a resource type schema from a Terraform module.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceProviderName",
+            "in": "path",
+            "description": "The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ResourceTypeLearnRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ResourceTypeLearnResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/planes/radius/{planeName}/resourcegroups": {
       "get": {
         "operationId": "ResourceGroups_List",
@@ -3998,6 +4052,68 @@
       },
       "required": [
         "apiVersions"
+      ]
+    },
+    "ResourceTypeLearnRequest": {
+      "type": "object",
+      "description": "Request body for learning a resource type from a Terraform module.",
+      "properties": {
+        "gitUrl": {
+          "type": "string",
+          "description": "Git repository URL containing the Terraform module."
+        },
+        "namespace": {
+          "$ref": "#/definitions/ResourceProviderNamespaceString",
+          "description": "Optional namespace for the generated resource type.",
+          "x-ms-client-name": "resourceNamespace"
+        },
+        "typeName": {
+          "$ref": "#/definitions/ResourceTypeNameString",
+          "description": "Optional resource type name for the generated schema."
+        }
+      },
+      "required": [
+        "gitUrl"
+      ]
+    },
+    "ResourceTypeLearnResult": {
+      "type": "object",
+      "description": "Result returned after learning a resource type from a Terraform module.",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/ResourceProviderNamespaceString",
+          "description": "Namespace assigned to the generated resource type.",
+          "x-ms-client-name": "resourceNamespace"
+        },
+        "typeName": {
+          "$ref": "#/definitions/ResourceTypeNameString",
+          "description": "Name assigned to the generated resource type."
+        },
+        "yaml": {
+          "type": "string",
+          "description": "Generated resource type schema represented in YAML."
+        },
+        "variableCount": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of Terraform variables discovered in the module."
+        },
+        "generatedTypeName": {
+          "type": "boolean",
+          "description": "Indicates whether the resource type name was generated automatically."
+        },
+        "inferredNamespace": {
+          "type": "boolean",
+          "description": "Indicates whether the namespace was inferred automatically."
+        }
+      },
+      "required": [
+        "namespace",
+        "typeName",
+        "yaml",
+        "variableCount",
+        "generatedTypeName",
+        "inferredNamespace"
       ]
     },
     "ResourceTypeNameString": {

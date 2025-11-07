@@ -274,6 +274,11 @@ type ResourceTypesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ResourceTypesClientLearnOptions contains the optional parameters for the ResourceTypesClient.Learn method.
+type ResourceTypesClientLearnOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ResourceTypesClientListOptions contains the optional parameters for the ResourceTypesClient.NewListPager method.
 type ResourceTypesClientListOptions struct {
 	// placeholder for future optional parameters

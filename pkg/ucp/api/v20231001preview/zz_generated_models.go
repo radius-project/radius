@@ -739,6 +739,39 @@ type ResourceProviderSummaryResourceType struct {
 	Description *string
 }
 
+// ResourceTypeLearnRequest - Request body for learning a resource type from a Terraform module.
+type ResourceTypeLearnRequest struct {
+// REQUIRED; Git repository URL containing the Terraform module.
+	GitURL *string
+
+// Optional namespace for the generated resource type.
+	ResourceNamespace *string
+
+// Optional resource type name for the generated schema.
+	TypeName *string
+}
+
+// ResourceTypeLearnResult - Result returned after learning a resource type from a Terraform module.
+type ResourceTypeLearnResult struct {
+// REQUIRED; Indicates whether the resource type name was generated automatically.
+	GeneratedTypeName *bool
+
+// REQUIRED; Indicates whether the namespace was inferred automatically.
+	InferredNamespace *bool
+
+// REQUIRED; Namespace assigned to the generated resource type.
+	ResourceNamespace *string
+
+// REQUIRED; Name assigned to the generated resource type.
+	TypeName *string
+
+// REQUIRED; Number of Terraform variables discovered in the module.
+	VariableCount *int32
+
+// REQUIRED; Generated resource type schema represented in YAML.
+	Yaml *string
+}
+
 // ResourceTypeProperties - The properties of a resource type.
 type ResourceTypeProperties struct {
 // The resource type capabilities.

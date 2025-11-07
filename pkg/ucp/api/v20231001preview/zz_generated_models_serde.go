@@ -1960,6 +1960,88 @@ func (r *ResourceProviderSummaryResourceType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type ResourceTypeLearnRequest.
+func (r ResourceTypeLearnRequest) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "gitUrl", r.GitURL)
+	populate(objectMap, "namespace", r.ResourceNamespace)
+	populate(objectMap, "typeName", r.TypeName)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceTypeLearnRequest.
+func (r *ResourceTypeLearnRequest) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "gitUrl":
+				err = unpopulate(val, "GitURL", &r.GitURL)
+			delete(rawMsg, key)
+		case "namespace":
+				err = unpopulate(val, "ResourceNamespace", &r.ResourceNamespace)
+			delete(rawMsg, key)
+		case "typeName":
+				err = unpopulate(val, "TypeName", &r.TypeName)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceTypeLearnResult.
+func (r ResourceTypeLearnResult) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "generatedTypeName", r.GeneratedTypeName)
+	populate(objectMap, "inferredNamespace", r.InferredNamespace)
+	populate(objectMap, "namespace", r.ResourceNamespace)
+	populate(objectMap, "typeName", r.TypeName)
+	populate(objectMap, "variableCount", r.VariableCount)
+	populate(objectMap, "yaml", r.Yaml)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceTypeLearnResult.
+func (r *ResourceTypeLearnResult) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "generatedTypeName":
+				err = unpopulate(val, "GeneratedTypeName", &r.GeneratedTypeName)
+			delete(rawMsg, key)
+		case "inferredNamespace":
+				err = unpopulate(val, "InferredNamespace", &r.InferredNamespace)
+			delete(rawMsg, key)
+		case "namespace":
+				err = unpopulate(val, "ResourceNamespace", &r.ResourceNamespace)
+			delete(rawMsg, key)
+		case "typeName":
+				err = unpopulate(val, "TypeName", &r.TypeName)
+			delete(rawMsg, key)
+		case "variableCount":
+				err = unpopulate(val, "VariableCount", &r.VariableCount)
+			delete(rawMsg, key)
+		case "yaml":
+				err = unpopulate(val, "Yaml", &r.Yaml)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type ResourceTypeProperties.
 func (r ResourceTypeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)

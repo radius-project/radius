@@ -285,6 +285,12 @@ type ResourceTypesClientGetResponse struct {
 	ResourceTypeResource
 }
 
+// ResourceTypesClientLearnResponse contains the response from method ResourceTypesClient.Learn.
+type ResourceTypesClientLearnResponse struct {
+// Result returned after learning a resource type from a Terraform module.
+	ResourceTypeLearnResult
+}
+
 // ResourceTypesClientListResponse contains the response from method ResourceTypesClient.NewListPager.
 type ResourceTypesClientListResponse struct {
 // The response of a ResourceTypeResource list operation.

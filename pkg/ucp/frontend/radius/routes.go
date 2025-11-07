@@ -44,6 +44,7 @@ const (
 
 	// operationRetryAfter tells clients to poll in 1 second intervals. Our operations are fast.
 	operationRetryAfter = time.Second * 1
+
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
@@ -92,7 +93,6 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 				r.Get("/{resourceProviderName}", capture(resourceProviderSummaryGetHandler(ctx, ctrlOptions)))
 
 				r.Route("/System.Resources", func(r chi.Router) {
-
 					// Routes for async support: operationResults + operationStatuses
 					r.Route("/locations/{location}", func(r chi.Router) {
 						r.Get("/operationStatuses/{operationId}", capture(operationStatusGetHandler(ctx, ctrlOptions)))
@@ -116,6 +116,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 							})
 
 							r.Route("/resourcetypes", func(r chi.Router) {
+								r.With(apiValidator).Post("/learn", capture(resourceTypeLearnHandler(ctx, ctrlOptions)))
 								r.With(apiValidator).Get("/", capture(resourceTypeListHandler(ctx, ctrlOptions)))
 								r.Route("/{resourceTypeName}", func(r chi.Router) {
 									r.With(apiValidator).Get("/", capture(resourceTypeGetHandler(ctx, ctrlOptions)))
@@ -304,6 +305,10 @@ func resourceTypeDeleteHandler(ctx context.Context, ctrlOptions controller.Optio
 	return server.CreateHandler(ctx, datamodel.ResourceTypeResourceType, v1.OperationDelete, ctrlOptions, func(opts controller.Options) (controller.Controller, error) {
 		return defaultoperation.NewDefaultAsyncDelete(opts, resourceTypeResourceOptions)
 	})
+}
+
+func resourceTypeLearnHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
+	return server.CreateHandler(ctx, datamodel.ResourceTypeResourceType, v1.OperationPost, ctrlOptions, resourceproviders_ctrl.NewResourceTypeLearnController)
 }
 
 var apiVersionResourceOptions = controller.ResourceOptions[datamodel.APIVersion]{

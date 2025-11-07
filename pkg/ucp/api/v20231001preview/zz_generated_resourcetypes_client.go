@@ -261,6 +261,69 @@ func (client *ResourceTypesClient) getHandleResponse(resp *http.Response) (Resou
 	return result, nil
 }
 
+// Learn - Generate a resource type schema from a Terraform module.
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2023-10-01-preview
+//   - planeName - The plane name.
+//   - resourceProviderName - The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.
+//   - options - ResourceTypesClientLearnOptions contains the optional parameters for the ResourceTypesClient.Learn method.
+func (client *ResourceTypesClient) Learn(ctx context.Context, planeName string, resourceProviderName string, request ResourceTypeLearnRequest, options *ResourceTypesClientLearnOptions) (ResourceTypesClientLearnResponse, error) {
+	var err error
+	const operationName = "ResourceTypesClient.Learn"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
+	defer func() { endSpan(err) }()
+	req, err := client.learnCreateRequest(ctx, planeName, resourceProviderName, request, options)
+	if err != nil {
+		return ResourceTypesClientLearnResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ResourceTypesClientLearnResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ResourceTypesClientLearnResponse{}, err
+	}
+	resp, err := client.learnHandleResponse(httpResp)
+	return resp, err
+}
+
+// learnCreateRequest creates the Learn request.
+func (client *ResourceTypesClient) learnCreateRequest(ctx context.Context, planeName string, resourceProviderName string, request ResourceTypeLearnRequest, _ *ResourceTypesClientLearnOptions) (*policy.Request, error) {
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/learn"
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	if resourceProviderName == "" {
+		return nil, errors.New("parameter resourceProviderName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceProviderName}", url.PathEscape(resourceProviderName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2023-10-01-preview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, request); err != nil {
+	return nil, err
+}
+;	return req, nil
+}
+
+// learnHandleResponse handles the Learn response.
+func (client *ResourceTypesClient) learnHandleResponse(resp *http.Response) (ResourceTypesClientLearnResponse, error) {
+	result := ResourceTypesClientLearnResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceTypeLearnResult); err != nil {
+		return ResourceTypesClientLearnResponse{}, err
+	}
+	return result, nil
+}
+
 // NewListPager - List resource types.
 //
 // Generated from API version 2023-10-01-preview

@@ -106,6 +106,41 @@ model ResourceTypeProperties {
   description?: string;
 }
 
+@doc("Request body for learning a resource type from a Terraform module.")
+model ResourceTypeLearnRequest {
+  @doc("Git repository URL containing the Terraform module.")
+  gitUrl: string;
+
+  @doc("Optional namespace for the generated resource type.")
+  @encodedName("application/json", "namespace")
+  resourceNamespace?: ResourceProviderNamespaceString;
+
+  @doc("Optional resource type name for the generated schema.")
+  typeName?: ResourceTypeNameString;
+}
+
+@doc("Result returned after learning a resource type from a Terraform module.")
+model ResourceTypeLearnResult {
+  @doc("Namespace assigned to the generated resource type.")
+  @encodedName("application/json", "namespace")
+  resourceNamespace: ResourceProviderNamespaceString;
+
+  @doc("Name assigned to the generated resource type.")
+  typeName: ResourceTypeNameString;
+
+  @doc("Generated resource type schema represented in YAML.")
+  yaml: string;
+
+  @doc("Number of Terraform variables discovered in the module.")
+  variableCount: int32;
+
+  @doc("Indicates whether the resource type name was generated automatically.")
+  generatedTypeName: boolean;
+
+  @doc("Indicates whether the namespace was inferred automatically.")
+  inferredNamespace: boolean;
+}
+
 @doc("The resource type for defining an API version of a resource type supported by the containing resource provider.")
 model ApiVersionResource
   is Azure.ResourceManager.ProxyResource<ApiVersionProperties> {
@@ -290,6 +325,14 @@ interface ResourceTypes {
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
+
+  @doc("Generate a resource type schema from a Terraform module.")
+  @segment("resourcetypes/learn")
+  @post
+  learn(
+    ...ResourceProviderBaseParameters<ResourceProviderResource>,
+    @body request: ResourceTypeLearnRequest
+  ): ArmResponse<ResourceTypeLearnResult> | ErrorResponse;
 }
 
 @route("/planes")
