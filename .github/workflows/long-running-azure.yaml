@@ -558,7 +558,7 @@ jobs:
         uses: ./.github/actions/install-git-http-backend
         with:
           git-username: ${{ env.GIT_HTTP_USERNAME }}
-          git-password: ${{ secrets.GITEA_PASSWORD }}
+          git-password: ${{ env.GIT_HTTP_PASSWORD }}
       - name: Port-forward to Git server
         run: |
           # Start port forwarding in the background
