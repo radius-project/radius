@@ -147,7 +147,7 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 type ShowOptions struct {
 	Group       string // The resource group name
 	Workspace   string // The workspace name
-	Output      string // Output format (json, table)
+	Output      string // Output format (json, table, plain-text)
 	Application string // Application name (for resource show)
 }
 
@@ -464,6 +464,64 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackList runs the "recipe-pack list" command with the given environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackList(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"list",
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackShow runs the "recipe-pack show" command with the given recipe pack name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"show",
+		recipepackName,
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackDelete runs the "recipe-pack delete" command for the specified recipe pack name.
+// The options parameter is optional and allows specifying group, workspace, and confirmation bypass.
+func (cli *CLI) RecipePackDelete(ctx context.Context, recipepackName string, opts ...DeleteOptions) error {
+	args := []string{
+		"recipe-pack",
+		"delete",
+		recipepackName,
+	}
+
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Confirm {
+			args = append(args, "--yes")
+		}
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	} else {
+		args = append(args, "--yes")
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
 }
 
 // RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and

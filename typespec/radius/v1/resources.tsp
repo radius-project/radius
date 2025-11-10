@@ -37,11 +37,11 @@ model EnvironmentScopedResource {
   application?: string;
 
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Status of a resource.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   status?: ResourceStatus;
 }
 
@@ -54,11 +54,11 @@ model ApplicationScopedResource {
   application: string;
 
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Status of a resource.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   status?: ResourceStatus;
 }
 
@@ -71,11 +71,11 @@ model GlobalScopedResource {
   application?: string;
 
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Status of a resource.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   status?: ResourceStatus;
 }
 
@@ -158,11 +158,11 @@ model ResourceStatus {
   compute?: EnvironmentCompute;
 
   @doc("The recipe data at the time of deployment")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   recipe?: RecipeStatus;
 
   @doc("Properties of an output resource")
-  @extension("x-ms-identifiers", [])
+  @extension("x-ms-identifiers", #[])
   outputResources?: OutputResource[];
 }
 

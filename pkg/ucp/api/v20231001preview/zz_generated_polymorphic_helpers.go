@@ -72,4 +72,3 @@ func unmarshalCredentialStoragePropertiesClassification(rawMsg json.RawMessage) 
 	}
 	return b, nil
 }
-

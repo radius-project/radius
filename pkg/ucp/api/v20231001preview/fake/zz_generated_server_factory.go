@@ -50,7 +50,6 @@ type ServerFactory struct {
 
 	// ResourcesServer contains the fakes for client ResourcesClient
 	ResourcesServer ResourcesServer
-
 }
 
 // NewServerFactoryTransport creates a new instance of ServerFactoryTransport with the provided implementation.
@@ -65,20 +64,20 @@ func NewServerFactoryTransport(srv *ServerFactory) *ServerFactoryTransport {
 // ServerFactoryTransport connects instances of v20231001preview.ClientFactory to instances of ServerFactory.
 // Don't use this type directly, use NewServerFactoryTransport instead.
 type ServerFactoryTransport struct {
-	srv *ServerFactory
-	trMu sync.Mutex
-	trAPIVersionsServer *APIVersionsServerTransport
-	trAwsCredentialsServer *AwsCredentialsServerTransport
-	trAwsPlanesServer *AwsPlanesServerTransport
-	trAzureCredentialsServer *AzureCredentialsServerTransport
-	trAzurePlanesServer *AzurePlanesServerTransport
-	trLocationsServer *LocationsServerTransport
-	trPlanesServer *PlanesServerTransport
-	trRadiusPlanesServer *RadiusPlanesServerTransport
-	trResourceGroupsServer *ResourceGroupsServerTransport
+	srv                       *ServerFactory
+	trMu                      sync.Mutex
+	trAPIVersionsServer       *APIVersionsServerTransport
+	trAwsCredentialsServer    *AwsCredentialsServerTransport
+	trAwsPlanesServer         *AwsPlanesServerTransport
+	trAzureCredentialsServer  *AzureCredentialsServerTransport
+	trAzurePlanesServer       *AzurePlanesServerTransport
+	trLocationsServer         *LocationsServerTransport
+	trPlanesServer            *PlanesServerTransport
+	trRadiusPlanesServer      *RadiusPlanesServerTransport
+	trResourceGroupsServer    *ResourceGroupsServerTransport
 	trResourceProvidersServer *ResourceProvidersServerTransport
-	trResourceTypesServer *ResourceTypesServerTransport
-	trResourcesServer *ResourcesServerTransport
+	trResourceTypesServer     *ResourceTypesServerTransport
+	trResourcesServer         *ResourcesServerTransport
 }
 
 // Do implements the policy.Transporter interface for ServerFactoryTransport.
@@ -98,13 +97,17 @@ func (s *ServerFactoryTransport) Do(req *http.Request) (*http.Response, error) {
 		initServer(s, &s.trAPIVersionsServer, func() *APIVersionsServerTransport { return NewAPIVersionsServerTransport(&s.srv.APIVersionsServer) })
 		resp, err = s.trAPIVersionsServer.Do(req)
 	case "AwsCredentialsClient":
-		initServer(s, &s.trAwsCredentialsServer, func() *AwsCredentialsServerTransport { return NewAwsCredentialsServerTransport(&s.srv.AwsCredentialsServer) })
+		initServer(s, &s.trAwsCredentialsServer, func() *AwsCredentialsServerTransport {
+			return NewAwsCredentialsServerTransport(&s.srv.AwsCredentialsServer)
+		})
 		resp, err = s.trAwsCredentialsServer.Do(req)
 	case "AwsPlanesClient":
 		initServer(s, &s.trAwsPlanesServer, func() *AwsPlanesServerTransport { return NewAwsPlanesServerTransport(&s.srv.AwsPlanesServer) })
 		resp, err = s.trAwsPlanesServer.Do(req)
 	case "AzureCredentialsClient":
-		initServer(s, &s.trAzureCredentialsServer, func() *AzureCredentialsServerTransport { return NewAzureCredentialsServerTransport(&s.srv.AzureCredentialsServer) })
+		initServer(s, &s.trAzureCredentialsServer, func() *AzureCredentialsServerTransport {
+			return NewAzureCredentialsServerTransport(&s.srv.AzureCredentialsServer)
+		})
 		resp, err = s.trAzureCredentialsServer.Do(req)
 	case "AzurePlanesClient":
 		initServer(s, &s.trAzurePlanesServer, func() *AzurePlanesServerTransport { return NewAzurePlanesServerTransport(&s.srv.AzurePlanesServer) })
@@ -119,13 +122,19 @@ func (s *ServerFactoryTransport) Do(req *http.Request) (*http.Response, error) {
 		initServer(s, &s.trRadiusPlanesServer, func() *RadiusPlanesServerTransport { return NewRadiusPlanesServerTransport(&s.srv.RadiusPlanesServer) })
 		resp, err = s.trRadiusPlanesServer.Do(req)
 	case "ResourceGroupsClient":
-		initServer(s, &s.trResourceGroupsServer, func() *ResourceGroupsServerTransport { return NewResourceGroupsServerTransport(&s.srv.ResourceGroupsServer) })
+		initServer(s, &s.trResourceGroupsServer, func() *ResourceGroupsServerTransport {
+			return NewResourceGroupsServerTransport(&s.srv.ResourceGroupsServer)
+		})
 		resp, err = s.trResourceGroupsServer.Do(req)
 	case "ResourceProvidersClient":
-		initServer(s, &s.trResourceProvidersServer, func() *ResourceProvidersServerTransport { return NewResourceProvidersServerTransport(&s.srv.ResourceProvidersServer) })
+		initServer(s, &s.trResourceProvidersServer, func() *ResourceProvidersServerTransport {
+			return NewResourceProvidersServerTransport(&s.srv.ResourceProvidersServer)
+		})
 		resp, err = s.trResourceProvidersServer.Do(req)
 	case "ResourceTypesClient":
-		initServer(s, &s.trResourceTypesServer, func() *ResourceTypesServerTransport { return NewResourceTypesServerTransport(&s.srv.ResourceTypesServer) })
+		initServer(s, &s.trResourceTypesServer, func() *ResourceTypesServerTransport {
+			return NewResourceTypesServerTransport(&s.srv.ResourceTypesServer)
+		})
 		resp, err = s.trResourceTypesServer.Do(req)
 	case "ResourcesClient":
 		initServer(s, &s.trResourcesServer, func() *ResourcesServerTransport { return NewResourcesServerTransport(&s.srv.ResourcesServer) })

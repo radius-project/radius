@@ -23,6 +23,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	radiuscore "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	ucp_v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -200,6 +201,18 @@ type ApplicationsManagementClient interface {
 
 	// ListEnvironmentsAll lists all environments across resource groups.
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
+
+	// ListRecipePacksInResourceGroup lists all recipe packs in the configured scope (assumes configured scope is a resource group).
+	ListRecipePacksInResourceGroup(ctx context.Context) ([]radiuscore.RecipePackResource, error)
+
+	// ListRecipePacks lists all recipe packs in all resource groups.
+	ListRecipePacks(ctx context.Context) ([]radiuscore.RecipePackResource, error)
+
+	// GetRecipePack retrieves a recipe pack by its name (in the configured scope) or resource ID.
+	GetRecipePack(ctx context.Context, recipePackNameOrID string) (radiuscore.RecipePackResource, error)
+
+	// DeleteRecipePack deletes a recipe pack by its name (in the configured scope) or resource ID.
+	DeleteRecipePack(ctx context.Context, recipePackNameOrID string) (bool, error)
 
 	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.
 	GetEnvironment(ctx context.Context, environmentNameOrID string) (corerp.EnvironmentResource, error)

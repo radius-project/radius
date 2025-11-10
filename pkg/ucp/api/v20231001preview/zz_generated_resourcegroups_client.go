@@ -31,7 +31,7 @@ func NewResourceGroupsClient(credential azcore.TokenCredential, options *arm.Cli
 		return nil, err
 	}
 	client := &ResourceGroupsClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -87,9 +87,9 @@ func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Cont
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -216,13 +216,13 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 // Generated from API version 2023-10-01-preview
 //   - planeName - The plane name.
 //   - options - ResourceGroupsClientListOptions contains the optional parameters for the ResourceGroupsClient.NewListPager method.
-func (client *ResourceGroupsClient) NewListPager(planeName string, options *ResourceGroupsClientListOptions) (*runtime.Pager[ResourceGroupsClientListResponse]) {
+func (client *ResourceGroupsClient) NewListPager(planeName string, options *ResourceGroupsClientListOptions) *runtime.Pager[ResourceGroupsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ResourceGroupsClientListResponse]{
 		More: func(page ResourceGroupsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceGroupsClientListResponse) (ResourceGroupsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceGroupsClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceGroupsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -234,7 +234,7 @@ func (client *ResourceGroupsClient) NewListPager(planeName string, options *Reso
 				return ResourceGroupsClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -316,9 +316,9 @@ func (client *ResourceGroupsClient) updateCreateRequest(ctx context.Context, pla
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -329,4 +329,3 @@ func (client *ResourceGroupsClient) updateHandleResponse(resp *http.Response) (R
 	}
 	return result, nil
 }
-

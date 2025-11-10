@@ -67,6 +67,7 @@ type RecipeStatus struct {
 	// ObservedGeneration is the most recent generation observed for this Recipe. It corresponds to the
 	// Recipe's generation, which is updated on mutation by the API Server.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Format=""
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
 	// Application is the resource ID of the application.

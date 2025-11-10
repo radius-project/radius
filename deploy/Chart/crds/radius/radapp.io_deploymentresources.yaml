@@ -63,7 +63,6 @@ spec:
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this DeploymentResource.
-                format: int64
                 type: integer
               operation:
                 description: Operation tracks the status of an in-progress provisioning

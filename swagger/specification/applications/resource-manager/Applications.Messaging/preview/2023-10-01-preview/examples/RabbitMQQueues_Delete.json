@@ -1,5 +1,5 @@
 {
-  "operationId": "RabbitMqQueues_Delete",
+  "operationId": "RabbitMQQueues_Delete",
   "title": "Delete a RabbitMQQueue resource",
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",

@@ -17,9 +17,10 @@ limitations under the License.
 package output
 
 const (
-	FormatJson    = "json"
-	FormatTable   = "table"
-	DefaultFormat = FormatTable
+	FormatJson      = "json"
+	FormatTable     = "table"
+	FormatPlainText = "plain-text"
+	DefaultFormat   = FormatTable
 )
 
 // SupportedFormats returns a slice of strings containing the supported formats for a request.

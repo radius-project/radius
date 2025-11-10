@@ -49,7 +49,7 @@
   "paths": {
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues": {
       "get": {
-        "operationId": "RabbitMqQueues_ListByScope",
+        "operationId": "RabbitMQQueues_ListByScope",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -91,7 +91,7 @@
     },
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}": {
       "get": {
-        "operationId": "RabbitMqQueues_Get",
+        "operationId": "RabbitMQQueues_Get",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -134,7 +134,7 @@
         }
       },
       "put": {
-        "operationId": "RabbitMqQueues_CreateOrUpdate",
+        "operationId": "RabbitMQQueues_CreateOrUpdate",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -207,7 +207,7 @@
         "x-ms-long-running-operation": true
       },
       "patch": {
-        "operationId": "RabbitMqQueues_Update",
+        "operationId": "RabbitMQQueues_Update",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -277,7 +277,7 @@
         "x-ms-long-running-operation": true
       },
       "delete": {
-        "operationId": "RabbitMqQueues_Delete",
+        "operationId": "RabbitMQQueues_Delete",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -337,7 +337,7 @@
     },
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets": {
       "post": {
-        "operationId": "RabbitMqQueues_ListSecrets",
+        "operationId": "RabbitMQQueues_ListSecrets",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -424,6 +424,7 @@
   "definitions": {
     "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
       "type": "object",
+      "title": "Tracked Resource",
       "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
       "properties": {
         "tags": {

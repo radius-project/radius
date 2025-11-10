@@ -12,4 +12,3 @@ type EnvironmentComputeClassification interface {
 	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
 	GetEnvironmentCompute() *EnvironmentCompute
 }
-

@@ -206,4 +206,3 @@ func unmarshalVolumePropertiesClassification(rawMsg json.RawMessage) (VolumeProp
 	}
 	return b, nil
 }
-
