@@ -399,6 +399,7 @@ jobs:
           git-password: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Port-forward to Git server
+        if: matrix.name == 'kubernetes-noncloud'
         run: |
           # Start port forwarding in the background
           kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
