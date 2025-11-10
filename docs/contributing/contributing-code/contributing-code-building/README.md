@@ -4,6 +4,8 @@ Radius uses a Makefile to build the repository and automate most common reposito
 
 You can run `make` (no additional arguments) to see the list of targets and their descriptions.
 
+> NOTE: Some parts of the build process depend on the submodule `bicep-types`, so after cloning the repository, you should run `git submodule update --init --recursive` to ensure that the `bicep-types` submodule is checked out. By default, `git clone` will not clone submodules. If you have not cloned the submodule, or if the submodule is out of date, the `make build` command will fail and prompt you to update the submodule.
+
 ## Building the repository
 
 You can build the repository with `make build`. This will build all of the packages and executables. The first time you run `make build` it may take a few minutes because it will download and build dependencies. Subsequent builds will be faster because they can use cached output.

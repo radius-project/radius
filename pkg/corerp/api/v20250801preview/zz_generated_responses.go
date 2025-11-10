@@ -4,9 +4,44 @@
 
 package v20250801preview
 
+// ApplicationsClientCreateOrUpdateResponse contains the response from method ApplicationsClient.CreateOrUpdate.
+type ApplicationsClientCreateOrUpdateResponse struct {
+	// Radius Application resource
+	ApplicationResource
+}
+
+// ApplicationsClientDeleteResponse contains the response from method ApplicationsClient.Delete.
+type ApplicationsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ApplicationsClientGetGraphResponse contains the response from method ApplicationsClient.GetGraph.
+type ApplicationsClientGetGraphResponse struct {
+	// Describes the application architecture and its dependencies.
+	ApplicationGraphResponse
+}
+
+// ApplicationsClientGetResponse contains the response from method ApplicationsClient.Get.
+type ApplicationsClientGetResponse struct {
+	// Radius Application resource
+	ApplicationResource
+}
+
+// ApplicationsClientListByScopeResponse contains the response from method ApplicationsClient.NewListByScopePager.
+type ApplicationsClientListByScopeResponse struct {
+	// The response of a ApplicationResource list operation.
+	ApplicationResourceListResult
+}
+
+// ApplicationsClientUpdateResponse contains the response from method ApplicationsClient.Update.
+type ApplicationsClientUpdateResponse struct {
+	// Radius Application resource
+	ApplicationResource
+}
+
 // EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
 type EnvironmentsClientCreateOrUpdateResponse struct {
-// The environment resource
+	// The environment resource
 	EnvironmentResource
 }
 
@@ -17,25 +52,53 @@ type EnvironmentsClientDeleteResponse struct {
 
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.
 type EnvironmentsClientGetResponse struct {
-// The environment resource
+	// The environment resource
 	EnvironmentResource
 }
 
 // EnvironmentsClientListByScopeResponse contains the response from method EnvironmentsClient.NewListByScopePager.
 type EnvironmentsClientListByScopeResponse struct {
-// The response of a EnvironmentResource list operation.
+	// The response of a EnvironmentResource list operation.
 	EnvironmentResourceListResult
 }
 
 // EnvironmentsClientUpdateResponse contains the response from method EnvironmentsClient.Update.
 type EnvironmentsClientUpdateResponse struct {
-// The environment resource
+	// The environment resource
 	EnvironmentResource
 }
 
 // OperationsClientListResponse contains the response from method OperationsClient.NewListPager.
 type OperationsClientListResponse struct {
-// A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.
+	// A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.
 	OperationListResult
 }
 
+// RecipePacksClientCreateOrUpdateResponse contains the response from method RecipePacksClient.CreateOrUpdate.
+type RecipePacksClientCreateOrUpdateResponse struct {
+	// The recipe pack resource
+	RecipePackResource
+}
+
+// RecipePacksClientDeleteResponse contains the response from method RecipePacksClient.Delete.
+type RecipePacksClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// RecipePacksClientGetResponse contains the response from method RecipePacksClient.Get.
+type RecipePacksClientGetResponse struct {
+	// The recipe pack resource
+	RecipePackResource
+}
+
+// RecipePacksClientListByScopeResponse contains the response from method RecipePacksClient.NewListByScopePager.
+type RecipePacksClientListByScopeResponse struct {
+	// The response of a RecipePackResource list operation.
+	RecipePackResourceListResult
+}
+
+// RecipePacksClientUpdateResponse contains the response from method RecipePacksClient.Update.
+type RecipePacksClientUpdateResponse struct {
+	// The recipe pack resource
+	RecipePackResource
+}

@@ -13,7 +13,7 @@ import (
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
 	rootScope string
-	internal *arm.Client
+	internal  *arm.Client
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -30,15 +30,23 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}
 	return &ClientFactory{
 		rootScope: rootScope,
-		internal: internal,
+		internal:  internal,
 	}, nil
+}
+
+// NewApplicationsClient creates a new instance of ApplicationsClient.
+func (c *ClientFactory) NewApplicationsClient() *ApplicationsClient {
+	return &ApplicationsClient{
+		rootScope: c.rootScope,
+		internal:  c.internal,
+	}
 }
 
 // NewEnvironmentsClient creates a new instance of EnvironmentsClient.
 func (c *ClientFactory) NewEnvironmentsClient() *EnvironmentsClient {
 	return &EnvironmentsClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -49,3 +57,10 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 	}
 }
 
+// NewRecipePacksClient creates a new instance of RecipePacksClient.
+func (c *ClientFactory) NewRecipePacksClient() *RecipePacksClient {
+	return &RecipePacksClient{
+		rootScope: c.rootScope,
+		internal:  c.internal,
+	}
+}

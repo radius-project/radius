@@ -4,6 +4,36 @@
 
 package v20250801preview
 
+// ApplicationsClientCreateOrUpdateOptions contains the optional parameters for the ApplicationsClient.CreateOrUpdate method.
+type ApplicationsClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
+type ApplicationsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientGetGraphOptions contains the optional parameters for the ApplicationsClient.GetGraph method.
+type ApplicationsClientGetGraphOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
+type ApplicationsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.NewListByScopePager method.
+type ApplicationsClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
+type ApplicationsClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate method.
 type EnvironmentsClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -34,3 +64,27 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// RecipePacksClientCreateOrUpdateOptions contains the optional parameters for the RecipePacksClient.CreateOrUpdate method.
+type RecipePacksClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientDeleteOptions contains the optional parameters for the RecipePacksClient.Delete method.
+type RecipePacksClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientGetOptions contains the optional parameters for the RecipePacksClient.Get method.
+type RecipePacksClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientListByScopeOptions contains the optional parameters for the RecipePacksClient.NewListByScopePager method.
+type RecipePacksClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RecipePacksClientUpdateOptions contains the optional parameters for the RecipePacksClient.Update method.
+type RecipePacksClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}

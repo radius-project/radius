@@ -19,7 +19,7 @@ import (
 // PubSubBrokersClient contains the methods for the PubSubBrokers group.
 // Don't use this type directly, use NewPubSubBrokersClient() instead.
 type PubSubBrokersClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewPubSubBrokersClient(rootScope string, credential azcore.TokenCredential,
 	}
 	client := &PubSubBrokersClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *PubSubBrokersClient) BeginCreateOrUpdate(ctx context.Context, pubS
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *PubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Conte
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a DaprPubSubBrokerResource
@@ -127,7 +127,7 @@ func (client *PubSubBrokersClient) BeginDelete(ctx context.Context, pubSubBroker
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -238,7 +238,7 @@ func (client *PubSubBrokersClient) getHandleResponse(resp *http.Response) (PubSu
 // Generated from API version 2023-10-01-preview
 //   - options - PubSubBrokersClientListByScopeOptions contains the optional parameters for the PubSubBrokersClient.NewListByScopePager
 //     method.
-func (client *PubSubBrokersClient) NewListByScopePager(options *PubSubBrokersClientListByScopeOptions) (*runtime.Pager[PubSubBrokersClientListByScopeResponse]) {
+func (client *PubSubBrokersClient) NewListByScopePager(options *PubSubBrokersClientListByScopeOptions) *runtime.Pager[PubSubBrokersClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[PubSubBrokersClientListByScopeResponse]{
 		More: func(page PubSubBrokersClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -255,7 +255,7 @@ func (client *PubSubBrokersClient) NewListByScopePager(options *PubSubBrokersCli
 				return PubSubBrokersClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -300,7 +300,7 @@ func (client *PubSubBrokersClient) BeginUpdate(ctx context.Context, pubSubBroker
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -350,8 +350,7 @@ func (client *PubSubBrokersClient) updateCreateRequest(ctx context.Context, pubS
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

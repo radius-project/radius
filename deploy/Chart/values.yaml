@@ -27,6 +27,14 @@ global:
     # Dotnet runtime and Go use this environment variable to load the root CA.
     sslCertDirEnvVar: "SSL_CERT_DIR"
 
+  appendRootCA:
+    # Auto-enabled when global.rootCA.cert is provided via --set-file
+    # Init image to normalize and prepare certs directory
+    initImage: "alpine:latest"
+    # Working and target mount paths
+    workDir: "/work/certs"
+    targetMountPath: "/etc/ssl/certs"
+
   prometheus:
     enabled: true
     path: "/metrics"
@@ -58,6 +66,10 @@ global:
     # Leave empty to automatically fetch the latest version from HashiCorp
     # Or provide a complete direct download URL for custom sources
     downloadUrl: ""
+    # Configure Terraform log level for terraform-exec execution
+    # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
+    # Default: ERROR
+    loglevel: "ERROR"
 
 controller:
   image: controller

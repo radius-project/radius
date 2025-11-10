@@ -13,7 +13,7 @@ import (
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
 	rootScope string
-	internal *arm.Client
+	internal  *arm.Client
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -30,7 +30,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}
 	return &ClientFactory{
 		rootScope: rootScope,
-		internal: internal,
+		internal:  internal,
 	}, nil
 }
 
@@ -38,7 +38,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 func (c *ClientFactory) NewApplicationsClient() *ApplicationsClient {
 	return &ApplicationsClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -46,7 +46,7 @@ func (c *ClientFactory) NewApplicationsClient() *ApplicationsClient {
 func (c *ClientFactory) NewContainersClient() *ContainersClient {
 	return &ContainersClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -54,7 +54,7 @@ func (c *ClientFactory) NewContainersClient() *ContainersClient {
 func (c *ClientFactory) NewEnvironmentsClient() *EnvironmentsClient {
 	return &EnvironmentsClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -62,7 +62,7 @@ func (c *ClientFactory) NewEnvironmentsClient() *EnvironmentsClient {
 func (c *ClientFactory) NewExtendersClient() *ExtendersClient {
 	return &ExtendersClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -70,7 +70,7 @@ func (c *ClientFactory) NewExtendersClient() *ExtendersClient {
 func (c *ClientFactory) NewGatewaysClient() *GatewaysClient {
 	return &GatewaysClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -85,7 +85,7 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 func (c *ClientFactory) NewSecretStoresClient() *SecretStoresClient {
 	return &SecretStoresClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -93,7 +93,6 @@ func (c *ClientFactory) NewSecretStoresClient() *SecretStoresClient {
 func (c *ClientFactory) NewVolumesClient() *VolumesClient {
 	return &VolumesClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
-

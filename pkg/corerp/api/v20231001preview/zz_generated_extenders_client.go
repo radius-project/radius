@@ -19,7 +19,7 @@ import (
 // ExtendersClient contains the methods for the Extenders group.
 // Don't use this type directly, use NewExtendersClient() instead.
 type ExtendersClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewExtendersClient(rootScope string, credential azcore.TokenCredential, opt
 	}
 	client := &ExtendersClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *ExtendersClient) BeginCreateOrUpdate(ctx context.Context, extender
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a ExtenderResource
@@ -126,7 +126,7 @@ func (client *ExtendersClient) BeginDelete(ctx context.Context, extenderName str
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -237,7 +237,7 @@ func (client *ExtendersClient) getHandleResponse(resp *http.Response) (Extenders
 // Generated from API version 2023-10-01-preview
 //   - options - ExtendersClientListByScopeOptions contains the optional parameters for the ExtendersClient.NewListByScopePager
 //     method.
-func (client *ExtendersClient) NewListByScopePager(options *ExtendersClientListByScopeOptions) (*runtime.Pager[ExtendersClientListByScopeResponse]) {
+func (client *ExtendersClient) NewListByScopePager(options *ExtendersClientListByScopeOptions) *runtime.Pager[ExtendersClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ExtendersClientListByScopeResponse]{
 		More: func(page ExtendersClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -254,7 +254,7 @@ func (client *ExtendersClient) NewListByScopePager(options *ExtendersClientListB
 				return ExtendersClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -327,9 +327,9 @@ func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, ext
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
@@ -356,7 +356,7 @@ func (client *ExtendersClient) BeginUpdate(ctx context.Context, extenderName str
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -406,8 +406,7 @@ func (client *ExtendersClient) updateCreateRequest(ctx context.Context, extender
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

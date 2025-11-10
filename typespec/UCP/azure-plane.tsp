@@ -56,7 +56,7 @@ model AzurePlaneResource
 @doc("The Plane properties.")
 model AzurePlaneResourceProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("The URL used to proxy requests.")
@@ -69,6 +69,7 @@ interface AzurePlanes {
   @doc("List azure planes")
   @get
   @route("/azure")
+  @list
   @armResourceList(AzurePlaneResource)
   list(
     ...ApiVersionParameter,
@@ -87,6 +88,7 @@ interface AzurePlanes {
   >;
 
   @doc("Update a plane")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchAsync<
     AzurePlaneResource,
     PlaneBaseParameters<AzurePlaneResource>

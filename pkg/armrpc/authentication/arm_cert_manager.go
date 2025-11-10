@@ -114,7 +114,6 @@ func (acm *ArmCertManager) periodicCertRefresh(ctx context.Context) {
 	for {
 		select {
 		case <-time.After(acm.period):
-			break
 		case <-ctx.Done():
 			return
 		}

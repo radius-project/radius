@@ -48,7 +48,7 @@ model EnvironmentResource
 @doc("Environment properties")
 model EnvironmentProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("List of Recipe Pack resource IDs linked to this environment.")

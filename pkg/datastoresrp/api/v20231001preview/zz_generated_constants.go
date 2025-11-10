@@ -4,11 +4,6 @@
 
 package v20231001preview
 
-const (
-	moduleName = "github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
-	moduleVersion = "v0.0.1"
-)
-
 // ActionType - Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
 type ActionType string
 
@@ -18,7 +13,7 @@ const (
 
 // PossibleActionTypeValues returns the possible values for the ActionType const type.
 func PossibleActionTypeValues() []ActionType {
-	return []ActionType{	
+	return []ActionType{
 		ActionTypeInternal,
 	}
 }
@@ -27,15 +22,15 @@ func PossibleActionTypeValues() []ActionType {
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -47,21 +42,21 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 type IdentitySettingKind string
 
 const (
-// IdentitySettingKindAzureComWorkload - azure ad workload identity
+	// IdentitySettingKindAzureComWorkload - azure ad workload identity
 	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
-// IdentitySettingKindSystemAssigned - System assigned managed identity
+	// IdentitySettingKindSystemAssigned - System assigned managed identity
 	IdentitySettingKindSystemAssigned IdentitySettingKind = "systemAssigned"
-// IdentitySettingKindSystemAssignedUserAssigned - System assigned and user assigned managed identity
+	// IdentitySettingKindSystemAssignedUserAssigned - System assigned and user assigned managed identity
 	IdentitySettingKindSystemAssignedUserAssigned IdentitySettingKind = "systemAssignedUserAssigned"
-// IdentitySettingKindUndefined - undefined identity
+	// IdentitySettingKindUndefined - undefined identity
 	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
-// IdentitySettingKindUserAssigned - User assigned managed identity
+	// IdentitySettingKindUserAssigned - User assigned managed identity
 	IdentitySettingKindUserAssigned IdentitySettingKind = "userAssigned"
 )
 
 // PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
 func PossibleIdentitySettingKindValues() []IdentitySettingKind {
-	return []IdentitySettingKind{	
+	return []IdentitySettingKind{
 		IdentitySettingKindAzureComWorkload,
 		IdentitySettingKindSystemAssigned,
 		IdentitySettingKindSystemAssignedUserAssigned,
@@ -75,14 +70,14 @@ func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 type Origin string
 
 const (
-	OriginSystem Origin = "system"
-	OriginUser Origin = "user"
+	OriginSystem     Origin = "system"
+	OriginUser       Origin = "user"
 	OriginUserSystem Origin = "user,system"
 )
 
 // PossibleOriginValues returns the possible values for the Origin const type.
 func PossibleOriginValues() []Origin {
-	return []Origin{	
+	return []Origin{
 		OriginSystem,
 		OriginUser,
 		OriginUserSystem,
@@ -93,27 +88,27 @@ func PossibleOriginValues() []Origin {
 type ProvisioningState string
 
 const (
-// ProvisioningStateAccepted - The resource create request has been accepted
+	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
-// ProvisioningStateCanceled - The resource provisioning has been canceled
+	// ProvisioningStateCanceled - The resource provisioning has been canceled
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
-// ProvisioningStateCreating - The resource is being created
+	// ProvisioningStateCreating - The resource is being created
 	ProvisioningStateCreating ProvisioningState = "Creating"
-// ProvisioningStateDeleting - The resource is being deleted
+	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
-// ProvisioningStateFailed - The resource provisioning has failed
+	// ProvisioningStateFailed - The resource provisioning has failed
 	ProvisioningStateFailed ProvisioningState = "Failed"
-// ProvisioningStateProvisioning - The resource is being provisioned
+	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-// ProvisioningStateSucceeded - The resource has been successfully provisioned
+	// ProvisioningStateSucceeded - The resource has been successfully provisioned
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
-// ProvisioningStateUpdating - The resource is being updated
+	// ProvisioningStateUpdating - The resource is being updated
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
 
 // PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
 func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{	
+	return []ProvisioningState{
 		ProvisioningStateAccepted,
 		ProvisioningStateCanceled,
 		ProvisioningStateCreating,
@@ -131,17 +126,16 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 type ResourceProvisioning string
 
 const (
-// ResourceProvisioningManual - The resource lifecycle will be managed by the user
+	// ResourceProvisioningManual - The resource lifecycle will be managed by the user
 	ResourceProvisioningManual ResourceProvisioning = "manual"
-// ResourceProvisioningRecipe - The resource lifecycle will be managed by Radius
+	// ResourceProvisioningRecipe - The resource lifecycle will be managed by Radius
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
 )
 
 // PossibleResourceProvisioningValues returns the possible values for the ResourceProvisioning const type.
 func PossibleResourceProvisioningValues() []ResourceProvisioning {
-	return []ResourceProvisioning{	
+	return []ResourceProvisioning{
 		ResourceProvisioningManual,
 		ResourceProvisioningRecipe,
 	}
 }
-

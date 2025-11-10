@@ -64,6 +64,6 @@ model InternalCredentialStorageProperties extends CredentialStorageProperties {
   kind: CredentialStorageKind.Internal;
 
   @doc("The name of secret stored.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   secretName: string;
 }

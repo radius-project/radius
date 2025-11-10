@@ -4,24 +4,19 @@
 
 package v20231001preview
 
-const (
-	moduleName = "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	moduleVersion = "v0.0.1"
-)
-
 // AWSCredentialKind - AWS credential kind
 type AWSCredentialKind string
 
 const (
-// AWSCredentialKindAccessKey - The AWS Access Key credential
+	// AWSCredentialKindAccessKey - The AWS Access Key credential
 	AWSCredentialKindAccessKey AWSCredentialKind = "AccessKey"
-// AWSCredentialKindIRSA - AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
+	// AWSCredentialKindIRSA - AWS IAM roles for service accounts. For more information, please see: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html
 	AWSCredentialKindIRSA AWSCredentialKind = "IRSA"
 )
 
 // PossibleAWSCredentialKindValues returns the possible values for the AWSCredentialKind const type.
 func PossibleAWSCredentialKindValues() []AWSCredentialKind {
-	return []AWSCredentialKind{	
+	return []AWSCredentialKind{
 		AWSCredentialKindAccessKey,
 		AWSCredentialKindIRSA,
 	}
@@ -31,15 +26,15 @@ func PossibleAWSCredentialKindValues() []AWSCredentialKind {
 type AzureCredentialKind string
 
 const (
-// AzureCredentialKindServicePrincipal - The Service Principal Credential
+	// AzureCredentialKindServicePrincipal - The Service Principal Credential
 	AzureCredentialKindServicePrincipal AzureCredentialKind = "ServicePrincipal"
-// AzureCredentialKindWorkloadIdentity - The Workload Identity Credential
+	// AzureCredentialKindWorkloadIdentity - The Workload Identity Credential
 	AzureCredentialKindWorkloadIdentity AzureCredentialKind = "WorkloadIdentity"
 )
 
 // PossibleAzureCredentialKindValues returns the possible values for the AzureCredentialKind const type.
 func PossibleAzureCredentialKindValues() []AzureCredentialKind {
-	return []AzureCredentialKind{	
+	return []AzureCredentialKind{
 		AzureCredentialKindServicePrincipal,
 		AzureCredentialKindWorkloadIdentity,
 	}
@@ -49,15 +44,15 @@ func PossibleAzureCredentialKindValues() []AzureCredentialKind {
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -69,14 +64,14 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 type CredentialStorageKind string
 
 const (
-// CredentialStorageKindInternal - Internal credential storage
+	// CredentialStorageKindInternal - Internal credential storage
 	CredentialStorageKindInternal CredentialStorageKind = "Internal"
-	CredentialStorageKindString CredentialStorageKind = "string"
+	CredentialStorageKindString   CredentialStorageKind = "string"
 )
 
 // PossibleCredentialStorageKindValues returns the possible values for the CredentialStorageKind const type.
 func PossibleCredentialStorageKindValues() []CredentialStorageKind {
-	return []CredentialStorageKind{	
+	return []CredentialStorageKind{
 		CredentialStorageKindInternal,
 		CredentialStorageKindString,
 	}
@@ -86,27 +81,27 @@ func PossibleCredentialStorageKindValues() []CredentialStorageKind {
 type ProvisioningState string
 
 const (
-// ProvisioningStateAccepted - The resource create request has been accepted
+	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
-// ProvisioningStateCanceled - The resource provisioning has been canceled
+	// ProvisioningStateCanceled - The resource provisioning has been canceled
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
-// ProvisioningStateCreating - The resource is being created
+	// ProvisioningStateCreating - The resource is being created
 	ProvisioningStateCreating ProvisioningState = "Creating"
-// ProvisioningStateDeleting - The resource is being deleted
+	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
-// ProvisioningStateFailed - The resource provisioning has failed
+	// ProvisioningStateFailed - The resource provisioning has failed
 	ProvisioningStateFailed ProvisioningState = "Failed"
-// ProvisioningStateProvisioning - The resource is being provisioned
+	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-// ProvisioningStateSucceeded - The resource has been successfully provisioned
+	// ProvisioningStateSucceeded - The resource has been successfully provisioned
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
-// ProvisioningStateUpdating - The resource is being updated
+	// ProvisioningStateUpdating - The resource is being updated
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
 
 // PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
 func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{	
+	return []ProvisioningState{
 		ProvisioningStateAccepted,
 		ProvisioningStateCanceled,
 		ProvisioningStateCreating,
@@ -117,4 +112,3 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateUpdating,
 	}
 }
-

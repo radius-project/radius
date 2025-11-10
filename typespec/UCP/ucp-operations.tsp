@@ -34,6 +34,7 @@ using OpenAPI;
 @autoRoute
 @doc("List {name}", TResource)
 @segmentOf(TResource)
+@list
 @armResourceList(TResource)
 op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
@@ -55,9 +56,7 @@ op UcpResourceRead<TResource extends Foundations.Resource, TBaseParameters>(
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
-  {
-    `final-state-via`: "azure-async-operation",
-  }
+  #{ `final-state-via`: "azure-async-operation" }
 )
 @armResourceCreateOrUpdate(TResource)
 @put
@@ -68,7 +67,7 @@ op UcpResourceCreateOrUpdateAsync<
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
-  @body
+  @bodyRoot
   resource: TResource,
 ): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedResponse<TResource> | ErrorResponse;
 
@@ -78,9 +77,7 @@ op UcpResourceCreateOrUpdateAsync<
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
-  {
-    `final-state-via`: "location",
-  }
+  #{ `final-state-via`: "location" }
 )
 @armResourceUpdate(TResource)
 @patch
@@ -102,9 +99,7 @@ op UcpCustomPatchAsync<
 @extension("x-ms-long-running-operation", true)
 @extension(
   "x-ms-long-running-operation-options",
-  {
-    `final-state-via`: "location",
-  }
+  #{ `final-state-via`: "location" }
 )
 @armResourceDelete(TResource)
 @delete
@@ -129,7 +124,7 @@ op UcpResourceCreateOrUpdateSync<
   ...TBaseParameters,
 
   @doc("Resource create parameters.")
-  @body
+  @bodyRoot
   resource: TResource,
 ): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedSyncResponse<TResource> | ErrorResponse;
 

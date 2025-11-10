@@ -46,6 +46,15 @@ const (
 	defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
 )
 
+// InstallOptions configures how Terraform is installed and initialized.
+type InstallOptions struct {
+	// RootDir is the directory used to create the Terraform working directory for the caller.
+	RootDir string
+
+	// LogLevel controls the verbosity of Terraform execution logs.
+	LogLevel string
+}
+
 // getGlobalTerraformPaths returns the terraform paths, allowing override for testing
 func getGlobalTerraformPaths() (dir, binary, marker string) {
 	if testDir := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR"); testDir != "" {
@@ -64,7 +73,7 @@ var (
 // Install installs Terraform using a global shared binary approach.
 // It uses a global mutex to ensure thread-safe access to the shared Terraform binary.
 // This approach prevents concurrent file system operations that were causing state lock errors.
-func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
+func Install(ctx context.Context, installer *install.Installer, opts InstallOptions) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Use global shared binary approach with proper locking
@@ -74,13 +83,13 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 	}
 
 	// Create a new instance of tfexec.Terraform with the global shared binary
-	tf, err := NewTerraform(ctx, tfDir, execPath)
+	tf, err := NewTerraform(ctx, opts.RootDir, execPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Terraform instance with global shared binary: %w", err)
 	}
 
 	// Configure Terraform logs
-	configureTerraformLogs(ctx, tf)
+	configureTerraformLogs(ctx, tf, opts.LogLevel)
 
 	return tf, nil
 }

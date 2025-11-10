@@ -7,21 +7,21 @@ package v20231001preview
 // ConfigurationStoresClientBeginCreateOrUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginCreateOrUpdate
 // method.
 type ConfigurationStoresClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // ConfigurationStoresClientBeginDeleteOptions contains the optional parameters for the ConfigurationStoresClient.BeginDelete
 // method.
 type ConfigurationStoresClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // ConfigurationStoresClientBeginUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginUpdate
 // method.
 type ConfigurationStoresClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -44,19 +44,19 @@ type OperationsClientListOptions struct {
 // PubSubBrokersClientBeginCreateOrUpdateOptions contains the optional parameters for the PubSubBrokersClient.BeginCreateOrUpdate
 // method.
 type PubSubBrokersClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // PubSubBrokersClientBeginDeleteOptions contains the optional parameters for the PubSubBrokersClient.BeginDelete method.
 type PubSubBrokersClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // PubSubBrokersClientBeginUpdateOptions contains the optional parameters for the PubSubBrokersClient.BeginUpdate method.
 type PubSubBrokersClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -74,19 +74,19 @@ type PubSubBrokersClientListByScopeOptions struct {
 // SecretStoresClientBeginCreateOrUpdateOptions contains the optional parameters for the SecretStoresClient.BeginCreateOrUpdate
 // method.
 type SecretStoresClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // SecretStoresClientBeginDeleteOptions contains the optional parameters for the SecretStoresClient.BeginDelete method.
 type SecretStoresClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // SecretStoresClientBeginUpdateOptions contains the optional parameters for the SecretStoresClient.BeginUpdate method.
 type SecretStoresClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -103,19 +103,19 @@ type SecretStoresClientListByScopeOptions struct {
 // StateStoresClientBeginCreateOrUpdateOptions contains the optional parameters for the StateStoresClient.BeginCreateOrUpdate
 // method.
 type StateStoresClientBeginCreateOrUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // StateStoresClientBeginDeleteOptions contains the optional parameters for the StateStoresClient.BeginDelete method.
 type StateStoresClientBeginDeleteOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
 // StateStoresClientBeginUpdateOptions contains the optional parameters for the StateStoresClient.BeginUpdate method.
 type StateStoresClientBeginUpdateOptions struct {
-// Resumes the long-running operation from the provided token.
+	// Resumes the long-running operation from the provided token.
 	ResumeToken string
 }
 
@@ -128,4 +128,3 @@ type StateStoresClientGetOptions struct {
 type StateStoresClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
-

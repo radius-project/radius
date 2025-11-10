@@ -31,7 +31,7 @@ func NewResourceTypesClient(credential azcore.TokenCredential, options *arm.Clie
 		return nil, err
 	}
 	client := &ResourceTypesClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -54,7 +54,7 @@ func (client *ResourceTypesClient) BeginCreateOrUpdate(ctx context.Context, plan
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ResourceTypesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -113,9 +113,9 @@ func (client *ResourceTypesClient) createOrUpdateCreateRequest(ctx context.Conte
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a resource type
@@ -135,7 +135,7 @@ func (client *ResourceTypesClient) BeginDelete(ctx context.Context, planeName st
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ResourceTypesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -267,13 +267,13 @@ func (client *ResourceTypesClient) getHandleResponse(resp *http.Response) (Resou
 //   - planeName - The plane name.
 //   - resourceProviderName - The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.
 //   - options - ResourceTypesClientListOptions contains the optional parameters for the ResourceTypesClient.NewListPager method.
-func (client *ResourceTypesClient) NewListPager(planeName string, resourceProviderName string, options *ResourceTypesClientListOptions) (*runtime.Pager[ResourceTypesClientListResponse]) {
+func (client *ResourceTypesClient) NewListPager(planeName string, resourceProviderName string, options *ResourceTypesClientListOptions) *runtime.Pager[ResourceTypesClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ResourceTypesClientListResponse]{
 		More: func(page ResourceTypesClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourceTypesClientListResponse) (ResourceTypesClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceTypesClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceTypesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -285,7 +285,7 @@ func (client *ResourceTypesClient) NewListPager(planeName string, resourceProvid
 				return ResourceTypesClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -320,4 +320,3 @@ func (client *ResourceTypesClient) listHandleResponse(resp *http.Response) (Reso
 	}
 	return result, nil
 }
-

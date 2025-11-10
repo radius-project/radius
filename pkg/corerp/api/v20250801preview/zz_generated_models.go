@@ -6,278 +6,573 @@ package v20250801preview
 
 import "time"
 
-// AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
-// top level resource which has 'tags' and a 'location'
-type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
-// Resource tags.
-	Tags map[string]*string
+// ApplicationGraphConnection - Describes the connection between two resources.
+type ApplicationGraphConnection struct {
+	// REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
+	// 'Inbound' indicates indicates this connection specifies the ID of the source.
+	Direction *Direction
 
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// REQUIRED; The resource ID
+	ID *string
+}
+
+// ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.
+type ApplicationGraphOutputResource struct {
+	// REQUIRED; The resource ID.
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// REQUIRED; The resource name.
 	Name *string
 
-// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
-	SystemData *SystemData
-
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// REQUIRED; The resource type.
 	Type *string
 }
 
+// ApplicationGraphResource - Describes a resource in the application graph.
+type ApplicationGraphResource struct {
+	// REQUIRED; The connections between resources in the application graph.
+	Connections []*ApplicationGraphConnection
+
+	// REQUIRED; The resource ID.
+	ID *string
+
+	// REQUIRED; The resource name.
+	Name *string
+
+	// REQUIRED; The resources that comprise this resource.
+	OutputResources []*ApplicationGraphOutputResource
+
+	// REQUIRED; provisioningState of this resource.
+	ProvisioningState *string
+
+	// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResponse - Describes the application architecture and its dependencies.
+type ApplicationGraphResponse struct {
+	// REQUIRED; The resources in the application graph.
+	Resources []*ApplicationGraphResource
+}
+
+// ApplicationProperties - Application properties
+type ApplicationProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the application is linked to
+	Environment *string
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
+}
+
+// ApplicationResource - Radius Application resource
+type ApplicationResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *ApplicationProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// ApplicationResourceListResult - The response of a ApplicationResource list operation.
+type ApplicationResourceListResult struct {
+	// REQUIRED; The ApplicationResource items on this page
+	Value []*ApplicationResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// ApplicationResourceUpdate - Radius Application resource
+type ApplicationResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// AzureContainerInstanceCompute - The Azure container instance compute configuration
+type AzureContainerInstanceCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+	// The resource group to use for the environment.
+	ResourceGroup *string
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
+func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity:   a.Identity,
+		Kind:       a.Kind,
+		ResourceID: a.ResourceID,
+	}
+}
+
+// AzureResourceManagerCommonTypesTrackedResourceUpdate - The resource model definition for an Azure Resource Manager tracked
+// top level resource which has 'tags' and a 'location'
+type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// EnvironmentCompute - Represents backing compute resource
+type EnvironmentCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
+
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
-// Cloud provider configuration for the environment.
+	// Cloud provider configuration for the environment.
 	Providers *Providers
 
-// List of Recipe Pack resource IDs linked to this environment.
+	// List of Recipe Pack resource IDs linked to this environment.
 	RecipePacks []*string
 
-// Simulated environment.
+	// Simulated environment.
 	Simulated *bool
 
-// READ-ONLY; The status of the asynchronous operation.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
 // EnvironmentResource - The environment resource
 type EnvironmentResource struct {
-// REQUIRED; The geo-location where the resource lives
+	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-// REQUIRED; The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *EnvironmentProperties
 
-// Resource tags.
+	// Resource tags.
 	Tags map[string]*string
 
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
 // EnvironmentResourceListResult - The response of a EnvironmentResource list operation.
 type EnvironmentResourceListResult struct {
-// REQUIRED; The EnvironmentResource items on this page
+	// REQUIRED; The EnvironmentResource items on this page
 	Value []*EnvironmentResource
 
-// The link to the next page of items
+	// The link to the next page of items
 	NextLink *string
 }
 
 // EnvironmentResourceUpdate - The environment resource
 type EnvironmentResourceUpdate struct {
-// Resource tags.
+	// Resource tags.
 	Tags map[string]*string
 
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
-// READ-ONLY; The additional info.
+	// READ-ONLY; The additional info.
 	Info any
 
-// READ-ONLY; The additional info type.
+	// READ-ONLY; The additional info type.
 	Type *string
 }
 
 // ErrorDetail - The error detail.
 type ErrorDetail struct {
-// READ-ONLY; The error additional info.
+	// READ-ONLY; The error additional info.
 	AdditionalInfo []*ErrorAdditionalInfo
 
-// READ-ONLY; The error code.
+	// READ-ONLY; The error code.
 	Code *string
 
-// READ-ONLY; The error details.
+	// READ-ONLY; The error details.
 	Details []*ErrorDetail
 
-// READ-ONLY; The error message.
+	// READ-ONLY; The error message.
 	Message *string
 
-// READ-ONLY; The error target.
+	// READ-ONLY; The error target.
 	Target *string
 }
 
 // ErrorResponse - Common error response for all Azure Resource Manager APIs to return error details for failed operations.
 // (This also follows the OData error response format.).
 type ErrorResponse struct {
-// The error object.
+	// The error object.
 	Error *ErrorDetail
 }
 
 // IdentitySettings is the external identity setting.
 type IdentitySettings struct {
-// REQUIRED; kind of identity setting
+	// REQUIRED; kind of identity setting
 	Kind *IdentitySettingKind
 
-// The list of user assigned managed identities
+	// The list of user assigned managed identities
 	ManagedIdentity []*string
 
-// The URI for your compute platform's OIDC issuer
+	// The URI for your compute platform's OIDC issuer
 	OidcIssuer *string
 
-// The resource ID of the provisioned identity
+	// The resource ID of the provisioned identity
 	Resource *string
+}
+
+// KubernetesCompute - The Kubernetes compute configuration
+type KubernetesCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+	// REQUIRED; The namespace to use for the environment.
+	Namespace *string
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
+func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity:   k.Identity,
+		Kind:       k.Kind,
+		ResourceID: k.ResourceID,
+	}
 }
 
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API
 type Operation struct {
-// Localized display information for this particular operation.
+	// Localized display information for this particular operation.
 	Display *OperationDisplay
 
-// READ-ONLY; Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
+	// READ-ONLY; Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
 	ActionType *ActionType
 
-// READ-ONLY; Whether the operation applies to data-plane. This is "true" for data-plane operations and "false" for ARM/control-plane
-// operations.
+	// READ-ONLY; Whether the operation applies to data-plane. This is "true" for data-plane operations and "false" for ARM/control-plane
+	// operations.
 	IsDataAction *bool
 
-// READ-ONLY; The name of the operation, as per Resource-Based Access Control (RBAC). Examples: "Microsoft.Compute/virtualMachines/write",
-// "Microsoft.Compute/virtualMachines/capture/action"
+	// READ-ONLY; The name of the operation, as per Resource-Based Access Control (RBAC). Examples: "Microsoft.Compute/virtualMachines/write",
+	// "Microsoft.Compute/virtualMachines/capture/action"
 	Name *string
 
-// READ-ONLY; The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
-// value is "user,system"
+	// READ-ONLY; The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
+	// value is "user,system"
 	Origin *Origin
 }
 
 // OperationDisplay - Localized display information for this particular operation.
 type OperationDisplay struct {
-// READ-ONLY; The short, localized friendly description of the operation; suitable for tool tips and detailed views.
+	// READ-ONLY; The short, localized friendly description of the operation; suitable for tool tips and detailed views.
 	Description *string
 
-// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual
-// Machine", "Restart Virtual Machine".
+	// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual
+	// Machine", "Restart Virtual Machine".
 	Operation *string
 
-// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft
-// Compute".
+	// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft
+	// Compute".
 	Provider *string
 
-// READ-ONLY; The localized friendly name of the resource type related to this operation. E.g. "Virtual Machines" or "Job
-// Schedule Collections".
+	// READ-ONLY; The localized friendly name of the resource type related to this operation. E.g. "Virtual Machines" or "Job
+	// Schedule Collections".
 	Resource *string
 }
 
 // OperationListResult - A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to
 // get the next set of results.
 type OperationListResult struct {
-// READ-ONLY; URL to get the next set of operation list results (if there are any).
+	// READ-ONLY; URL to get the next set of operation list results (if there are any).
 	NextLink *string
 
-// READ-ONLY; List of operations supported by the resource provider
+	// READ-ONLY; List of operations supported by the resource provider
 	Value []*Operation
 }
 
+// OutputResource - Properties of an output resource.
+type OutputResource struct {
+	// The UCP resource ID of the underlying resource.
+	ID *string
+
+	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
+	// relationship. LocalIDs do not have any particular format or meaning beyond
+	// being compared to determine dependency relationships.
+	LocalID *string
+
+	// Determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool
+}
+
 type Providers struct {
-// The AWS cloud provider configuration.
+	// The AWS cloud provider configuration.
 	Aws *ProvidersAws
 
-// The Azure cloud provider configuration.
+	// The Azure cloud provider configuration.
 	Azure *ProvidersAzure
 
-// The Kubernetes provider configuration.
+	// The Kubernetes provider configuration.
 	Kubernetes *ProvidersKubernetes
 }
 
 // ProvidersAws - The AWS cloud provider definition.
 type ProvidersAws struct {
-// REQUIRED; Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'.
+	// REQUIRED; Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'.
 	Scope *string
 }
 
 // ProvidersAzure - The Azure cloud provider definition.
 type ProvidersAzure struct {
-// REQUIRED; Azure subscription ID hosting deployed resources.
+	// REQUIRED; Azure subscription ID hosting deployed resources.
 	SubscriptionID *string
 
-// External identity settings (moved from compute).
+	// External identity settings (moved from compute).
 	Identity *IdentitySettings
 
-// Optional resource group name.
+	// Optional resource group name.
 	ResourceGroupName *string
 }
 
 type ProvidersKubernetes struct {
-// REQUIRED; Kubernetes namespace to deploy workloads into.
+	// REQUIRED; Kubernetes namespace to deploy workloads into.
 	Namespace *string
+}
+
+// RecipeDefinition - Recipe definition for a specific resource type
+type RecipeDefinition struct {
+	// REQUIRED; The type of recipe (e.g., Terraform, Bicep)
+	RecipeKind *RecipeKind
+
+	// REQUIRED; URL path to the recipe
+	RecipeLocation *string
+
+	// Parameters to pass to the recipe
+	Parameters map[string]any
+
+	// Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for
+	// example in a locally hosted registry for Bicep recipes. Defaults to false (use
+	// HTTPS/TLS)
+	PlainHTTP *bool
+}
+
+// RecipePackProperties - Recipe Pack properties
+type RecipePackProperties struct {
+	// REQUIRED; Map of resource types to their recipe configurations
+	Recipes map[string]*RecipeDefinition
+
+	// Description of what this recipe pack provides
+	Description *string
+
+	// READ-ONLY; The status of the asynchronous operation
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; List of environment IDs that reference this recipe pack
+	ReferencedBy []*string
+}
+
+// RecipePackResource - The recipe pack resource
+type RecipePackResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *RecipePackProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// RecipePackResourceListResult - The response of a RecipePackResource list operation.
+type RecipePackResourceListResult struct {
+	// REQUIRED; The RecipePackResource items on this page
+	Value []*RecipePackResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// RecipePackResourceUpdate - The recipe pack resource
+type RecipePackResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// RecipeStatus - Recipe status at deployment time for a resource.
+type RecipeStatus struct {
+	// REQUIRED; TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
+	TemplateKind *string
+
+	// REQUIRED; TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
+	TemplatePath *string
+
+	// TemplateVersion is the version number of the template.
+	TemplateVersion *string
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+	// The compute resource associated with the resource.
+	Compute EnvironmentComputeClassification
+
+	// Properties of an output resource
+	OutputResources []*OutputResource
+
+	// READ-ONLY; The recipe data at the time of deployment
+	Recipe *RecipeStatus
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
 type SystemData struct {
-// The timestamp of resource creation (UTC).
+	// The timestamp of resource creation (UTC).
 	CreatedAt *time.Time
 
-// The identity that created the resource.
+	// The identity that created the resource.
 	CreatedBy *string
 
-// The type of identity that created the resource.
+	// The type of identity that created the resource.
 	CreatedByType *CreatedByType
 
-// The timestamp of resource last modification (UTC)
+	// The timestamp of resource last modification (UTC)
 	LastModifiedAt *time.Time
 
-// The identity that last modified the resource.
+	// The identity that last modified the resource.
 	LastModifiedBy *string
 
-// The type of identity that last modified the resource.
+	// The type of identity that last modified the resource.
 	LastModifiedByType *CreatedByType
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
 // and a 'location'
 type TrackedResource struct {
-// REQUIRED; The geo-location where the resource lives
+	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-// Resource tags.
+	// Resource tags.
 	Tags map[string]*string
 
-// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string
 
-// READ-ONLY; The name of the resource
+	// READ-ONLY; The name of the resource
 	Name *string
 
-// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
-// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
-
