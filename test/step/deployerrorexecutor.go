@@ -127,8 +127,10 @@ func (detail DeploymentErrorDetail) Matches(candidate *v1.ErrorDetails) bool {
 	// Details can match recursively.
 	if len(detail.Details) > 0 {
 		for _, subDetail := range detail.Details {
+			fmt.Print("checking subDetail: %+v", subDetail)
 			matched := false
 			for _, candidateSubDetail := range candidate.Details {
+				fmt.Print("checking candidateSubDetail: %+v", candidateSubDetail)
 				if subDetail.Matches(candidateSubDetail) {
 					matched = true
 					break
