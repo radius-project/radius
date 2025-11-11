@@ -811,7 +811,13 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 				Details: []step.DeploymentErrorDetail{
 					{
 						Code:            "DeploymentFailed",
-						MessageContains: "Namespace parameter required.",
+						MessageContains: "At least one resource deployment operation failed",
+						Details: []step.DeploymentErrorDetail{
+							{
+								Code:            "",
+								MessageContains: "Namespace parameter required.",
+							},
+						},
 					},
 				},
 			},
