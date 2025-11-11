@@ -157,16 +157,7 @@ jobs:
         os: [ubuntu-latest]
         name:
           [
-            cli-noncloud,
-            corerp-noncloud,
-            daprrp-noncloud,
-            kubernetes-noncloud,
-            msgrp-noncloud,
-            samples-noncloud,
-            ucp-noncloud,
-            datastoresrp-noncloud,
             dynamicrp-noncloud,
-            upgrade-noncloud,
           ]
     runs-on: ${{ matrix.os }}
     env:
