@@ -803,8 +803,19 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
-		Code:            "ResourceDeploymentFailure",
-		MessageContains: "Namespace parameter required.",
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "RecipeDeploymentFailed",
+				MessageContains: "failed to deploy recipe default of type Test.Resources/userTypeAlpha",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "DeploymentFailed",
+						MessageContains: "Namespace parameter required.",
+					},
+				},
+			},
+		},
 	})
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
