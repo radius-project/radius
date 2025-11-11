@@ -779,3 +779,73 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 
 	test.Test(t)
 }
+
+// Test_RecipePacks_NoProvider_Failure tests that deployment fails when Radius.Core/environments
+// does not include a providers.kubernetes.namespace configuration.
+// This test validates that the system properly enforces namespace requirements.
+//
+// The test consists of the following steps:
+// 1. Resource Type Registration:
+//   - Registers user-defined resource types "Test.Resources/userTypeAlpha" and "Test.Resources/externalResource"
+// 2. Resource Deployment Failure:
+//   - Attempts to deploy a Bicep template with a recipe pack but no providers configuration in the environment
+//   - The recipe does not have a default namspace
+//   - Validates that the deployment fails with "Namespace parameter required." error
+func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
+	template := "testdata/recipepacks-test-no-provider.bicep"
+	appName := "recipepacks-test-app-no-provider"
+	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	childResourceTypeName := "Test.Resources/externalResource"
+	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
+	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code:            "ResourceDeploymentFailure",
+		MessageContains: "Namespace parameter required.",
+	})
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// The first step in this test is to create/register the parent user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			// The second step in this test is to create/register the child user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceTypeCreate(ctx, childResourceTypeParam, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, childResourceTypeName)
+			},
+		},
+		{
+			// The third step is to deploy a bicep file without providers configuration - this should fail
+			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+	})
+
+	test.Test(t)
+}
