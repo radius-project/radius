@@ -52,6 +52,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/remotecommand"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -275,16 +276,25 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		t.Log(t, "Pushed changes successfully")
 
 		// Reconcile the GitRepository by updating the reconcile.fluxcd.io/requestedAt annotation.
-		reconciledRepo := &sourcev1.GitRepository{}
-		err = opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, reconciledRepo)
-		require.NoError(t, err)
-		annotations := reconciledRepo.GetAnnotations()
-		if annotations == nil {
-			annotations = make(map[string]string)
-		}
-		annotations["reconcile.fluxcd.io/requestedAt"] = strconv.FormatInt(time.Now().Unix(), 10)
-		reconciledRepo.SetAnnotations(annotations)
-		err = opts.Client.Update(ctx, reconciledRepo)
+		var reconciledRepo *sourcev1.GitRepository
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			repo := &sourcev1.GitRepository{}
+			if err := opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, repo); err != nil {
+				return err
+			}
+			annotations := repo.GetAnnotations()
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+			annotations["reconcile.fluxcd.io/requestedAt"] = strconv.FormatInt(time.Now().Unix(), 10)
+			repo.SetAnnotations(annotations)
+			if err := opts.Client.Update(ctx, repo); err != nil {
+				return err
+			}
+
+			reconciledRepo = repo
+			return nil
+		})
 		require.NoError(t, err)
 
 		// Update our reference to the latest resource version for future delete calls.
