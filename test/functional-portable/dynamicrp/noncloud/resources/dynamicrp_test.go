@@ -624,7 +624,7 @@ func Test_DynamicRP_SchemaValidation(t *testing.T) {
 // It uses UDT-to-UDT connections similar to the existing udt2udt-connection test pattern.
 //
 // The test consists of the following steps:
-// 1. Create Kubernetes namespace
+// 1. Create Kubernetes namespace since we expect this to be created by Ops
 // 2. Resource Type Registration:
 //   - Registers user-defined resource types "Test.Resources/userTypeAlpha" and "Test.Resources/externalResource"
 //   - Verifies the registration by checking if the resource types are listed in the CLI output
@@ -632,12 +632,12 @@ func Test_DynamicRP_SchemaValidation(t *testing.T) {
 // 3. Resource Deployment:
 //   - Deploys a Bicep template that creates a recipe pack with userTypeAlpha recipe
 //   - Creates a Radius.Core/environments resource that references the recipe pack
-//   - Deploys UDT resources with connections that use the recipe from the pack
+//   - Deploys RRT resources with connections that use the recipe from the pack
 //
 // 4. Validation:
 //   - Validates that the recipe pack and environment are created successfully
-//   - Confirms that UDT resources are deployed using the recipes from the pack
-//   - Verifies that UDT-to-UDT connections work with recipe pack deployment
+//   - Confirms that RRT resources are deployed using the recipes from the pack
+//   - Verifies that RRT-to-RRT connections work with recipe pack deployment
 func Test_RecipePacks_Deployment(t *testing.T) {
 	template := "testdata/recipepacks-test.bicep"
 	appName := "recipepacks-test-app"

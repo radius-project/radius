@@ -25,6 +25,10 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
           port: port
         }
       }
+      'Test.Resources/postgres': {
+        recipeKind: 'bicep'
+        recipeLocation: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_postgress_recipe:${version}'
+      }
     }
   }
 }
