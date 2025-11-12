@@ -273,7 +273,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			},
 		})
 		require.NoError(t, err)
-		t.Log(t, "Pushed changes successfully")
+		t.Log("Pushed changes successfully")
 
 		// Reconcile the GitRepository by updating the reconcile.fluxcd.io/requestedAt annotation.
 		var reconciledRepo *sourcev1.GitRepository
@@ -499,7 +499,7 @@ func getGitHTTPServerRepoRoot(ctx context.Context, t *testing.T, opts rp.RPTestO
 	require.NoError(t, err)
 	trimmed := strings.TrimSpace(output)
 	if trimmed == "" {
-		return "/tmp/git"
+		return "/var/lib/git"
 	}
 	return trimmed
 }

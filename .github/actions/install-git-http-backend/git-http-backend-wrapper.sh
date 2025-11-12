@@ -10,6 +10,4 @@ fi
 # Default to exporting all repositories unless explicitly disabled.
 export GIT_HTTP_EXPORT_ALL=${GIT_HTTP_EXPORT_ALL:-1}
 
-# env > /tmp/git-http-backend.env
-
 exec /usr/libexec/git-core/git-http-backend
