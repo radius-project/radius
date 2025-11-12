@@ -27,14 +27,6 @@ rules:
   - patch
   - update
   - watch
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 # Adding coordination.k8s.io api group as Terraform need to access leases resource for backend initialization for state locking: https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes.
 - apiGroups:
   - coordination.k8s.io
