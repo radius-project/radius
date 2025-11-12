@@ -496,6 +496,7 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 			Info: &release.Info{
 				Status:        release.StatusSuperseded,
 				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
 				Description:   "Install complete",
 			},
 		},
@@ -505,6 +506,7 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 			Info: &release.Info{
 				Status:        release.StatusDeployed,
 				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 2, 15, 30, 0, 0, time.UTC)},
 				Description:   "Upgrade complete",
 			},
 		},
@@ -524,7 +526,7 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 	require.Equal(t, "0.46.0", revisions[0].ChartVersion)
 	require.Equal(t, "deployed", revisions[0].Status)
 	require.Equal(t, "Upgrade complete", revisions[0].Description)
-	require.Equal(t, "2023-01-01 12:00:00", revisions[0].UpdatedAt)
+	require.Equal(t, "2023-01-02 15:30:00", revisions[0].UpdatedAt)
 
 	require.Equal(t, 1, revisions[1].Revision)
 	require.Equal(t, "0.45.0", revisions[1].ChartVersion)
