@@ -17,7 +17,6 @@ limitations under the License.
 package resource_test
 
 import (
-	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
@@ -91,22 +90,14 @@ func Test_RollbackKubernetes_ListRevisions_ShowsUniqueTimestamps(t *testing.T) {
 	t.Logf("Initial revision count: %d", initialRevisionCount)
 
 	// Perform an upgrade to create a new revision
-	// This uses helm upgrade with the same chart to create a new revision
-	// We use a simple configuration change to trigger the upgrade
-	t.Log("Performing helm upgrade to create a new revision")
-	upgradeCmd := exec.Command("helm", "upgrade", "radius",
-		"../../../deploy/Chart",
-		"--namespace", "radius-system",
-		"--reuse-values",
-		"--set", "global.prometheus.enabled=true",
-		"--wait",
-		"--timeout", "5m")
-	upgradeOutput, upgradeErr := upgradeCmd.CombinedOutput()
+	// This uses rad upgrade kubernetes with a simple configuration change to trigger the upgrade
+	t.Log("Performing rad upgrade kubernetes to create a new revision")
+	upgradeOutput, upgradeErr := cli.UpgradeKubernetes(ctx, "global.prometheus.enabled=true")
 
-	// The upgrade might fail if the cluster doesn't have the chart path or other issues
+	// The upgrade might fail if the cluster doesn't have the necessary resources or other issues
 	// In that case, we'll just verify the existing revisions
 	if upgradeErr != nil {
-		t.Logf("Upgrade command failed (expected in some test environments): %v\nOutput: %s", upgradeErr, string(upgradeOutput))
+		t.Logf("Upgrade command failed (expected in some test environments): %v\nOutput: %s", upgradeErr, upgradeOutput)
 		t.Log("Skipping multiple revision validation, will validate existing revisions only")
 	} else {
 		t.Log("Upgrade successful, waiting for new revision to be recorded")

@@ -702,6 +702,18 @@ func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 	return string(out), cli.ReportCommandResult(ctx, string(out), description, err)
 }
 
+// UpgradeKubernetes runs the `rad upgrade kubernetes` command with optional set arguments and returns the output or an error.
+func (cli *CLI) UpgradeKubernetes(ctx context.Context, setArgs ...string) (string, error) {
+	args := []string{
+		"upgrade",
+		"kubernetes",
+	}
+	for _, setArg := range setArgs {
+		args = append(args, "--set", setArg)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 // RollbackKubernetesListRevisions runs the `rad rollback kubernetes --list-revisions` command and returns the output or an error.
 func (cli *CLI) RollbackKubernetesListRevisions(ctx context.Context) (string, error) {
 	args := []string{
