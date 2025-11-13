@@ -438,12 +438,13 @@ jobs:
         if: always()
         timeout-minutes: 60
         run: |
-          if [ "${{ env.SKIP_BUILD }}" != "true" ] ; then
-            echo "Running cleanup without skip delete resource list. This will delete all resources."
-            ./.github/scripts/cleanup-long-running-cluster.sh
-          else
-            echo "Running cleanup with skip-delete-resources-list.txt. Built-In resources will not be deleted."
+          # Always use skip list if it exists, regardless of SKIP_BUILD
+          if [ -f skip-delete-resources-list.txt ] && [ -s skip-delete-resources-list.txt ]; then
+            echo "Running cleanup with skip-delete-resources-list.txt. Built-in resources will not be deleted."
             ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
+          else
+            echo "No skip-delete-resources-list.txt found or file is empty. Running cleanup without skip list."
+            ./.github/scripts/cleanup-long-running-cluster.sh
           fi
       - name: Download Bicep
         run: |
@@ -517,12 +518,24 @@ jobs:
         if: env.SKIP_BUILD != 'true'
         run: |
           kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
+          echo "Created skip-delete-resources-list.txt with the following resources:"
+          cat skip-delete-resources-list.txt
       - name: Save list of resources not to be deleted
         if: env.SKIP_BUILD != 'true'
         uses: actions/cache/save@v4
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-file
+      - name: Display skip-delete-resources-list contents
+        if: always()
+        run: |
+          if [ -f skip-delete-resources-list.txt ]; then
+            echo "Contents of skip-delete-resources-list.txt:"
+            cat skip-delete-resources-list.txt
+            echo "Total resources in skip list: $(wc -l < skip-delete-resources-list.txt)"
+          else
+            echo "skip-delete-resources-list.txt does not exist"
+          fi
       - name: Configure Radius test workspace
         run: |
           set -x
