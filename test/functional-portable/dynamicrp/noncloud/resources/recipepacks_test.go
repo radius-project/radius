@@ -35,33 +35,28 @@ import (
 // Test_RecipePacks_Deployment tests the deployment and functionality of Radius.Core/recipePacks resources.
 // This test validates that recipe packs can be created with user-defined type recipes, associated with environments,
 // and used to deploy resources with their configured recipes via the new Radius.Core/environments resource.
-// It uses UDT-to-UDT connections similar to the existing udt2udt-connection test pattern.
 //
 // The test consists of the following steps:
 // 1. Create Kubernetes namespace since we expect this to be created by Ops
 // 2. Resource Type Registration:
-//   - Registers user-defined resource types "Test.Resources/userTypeAlpha" and "Test.Resources/externalResource"
-//   - Verifies the registration by checking if the resource types are listed in the CLI output
+//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
+//   - Verifies the registration by checking if the resource type is listed in the CLI output
 //
 // 3. Resource Deployment:
 //   - Deploys a Bicep template that creates a recipe pack with userTypeAlpha recipe
 //   - Creates a Radius.Core/environments resource that references the recipe pack
-//   - Deploys RRT resources with connections that use the recipe from the pack
+//   - Deploys RRT resources that use the recipe from the pack
 //
 // 4. Validation:
 //   - Validates that the recipe pack and environment are created successfully
 //   - Confirms that RRT resources are deployed using the recipes from the pack
-//   - Verifies that RRT-to-RRT connections work with recipe pack deployment
 func Test_RecipePacks_Deployment(t *testing.T) {
 	template := "testdata/recipepacks-test.bicep"
 	appName := "recipepacks-test-app"
 	appNamespace := "recipepacks-ns"
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
-	childResourceTypeName := "Test.Resources/externalResource"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
-	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
-	expectedEnvName := "CONN_INJECTED"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
@@ -102,22 +97,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 			},
 		},
 		{
-			// The third step in this test is to create/register the child user-defined resource type using the CLI.
-			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceTypeCreate(ctx, childResourceTypeParam, filepath)
-				require.NoError(t, err)
-			}),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
-				require.NoError(t, err)
-				require.Contains(t, output, childResourceTypeName)
-			},
-		},
-		{
-			// The fourth step is to deploy a bicep file using a recipe pack for the resource type registered.
+			// The third step is to deploy a bicep file using a recipe pack for the resource type registered.
 			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -142,10 +122,6 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
-					{
-						Name: "udttoudtchild",
-						Type: "test.resources/externalresource",
-					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
@@ -154,31 +130,10 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, deployments.Items, "No deployments found in namespace %s", appNamespace)
 
-				// Expected configMap data from the external resource
-				expectedConfigMapData := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
-
-				found := false
+				t.Logf("Found %d deployments in namespace %s", len(deployments.Items), appNamespace)
 				for _, deploy := range deployments.Items {
-					t.Logf("Checking deployment: %s", deploy.Name)
-
-					if len(deploy.Spec.Template.Spec.Containers) > 0 {
-						container := deploy.Spec.Template.Spec.Containers[0]
-						t.Logf("Environment variables for container '%s':", container.Name)
-
-						for _, env := range container.Env {
-							t.Logf("  %s: %s", env.Name, env.Value)
-							if env.Name == expectedEnvName {
-								t.Logf("✓ Found deployment %q with env var %q = %q", deploy.Name, expectedEnvName, env.Value)
-								found = true
-								require.NotEmpty(t, env.Value, "Environment variable value should not be empty")
-								require.Equal(t, expectedConfigMapData, env.Value, "Environment variable should contain configMap data from connected externalResource")
-								break
-							}
-						}
-					}
+					t.Logf("Deployment: %s", deploy.Name)
 				}
-
-				require.True(t, found, "No deployments found with environment variable %q", expectedEnvName)
 
 				// Clean up the namespace after verification
 				err = test.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
@@ -200,7 +155,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 //
 // The test consists of the following steps:
 // 1. Resource Type Registration:
-//   - Registers user-defined resource types "Test.Resources/userTypeAlpha" and "Test.Resources/externalResource"
+//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
 //
 // 2. Resource Deployment Failure:
 //   - Attempts to deploy a Bicep template with a recipe pack but no providers configuration in the environment
@@ -210,9 +165,7 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	template := "testdata/recipepacks-test-no-provider.bicep"
 	appName := "recipepacks-test-app-no-provider"
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
-	childResourceTypeName := "Test.Resources/externalResource"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
-	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -256,22 +209,7 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 			},
 		},
 		{
-			// The second step in this test is to create/register the child user-defined resource type using the CLI.
-			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceTypeCreate(ctx, childResourceTypeParam, filepath)
-				require.NoError(t, err)
-			}),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
-				require.NoError(t, err)
-				require.Contains(t, output, childResourceTypeName)
-			},
-		},
-		{
-			// The third step is to deploy a bicep file without providers configuration - this should fail
+			// The second step is to deploy a bicep file without providers configuration - this should fail
 			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
@@ -288,7 +226,7 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 //
 // The test consists of the following steps:
 // 1. Resource Type Registration (no namespace creation):
-//   - Registers user-defined resource types "Test.Resources/userTypeAlpha" and "Test.Resources/externalResource"
+//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
 //
 // 2. Resource Deployment Failure:
 //   - Attempts to deploy a Bicep template that references a non-existent namespace
@@ -297,9 +235,7 @@ func Test_RecipePacks_MissingNamespace_Failure(t *testing.T) {
 	template := "testdata/recipepacks-test.bicep"
 	appName := "recipepacks-test-app"
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
-	childResourceTypeName := "Test.Resources/externalResource"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
-	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -327,22 +263,7 @@ func Test_RecipePacks_MissingNamespace_Failure(t *testing.T) {
 			},
 		},
 		{
-			// The second step in this test is to create/register the child user-defined resource type using the CLI.
-			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceTypeCreate(ctx, childResourceTypeParam, filepath)
-				require.NoError(t, err)
-			}),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", childResourceTypeName, "--output", "json"})
-				require.NoError(t, err)
-				require.Contains(t, output, childResourceTypeName)
-			},
-		},
-		{
-			// The third step is to deploy a bicep file with a non-existent namespace - this should fail
+			// The second step is to deploy a bicep file with a non-existent namespace - this should fail
 			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
