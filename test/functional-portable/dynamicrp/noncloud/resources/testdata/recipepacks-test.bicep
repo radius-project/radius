@@ -61,20 +61,5 @@ resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
   properties: {
     environment: env.id
     application: app.id
-    connections: {
-      externalresource: {
-        source: udttoudtchild.id
-      }
-    }
-  }
-}
-
-resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
-  name: 'udttoudtchild'
-  location: 'global'
-  properties: {
-    environment: env.id
-    application: app.id
-    configMap: '{"app1.sample.properties":"property1=value1\\nproperty2=value2","app2.sample.properties":"property3=value3\\nproperty4=value4"}'
   }
 }
