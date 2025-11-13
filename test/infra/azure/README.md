@@ -64,14 +64,15 @@ This directory includes the Bicep templates to deploy the following resources on
 
 1. Deploy main.bicep:
 
-   By default, `grafanaEnabled` is false. We do not need to set any parameters unless you need Grafana dashboard. If you want to see Grafana dashboard later, you can redeploy main.bicep with `grafanaEnabled` and `grafanaAdminObjectId` later--bicep will install only Grafana dashboard with your existing cluster.
+   By default, `grafanaEnabled` is false and `enableDeletionLock` is true. We do not need to set any parameters unless you need Grafana dashboard or want to disable the deletion lock. If you want to see Grafana dashboard later, you can redeploy main.bicep with `grafanaEnabled` and `grafanaAdminObjectId` later--bicep will install only Grafana dashboard with your existing cluster.
 
    ```bash
-   az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaEnabled=[Grafana Dashboard Enabled] grafanaAdminObjectId='[Grafana Admin Object Id]'
+   az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaEnabled=[Grafana Dashboard Enabled] grafanaAdminObjectId='[Grafana Admin Object Id]' enableDeletionLock=[Enable Deletion Lock]
    ```
 
    - **[Grafana Dashboard Enabled]**: Set `true` if you want to see metrics and its dashboard with Azure managed Prometheus and Grafana dashboard. Otherwise, `false` is recommended to save the cost.
    - **[Grafana Admin Object Id]**: Set the object ID of the Grafana Admin user or group. To find the object id, search for the admin user or group name on [AAD Portal Overview search box](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id or run `az ad signed-in-user show` to get your own user object id.
+   - **[Enable Deletion Lock]**: Set `false` if you want to disable the resource lock that prevents accidental deletion. By default, it is `true` to protect long running test resources from accidental deletion.
 
 ## Monitor Radius
 
