@@ -74,7 +74,7 @@ env:
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
   # Gitea server URL
   GITEA_SERVER_URL: "http://localhost:30080"
   # Gitea username
@@ -132,7 +132,7 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
-      
+
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -147,7 +147,7 @@ jobs:
           # Set output variables to be used in the other jobs
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
-          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT    
+          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
@@ -217,7 +217,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version-file: .node-version
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
@@ -228,7 +228,7 @@ jobs:
         with:
           name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
-          if-no-files-found: error       
+          if-no-files-found: error
 
       - name: Create a secure local registry
         id: create-local-registry
@@ -239,9 +239,9 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
       - name: Generate test bicepconfig.json
         run: |
@@ -350,7 +350,7 @@ jobs:
           # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
           for i in {1..6}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
-            
+
             # Exit on error
             if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
               echo "Error found in ucp logs."
@@ -386,7 +386,7 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-      
+
       - name: Install Flux CLI and Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
@@ -402,20 +402,20 @@ jobs:
       #     gitea-username: ${{ env.GITEA_USERNAME }}
       #     gitea-email: ${{ env.GITEA_EMAIL }}
       #     gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
- 
+
       # https://github.com/radius-project/radius/issues/10441
       # - name: Port-forward to Gitea
       #   if: matrix.name == 'kubernetes-noncloud'
       #   run: |
       #     # Start port forwarding in the background
       #     kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
-          
+
       #     # Wait for port forwarding to be established
       #     sleep 5
-          
+
       #     # Test the connection to ensure port forwarding is working
       #     curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
+
       #     echo "Port forwarding established successfully"
 
       - name: Install Dapr CLI and control plane
@@ -435,11 +435,11 @@ jobs:
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
 
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
-      - name: Publish UDT types 
+      - name: Publish UDT types
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -484,7 +484,7 @@ jobs:
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
-          mkdir -p ./dist/functional_test 
+          mkdir -p ./dist/functional_test
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
@@ -546,7 +546,7 @@ jobs:
           kubectl get pods -A >> $POD_STATE_LOG_FILENAME
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
-      
+
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v5

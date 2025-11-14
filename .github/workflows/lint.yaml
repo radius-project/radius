@@ -50,7 +50,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version-file: .node-version
       - name: Install TypeSpec compiler
         run: |
           pushd typespec
@@ -109,7 +109,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version-file: .node-version
       - name: Run `make format-check`
         id: format-check
         continue-on-error: true

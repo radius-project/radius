@@ -212,7 +212,7 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
-      
+
       - name: Copy Deployment Engine image to GHCR
         if: github.event_name == 'repository_dispatch'
         uses: ./.github/actions/copy-deployment-engine-image
@@ -223,7 +223,7 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
-      
+
       - name: Check out code
         uses: actions/checkout@v5
         with:
@@ -368,7 +368,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "18"
+          node-version-file: .node-version
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
@@ -663,7 +663,7 @@ jobs:
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
             --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
             --set global.azureWorkloadIdentity.enabled=true \
-            --set global.aws.irsa.enabled=true 
+            --set global.aws.irsa.enabled=true
 
           echo "*** Verify manifests are registered ***"
           rm -f registermanifest_logs.txt
@@ -771,14 +771,14 @@ jobs:
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
-          # Restore AWS Bicep types 
+          # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
-          mkdir -p ./dist/functional_test 
+          mkdir -p ./dist/functional_test
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
