@@ -1,5 +1,5 @@
 ---
-applyTo: '**/*.tf,**/*.tfvars,**/*.tftest.hcl'
+applyTo: "**/*.tf,**/*.tfvars,**/*.tftest.hcl"
 description: Terraform Conventions and Guidelines Instructions
 ---
 
