@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+---
+name: Changes
+
+on:
+  workflow_call:
+    inputs:
+      files:
+        description: File patterns to detect changes
+        required: false
+        type: string
+        default: |
+          .github/**/*.md
+          .github/*.md
+          docs/**/*.md
+          docs/*.md
+          test/**/*.md
+          test/*.md
+          *.md
+    outputs:
+      only_changed:
+        description: Returns 'true' when only files in the configured patterns have changed.
+        value: ${{ jobs.changes.outputs.only_changed }}
+
+permissions: {}
+
+jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      only_changed: ${{ steps.filter.outputs.only_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Filter
+        id: filter
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          json: true
+          files: ${{ inputs.files }}
