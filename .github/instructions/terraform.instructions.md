@@ -14,18 +14,18 @@ description: Terraform Conventions and Guidelines Instructions
 
 - Always use the latest stable version of Terraform and its providers.
   - Regularly update your Terraform configurations to incorporate security patches and improvements.
-- Store sensitive information in a secure manner, such as using AWS Secrets Manager or SSM Parameter Store.
+- Store sensitive information in a secure manner, such as using your cloud provider's secret management service (e.g., AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager).
   - Regularly rotate credentials and secrets.
   - Automate the rotation of secrets, where possible.
-- Use AWS environment variables to reference values stored in AWS Secrets Manager or SSM Parameter Store.
+- Use environment variables or data sources to reference values stored in your cloud provider's secret management service (e.g., AWS Secrets Manager, Azure Key Vault, GCP Secret Manager).
   - This keeps sensitive values out of your Terraform state files.
-- Never commit sensitive information such as AWS credentials, API keys, passwords, certificates, or Terraform state to version control.
+- Never commit sensitive information such as cloud credentials, API keys, passwords, certificates, or Terraform state to version control.
   - Use `.gitignore` to exclude files containing sensitive information from version control.
 - Always mark sensitive variables as `sensitive = true` in your Terraform configurations.
   - This prevents sensitive values from being displayed in the Terraform plan or apply output.
-- Use IAM roles and policies to control access to resources.
+- Use your cloud provider's identity and access management features (e.g., AWS IAM roles and policies, Azure Managed Identities and RBAC, GCP IAM) to control access to resources.
   - Follow the principle of least privilege when assigning permissions.
-- Use security groups and network ACLs to control network access to resources.
+- Use security groups, network security groups, or firewall rules to control network access to resources.
 - Deploy resources in private subnets whenever possible.
   - Use public subnets only for resources that require direct internet access, such as load balancers or NAT gateways.
 - Use encryption for sensitive data at rest and in transit.
