@@ -669,6 +669,7 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "500m"
+```
 
 ## Dockerfile Review Checklist
 
