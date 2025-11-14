@@ -118,7 +118,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 						App:  appName,
 					},
 					{
-						Name: "udttoudtparent",
+						Name: "rrtresource",
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
