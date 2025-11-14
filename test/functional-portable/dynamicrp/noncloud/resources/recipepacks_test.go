@@ -100,7 +100,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 			// The third step is to deploy a bicep file using a recipe pack for the resource type registered.
 			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
+			SkipResourceDeletion:                   false,
 			SkipKubernetesOutputResourceValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -213,7 +213,7 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
+			SkipResourceDeletion:                   false,
 		},
 	})
 
@@ -267,7 +267,7 @@ func Test_RecipePacks_MissingNamespace_Failure(t *testing.T) {
 			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
+			SkipResourceDeletion:                   false,
 		},
 	})
 
