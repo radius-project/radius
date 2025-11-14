@@ -45,8 +45,8 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-  name: 'udttoudtparent'
+resource rrtresource 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
+  name: 'rrtresource'
   properties: {
     environment: env.id
     application: app.id
