@@ -518,24 +518,12 @@ jobs:
         if: env.SKIP_BUILD != 'true'
         run: |
           kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
-          echo "Created skip-delete-resources-list.txt with the following resources:"
-          cat skip-delete-resources-list.txt
       - name: Save list of resources not to be deleted
         if: env.SKIP_BUILD != 'true'
         uses: actions/cache/save@v4
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-file
-      - name: Display skip-delete-resources-list contents
-        if: always()
-        run: |
-          if [ -f skip-delete-resources-list.txt ]; then
-            echo "Contents of skip-delete-resources-list.txt:"
-            cat skip-delete-resources-list.txt
-            echo "Total resources in skip list: $(wc -l < skip-delete-resources-list.txt)"
-          else
-            echo "skip-delete-resources-list.txt does not exist"
-          fi
       - name: Configure Radius test workspace
         run: |
           set -x
