@@ -29,7 +29,7 @@ description: Terraform Conventions and Guidelines Instructions
 - Deploy resources in private subnets whenever possible.
   - Use public subnets only for resources that require direct internet access, such as load balancers or NAT gateways.
 - Use encryption for sensitive data at rest and in transit.
-  - Enable encryption for EBS volumes, S3 buckets, and RDS instances.
+  - Enable encryption for storage volumes, object storage, and databases.
   - Use TLS for communication between services.
 - Regularly review and audit your Terraform configurations for security vulnerabilities.
   - Use tools like `trivy`, or `checkov` to scan your Terraform configurations for security issues.
