@@ -63,13 +63,40 @@ env:
   IMAGE_SRC: https://github.com/radius-project/radius
 
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
 
 jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      md_only_changed: ${{ steps.filter.outputs.md_only_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Filter
+        id: filter
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          json: true
+          files_yaml: |
+            md:
+              - ".github/**/*.md"
+              - "docs/**/*.md"
+              - "docs/*.md"
+
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.md_only_changed != 'true'
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -120,7 +147,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
-          file: ./dist/unit_test/ut_coverage.out
+          files: ./dist/unit_test/ut_coverage.out
           fail_ci_if_error: false
           verbose: true
       - name: Process Unit Test Results
@@ -169,7 +196,8 @@ jobs:
   build-and-push-images:
     name: Build and publish container images
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.md_only_changed != 'true'
     steps:
       - name: Check out code
         uses: actions/checkout@v5
@@ -219,10 +247,10 @@ jobs:
 
   build-and-push-helm-chart:
     name: Helm chart build
-    needs: ["build-and-push-images"]
     runs-on: ubuntu-latest
+    needs: [changes, build-and-push-images]
     # Don't push on PR, agent will not have permission.
-    if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
+    if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')) && needs.changes.outputs.md_only_changed != 'true'
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -265,8 +293,10 @@ jobs:
   build-and-push-bicep-types:
     name: Publish Radius bicep types to ACR
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.md_only_changed != 'true'
     environment: publish-bicep
-    steps: 
+    steps:
       - name: Check out code
         uses: actions/checkout@v5
         with:
@@ -282,7 +312,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version: 22
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
           make generate-bicep-types VERSION=${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }}
@@ -292,7 +322,7 @@ jobs:
           name: radius-bicep-types
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
-      - name: 'Login via Azure CLI'
+      - name: Login via Azure CLI
         if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         uses: azure/login@v2
         with:
@@ -306,16 +336,16 @@ jobs:
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
-      - name: Publish bicep types 
+      - name: Publish bicep types
         if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.BICEP_TYPES_REGISTRY }}/radius:${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }} --force
 
   publish-release:
     name: Publish GitHub Release
-    needs: ["build-and-push-cli"]
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
+    needs: [changes, build-and-push-cli]
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.md_only_changed != 'true'
     env:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
