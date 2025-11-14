@@ -29,9 +29,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   linter_check:
     name: Lint
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.only_changed != 'true'
     timeout-minutes: 30
     env:
       GOPROXY: https://proxy.golang.org
@@ -102,6 +111,8 @@ jobs:
   format-check:
     name: Format check with Prettier
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.only_changed != 'true'
     timeout-minutes: 30
     steps:
       - name: Check out repo
