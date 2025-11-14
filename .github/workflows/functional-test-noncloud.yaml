@@ -89,9 +89,37 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      md_only_changed: ${{ steps.filter.outputs.md_only_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Filter
+        id: filter
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          json: true
+          files_yaml: |
+            md:
+              - ".github/**/*.md"
+              - "docs/**/*.md"
+              - "docs/*.md"
+
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.md_only_changed != 'true'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -153,7 +181,8 @@ jobs:
 
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.md_only_changed != 'true'
     strategy:
       fail-fast: true
       matrix:
@@ -577,9 +606,9 @@ jobs:
 
   report-failure:
     name: Report test failure
-    needs: [build, tests]
+    needs: [changes, build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius' && needs.changes.outputs.md_only_changed != 'true'
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
