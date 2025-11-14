@@ -18,6 +18,7 @@ The following instruction files are available:
 
 - **[GitHub Workflows](instructions/github-workflows.instructions.md)** - CI/CD best practices for GitHub Workflows
 - **[Shell Scripts](instructions/shell.instructions.md)** - Guidelines for Bash/Shell script development
+- **[Go (Golang)](instructions/golang.instructions.md)** - Guidelines for Go (Golang) development
 
 ## How to Use
 
