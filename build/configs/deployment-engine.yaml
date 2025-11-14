@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-engine-config
+  namespace: default
+  labels:
+    app: deployment-engine
+    component: deployment-engine
+data:
+  appsettings.Production.json: |-
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Debug",
+          "Microsoft.AspNetCore": "Warning",
+          "Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware": "Warning",
+          "Microsoft.Extensions.Http": "Warning"
+        },
+        "Console": {
+          "FormatterName": "RadiusJsonFormatter"
+        }
+      },
+      "Prometheus": {
+        "ScrapeEndpointPath": "/metrics"
+      }
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployment-engine
+  namespace: default
+  labels:
+    app: deployment-engine
+    component: deployment-engine
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: deployment-engine
+  labels:
+    app: deployment-engine
+    component: deployment-engine
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: deployment-engine
+    namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-engine
+  namespace: default
+  labels:
+    app: deployment-engine
+    component: deployment-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deployment-engine
+  template:
+    metadata:
+      labels:
+        app: deployment-engine
+        component: deployment-engine
+    spec:
+      serviceAccountName: deployment-engine
+      volumes:
+        - name: appsettings-vol
+          configMap:
+            name: deployment-engine-config
+      containers:
+      - name: deployment-engine
+        image: ghcr.io/radius-project/deployment-engine:latest
+        args:
+        - --local
+        volumeMounts:
+        - name: appsettings-vol
+          mountPath: /app/appsettings.Production.json
+          subPath: appsettings.Production.json
+        ports:
+        - containerPort: 5445
+          name: http
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ASPNETCORE_URLS
+          value: "http://+:5445"
+        - name: RADIUSBACKENDURL
+          value: "http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3"
+        - name: SKIP_ARM
+          value: "true"
+        - name: ARM_AUTH_METHOD
+          value: "UCPCredential"
+        - name: kubernetes
+          value: "true"
+        # Enable all providers for debugging scenarios
+        - name: AZURE_ENABLED
+          value: "true"
+        - name: AWS_ENABLED
+          value: "true"
+        - name: KUBERNETES_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deployment-engine
+  namespace: default
+  labels:
+    app: deployment-engine
+    component: deployment-engine
+spec:
+  selector:
+    app: deployment-engine
+  ports:
+  - port: 5445
+    targetPort: 5445
+    name: http
+  type: ClusterIP
