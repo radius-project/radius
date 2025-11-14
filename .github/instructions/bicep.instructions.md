@@ -9,7 +9,7 @@ description: Bicep Conventions and Guidelines Instructions
 
 - When writing Bicep code, use lowerCamelCase for all names (variables, parameters, resources)
 - Use resource type descriptive symbolic names (e.g., `storageAccount` not `storageAccountName`)
-- Avoid using `name` in a symbolic name as it represents the resource, not the resource`s name
+- Avoid using `name` in a symbolic name as it represents the resource, not the resource's name
 - Avoid distinguishing variables and parameters by the use of suffixes
 - Name module files descriptively based on their primary resource or purpose (e.g., `storageAccount.bicep`, `appServicePlan.bicep`) instead of generic names like `main.bicep` for shared modules
 
