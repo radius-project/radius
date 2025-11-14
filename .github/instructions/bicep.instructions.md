@@ -41,7 +41,7 @@ description: Bicep Conventions and Guidelines Instructions
 ## Resource Names
 
 - Use template expressions with uniqueString() to create meaningful and unique resource names
-- Add prefixes to uniqueString() results since some resources don`t allow names starting with numbers
+- Add prefixes to uniqueString() results since some resources don't allow names starting with numbers
 
 ## Child Resources
 
