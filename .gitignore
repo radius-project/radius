@@ -41,7 +41,8 @@ kcp.exe
 docs/.hugo_build.lock
 main
 
-.vscode/
+.vscode/*
+!.vscode/mcp.json
 .DS_Store
 .idea/
 creds.json
