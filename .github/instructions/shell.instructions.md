@@ -140,7 +140,7 @@ main "$@"
 
 ## Working with JSON and YAML
 
-- Prefer dedicated parsers (`jq` for JSON, `yq` for YAML-or `jq` on JSON converted via `yq`) over ad-hoc text processing with `grep`, `awk`, or shell string splitting
+- Prefer dedicated parsers (`jq` for JSON, `yq` for YAML - or `jq` on JSON converted via `yq`) over ad-hoc text processing with `grep`, `awk`, or shell string splitting
 - When `jq`/`yq` are unavailable or not appropriate, choose the next most reliable parser available in your environment, and be explicit about how it should be used safely
 - Validate that required fields exist and handle missing/invalid data paths explicitly (e.g., by checking `jq` exit status or using `// empty`)
 - Quote jq/yq filters to prevent shell expansion and prefer `--raw-output` when you need plain strings
