@@ -82,10 +82,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !workspace.IsNamedWorkspace() {
-		return workspaces.ErrEditableWorkspaceRequired
-	}
-
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
@@ -99,10 +95,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad workspace show` command.
 func (r *Runner) Run(ctx context.Context) error {
-	err := r.Output.WriteFormatted(r.Format, r.Workspace, common.WorkspaceFormat())
-	if err != nil {
-		return err
+	if !r.Workspace.IsNamedWorkspace() {
+		r.Output.LogInfo("There is no workspace currently set. Use `rad workspace switch` or `rad workspace create kubernetes` to set a current workspace.")
+		return nil
 	}
 
-	return nil
+	return r.Output.WriteFormatted(r.Format, r.Workspace, common.WorkspaceFormat())
 }

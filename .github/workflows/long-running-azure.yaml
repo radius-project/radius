@@ -438,12 +438,13 @@ jobs:
         if: always()
         timeout-minutes: 60
         run: |
-          if [ "${{ env.SKIP_BUILD }}" != "true" ] ; then
-            echo "Running cleanup without skip delete resource list. This will delete all resources."
-            ./.github/scripts/cleanup-long-running-cluster.sh
-          else
-            echo "Running cleanup with skip-delete-resources-list.txt. Built-In resources will not be deleted."
+          # Always use skip list if it exists, regardless of SKIP_BUILD
+          if [ -f skip-delete-resources-list.txt ] && [ -s skip-delete-resources-list.txt ]; then
+            echo "Running cleanup with skip-delete-resources-list.txt. Built-in resources will not be deleted."
             ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
+          else
+            echo "No skip-delete-resources-list.txt found or file is empty. Running cleanup without skip list."
+            ./.github/scripts/cleanup-long-running-cluster.sh
           fi
       - name: Download Bicep
         run: |
