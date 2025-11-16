@@ -61,6 +61,9 @@ param grafanaDashboardName string = '${prefix}-dashboard'
 @description('Specifies whether to install the required tools for running Radius. Default is true.')
 param installKubernetesDependencies bool = true
 
+@description('Specifies whether to create a resource lock to prevent accidental deletion. Default is true.')
+param enableDeletionLock bool = true
+
 param defaultTags object = {
   radius: 'infra'
 }
@@ -200,6 +203,16 @@ module deploymentScript './modules/deployment-script.bicep' = if (installKuberne
   dependsOn: [
     aksCluster
   ]
+}
+
+// Create a resource lock to prevent accidental deletion of the resource group and all its resources.
+resource deletionLock 'Microsoft.Authorization/locks@2020-05-01' = if (enableDeletionLock) {
+  scope: resourceGroup()
+  name: 'DeleteLock'
+  properties: {
+    level: 'CanNotDelete'
+    notes: 'This lock prevents accidental deletion of long running test resources.'
+  }
 }
 
 output aksControlPlaneFQDN string = aksCluster.outputs.controlPlaneFQDN

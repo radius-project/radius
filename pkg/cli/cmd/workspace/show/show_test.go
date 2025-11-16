@@ -45,7 +45,7 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "show fallback workspace",
 			Input:         []string{},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
 		},
 		{
@@ -90,6 +90,7 @@ func Test_Run(t *testing.T) {
 			ConfigHolder: &framework.ConfigHolder{},
 			Output:       outputSink,
 			Workspace: &workspaces.Workspace{
+				Source:      workspaces.SourceUserConfig,
 				Name:        "test-workspace",
 				Environment: "test-environment",
 				Connection:  map[string]any{},
@@ -103,6 +104,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format: "",
 				Obj: &workspaces.Workspace{
+					Source:      workspaces.SourceUserConfig,
 					Name:        "test-workspace",
 					Environment: "test-environment",
 					Connection:  map[string]any{},
@@ -127,10 +129,8 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		expected := []any{
-			output.FormattedOutput{
-				Format:  "",
-				Obj:     runner.Workspace,
-				Options: common.WorkspaceFormat(),
+			output.LogOutput{
+				Format: "There is no workspace currently set. Use `rad workspace switch` or `rad workspace create kubernetes` to set a current workspace.",
 			},
 		}
 
