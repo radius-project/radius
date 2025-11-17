@@ -280,12 +280,6 @@ func addSchemaTypeInternal(schema *manifest.Schema, name string, typeFactory *fa
 	}
 }
 
-// addObjectProperties converts manifest schema properties to Bicep object properties
-// Equivalent to TypeScript function addObjectProperties()
-func addObjectProperties(schema *manifest.Schema, typeFactory *factory.TypeFactory) (map[string]types.ObjectTypeProperty, error) {
-	return addObjectPropertiesInternal(schema, typeFactory, false)
-}
-
 // addObjectPropertiesInternal converts manifest schema properties to Bicep object properties with context tracking
 func addObjectPropertiesInternal(schema *manifest.Schema, typeFactory *factory.TypeFactory, inPlatformOptions bool) (map[string]types.ObjectTypeProperty, error) {
 	result := make(map[string]types.ObjectTypeProperty)
