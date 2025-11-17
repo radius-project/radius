@@ -1,13 +1,116 @@
 package converter
 
-// import (
-// 	"strings"
-// 	"testing"
+import (
+	"strings"
+	"testing"
 
-// 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
-// 	"github.com/radius-project/radius/bicep-types/src/bicep-types-go/factory"
-// 	"github.com/radius-project/radius/bicep-types/src/bicep-types-go/types"
-// )
+	"github.com/Azure/bicep-types/src/bicep-types-go/factory"
+	"github.com/Azure/bicep-types/src/bicep-types-go/types"
+	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
+)
+
+func TestPlatformOptionsAllowsAnyAdditionalProperties(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "object",
+		Properties: map[string]manifest.Schema{
+			"platformOptions": {
+				Type: "object",
+				AdditionalProperties: &manifest.Schema{
+					Type: "any",
+				},
+			},
+		},
+	}
+
+	typeFactory := factory.NewTypeFactory()
+
+	typeRef, err := addSchemaType(schema, "test", typeFactory)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	ref, ok := typeRef.(types.TypeReference)
+	if !ok {
+		t.Fatalf("expected TypeReference, got %T", typeRef)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	topLevelObj, ok := allTypes[ref.Ref].(*types.ObjectType)
+	if !ok {
+		t.Fatalf("expected object type, got %T", allTypes[ref.Ref])
+	}
+
+	platformProp, found := topLevelObj.Properties["platformOptions"]
+	if !found {
+		t.Fatalf("expected platformOptions property to exist")
+	}
+
+	platformTypeRef, ok := platformProp.Type.(types.TypeReference)
+	if !ok {
+		t.Fatalf("expected platformOptions property to reference a type, got %T", platformProp.Type)
+	}
+
+	platformType, ok := allTypes[platformTypeRef.Ref].(*types.ObjectType)
+	if !ok {
+		t.Fatalf("expected platformOptions type to be an ObjectType, got %T", allTypes[platformTypeRef.Ref])
+	}
+
+	additionalRef, ok := platformType.AdditionalProperties.(types.TypeReference)
+	if !ok {
+		t.Fatalf("expected additionalProperties to be a TypeReference, got %T", platformType.AdditionalProperties)
+	}
+
+	if _, ok := allTypes[additionalRef.Ref].(*types.AnyType); !ok {
+		t.Fatalf("expected additionalProperties to resolve to AnyType, got %T", allTypes[additionalRef.Ref])
+	}
+}
+
+func TestNonPlatformOptionsAnyAdditionalPropertiesReturnsError(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "object",
+		Properties: map[string]manifest.Schema{
+			"connections": {
+				Type: "object",
+				AdditionalProperties: &manifest.Schema{
+					Type: "any",
+				},
+			},
+		},
+	}
+
+	typeFactory := factory.NewTypeFactory()
+
+	_, err := addSchemaType(schema, "test", typeFactory)
+	if err == nil {
+		t.Fatalf("expected an error but got none")
+	}
+
+	if !strings.Contains(err.Error(), "only allowed for additionalProperties in platformOptions") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}
+
+func TestDirectAnyPropertyReturnsError(t *testing.T) {
+	schema := &manifest.Schema{
+		Type: "object",
+		Properties: map[string]manifest.Schema{
+			"dynamic": {
+				Type: "any",
+			},
+		},
+	}
+
+	typeFactory := factory.NewTypeFactory()
+
+	_, err := addSchemaType(schema, "test", typeFactory)
+	if err == nil {
+		t.Fatalf("expected an error but got none")
+	}
+
+	if !strings.Contains(err.Error(), "only allowed for additionalProperties in platformOptions") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}
 
 // func TestAddResourceTypeForAPIVersion(t *testing.T) {
 // 	provider := &manifest.ResourceProvider{
