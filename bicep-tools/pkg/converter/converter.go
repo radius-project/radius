@@ -186,6 +186,11 @@ func addResourceTypeForAPIVersion(
 // addSchemaType converts a manifest schema to a Bicep type
 // Equivalent to TypeScript function addSchemaType()
 func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.TypeFactory) (types.ITypeReference, error) {
+	return addSchemaTypeInternal(schema, name, typeFactory, false)
+}
+
+// addSchemaTypeInternal converts a manifest schema to a Bicep type with additional context
+func addSchemaTypeInternal(schema *manifest.Schema, name string, typeFactory *factory.TypeFactory, allowAny bool) (types.ITypeReference, error) {
 	// Handle empty schema type (default to object, matching TypeScript behavior)
 	schemaType := schema.Type
 	if schemaType == "" {
@@ -230,11 +235,18 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 		boolType := typeFactory.CreateBooleanType()
 		return typeFactory.GetReference(boolType), nil
 
+	case "any":
+		if !allowAny {
+			return nil, fmt.Errorf("'any' type is only allowed for additionalProperties, not for regular properties or top-level schemas")
+		}
+		anyType := typeFactory.CreateAnyType()
+		return typeFactory.GetReference(anyType), nil
+
 	case "array":
 		if schema.Items == nil {
 			return nil, fmt.Errorf("array type '%s' must have an 'items' property", name)
 		}
-		itemRef, err := addSchemaType(schema.Items, name+"Item", typeFactory)
+		itemRef, err := addSchemaTypeInternal(schema.Items, name+"Item", typeFactory, false)
 		return typeFactory.GetReference(typeFactory.CreateArrayType(itemRef)), err
 
 	case "object":
@@ -248,7 +260,8 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 
 		// Handle additionalProperties if specified
 		if schema.AdditionalProperties != nil {
-			additionalPropsRef, err := addSchemaType(schema.AdditionalProperties, name+"AdditionalProperties", typeFactory)
+			// Allow 'any' type when used in additionalProperties
+			additionalPropsRef, err := addSchemaTypeInternal(schema.AdditionalProperties, name+"AdditionalProperties", typeFactory, true)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add additional properties: %w", err)
 			}
