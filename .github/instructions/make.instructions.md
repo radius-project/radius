@@ -132,7 +132,7 @@ install: program
 
 - Always declare phony targets with `.PHONY` to avoid conflicts with files of the same name
 - Use phony targets for actions like `clean`, `install`, `test`, `all`
-- Place phony target declarations near their rule definitions or at the end of the makefile
+- Place phony target declarations near their rule definitions
 
 ```makefile
 .PHONY: all clean test install
