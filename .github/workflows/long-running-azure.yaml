@@ -105,14 +105,14 @@ env:
   # The current GitHub action link
   ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  # Gitea server URL
-  GITEA_SERVER_URL: "http://localhost:30080"
-  # Gitea username
-  GITEA_USERNAME: "testuser"
-  # Gitea email
-  GITEA_EMAIL: "testuser@radapp.io"
-  # Gitea access token name
-  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Git HTTP server URL
+  GIT_HTTP_SERVER_URL: "http://localhost:30080"
+  # Git username used for pushing commits during tests
+  GIT_HTTP_USERNAME: "testuser"
+  # Git email used for commit authorship during tests
+  GIT_HTTP_EMAIL: "testuser@radapp.io"
+  # Git password used for pushing commits during tests
+  GIT_HTTP_PASSWORD: "not-a-secret-password"
 
 jobs:
   build:
@@ -557,27 +557,23 @@ jobs:
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
       - name: Install Flux CLI and Source Controller
         uses: ./.github/actions/install-flux
-      # - name: Install Gitea
-      #   id: install-gitea
-      #   uses: ./.github/actions/install-gitea
-      #   env:
-      #     GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
-      #   with:
-      #     gitea-username: ${{ env.GITEA_USERNAME }}
-      #     gitea-email: ${{ env.GITEA_EMAIL }}
-      #     gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
-      # - name: Port-forward to Gitea
-      #   run: |
-      #     # Start port forwarding in the background
-      #     kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
-          
-      #     # Wait for port forwarding to be established
-      #     sleep 5
-          
-      #     # Test the connection to ensure port forwarding is working
-      #     curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
-      #     echo "Port forwarding established successfully"
+      - name: Install Git HTTP backend
+        uses: ./.github/actions/install-git-http-backend
+        with:
+          git-username: ${{ env.GIT_HTTP_USERNAME }}
+          git-password: ${{ env.GIT_HTTP_PASSWORD }}
+      - name: Port-forward to Git server
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
+
+          # Wait for port forwarding to be established
+          sleep 5
+
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+
+          echo "Port forwarding established successfully"
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
@@ -624,7 +620,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          # GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
       - name: Collect Pod details
         if: always()
         run: |

@@ -75,14 +75,14 @@ env:
   LOCAL_REGISTRY_PORT: "5000"
   # bicep-types ACR url for uploading Radius Bicep types
   BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
-  # Gitea server URL
-  GITEA_SERVER_URL: "http://localhost:30080"
-  # Gitea username
-  GITEA_USERNAME: "testuser"
-  # Gitea email
-  GITEA_EMAIL: "testuser@radapp.io"
-  # Gitea access token name
-  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  # Git HTTP server URL
+  GIT_HTTP_SERVER_URL: "http://localhost:30080"
+  # Git username used for pushing commits during tests
+  GIT_HTTP_USERNAME: "testuser"
+  # Git email used for commit authorship during tests
+  GIT_HTTP_EMAIL: "testuser@radapp.io"
+  # Git password used for pushing commits during tests
+  GIT_HTTP_PASSWORD: "not-a-secret-password"
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 
@@ -391,32 +391,26 @@ jobs:
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
 
-      # https://github.com/radius-project/radius/issues/10441
-      # - name: Install Gitea
-      #   if: matrix.name == 'kubernetes-noncloud'
-      #   id: install-gitea
-      #   uses: ./.github/actions/install-gitea
-      #   env:
-      #     GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
-      #   with:
-      #     gitea-username: ${{ env.GITEA_USERNAME }}
-      #     gitea-email: ${{ env.GITEA_EMAIL }}
-      #     gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
+      - name: Install Git HTTP backend
+        if: matrix.name == 'kubernetes-noncloud'
+        uses: ./.github/actions/install-git-http-backend
+        with:
+          git-username: ${{ env.GIT_HTTP_USERNAME }}
+          git-password: ${{ env.GIT_HTTP_PASSWORD }}
 
-      # https://github.com/radius-project/radius/issues/10441
-      # - name: Port-forward to Gitea
-      #   if: matrix.name == 'kubernetes-noncloud'
-      #   run: |
-      #     # Start port forwarding in the background
-      #     kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
+      - name: Port-forward to Git server
+        if: matrix.name == 'kubernetes-noncloud'
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
 
-      #     # Wait for port forwarding to be established
-      #     sleep 5
+          # Wait for port forwarding to be established
+          sleep 5
 
-      #     # Test the connection to ensure port forwarding is working
-      #     curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
 
-      #     echo "Port forwarding established successfully"
+          echo "Port forwarding established successfully"
 
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
@@ -499,8 +493,8 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          # GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
           RADIUS_TEST_FAST_CLEANUP: true
+          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

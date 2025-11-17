@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-http-backend
+  namespace: ${NAMESPACE}
+  labels:
+    app: git-http-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-http-backend
+  template:
+    metadata:
+      labels:
+        app: git-http-backend
+    spec:
+      containers:
+        - name: git-http-backend
+          image: ${IMAGE}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - /config/entrypoint.sh
+          env:
+            - name: GIT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: git-http-backend-auth
+                  key: username
+            - name: GIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: git-http-backend-auth
+                  key: password
+            - name: GIT_SERVER_TEMP_DIR
+              value: ${SERVER_TEMP_DIR}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: git-data
+              mountPath: ${SERVER_TEMP_DIR}
+      volumes:
+        - name: config
+          configMap:
+            name: git-http-backend-config
+            defaultMode: 0555
+        - name: git-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-http
+  namespace: ${NAMESPACE}
+  labels:
+    app: git-http-backend
+spec:
+  selector:
+    app: git-http-backend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP

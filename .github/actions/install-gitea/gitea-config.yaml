@@ -1,8 +1,0 @@
-redis-cluster:
-  enabled: false
-postgresql-ha:
-  enabled: false
-redis:
-  enabled: true
-postgresql:
-  enabled: true
