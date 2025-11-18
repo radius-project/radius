@@ -433,18 +433,19 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: skip-delete-resources-list.txt
-          key: skip-delete-resources-list-file    
+          key: skip-delete-resources-list-${{ env.UNIQUE_ID || github.run_id }}
+          restore-keys: |
+            skip-delete-resources-list-
       - name: Clean up cluster
         if: always()
         timeout-minutes: 60
         run: |
-          # Always use skip list if it exists, regardless of SKIP_BUILD
-          if [ -f skip-delete-resources-list.txt ] && [ -s skip-delete-resources-list.txt ]; then
-            echo "Running cleanup with skip-delete-resources-list.txt. Built-in resources will not be deleted."
-            ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
-          else
-            echo "No skip-delete-resources-list.txt found or file is empty. Running cleanup without skip list."
+          if [ "${{ env.SKIP_BUILD }}" != "true" ] ; then
+            echo "Running cleanup without skip delete resource list. This will delete all resources."
             ./.github/scripts/cleanup-long-running-cluster.sh
+          else
+            echo "Running cleanup with skip-delete-resources-list.txt. Built-In resources will not be deleted."
+            ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
           fi
       - name: Download Bicep
         run: |
@@ -523,7 +524,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: skip-delete-resources-list.txt
-          key: skip-delete-resources-list-file
+          key: skip-delete-resources-list-${{ env.UNIQUE_ID || github.run_id }}
       - name: Configure Radius test workspace
         run: |
           set -x
@@ -664,7 +665,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: skip-delete-resources-list.txt
-          key: skip-delete-resources-list-file
+          key: skip-delete-resources-list-${{ env.UNIQUE_ID || github.run_id }}
+          restore-keys: |
+            skip-delete-resources-list-
       - name: Clean up cluster
         if: always()
         timeout-minutes: 60
