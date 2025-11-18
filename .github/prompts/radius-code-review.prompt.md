@@ -1,5 +1,4 @@
 ---
-mode: agent
 model: Claude Sonnet 4.5 (copilot)
 tools: ['search/codebase', 'githubRepo', 'github.vscode-pull-request-github/activePullRequest', "edit/createFile", "edit/editFiles"]
 description: 'Perform a code review for a pull request (PR) in a GitHub repository.'
