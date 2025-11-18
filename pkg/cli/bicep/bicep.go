@@ -26,7 +26,7 @@ import (
 
 const (
 	radBicepEnvVar = "RAD_BICEP"
-	binaryName     = "rad-bicep"
+	binaryName     = "bicep"
 	retryAttempts  = 10
 	retryDelaySecs = 5
 )
