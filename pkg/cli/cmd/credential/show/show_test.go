@@ -151,6 +151,7 @@ func Test_Run(t *testing.T) {
 			}
 			require.Equal(t, expected, outputSink.Writes)
 		})
+        
 		t.Run("Azure WorkloadIdentity - Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
