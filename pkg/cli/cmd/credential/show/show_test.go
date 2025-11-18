@@ -199,6 +199,7 @@ func Test_Run(t *testing.T) {
 			}
 			require.Equal(t, expected, outputSink.Writes)
 		})
+		
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
