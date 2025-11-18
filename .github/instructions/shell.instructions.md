@@ -171,7 +171,7 @@ You will always follow all shellcheck and shfmt formatting rules:
 
 Follow these formatting conventions along with all others outlined in #fetch:<https://google.github.io/styleguide/shellguide.html>:
 
-- Use 2 spaces for indentation, never tabs
+- Use 4 spaces for indentation, never tabs
 - Maximum line length is 80 characters
 - Put `; then` and `; do` on the same line as `if`, `for`, `while`
 - Use `[[ ... ]]` instead of `[ ... ]` or `test`
