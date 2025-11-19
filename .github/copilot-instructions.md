@@ -109,11 +109,6 @@ Act as a critic of your own review to ensure:
 - **Value**: Remove any comments that are purely complimentary
 - **Correctness**: Fix any discrepancies found during validation
 
-### Error Handling
-
-- If files are too large to analyze completely, focus on the most critical changes and note this limitation
-- If unable to access certain files, document this in the review
-
 ### Review Output Format
 
 Structure your review comments as:
