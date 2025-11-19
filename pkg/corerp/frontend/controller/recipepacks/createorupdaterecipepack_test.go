@@ -95,7 +95,6 @@ func TestCreateOrUpdateRecipePackRun_CreateNew(t *testing.T) {
 
 	actualOutput := &v20250801preview.RecipePackResource{}
 	_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-	require.Equal(t, expectedOutput.Properties.Description, actualOutput.Properties.Description)
 	require.Equal(t, expectedOutput.Properties.Recipes, actualOutput.Properties.Recipes)
 	require.Equal(t, v20250801preview.ProvisioningStateSucceeded, *actualOutput.Properties.ProvisioningState)
 }
@@ -145,7 +144,6 @@ func TestCreateOrUpdateRecipePackRun_UpdateExisting(t *testing.T) {
 
 	actualOutput := &v20250801preview.RecipePackResource{}
 	_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-	require.Equal(t, expectedOutput.Properties.Description, actualOutput.Properties.Description)
 	require.Equal(t, expectedOutput.Properties.Recipes, actualOutput.Properties.Recipes)
 	require.Equal(t, v20250801preview.ProvisioningStateSucceeded, *actualOutput.Properties.ProvisioningState)
 }
@@ -154,12 +152,10 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/default/providers/Radius.Core/recipePacks/testrecipepack"
 	resourceName := "testrecipepack"
 	location := "global"
-	description := "Test recipe pack with sample recipes"
 
 	recipePackInput := &v20250801preview.RecipePackResource{
 		Location: &location,
 		Properties: &v20250801preview.RecipePackProperties{
-			Description: &description,
 			Recipes: map[string]*v20250801preview.RecipeDefinition{
 				"Applications.Core/extenders": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
@@ -190,7 +186,6 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 			},
 		},
 		Properties: datamodel.RecipePackProperties{
-			Description: description,
 			Recipes: map[string]*datamodel.RecipeDefinition{
 				"Applications.Core/extenders": {
 					RecipeKind:     "bicep",
@@ -217,7 +212,6 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 		Type:     to.Ptr(datamodel.RecipePackResourceType),
 		Location: &location,
 		Properties: &v20250801preview.RecipePackProperties{
-			Description:       &description,
 			ProvisioningState: to.Ptr(v20250801preview.ProvisioningStateSucceeded),
 			Recipes: map[string]*v20250801preview.RecipeDefinition{
 				"Applications.Core/extenders": {
