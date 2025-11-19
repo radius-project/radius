@@ -434,9 +434,6 @@ type RecipePackProperties struct {
 	// REQUIRED; Map of resource types to their recipe configurations
 	Recipes map[string]*RecipeDefinition
 
-	// Description of what this recipe pack provides
-	Description *string
-
 	// READ-ONLY; The status of the asynchronous operation
 	ProvisioningState *ProvisioningState
 

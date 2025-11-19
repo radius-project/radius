@@ -887,13 +887,6 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
-      "description": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Description of what this recipe pack provides"
-      },
       "referencedBy": {
         "type": {
           "$ref": "#/78"

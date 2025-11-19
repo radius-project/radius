@@ -1460,10 +1460,6 @@
           "description": "The status of the asynchronous operation",
           "readOnly": true
         },
-        "description": {
-          "type": "string",
-          "description": "Description of what this recipe pack provides"
-        },
         "referencedBy": {
           "type": "array",
           "description": "List of environment IDs that reference this recipe pack",
