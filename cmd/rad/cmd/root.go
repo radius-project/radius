@@ -330,68 +330,17 @@ func initSubCommands() {
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
-
-	envCreateCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
-
-	legacyCreateRun := envCreateCmd.RunE
-	previewCreateRun := previewCreateCmd.RunE
-
-	envCreateCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		previewRequested, err := cmd.Flags().GetBool("preview")
-		if err != nil {
-			return err
-		}
-
-		if previewRequested {
-			return previewCreateRun(cmd, args)
-		}
-
-		return legacyCreateRun(cmd, args)
-	}
+	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
 	envCmd.AddCommand(envCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
 	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
-
-	envDeleteCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
-
-	legacyDeleteRun := envDeleteCmd.RunE
-	previewDeleteRun := previewDeleteCmd.RunE
-
-	envDeleteCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		previewRequested, err := cmd.Flags().GetBool("preview")
-		if err != nil {
-			return err
-		}
-
-		if previewRequested {
-			return previewDeleteRun(cmd, args)
-		}
-
-		return legacyDeleteRun(cmd, args)
-	}
+	wirePreviewSubcommand(envDeleteCmd, previewDeleteCmd)
 	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
 	previewListCmd, _ := env_list_preview.NewCommand(framework)
-
-	envListCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
-
-	legacyListRun := envListCmd.RunE
-	previewListRun := previewListCmd.RunE
-
-	envListCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		previewRequested, err := cmd.Flags().GetBool("preview")
-		if err != nil {
-			return err
-		}
-
-		if previewRequested {
-			return previewListRun(cmd, args)
-		}
-
-		return legacyListRun(cmd, args)
-	}
+	wirePreviewSubcommand(envListCmd, previewListCmd)
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)
@@ -526,5 +475,24 @@ func getRootSpanName() string {
 		return args[0] + " " + args[1]
 	} else {
 		return args[0]
+	}
+}
+
+// wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
+func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
+	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+
+	legacyRun := cmd.RunE
+	previewRun := previewCmd.RunE
+
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		usePreview, err := c.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+		if usePreview {
+			return previewRun(c, args)
+		}
+		return legacyRun(c, args)
 	}
 }
