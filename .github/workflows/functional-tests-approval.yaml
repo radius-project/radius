@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: "Approve Functional Tests"
 on:
   pull_request:
@@ -5,6 +7,7 @@ on:
       - main
       - features/*
       - release/*
+
 jobs:
   approve-functional-tests-run:
     name: "Approve Functional Tests"
@@ -12,7 +15,7 @@ jobs:
     environment: functional-tests
     steps:
       - name: Checkout Radius repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Save PR number
         uses: ./.github/actions/save-pr-as-artifact

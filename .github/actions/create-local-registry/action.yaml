@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 name: "Create a local registry"
 description: |
   This action creates a local registry for the images to be pushed to.
@@ -25,7 +27,7 @@ outputs:
     description: "The temporary directory where the certificates are stored"
     value: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Create temporary directory for certificates
       if: ${{ inputs.secure == 'true' }}
