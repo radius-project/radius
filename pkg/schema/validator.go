@@ -35,6 +35,7 @@ const (
 	reservedPropConnections = "connections"
 )
 
+// joinPath concatenates two path segments with a dot separator for property path tracking.
 func joinPath(parent, child string) string {
 	if parent == "" {
 		return child
@@ -45,6 +46,7 @@ func joinPath(parent, child string) string {
 	return parent + "." + child
 }
 
+// isPlatformOptionsPath checks if a path ends with "platformOptions" (last segment after splitting by dots).
 func isPlatformOptionsPath(path string) bool {
 	if path == "" {
 		return false
@@ -53,6 +55,7 @@ func isPlatformOptionsPath(path string) bool {
 	return segments[len(segments)-1] == "platformOptions"
 }
 
+// isUnconstrainedSchema returns true if a schema has no type restrictions and accepts any value.
 func isUnconstrainedSchema(schema *openapi3.Schema) bool {
 	if schema == nil {
 		return false
@@ -528,7 +531,7 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema, path
 				return NewSchemaError(joinPath(path, "additionalProperties"), "additionalProperties schema is nil")
 			}
 			if addPropsRef.Value != nil && isUnconstrainedSchema(addPropsRef.Value) && !isPlatformOptionsPath(path) {
-				return NewConstraintError(joinPath(path, "additionalProperties"), "additionalProperties may be unconstrained only for the platformOptions property")
+				return NewConstraintError(joinPath(path, "additionalProperties"), "additionalProperties may be type `any` only for the platformOptions property")
 			}
 		}
 	}

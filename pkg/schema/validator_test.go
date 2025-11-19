@@ -994,7 +994,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 			},
 			path:       "spec.otherOptions",
 			hasErr:     true,
-			errMsg:     "additionalProperties may be unconstrained only for the platformOptions property",
+			errMsg:     "additionalProperties may be type `any` only for the platformOptions property",
 			expectPath: true,
 		},
 	}
@@ -1124,7 +1124,7 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 		}
 		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "additionalProperties may be unconstrained only for the platformOptions property")
+		require.Contains(t, err.Error(), "additionalProperties may be type `any` only for the platformOptions property")
 	})
 }
 
