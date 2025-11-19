@@ -41,6 +41,7 @@ import (
 	credential "github.com/radius-project/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
+	env_create_preview "github.com/radius-project/radius/pkg/cli/cmd/env/create/preview"
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
@@ -326,6 +327,25 @@ func initSubCommands() {
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
+	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
+
+	envCreateCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+
+	legacyCreateRun := envCreateCmd.RunE
+	previewCreateRun := previewCreateCmd.RunE
+
+	envCreateCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		previewRequested, err := cmd.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+
+		if previewRequested {
+			return previewCreateRun(cmd, args)
+		}
+
+		return legacyCreateRun(cmd, args)
+	}
 	envCmd.AddCommand(envCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
