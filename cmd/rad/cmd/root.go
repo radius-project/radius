@@ -45,6 +45,7 @@ import (
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
+	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/radius-project/radius/pkg/cli/cmd/env/show"
 	env_update "github.com/radius-project/radius/pkg/cli/cmd/env/update"
@@ -352,6 +353,25 @@ func initSubCommands() {
 	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
+	previewListCmd, _ := env_list_preview.NewCommand(framework)
+
+	envListCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+
+	legacyListRun := envListCmd.RunE
+	previewListRun := previewListCmd.RunE
+
+	envListCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		previewRequested, err := cmd.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+
+		if previewRequested {
+			return previewListRun(cmd, args)
+		}
+
+		return legacyListRun(cmd, args)
+	}
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)

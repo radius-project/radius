@@ -144,33 +144,6 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	// workspace := &workspaces.Workspace{
-	// 	Name:  "test-workspace",
-	// 	Scope: "/planes/radius/local/resourceGroups/test-resource-group",
-	// 	Connection: map[string]any{
-	// 		"kind":    "kubernetes",
-	// 		"context": "kind-kind",
-	// 	},
-	// }
-
-	// outputSink := &output.MockOutput{}
-	// var createCalled bool
-
-	// factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, test_client_factory.WithEnvironmentServerNoError)
-	// require.NoError(t, err)
-
-	// runner := &Runner{
-	// 	Output:                  outputSink,
-	// 	Workspace:               workspace,
-	// 	EnvironmentName:         "testenv",
-	// 	ResourceGroupName:       "test-resource-group",
-	// 	RadiusCoreClientFactory: factory,
-	// }
-
-	// err = runner.Run(context.Background())
-	// require.NoError(t, err)
-	// require.True(t, createCalled)
-
 	t.Run("Success: environment created", func(t *testing.T) {
 		workspace := &workspaces.Workspace{
 			Name:  "test-workspace",
