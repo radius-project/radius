@@ -43,6 +43,7 @@ import (
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
 	env_create_preview "github.com/radius-project/radius/pkg/cli/cmd/env/create/preview"
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
+	env_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/env/delete/preview"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
 	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
@@ -350,6 +351,25 @@ func initSubCommands() {
 	envCmd.AddCommand(envCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
+	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
+
+	envDeleteCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+
+	legacyDeleteRun := envDeleteCmd.RunE
+	previewDeleteRun := previewDeleteCmd.RunE
+
+	envDeleteCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		previewRequested, err := cmd.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+
+		if previewRequested {
+			return previewDeleteRun(cmd, args)
+		}
+
+		return legacyDeleteRun(cmd, args)
+	}
 	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)

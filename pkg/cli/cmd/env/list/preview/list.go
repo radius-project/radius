@@ -36,11 +36,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List environments (preview)",
-		Long:  `List Radius.Core environments using the preview API surface.`,
-		Args:  cobra.NoArgs,
-		RunE:  framework.RunCommand(runner),
+		Use:     "list",
+		Short:   "List environments (preview)",
+		Long:    `List Radius.Core environments using the preview API surface.`,
+		Args:    cobra.NoArgs,
+		RunE:    framework.RunCommand(runner),
+		Example: `rad env list`,
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
