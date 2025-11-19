@@ -41,7 +41,7 @@ Create `pr-reviews/pr-review-${prNumber}.md` with:
         Line Y: Suggestion for improvement
 
 **Step 3: Validate Your Review**
-Follow the "Step 3: Validate Your Review" section in `.github/copilot-instructions.md` to ensure accuracy, clarity, value, and correctness of the review.
+Follow the "Step 3: validate your review" section in `.github/copilot-instructions.md` to ensure accuracy, clarity, value, and correctness of the review.
 
 **Step 4: Generate a script for posting the review**
 
