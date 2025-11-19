@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Purge AWS test resources
 on:
   workflow_dispatch:
@@ -34,18 +36,21 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
         with:
           aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
       - name: Delete old AWS resources
         run: |
           ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
+
       - name: Create issue for failing purge aws test resources run
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         if: failure()
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}

@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: radius-bot
 
 on:
@@ -10,15 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           sparse-checkout: |
             .github/scripts/radius-bot.js
           sparse-checkout-cone-mode: false
+
       - name: Comment analyzer
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
-          TEAM_SLUG: 'approvers-radius'
+          TEAM_SLUG: "approvers-radius"
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

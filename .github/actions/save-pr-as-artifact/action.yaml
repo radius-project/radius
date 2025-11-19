@@ -1,7 +1,9 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 name: "Save PR number as artifact"
 description: "Save PR number as artifact"
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Save PR number
       shell: bash
@@ -10,7 +12,7 @@ runs:
       run: |
         mkdir -p ./pr
         echo $PR_NUMBER > ./pr/pr_number
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       with:
         name: pr_number
         path: pr/
