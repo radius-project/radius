@@ -34,7 +34,7 @@ When performing code reviews for pull requests in the Radius repository, follow 
 
 **Error Handling:**
 - If files are too large to analyze completely, focus on the most critical changes and note it in the review.
-- If unable to access certain files, note this limitation in the review
+- If unable to access certain files, note this limitation in the review.
 
 ### Code Review Principles
 
