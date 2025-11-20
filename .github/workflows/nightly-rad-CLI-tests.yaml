@@ -1,9 +1,11 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Nightly rad CLI tests
 
 on:
   schedule:
     # Run every day at 11:47 PM UTC
-    - cron: '47 23 * * *'
+    - cron: "47 23 * * *"
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -38,9 +40,11 @@ jobs:
             ext: .exe
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
       - name: Test CLI download
         run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }}
+
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
         env:

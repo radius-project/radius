@@ -12,7 +12,6 @@
     "lastModifiedByType": "User"
   },
   "properties": {
-    "description": "Test recipe pack with sample recipes",
     "recipes": {
       "Applications.Core/extenders": {
         "recipeKind": "bicep",

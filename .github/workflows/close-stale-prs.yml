@@ -2,26 +2,28 @@
 #
 # For more information, see:
 # https://github.com/actions/stale
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Close stale pull requests
 
 on:
   schedule:
-  - cron: '0 18 * * *' # Run the workflow every day at 6PM UTC (10AM PST).
+    - cron: "0 18 * * *" # Run the workflow every day at 6PM UTC (10AM PST).
 
 jobs:
   stale:
-
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
 
     steps:
-    - uses: actions/stale@v10
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        stale-pr-message: 'This pull request has been automatically marked as stale because it has been inactive for 90 days. Remove stale label or comment or this PR will be closed in 7 days.'
-        stale-pr-label: 'stale'
-        days-before-pr-stale: 90 # 3 months
-        days-before-pr-close: 7
-        days-before-issue-stale: -1
-        days-before-issue-close: -1
+      - uses: actions/stale@5f858e3efba33a5ca4407a664cc011ad407f2008 # v10.1.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: "This pull request has been automatically marked as stale because it has been inactive for 90 days. Remove stale label or comment or this PR will be closed in 7 days."
+          stale-pr-label: "stale"
+          days-before-pr-stale: 90 # 3 months
+          days-before-pr-close: 7
+          days-before-issue-stale: -1
+          days-before-issue-close: -1

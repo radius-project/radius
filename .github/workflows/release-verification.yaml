@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Release verification
 
 on:
@@ -30,10 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
       - name: Ensure inputs.version is valid semver
         run: |
           python ./.github/scripts/validate_semver.py ${{ inputs.version }}
+
       - name: Run release verification
         run: |
           ./.github/scripts/release-verification.sh ${{ inputs.version }}

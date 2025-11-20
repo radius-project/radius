@@ -21,7 +21,6 @@
     "asyncProvisioningState": "Succeeded"
   },
   "properties": {
-    "description": "A comprehensive recipe pack for containerized applications",
     "referencedBy": [
       "/planes/radius/local/resourceGroups/app-rg/providers/Radius.Core/environments/prod-env",
       "/planes/radius/local/resourceGroups/app-rg/providers/Radius.Core/environments/staging-env"

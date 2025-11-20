@@ -48,11 +48,6 @@ func (src *RecipePackResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Recipes = toRecipesDataModel(src.Properties.Recipes)
 	}
 
-	// Convert Description
-	if src.Properties.Description != nil {
-		converted.Properties.Description = to.String(src.Properties.Description)
-	}
-
 	// Convert ReferencedBy
 	if src.Properties.ReferencedBy != nil {
 		converted.Properties.ReferencedBy = to.StringArray(src.Properties.ReferencedBy)
@@ -81,11 +76,6 @@ func (dst *RecipePackResource) ConvertFrom(src v1.DataModelInterface) error {
 	// Convert Recipes
 	if recipePack.Properties.Recipes != nil {
 		dst.Properties.Recipes = fromRecipesDataModel(recipePack.Properties.Recipes)
-	}
-
-	// Convert Description
-	if recipePack.Properties.Description != "" {
-		dst.Properties.Description = to.Ptr(recipePack.Properties.Description)
 	}
 
 	// Convert ReferencedBy

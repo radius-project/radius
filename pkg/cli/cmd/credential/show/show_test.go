@@ -151,6 +151,55 @@ func Test_Run(t *testing.T) {
 			}
 			require.Equal(t, expected, outputSink.Writes)
 		})
+        
+		t.Run("Azure WorkloadIdentity - Exists", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			provider := cli_credential.ProviderCredentialConfiguration{
+				CloudProviderStatus: cli_credential.CloudProviderStatus{
+					Name:    "azure",
+					Enabled: true,
+				},
+				AzureCredentials: &cli_credential.AzureCredentialProperties{
+					Kind: to.Ptr("WorkloadIdentity"),
+				},
+			}
+
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
+			client.EXPECT().
+				Get(gomock.Any(), "azure").
+				Return(provider, nil).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Connection: connection},
+				Kind:              "azure",
+				Format:            "table",
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			credentialFormatOutput := credentialFormatAzureWorkloadIdentity()
+
+			expected := []any{
+				output.LogOutput{
+					Format: "Showing credential for cloud provider %q for Radius installation %q...",
+					Params: []any{"azure", "Kubernetes (context=my-context)"},
+				},
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     provider,
+					Options: credentialFormatOutput,
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
+		
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 

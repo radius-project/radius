@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,28 +14,34 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: 'Radius Triage Bot'
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: "Radius Triage Bot"
+
 on:
   issues:
     types: [labeled, unlabeled]
+
 permissions:
   contents: read
   issues: write
+
 jobs:
   build:
-    name: 'Process Triage Labels'
+    name: "Process Triage Labels"
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
-    env: 
+    env:
       RADIUS_TRIAGE_BOT_APP_ID: 417813
     steps:
-    - uses: tibdex/github-app-token@v2
-      id: get_installation_token
-      with: 
-        app_id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
-        private_key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
-    - uses: dessant/label-actions@v4
-      with:
-        github-token: ${{ steps.get_installation_token.outputs.token }}
-        config-path: '.github/triage-bot/triage-bot-config.yaml'
-        process-only: 'issues'
+      - uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+        id: get_installation_token
+        with:
+          app_id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
+          private_key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
+
+      - uses: dessant/label-actions@102faf474a544be75fbaf4df54e73d3c515a0e65 # v4.0.1
+        with:
+          github-token: ${{ steps.get_installation_token.outputs.token }}
+          config-path: ".github/triage-bot/triage-bot-config.yaml"
+          process-only: "issues"

@@ -1085,7 +1085,6 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipePackProperties.
 func (r RecipePackProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "description", r.Description)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipes", r.Recipes)
 	populate(objectMap, "referencedBy", r.ReferencedBy)
@@ -1101,9 +1100,6 @@ func (r *RecipePackProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "description":
-			err = unpopulate(val, "Description", &r.Description)
-			delete(rawMsg, key)
 		case "provisioningState":
 			err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
 			delete(rawMsg, key)

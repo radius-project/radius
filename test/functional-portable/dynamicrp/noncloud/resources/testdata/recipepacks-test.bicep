@@ -16,7 +16,6 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'test-recipe-pack'
   location: 'global'
   properties: {
-    description: 'Test recipe pack with userTypeAlpha recipe'
     recipes: {
       'Test.Resources/userTypeAlpha': {
         recipeKind: 'bicep'

@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Purge Azure test resources
 
 permissions:
@@ -43,8 +45,9 @@ jobs:
     steps:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -95,13 +98,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
           client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
           tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
           subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
 
-      # Delete Bicep types that are older than 30 days from the test registry 
+      # Delete Bicep types that are older than 30 days from the test registry
       - name: Delete test bicep type manifests
         run: |
           REPO_NAME="test/radius"
@@ -112,7 +115,7 @@ jobs:
             -r $REGISTRY_NAME \
             -n $REPO_NAME \
             --query "[?lastUpdateTime<='$DATE'].digest" \
-            -o tsv | while read DIGEST; do 
+            -o tsv | while read DIGEST; do
               az acr manifest delete \
                 -n $REPO_NAME@$DIGEST \
                 -r $REGISTRY_NAME --yes
@@ -124,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
