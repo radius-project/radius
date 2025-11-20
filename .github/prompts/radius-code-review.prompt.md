@@ -8,19 +8,18 @@ Context: ${workspaceFolder}
 
 PR is an acronym for Pull Request.
 
-**Important**: Follow the code review guidelines defined in `.github/copilot-instructions.md` for the review process, review principles, code quality criteria, and validation steps. This prompt file defines only the file creation and script generation requirements specific to this automated review workflow.
+**Important**: Follow the code review guidelines defined in `.github/instructions/code-review.instructions.md` for the review process, review principles, code quality criteria, and validation steps. This prompt file defines only the file creation and script generation requirements specific to this automated review workflow.
 
 You will create three files as part of this process: two markdown documents and one shell script. The first markdown document will detail the changes made in the PR on a file-by-file basis. The second markdown document will contain your review comments for each file and an overall assessment of the PR. The shell script will use the GitHub API to post your review comments from the second markdown file to the PR.
 
 All files you create as part of this PR review will go into a folder named `pr-reviews` at the root of the project. If this folder does not exist, create it.
 
 **Before Starting:**
-Follow the "Before Starting a Review" section in `.github/copilot-instructions.md`, and additionally:
+Follow the "Before Starting a Review" section in `.github/instructions/code-review.instructions.md`, and additionally:
 1. Create the `pr-reviews` folder if it does not exist.
 
 **Step 1: Analyze the Changes**
-Follow the "Step 1: Analyze the Changes" section in `.github/copilot-instructions.md`.
-
+Follow the "Step 1: Analyze the Changes" section in `.github/instructions/code-review.instructions.md`.
 For this pr, ${activePullRequest}, create a markdown document in the `pr-reviews` folder that describes in detail how each file has changed and what each file does, and what the changes are. Consider what the PR author wrote in the PR description as well as the changes that exist in each file.
 
 Create `pr-reviews/pr-analysis-${prNumber}.md` with:
@@ -31,7 +30,7 @@ Create `pr-reviews/pr-analysis-${prNumber}.md` with:
   - Impact assessment
 
 **Step 2: Provide Review Feedback**
-Follow the "Step 2: Provide Review Feedback" section in `.github/copilot-instructions.md`, including all General Code Quality Criteria and Unit Test Review Criteria.
+Follow the "Step 2: Provide Review Feedback" section in `.github/instructions/code-review.instructions.md`, including all General Code Quality Criteria and Unit Test Review Criteria.
 
 Create `pr-reviews/pr-review-${prNumber}.md` with:
 - Overall PR assessment
@@ -41,7 +40,7 @@ Create `pr-reviews/pr-review-${prNumber}.md` with:
         Line Y: Suggestion for improvement
 
 **Step 3: Validate Your Review**
-Follow the "Step 3: validate your review" section in `.github/copilot-instructions.md` to ensure accuracy, clarity, value, and correctness of the review.
+Follow the "Step 3: validate your review" section in `.github/instructions/code-review.instructions.md` to ensure accuracy, clarity, value, and correctness of the review.
 
 **Step 4: Generate a script for posting the review**
 
