@@ -184,6 +184,9 @@ type EnvironmentProperties struct {
 	// List of Recipe Pack resource IDs linked to this environment.
 	RecipePacks []*string
 
+	// Recipe specific parameters that apply to all resources of a given type in this environment.
+	RecipeParameters map[string]map[string]any
+
 	// Simulated environment.
 	Simulated *bool
 

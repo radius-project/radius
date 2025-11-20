@@ -41,6 +41,10 @@ type EnvironmentProperties_v20250801preview struct {
 	// RecipePacks is the list of recipe pack resource IDs linked to this environment.
 	RecipePacks []string `json:"recipePacks,omitempty"`
 
+	// RecipeParameters contains recipe-specific parameters that apply to all resources of a given type.
+	// The key is the resource type (e.g., "Radius.Compute/containers") and the value is a map of parameter names to values.
+	RecipeParameters map[string]map[string]any `json:"recipeParameters,omitempty"`
+
 	// Providers contains cloud provider configuration for the environment.
 	Providers *Providers_v20250801preview `json:"providers,omitempty"`
 
