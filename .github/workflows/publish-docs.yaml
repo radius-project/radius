@@ -20,6 +20,10 @@ on:
   pull_request:
     branches:
       - main
+  merge_group:
+    branches:
+      - main
+
 jobs:
   reference-docs:
     name: Generate and PR reference documentation

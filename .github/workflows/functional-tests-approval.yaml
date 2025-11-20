@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
 name: "Approve Functional Tests"
+
 on:
   pull_request:
     branches:
