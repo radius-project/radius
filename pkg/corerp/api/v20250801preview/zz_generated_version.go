@@ -4,6 +4,6 @@
 package v20250801preview
 
 const (
-	moduleName    = "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	moduleName    = "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	moduleVersion = "v0.1.0"
 )

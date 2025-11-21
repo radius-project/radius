@@ -41,9 +41,12 @@ import (
 	credential "github.com/radius-project/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
+	env_create_preview "github.com/radius-project/radius/pkg/cli/cmd/env/create/preview"
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
+	env_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/env/delete/preview"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
+	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/radius-project/radius/pkg/cli/cmd/env/show"
 	env_update "github.com/radius-project/radius/pkg/cli/cmd/env/update"
@@ -326,12 +329,18 @@ func initSubCommands() {
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
+	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
+	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
 	envCmd.AddCommand(envCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
+	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
+	wirePreviewSubcommand(envDeleteCmd, previewDeleteCmd)
 	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
+	previewListCmd, _ := env_list_preview.NewCommand(framework)
+	wirePreviewSubcommand(envListCmd, previewListCmd)
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)
@@ -466,5 +475,24 @@ func getRootSpanName() string {
 		return args[0] + " " + args[1]
 	} else {
 		return args[0]
+	}
+}
+
+// wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
+func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
+	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+
+	legacyRun := cmd.RunE
+	previewRun := previewCmd.RunE
+
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		usePreview, err := c.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+		if usePreview {
+			return previewRun(c, args)
+		}
+		return legacyRun(c, args)
 	}
 }
