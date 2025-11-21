@@ -143,7 +143,7 @@ jobs:
         if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
           test_group_name: Unit Tests
-          artifact_name: unit_test_results"
+          artifact_name: unit_test_results
           result_directory: dist/unit_test/
 
       - name: Copy cli binaries to release (unix-like)
