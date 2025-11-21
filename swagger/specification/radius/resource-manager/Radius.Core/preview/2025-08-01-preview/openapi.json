@@ -1106,6 +1106,13 @@
             "type": "string"
           }
         },
+        "recipeParameters": {
+          "type": "object",
+          "description": "Recipe specific parameters that apply to all resources of a given type in this environment.",
+          "additionalProperties": {
+            "$ref": "#/definitions/RecipeParameterValue"
+          }
+        },
         "providers": {
           "$ref": "#/definitions/Providers",
           "description": "Cloud provider configuration for the environment."
@@ -1532,6 +1539,11 @@
           "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
       ]
+    },
+    "RecipeParameterValue": {
+      "type": "object",
+      "description": "Recipe parameter configuration for a specific resource type.",
+      "additionalProperties": {}
     },
     "RecipeStatus": {
       "type": "object",
