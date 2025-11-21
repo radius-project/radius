@@ -38,6 +38,12 @@ func (e *Environment_v20250801preview) ResourceTypeName() string {
 
 // EnvironmentProperties_v20250801preview represents the properties of the new environment schema.
 type EnvironmentProperties_v20250801preview struct {
+	// TerraformSettings is the resource ID of the Terraform settings applied to this environment.
+	TerraformSettings string `json:"terraformSettings,omitempty"`
+
+	// BicepSettings is the resource ID of the Bicep settings applied to this environment.
+	BicepSettings string `json:"bicepSettings,omitempty"`
+
 	// RecipePacks is the list of recipe pack resource IDs linked to this environment.
 	RecipePacks []string `json:"recipePacks,omitempty"`
 
