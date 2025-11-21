@@ -54,7 +54,7 @@ env:
   GHCR_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
-  CONTAINER_REGISTRY: "ghcr.io/radius-project"
+  CONTAINER_REGISTRY: ghcr.io/radius-project
 
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
@@ -120,8 +120,8 @@ jobs:
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
-          GOTESTSUM_OPTS: "--junitfile ./dist/unit_test/results.xml"
-          GOTEST_OPTS: "-race -coverprofile ./dist/unit_test/ut_coverage.out"
+          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
+          GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
         run: |
           mkdir -p ./dist/unit_test
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
@@ -133,7 +133,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
-          file: ./dist/unit_test/ut_coverage.out
+          files: ./dist/unit_test/ut_coverage.out
           fail_ci_if_error: false
           verbose: true
 
@@ -142,9 +142,9 @@ jobs:
         # Always is required here to make sure this target runs even when tests fail.
         if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         with:
-          test_group_name: "Unit Tests"
-          artifact_name: "unit_test_results"
-          result_directory: "dist/unit_test/"
+          test_group_name: Unit Tests
+          artifact_name: unit_test_results
+          result_directory: dist/unit_test/
 
       - name: Copy cli binaries to release (unix-like)
         if: matrix.target_os != 'windows'
@@ -253,7 +253,7 @@ jobs:
 
   build-and-push-helm-chart:
     name: Helm chart build
-    needs: ["build-and-push-images"]
+    needs: [build-and-push-images]
     runs-on: ubuntu-latest
     # Don't push on PR, agent will not have permission.
     if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
@@ -264,7 +264,7 @@ jobs:
       OCI_REGISTRY: ghcr.io
       # We only push the chart on pushes to main or to a tag. The versioning logic will select the right
       # version for us.
-      OCI_REPOSITORY: "radius-project/helm-chart"
+      OCI_REPOSITORY: radius-project/helm-chart
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -272,7 +272,7 @@ jobs:
       - name: Install helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
-          version: "v3.11.1"
+          version: v3.11.1
 
       - name: Setup Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
@@ -290,17 +290,6 @@ jobs:
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --app-version ${{ env.REL_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
-      # TODO: Delete this step once we use GHCR as the helm chart repo.
-      # Cannot use Workload Identity because azure federated identity doesn't accept wildcard tag version.
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-      - name: az CLI login
-        run: |
-          az login --service-principal \
-            --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
-            --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Push helm chart to GHCR
         run: |
@@ -371,7 +360,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: ["build-and-push-cli"]
+    needs: [build-and-push-cli]
     runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
     env:
