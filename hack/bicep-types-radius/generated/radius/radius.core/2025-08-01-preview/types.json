@@ -588,7 +588,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/63"
+          "$ref": "#/66"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -627,9 +627,16 @@
         "flags": 0,
         "description": "List of Recipe Pack resource IDs linked to this environment."
       },
+      "recipeParameters": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0,
+        "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
+      },
       "providers": {
         "type": {
-          "$ref": "#/59"
+          "$ref": "#/62"
         },
         "flags": 0
       },
@@ -710,25 +717,44 @@
     }
   },
   {
+    "$type": "AnyType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RecipeParameterValue",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/59"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "EnvironmentPropertiesRecipeParameters",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/60"
+    }
+  },
+  {
     "$type": "ObjectType",
     "name": "Providers",
     "properties": {
       "azure": {
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/63"
         },
         "flags": 0,
         "description": "The Azure cloud provider definition."
       },
       "kubernetes": {
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/64"
         },
         "flags": 0
       },
       "aws": {
         "type": {
-          "$ref": "#/62"
+          "$ref": "#/65"
         },
         "flags": 0,
         "description": "The AWS cloud provider definition."
@@ -834,28 +860,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/68"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/66"
+          "$ref": "#/69"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/71"
         },
         "flags": 1,
         "description": "Recipe Pack properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/86"
+          "$ref": "#/88"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -882,21 +908,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/80"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/81"
         },
         "flags": 2,
         "description": "List of environment IDs that reference this recipe pack"
       },
       "recipes": {
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/87"
         },
         "flags": 1,
         "description": "Map of resource types to their recipe configurations"
@@ -939,15 +965,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/69"
-      },
-      {
-        "$ref": "#/70"
-      },
-      {
-        "$ref": "#/71"
-      },
-      {
         "$ref": "#/72"
       },
       {
@@ -961,6 +978,15 @@
       },
       {
         "$ref": "#/76"
+      },
+      {
+        "$ref": "#/77"
+      },
+      {
+        "$ref": "#/78"
+      },
+      {
+        "$ref": "#/79"
       }
     ]
   },
@@ -976,7 +1002,7 @@
     "properties": {
       "recipeKind": {
         "type": {
-          "$ref": "#/82"
+          "$ref": "#/85"
         },
         "flags": 1,
         "description": "The type of recipe"
@@ -997,7 +1023,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/86"
         },
         "flags": 0,
         "description": "Parameters to pass to the recipe"
@@ -1016,22 +1042,19 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/80"
+        "$ref": "#/83"
       },
       {
-        "$ref": "#/81"
+        "$ref": "#/84"
       }
     ]
-  },
-  {
-    "$type": "AnyType"
   },
   {
     "$type": "ObjectType",
     "name": "RecipeDefinitionParameters",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/83"
+      "$ref": "#/59"
     }
   },
   {
@@ -1039,7 +1062,7 @@
     "name": "RecipePackPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/79"
+      "$ref": "#/82"
     }
   },
   {
@@ -1054,7 +1077,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/67"
+      "$ref": "#/70"
     },
     "readableScopes": 0,
     "writableScopes": 0,
