@@ -55,6 +55,56 @@ func isPlatformOptionsPath(path string) bool {
 	return segments[len(segments)-1] == "platformOptions"
 }
 
+// isPlatformOptionsAdditionalPropertiesPath checks if a path points to the
+// additionalProperties schema under a platformOptions property.
+func isPlatformOptionsAdditionalPropertiesPath(path string) bool {
+	if path == "" {
+		return false
+	}
+	segments := strings.Split(path, ".")
+	if len(segments) < 2 {
+		return false
+	}
+	return segments[len(segments)-2] == "platformOptions" && segments[len(segments)-1] == "additionalProperties"
+}
+
+// normalizePlatformOptionsAny rewrites type: any occurrences that sit beneath
+// platformOptions.additionalProperties into spec-compliant schemas so the
+// OpenAPI validator accepts them while keeping the rest of the document intact.
+func normalizePlatformOptionsAny(schema *openapi3.Schema) {
+	normalizePlatformOptionsAnyWithPath(schema, "")
+}
+
+func normalizePlatformOptionsAnyWithPath(schema *openapi3.Schema, path string) {
+	if schema == nil {
+		return
+	}
+
+	if isPlatformOptionsAdditionalPropertiesPath(path) && schema.Type != nil {
+		for _, t := range *schema.Type {
+			if strings.EqualFold(t, "any") {
+				schema.Type = nil
+				break
+			}
+		}
+	}
+
+	for propName, propRef := range schema.Properties {
+		if propRef == nil || propRef.Value == nil {
+			continue
+		}
+		normalizePlatformOptionsAnyWithPath(propRef.Value, joinPath(path, propName))
+	}
+
+	if schema.AdditionalProperties.Schema != nil && schema.AdditionalProperties.Schema.Value != nil {
+		normalizePlatformOptionsAnyWithPath(schema.AdditionalProperties.Schema.Value, joinPath(path, "additionalProperties"))
+	}
+
+	if schema.Items != nil && schema.Items.Value != nil {
+		normalizePlatformOptionsAnyWithPath(schema.Items.Value, joinPath(path, "items"))
+	}
+}
+
 // isUnconstrainedSchema returns true if a schema has no type restrictions and accepts any value.
 func isUnconstrainedSchema(schema *openapi3.Schema) bool {
 	if schema == nil {
@@ -98,6 +148,10 @@ func (v *Validator) ValidateSchema(ctx context.Context, schema *openapi3.Schema)
 	if schema == nil {
 		return nil
 	}
+
+	// Rewrite Radius-specific allowances (type:any under platformOptions additionalProperties)
+	// into OpenAPI-compliant shapes before invoking the generic validator.
+	normalizePlatformOptionsAny(schema)
 
 	var errors ValidationErrors
 
@@ -180,7 +234,7 @@ func (v *Validator) validateRadiusConstraintsWithPath(schema *openapi3.Schema, p
 	}
 
 	// Validate type constraints
-	if err := v.validateTypeConstraints(schema); err != nil {
+	if err := v.validateTypeConstraints(schema, path); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
 			errors.Add(valErr)
 		} else {
@@ -468,7 +522,7 @@ func (v *Validator) checkRefUsage(schemaRef *openapi3.SchemaRef, fieldPath strin
 }
 
 // validateTypeConstraints ensures only supported types are used
-func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
+func (v *Validator) validateTypeConstraints(schema *openapi3.Schema, path string) error {
 	// If type is not specified, it's valid (OpenAPI allows typeless schemas)
 	if schema.Type == nil {
 		return nil
@@ -488,6 +542,11 @@ func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
 		typeStr = (*schema.Type)[0]
 	} else {
 		typeStr = "unknown"
+	}
+
+	// Allow 'type: any' only under platformOptions
+	if typeStr == "any" && isPlatformOptionsPath(path) {
+		return nil
 	}
 
 	return NewConstraintError("", fmt.Sprintf("unsupported type: %s", typeStr))
@@ -626,6 +685,10 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	if err != nil {
 		return fmt.Errorf("failed to convert schema: %w", err)
 	}
+
+	// Apply the same Radius-specific normalization used during schema registration so
+	// runtime validation can accept platformOptions.additionalProperties type:any.
+	normalizePlatformOptionsAny(openAPISchema)
 
 	// Create a minimal OpenAPI document with the schema
 	doc := &openapi3.T{

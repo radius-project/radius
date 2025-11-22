@@ -178,13 +178,11 @@ types:
               description: The resource ID of the environment.
             platformOptions:
               type: object
-              description: Platform options with type any in additionalProperties (should pass validation - only valid location for type any).
-              properties: 
-                additionalProperties:
-                  type: any
-                  description: This uses type any which is valid under platformOptions.
+              description: Platform options with type any in additionalProperties (should pass validation).
+              additionalProperties:
+                type: any
+                description: Accepts any value. Valid under platformOptions.
           required:
             - application
             - environment
-            
 

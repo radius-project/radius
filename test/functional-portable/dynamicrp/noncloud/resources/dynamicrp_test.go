@@ -617,3 +617,60 @@ func Test_DynamicRP_SchemaValidation(t *testing.T) {
 
 	test.Test(t)
 }
+
+// Test_DynamicRP_TypeAnyValidation_Valid tests that type: any is allowed in additionalProperties under platformOptions.
+// It validates that a property named "additionalProperties" with type: any works correctly under platformOptions.
+func Test_DynamicRP_TypeAnyValidation_Valid(t *testing.T) {
+	template := "testdata/testResourceSchema-validAny.bicep"
+	appName := "udt-platformoptions-app"
+	appNamespace := "udt-platformoptions-app"
+	resourceTypeName := "Test.Resources/testValidPlatformOptionsSchema"
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// Register the test resource type
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceProviderCreate(ctx, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", resourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, resourceTypeName)
+			},
+		},
+		{
+			// Deploy bicep with valid type: any usage under platformOptions - should succeed
+			Executor: step.NewDeployExecutor(template),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "udt-platformoptions-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "udt-valid-platformoptions",
+						Type: resourceTypeName,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
