@@ -48,7 +48,6 @@ types:
             - application
             - environment
   postgres:
-    
     apiVersions:
       '2025-01-01-preview':
         schema: 
@@ -164,4 +163,26 @@ types:
             - application
             - environment
             - validationData
-            
+  testValidPlatformOptionsSchema:
+    capabilities: ["ManualResourceProvisioning"]
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            platformOptions:
+              type: object
+              description: Platform options with type any in additionalProperties (should pass validation).
+              additionalProperties:
+                type: any
+                description: Accepts any value. Valid under platformOptions.
+          required:
+            - application
+            - environment
+
