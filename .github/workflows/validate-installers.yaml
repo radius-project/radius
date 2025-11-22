@@ -17,10 +17,12 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
 name: Validate Radius Installers
+
 on:
   pull_request:
     paths:
       - "deploy/install.ps1"
+  merge_group:
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -34,6 +36,17 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
+      - name: Get changed files
+        id: changed-files
+        if: github.event_name == 'merge_group'
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          files: |
+            deploy/install.ps1
+
       - name: Run installer test script
+        if: >-
+          github.event_name != 'merge_group' ||
+          steps.changed-files.outputs.any_changed == 'true'
         shell: powershell
-        run: "deploy/test-pwsh-install.ps1"
+        run: deploy/test-pwsh-install.ps1
