@@ -22,12 +22,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/test/k8sutil"
 
 	"github.com/stretchr/testify/require"
@@ -347,6 +349,206 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 				actualOutput := &v20250801preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
+			}
+		})
+	}
+}
+
+func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
+	ctx := context.Background()
+
+	testCases := []struct {
+		desc               string
+		recipePacks        []string
+		setupMockDB        func(*database.MockClient)
+		expectedStatusCode int
+		expectedError      string
+	}{
+		{
+			desc:               "single-recipe-pack-no-validation",
+			recipePacks:        []string{"/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1"},
+			setupMockDB:        func(*database.MockClient) {}, // No recipe pack validation for single pack
+			expectedStatusCode: 200,
+		},
+		{
+			desc:        "valid-multiple-recipe-packs-no-conflicts",
+			recipePacks: []string{"/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1", "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack2"},
+			setupMockDB: func(databaseClient *database.MockClient) {
+				pack1 := &datamodel.RecipePack{
+					Properties: datamodel.RecipePackProperties{
+						Recipes: map[string]*datamodel.RecipeDefinition{
+							"Applications.Core/containers": {
+								RecipeKind:     "bicep",
+								RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+							},
+						},
+					},
+				}
+				pack2 := &datamodel.RecipePack{
+					Properties: datamodel.RecipePackProperties{
+						Recipes: map[string]*datamodel.RecipeDefinition{
+							"Applications.Dapr/stateStores": {
+								RecipeKind:     "terraform",
+								RecipeLocation: "git::https://github.com/recipes/dapr-state",
+							},
+						},
+					},
+				}
+
+				databaseClient.EXPECT().
+					Get(gomock.Any(), "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1").
+					Return(&database.Object{Data: pack1}, nil)
+
+				databaseClient.EXPECT().
+					Get(gomock.Any(), "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack2").
+					Return(&database.Object{Data: pack2}, nil)
+			},
+			expectedStatusCode: 200,
+		},
+		{
+			desc:        "conflicting-recipe-packs-same-resource-type",
+			recipePacks: []string{"/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1", "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack2"},
+			setupMockDB: func(databaseClient *database.MockClient) {
+				pack1 := &datamodel.RecipePack{
+					Properties: datamodel.RecipePackProperties{
+						Recipes: map[string]*datamodel.RecipeDefinition{
+							"Applications.Core/containers": {
+								RecipeKind:     "bicep",
+								RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+							},
+						},
+					},
+				}
+				pack2 := &datamodel.RecipePack{
+					Properties: datamodel.RecipePackProperties{
+						Recipes: map[string]*datamodel.RecipeDefinition{
+							"Applications.Core/containers": {
+								RecipeKind:     "terraform",
+								RecipeLocation: "git::https://github.com/recipes/container",
+							},
+						},
+					},
+				}
+
+				databaseClient.EXPECT().
+					Get(gomock.Any(), "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1").
+					Return(&database.Object{Data: pack1}, nil)
+
+				databaseClient.EXPECT().
+					Get(gomock.Any(), "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack2").
+					Return(&database.Object{Data: pack2}, nil)
+			},
+			expectedStatusCode: 409,
+			expectedError:      "Resource type 'Applications.Core/containers' is defined in multiple recipe packs",
+		},
+		{
+			desc:               "invalid-recipe-pack-id",
+			recipePacks:        []string{"invalid-id", "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack2"},
+			setupMockDB:        func(*database.MockClient) {},
+			expectedStatusCode: 400,
+			expectedError:      "Invalid recipe pack resource ID: invalid-id",
+		},
+		{
+			desc:        "non-existent-recipe-pack",
+			recipePacks: []string{"/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1", "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/nonexistent"},
+			setupMockDB: func(databaseClient *database.MockClient) {
+				pack1 := &datamodel.RecipePack{
+					Properties: datamodel.RecipePackProperties{
+						Recipes: map[string]*datamodel.RecipeDefinition{
+							"Applications.Core/containers": {
+								RecipeKind:     "bicep",
+								RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+							},
+						},
+					},
+				}
+
+				databaseClient.EXPECT().
+					Get(gomock.Any(), "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/pack1").
+					Return(&database.Object{Data: pack1}, nil)
+
+				databaseClient.EXPECT().
+					Get(gomock.Any(), "/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/recipePacks/nonexistent").
+					Return(nil, &database.ErrNotFound{ID: "nonexistent"})
+			},
+			expectedStatusCode: 400,
+			expectedError:      "Failed to retrieve recipe pack",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			// Create fresh mock for each test
+			mctrl := gomock.NewController(t)
+			defer mctrl.Finish()
+			databaseClient := database.NewMockClient(mctrl)
+
+			envInput, envDataModel, _ := getTestModelsv20250801preview()
+
+			// Convert []string to []*string for API model
+			recipePacks := make([]*string, len(tt.recipePacks))
+			for i, rp := range tt.recipePacks {
+				rpCopy := rp
+				recipePacks[i] = &rpCopy
+			}
+			envInput.Properties.RecipePacks = recipePacks
+
+			w := httptest.NewRecorder()
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPut, testHeaderfilev20250801preview, envInput)
+			require.NoError(t, err)
+			ctx := rpctest.NewARMRequestContext(req)
+
+			// Setup recipe pack mocks first (they are called during validation)
+			tt.setupMockDB(databaseClient)
+
+			// Mock the environment resource lookup (not found for create scenario) - this happens first
+			databaseClient.EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					// If it's a recipe pack resource, don't handle it here (let setupMockDB handle it)
+					if strings.Contains(id, "recipePacks") {
+						panic("Recipe pack Get should be handled by setupMockDB")
+					}
+					return nil, &database.ErrNotFound{ID: id}
+				}).AnyTimes()
+
+			// Mock kubernetes namespace query - this happens before recipe pack validation
+			databaseClient.EXPECT().
+				Query(gomock.Any(), gomock.Any()).
+				Return(&database.ObjectQueryResult{Items: []database.Object{}}, nil).MaxTimes(1)
+
+			// Mock Save only for successful cases
+			if tt.expectedStatusCode == 200 {
+				databaseClient.EXPECT().
+					Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+						obj.ETag = "new-resource-etag"
+						obj.Data = envDataModel
+						return nil
+					}).MaxTimes(1)
+			}
+
+			defaultNamespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "default",
+				},
+			}
+			opts := ctrl.Options{
+				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, defaultNamespace),
+			}
+
+			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
+			require.NoError(t, err)
+
+			resp, err := ctl.Run(ctx, w, req)
+			require.NoError(t, err)
+			_ = resp.Apply(ctx, w, req)
+
+			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+
+			if tt.expectedError != "" {
+				require.Contains(t, w.Body.String(), tt.expectedError)
 			}
 		})
 	}
