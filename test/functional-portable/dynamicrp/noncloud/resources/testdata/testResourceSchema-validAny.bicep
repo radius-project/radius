@@ -5,19 +5,19 @@ extension radius
 param location string = 'global'
 
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'udt-platformoptions-validation-env'
+  name: 'udt-platformoptions-env'
   location: location
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'udt-platformoptions-validation-env'
+      namespace: 'udt-platformoptions-env'
     }
   }
 }
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'udt-platformoptions-validation-app'
+  name: 'udt-platformoptions-app'
   location: location
   properties: {
     environment: env.id
