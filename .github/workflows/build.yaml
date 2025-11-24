@@ -80,7 +80,8 @@ jobs:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ubuntu-latest
     needs: [changes]
-    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    # if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    if: github.repository == 'radius-project/radius'
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -103,11 +104,13 @@ jobs:
             target_arch: arm64
     steps:
       - name: Check out repo
+        if: needs.changes.outputs.only_changed != 'true'
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: recursive
 
       - name: Set up Go
+        if: needs.changes.outputs.only_changed != 'true'
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -115,18 +118,21 @@ jobs:
           cache: true
 
       - name: Setup Python
+        if: needs.changes.outputs.only_changed != 'true'
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version-file: .python-version
 
       - name: Parse release version and set environment variables
+        if: needs.changes.outputs.only_changed != 'true'
         run: python ./.github/scripts/get_release_version.py
 
       - name: Make build
+        if: needs.changes.outputs.only_changed != 'true'
         run: make build
 
       - name: Run make test (unit tests)
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
           GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
@@ -136,7 +142,7 @@ jobs:
           make test
 
       - name: Upload coverage to Codecov
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -148,31 +154,33 @@ jobs:
       - name: Process Unit Test Results
         uses: ./.github/actions/process-test-results
         # Always is required here to make sure this target runs even when tests fail.
-        if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+        if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
         with:
           test_group_name: Unit Tests
           artifact_name: unit_test_results
           result_directory: dist/unit_test/
 
       - name: Copy cli binaries to release (unix-like)
-        if: matrix.target_os != 'windows'
+        if: matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           mkdir ${{ env.RELEASE_PATH }}
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}
 
       - name: Copy cli binaries to release (windows)
-        if: matrix.target_os == 'windows'
+        if: matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           mkdir ${{ env.RELEASE_PATH }}
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
 
       - name: Upload CLI binary
+        if: needs.changes.outputs.only_changed != 'true'
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: ${{ env.RELEASE_PATH }}
 
       - name: Login to GitHub Container Registry
+        if: needs.changes.outputs.only_changed != 'true'
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
@@ -180,20 +188,41 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
+        if: needs.changes.outputs.only_changed != 'true'
         with:
           version: ${{ env.ORAS_VERSION }}
 
       - name: Push latest rad cli binary to GHCR (unix-like)
-        if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows'
+        if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ./rad
           oras push ${{ env.CONTAINER_REGISTRY }}/rad/${{ matrix.target_os }}-${{ matrix.target_arch }}:latest ./rad --annotation "org.opencontainers.image.source=${{ env.IMAGE_SRC }}"
 
       - name: Copy cli binaries to release (windows)
-        if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows'
+        if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ./rad.exe
           oras push ${{ env.CONTAINER_REGISTRY }}/rad/${{ matrix.target_os }}-${{ matrix.target_arch }}:latest ./rad.exe --annotation "org.opencontainers.image.source=${{ env.IMAGE_SRC }}"
+
+      - name: Skip
+        if: needs.changes.outputs.only_changed == 'true'
+        run: exit 0
+
+  # Returns success if all matrix jobs in test are successful - otherwise, it returns a failure.
+  # Use this as a PR status check for GitHub Policy Service instead of individual matrix entry checks.
+  # check-build-and-push-cli:
+  #   if: always()
+  #   name: Check Build and Push CLI Results
+  #   needs: [build-and-push-cli]
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: OK
+  #       if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped'}}
+  #       run: exit 0
+
+  #     - name: Failure
+  #       if: ${{ needs.build-and-push-cli.result == 'failure' || needs.build-and-push-cli.result == 'cancelled' }}
+  #       run: exit 1
 
   build-and-push-images:
     name: Build and publish container images
