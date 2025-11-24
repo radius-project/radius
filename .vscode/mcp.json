@@ -1,10 +1,10 @@
 {
   "servers": {
-    "GitHub": {
+    "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/"
     },
-    "Terraform": {
+    "terraform": {
       "command": "docker",
       "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.3"]
     }
