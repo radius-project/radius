@@ -1,6 +1,6 @@
 ---
 model: Claude Sonnet 4.5 (copilot)
-tools: ['search/codebase', 'githubRepo', 'github.vscode-pull-request-github/activePullRequest', "edit/createFile", "edit/editFiles"]
+tools: ['edit/createFile', 'edit/createDirectory', 'edit/editFiles', 'search/codebase', 'githubRepo', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/searchSyntax', 'github.vscode-pull-request-github/doSearch', 'github.vscode-pull-request-github/activePullRequest', 'todos']
 description: 'Perform a code review for a pull request (PR) in a GitHub repository.'
 ---
 
