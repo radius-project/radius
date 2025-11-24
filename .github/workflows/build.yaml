@@ -69,10 +69,18 @@ env:
   BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -95,12 +103,12 @@ jobs:
             target_arch: arm64
     steps:
       - name: Check out repo
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: recursive
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -190,10 +198,11 @@ jobs:
   build-and-push-images:
     name: Build and publish container images
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     steps:
       - name: Check out code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: recursive
 
@@ -206,7 +215,7 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -253,10 +262,10 @@ jobs:
 
   build-and-push-helm-chart:
     name: Helm chart build
-    needs: [build-and-push-images]
+    needs: [changes, build-and-push-images]
     runs-on: ubuntu-latest
     # Don't push on PR, agent will not have permission.
-    if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
+    if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')) && needs.changes.outputs.only_changed != 'true'
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -267,7 +276,7 @@ jobs:
       OCI_REPOSITORY: radius-project/helm-chart
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Install helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
@@ -299,10 +308,12 @@ jobs:
   build-and-push-bicep-types:
     name: Publish Radius bicep types to ACR
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
     environment: publish-bicep
     steps:
       - name: Check out code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: recursive
 
@@ -315,7 +326,7 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -360,14 +371,14 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    needs: [build-and-push-cli]
+    needs: [changes, build-and-push-cli]
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
     env:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: recursive
 
