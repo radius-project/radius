@@ -34,11 +34,11 @@ jobs:
     env:
       RADIUS_TRIAGE_BOT_APP_ID: 417813
     steps:
-      - uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+      - uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
         id: get_installation_token
         with:
-          app_id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
-          private_key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
+          app-id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
+          private-key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
 
       - uses: dessant/label-actions@102faf474a544be75fbaf4df54e73d3c515a0e65 # v4.0.1
         with:
