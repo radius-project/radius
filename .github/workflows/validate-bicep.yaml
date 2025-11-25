@@ -31,9 +31,9 @@ permissions:
 
 env:
   # Local Docker registry name
-  LOCAL_REGISTRY_NAME: "radius-registry"
+  LOCAL_REGISTRY_NAME: radius-registry
   # Local Docker registry server
-  LOCAL_REGISTRY_SERVER: "localhost"
+  LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
 
@@ -43,8 +43,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build:
     name: Validate Bicep Code
+    if: needs.changes.outputs.only_changed != 'true'
+    needs: [changes]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo

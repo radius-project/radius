@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       open_pull_request:
-        description: 'Open a pull request against the docs repository. Defaults to false for a "dry run" of the workflow that generates the docs and uploads them as artifacts.'
+        description: |
+          Open a pull request against the docs repository. Defaults to false for a "dry run" of the workflow that generates the docs and uploads them as artifacts.
         required: false
         default: "false"
         type: choice
@@ -21,10 +22,18 @@ on:
     branches:
       - main
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   reference-docs:
     name: Generate and PR reference documentation
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    needs: [changes]
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
     env:
       GOPRIVATE: github.com/radius-project
     steps:
