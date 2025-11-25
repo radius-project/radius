@@ -58,7 +58,7 @@ Follow these steps in order:
 
 **IMPORTANT:** The current branch may have a remote tracking branch that is a fork of the main repository. Ensure the PR is created against the main repository's default branch.
 
-1. Use the GitHub MCP tool to create the PR
+1. Use the GitHub MCP tool to create the PR, or if the MCP tool is not available to create the PR, use the GitHub CLI (`gh pr create`).
 2. Use the current branch as the `head` branch
 3. Use the default branch as the `base` branch
 4. Include the generated title and description
