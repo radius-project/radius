@@ -265,7 +265,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Build and Push container images
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
@@ -369,17 +369,17 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+        uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
         id: get_installation_token
         with:
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           # Note: revoke is set to false for this long-running workflow (>1hr)
           # GitHub App tokens automatically expire after 1 hour.
           # ref:https://docs.github.com/en/rest/apps/apps?apiVersion=2022-11-28#create-an-installation-access-token-for-an-app
           # Setting revoke: true will cause workflow failures when attempting to revoke
           # already-expired tokens in workflows that exceed the 1-hour token lifetime.
-          revoke: false
+          skip-token-revoke: true
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -435,7 +435,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
