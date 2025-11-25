@@ -89,9 +89,18 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -119,7 +128,7 @@ jobs:
             }
 
       - name: Check out code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -153,7 +162,8 @@ jobs:
 
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.only_changed != 'true'
     strategy:
       fail-fast: true
       matrix:
@@ -198,12 +208,12 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: recursive
 
       - name: Checkout samples repo
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -211,7 +221,7 @@ jobs:
           path: samples
 
       - name: Set up Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -577,9 +587,9 @@ jobs:
 
   report-failure:
     name: Report test failure
-    needs: [build, tests]
+    needs: [changes, build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
