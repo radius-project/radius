@@ -1,6 +1,7 @@
 ---
 description: Automates the creation of a GitHub pull request from the current branch with validation and content generation
 name: radius.create-pr
+model: Claude Opus 4.5 (Preview) (copilot)
 tools:
   ['runCommands', 'edit', 'search', 'fetch', 'githubRepo', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/suggest-fix', 'github.vscode-pull-request-github/searchSyntax', 'github.vscode-pull-request-github/doSearch', 'github.vscode-pull-request-github/renderIssues', 'github.vscode-pull-request-github/activePullRequest', 'github.vscode-pull-request-github/openPullRequest', 'todos']
 ---
