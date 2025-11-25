@@ -48,7 +48,7 @@ Follow these steps in order:
    - **PR Title**: A concise, descriptive title (max 72 characters) that summarizes the changes. Do not use conventional commit prefixes like "feat:", "fix:", etc.
    - **PR Description**:
      - If a PR template was found, follow its structure and fill in the appropriate sections
-     - If the template contains checkboxes, mark them appropriately based on the changes made
+     - If the template contains checkboxes, mark them appropriately based on the changes made. IMPORTANT: Do not convert the checkboxes to a bulleted list.
      - If no template exists, create a detailed description including:
        - Summary of changes
        - List of modified files with brief descriptions
