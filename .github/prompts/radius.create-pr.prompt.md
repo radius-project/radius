@@ -1,4 +1,5 @@
 ---
+agent: agent
 description: Automates the creation of a GitHub pull request from the current branch with validation and content generation
 name: radius.create-pr
 model: Claude Opus 4.5 (Preview) (copilot)
@@ -17,7 +18,7 @@ Follow these steps in order:
 ### Step 1: Validate Current Branch
 
 1. Get the current git branch name
-2. Verify the branch exists on the remote server
+2. Verify the current branch has a remote set that exists on the remote server
 3. If the branch doesn't exist remotely, stop and inform the user
 
 ### Step 2: Ensure All Changes Are Committed and Pushed
@@ -42,11 +43,24 @@ Follow these steps in order:
 
 **IMPORTANT:** The current branch may have a remote tracking branch that is a fork of the main repository. When that happens, if the current clone is from the fork, the default branch must be taken from the `upstream` repository. Otherwise, when the current clone is from the main repo, the default branch is taken from the `origin` repository. If an `upstream` repository exists in the git remotes (`git remote -v`), then you can assume the current clone is from a fork and you should get the default branch from `upstream`. If no `upstream` repository exists, then you can assume the current clone is from the main repo and you should get the default branch from `origin`.
 
-1. Get the repository's default branch (typically `main` or `master`).
+1. Get the repository's default branch (typically `main` or `master`) by running:
+   - If `upstream` exists in `git remote -v`, run `git remote show upstream | grep 'HEAD branch'` and extract the branch name.  
+   - Otherwise, run `git remote show origin | grep 'HEAD branch'` and extract the branch name.  
+   Use this branch name as the default branch for all subsequent steps.
 2. Compare the current branch with the default branch using `git diff`
 3. Examine the commit messages between the branches
 4. Based on the changes, generate:
    - **PR Title**: A concise, descriptive title (max 72 characters) that summarizes the changes. The title should be a noun (or compound noun) optionally prefixed with adjectives. Other noun modifying phrases can be added, like prepositional phrases, participle phrases, and infinitive phrases, i.e., the overall title should be a noun plus descriptives. The first word in the title should begin with a capital letter. Do not start the title with a verb like "Add" or "Update". Do not use conventional commit prefixes like "feat:", "fix:", etc.
+     - **Examples of acceptable PR titles:**  
+       - "API endpoint authentication improvements"  
+       - "Documentation update for installation process"  
+       - "Error handling in user registration"  
+       - "Refactor of database connection logic"  
+     - **Examples of unacceptable PR titles:**  
+       - "Add authentication to API endpoint"  
+       - "Update documentation for installation"  
+       - "Fix error handling in registration"  
+       - "feat: authentication for API"
    - **PR Description**:
      - If a PR template was found, follow its structure and fill in the appropriate sections
      - If the template contains checkboxes, mark them appropriately based on the changes made. IMPORTANT: Do not convert the checkboxes to a bulleted list.
@@ -59,7 +73,7 @@ Follow these steps in order:
 
 **IMPORTANT:** The current branch may have a remote tracking branch that is a fork of the main repository. Ensure the PR is created against the main repository's default branch.
 
-1. Use the GitHub MCP tool to create the PR, or if the MCP tool is not available to create the PR, use the GitHub CLI (`gh pr create`).
+1. Use the GitHub MCP tool to create the PR, or if the MCP tool is not available to create the PR, use the GitHub CLI (`gh pr create`), or if the GitHub CLI is not available, use the GitHub API.
 2. Use the current branch as the `head` branch
 3. Use the default branch as the `base` branch
 4. Include the generated title and description
@@ -87,9 +101,3 @@ Provide concise progress updates for each step, and end with:
 ✅ Pull request created successfully!
 🔗 URL: [PR_URL]
 ```
-
-## Required Tools
-
-- Terminal commands for git operations
-- GitHub MCP tools for PR creation
-- File reading for repository information
