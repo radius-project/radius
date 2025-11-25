@@ -11,6 +11,14 @@
         "recipePacks": [
           "/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"
         ],
+        "recipeParameters": {
+          "Radius.Compute/containers": {
+            "allowPlatformOptions": false
+          },
+          "Radius.Data/sqlDatabases": {
+            "sku": "Basic"
+          }
+        },
         "providers": {
           "azure": {
             "subscriptionId": "00000000-0000-0000-0000-000000000000",
@@ -40,6 +48,14 @@
           "recipePacks": [
             "/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"
           ],
+          "recipeParameters": {
+            "Radius.Compute/containers": {
+              "allowPlatformOptions": false
+            },
+            "Radius.Data/sqlDatabases": {
+              "sku": "Basic"
+            }
+          },
           "providers": {
             "azure": {
               "subscriptionId": "00000000-0000-0000-0000-000000000000",
