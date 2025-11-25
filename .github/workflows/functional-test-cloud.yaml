@@ -258,15 +258,6 @@ jobs:
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
       DAPR_VER: "1.14.4"
       ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-    outputs:
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
-      UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
-      PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
-      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
-      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
-      RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
-      DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
-      DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
@@ -527,7 +518,7 @@ jobs:
 
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: [build]
+    needs: [setup, build]
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
@@ -539,16 +530,16 @@ jobs:
         name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
-      UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
-      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-      CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
-      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
-      PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
-      RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
-      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-      DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
-      DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
+      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
@@ -972,11 +963,11 @@ jobs:
 
   report-test-results:
     name: Report test results
-    needs: [build, tests]
+    needs: [setup, build, tests]
     runs-on: ubuntu-latest
     if: always()
     env:
-      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
       - name: Get GitHub app token
         uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
