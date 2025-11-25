@@ -1,103 +1,82 @@
 ---
 agent: agent
-description: Automates the creation of a GitHub pull request from the current branch with validation and content generation
+description: Automates GitHub pull request creation from the current branch
 name: radius.create-pr
 model: Claude Opus 4.5 (Preview) (copilot)
 tools:
-  ['runCommands', 'edit', 'search', 'fetch', 'githubRepo', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/suggest-fix', 'github.vscode-pull-request-github/searchSyntax', 'github.vscode-pull-request-github/doSearch', 'github.vscode-pull-request-github/renderIssues', 'github.vscode-pull-request-github/activePullRequest', 'github.vscode-pull-request-github/openPullRequest', 'todos']
+  ['runCommands', 'edit', 'search', 'fetch', 'githubRepo', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/suggest-fix', 'github.vscode-pull-request-github/searchSyntax', 'github.vscode-pull-request-github/doSearch', 'github.vscode-pull-request-github/renderIssues', 'github.vscode-pull-request-github/activePullRequest', 'github.vscode-pull-request-github/openPullRequest'
 ---
 
 # Create GitHub Pull Request
 
-You are a GitHub automation assistant that creates pull requests from the current branch.
+Create a pull request from the current branch following the steps below.
 
-## Instructions
+## Determining the Default Branch
 
-Follow these steps in order:
+When working with forks, the default branch must come from the correct remote:
 
-### Step 1: Validate Current Branch
+- If `upstream` exists in `git remote -v`: use `git remote show upstream | grep 'HEAD branch'`
+- Otherwise: use `git remote show origin | grep 'HEAD branch'`
 
-1. Get the current git branch name
-2. Verify the current branch has a remote set that exists on the remote server
-3. If the branch doesn't exist remotely, stop and inform the user
+## Steps
 
-### Step 2: Ensure All Changes Are Committed and Pushed
+### Step 1: Validate Branch State
 
-1. Check for uncommitted changes using `git status`
-2. Check for unpushed commits using `git rev-list --count @{u}..HEAD`
-3. If there are uncommitted changes or unpushed commits, stop and inform the user that they must:
-   - Commit all changes
-   - Push all commits to the remote branch
+Stop and inform the user if any of these conditions exist:
 
-### Step 3: Check for Pull Request Template
+- Current branch has no remote tracking branch (`git rev-parse --abbrev-ref --symbolic-full-name @{u}`)
+- Uncommitted changes exist (`git status --porcelain`)
+- Unpushed commits exist (`git rev-list --count @{u}..HEAD` returns > 0)
 
-1. Check if a PR template exists in the repository at common locations:
-   - `.github/PULL_REQUEST_TEMPLATE.md`
-   - `.github/pull_request_template.md`
-   - `docs/PULL_REQUEST_TEMPLATE.md`
-   - `PULL_REQUEST_TEMPLATE.md`
-2. If a template exists, read its contents to use as the format for the PR description
-3. If no template exists, proceed with a standard format
+### Step 2: Load PR Template
 
-### Step 4: Analyze Changes and Generate PR Content
+Check for a PR template at these locations (in order):
 
-**IMPORTANT:** The current branch may have a remote tracking branch that is a fork of the main repository. When that happens, if the current clone is from the fork, the default branch must be taken from the `upstream` repository. Otherwise, when the current clone is from the main repo, the default branch is taken from the `origin` repository. If an `upstream` repository exists in the git remotes (`git remote -v`), then you can assume the current clone is from a fork and you should get the default branch from `upstream`. If no `upstream` repository exists, then you can assume the current clone is from the main repo and you should get the default branch from `origin`.
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `.github/pull_request_template.md`
+- `docs/PULL_REQUEST_TEMPLATE.md`
+- `PULL_REQUEST_TEMPLATE.md`
 
-1. Get the repository's default branch (typically `main` or `master`) by running:
-   - If `upstream` exists in `git remote -v`, run `git remote show upstream | grep 'HEAD branch'` and extract the branch name.  
-   - Otherwise, run `git remote show origin | grep 'HEAD branch'` and extract the branch name.  
-   Use this branch name as the default branch for all subsequent steps.
-2. Compare the current branch with the default branch using `git diff`
-3. Examine the commit messages between the branches
-4. Based on the changes, generate:
-   - **PR Title**: A concise, descriptive title (max 72 characters) that summarizes the changes. The title should be a noun (or compound noun) optionally prefixed with adjectives. Other noun modifying phrases can be added, like prepositional phrases, participle phrases, and infinitive phrases, i.e., the overall title should be a noun plus descriptives. The first word in the title should begin with a capital letter. Do not start the title with a verb like "Add" or "Update". Do not use conventional commit prefixes like "feat:", "fix:", etc.
-     - **Examples of acceptable PR titles:**  
-       - "API endpoint authentication improvements"  
-       - "Documentation update for installation process"  
-       - "Error handling in user registration"  
-       - "Refactor of database connection logic"  
-     - **Examples of unacceptable PR titles:**  
-       - "Add authentication to API endpoint"  
-       - "Update documentation for installation"  
-       - "Fix error handling in registration"  
-       - "feat: authentication for API"
-   - **PR Description**:
-     - If a PR template was found, follow its structure and fill in the appropriate sections
-     - If the template contains checkboxes, mark them appropriately based on the changes made. IMPORTANT: Do not convert the checkboxes to a bulleted list.
-     - If no template exists, create a detailed description including:
-       - Summary of changes
-       - List of modified files with brief descriptions
-       - Any relevant context from commit messages
+Use the first template found to structure the PR description.
 
-### Step 5: Create the Pull Request
+### Step 3: Generate PR Content
 
-**IMPORTANT:** The current branch may have a remote tracking branch that is a fork of the main repository. Ensure the PR is created against the main repository's default branch.
+Analyze the changes using `git diff` and `git log` against the default branch.
 
-1. Use the GitHub MCP tool to create the PR, or if the MCP tool is not available to create the PR, use the GitHub CLI (`gh pr create`), or if the GitHub CLI is not available, use the GitHub API.
-2. Use the current branch as the `head` branch
-3. Use the default branch as the `base` branch
-4. Include the generated title and description
+**PR Title Requirements:**
 
-### Step 6: Return PR URL
+- Maximum 80 characters
+- Use noun phrases, not imperative verbs (e.g., "Authentication improvements for API endpoints" not "Add authentication to API")
+- No conventional commit prefixes (`feat:`, `fix:`, etc.)
+- Capitalize the first word
 
-1. Extract the PR URL from the creation response
-2. Display the URL to the user with a success message
+**PR Description:**
 
-## Error Handling
+- Follow the PR template structure if one exists
+- Preserve checkboxes from the template (do not convert to bullets)
+- If no template: summarize changes, list modified files, include relevant commit context
 
-- If any step fails, stop immediately and provide a clear error message
-- Common errors to handle:
-  - Branch not on remote
-  - Uncommitted changes
-  - Unpushed commits
-  - PR already exists for this branch
-  - Insufficient GitHub permissions
+### Step 4: Create the Pull Request
 
-## Output Format
+Create the PR using the GitHub MCP tool, falling back to `gh pr create` if unavailable.
 
-Provide concise progress updates for each step, and end with:
+- **head**: current branch
+- **base**: default branch (from Step 1)
+
+### Step 5: Report Result
+
+Display the PR URL:
 
 ```
 ✅ Pull request created successfully!
 🔗 URL: [PR_URL]
 ```
+
+## Error Handling
+
+Stop immediately on any failure with a clear error message. Common errors:
+
+- Branch not pushed to remote
+- Uncommitted or unpushed changes
+- PR already exists for this branch
+- Insufficient GitHub permissions
