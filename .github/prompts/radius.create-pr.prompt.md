@@ -45,7 +45,7 @@ Follow these steps in order:
 2. Compare the current branch with the default branch using `git diff`
 3. Examine the commit messages between the branches
 4. Based on the changes, generate:
-   - **PR Title**: A concise, descriptive title (max 72 characters) that summarizes the changes. Do not use conventional commit prefixes like "feat:", "fix:", etc.
+   - **PR Title**: A concise, descriptive title (max 72 characters) that summarizes the changes. The title should be a noun (or compound noun) optionally prefixed with adjectives. Other noun modifying phrases can be added, like prepositional phrases, participle phrases, and infinitive phrases, i.e., the overall title should be a noun plus descriptives. The first word in the title should begin with a capital letter. Do not start the title with a verb like "Add" or "Update". Do not use conventional commit prefixes like "feat:", "fix:", etc.
    - **PR Description**:
      - If a PR template was found, follow its structure and fill in the appropriate sections
      - If the template contains checkboxes, mark them appropriately based on the changes made. IMPORTANT: Do not convert the checkboxes to a bulleted list.
