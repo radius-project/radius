@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: "Approve Functional Tests"
+name: Approve Functional Tests
+
 on:
   pull_request:
     branches:
@@ -9,18 +10,9 @@ on:
       - release/*
 
 jobs:
-  changes:
-    name: Changes
-    uses: ./.github/workflows/__changes.yml
-    permissions:
-      contents: read
-      pull-requests: read
-
   approve-functional-tests-run:
-    name: "Approve Functional Tests"
+    name: Approve Functional Tests
     runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.only_changed != 'true'
     environment: functional-tests
     steps:
       - name: Checkout Radius repository

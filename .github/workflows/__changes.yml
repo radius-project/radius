@@ -17,6 +17,16 @@ on:
           test/**/*.md
           test/*.md
           *.md
+      ref:
+        description: The branch, tag or SHA to checkout
+        required: false
+        default: ""
+        type: string
+      repository:
+        description: Repository name with owner
+        required: false
+        default: ${{ github.repository }}
+        type: string
     outputs:
       only_changed:
         description: Returns 'true' when only files in the configured patterns have changed.
@@ -39,6 +49,8 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
+          ref: ${{ inputs.ref }}
+          repository: ${{ inputs.repository }}
 
       - name: Filter
         id: filter
