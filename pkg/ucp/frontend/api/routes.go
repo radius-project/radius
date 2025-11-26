@@ -26,6 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	tfinstaller "github.com/radius-project/radius/pkg/terraform/installer"
 	"github.com/radius-project/radius/pkg/ucp"
 	kubernetes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
@@ -162,6 +163,11 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 		if err := server.RegisterHandler(ctx, h, ctrlOptions); err != nil {
 			return err
 		}
+	}
+
+	// Register Terraform installer endpoints (non-ARM).
+	if err := tfinstaller.RegisterRoutes(ctx, router, options); err != nil {
+		return err
 	}
 
 	// Register a catch-all route to handle requests that get dispatched to a specific plane.
