@@ -51,11 +51,11 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout radius-project/radius
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@796317b885ae219215caa36e9bdacc87c9962c15 # v4.48.2
+        uses: mikefarah/yq@7ccaf8e700ce99eb3f0f6cef7f5930a0b3c827cd # v4.49.2
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -142,13 +142,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: radius-project/radius
           ref: main
 
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: radius-project/radius
           ref: main
@@ -156,7 +156,7 @@ jobs:
           path: radius
 
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: radius-project/recipes
           ref: main
@@ -164,7 +164,7 @@ jobs:
           path: recipes
 
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: radius-project/dashboard
           ref: main
@@ -172,7 +172,7 @@ jobs:
           path: dashboard
 
       - name: Checkout radius-project/bicep-types-aws@main
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: radius-project/bicep-types-aws
           ref: main
@@ -186,7 +186,7 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@796317b885ae219215caa36e9bdacc87c9962c15 # v4.48.2
+        uses: mikefarah/yq@7ccaf8e700ce99eb3f0f6cef7f5930a0b3c827cd # v4.49.2
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
