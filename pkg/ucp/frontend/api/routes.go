@@ -20,6 +20,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -164,6 +167,12 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 		}
 	}
 
+	// Register proxy for Terraform installer endpoints.
+	// The installer runs on applications-rp, so we proxy requests there.
+	if err := registerInstallerProxy(ctx, router, options); err != nil {
+		return err
+	}
+
 	// Register a catch-all route to handle requests that get dispatched to a specific plane.
 	unknownPlaneRouter := server.NewSubrouter(router, options.Config.Server.PathBase+planeTypeCollectionPath)
 	unknownPlaneRouter.HandleFunc(server.CatchAllPath, func(w http.ResponseWriter, r *http.Request) {
@@ -185,4 +194,98 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 	})
 
 	return nil
+}
+
+// trimProxyPath strips the path base from a request path before proxying.
+// This ensures the target receives a clean path relative to its own root.
+// For example: /apis/api.ucp.dev/v1alpha3/installer/terraform/status
+// with pathBase "/apis/api.ucp.dev/v1alpha3" becomes "/installer/terraform/status"
+func trimProxyPath(path, pathBase string) string {
+	trimmed := strings.TrimPrefix(path, pathBase)
+	if trimmed == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(trimmed, "/") {
+		return "/" + trimmed
+	}
+	return trimmed
+}
+
+// registerInstallerProxy sets up a reverse proxy to forward terraform installer
+// requests from UCP to applications-rp where the installer service runs.
+//
+// Why we need a proxy for the terraform installer:
+//
+//  1. The terraform installer is a custom REST API (/installer/terraform/*), not an ARM resource.
+//  2. ARM resources use /planes/radius/local/resourceGroups/.../providers/... paths and are
+//     automatically routed by UCP based on the resourceProviders config in planes.
+//  3. Since the installer API doesn't follow the ARM resource pattern, it needs explicit proxy
+//     configuration to reach applications-rp where the installer service runs.
+//
+// The installer runs on applications-rp (not UCP) because:
+//   - Recipe execution happens on applications-rp and needs access to the terraform binary
+//   - Running the installer on the same pod avoids the need for shared storage (RWX PVC)
+//     which isn't supported by many Kubernetes environments (Kind, Minikube, etc.)
+func registerInstallerProxy(ctx context.Context, router chi.Router, options *ucp.Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Get applications-rp endpoint from the radius plane configuration
+	applicationsRPEndpoint := getApplicationsRPEndpoint(ctx, options)
+	if applicationsRPEndpoint == "" {
+		logger.Info("Applications-rp endpoint not configured, skipping installer proxy registration")
+		return nil
+	}
+
+	targetURL, err := url.Parse(applicationsRPEndpoint)
+	if err != nil {
+		return fmt.Errorf("failed to parse applications-rp endpoint: %w", err)
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+
+	// Customize the director to rewrite the path
+	originalDirector := proxy.Director
+	pathBase := options.Config.Server.PathBase
+	proxy.Director = func(req *http.Request) {
+		// Strip the UCP path base from the request path before the proxy joins with targetURL.Path.
+		// e.g., /apis/api.ucp.dev/v1alpha3/installer/terraform/status -> /installer/terraform/status
+		req.URL.Path = trimProxyPath(req.URL.Path, pathBase)
+		if req.URL.RawPath != "" {
+			req.URL.RawPath = trimProxyPath(req.URL.RawPath, pathBase)
+		}
+
+		originalDirector(req)
+		req.Host = targetURL.Host
+	}
+
+	// Register the proxy routes using chi's Route for proper path matching
+	installerPath := options.Config.Server.PathBase + "/installer/terraform"
+	router.Route(installerPath, func(r chi.Router) {
+		r.HandleFunc("/*", func(w http.ResponseWriter, req *http.Request) {
+			logger.Info("Proxying terraform installer request to applications-rp", "path", req.URL.Path, "method", req.Method)
+			proxy.ServeHTTP(w, req)
+		})
+	})
+
+	logger.Info("Registered terraform installer proxy", "targetEndpoint", applicationsRPEndpoint)
+	return nil
+}
+
+// getApplicationsRPEndpoint returns the applications-rp endpoint from UCP configuration.
+func getApplicationsRPEndpoint(ctx context.Context, options *ucp.Options) string {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Check initialization config for Applications.Core resource provider endpoint
+	for _, plane := range options.Config.Initialization.Planes {
+		logger.Info("Checking plane for Applications.Core endpoint", "planeID", plane.ID, "kind", plane.Properties.Kind)
+		if plane.Properties.Kind == "UCPNative" {
+			if endpoint, ok := plane.Properties.ResourceProviders["Applications.Core"]; ok {
+				logger.Info("Found Applications.Core endpoint", "endpoint", endpoint)
+				return endpoint
+			}
+		}
+	}
+
+	logger.Info("Applications.Core endpoint not found in any plane")
+	return ""
 }
