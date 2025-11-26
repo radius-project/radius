@@ -23,6 +23,7 @@ permissions:
   contents: read # Required for listing the commits
   packages: write # Required for uploading the package
   checks: write # Required for creating a check run
+  pull-requests: read # Required for fetching PR details
 
 on:
   # Enable manual trigger
@@ -179,16 +180,43 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const payload = context.payload.workflow_run;
-            let fs = require('fs');
+            const fs = require('fs');
+            const prNumber = '${{ steps.get-pr-number.outputs.pr_number }}';
+
             let baseSha = "";
-            if (payload.pull_requests && payload.pull_requests.length > 0) {
-                baseSha = payload.pull_requests[0].base.sha;
+            let checkoutRepo = payload.head_repository.full_name;
+            let checkoutRef = payload.head_sha;
+
+            // For fork PRs, payload.pull_requests is empty due to GitHub security restrictions.
+            // We need to fetch the PR details using the API to get the base SHA for change detection.
+            if (prNumber) {
+              try {
+                const { data: pr } = await github.rest.pulls.get({
+                  ...context.repo,
+                  pull_number: parseInt(prNumber, 10)
+                });
+                baseSha = pr.base.sha;
+                // Use PR head info which works for both fork and non-fork PRs
+                checkoutRepo = pr.head.repo.full_name;
+                checkoutRef = pr.head.sha;
+                console.log(`Fetched PR #${prNumber}: base_sha=${baseSha}, head_repo=${checkoutRepo}, head_sha=${checkoutRef}`);
+              } catch (error) {
+                console.log(`Warning: Could not fetch PR #${prNumber}: ${error.message}`);
+                // Fall back to workflow_run payload data
+                if (payload.pull_requests && payload.pull_requests.length > 0) {
+                  baseSha = payload.pull_requests[0].base.sha;
+                }
+              }
+            } else if (payload.pull_requests && payload.pull_requests.length > 0) {
+              // Fallback for cases where PR number artifact is not available
+              baseSha = payload.pull_requests[0].base.sha;
             }
+
             // Set environment variables
             fs.appendFileSync(process.env.GITHUB_ENV,
-              `CHECKOUT_REPO=${payload.head_repository.full_name}\n`+
-              `CHECKOUT_REF=${payload.head_sha}\n` +
-              `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n` +
+              `CHECKOUT_REPO=${checkoutRepo}\n` +
+              `CHECKOUT_REF=${checkoutRef}\n` +
+              `PR_NUMBER=${prNumber}\n` +
               `BASE_SHA=${baseSha}\n`);
 
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
