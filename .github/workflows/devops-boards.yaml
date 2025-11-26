@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Sync issue to Azure DevOps work item
 
 on:
@@ -23,27 +25,31 @@ jobs:
       # Auth using Azure Service Principals was added as a part of v2.3
       # reference: https://github.com/danhellem/github-actions-issue-to-work-item/pull/143
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
           client-id: ${{ vars.AZURE_SP_DEVOPS_SYNC_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_SP_DEVOPS_SYNC_TENANT_ID }}
           allow-no-subscriptions: true
+
       - name: Get Azure DevOps token
         id: get_ado_token
-        run:
+        run: |
           # The resource ID for Azure DevOps is always 499b84ac-1321-427f-aa17-267ca6975798
           # https://learn.microsoft.com/azure/devops/integrate/get-started/authentication/service-principal-managed-identity
-          echo "ADO_TOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query "accessToken" --output tsv)" >> $GITHUB_ENV
+          ADO_TOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query "accessToken" --output tsv)
+          echo "::add-mask::$ADO_TOKEN"
+          echo "ADO_TOKEN=$ADO_TOKEN" >> $GITHUB_ENV
+
       - name: Sync issue to Azure DevOps
-        uses: danhellem/github-actions-issue-to-work-item@v2.5
+        uses: danhellem/github-actions-issue-to-work-item@8d0ead9b49a65aa66dac6949b1ff149d7ef8b4de # v2.5
         env:
           ado_token: ${{ env.ADO_TOKEN }}
-          github_token: '${{ secrets.GH_RAD_CI_BOT_PAT }}'
-          ado_organization: 'azure-octo'
-          ado_project: 'Incubations'
+          github_token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          ado_organization: azure-octo
+          ado_project: Incubations
           ado_area_path: "Incubations\\Radius"
           ado_iteration_path: "Incubations\\Radius"
-          ado_new_state: 'New'
-          ado_active_state: 'Active'
-          ado_close_state: 'Closed'
-          ado_wit: 'GitHub Issue'
+          ado_new_state: New
+          ado_active_state: Active
+          ado_close_state: Closed
+          ado_wit: GitHub Issue

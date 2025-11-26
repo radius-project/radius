@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,7 +14,10 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Validate Bicep Code
+
 on:
   # Enable manual trigger
   workflow_dispatch:
@@ -28,9 +31,9 @@ permissions:
 
 env:
   # Local Docker registry name
-  LOCAL_REGISTRY_NAME: "radius-registry"
+  LOCAL_REGISTRY_NAME: radius-registry
   # Local Docker registry server
-  LOCAL_REGISTRY_SERVER: "localhost"
+  LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
 
@@ -40,14 +43,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build:
     name: Validate Bicep Code
+    if: needs.changes.outputs.only_changed != 'true'
+    needs: [changes]
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repo
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: '18'
+          node-version-file: .node-version
 
       - name: Verify npx installation
         run: |
@@ -64,23 +79,26 @@ jobs:
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
-      - name: Check out repo
-        uses: actions/checkout@v5
-      - name: Create a temporary file system 
+
+      - name: Create a temporary file system
         run: |
           mkdir tmp-radius-bicep-extension
           mkdir tmp-testresources-bicep-extension
-      - name: Publish bicep types 
-        run: | 
+      - name: Publish bicep types
+        run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
+
       - name: Generate testresources extension index
         run: |
           npx @radius-project/manifest-to-bicep-extension@edge generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
+
       - name: Publish testresources extension
         run: |
           bicep publish-extension ./tmp-testresources-bicep-extension/index.json --target ./tmp-testresources-bicep-extension/testresources.tgz --force
+
       - name: Install jq
         run: sudo apt-get install -y jq
+
       - name: Modify bicepconfig.json
         run: |
           # Update bicepconfig.json with paths for extensions
@@ -95,7 +113,8 @@ jobs:
            cp -f bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
       - name: Print updated bicepconfig.json
         run: cat bicepconfig.json
+
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
-          BICEP_PATH: 'bicep'
+          BICEP_PATH: bicep

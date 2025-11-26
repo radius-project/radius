@@ -1,49 +1,60 @@
+# yaml-language-server: $schema=https://www.schemastore.org/dependabot-2.0.json
+# See GitHub's documentation for more information on this file:
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+---
 version: 2
+
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
     groups:
       github-actions:
         patterns:
           - "*"
-  - package-ecosystem: "gomod"
-    directory: "/"
+
+  - package-ecosystem: gomod
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
     groups:
       go-dependencies:
         patterns:
           - "*"
-  - package-ecosystem: "gomod"
-    directory: "/test/magpiego"
+
+  - package-ecosystem: gomod
+    directory: /test/magpiego
     schedule:
-      interval: "weekly"
+      interval: weekly
     groups:
       magpie-go-dependencies:
         patterns:
           - "*"
-  - package-ecosystem: "gomod"
-    directory: "/test/testrp"
+
+  - package-ecosystem: gomod
+    directory: /test/testrp
     schedule:
-      interval: "weekly"
+      interval: weekly
     groups:
       testrp-go-dependencies:
         patterns:
           - "*"
-  - package-ecosystem: "devcontainers"
-    directory: "/"
+
+  - package-ecosystem: devcontainers
+    directory: /
     schedule:
       interval: weekly
-  - package-ecosystem: "gitsubmodule"
-    directory: "/"
+
+  - package-ecosystem: gitsubmodule
+    directory: /
     schedule:
-      interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/typespec/"
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /typespec
     schedule:
-      interval: "weekly"
+      interval: weekly
     groups:
       typespec:
         applies-to: version-updates

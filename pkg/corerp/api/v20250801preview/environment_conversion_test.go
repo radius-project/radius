@@ -39,6 +39,11 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 			RecipePacks: []*string{
 				to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"),
 			},
+			RecipeParameters: map[string]map[string]any{
+				"Radius.Compute/containers": {
+					"allowPlatformOptions": false,
+				},
+			},
 			Providers: &Providers{
 				Azure: &ProvidersAzure{
 					SubscriptionID:    to.Ptr("00000000-0000-0000-0000-000000000000"),
@@ -70,6 +75,11 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 	require.NotNil(t, env.Properties.Providers.Azure)
 	require.Equal(t, "00000000-0000-0000-0000-000000000000", env.Properties.Providers.Azure.SubscriptionId)
 	require.Equal(t, "my-resource-group", env.Properties.Providers.Azure.ResourceGroupName)
+	require.NotNil(t, env.Properties.RecipeParameters)
+	require.Len(t, env.Properties.RecipeParameters, 1)
+	containerParams, ok := env.Properties.RecipeParameters["Radius.Compute/containers"]
+	require.True(t, ok)
+	require.Equal(t, false, containerParams["allowPlatformOptions"])
 }
 
 func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
@@ -92,6 +102,11 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 		},
 		Properties: datamodel.EnvironmentProperties_v20250801preview{
 			RecipePacks: []string{"/planes/radius/local/providers/Radius.Core/recipePacks/test-pack"},
+			RecipeParameters: map[string]map[string]any{
+				"Radius.Compute/containers": {
+					"allowPlatformOptions": true,
+				},
+			},
 			Providers: &datamodel.Providers_v20250801preview{
 				Kubernetes: &datamodel.ProvidersKubernetes_v20250801preview{
 					Namespace: "default",
@@ -113,4 +128,9 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 	require.NotNil(t, versionedResource.Properties.Providers)
 	require.NotNil(t, versionedResource.Properties.Providers.Kubernetes)
 	require.Equal(t, to.Ptr("default"), versionedResource.Properties.Providers.Kubernetes.Namespace)
+	require.NotNil(t, versionedResource.Properties.RecipeParameters)
+	require.Len(t, versionedResource.Properties.RecipeParameters, 1)
+	containerParams, ok := versionedResource.Properties.RecipeParameters["Radius.Compute/containers"]
+	require.True(t, ok)
+	require.Equal(t, true, containerParams["allowPlatformOptions"])
 }
