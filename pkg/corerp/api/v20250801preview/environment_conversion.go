@@ -49,6 +49,11 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.RecipePacks = to.StringArray(src.Properties.RecipePacks)
 	}
 
+	// Convert RecipeParameters
+	if src.Properties.RecipeParameters != nil {
+		converted.Properties.RecipeParameters = src.Properties.RecipeParameters
+	}
+
 	// Convert Providers
 	if src.Properties.Providers != nil {
 		converted.Properties.Providers = toProvidersDataModel(src.Properties.Providers)
@@ -82,6 +87,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	// Convert RecipePacks
 	if len(env.Properties.RecipePacks) > 0 {
 		dst.Properties.RecipePacks = to.ArrayofStringPtrs(env.Properties.RecipePacks)
+	}
+
+	// Convert RecipeParameters
+	if len(env.Properties.RecipeParameters) > 0 {
+		dst.Properties.RecipeParameters = env.Properties.RecipeParameters
 	}
 
 	// Convert Providers

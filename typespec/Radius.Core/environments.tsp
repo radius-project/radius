@@ -54,11 +54,19 @@ model EnvironmentProperties {
   @doc("List of Recipe Pack resource IDs linked to this environment.")
   recipePacks?: string[];
 
+  @doc("Recipe specific parameters that apply to all resources of a given type in this environment.")
+  recipeParameters?: Record<RecipeParameterValue>;
+
   @doc("Cloud provider configuration for the environment.")
   providers?: Providers;
 
   @doc("Simulated environment.")
   simulated?: boolean;
+}
+
+@doc("Recipe parameter configuration for a specific resource type.")
+model RecipeParameterValue {
+  ...Record<unknown>;
 }
 
 @doc("The Azure cloud provider definition.")
