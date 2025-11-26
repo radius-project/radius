@@ -9,14 +9,31 @@ on:
       - features/*
       - release/*
 
+permissions: {}
+
 jobs:
   approve-functional-tests-run:
     name: Approve Functional Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     environment: functional-tests
+    permissions:
+      contents: read
     steps:
       - name: Checkout Radius repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Get PR number
+        run: |
+          mkdir -p ./pr
+          echo "${PR_NUMBER}" > ./pr/pr_number
+        env:
+          PR_NUMBER: ${{ github.event.number }}
 
       - name: Save PR number
-        uses: ./.github/actions/save-pr-as-artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: pr_number
+          path: pr/
