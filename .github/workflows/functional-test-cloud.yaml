@@ -176,14 +176,17 @@ jobs:
       - name: "Set PR context (workflow_run)"
         if: github.event_name == 'workflow_run'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.get-pr-number.outputs.pr_number }}
         with:
           github-token: ${{ github.token }}
           script: |
             const payload = context.payload.workflow_run;
             const fs = require('fs');
-            const prNumber = '${{ steps.get-pr-number.outputs.pr_number }}';
+            // Use env var to avoid syntax errors from newlines in the output
+            const prNumber = (process.env.PR_NUMBER || '').trim();
 
-            let baseSha = "";
+            let baseSha = '';
             let checkoutRepo = payload.head_repository.full_name;
             let checkoutRef = payload.head_sha;
 
@@ -195,10 +198,17 @@ jobs:
                   ...context.repo,
                   pull_number: parseInt(prNumber, 10)
                 });
-                baseSha = pr.base.sha;
+
+                baseSha = pr.base?.sha || baseSha;
+
                 // Use PR head info which works for both fork and non-fork PRs
-                checkoutRepo = pr.head.repo.full_name;
-                checkoutRef = pr.head.sha;
+                if (pr.head && pr.head.repo) {
+                  checkoutRepo = pr.head.repo.full_name;
+                  checkoutRef = pr.head.sha;
+                } else {
+                  console.log(`PR #${prNumber} head repo missing; falling back to workflow_run payload data.`);
+                }
+
                 console.log(`Fetched PR #${prNumber}: base_sha=${baseSha}, head_repo=${checkoutRepo}, head_sha=${checkoutRef}`);
               } catch (error) {
                 console.log(`Warning: Could not fetch PR #${prNumber}: ${error.message}`);
@@ -212,12 +222,20 @@ jobs:
               baseSha = payload.pull_requests[0].base.sha;
             }
 
+            if (!baseSha) {
+              console.log(
+                `Warning: BASE_SHA is empty for workflow_run (PR: ${prNumber || 'n/a'}). Change detection may be skipped.`
+              );
+            }
+
             // Set environment variables
-            fs.appendFileSync(process.env.GITHUB_ENV,
+            fs.appendFileSync(
+              process.env.GITHUB_ENV,
               `CHECKOUT_REPO=${checkoutRepo}\n` +
-              `CHECKOUT_REF=${checkoutRef}\n` +
-              `PR_NUMBER=${prNumber}\n` +
-              `BASE_SHA=${baseSha}\n`);
+                `CHECKOUT_REF=${checkoutRef}\n` +
+                `PR_NUMBER=${prNumber}\n` +
+                `BASE_SHA=${baseSha}\n`
+            );
 
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
