@@ -2,9 +2,19 @@
 agent: agent
 description: Automates GitHub pull request creation from the current branch
 name: radius.create-pr
-model: Claude Opus 4.5 (Preview) (copilot)
 tools:
-  ['runCommands', 'edit', 'search', 'fetch', 'githubRepo', 'github.vscode-pull-request-github/issue_fetch', 'github.vscode-pull-request-github/suggest-fix', 'github.vscode-pull-request-github/searchSyntax', 'github.vscode-pull-request-github/doSearch', 'github.vscode-pull-request-github/renderIssues', 'github.vscode-pull-request-github/activePullRequest', 'github.vscode-pull-request-github/openPullRequest'
+  - runCommands
+  - edit
+  - search
+  - fetch
+  - githubRepo
+  - github.vscode-pull-request-github/issue_fetch
+  - github.vscode-pull-request-github/suggest-fix
+  - github.vscode-pull-request-github/searchSyntax
+  - github.vscode-pull-request-github/doSearch
+  - github.vscode-pull-request-github/renderIssues
+  - github.vscode-pull-request-github/activePullRequest
+  - github.vscode-pull-request-github/openPullRequest
 ---
 
 # Create GitHub Pull Request
@@ -15,8 +25,12 @@ Create a pull request from the current branch following the steps below.
 
 When working with forks, the default branch must come from the correct remote:
 
-- If `upstream` exists in `git remote -v`: use `git remote show upstream | grep 'HEAD branch'`
-- Otherwise: use `git remote show origin | grep 'HEAD branch'`
+- If `upstream` exists in `git remote -v`: run `git remote show upstream` and parse the output to find the `HEAD branch`
+- Otherwise: run `git remote show origin` and parse the output to find the `HEAD branch`
+
+> [!TIP]
+> On Linux or macOS for precise output parsing, consider using: `git remote show <your-remote-name> | grep 'HEAD branch'`
+> On Windows with PowerShell, you can use: `git remote show <your-remote-name> | Select-String 'HEAD branch'`
 
 ## Steps
 
@@ -24,9 +38,9 @@ When working with forks, the default branch must come from the correct remote:
 
 Stop and inform the user if any of these conditions exist:
 
-- Current branch has no remote tracking branch (`git rev-parse --abbrev-ref --symbolic-full-name @{u}`)
+- Current branch has no remote tracking branch (`git rev-parse --abbrev-ref --symbolic-full-name "@{u}"`)
 - Uncommitted changes exist (`git status --porcelain`)
-- Unpushed commits exist (`git rev-list --count @{u}..HEAD` returns > 0)
+- Unpushed commits exist (`git rev-list --count "@{u}..HEAD"` returns > 0)
 
 ### Step 2: Load PR Template
 
