@@ -111,9 +111,8 @@ func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
 			target:  "localhost:5000/myregistry/Data/mySqlDatabases/kubernetes/kubernetesmysql:latest",
 			wantErr: true,
 			expectedErrContains: []string{
-				"Invalid OCI repository name",
-				"lowercase letters",
-				"OCI naming",
+				"Invalid OCI reference",
+				"br:",
 			},
 		},
 		{
@@ -121,8 +120,8 @@ func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
 			target:  "localhost:5000/MyRegistry/data:latest",
 			wantErr: true,
 			expectedErrContains: []string{
-				"Invalid OCI repository name",
-				"lowercase letters",
+				"Invalid OCI reference",
+				"br:",
 			},
 		},
 		{
@@ -130,8 +129,8 @@ func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
 			target:  "localhost:5000/myregistry/data:-invalid",
 			wantErr: true,
 			expectedErrContains: []string{
-				"Invalid OCI tag",
-				"alphanumeric character or underscore",
+				"Invalid OCI reference",
+				"br:",
 			},
 		},
 		{
@@ -139,8 +138,8 @@ func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
 			target:  "localhost:5000",
 			wantErr: true,
 			expectedErrContains: []string{
-				"Invalid target format",
-				"REGISTRY/REPOSITORY:TAG",
+				"Invalid OCI reference",
+				"br:",
 			},
 		},
 		{

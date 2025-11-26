@@ -293,73 +293,42 @@ func (r *Runner) prepareDestination() (*remote.Repository, error) {
 	return dst, nil
 }
 
-// enhanceOCIError enhances the OCI registry error with detailed information about naming rules
+// enhanceOCIError enhances the OCI registry error with detailed information about naming rules.
+// The 'br:' prefix indicates this is a Bicep OCI registry reference.
+// The target parameter should be the OCI reference without the 'br:' prefix (as stored in Runner.Target).
 func enhanceOCIError(target string, err error) error {
 	errMsg := err.Error()
+
+	const helpMessage = "The target must be a valid Bicep OCI registry reference in the form 'br:<OCI-registry-hostname>/<module-path>:<tag>'."
+
+	// Display the target with the 'br:' prefix to match what the user provided
+	displayTarget := "br:" + target
 
 	// Check for invalid repository error
 	if strings.Contains(errMsg, "invalid repository") {
 		return clierrors.MessageWithCause(err,
-			"Invalid OCI repository name in target %q.\n\n"+
-				"OCI repository names must:\n"+
-				"  - Contain only lowercase letters (a-z), digits (0-9), periods (.), underscores (_), and hyphens (-)\n"+
-				"  - Start with a lowercase letter or digit\n"+
-				"  - Separate path components with forward slashes (/)\n"+
-				"  - Not contain consecutive special characters except double underscores (__)\n\n"+
-				"Example: 'br:localhost:5000/myregistry/data/mysqldatabases:latest'\n\n"+
-				"For more information on OCI naming conventions, see:\n"+
-				"https://github.com/opencontainers/distribution-spec/blob/main/spec.md",
-			target)
-	}
-
-	// Check for invalid registry error
-	if strings.Contains(errMsg, "invalid registry") {
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "invalid registry") {
+		// Check for invalid registry error
 		return clierrors.MessageWithCause(err,
-			"Invalid OCI registry in target %q.\n\n"+
-				"The registry must be a valid hostname, optionally with a port number.\n"+
-				"Example: 'localhost:5000', 'ghcr.io', 'myregistry.azurecr.io'\n\n"+
-				"For more information on OCI naming conventions, see:\n"+
-				"https://github.com/opencontainers/distribution-spec/blob/main/spec.md",
-			target)
-	}
-
-	// Check for invalid tag error
-	if strings.Contains(errMsg, "invalid tag") {
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "invalid tag") {
+		// Check for invalid tag error
 		return clierrors.MessageWithCause(err,
-			"Invalid OCI tag in target %q.\n\n"+
-				"OCI tags must:\n"+
-				"  - Start with an alphanumeric character or underscore\n"+
-				"  - Contain only alphanumeric characters, underscores (_), hyphens (-), and periods (.)\n"+
-				"  - Be at most 128 characters long\n\n"+
-				"Example: 'latest', 'v1.0.0', 'stable'\n\n"+
-				"For more information on OCI naming conventions, see:\n"+
-				"https://github.com/opencontainers/distribution-spec/blob/main/spec.md",
-			target)
-	}
-
-	// Check for missing registry or repository error
-	if strings.Contains(errMsg, "missing registry or repository") {
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "missing registry or repository") {
+		// Check for missing registry or repository error
 		return clierrors.MessageWithCause(err,
-			"Invalid target format %q.\n\n"+
-				"The target must be in the format: 'br:REGISTRY/REPOSITORY:TAG'\n"+
-				"Where:\n"+
-				"  - REGISTRY is the hostname (optionally with port), e.g., 'localhost:5000', 'ghcr.io'\n"+
-				"  - REPOSITORY is the path to the artifact, e.g., 'myorg/myrepo'\n"+
-				"  - TAG is the version identifier, e.g., 'latest', 'v1.0.0'\n\n"+
-				"Example: 'br:ghcr.io/myorg/myrepo:v1.0.0'\n\n"+
-				"For more information on OCI naming conventions, see:\n"+
-				"https://github.com/opencontainers/distribution-spec/blob/main/spec.md",
-			target)
-	}
-
-	// For any other invalid reference errors, provide general guidance
-	if strings.Contains(errMsg, "invalid reference") {
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "invalid reference") {
+		// For any other invalid reference errors, provide general guidance
 		return clierrors.MessageWithCause(err,
-			"Invalid OCI reference in target %q.\n\n"+
-				"The target must comply with OCI naming rules and be in the format: 'br:REGISTRY/REPOSITORY:TAG'\n\n"+
-				"For more information on OCI naming conventions, see:\n"+
-				"https://github.com/opencontainers/distribution-spec/blob/main/spec.md",
-			target)
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
 	}
 
 	// Return the original error if we don't recognize it
