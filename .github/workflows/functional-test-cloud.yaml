@@ -109,6 +109,7 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
+      BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
     steps:
       - name: Log Event Information
         run: |
@@ -134,12 +135,6 @@ jobs:
             echo "Created At: ${{ github.event.workflow_run.created_at }}"
             echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
           fi
-      - name: Get GitHub app token
-        uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
-        id: get_installation_token
-        with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -159,6 +154,7 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
           echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "BASE_SHA=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -184,11 +180,16 @@ jobs:
           script: |
             const payload = context.payload.workflow_run;
             let fs = require('fs');
+            let baseSha = "";
+            if (payload.pull_requests && payload.pull_requests.length > 0) {
+                baseSha = payload.pull_requests[0].base.sha;
+            }
             // Set environment variables
             fs.appendFileSync(process.env.GITHUB_ENV,
               `CHECKOUT_REPO=${payload.head_repository.full_name}\n`+
               `CHECKOUT_REF=${payload.head_sha}\n` +
-              `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n`);
+              `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n` +
+              `BASE_SHA=${baseSha}\n`);
 
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
@@ -228,6 +229,7 @@ jobs:
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
           echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
+          echo "BASE_SHA=${{ env.BASE_SHA }}" >> $GITHUB_OUTPUT
 
   changes:
     name: Changes
@@ -236,6 +238,7 @@ jobs:
     with:
       ref: ${{ needs.setup.outputs.CHECKOUT_REF }}
       repository: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      base_sha: ${{ needs.setup.outputs.BASE_SHA }}
     permissions:
       contents: read
       pull-requests: read

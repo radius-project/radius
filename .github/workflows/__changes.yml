@@ -27,6 +27,11 @@ on:
         required: false
         default: ${{ github.repository }}
         type: string
+      base_sha:
+        description: The base SHA to compare against
+        required: false
+        default: ""
+        type: string
     outputs:
       only_changed:
         description: Returns 'true' when only files in the configured patterns have changed.
@@ -47,7 +52,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
           repository: ${{ inputs.repository }}
@@ -58,3 +63,4 @@ jobs:
         with:
           json: true
           files: ${{ inputs.files }}
+          base_sha: ${{ inputs.base_sha }}
