@@ -57,12 +57,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          submodules: true
 
       - name: Setup Node.js
         uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version-file: .node-version
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Verify npx installation
         run: |
@@ -75,26 +83,35 @@ jobs:
 
       - name: Setup and verify bicep CLI
         run: |
+          # Download bicep CLI
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
+          
+          # Install in both locations for maximum compatibility
           sudo mv ./bicep /usr/local/bin/bicep
+          
+          # Verify bicep works
           bicep --version
+          
+          # Also ensure rad CLI can find bicep by creating the expected directory structure
+          mkdir -p ~/.rad/bin
+          cp /usr/local/bin/bicep ~/.rad/bin/rad-bicep
+          
+          # Verify rad-bicep also works
+          ~/.rad/bin/rad-bicep --version
 
       - name: Create a temporary file system
         run: |
           mkdir tmp-radius-bicep-extension
           mkdir tmp-testresources-bicep-extension
+
       - name: Publish bicep types
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
 
-      - name: Generate testresources extension index
-        run: |
-          npx @radius-project/manifest-to-bicep-extension@edge generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
-
       - name: Publish testresources extension
         run: |
-          bicep publish-extension ./tmp-testresources-bicep-extension/index.json --target ./tmp-testresources-bicep-extension/testresources.tgz --force
+          go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
 
       - name: Install jq
         run: sudo apt-get install -y jq
@@ -111,6 +128,7 @@ jobs:
 
            # Copy to the dynamicrp resources test directory so the .bicep files there can find it
            cp -f bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
+
       - name: Print updated bicepconfig.json
         run: cat bicepconfig.json
 
