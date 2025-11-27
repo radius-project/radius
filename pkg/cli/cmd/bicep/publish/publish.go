@@ -293,11 +293,53 @@ func (r *Runner) prepareDestination() (*remote.Repository, error) {
 	return dst, nil
 }
 
+// enhanceOCIError enhances the OCI registry error with detailed information about naming rules.
+// The 'br:' prefix indicates this is a Bicep OCI registry reference.
+// The target parameter should be the OCI reference without the 'br:' prefix (as stored in Runner.Target).
+func enhanceOCIError(target string, err error) error {
+	errMsg := err.Error()
+
+	const helpMessage = "The target must be a valid Bicep OCI registry reference in the form 'br:<OCI-registry-hostname>/<module-path>:<tag>'."
+
+	// Display the target with the 'br:' prefix to match what the user provided
+	displayTarget := "br:" + target
+
+	// Check for invalid repository error
+	if strings.Contains(errMsg, "invalid repository") {
+		return clierrors.MessageWithCause(err,
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "invalid registry") {
+		// Check for invalid registry error
+		return clierrors.MessageWithCause(err,
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "invalid tag") {
+		// Check for invalid tag error
+		return clierrors.MessageWithCause(err,
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "missing registry or repository") {
+		// Check for missing registry or repository error
+		return clierrors.MessageWithCause(err,
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	} else if strings.Contains(errMsg, "invalid reference") {
+		// For any other invalid reference errors, provide general guidance
+		return clierrors.MessageWithCause(err,
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	}
+
+	// Return the original error if we don't recognize it
+	return err
+}
+
 // extractDestination extracts the host, repo, and tag from the target
 func (r *Runner) extractDestination() (*destination, error) {
 	ref, err := registry.ParseReference(r.Target)
 	if err != nil {
-		return nil, err
+		return nil, enhanceOCIError(r.Target, err)
 	}
 
 	host := ref.Host()
