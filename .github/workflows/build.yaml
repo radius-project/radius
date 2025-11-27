@@ -32,6 +32,11 @@ on:
       - main
       - features/*
       - release/*
+  merge_group:
+    branches:
+      - main
+      - features/*
+      - release/*
 
 permissions:
   id-token: write # Required for requesting the JWT
