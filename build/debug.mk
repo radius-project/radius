@@ -209,7 +209,7 @@ debug-start: debug-setup debug-build-all ## Start k3d cluster and all Radius com
 	@if k3d cluster list | grep -q "radius-debug"; then \
 		echo "k3d cluster 'radius-debug' already exists"; \
 	else \
-		k3d cluster create radius-debug --api-port 6443 --wait --timeout 60s; \
+		k3d cluster create radius-debug --api-port 0.0.0.0:6443 --wait --timeout 60s; \
 	fi
 	@echo "Switching to k3d context..."
 	@kubectl config use-context k3d-radius-debug
