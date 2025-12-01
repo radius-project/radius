@@ -131,9 +131,21 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 				require.NotEmpty(t, deployments.Items, "No deployments found in namespace %s", appNamespace)
 
 				t.Logf("Found %d deployments in namespace %s", len(deployments.Items), appNamespace)
+
+				foundPort := false
 				for _, deploy := range deployments.Items {
 					t.Logf("Deployment: %s", deploy.Name)
+					for _, container := range deploy.Spec.Template.Spec.Containers {
+						for _, port := range container.Ports {
+							t.Logf("  Container %s has port %d", container.Name, port.ContainerPort)
+							if port.ContainerPort == 9090 {
+								foundPort = true
+								t.Logf("  ✓ Found container listening on port 9090")
+							}
+						}
+					}
 				}
+				require.True(t, foundPort, "Expected to find a container listening on port 9090")
 
 				// Clean up the namespace after verification
 				err = test.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})

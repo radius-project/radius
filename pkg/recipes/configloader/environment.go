@@ -275,13 +275,17 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		if err != nil {
 			return nil, err
 		}
-		// TODO: For now, we can set it to default as recipe packs don't have named recipes.
+
+		// Reconcile parameters from recipe pack and environment-level recipe parameters
+		parameters := reconcileRecipeParameters(recipePackDefinition.Parameters, envDatamodel.Properties.RecipeParameters, resource.Type())
+
+		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
 			Name:         "default",
 			Driver:       recipePackDefinition.RecipeKind,
 			ResourceType: resource.Type(),
-			Parameters:   recipePackDefinition.Parameters,
+			Parameters:   parameters,
 			TemplatePath: recipePackDefinition.RecipeLocation,
 		}
 		return definition, nil
@@ -319,4 +323,26 @@ func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *a
 	}
 
 	return nil, fmt.Errorf("no recipe pack found with recipe for resource type %q", resourceType)
+}
+
+// reconcileRecipeParameters merges recipe pack parameters with environment-level recipe parameters.
+// Environment-level parameters override recipe pack parameters when the same key exists.
+func reconcileRecipeParameters(recipePackParams map[string]any, envRecipeParams map[string]map[string]any, resourceType string) map[string]any {
+	parameters := make(map[string]any)
+
+	// Start with recipe pack parameters
+	for k, v := range recipePackParams {
+		parameters[k] = v
+	}
+
+	// Override with environment-level recipe parameters for this resource type
+	if envRecipeParams != nil {
+		if params, ok := envRecipeParams[resourceType]; ok {
+			for k, v := range params {
+				parameters[k] = v
+			}
+		}
+	}
+
+	return parameters
 }
