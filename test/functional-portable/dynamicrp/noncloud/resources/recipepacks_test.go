@@ -132,6 +132,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 
 				t.Logf("Found %d deployments in namespace %s", len(deployments.Items), appNamespace)
 
+				// Recipe parameters reconciliation check: Verify that the deployed containers have the expected port from recipe parameters
 				foundPort := false
 				for _, deploy := range deployments.Items {
 					t.Logf("Deployment: %s", deploy.Name)
