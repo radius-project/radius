@@ -49,7 +49,9 @@ import (
 	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/radius-project/radius/pkg/cli/cmd/env/show"
+	env_show_preview "github.com/radius-project/radius/pkg/cli/cmd/env/show/preview"
 	env_update "github.com/radius-project/radius/pkg/cli/cmd/env/update"
+	env_update_preview "github.com/radius-project/radius/pkg/cli/cmd/env/update/preview"
 	group "github.com/radius-project/radius/pkg/cli/cmd/group"
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
@@ -344,9 +346,25 @@ func initSubCommands() {
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)
+	previewShowCmd, _ := env_show_preview.NewCommand(framework)
+	wirePreviewSubcommand(envShowCmd, previewShowCmd)
 	envCmd.AddCommand(envShowCmd)
 
-	envUpdateCmd, _ := env_update.NewCommand(framework)
+	legacyEnvUpdateCmd, _ := env_update.NewCommand(framework)
+	previewEnvUpdateCmd, _ := env_update_preview.NewCommand(framework)
+	envUpdateCmd := previewEnvUpdateCmd
+	envUpdateCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation for environment update.")
+	previewRunE := envUpdateCmd.RunE
+	envUpdateCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		usePreview, err := cmd.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+		if usePreview {
+			return previewRunE(cmd, args)
+		}
+		return legacyEnvUpdateCmd.RunE(cmd, args)
+	}
 	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)

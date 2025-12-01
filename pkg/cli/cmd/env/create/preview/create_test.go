@@ -154,7 +154,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, test_client_factory.WithEnvironmentServerNoError)
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, test_client_factory.WithEnvironmentServerNoError, nil)
 		require.NoError(t, err)
 		outputSink := &output.MockOutput{}
 		runner := &Runner{

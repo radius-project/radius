@@ -106,9 +106,8 @@ func Test_Run(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, tc.serverFactory)
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, tc.serverFactory, nil)
 			require.NoError(t, err)
 
 			outputSink := &output.MockOutput{}

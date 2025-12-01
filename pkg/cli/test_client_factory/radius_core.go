@@ -29,12 +29,18 @@ import (
 )
 
 // NewRadiusCoreTestClientFactory creates a new client factory for testing purposes.
-func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfake.EnvironmentsServer) (*v20250801preview.ClientFactory, error) {
+func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfake.EnvironmentsServer, recipepackServer func() corerpfake.RecipePacksServer) (*v20250801preview.ClientFactory, error) {
 	serverFactory := corerpfake.ServerFactory{}
 	if envServer != nil {
 		serverFactory.EnvironmentsServer = envServer()
 	} else {
 		serverFactory.EnvironmentsServer = WithEnvironmentServerNoError()
+	}
+
+	if recipepackServer != nil {
+		serverFactory.RecipePacksServer = recipepackServer()
+	} else {
+		serverFactory.RecipePacksServer = WithRecipePackServerNoError()
 	}
 
 	serverFactoryTransport := corerpfake.NewServerFactoryTransport(&serverFactory)
@@ -51,6 +57,32 @@ func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfak
 	}
 
 	return clientFactory, err
+}
+
+func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
+	return corerpfake.RecipePacksServer{
+		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientGetResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name: to.Ptr(recipePackName),
+					Properties: &v20250801preview.RecipePackProperties{
+						Recipes: map[string]*v20250801preview.RecipeDefinition{
+							"test-recipe1": {
+								RecipeLocation: to.Ptr("https://example.com/recipe1?ref=v0.1"),
+								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
+							},
+							"test-recipe2": {
+								RecipeLocation: to.Ptr("https://example.com/recipe2?ref=v0.1"),
+								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
+							},
+						},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+	}
 }
 
 func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
@@ -75,6 +107,11 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 			result := v20250801preview.EnvironmentsClientGetResponse{
 				EnvironmentResource: v20250801preview.EnvironmentResource{
 					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{
+							to.Ptr("test-recipe-pack"),
+						},
+					},
 				},
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
