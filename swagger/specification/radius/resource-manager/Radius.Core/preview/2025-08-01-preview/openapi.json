@@ -43,10 +43,300 @@
       "name": "Operations"
     },
     {
+      "name": "Applications"
+    },
+    {
       "name": "Environments"
+    },
+    {
+      "name": "RecipePacks"
     }
   ],
   "paths": {
+    "/{rootScope}/providers/Radius.Core/applications": {
+      "get": {
+        "operationId": "Applications_ListByScope",
+        "tags": [
+          "Applications"
+        ],
+        "description": "List ApplicationResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get applications by resource group": {
+            "$ref": "./examples/Applications_List.json"
+          },
+          "Get applications by rootScope": {
+            "$ref": "./examples/Applications_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/applications/{applicationName}": {
+      "get": {
+        "operationId": "Applications_Get",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Get a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an application resource": {
+            "$ref": "./examples/Applications_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Applications_CreateOrUpdate",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Create a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ApplicationResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ApplicationResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an application resource": {
+            "$ref": "./examples/Applications_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "Applications_Update",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Update a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Applications_Delete",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Delete a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an application resource": {
+            "$ref": "./examples/Applications_Delete.json"
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/applications/{applicationName}/getGraph": {
+      "post": {
+        "operationId": "Applications_GetGraph",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Gets the application graph and resources.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationGraphResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/{rootScope}/providers/Radius.Core/environments": {
       "get": {
         "operationId": "Environments_ListByScope",
@@ -270,6 +560,238 @@
         }
       }
     },
+    "/{rootScope}/providers/Radius.Core/recipePacks": {
+      "get": {
+        "operationId": "RecipePacks_ListByScope",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "List RecipePackResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List recipe packs by scope": {
+            "$ref": "./examples/RecipePacks_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Radius.Core/recipePacks/{recipePackName}": {
+      "get": {
+        "operationId": "RecipePacks_Get",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Get a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "Recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a recipe pack": {
+            "$ref": "./examples/RecipePacks_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "RecipePacks_CreateOrUpdate",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Create a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "Recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RecipePackResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RecipePackResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update a recipe pack": {
+            "$ref": "./examples/RecipePacks_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "RecipePacks_Update",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Update a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "Recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RecipePackResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipePackResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "RecipePacks_Delete",
+        "tags": [
+          "RecipePacks"
+        ],
+        "description": "Delete a RecipePackResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "recipePackName",
+            "in": "path",
+            "description": "Recipe pack name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a recipe pack": {
+            "$ref": "./examples/RecipePacks_Delete.json"
+          }
+        }
+      }
+    },
     "/providers/Radius.Core/operations": {
       "get": {
         "operationId": "Operations_List",
@@ -303,8 +825,193 @@
     }
   },
   "definitions": {
+    "ApplicationGraphConnection": {
+      "type": "object",
+      "description": "Describes the connection between two resources.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID "
+        },
+        "direction": {
+          "$ref": "#/definitions/Direction",
+          "description": "The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source."
+        }
+      },
+      "required": [
+        "id",
+        "direction"
+      ]
+    },
+    "ApplicationGraphOutputResource": {
+      "type": "object",
+      "description": "Describes an output resource that comprises an application graph resource.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID."
+        },
+        "type": {
+          "type": "string",
+          "description": "The resource type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The resource name."
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "name"
+      ]
+    },
+    "ApplicationGraphResource": {
+      "type": "object",
+      "description": "Describes a resource in the application graph.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID."
+        },
+        "type": {
+          "type": "string",
+          "description": "The resource type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The resource name."
+        },
+        "outputResources": {
+          "type": "array",
+          "description": "The resources that comprise this resource.",
+          "items": {
+            "$ref": "#/definitions/ApplicationGraphOutputResource"
+          },
+          "x-ms-identifiers": [
+            "id"
+          ]
+        },
+        "connections": {
+          "type": "array",
+          "description": "The connections between resources in the application graph.",
+          "items": {
+            "$ref": "#/definitions/ApplicationGraphConnection"
+          },
+          "x-ms-identifiers": []
+        },
+        "provisioningState": {
+          "type": "string",
+          "description": "provisioningState of this resource."
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "name",
+        "outputResources",
+        "connections",
+        "provisioningState"
+      ]
+    },
+    "ApplicationGraphResponse": {
+      "type": "object",
+      "description": "Describes the application architecture and its dependencies.",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "description": "The resources in the application graph.",
+          "items": {
+            "$ref": "#/definitions/ApplicationGraphResource"
+          },
+          "x-ms-identifiers": [
+            "id"
+          ]
+        }
+      },
+      "required": [
+        "resources"
+      ]
+    },
+    "ApplicationProperties": {
+      "type": "object",
+      "description": "Application properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "ApplicationResource": {
+      "type": "object",
+      "description": "Radius Application resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ApplicationProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ApplicationResourceListResult": {
+      "type": "object",
+      "description": "The response of a ApplicationResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ApplicationResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ApplicationResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ApplicationResourceUpdate": {
+      "type": "object",
+      "description": "Radius Application resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
+    },
     "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
       "type": "object",
+      "title": "Tracked Resource",
       "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
       "properties": {
         "tags": {
@@ -321,6 +1028,68 @@
         }
       ]
     },
+    "AzureContainerInstanceCompute": {
+      "type": "object",
+      "description": "The Azure container instance compute configuration",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group to use for the environment."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
+    },
+    "Direction": {
+      "type": "string",
+      "description": "The direction of a connection.",
+      "enum": [
+        "Outbound",
+        "Inbound"
+      ],
+      "x-ms-enum": {
+        "name": "Direction",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "Outbound",
+            "value": "Outbound",
+            "description": "The resource defining this connection makes an outbound connection resource specified by this id."
+          },
+          {
+            "name": "Inbound",
+            "value": "Inbound",
+            "description": "The resource defining this connection accepts inbound connections from the resource specified by this id."
+          }
+        ]
+      }
+    },
+    "EnvironmentCompute": {
+      "type": "object",
+      "description": "Represents backing compute resource",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
     "EnvironmentProperties": {
       "type": "object",
       "description": "Environment properties",
@@ -335,6 +1104,13 @@
           "description": "List of Recipe Pack resource IDs linked to this environment.",
           "items": {
             "type": "string"
+          }
+        },
+        "recipeParameters": {
+          "type": "object",
+          "description": "Recipe specific parameters that apply to all resources of a given type in this environment.",
+          "additionalProperties": {
+            "$ref": "#/definitions/RecipeParameterValue"
           }
         },
         "providers": {
@@ -470,6 +1246,43 @@
         "kind"
       ]
     },
+    "KubernetesCompute": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
+    "OutputResource": {
+      "type": "object",
+      "description": "Properties of an output resource.",
+      "properties": {
+        "localId": {
+          "type": "string",
+          "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+        },
+        "id": {
+          "type": "string",
+          "description": "The UCP resource ID of the underlying resource."
+        },
+        "radiusManaged": {
+          "type": "boolean",
+          "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        }
+      }
+    },
     "Providers": {
       "type": "object",
       "properties": {
@@ -593,6 +1406,189 @@
         ]
       },
       "readOnly": true
+    },
+    "RecipeDefinition": {
+      "type": "object",
+      "description": "Recipe definition for a specific resource type",
+      "properties": {
+        "recipeKind": {
+          "$ref": "#/definitions/RecipeKind",
+          "description": "The type of recipe (e.g., Terraform, Bicep)"
+        },
+        "plainHttp": {
+          "type": "boolean",
+          "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
+        },
+        "recipeLocation": {
+          "type": "string",
+          "description": "URL path to the recipe"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters to pass to the recipe",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "recipeKind",
+        "recipeLocation"
+      ]
+    },
+    "RecipeKind": {
+      "type": "string",
+      "description": "The type of recipe",
+      "enum": [
+        "terraform",
+        "bicep"
+      ],
+      "x-ms-enum": {
+        "name": "RecipeKind",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "terraform",
+            "value": "terraform",
+            "description": "Terraform recipe"
+          },
+          {
+            "name": "bicep",
+            "value": "bicep",
+            "description": "Bicep recipe"
+          }
+        ]
+      }
+    },
+    "RecipePackProperties": {
+      "type": "object",
+      "description": "Recipe Pack properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation",
+          "readOnly": true
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "List of environment IDs that reference this recipe pack",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
+        },
+        "recipes": {
+          "type": "object",
+          "description": "Map of resource types to their recipe configurations",
+          "additionalProperties": {
+            "$ref": "#/definitions/RecipeDefinition"
+          }
+        }
+      },
+      "required": [
+        "recipes"
+      ]
+    },
+    "RecipePackResource": {
+      "type": "object",
+      "description": "The recipe pack resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RecipePackProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "RecipePackResourceListResult": {
+      "type": "object",
+      "description": "The response of a RecipePackResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The RecipePackResource items on this page",
+          "items": {
+            "$ref": "#/definitions/RecipePackResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "RecipePackResourceUpdate": {
+      "type": "object",
+      "description": "The recipe pack resource",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
+    },
+    "RecipeParameterValue": {
+      "type": "object",
+      "description": "Recipe parameter configuration for a specific resource type.",
+      "additionalProperties": {}
+    },
+    "RecipeStatus": {
+      "type": "object",
+      "description": "Recipe status at deployment time for a resource.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "TemplateKind is the kind of the recipe template used by the portable resource upon deployment."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
+        },
+        "templateVersion": {
+          "type": "string",
+          "description": "TemplateVersion is the version number of the template."
+        }
+      },
+      "required": [
+        "templateKind",
+        "templatePath"
+      ]
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "description": "Status of a resource.",
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource associated with the resource."
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeStatus",
+          "description": "The recipe data at the time of deployment",
+          "readOnly": true
+        },
+        "outputResources": {
+          "type": "array",
+          "description": "Properties of an output resource",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "x-ms-identifiers": []
+        }
+      }
     }
   },
   "parameters": {

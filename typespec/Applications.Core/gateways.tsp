@@ -56,14 +56,14 @@ model GatewayProperties {
   hostname?: GatewayHostname;
 
   @doc("Routes attached to this Gateway")
-  @extension("x-ms-identifiers", [])
+  @extension("x-ms-identifiers", #[])
   routes: GatewayRoute[];
 
   @doc("TLS configuration for the Gateway.")
   tls?: GatewayTls;
 
   @doc("URL of the gateway resource. Readonly")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   url?: string;
 }
 

@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Functional Tests (with Non-Cloud Resources)
 
 permissions:
@@ -31,10 +33,8 @@ on:
         required: true
         default: "main"
   schedule:
-    # Run every 4 hours on weekdays.
-    - cron: "30 0,4,8,12,16,20 * * 1-5"
-    # Run every 12 hours on weekends.
-    - cron: "30 0,12 * * 0,6"
+    # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
+    - cron: "0 1,13,19 * * *"
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
@@ -76,22 +76,31 @@ env:
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
-  # Gitea server URL
-  GITEA_SERVER_URL: "http://localhost:30080"
-  # Gitea username
-  GITEA_USERNAME: "testuser"
-  # Gitea email
-  GITEA_EMAIL: "testuser@radapp.io"
-  # Gitea access token name
-  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  # Git HTTP server URL
+  GIT_HTTP_SERVER_URL: "http://localhost:30080"
+  # Git username used for pushing commits during tests
+  GIT_HTTP_USERNAME: "testuser"
+  # Git email used for commit authorship during tests
+  GIT_HTTP_EMAIL: "testuser@radapp.io"
+  # Git password used for pushing commits during tests
+  GIT_HTTP_PASSWORD: "not-a-secret-password"
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
     env:
       DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
       DE_TAG: "latest"
@@ -102,7 +111,7 @@ jobs:
     steps:
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
@@ -118,7 +127,8 @@ jobs:
               );
             }
 
-      - uses: actions/checkout@v5
+      - name: Check out code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -133,7 +143,7 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
-      
+
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -148,10 +158,12 @@ jobs:
           # Set output variables to be used in the other jobs
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
-          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT    
+          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
+
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.only_changed != 'true'
     strategy:
       fail-fast: true
       matrix:
@@ -196,10 +208,12 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          submodules: recursive
 
       - name: Checkout samples repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -207,27 +221,27 @@ jobs:
           path: samples
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: '18'
+          node-version-file: .node-version
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
-          if-no-files-found: error       
+          if-no-files-found: error
 
       - name: Create a secure local registry
         id: create-local-registry
@@ -238,9 +252,9 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
       - name: Generate test bicepconfig.json
         run: |
@@ -278,7 +292,7 @@ jobs:
           rad bicep download
           rad version
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: ${{ env.HELM_VER }}
 
@@ -349,7 +363,7 @@ jobs:
           # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
           for i in {1..6}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
-            
+
             # Exit on error
             if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
               echo "Error found in ucp logs."
@@ -385,37 +399,31 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-      
+
       - name: Install Flux CLI and Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
 
-      # https://github.com/radius-project/radius/issues/10441
-      # - name: Install Gitea
-      #   if: matrix.name == 'kubernetes-noncloud'
-      #   id: install-gitea
-      #   uses: ./.github/actions/install-gitea
-      #   env:
-      #     GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
-      #   with:
-      #     gitea-username: ${{ env.GITEA_USERNAME }}
-      #     gitea-email: ${{ env.GITEA_EMAIL }}
-      #     gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
- 
-      # https://github.com/radius-project/radius/issues/10441
-      # - name: Port-forward to Gitea
-      #   if: matrix.name == 'kubernetes-noncloud'
-      #   run: |
-      #     # Start port forwarding in the background
-      #     kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
-          
-      #     # Wait for port forwarding to be established
-      #     sleep 5
-          
-      #     # Test the connection to ensure port forwarding is working
-      #     curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
-      #     echo "Port forwarding established successfully"
+      - name: Install Git HTTP backend
+        if: matrix.name == 'kubernetes-noncloud'
+        uses: ./.github/actions/install-git-http-backend
+        with:
+          git-username: ${{ env.GIT_HTTP_USERNAME }}
+          git-password: ${{ env.GIT_HTTP_PASSWORD }}
+
+      - name: Port-forward to Git server
+        if: matrix.name == 'kubernetes-noncloud'
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
+
+          # Wait for port forwarding to be established
+          sleep 5
+
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+
+          echo "Port forwarding established successfully"
 
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
@@ -434,11 +442,11 @@ jobs:
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
 
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
-      - name: Publish UDT types 
+      - name: Publish UDT types
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -483,7 +491,7 @@ jobs:
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
-          mkdir -p ./dist/functional_test 
+          mkdir -p ./dist/functional_test
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
@@ -496,10 +504,10 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          # GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
           RADIUS_TEST_FAST_CLEANUP: true
+          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
@@ -528,7 +536,7 @@ jobs:
           kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
 
       - name: Upload Pod logs for failed tests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: always() && steps.radius-logs-events.outcome == 'success'
         with:
           name: ${{ matrix.name }}-radius-pod-logs
@@ -545,10 +553,10 @@ jobs:
           kubectl get pods -A >> $POD_STATE_LOG_FILENAME
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
-      
+
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -570,7 +578,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
@@ -579,12 +587,12 @@ jobs:
 
   report-failure:
     name: Report test failure
-    needs: [build, tests]
+    needs: [changes, build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

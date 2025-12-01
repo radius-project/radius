@@ -31,7 +31,7 @@ func NewAwsCredentialsClient(credential azcore.TokenCredential, options *arm.Cli
 		return nil, err
 	}
 	client := &AwsCredentialsClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -84,9 +84,9 @@ func (client *AwsCredentialsClient) createOrUpdateCreateRequest(ctx context.Cont
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -207,13 +207,13 @@ func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response) (AwsC
 // Generated from API version 2023-10-01-preview
 //   - planeName - The name of AWS plane
 //   - options - AwsCredentialsClientListOptions contains the optional parameters for the AwsCredentialsClient.NewListPager method.
-func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsCredentialsClientListOptions) (*runtime.Pager[AwsCredentialsClientListResponse]) {
+func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsCredentialsClientListOptions) *runtime.Pager[AwsCredentialsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[AwsCredentialsClientListResponse]{
 		More: func(page AwsCredentialsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AwsCredentialsClientListResponse) (AwsCredentialsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AwsCredentialsClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AwsCredentialsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -225,7 +225,7 @@ func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsC
 				return AwsCredentialsClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -301,9 +301,9 @@ func (client *AwsCredentialsClient) updateCreateRequest(ctx context.Context, pla
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -314,4 +314,3 @@ func (client *AwsCredentialsClient) updateHandleResponse(resp *http.Response) (A
 	}
 	return result, nil
 }
-

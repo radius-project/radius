@@ -3646,8 +3646,7 @@
           "description": "The ResourceProviderSummary items on this page",
           "items": {
             "$ref": "#/definitions/ResourceProviderSummary"
-          },
-          "x-ms-identifiers": []
+          }
         },
         "nextLink": {
           "type": "string",

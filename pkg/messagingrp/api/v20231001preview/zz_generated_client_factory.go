@@ -13,7 +13,7 @@ import (
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
 	rootScope string
-	internal *arm.Client
+	internal  *arm.Client
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -30,7 +30,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}
 	return &ClientFactory{
 		rootScope: rootScope,
-		internal: internal,
+		internal:  internal,
 	}, nil
 }
 
@@ -41,11 +41,10 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 	}
 }
 
-// NewRabbitMqQueuesClient creates a new instance of RabbitMqQueuesClient.
-func (c *ClientFactory) NewRabbitMqQueuesClient() *RabbitMqQueuesClient {
-	return &RabbitMqQueuesClient{
+// NewRabbitMQQueuesClient creates a new instance of RabbitMQQueuesClient.
+func (c *ClientFactory) NewRabbitMQQueuesClient() *RabbitMQQueuesClient {
+	return &RabbitMQQueuesClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
-

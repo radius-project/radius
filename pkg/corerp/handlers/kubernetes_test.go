@@ -203,17 +203,14 @@ func TestConvertToUnstructured(t *testing.T) {
 			out: unstructured.Unstructured{
 				Object: map[string]any{
 					"metadata": map[string]any{
-						"creationTimestamp": nil,
-						"name":              "test-deployment",
-						"namespace":         "test-namespace",
+						"name":      "test-deployment",
+						"namespace": "test-namespace",
 					},
 					"spec": map[string]any{
 						"selector": nil,
 						"strategy": map[string]any{},
 						"template": map[string]any{
-							"metadata": map[string]any{
-								"creationTimestamp": nil,
-							},
+							"metadata": map[string]any{},
 							"spec": map[string]any{
 								"containers": nil,
 							},

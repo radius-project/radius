@@ -147,8 +147,27 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 type ShowOptions struct {
 	Group       string // The resource group name
 	Workspace   string // The workspace name
-	Output      string // Output format (json, table)
+	Output      string // Output format (json, table, plain-text)
 	Application string // Application name (for resource show)
+}
+
+// DeleteOptions provides configuration for delete commands
+type DeleteOptions struct {
+	Group     string // Resource group name (--group)
+	Workspace string // Workspace name (--workspace)
+	Confirm   bool   // Skip confirmation prompt (--yes)
+	Output    string // Output format (--output)
+}
+
+// CreateOptions provides configuration for create commands
+type CreateOptions struct {
+	Group       string // Resource group name (--group)
+	Workspace   string // Workspace name (--workspace)
+	Environment string // Environment name (--environment)
+	Namespace   string // Kubernetes namespace (--namespace, for env create)
+	Context     string // Kubernetes context (--context, for workspace create)
+	Force       bool   // Overwrite if exists (--force, for workspace create)
+	Output      string // Output format (--output)
 }
 
 // ApplicationShow returns the output of running the "application show" command with flexible options.
@@ -223,14 +242,65 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 	return err
 }
 
+// EnvCreate runs the command to create an environment with the given name.
+// The options parameter is optional and allows specifying namespace, group, workspace, and output format.
+func (cli *CLI) EnvCreate(ctx context.Context, environmentName string, opts ...CreateOptions) error {
+	args := []string{
+		"env",
+		"create",
+		environmentName,
+	}
+
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Namespace != "" {
+			args = append(args, "--namespace", opt.Namespace)
+		}
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
 // EnvDelete runs the command to delete an environment with the given name and returns an error if the command fails.
-func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
+// The options parameter is optional and allows specifying group, workspace, and confirmation bypass.
+func (cli *CLI) EnvDelete(ctx context.Context, environmentName string, opts ...DeleteOptions) error {
 	args := []string{
 		"env",
 		"delete",
-		"--yes",
 		"-e", environmentName,
 	}
+
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Confirm {
+			args = append(args, "--yes")
+		}
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	} else {
+		// Default to --yes for backward compatibility
+		args = append(args, "--yes")
+	}
+
 	_, err := cli.RunCommand(ctx, args)
 	return err
 }
@@ -288,28 +358,51 @@ func (cli *CLI) ResourceListInResourceGroup(ctx context.Context, groupName strin
 	return cli.RunCommand(ctx, args)
 }
 
-// GroupCreate creates a resource group with the given name and returns an error if the command fails.
-func (cli *CLI) GroupCreate(ctx context.Context, groupName string) error {
+// GroupCreate creates a resource group with the given name.
+// The options parameter is optional and allows specifying workspace and output format.
+func (cli *CLI) GroupCreate(ctx context.Context, groupName string, opts ...CreateOptions) error {
 	args := []string{
 		"group",
 		"create",
 		groupName,
 	}
+
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	}
+
 	_, err := cli.RunCommand(ctx, args)
 	return err
 }
 
 // GroupDelete deletes a resource group with the given name. If confirm is true, it will pass the --yes flag
 // to skip confirmation prompts. Returns an error if the command fails.
-func (cli *CLI) GroupDelete(ctx context.Context, groupName string, confirm bool) error {
+func (cli *CLI) GroupDelete(ctx context.Context, groupName string, opts ...DeleteOptions) error {
 	args := []string{
 		"group",
 		"delete",
 		groupName,
 	}
 
-	if confirm {
-		args = append(args, "--yes")
+	// Apply options if provided
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Confirm {
+			args = append(args, "--yes")
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
 	}
 
 	_, err := cli.RunCommand(ctx, args)
@@ -371,6 +464,64 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackList runs the "recipe-pack list" command with the given environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackList(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"list",
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackShow runs the "recipe-pack show" command with the given recipe pack name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName string) (string, error) {
+	args := []string{
+		"recipe-pack",
+		"show",
+		recipepackName,
+	}
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+// RecipePackDelete runs the "recipe-pack delete" command for the specified recipe pack name.
+// The options parameter is optional and allows specifying group, workspace, and confirmation bypass.
+func (cli *CLI) RecipePackDelete(ctx context.Context, recipepackName string, opts ...DeleteOptions) error {
+	args := []string{
+		"recipe-pack",
+		"delete",
+		recipepackName,
+	}
+
+	if len(opts) > 0 {
+		opt := opts[0]
+		if opt.Confirm {
+			args = append(args, "--yes")
+		}
+		if opt.Group != "" {
+			args = append(args, "--group", opt.Group)
+		}
+		if opt.Workspace != "" {
+			args = append(args, "--workspace", opt.Workspace)
+		}
+		if opt.Output != "" {
+			args = append(args, "--output", opt.Output)
+		}
+	} else {
+		args = append(args, "--yes")
+	}
+
+	_, err := cli.RunCommand(ctx, args)
+	return err
 }
 
 // RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and

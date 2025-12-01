@@ -13,7 +13,7 @@ import (
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
 	rootScope string
-	internal *arm.Client
+	internal  *arm.Client
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
@@ -30,7 +30,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 	}
 	return &ClientFactory{
 		rootScope: rootScope,
-		internal: internal,
+		internal:  internal,
 	}, nil
 }
 
@@ -38,7 +38,7 @@ func NewClientFactory(rootScope string, credential azcore.TokenCredential, optio
 func (c *ClientFactory) NewMongoDatabasesClient() *MongoDatabasesClient {
 	return &MongoDatabasesClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -53,7 +53,7 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 func (c *ClientFactory) NewRedisCachesClient() *RedisCachesClient {
 	return &RedisCachesClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
 
@@ -61,7 +61,6 @@ func (c *ClientFactory) NewRedisCachesClient() *RedisCachesClient {
 func (c *ClientFactory) NewSQLDatabasesClient() *SQLDatabasesClient {
 	return &SQLDatabasesClient{
 		rootScope: c.rootScope,
-		internal: c.internal,
+		internal:  c.internal,
 	}
 }
-

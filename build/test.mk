@@ -61,7 +61,7 @@ test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes contr
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."
-	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.20)
 	@echo "$(ARROW) Instructions:"
 	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
 	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
@@ -171,7 +171,7 @@ test-helm: ## Runs Helm chart unit tests
 .PHONY: oav-installed
 oav-installed:
 	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
-	@which oav > /dev/null || { echo "run 'npm install -g oav' to install oav"; exit 1; }
+	@which oav > /dev/null || { echo "run 'npm install -g oav@4.0.2' to install oav"; exit 1; }
 	@echo "$(ARROW) OK"
 
 # TODO re-enable https://github.com/radius-project/radius/issues/5091

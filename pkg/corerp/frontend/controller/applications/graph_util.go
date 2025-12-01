@@ -458,52 +458,48 @@ func outputResourceEntryFromID(id resources.ID) corerpv20231001preview.Applicati
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
 // and produces a list of output resources.
 func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20231001preview.ApplicationGraphOutputResource {
-	// We need to access the output resources in a weakly-typed way since the data type we're
-	// working with is a property bag.
-	//
-	// Any Radius resource type that supports output resources uses the following property path to return them.
-	p, err := jsonpointer.New("/properties/status/outputResources")
-	if err != nil {
-		// This should never fail since we're hard-coding the path.
-		panic("parsing JSON pointer should not fail: " + err.Error())
-	}
-
-	raw, _, err := p.Get(&resource)
-	if err != nil {
-		// Not found, this is fine.
+	// Directly access the nested weakly-typed property bag instead of using jsonpointer on the struct.
+	// The previous implementation relied on jsonpointer with the path /properties/status/outputResources.
+	// When applied to the struct value, jsonpointer failed to locate the lowercase JSON field name and
+	// silently returned an empty list, causing OutputResources to be omitted in the application graph.
+	statusRaw, ok := resource.Properties["status"]
+	if !ok || statusRaw == nil {
 		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
 	}
-
-	ors, ok := raw.([]any)
+	statusMap, ok := statusRaw.(map[string]any)
 	if !ok {
-		// Not an array, this is fine.
+		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
+	}
+	orRaw, ok := statusMap["outputResources"]
+	if !ok || orRaw == nil {
+		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
+	}
+	ors, ok := orRaw.([]any)
+	if !ok || len(ors) == 0 {
 		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
 	}
 
-	// The data is returned as an array of JSON objects. We need to convert each object from a map[string]any
-	// to the strongly-typed format we understand.
-	//
-	// If we encounter an error processing this data, just and an "invalid" output resource entry.
 	entries := []*corerpv20231001preview.ApplicationGraphOutputResource{}
 	for _, or := range ors {
 		// This is the wire format returned by the API for an output resource.
+		// Wire format: { "id": "<resource id>" }
 		type outputResourceWireFormat struct {
 			ID resources.ID `json:"id"`
 		}
 
 		data := outputResourceWireFormat{}
-		err = toStronglyTypedData(or, &data)
-		if err != nil {
+		err := toStronglyTypedData(or, &data)
+		if err != nil || data.ID.String() == "" {
 			continue
 		}
 
 		// Now build the entry from the API data
 		entry := outputResourceEntryFromID(data.ID)
-
 		entries = append(entries, &entry)
 	}
 
 	// Produce a stable output
+	// Deterministic ordering: Type, Name, ID
 	sort.Slice(entries, func(i, j int) bool {
 		if to.String(entries[i].Type) != to.String(entries[j].Type) {
 			return to.String(entries[i].Type) < to.String(entries[j].Type)
@@ -512,23 +508,35 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 			return to.String(entries[i].Name) < to.String(entries[j].Name)
 		}
 		return to.String(entries[i].ID) < to.String(entries[j].ID)
-
 	})
 
 	return entries
 }
 
 func resolveConnections(resource generated.GenericResource, jsonRefPath string, converter resolver) []*corerpv20231001preview.ApplicationGraphConnection {
-	// We need to access the connections in a weakly-typed way since the data type we're
-	// working with is a property bag.
-	p, err := jsonpointer.New(jsonRefPath)
-	if err != nil {
-		// This should never fail since we're hard-coding the path.
-		panic("parsing JSON pointer should not fail: " + err.Error())
+	// Access data directly from the property bag instead of using jsonpointer on the struct.
+	// The jsonpointer approach failed to locate '/properties/...' because the struct field is
+	// named 'Properties' and does not serialize to a lowercase key until marshalled. Tests
+	// provide raw JSON with lowercase keys, so direct map access is more reliable.
+	var raw any
+	switch jsonRefPath {
+	case connectionsPath:
+		raw = resource.Properties["connections"]
+	case routesPath:
+		raw = resource.Properties["routes"]
+	default:
+		p, err := jsonpointer.New(jsonRefPath)
+		if err != nil {
+			// This should never fail since we're hard-coding the path.
+			panic("parsing JSON pointer should not fail: " + err.Error())
+		}
+		val, _, err := p.Get(&resource)
+		if err == nil {
+			raw = val
+		}
 	}
 
-	raw, _, err := p.Get(&resource)
-	if err != nil {
+	if raw == nil {
 		// Not found, this is fine.
 		return []*corerpv20231001preview.ApplicationGraphConnection{}
 	}
@@ -543,6 +551,8 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 		for _, v := range conn {
 			items = append(items, v)
 		}
+	default:
+		return []*corerpv20231001preview.ApplicationGraphConnection{}
 	}
 
 	if len(items) == 0 {

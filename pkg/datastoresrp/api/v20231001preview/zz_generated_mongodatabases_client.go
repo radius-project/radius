@@ -19,7 +19,7 @@ import (
 // MongoDatabasesClient contains the methods for the MongoDatabases group.
 // Don't use this type directly, use NewMongoDatabasesClient() instead.
 type MongoDatabasesClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewMongoDatabasesClient(rootScope string, credential azcore.TokenCredential
 	}
 	client := &MongoDatabasesClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *MongoDatabasesClient) BeginCreateOrUpdate(ctx context.Context, mon
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[MongoDatabasesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Cont
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a MongoDatabaseResource
@@ -127,7 +127,7 @@ func (client *MongoDatabasesClient) BeginDelete(ctx context.Context, mongoDataba
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[MongoDatabasesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -238,7 +238,7 @@ func (client *MongoDatabasesClient) getHandleResponse(resp *http.Response) (Mong
 // Generated from API version 2023-10-01-preview
 //   - options - MongoDatabasesClientListByScopeOptions contains the optional parameters for the MongoDatabasesClient.NewListByScopePager
 //     method.
-func (client *MongoDatabasesClient) NewListByScopePager(options *MongoDatabasesClientListByScopeOptions) (*runtime.Pager[MongoDatabasesClientListByScopeResponse]) {
+func (client *MongoDatabasesClient) NewListByScopePager(options *MongoDatabasesClientListByScopeOptions) *runtime.Pager[MongoDatabasesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[MongoDatabasesClientListByScopeResponse]{
 		More: func(page MongoDatabasesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -255,7 +255,7 @@ func (client *MongoDatabasesClient) NewListByScopePager(options *MongoDatabasesC
 				return MongoDatabasesClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -329,9 +329,9 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
@@ -359,7 +359,7 @@ func (client *MongoDatabasesClient) BeginUpdate(ctx context.Context, mongoDataba
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[MongoDatabasesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -409,8 +409,7 @@ func (client *MongoDatabasesClient) updateCreateRequest(ctx context.Context, mon
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

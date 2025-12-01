@@ -817,3 +817,47 @@ func generateUniqueTag() string {
 	tag := fmt.Sprintf("test-%d-%d", timestamp, random)
 	return tag
 }
+
+func Test_RecipePack(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	packName := "computeRecipePack"
+	templatePath := "./testdata/corerp-recipe-pack-test.bicep"
+
+	t.Run("deploy recipe pack", func(t *testing.T) {
+		err := cli.Deploy(ctx, templatePath, "", "")
+		require.NoError(t, err)
+	})
+
+	t.Run("verify recipe pack listed", func(t *testing.T) {
+		output, err := cli.RecipePackList(ctx, "")
+		require.NoError(t, err)
+		require.Contains(t, output, packName)
+	})
+
+	t.Run("verify recipe pack show", func(t *testing.T) {
+		output, err := cli.RecipePackShow(ctx, packName, "")
+		require.NoError(t, err)
+		require.Contains(t, output, packName)
+	})
+
+	t.Run("delete recipe pack", func(t *testing.T) {
+		err := cli.Deploy(ctx, templatePath, "", "")
+		require.NoError(t, err)
+
+		output, err := cli.RecipePackList(ctx, "")
+		require.NoError(t, err)
+
+		require.Contains(t, output, packName)
+		err = cli.RecipePackDelete(ctx, packName, radcli.DeleteOptions{Confirm: true})
+		require.NoError(t, err)
+
+		output, err = cli.RecipePackList(ctx, "")
+		require.NoError(t, err)
+		require.NotContains(t, output, packName)
+	})
+}

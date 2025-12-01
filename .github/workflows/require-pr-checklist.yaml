@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Require PR Checklist
 
 on:
@@ -9,6 +11,6 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]' # Skip for Dependabot PRs
     runs-on: ubuntu-latest
     steps:
-      - uses: mheap/require-checklist-action@v2
+      - uses: mheap/require-checklist-action@46d2ca1a0f90144bd081fd13a80b1dc581759365 # v2.5.0
         with:
           requireChecklist: true # If this is true and there are no checklists detected or not filled out, the action will fail
