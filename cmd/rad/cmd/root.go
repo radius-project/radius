@@ -45,6 +45,7 @@ import (
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
 	env_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/env/delete/preview"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
+	env_switch_preview "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch/preview"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
 	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
@@ -398,6 +399,8 @@ func initSubCommands() {
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
+	previewEnvSwitchCmd, _ := env_switch_preview.NewCommand(framework)
+	wirePreviewSubcommand(envSwitchCmd, previewEnvSwitchCmd)
 	envCmd.AddCommand(envSwitchCmd)
 
 	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
