@@ -26,7 +26,7 @@ on:
     - cron: "42 17 * * 1"
   push:
     # The workflow will be triggered on every push to the main branch.
-    branches: ["main"]
+    branches: [main]
 
 # By default, the workflow has read-only access to the repository.
 permissions: read-all
@@ -43,12 +43,12 @@ jobs:
       id-token: write
 
     steps:
-      - name: "Checkout code"
+      - name: Checkout code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           persist-credentials: false
 
-      - name: "Run analysis"
+      - name: Run analysis
         uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
           results_file: results.sarif
@@ -60,7 +60,7 @@ jobs:
       # Upload the results as artifacts (optional). Commenting out will disable
       # uploads of run results in SARIF format to the repository Actions tab.
       # https://docs.github.com/en/actions/advanced-guides/storing-workflow-data-as-artifacts
-      - name: "Upload artifact"
+      - name: Upload artifact
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: OpenSSF scan results
@@ -68,7 +68,7 @@ jobs:
           retention-days: 5
 
       # Upload the results to GitHub's code scanning dashboard.
-      - name: "Upload to code-scanning"
-        uses: github/codeql-action/upload-sarif@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4.31.5
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@fe4161a26a8629af62121b670040955b330f9af2 # v4.31.6
         with:
           sarif_file: results.sarif

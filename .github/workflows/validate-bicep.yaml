@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           submodules: true
 
@@ -67,7 +67,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache: true
@@ -86,17 +86,17 @@ jobs:
           # Download bicep CLI
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
-          
+
           # Install in both locations for maximum compatibility
           sudo mv ./bicep /usr/local/bin/bicep
-          
+
           # Verify bicep works
           bicep --version
-          
+
           # Also ensure rad CLI can find bicep by creating the expected directory structure
           mkdir -p ~/.rad/bin
           cp /usr/local/bin/bicep ~/.rad/bin/rad-bicep
-          
+
           # Verify rad-bicep also works
           ~/.rad/bin/rad-bicep --version
 
