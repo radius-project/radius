@@ -179,8 +179,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		return 0
 	})
 
-	r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
+	err = r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
+
 	r.Output.LogInfo("")
-	r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipesForEnvironmentTableFormat())
+	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipesForEnvironmentTableFormat())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
