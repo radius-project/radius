@@ -38,8 +38,8 @@ import (
 // NewCommand creates an instance of the command and runner for the `rad resource list` command.
 //
 
-// NewCommand creates a new Cobra command and a Runner to list resources of a specified type in an application or the
-// default environment, and adds flags for application name, resource group, output and workspace.
+// NewCommand creates a new Cobra command and a Runner to list resources of a specified type in an application,
+// environment, or the default scope, and adds flags for application name, environment name, resource group, output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -60,12 +60,19 @@ rad resource list Applications.Core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
 rad resource list Applications.Core/containers -a icecream-store
+
+# list all resources of a specified type in an environment
+rad resource list Applications.Core/containers --environment my-env
+
+# list all resources of a specified type in an environment (shorthand flag)
+rad resource list Applications.Core/containers -e my-env
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddApplicationNameFlag(cmd)
+	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
@@ -81,6 +88,7 @@ type Runner struct {
 	Output                    output.Interface
 	Workspace                 *workspaces.Workspace
 	ApplicationName           string
+	EnvironmentName           string
 	Format                    string
 	ResourceType              string
 	ResourceTypeSuffix        string
@@ -99,7 +107,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate runs validation for the `rad resource list` command.
 //
 
-// Validate checks the command line args, workspace, scope, application name, resource type and output format, and
+// Validate checks the command line args, workspace, scope, application name, environment name, resource type and output format, and
 // returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
@@ -121,6 +129,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
+	// Read environment name from flag (optional)
+	environmentName, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return err
+	}
+	r.EnvironmentName = environmentName
+
+	// Validate that application and environment flags are mutually exclusive
+	if r.ApplicationName != "" && r.EnvironmentName != "" {
+		return clierrors.Message("Cannot specify both '--application' and '--environment' flags. Please use only one.")
+	}
+
 	r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
@@ -139,10 +159,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad resource list` command.
 //
 
-// Run checks if an application name is provided and if so, checks if the application exists in the workspace, then
-// lists all resources of the specified type in the application, and finally writes the resources to the output in the
-// specified format. If no application name is provided, it lists all resources of the specified type. An error is
-// returned if the application does not exist in the workspace.
+// Run checks if an application or environment name is provided and if so, checks if the application or environment exists
+// in the workspace, then lists all resources of the specified type in the application or environment, and finally writes
+// the resources to the output in the specified format. If neither application nor environment name is provided, it lists
+// all resources of the specified type. An error is returned if the application or environment does not exist in the workspace.
 func (r *Runner) Run(ctx context.Context) error {
 	// Initialize the client factory if it hasn't been set externally.
 	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
@@ -164,12 +184,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	var resourceList []generated.GenericResource
-	if r.ApplicationName == "" {
-		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
-		if err != nil {
-			return err
-		}
-	} else {
+	if r.ApplicationName != "" {
 		_, err = client.GetApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
 			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
@@ -178,6 +193,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		if err != nil {
+			return err
+		}
+	} else if r.EnvironmentName != "" {
+		_, err = client.GetEnvironment(ctx, r.EnvironmentName)
+		if clients.Is404Error(err) {
+			return clierrors.Message("The environment %q could not be found in workspace %q. Make sure you specify the correct environment with '-e/--environment'.", r.EnvironmentName, r.Workspace.Name)
+		} else if err != nil {
+			return err
+		}
+
+		resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+		if err != nil {
+			return err
+		}
+	} else {
+		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		if err != nil {
 			return err
 		}
