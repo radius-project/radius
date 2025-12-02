@@ -91,10 +91,6 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-////go
-// filepath: /Users/vishwa/Documents/RadiusProject/radius/pkg/cli/cmd/env/update/preview/update_test.go
-// ...existing code...
-
 func Test_Run(t *testing.T) {
 	workspace := &workspaces.Workspace{
 		Name:  "test-workspace",

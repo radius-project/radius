@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -272,18 +273,47 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		env.Properties.Providers.Kubernetes = r.providers.Kubernetes
 	}
+
 	// add recipe packs if any
 	if len(r.recipePacks) > 0 {
 		if env.Properties.RecipePacks == nil {
 			env.Properties.RecipePacks = []*string{}
 		}
+
 		for _, recipePack := range r.recipePacks {
-			env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(recipePack))
+			ID, err := resources.Parse(recipePack)
+			rClientFactory := r.RadiusCoreClientFactory
+			if err == nil {
+				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+				if err != nil {
+					return err
+				}
+
+			} else {
+				scopeID, err := resources.ParseScope(r.Workspace.Scope)
+				if err != nil {
+					return err
+				}
+
+				ID = scopeID.Append(resources.TypeSegment{
+					Type: "Radius.Core/recipePacks",
+					Name: recipePack,
+				})
+			}
+
+			cfclient := rClientFactory.NewRecipePacksClient()
+			_, err = cfclient.Get(ctx, ID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+			if err != nil {
+				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", recipePack)
+			}
+
+			if !recipePackExists(env.Properties.RecipePacks, ID.String()) {
+				env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(ID.String()))
+			}
 		}
 	}
 
 	r.Output.LogInfo("Updating Environment...")
-
 	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, env, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to update environment %q.", r.EnvironmentName)
@@ -319,4 +349,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Successfully updated environment %q.", r.EnvironmentName)
 
 	return nil
+}
+
+func recipePackExists(packs []*string, id string) bool {
+	for _, p := range packs {
+		if p != nil && *p == id {
+			return true
+		}
+	}
+	return false
 }

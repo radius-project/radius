@@ -116,14 +116,14 @@ func Test_Run(t *testing.T) {
 						Name: to.Ptr("env1"),
 						Properties: &corerpv20250801.EnvironmentProperties{
 							RecipePacks: []*string{
-								to.Ptr("test-recipe-pack"),
+								to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 							},
 						},
 					},
 					Options: objectformats.GetResourceTableFormat(),
 				},
 				output.LogOutput{
-					Format: "\n",
+					Format: "",
 				},
 				output.FormattedOutput{
 					Format: "table",

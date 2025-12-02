@@ -109,7 +109,7 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 					Name: to.Ptr(environmentName),
 					Properties: &v20250801preview.EnvironmentProperties{
 						RecipePacks: []*string{
-							to.Ptr("test-recipe-pack"),
+							to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 						},
 					},
 				},

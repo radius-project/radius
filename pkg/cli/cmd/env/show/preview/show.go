@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // NewCommand creates a new Cobra command and a Runner object to show environment details, with flags for workspace,
@@ -137,13 +139,29 @@ func (r *Runner) Run(ctx context.Context) error {
 	recipepackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
 	envRecipes := []EnvRecipes{}
 	for _, rp := range resp.EnvironmentResource.Properties.RecipePacks {
-		pack, err := recipepackClient.Get(ctx, *rp, &corerpv20250801.RecipePacksClientGetOptions{})
+		ID, err := resources.Parse(*rp)
 		if err != nil {
 			return err
 		}
+
+		client := recipepackClient
+		if ID.RootScope() != r.Workspace.Scope {
+			factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+			if err != nil {
+				return err
+			}
+
+			client = factory.NewRecipePacksClient()
+		}
+
+		pack, err := client.Get(ctx, ID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+		if err != nil {
+			return err
+		}
+
 		for resourceType, recipe := range pack.RecipePackResource.Properties.Recipes {
 			envRecipes = append(envRecipes, EnvRecipes{
-				RecipePack:     *rp,
+				RecipePack:     ID.Name(),
 				ResourceType:   resourceType,
 				RecipeKind:     string(*recipe.RecipeKind),
 				RecipeLocation: *recipe.RecipeLocation,
@@ -151,8 +169,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	slices.SortFunc(envRecipes, func(a, b EnvRecipes) int {
+		if a.RecipePack < b.RecipePack {
+			return -1
+		}
+		if a.RecipePack > b.RecipePack {
+			return 1
+		}
+		return 0
+	})
+
 	r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
-	r.Output.LogInfo("\n")
+	r.Output.LogInfo("")
 	r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipesForEnvironmentTableFormat())
 	return nil
 }
