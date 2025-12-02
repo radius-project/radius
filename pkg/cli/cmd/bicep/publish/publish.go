@@ -304,28 +304,12 @@ func enhanceOCIError(target string, err error) error {
 	// Display the target with the 'br:' prefix to match what the user provided
 	displayTarget := "br:" + target
 
-	// Check for invalid repository error
-	if strings.Contains(errMsg, "invalid repository") {
-		return clierrors.MessageWithCause(err,
-			"Invalid OCI reference in target %q.\n\n"+helpMessage,
-			displayTarget)
-	} else if strings.Contains(errMsg, "invalid registry") {
-		// Check for invalid registry error
-		return clierrors.MessageWithCause(err,
-			"Invalid OCI reference in target %q.\n\n"+helpMessage,
-			displayTarget)
-	} else if strings.Contains(errMsg, "invalid tag") {
-		// Check for invalid tag error
-		return clierrors.MessageWithCause(err,
-			"Invalid OCI reference in target %q.\n\n"+helpMessage,
-			displayTarget)
-	} else if strings.Contains(errMsg, "missing registry or repository") {
-		// Check for missing registry or repository error
-		return clierrors.MessageWithCause(err,
-			"Invalid OCI reference in target %q.\n\n"+helpMessage,
-			displayTarget)
-	} else if strings.Contains(errMsg, "invalid reference") {
-		// For any other invalid reference errors, provide general guidance
+	// Check if this is a known OCI validation error
+	if strings.Contains(errMsg, "invalid repository") ||
+		strings.Contains(errMsg, "invalid registry") ||
+		strings.Contains(errMsg, "invalid tag") ||
+		strings.Contains(errMsg, "missing registry or repository") ||
+		strings.Contains(errMsg, "invalid reference") {
 		return clierrors.MessageWithCause(err,
 			"Invalid OCI reference in target %q.\n\n"+helpMessage,
 			displayTarget)
