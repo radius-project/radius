@@ -186,6 +186,12 @@ func addResourceTypeForAPIVersion(
 // addSchemaType converts a manifest schema to a Bicep type
 // Equivalent to TypeScript function addSchemaType()
 func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.TypeFactory) (types.ITypeReference, error) {
+	return addSchemaTypeInternal(schema, name, typeFactory, false)
+}
+
+// addSchemaTypeInternal converts a manifest schema to a Bicep type with additional context.
+// inPlatformOptions indicates whether we are currently traversing within a platformOptions property.
+func addSchemaTypeInternal(schema *manifest.Schema, name string, typeFactory *factory.TypeFactory, inPlatformOptions bool) (types.ITypeReference, error) {
 	// Handle empty schema type (default to object, matching TypeScript behavior)
 	schemaType := schema.Type
 	if schemaType == "" {
@@ -230,15 +236,22 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 		boolType := typeFactory.CreateBooleanType()
 		return typeFactory.GetReference(boolType), nil
 
+	case "any":
+		if !inPlatformOptions {
+			return nil, fmt.Errorf("'any' type is only allowed for additionalProperties in platformOptions")
+		}
+		anyType := typeFactory.CreateAnyType()
+		return typeFactory.GetReference(anyType), nil
+
 	case "array":
 		if schema.Items == nil {
 			return nil, fmt.Errorf("array type '%s' must have an 'items' property", name)
 		}
-		itemRef, err := addSchemaType(schema.Items, name+"Item", typeFactory)
+		itemRef, err := addSchemaTypeInternal(schema.Items, name+"Item", typeFactory, inPlatformOptions)
 		return typeFactory.GetReference(typeFactory.CreateArrayType(itemRef)), err
 
 	case "object":
-		objectProperties, err := addObjectProperties(schema, typeFactory)
+		objectProperties, err := addObjectPropertiesInternal(schema, typeFactory, inPlatformOptions)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add object properties: %w", err)
 		}
@@ -248,7 +261,12 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 
 		// Handle additionalProperties if specified
 		if schema.AdditionalProperties != nil {
-			additionalPropsRef, err := addSchemaType(schema.AdditionalProperties, name+"AdditionalProperties", typeFactory)
+			additionalPropsRef, err := addSchemaTypeInternal(
+				schema.AdditionalProperties,
+				name+"AdditionalProperties",
+				typeFactory,
+				inPlatformOptions,
+			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add additional properties: %w", err)
 			}
@@ -262,9 +280,8 @@ func addSchemaType(schema *manifest.Schema, name string, typeFactory *factory.Ty
 	}
 }
 
-// addObjectProperties converts manifest schema properties to Bicep object properties
-// Equivalent to TypeScript function addObjectProperties()
-func addObjectProperties(schema *manifest.Schema, typeFactory *factory.TypeFactory) (map[string]types.ObjectTypeProperty, error) {
+// addObjectPropertiesInternal converts manifest schema properties to Bicep object properties with context tracking
+func addObjectPropertiesInternal(schema *manifest.Schema, typeFactory *factory.TypeFactory, inPlatformOptions bool) (map[string]types.ObjectTypeProperty, error) {
 	result := make(map[string]types.ObjectTypeProperty)
 
 	if schema.Properties == nil {
@@ -272,7 +289,7 @@ func addObjectProperties(schema *manifest.Schema, typeFactory *factory.TypeFacto
 	}
 
 	for key, propSchema := range schema.Properties {
-		property, err := addObjectProperty(schema, key, &propSchema, typeFactory)
+		property, err := addObjectProperty(schema, key, &propSchema, typeFactory, inPlatformOptions)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add property %s: %w", key, err)
 		}
@@ -289,9 +306,16 @@ func addObjectProperty(
 	key string,
 	property *manifest.Schema,
 	typeFactory *factory.TypeFactory,
+	inPlatformOptions bool,
 ) (types.ObjectTypeProperty, error) {
 
-	propertyTypeRef, err := addSchemaType(property, key, typeFactory)
+	// Track whether we're entering platformOptions
+	childInPlatformOptions := inPlatformOptions
+	if key == "platformOptions" {
+		childInPlatformOptions = true
+	}
+
+	propertyTypeRef, err := addSchemaTypeInternal(property, key, typeFactory, childInPlatformOptions)
 	if err != nil {
 		return types.ObjectTypeProperty{}, fmt.Errorf("failed to create property type: %w", err)
 	}
