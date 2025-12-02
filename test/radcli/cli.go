@@ -493,6 +493,93 @@ func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName st
 	return cli.RunCommand(ctx, args)
 }
 
+// EnvironmentCreatePreview runs the "env create" command for the specified environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName string) (string, error) {
+	args := []string{
+		"env",
+		"create",
+		environmentName,
+		"--preview",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// EnvironmentListPreview runs the "env list" command and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"env",
+		"list",
+		"--preview",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// EnvironmentUpdatePreview runs the "env update" command for the specified environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, groupName, recipepack string) (string, error) {
+	args := []string{
+		"env",
+		"update",
+		environmentName,
+		"--recipe-packs",
+		recipepack,
+		"--preview",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// EnvironmentShowPreview runs the "env show" command for the specified environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, groupName string) (string, error) {
+	args := []string{
+		"env",
+		"show",
+		environmentName,
+		"--preview",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// EnvironmentShowPreview runs the "env show" command for the specified environment name and returns the output as a string, returning
+// an error if the command fails.
+func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, groupName string) (string, error) {
+	args := []string{
+		"env",
+		"delete",
+		environmentName,
+		"--preview",
+		"--yes",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
 // RecipePackDelete runs the "recipe-pack delete" command for the specified recipe pack name.
 // The options parameter is optional and allows specifying group, workspace, and confirmation bypass.
 func (cli *CLI) RecipePackDelete(ctx context.Context, recipepackName string, opts ...DeleteOptions) error {
