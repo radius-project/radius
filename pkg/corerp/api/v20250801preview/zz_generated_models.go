@@ -184,6 +184,9 @@ type EnvironmentProperties struct {
 	// List of Recipe Pack resource IDs linked to this environment.
 	RecipePacks []*string
 
+	// Recipe specific parameters that apply to all resources of a given type in this environment.
+	RecipeParameters map[string]map[string]any
+
 	// Simulated environment.
 	Simulated *bool
 
@@ -433,9 +436,6 @@ type RecipeDefinition struct {
 type RecipePackProperties struct {
 	// REQUIRED; Map of resource types to their recipe configurations
 	Recipes map[string]*RecipeDefinition
-
-	// Description of what this recipe pack provides
-	Description *string
 
 	// READ-ONLY; The status of the asynchronous operation
 	ProvisioningState *ProvisioningState

@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Purge test container images
 
 permissions:
@@ -22,7 +24,7 @@ jobs:
     if: github.repository == 'radius-project/radius'
     steps:
       - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@v3.0.1
+        uses: snok/container-retention-policy@3b0972b2276b171b212f8c4efbca59ebba26eceb # v3.0.1
         with:
           account: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -36,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: OpenSSF scorecard analysis
 on:
   # Only the default branch is supported. See
@@ -21,10 +23,10 @@ on:
   branch_protection_rule:
   schedule:
     # The workflow will run at 5:42PM UTC every Monday.
-    - cron: '42 17 * * 1'
+    - cron: "42 17 * * 1"
   push:
     # The workflow will be triggered on every push to the main branch.
-    branches: [ "main" ]
+    branches: [main]
 
 # By default, the workflow has read-only access to the repository.
 permissions: read-all
@@ -41,12 +43,12 @@ jobs:
       id-token: write
 
     steps:
-      - name: "Checkout code"
-        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493 # v4.1.5
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           persist-credentials: false
 
-      - name: "Run analysis"
+      - name: Run analysis
         uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
           results_file: results.sarif
@@ -58,7 +60,7 @@ jobs:
       # Upload the results as artifacts (optional). Commenting out will disable
       # uploads of run results in SARIF format to the repository Actions tab.
       # https://docs.github.com/en/actions/advanced-guides/storing-workflow-data-as-artifacts
-      - name: "Upload artifact"
+      - name: Upload artifact
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: OpenSSF scan results
@@ -66,7 +68,7 @@ jobs:
           retention-days: 5
 
       # Upload the results to GitHub's code scanning dashboard.
-      - name: "Upload to code-scanning"
-        uses: github/codeql-action/upload-sarif@83a02f7883b12e0e4e1a146174f5e2292a01e601 # v2.16.4
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@fe4161a26a8629af62121b670040955b330f9af2 # v4.31.6
         with:
           sarif_file: results.sarif

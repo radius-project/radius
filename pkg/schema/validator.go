@@ -35,6 +35,105 @@ const (
 	reservedPropConnections = "connections"
 )
 
+// joinPath concatenates two path segments with a dot separator for property path tracking.
+func joinPath(parent, child string) string {
+	if parent == "" {
+		return child
+	}
+	if child == "" {
+		return parent
+	}
+	return parent + "." + child
+}
+
+// isPlatformOptionsPath checks if a path ends with "platformOptions" (last segment after splitting by dots).
+func isPlatformOptionsPath(path string) bool {
+	if path == "" {
+		return false
+	}
+	segments := strings.Split(path, ".")
+	return segments[len(segments)-1] == "platformOptions"
+}
+
+// isPlatformOptionsAdditionalPropertiesPath checks if a path points to the
+// additionalProperties schema under a platformOptions property.
+func isPlatformOptionsAdditionalPropertiesPath(path string) bool {
+	if path == "" {
+		return false
+	}
+	segments := strings.Split(path, ".")
+	if len(segments) < 2 {
+		return false
+	}
+	return segments[len(segments)-2] == "platformOptions" && segments[len(segments)-1] == "additionalProperties"
+}
+
+// normalizePlatformOptionsAny rewrites type: any occurrences that sit beneath
+// platformOptions.additionalProperties into spec-compliant schemas so the
+// OpenAPI validator accepts them while keeping the rest of the document intact.
+func normalizePlatformOptionsAny(schema *openapi3.Schema) {
+	normalizePlatformOptionsAnyWithPath(schema, "")
+}
+
+func normalizePlatformOptionsAnyWithPath(schema *openapi3.Schema, path string) {
+	if schema == nil {
+		return
+	}
+
+	if isPlatformOptionsAdditionalPropertiesPath(path) && schema.Type != nil {
+		for _, t := range *schema.Type {
+			if strings.EqualFold(t, "any") {
+				schema.Type = nil
+				break
+			}
+		}
+	}
+
+	for propName, propRef := range schema.Properties {
+		if propRef == nil || propRef.Value == nil {
+			continue
+		}
+		normalizePlatformOptionsAnyWithPath(propRef.Value, joinPath(path, propName))
+	}
+
+	if schema.AdditionalProperties.Schema != nil && schema.AdditionalProperties.Schema.Value != nil {
+		normalizePlatformOptionsAnyWithPath(schema.AdditionalProperties.Schema.Value, joinPath(path, "additionalProperties"))
+	}
+
+	if schema.Items != nil && schema.Items.Value != nil {
+		normalizePlatformOptionsAnyWithPath(schema.Items.Value, joinPath(path, "items"))
+	}
+}
+
+// isUnconstrainedSchema returns true if a schema has no type restrictions and accepts any value.
+func isUnconstrainedSchema(schema *openapi3.Schema) bool {
+	if schema == nil {
+		return false
+	}
+	if schema.Type != nil && len(*schema.Type) > 0 {
+		return false
+	}
+	if schema.Items != nil {
+		return false
+	}
+	if len(schema.Properties) > 0 {
+		return false
+	}
+	if schema.AdditionalProperties.Schema != nil {
+		return false
+	}
+	if schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has {
+		return false
+	}
+	if len(schema.AllOf) > 0 || len(schema.AnyOf) > 0 || len(schema.OneOf) > 0 {
+		return false
+	}
+	if schema.Not != nil {
+		return false
+	}
+	return true
+}
+
 // Validator validates OpenAPI 3.0 schemas with Radius-specific constraints
 type Validator struct{}
 
@@ -49,6 +148,10 @@ func (v *Validator) ValidateSchema(ctx context.Context, schema *openapi3.Schema)
 	if schema == nil {
 		return nil
 	}
+
+	// Rewrite Radius-specific allowances (type:any under platformOptions additionalProperties)
+	// into OpenAPI-compliant shapes before invoking the generic validator.
+	normalizePlatformOptionsAny(schema)
 
 	var errors ValidationErrors
 
@@ -95,6 +198,10 @@ func (v *Validator) ValidateSchema(ctx context.Context, schema *openapi3.Schema)
 
 // ValidateConstraints checks if a schema meets Radius-specific constraints
 func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
+	return v.validateRadiusConstraintsWithPath(schema, "")
+}
+
+func (v *Validator) validateRadiusConstraintsWithPath(schema *openapi3.Schema, path string) error {
 	var errors ValidationErrors
 
 	// Check for prohibited features
@@ -109,7 +216,7 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	// Check for prohibited $ref usage throughout the schema
 	// We need to wrap the schema in a SchemaRef to use our recursive function
 	schemaRef := &openapi3.SchemaRef{Value: schema}
-	if err := v.checkRefUsage(schemaRef, ""); err != nil {
+	if err := v.checkRefUsage(schemaRef, path); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
 			errors.Add(valErr)
 		} else {
@@ -118,7 +225,7 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	}
 
 	// Check object property constraints
-	if err := v.checkObjectPropertyConstraints(schema); err != nil {
+	if err := v.checkObjectPropertyConstraints(schema, path); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
 			errors.Add(valErr)
 		} else {
@@ -127,7 +234,7 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	}
 
 	// Validate type constraints
-	if err := v.validateTypeConstraints(schema); err != nil {
+	if err := v.validateTypeConstraints(schema, path); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
 			errors.Add(valErr)
 		} else {
@@ -139,7 +246,8 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 	if schema.Properties != nil {
 		for propName, propRef := range schema.Properties {
 			if propRef == nil {
-				errors.Add(NewSchemaError(propName, "property schema is nil"))
+				field := joinPath(path, propName)
+				errors.Add(NewSchemaError(field, "property schema is nil"))
 				continue
 			}
 
@@ -151,11 +259,12 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 			}
 
 			if propRef.Value == nil {
-				errors.Add(NewSchemaError(propName, "property schema is nil"))
+				field := joinPath(path, propName)
+				errors.Add(NewSchemaError(field, "property schema is nil"))
 				continue
 			}
 
-			if err := v.validateRadiusConstraints(propRef.Value); err != nil {
+			if err := v.validateRadiusConstraintsWithPath(propRef.Value, joinPath(path, propName)); err != nil {
 				// Add property context to error
 				if valErrs, ok := err.(*ValidationErrors); ok {
 					for _, ve := range valErrs.Errors {
@@ -165,10 +274,11 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 							Field:   ve.Field,
 							Message: ve.Message,
 						}
+						baseField := joinPath(path, propName)
 						if contextualErr.Field != "" {
-							contextualErr.Field = propName + "." + contextualErr.Field
+							contextualErr.Field = joinPath(baseField, contextualErr.Field)
 						} else {
-							contextualErr.Field = propName
+							contextualErr.Field = baseField
 						}
 						errors.Add(contextualErr)
 					}
@@ -179,14 +289,15 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 						Field:   valErr.Field,
 						Message: valErr.Message,
 					}
+					baseField := joinPath(path, propName)
 					if contextualErr.Field != "" {
-						contextualErr.Field = propName + "." + contextualErr.Field
+						contextualErr.Field = joinPath(baseField, contextualErr.Field)
 					} else {
-						contextualErr.Field = propName
+						contextualErr.Field = baseField
 					}
 					errors.Add(contextualErr)
 				} else {
-					errors.Add(NewSchemaError(propName, err.Error()))
+					errors.Add(NewSchemaError(joinPath(path, propName), err.Error()))
 				}
 			}
 		}
@@ -197,14 +308,14 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 		if addPropSchema.Ref != "" {
 			// The $ref validation is already handled by checkRefUsage above
 		} else if addPropSchema.Value != nil {
-			if err := v.validateRadiusConstraints(addPropSchema.Value); err != nil {
+			if err := v.validateRadiusConstraintsWithPath(addPropSchema.Value, joinPath(path, "additionalProperties")); err != nil {
 				// Add context to error
 				if valErrs, ok := err.(*ValidationErrors); ok {
 					for _, ve := range valErrs.Errors {
 						// Clone the error to avoid modifying the original
 						contextualErr := &ValidationError{
 							Type:    ve.Type,
-							Field:   "additionalProperties." + ve.Field,
+							Field:   joinPath(joinPath(path, "additionalProperties"), ve.Field),
 							Message: ve.Message,
 						}
 						errors.Add(contextualErr)
@@ -213,12 +324,12 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 					// Clone the error to avoid modifying the original
 					contextualErr := &ValidationError{
 						Type:    valErr.Type,
-						Field:   "additionalProperties." + valErr.Field,
+						Field:   joinPath(joinPath(path, "additionalProperties"), valErr.Field),
 						Message: valErr.Message,
 					}
 					errors.Add(contextualErr)
 				} else {
-					errors.Add(NewSchemaError("additionalProperties", err.Error()))
+					errors.Add(NewSchemaError(joinPath(path, "additionalProperties"), err.Error()))
 				}
 			}
 		}
@@ -411,7 +522,7 @@ func (v *Validator) checkRefUsage(schemaRef *openapi3.SchemaRef, fieldPath strin
 }
 
 // validateTypeConstraints ensures only supported types are used
-func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
+func (v *Validator) validateTypeConstraints(schema *openapi3.Schema, path string) error {
 	// If type is not specified, it's valid (OpenAPI allows typeless schemas)
 	if schema.Type == nil {
 		return nil
@@ -433,11 +544,16 @@ func (v *Validator) validateTypeConstraints(schema *openapi3.Schema) error {
 		typeStr = "unknown"
 	}
 
+	// Allow 'type: any' only under platformOptions
+	if typeStr == "any" && isPlatformOptionsPath(path) {
+		return nil
+	}
+
 	return NewConstraintError("", fmt.Sprintf("unsupported type: %s", typeStr))
 }
 
 // checkObjectPropertyConstraints validates object-specific constraints
-func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) error {
+func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema, path string) error {
 	// Apply this constraint to:
 	// 1. Explicit object types
 	// 2. Typeless schemas that have properties or additionalProperties (implicitly objects)
@@ -448,7 +564,7 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 	}
 
 	// Now we're dealing with either explicit objects or typeless schemas
-	hasObjectFeatures := schema.Properties != nil || schema.AdditionalProperties.Has != nil
+	hasObjectFeatures := schema.Properties != nil || schema.AdditionalProperties.Has != nil || schema.AdditionalProperties.Schema != nil
 	if !hasObjectFeatures {
 		return nil // No object features to validate
 	}
@@ -465,6 +581,18 @@ func (v *Validator) checkObjectPropertyConstraints(schema *openapi3.Schema) erro
 
 	if hasProperties && hasAdditionalProperties {
 		return NewConstraintError("", "object schemas cannot have both 'properties' and 'additionalProperties' defined")
+	}
+
+	if hasAdditionalProperties {
+		addPropsRef := schema.AdditionalProperties.Schema
+		if addPropsRef != nil {
+			if addPropsRef.Value == nil && addPropsRef.Ref == "" {
+				return NewSchemaError(joinPath(path, "additionalProperties"), "additionalProperties schema is nil")
+			}
+			if addPropsRef.Value != nil && isUnconstrainedSchema(addPropsRef.Value) && !isPlatformOptionsPath(path) {
+				return NewConstraintError(joinPath(path, "additionalProperties"), "additionalProperties may be type `any` only for the platformOptions property")
+			}
+		}
 	}
 
 	return nil
@@ -557,6 +685,10 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	if err != nil {
 		return fmt.Errorf("failed to convert schema: %w", err)
 	}
+
+	// Apply the same Radius-specific normalization used during schema registration so
+	// runtime validation can accept platformOptions.additionalProperties type:any.
+	normalizePlatformOptionsAny(openAPISchema)
 
 	// Create a minimal OpenAPI document with the schema
 	doc := &openapi3.T{
