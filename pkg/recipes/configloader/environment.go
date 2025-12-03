@@ -271,22 +271,22 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
 
 	if envDatamodel.Properties.RecipePacks != nil {
-		recipePackDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
+		recipeDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
 		if err != nil {
 			return nil, err
 		}
 
 		// Reconcile parameters from recipe pack and environment-level recipe parameters
-		parameters := reconcileRecipeParameters(recipePackDefinition.Parameters, envDatamodel.Properties.RecipeParameters, resource.Type())
+		parameters := reconcileRecipeParameters(recipeDefinition.Parameters, envDatamodel.Properties.RecipeParameters, resource.Type())
 
 		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
 			Name:         "default",
-			Driver:       recipePackDefinition.RecipeKind,
+			Driver:       recipeDefinition.RecipeKind,
 			ResourceType: resource.Type(),
 			Parameters:   parameters,
-			TemplatePath: recipePackDefinition.RecipeLocation,
+			TemplatePath: recipeDefinition.RecipeLocation,
 		}
 		return definition, nil
 	}
@@ -295,7 +295,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 }
 
 // fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs and returns the first recipe pack that has a recipe for the specified resource type.
-func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions, resourceType string) (*recipes.RecipePackDefinition, error) {
+func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions, resourceType string) (*recipes.RecipeDefinition, error) {
 	if recipePackIDs == nil {
 		return nil, fmt.Errorf("no recipe packs configured")
 	}
@@ -313,7 +313,7 @@ func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *a
 		// Convert recipes map
 		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
 			if strings.EqualFold(recipePackResourceType, resourceType) {
-				return &recipes.RecipePackDefinition{
+				return &recipes.RecipeDefinition{
 					RecipeKind:     string(*definition.RecipeKind),
 					RecipeLocation: string(*definition.RecipeLocation),
 					Parameters:     definition.Parameters,
