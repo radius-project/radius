@@ -25,27 +25,6 @@ runs:
     - name: Set up Buildx
       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
-    - name: Parse inputs
-      id: parse_inputs
-      shell: bash
-      env:
-        TAG: ${{ inputs.tag }}
-        SRC_IMAGE: ${{ inputs.src_image }}
-        DEST_IMAGE: ${{ inputs.dest_image }}
-      run: |
-        # Example: SRC_IMAGE=radiusdeploymentengine.azurecr.io/deployment-engine
-        #   -> src_registry=radiusdeploymentengine.azurecr.io, src_registry_name=radiusdeploymentengine
-        # Example: DEST_IMAGE=ghcr.io/radius-project/deployment-engine
-        #   -> dest_registry=ghcr.io, dest_registry_name=ghcr.io
-        src_registry="${SRC_IMAGE%%/*}"
-        dest_registry="${DEST_IMAGE%%/*}"
-        {
-          echo "src_registry=${src_registry}"
-          echo "dest_registry=${dest_registry}"
-          echo "src_registry_name=${src_registry%%.azurecr.io}"
-          echo "dest_registry_name=${dest_registry}"
-        } >> "$GITHUB_OUTPUT"
-
     - name: Log in to Azure
       uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
       with:
@@ -56,15 +35,16 @@ runs:
     - name: Log in to Azure Container Registry
       shell: bash
       env:
-        SRC_REGISTRY_NAME: ${{ steps.parse_inputs.outputs.src_registry_name }}
+        SRC_IMAGE: ${{ inputs.src_image }}
       run: |
         # Example: SRC_REGISTRY_NAME=myregistry
+        SRC_REGISTRY_NAME=$(echo "${SRC_IMAGE}" | cut -d'.' -f1)
         az acr login --name "${SRC_REGISTRY_NAME}"
 
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
-        registry: ${{ steps.parse_inputs.outputs.dest_registry }}
+        registry: ghcr.io
         username: rad-ci-bot
         password: ${{ env.GHCR_PASSWORD }}
 
