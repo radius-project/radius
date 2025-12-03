@@ -885,7 +885,7 @@ func Test_RadiusCoreEnv(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, output, "env-test-update")
 
-		_, err = cli.EnvironmentUpdatePreview(ctx, "env-test-update", "test-group", "/planes/radius/local/resourcegroups/default/providers/Radius.Core/recipePacks/computeRecipePack")
+		_, err = cli.EnvironmentUpdatePreview(ctx, "env-test-update", "test-group", "/planes/radius/local/resourcegroups/kind-radius/providers/Radius.Core/recipePacks/computeRecipePack")
 		require.NoError(t, err)
 
 		output, err = cli.EnvironmentShowPreview(ctx, "env-test-update", "test-group")
