@@ -17,6 +17,7 @@ on:
           test/**/*.md
           test/*.md
           *.md
+          versions.yaml
       ref:
         description: The branch, tag or SHA to checkout
         required: false
