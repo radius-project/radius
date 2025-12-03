@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-action.json
 ---
-name: Copy Deployment Engine Image
+name: Copy Deployment Engine image
 description: Copy a deployment engine image from Azure Container Registry to GitHub Container Registry.
 inputs:
   tag:
@@ -23,7 +23,7 @@ runs:
   using: composite
   steps:
     - name: Set up Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
     - name: Parse inputs
       id: parse_inputs
@@ -47,13 +47,13 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Log in to Azure
-      uses: azure/login@v2
+      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
       with:
         client-id: ${{ env.DE_CONTAINER_AZURE_CLIENT_ID }}
         tenant-id: ${{ env.DE_CONTAINER_AZURE_TENANT_ID }}
         subscription-id: ${{ env.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
 
-    - name: Log in to ACR
+    - name: Log in to Azure Container Registry
       shell: bash
       env:
         SRC_REGISTRY_NAME: ${{ steps.parse_inputs.outputs.src_registry_name }}
@@ -61,7 +61,7 @@ runs:
         # Example: SRC_REGISTRY_NAME=myregistry
         az acr login --name "${SRC_REGISTRY_NAME}"
 
-    - name: Log in to GHCR
+    - name: Log in to GitHub Container Registry
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
         registry: ${{ steps.parse_inputs.outputs.dest_registry }}

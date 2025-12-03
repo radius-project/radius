@@ -261,3 +261,5 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ steps.get-version.outputs.release-channel }}
+          src_image: radiusdeploymentengine.azurecr.io/deployment-engine
+          dest_image: ghcr.io/radius-project/deployment-engine
