@@ -25,28 +25,47 @@ runs:
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3
 
+    - name: Parse inputs
+      id: parse_inputs
+      shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+        SRC_IMAGE: ${{ inputs.src_image }}
+        DEST_IMAGE: ${{ inputs.dest_image }}
+      run: |
+        # Example: SRC_IMAGE=radiusdeploymentengine.azurecr.io/deployment-engine
+        #   -> src_registry=radiusdeploymentengine.azurecr.io, src_registry_name=radiusdeploymentengine
+        # Example: DEST_IMAGE=ghcr.io/radius-project/deployment-engine
+        #   -> dest_registry=ghcr.io, dest_registry_name=ghcr.io
+        src_registry="${SRC_IMAGE%%/*}"
+        dest_registry="${DEST_IMAGE%%/*}"
+        {
+          echo "src_registry=${src_registry}"
+          echo "dest_registry=${dest_registry}"
+          echo "src_registry_name=${src_registry%%.azurecr.io}"
+          echo "dest_registry_name=${dest_registry}"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Log in to Azure
       uses: azure/login@v2
       with:
-        client-id: ${{ env.ACR_AZURE_CLIENT_ID }}
-        tenant-id: ${{ env.ACR_AZURE_TENANT_ID }}
-        subscription-id: ${{ env.ACR_AZURE_SUBSCRIPTION_ID }}
+        client-id: ${{ env.DE_CONTAINER_AZURE_CLIENT_ID }}
+        tenant-id: ${{ env.DE_CONTAINER_AZURE_TENANT_ID }}
+        subscription-id: ${{ env.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
 
     - name: Log in to ACR
       shell: bash
       env:
-        SRC_IMAGE: ${{ inputs.src_image }}
+        SRC_REGISTRY_NAME: ${{ steps.parse_inputs.outputs.src_registry_name }}
       run: |
-        # Example: SRC_IMAGE=myregistry.azurecr.io/deployment-engine -> REGISTRY_NAME=myregistry
-        REGISTRY="${SRC_IMAGE%%/*}"
-        REGISTRY_NAME="${REGISTRY%%.azurecr.io}"
-        az acr login --name "${REGISTRY_NAME}"
+        # Example: SRC_REGISTRY_NAME=myregistry
+        az acr login --name "${SRC_REGISTRY_NAME}"
 
     - name: Log in to GHCR
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
-        registry: ${{ inputs.destination-registry }}
-        username: ${{ inputs.ghcr-username }}
+        registry: ${{ steps.parse_inputs.outputs.dest_registry }}
+        username: rad-ci-bot
         password: ${{ env.GHCR_PASSWORD }}
 
     - name: Copy Deployment Engine image from ACR to GHCR

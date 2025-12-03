@@ -1,5 +1,7 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Publish Deployment Engine Image
-run-name: "(Deployment Engine) Publish Image - Tag: ${{ github.event.client_payload.tag }}"
+run-name: "(Deployment Engine) Publish Image - Tag: ${{ github.event.client_payload.tag || github.event.inputs.tag }}"
 
 on:
   workflow_dispatch:
@@ -15,14 +17,18 @@ on:
         required: true
   repository_dispatch:
     types: [deployment-engine.publish]
+    # Expected client_payload:
+    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azure
+    #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
+    #   tag: Tag for the image (e.g. 1.0)
 
 permissions: {}
 
 # secrets from GitHub organization
   # ${{ secrets.GHCR_PASSWORD }}
-  # ${{ secrets.ACR_AZURE_CLIENT_ID }}
-  # ${{ secrets.ACR_AZURE_TENANT_ID }}
-  # ${{ secrets.ACR_AZURE_SUBSCRIPTION_ID }}
+  # ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
+  # ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
+  # ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   publish-image:
@@ -34,14 +40,16 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
 
       - name: Capture payload
         id: payload
         shell: bash
         env:
-          SRC_IMAGE: ${{ github.event.client_payload.src_image }}
-          DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
-          TAG: ${{ github.event.client_payload.tag }}
+          SRC_IMAGE: ${{ github.event.client_payload.src_image || github.event.inputs.src_image }}
+          DEST_IMAGE: ${{ github.event.client_payload.dest_image || github.event.inputs.dest_image }}
+          TAG: ${{ github.event.client_payload.tag || github.event.inputs.tag }}
         run: |
           {
             echo "src_image=${SRC_IMAGE}"
@@ -52,7 +60,7 @@ jobs:
       - name: Copy Deployment Engine image
         uses: ./.github/actions/copy-deployment-engine-image
         env:
-          GHCR_PASSWORD: ${{ secrets.GHCR_PASSWORD }}
+          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
           DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
