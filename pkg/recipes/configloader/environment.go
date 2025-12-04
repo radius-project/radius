@@ -271,7 +271,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
 
 	if envDatamodel.Properties.RecipePacks != nil {
-		recipeDefinition, err := fetchRecipePacks(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
+		recipeDefinition, err := fetchRecipeDefinition(ctx, envDatamodel.Properties.RecipePacks, armOptions, resource.Type())
 		if err != nil {
 			return nil, err
 		}
@@ -294,8 +294,10 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 	return nil, fmt.Errorf("could not find any recipe pack for %q in environment %q", resource.Type(), recipe.EnvironmentID)
 }
 
-// fetchRecipePacks fetches recipe pack resources from the given recipe pack IDs and returns the first recipe pack that has a recipe for the specified resource type.
-func fetchRecipePacks(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions, resourceType string) (*recipes.RecipeDefinition, error) {
+// fetchRecipeDefinition fetches recipe pack resources from the given recipe pack IDs and returns
+// the recipe definition from the first recipe pack that has a recipe defined for the specified resource type.
+// There cannot be more than one recipe pack with a recipe definition for the same resource type as part of an environment.
+func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptions *arm.ClientOptions, resourceType string) (*recipes.RecipeDefinition, error) {
 	if recipePackIDs == nil {
 		return nil, fmt.Errorf("no recipe packs configured")
 	}
