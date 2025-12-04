@@ -889,6 +889,7 @@ func Test_RadiusCoreEnv(t *testing.T) {
 		require.NoError(t, err)
 
 		output, err = cli.EnvironmentShowPreview(ctx, "env-test-update", "test-group")
+		require.NoError(t, err)
 		require.Contains(t, output, packName)
 
 		_, err = cli.EnvironmentDeletePreview(ctx, "env-test-update", "test-group")

@@ -56,7 +56,7 @@ func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfak
 		return nil, err
 	}
 
-	return clientFactory, err
+	return clientFactory, nil
 }
 
 func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
