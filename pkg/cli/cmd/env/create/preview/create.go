@@ -38,10 +38,9 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env create` command.
-//
 
 // NewCommand creates a new Cobra command and a Runner object to handle the command's logic, and adds flags to the command
-// for environment name, workspace, resource group, and namespace.
+// for environment name, workspace, resource group.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -70,7 +69,6 @@ type Runner struct {
 	Workspace               *workspaces.Workspace
 	EnvironmentName         string
 	ResourceGroupName       string
-	Namespace               string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 	ConfigFileInterface     framework.ConfigFileInterface
 	ConnectionFactory       connections.Factory
@@ -87,10 +85,7 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad env create` command.
-//
-
-// Validate checks if the workspace, environment name, scope, namespace, resource group name, and namespace
-// interface are valid and returns an error if any of them are not.
+// Validate checks if the workspace, environment name, scope, and resource group exist and returns an error if any of them are invalid or missing.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -134,9 +129,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad env create` command.
-//
 
-// Run creates an environment in the specified resource group using the provided environment name and namespace, and
+// Run creates an environment in the specified resource group using the provided environment name and
 // returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {

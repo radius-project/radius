@@ -118,7 +118,7 @@ func InitializeClientFactory(ctx context.Context, workspace *workspaces.Workspac
 	return clientFactory, nil
 }
 
-// InitializeClientFactory initializes a new v20231001preview.ClientFactory using the provided workspace context.
+// InitializeRadiusCoreClientFactory initializes a new v20250801preview.ClientFactory using the provided workspace context.
 // It connects to the workspace and creates a new client factory with anonymous credentials.
 // If the connection fails, it returns an error.
 func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspaces.Workspace, rootScope string) (*v20250801preview.ClientFactory, error) {
