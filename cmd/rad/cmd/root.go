@@ -42,12 +42,18 @@ import (
 	credential "github.com/radius-project/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
+	env_create_preview "github.com/radius-project/radius/pkg/cli/cmd/env/create/preview"
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
+	env_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/env/delete/preview"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
+	env_switch_preview "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch/preview"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
+	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/radius-project/radius/pkg/cli/cmd/env/show"
+	env_show_preview "github.com/radius-project/radius/pkg/cli/cmd/env/show/preview"
 	env_update "github.com/radius-project/radius/pkg/cli/cmd/env/update"
+	env_update_preview "github.com/radius-project/radius/pkg/cli/cmd/env/update/preview"
 	group "github.com/radius-project/radius/pkg/cli/cmd/group"
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
@@ -340,18 +346,40 @@ func initSubCommands() {
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
+	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
+	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
 	envCmd.AddCommand(envCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
+	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
+	wirePreviewSubcommand(envDeleteCmd, previewDeleteCmd)
 	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
+	previewListCmd, _ := env_list_preview.NewCommand(framework)
+	wirePreviewSubcommand(envListCmd, previewListCmd)
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)
+	previewShowCmd, _ := env_show_preview.NewCommand(framework)
+	wirePreviewSubcommand(envShowCmd, previewShowCmd)
 	envCmd.AddCommand(envShowCmd)
 
-	envUpdateCmd, _ := env_update.NewCommand(framework)
+	legacyEnvUpdateCmd, _ := env_update.NewCommand(framework)
+	previewEnvUpdateCmd, _ := env_update_preview.NewCommand(framework)
+	envUpdateCmd := previewEnvUpdateCmd
+	envUpdateCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation for environment update.")
+	previewRunE := envUpdateCmd.RunE
+	envUpdateCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		usePreview, err := cmd.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+		if usePreview {
+			return previewRunE(cmd, args)
+		}
+		return legacyEnvUpdateCmd.RunE(cmd, args)
+	}
 	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
@@ -385,6 +413,8 @@ func initSubCommands() {
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
+	previewEnvSwitchCmd, _ := env_switch_preview.NewCommand(framework)
+	wirePreviewSubcommand(envSwitchCmd, previewEnvSwitchCmd)
 	envCmd.AddCommand(envSwitchCmd)
 
 	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
@@ -480,5 +510,24 @@ func getRootSpanName() string {
 		return args[0] + " " + args[1]
 	} else {
 		return args[0]
+	}
+}
+
+// wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
+func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
+	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+
+	legacyRun := cmd.RunE
+	previewRun := previewCmd.RunE
+
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		usePreview, err := c.Flags().GetBool("preview")
+		if err != nil {
+			return err
+		}
+		if usePreview {
+			return previewRun(c, args)
+		}
+		return legacyRun(c, args)
 	}
 }

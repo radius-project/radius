@@ -24,12 +24,16 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	utils "github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -77,8 +81,9 @@ type Runner struct {
 	Output            output.Interface
 	InputPrompter     prompt.Interface
 
-	RecipePackName string
-	Confirm        bool
+	RecipePackName          string
+	Confirm                 bool
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
 // NewRunner creates a new instance of the recipe pack delete runner.
@@ -139,6 +144,50 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo(msgDeletingRecipePack, r.RecipePackName)
+
+	recipePack, err := client.GetRecipePack(ctx, r.RecipePackName)
+	if clients.Is404Error(err) {
+		return clierrors.Message("The recipe pack %q was not found or has been deleted.", r.RecipePackName)
+	} else if err != nil {
+		return err
+	}
+
+	envs := recipePack.Properties.ReferencedBy
+
+	for _, env := range envs {
+		ID, err := resources.Parse(*env)
+		if err != nil {
+			return err
+		}
+
+		cd, err := utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+		if err != nil {
+			return err
+		}
+
+		envClient := cd.NewEnvironmentsClient()
+
+		resp, err := envClient.Get(ctx, *env, &corerpv20250801.EnvironmentsClientGetOptions{})
+		if clients.Is404Error(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+
+		res := resp.EnvironmentResource
+		res.SystemData = nil
+		for i, rp := range res.Properties.RecipePacks {
+			if *rp == *recipePack.ID {
+				res.Properties.RecipePacks = append(res.Properties.RecipePacks[:i], res.Properties.RecipePacks[i+1:]...)
+				break
+			}
+		}
+
+		_, err = envClient.CreateOrUpdate(ctx, *env, res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to update environment %s.", *env)
+		}
+	}
 
 	deleted, err := client.DeleteRecipePack(ctx, r.RecipePackName)
 	if err != nil {
