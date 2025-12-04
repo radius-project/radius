@@ -555,3 +555,123 @@ func TestGetRecipeDefinitionFromEnvironmentV20250801(t *testing.T) {
 		require.Contains(t, err.Error(), "'invalid-id' is not a valid resource id")
 	})
 }
+
+func Test_reconcileRecipeParameters(t *testing.T) {
+	tests := []struct {
+		name             string
+		recipePackParams map[string]any
+		envRecipeParams  map[string]map[string]any
+		resourceType     string
+		expected         map[string]any
+	}{
+		{
+			name: "no environment parameters - returns recipe pack parameters",
+			recipePackParams: map[string]any{
+				"param1": "value1",
+				"param2": 42,
+			},
+			envRecipeParams: nil,
+			resourceType:    "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "value1",
+				"param2": 42,
+			},
+		},
+		{
+			name: "environment parameters override recipe pack parameters",
+			recipePackParams: map[string]any{
+				"param1": "originalValue",
+				"param2": 42,
+			},
+			envRecipeParams: map[string]map[string]any{
+				"Radius.Compute/containers": {
+					"param1": "overriddenValue",
+				},
+			},
+			resourceType: "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "overriddenValue",
+				"param2": 42,
+			},
+		},
+		{
+			name: "environment parameters add new parameters",
+			recipePackParams: map[string]any{
+				"param1": "value1",
+			},
+			envRecipeParams: map[string]map[string]any{
+				"Radius.Compute/containers": {
+					"param2": "value2",
+					"param3": true,
+				},
+			},
+			resourceType: "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "value1",
+				"param2": "value2",
+				"param3": true,
+			},
+		},
+		{
+			name: "environment parameters for different resource type - no override",
+			recipePackParams: map[string]any{
+				"param1": "value1",
+			},
+			envRecipeParams: map[string]map[string]any{
+				"Radius.Data/postgreSQL": {
+					"param2": "value2",
+				},
+			},
+			resourceType: "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "value1",
+			},
+		},
+		{
+			name:             "empty recipe pack parameters with environment parameters",
+			recipePackParams: map[string]any{},
+			envRecipeParams: map[string]map[string]any{
+				"Radius.Compute/containers": {
+					"param1": "value1",
+					"param2": 42,
+				},
+			},
+			resourceType: "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "value1",
+				"param2": 42,
+			},
+		},
+		{
+			name:             "nil recipe pack parameters with environment parameters",
+			recipePackParams: nil,
+			envRecipeParams: map[string]map[string]any{
+				"Radius.Compute/containers": {
+					"param1": "value1",
+				},
+			},
+			resourceType: "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "value1",
+			},
+		},
+		{
+			name: "empty environment parameters map",
+			recipePackParams: map[string]any{
+				"param1": "value1",
+			},
+			envRecipeParams: map[string]map[string]any{},
+			resourceType:    "Radius.Compute/containers",
+			expected: map[string]any{
+				"param1": "value1",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := reconcileRecipeParameters(tt.recipePackParams, tt.envRecipeParams, tt.resourceType)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
