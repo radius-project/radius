@@ -127,3 +127,26 @@ func GetGenericResourceTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetRecipesForEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "RECIPE PACK",
+				JSONPath: "{ .RecipePack }",
+			},
+			{
+				Heading:  "RESOURCE TYPE",
+				JSONPath: "{ .ResourceType }",
+			},
+			{
+				Heading:  "RECIPE KIND",
+				JSONPath: "{ .RecipeKind }",
+			},
+			{
+				Heading:  "RECIPE LOCATION",
+				JSONPath: "{ .RecipeLocation }",
+			},
+		},
+	}
+}

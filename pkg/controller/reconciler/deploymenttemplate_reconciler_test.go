@@ -247,7 +247,6 @@ func Test_ParseDeploymentScopeFromProviderConfig(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			scope, err := ParseDeploymentScopeFromProviderConfig(tc.providerConfig)
@@ -869,4 +868,3 @@ func readFileIntoTemplate(t *testing.T, filename string) string {
 	require.NoError(t, err)
 	return string(template)
 }
-
