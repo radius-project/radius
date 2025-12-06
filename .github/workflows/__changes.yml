@@ -18,6 +18,7 @@ on:
           test/*.md
           *.md
           versions.yaml
+          !docs/release-notes/v*.md
       ref:
         description: The branch, tag or SHA to checkout
         required: false
