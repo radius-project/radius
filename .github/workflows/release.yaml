@@ -51,7 +51,7 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout radius-project/radius
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
@@ -142,13 +142,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/radius
           ref: main
 
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/radius
           ref: main
@@ -156,7 +156,7 @@ jobs:
           path: radius
 
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/recipes
           ref: main
@@ -164,7 +164,7 @@ jobs:
           path: recipes
 
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/dashboard
           ref: main
@@ -172,7 +172,7 @@ jobs:
           path: dashboard
 
       - name: Checkout radius-project/bicep-types-aws@main
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/bicep-types-aws
           ref: main
