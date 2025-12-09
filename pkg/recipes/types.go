@@ -136,11 +136,11 @@ type RecipePackResource struct {
 	// Description represents the description of the recipe pack
 	Description string
 	// Recipes represents the recipes available in this recipe pack
-	Recipes map[string]RecipePackDefinition
+	Recipes map[string]RecipeDefinition
 }
 
-// RecipePackDefinition represents a recipe definition for a specific resource type in a recipe pack.
-type RecipePackDefinition struct {
+// RecipeDefinition represents a recipe definition for a specific resource type in a recipe pack.
+type RecipeDefinition struct {
 	// RecipeKind represents the type of recipe (e.g., terraform, bicep)
 	RecipeKind string
 	// RecipeLocation represents URL or path to the recipe source

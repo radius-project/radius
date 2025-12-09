@@ -861,3 +861,45 @@ func Test_RecipePack(t *testing.T) {
 		require.NotContains(t, output, packName)
 	})
 }
+
+func Test_RadiusCoreEnv(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	packName := "computeRecipePack"
+	templatePath := "./testdata/corerp-recipe-pack-test.bicep"
+
+	t.Run("verify environment create/list/update/show/delete", func(t *testing.T) {
+		err := cli.Deploy(ctx, templatePath, "", "")
+		require.NoError(t, err)
+
+		err = cli.GroupCreate(ctx, "test-group")
+		require.NoError(t, err)
+
+		_, err = cli.EnvironmentCreatePreview(ctx, "env-test-update", "test-group")
+		require.NoError(t, err)
+
+		output, err := cli.EnvironmentListPreview(ctx, "test-group")
+		require.NoError(t, err)
+		require.Contains(t, output, "env-test-update")
+
+		_, err = cli.EnvironmentUpdatePreview(ctx, "env-test-update", "test-group", "/planes/radius/local/resourcegroups/kind-radius/providers/Radius.Core/recipePacks/computeRecipePack")
+		require.NoError(t, err)
+
+		output, err = cli.EnvironmentShowPreview(ctx, "env-test-update", "test-group")
+		require.NoError(t, err)
+		require.Contains(t, output, packName)
+
+		_, err = cli.EnvironmentDeletePreview(ctx, "env-test-update", "test-group")
+		require.NoError(t, err)
+
+		output, err = cli.EnvironmentListPreview(ctx, "test-group")
+		require.NoError(t, err)
+		require.NotContains(t, output, "env-test-update")
+
+		err = cli.GroupDelete(ctx, "test-group", radcli.DeleteOptions{Confirm: true})
+		require.NoError(t, err)
+	})
+}

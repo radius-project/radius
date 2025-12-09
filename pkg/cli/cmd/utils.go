@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -110,6 +111,24 @@ func InitializeClientFactory(ctx context.Context, workspace *workspaces.Workspac
 
 	clientOptions := sdk.NewClientOptions(connection)
 	clientFactory, err := v20231001preview.NewClientFactory(&tokencredentials.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientFactory, nil
+}
+
+// InitializeRadiusCoreClientFactory initializes a new v20250801preview.ClientFactory using the provided workspace context.
+// It connects to the workspace and creates a new client factory with anonymous credentials.
+// If the connection fails, it returns an error.
+func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspaces.Workspace, rootScope string) (*v20250801preview.ClientFactory, error) {
+	connection, err := workspace.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+	clientFactory, err := v20250801preview.NewClientFactory(rootScope, &tokencredentials.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}

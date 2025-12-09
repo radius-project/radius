@@ -44,6 +44,11 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
         namespace: 'recipepacks-ns'
      }
     }
+    recipeParameters: {
+      'Test.Resources/userTypeAlpha': {
+        port: 9090
+      }
+    }
   }
 }
 
