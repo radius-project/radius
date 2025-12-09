@@ -137,6 +137,8 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
+          src_image: ${{ env.DE_IMAGE }}
+          dest_image: ghcr.io/radius-project/deployment-engine
 
       - name: Generate ID for release
         id: gen-id
