@@ -176,6 +176,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		if a.RecipePack > b.RecipePack {
 			return 1
 		}
+		if a.ResourceType < b.ResourceType {
+			return -1
+		}
+		if a.ResourceType > b.ResourceType {
+			return 1
+		}
 		return 0
 	})
 
