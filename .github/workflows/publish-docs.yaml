@@ -21,6 +21,9 @@ on:
   pull_request:
     branches:
       - main
+
+permissions: {} # disable permissions
+
 jobs:
   changes:
     name: Changes
@@ -33,9 +36,13 @@ jobs:
     name: Generate and PR reference documentation
     if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     needs: [changes]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       GOPRIVATE: github.com/radius-project
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout radius repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -43,6 +50,7 @@ jobs:
           repository: radius-project/radius
           path: radius
           submodules: recursive
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
@@ -66,9 +74,10 @@ jobs:
           repository: radius-project/docs
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
+          persist-credentials: false
 
       # Setup dependencies
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: radius/go.mod

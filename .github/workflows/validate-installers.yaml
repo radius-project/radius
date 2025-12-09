@@ -20,20 +20,27 @@ name: Validate Radius Installers
 on:
   pull_request:
     paths:
-      - "deploy/install.ps1"
+      - deploy/install.ps1
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: rad-installer-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+permissions: {} # disable permissions
+
 jobs:
   verify-installers:
     name: Validate Installers
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
       - name: Run installer test script
         shell: powershell
-        run: "deploy/test-pwsh-install.ps1"
+        run: deploy/test-pwsh-install.ps1

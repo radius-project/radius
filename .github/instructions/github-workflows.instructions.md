@@ -535,7 +535,7 @@ These principles are specific to the Radius project and must be applied when cre
       strategy:
         fail-fast: false
         matrix:
-          os: [ubuntu-24.04, windows-latest, macos-latest]
+          os: [ubuntu-24.04, windows-2025, macos-15]
           go-version: ["1.21", "1.22"]
       steps:
         - uses: actions/checkout@<SHA> # vX.Y.Z

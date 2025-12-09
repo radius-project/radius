@@ -6,10 +6,15 @@ on:
   pull_request:
     types: [opened, edited, synchronize]
 
+permissions: {} # disable permissions
+
 jobs:
   checklist-completed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
     if: github.event.pull_request.user.login != 'dependabot[bot]' # Skip for Dependabot PRs
-    runs-on: ubuntu-latest
     steps:
       - uses: mheap/require-checklist-action@46d2ca1a0f90144bd081fd13a80b1dc581759365 # v2.5.0
         with:

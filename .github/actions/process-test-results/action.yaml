@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-action.json
 ---
-name: "Process Test Results"
+name: Process Test Results
 description: |
   Processes a batch of test results including creating a github artifact and annotating the Pull Request (if applicable).
 
@@ -23,19 +23,19 @@ inputs:
     description: "Name to use for uploading artifacts (eg: unit_test_results)"
     required: true
   result_directory:
-    description: "Directory containing result XML files. These should be in jUnit format. See the description of the action."
+    description: Directory containing result XML files. These should be in jUnit format. See the description of the action.
     required: true
 runs:
   using: composite
   steps:
     # The test results file output by gotestsum is missing file and line number on the XML elements
     # which is needed for the annotations to work. This script adds the missing information.
-    - name: "Transform ${{ inputs.test_group_name }} Results"
+    - name: Transform ${{ inputs.test_group_name }} Results
       # Always is REQUIRED here. Otherwise, the action will be skipped when the unit tests fail, which
       # defeats the purpose. YES it is counterintuitive. This applies to all of the actions in this file.
       if: always()
-      id: "process_files"
-      shell: "bash"
+      id: process_files
+      shell: bash
       working-directory: ${{ github.workspace }}
       env:
         INPUT_DIRECTORY: ${{ inputs.result_directory }}
@@ -69,14 +69,16 @@ runs:
           python3 ./.github/scripts/transform_test_results.py $GITHUB_WORKSPACE "$INPUT_FILE" "$OUTPUT_FILE"
           echo "wrote ${OUTPUT_FILE}"
         done
-    - name: "Create ${{ inputs.test_group_name }} Result Report"
+
+    - name: Create ${{ inputs.test_group_name }} Result Report
       uses: EnricoMi/publish-unit-test-result-action@34d7c956a59aed1bfebf31df77b8de55db9bbaaf # v2.21.0
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
-    - name: "Upload ${{ inputs.test_group_name }} Results"
+
+    - name: Upload ${{ inputs.test_group_name }} Results
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
       if: always()
       with:

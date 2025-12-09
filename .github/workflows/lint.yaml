@@ -30,6 +30,8 @@ concurrency:
   group: lint-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+permissions: {} # disable permissions
+
 jobs:
   changes:
     name: Changes
@@ -40,20 +42,23 @@ jobs:
 
   linter_check:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.only_changed != 'true'
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
+    permissions:
+      contents: read
     steps:
-      - name: Check out repo
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -86,7 +91,7 @@ jobs:
       - name: Install helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
-          version: "v3.11.1"
+          version: v3.11.1
 
       - name: Run Helm linter
         run: |
@@ -104,12 +109,12 @@ jobs:
           popd
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: "v2.5.0"
+          version: v2.5.0
           args: --timeout=10m
           skip-cache: true
-          install-mode: "binary"
+          install-mode: binary
 
       - name: Run make generate
         run: make generate
@@ -128,13 +133,17 @@ jobs:
 
   format-check:
     name: Format check with Prettier
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.only_changed != 'true'
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - name: Check out repo
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup NodeJS
         uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0

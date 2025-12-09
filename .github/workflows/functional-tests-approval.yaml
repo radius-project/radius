@@ -9,7 +9,7 @@ on:
       - features/*
       - release/*
 
-permissions: {}
+permissions: {} # disable permissions
 
 jobs:
   approve-functional-tests-run:

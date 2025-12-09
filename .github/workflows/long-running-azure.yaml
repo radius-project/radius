@@ -40,17 +40,13 @@
 ---
 name: Long-running test on Azure
 
-permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read # Required for actions/checkout
-  packages: write # Required for uploading the package
-
 on:
   # Enable manual trigger to deploy the latest changes from main.
   workflow_dispatch:
     inputs:
       skip-build:
-        description: "Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the main branch."
+        description: |
+          Skip build (true/false). Setting to false will cause the tests to run with the latest changes from the main branch.
         required: false
         default: "true"
         type: choice
@@ -59,7 +55,9 @@ on:
           - "false"
   schedule:
     # Run once per day at 3:00 AM PDT (10:00 AM UTC)
-    - cron: "0 10 * * *"
+    - cron: 0 10 * * *
+
+permissions: {}
 
 env:
   GOPROXY: https://proxy.golang.org
@@ -72,7 +70,7 @@ env:
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # ACR url for uploading test UDT Bicep types
-  TEST_BICEP_TYPES_REGISTRY: "testuserdefinedbiceptypes.azurecr.io"
+  TEST_BICEP_TYPES_REGISTRY: testuserdefinedbiceptypes.azurecr.io
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -83,8 +81,6 @@ env:
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
   AWS_REGION: us-west-2
-  # The AWS account ID
-  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
 
   # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
   VALID_RADIUS_BUILD_WINDOW: 86400
@@ -93,33 +89,38 @@ env:
   FUNCTIONAL_TEST_APP_ID: 425843
 
   # The AKS cluster name
-  AKS_CLUSTER_NAME: "radlrtest00-aks"
+  AKS_CLUSTER_NAME: radlrtest00-aks
   # The resource group for AKS_CLUSTER_NAME resource.
-  AKS_RESOURCE_GROUP: "radlrtest00"
+  AKS_RESOURCE_GROUP: radlrtest00
 
   # Server where terraform test modules are deployed
-  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
 
   # Radius test environment name
-  RADIUS_TEST_ENVIRONMENT_NAME: "kind-radius"
+  RADIUS_TEST_ENVIRONMENT_NAME: kind-radius
 
   # The current GitHub action link
-  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   # Git HTTP server URL
-  GIT_HTTP_SERVER_URL: "http://localhost:30080"
+  GIT_HTTP_SERVER_URL: http://localhost:30080
   # Git username used for pushing commits during tests
-  GIT_HTTP_USERNAME: "testuser"
+  GIT_HTTP_USERNAME: testuser
   # Git email used for commit authorship during tests
-  GIT_HTTP_EMAIL: "testuser@radapp.io"
+  GIT_HTTP_EMAIL: testuser@radapp.io
   # Git password used for pushing commits during tests
-  GIT_HTTP_PASSWORD: "not-a-secret-password"
+  GIT_HTTP_PASSWORD: not-a-secret-password
 
 jobs:
   build:
-    name: Build Radius for test
-    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
+    name: Build Radius for test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      id-token: write # Required for requesting the JWT
+      contents: read # Required for actions/checkout
+      packages: write # Required for uploading the package
     outputs:
       SKIP_BUILD: ${{ steps.skip-build.outputs.SKIP_BUILD }}
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
@@ -160,22 +161,29 @@ jobs:
       - name: Set up checkout target (scheduled, workflow_dispatch)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REF=refs/heads/main"
+          } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (pull_request)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'pull_request'
         run: |
-          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+          } >> "${GITHUB_ENV}"
 
       - name: Generate ID for release
         id: gen-id
         run: |
-          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          {
+            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}"
+            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}"
+            echo "PR_NUMBER=${{ env.PR_NUMBER }}"
+          } >> "${GITHUB_OUTPUT}"
+
           if [[ "${{ steps.skip-build.outputs.SKIP_BUILD }}" != "true" ]]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ] || [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
@@ -186,31 +194,36 @@ jobs:
             echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
 
             # Set output variables to be used in the other jobs
-            echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-            echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
-            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
-            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-            echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-            echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
-            echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+            {
+              echo "REL_VERSION=pr-${UNIQUE_ID}"
+              echo "UNIQUE_ID=${UNIQUE_ID}"
+              echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}"
+              echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}"
+              echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}"
+              echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64"
+              echo "PR_NUMBER=${{ env.PR_NUMBER }}"
+            } >> "${GITHUB_OUTPUT}"
           else
             cat ./dist/cache/.buildenv >> $GITHUB_OUTPUT
-            echo "## Radius functional test environment variables" >> $GITHUB_STEP_SUMMARY
-            echo "Use the previously built binaries for the current test run:" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-            cat ./dist/cache/.buildenv >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "## Radius functional test environment variables"
+              echo "Use the previously built binaries for the current test run:"
+              echo "\`\`\`bash"
+              cat ./dist/cache/.buildenv
+              echo "\`\`\`"
+            } >> "${GITHUB_STEP_SUMMARY}"
           fi
 
-      - name: Check out code
+      - name: Checkout
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
+          persist-credentials: false
 
-      - name: Set up Go
+      - name: Setup Go
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
@@ -247,10 +260,7 @@ jobs:
 
           ## Test Status
           EOF
-          cat summary.md >> $GITHUB_STEP_SUMMARY
-      - name: Setup Azure CLI
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          cat summary.md >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Login to Azure
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
@@ -306,13 +316,15 @@ jobs:
         run: |
           mkdir -p ./dist/cache
           cp ./dist/linux_amd64/release/rad ./dist/cache
-          echo $(date +%s) > ./dist/cache/.lastbuildtime
-          echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}" >> ./dist/cache/.buildenv
-          echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
-          echo "CHECKOUT_REPO=${{ steps.gen-id.outputs.CHECKOUT_REPO }}" >> ./dist/cache/.buildenv
-          echo "CHECKOUT_REF=$(git rev-parse HEAD)" >> ./dist/cache/.buildenv
-          echo "PR_NUMBER=${{ steps.gen-id.outputs.PR_NUMBER }}" >> ./dist/cache/.buildenv
-          echo "BICEP_RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
+          date +%s > ./dist/cache/.lastbuildtime
+          {
+            echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}"
+            echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}"
+            echo "CHECKOUT_REPO=${{ steps.gen-id.outputs.CHECKOUT_REPO }}"
+            echo "CHECKOUT_REF=$(git rev-parse HEAD)"
+            echo "PR_NUMBER=${{ steps.gen-id.outputs.PR_NUMBER }}"
+            echo "BICEP_RECIPE_TAG_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}"
+          } >> ./dist/cache/.buildenv
 
       - name: Store the latest binaries into cache
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -352,11 +364,16 @@ jobs:
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && failure()
         run: |
           echo ":x: Test recipe publishing failed" >> $GITHUB_STEP_SUMMARY
+
   tests:
+    if: github.repository == 'radius-project/radius'
     name: Run functional tests
     needs: build
-    runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      id-token: write # Required for requesting the JWT
+      contents: read # Required for actions/checkout
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
@@ -384,6 +401,7 @@ jobs:
           repositories: |
             radius
             terraform-private-modules
+          permission-contents: read
 
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -391,6 +409,7 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
+          persist-credentials: false
 
       - name: Checkout samples repo
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -399,8 +418,9 @@ jobs:
           ref: refs/heads/edge
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
+          persist-credentials: false
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -678,10 +698,12 @@ jobs:
         run: |
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/all-tests-pod-states.log'
           mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
-          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
-          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
-          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
-          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
+          {
+            echo "kubectl get pods -A"
+            kubectl get pods -A
+            echo "kubectl describe pods -A"
+            kubectl describe pods -A
+          } >> "${POD_STATE_LOG_FILENAME}"
 
       - name: Upload container logs
         if: always()
@@ -738,13 +760,15 @@ jobs:
           ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
 
   report-failure:
+    if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
     name: Report test failure
     needs: [build, tests]
-    runs-on: ubuntu-latest
-    if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
     steps:
       - name: Create failure issue for failing long running test run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

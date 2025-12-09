@@ -21,22 +21,29 @@ on:
   workflow_dispatch:
   schedule:
     # Run at 12:00AM PST every day.
-    - cron: "0 7 * * 0-6"
+    - cron: 0 7 * * 0-6
+
+permissions: {} # disable permissions
 
 env:
   AWS_REGION: us-west-2
-  AWS_RESOURCE_TYPES: "AWS::RDS::DBSubnetGroup,AWS::RDS::DBInstance,AWS::S3::Bucket,AWS::Logs::MetricFilter,AWS::Logs::LogGroup"
+  AWS_RESOURCE_TYPES: AWS::RDS::DBSubnetGroup,AWS::RDS::DBInstance,AWS::S3::Bucket,AWS::Logs::MetricFilter,AWS::Logs::LogGroup
   # The current GitHub action link
-  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
 jobs:
   purge_aws_resources:
     name: Delete old AWS resources created by tests
-    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Checkout the repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
@@ -50,7 +57,7 @@ jobs:
           ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
 
       - name: Create issue for failing purge aws test resources run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         if: failure()
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}

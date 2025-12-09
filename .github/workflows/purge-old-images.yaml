@@ -2,26 +2,25 @@
 ---
 name: Purge test container images
 
-permissions:
-  id-token: write
-  contents: read
-  packages: write
-
 on:
   # Enable manual trigger
   workflow_dispatch:
   schedule:
     # Run twice a day
-    - cron: "30 0,12 * * *"
+    - cron: 30 0,12 * * *
 
 env:
-  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+permissions: {} # disable permissions
 
 jobs:
   purge_ghcr_dev:
     name: Delete old unused test container images
-    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions: {}
     steps:
       - name: Delete 'dev' containers older than a week
         uses: snok/container-retention-policy@3b0972b2276b171b212f8c4efbca59ebba26eceb # v3.0.1
@@ -29,16 +28,18 @@ jobs:
           account: radius-project
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           image-names: dev/*
-          image-tags: "pr-*"
+          image-tags: pr-*
           cut-off: 1w
 
   create_issue_on_failure:
     name: Create issue for failing purge old images resources run
-    needs: [purge_ghcr_dev]
-    runs-on: ubuntu-latest
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
+    needs: [purge_ghcr_dev]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
     steps:
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

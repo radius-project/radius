@@ -33,13 +33,7 @@ on:
       - features/*
       - release/*
 
-permissions:
-  id-token: write # Required for requesting the JWT
-  contents: write # Required for creating releases
-  issues: write # Required for creating comments
-  checks: write # Required for updating check runs
-  pull-requests: write # Required for updating pull requests
-  packages: write # Required for uploading the package
+permissions: {}
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -78,10 +72,14 @@ jobs:
 
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: ubuntu-latest
     needs: [changes]
     # if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -89,27 +87,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target_os: linux
-            target_arch: arm
-          - target_os: linux
-            target_arch: arm64
-          - target_os: linux
-            target_arch: amd64
+        target_os: [linux, windows, darwin]
+        target_arch: [amd64, arm64, arm]
+        exclude:
           - target_os: windows
-            target_arch: amd64
-          - target_os: darwin
-            target_arch: amd64
-          - target_os: darwin
             target_arch: arm64
+          - target_os: windows
+            target_arch: arm
+          - target_os: darwin
+            target_arch: arm
     steps:
       - name: Check out repo
         if: needs.changes.outputs.only_changed != 'true'
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
-      - name: Set up Go
+      - name: Setup Go
         if: needs.changes.outputs.only_changed != 'true'
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
@@ -226,14 +221,19 @@ jobs:
 
   build-and-push-images:
     name: Build and publish container images
-    runs-on: ubuntu-latest
     needs: [changes]
     if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read
     steps:
-      - name: Check out code
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
@@ -243,7 +243,7 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -257,10 +257,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Set up QEMU
+      - name: Setup QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
-      - name: Set up Docker Buildx
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
@@ -291,10 +291,14 @@ jobs:
 
   build-and-push-helm-chart:
     name: Helm chart build
-    needs: [changes, build-and-push-images]
-    runs-on: ubuntu-latest
     # Don't push on PR, agent will not have permission.
     if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')) && needs.changes.outputs.only_changed != 'true'
+    needs: [build-and-push-images, changes]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -306,6 +310,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
       - name: Install helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
@@ -336,15 +342,20 @@ jobs:
 
   build-and-push-bicep-types:
     name: Publish Radius bicep types to ACR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     needs: [changes]
     if: needs.changes.outputs.only_changed != 'true'
     environment: publish-bicep
+    permissions:
+      contents: read # Required for actions/checkout
+      id-token: write # Required for azure/login
     steps:
-      - name: Check out code
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
@@ -354,7 +365,7 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -401,15 +412,17 @@ jobs:
   publish-release:
     name: Publish GitHub Release
     needs: [changes, build-and-push-cli]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
-    env:
-      GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+    permissions:
+      contents: write # Required for creating releases
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
@@ -440,6 +453,8 @@ jobs:
             --generate-notes \
             --verify-tag \
             --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
 
       - name: Create GitHub Official Release
         if: ${{ !contains(env.REL_VERSION, 'rc') }}
@@ -449,3 +464,5 @@ jobs:
             --title "Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
             --verify-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}

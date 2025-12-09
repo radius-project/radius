@@ -23,25 +23,23 @@ on:
   branch_protection_rule:
   schedule:
     # The workflow will run at 5:42PM UTC every Monday.
-    - cron: "42 17 * * 1"
+    - cron: 42 17 * * 1
   push:
     # The workflow will be triggered on every push to the main branch.
     branches: [main]
 
-# By default, the workflow has read-only access to the repository.
-permissions: read-all
+permissions: {} # disable permissions
 
 jobs:
   analysis:
     name: OpenSSF scorecard analysis
-    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
-      # Needed for Code scanning upload
-      security-events: write
-      # Needed for GitHub OIDC token if publish_results is true
-      id-token: write
-
+      contents: read # Needed to checkout the repository
+      security-events: write # Needed for Code scanning upload
+      id-token: write # Needed for GitHub OIDC token if publish_results is true
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1

@@ -1,18 +1,23 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: "Delete all GitHub artifacts"
+name: Delete all GitHub artifacts
 
 on:
   workflow_dispatch:
     inputs:
       retention:
-        description: "Retention period (0 = delete immediately)"
+        description: Retention period (0 = delete immediately)
         required: true
         default: "0"
 
+permissions: {} # disable permissions
+
 jobs:
   delete-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: kolpav/purge-artifacts-action@04c636a505f26ebc82f8d070b202fb87ff572b10 # v1
         with:

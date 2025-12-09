@@ -9,14 +9,16 @@ name: Close stale pull requests
 
 on:
   schedule:
-    - cron: "0 18 * * *" # Run the workflow every day at 6PM UTC (10AM PST).
+    - cron: 0 18 * * * # Run the workflow every day at 6PM UTC (10AM PST).
+
+permissions: {} # disable permissions
 
 jobs:
   stale:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       pull-requests: write
-
     steps:
       - uses: actions/stale@997185467fa4f803885201cee163a9f38240193d # v10.1.1
         with:

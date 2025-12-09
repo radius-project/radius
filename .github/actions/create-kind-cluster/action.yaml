@@ -1,35 +1,35 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-action.json
 ---
-name: "Create a KinD cluster"
+name: Create a KinD cluster
 description: |
   Create a KinD cluster.
 inputs:
   secure:
-    description: "Whether the KinD cluster should be created with a secure local registry configuration"
+    description: Whether the KinD cluster should be created with a secure local registry configuration
     required: false
     default: "false"
   temp-cert-dir:
-    description: "The temporary directory where the certificates are stored"
+    description: The temporary directory where the certificates are stored
     required: false
     default: ""
   kind-version:
-    description: "The version of KinD to install"
+    description: The version of KinD to install
     required: false
-    default: "v0.29.0"
+    default: v0.29.0
   with-local-registry:
-    description: "Whether the KinD cluster should be created with a local registry configuration"
+    description: Whether the KinD cluster should be created with a local registry configuration
     required: false
     default: "false"
   registry-name:
-    description: "The name of the local registry"
+    description: The name of the local registry"
     required: true
-    default: "radius-registry"
+    default: radius-registry
   registry-server:
-    description: "The server name for the local registry"
+    description: The server name for the local registry
     required: true
-    default: "localhost"
+    default: localhost
   registry-port:
-    description: "The port for the local registry"
+    description: The port for the local registry
     required: true
     default: "5000"
 runs:

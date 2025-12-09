@@ -16,21 +16,23 @@
 
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: "Radius Triage Bot"
+name: Radius Triage Bot
 
 on:
   issues:
     types: [labeled, unlabeled]
 
-permissions:
-  contents: read
-  issues: write
+permissions: {} # disable permissions
 
 jobs:
   build:
-    name: "Process Triage Labels"
-    runs-on: ubuntu-latest
+    name: Process Triage Labels
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
     env:
       RADIUS_TRIAGE_BOT_APP_ID: 417813
     steps:
@@ -39,9 +41,10 @@ jobs:
         with:
           app-id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
           private-key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
+          permission-issues: write
 
       - uses: dessant/label-actions@102faf474a544be75fbaf4df54e73d3c515a0e65 # v4.0.1
         with:
           github-token: ${{ steps.get_installation_token.outputs.token }}
-          config-path: ".github/triage-bot/triage-bot-config.yaml"
-          process-only: "issues"
+          config-path: .github/triage-bot/triage-bot-config.yaml
+          process-only: issues

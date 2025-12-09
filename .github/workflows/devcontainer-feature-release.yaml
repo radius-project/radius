@@ -1,31 +1,36 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: "Release dev container feature"
+name: Release dev container feature
 
 on:
   workflow_dispatch:
 
+permissions: {} # disable permissions
+
 jobs:
   call-workflow-test:
+    permissions:
+      contents: read
     uses: ./.github/workflows/devcontainer-feature-test.yaml
 
   deploy:
-    needs:
-      - call-workflow-test
+    needs: [call-workflow-test]
     if: ${{ github.ref == 'refs/heads/main' && github.repository == 'radius-project/radius' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: write
-      pull-requests: write
       packages: write
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
-      - name: "Publish Features"
+      - name: Publish Features
         uses: devcontainers/action@1082abd5d2bf3a11abccba70eef98df068277772 # v1.4.3
         with:
           publish-features: "true"
-          base-path-to-features: "./deploy/devcontainer-feature/src"
+          base-path-to-features: ./deploy/devcontainer-feature/src
           generate-docs: "false"
           # disable validation due to used preview feature
           disable-schema-validation: "true"
@@ -33,7 +38,6 @@ jobs:
           disable-repo-tagging: "true"
           # We don't want to include the repo name, being consistent without
           # examples at https://containers.dev/collections
-          features-namespace: "radius-project/devcontainer-features"
-
+          features-namespace: radius-project/devcontainer-features
         env:
           GITHUB_TOKEN: ${{ github.token }}

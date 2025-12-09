@@ -5,17 +5,20 @@ name: Nightly rad CLI tests
 on:
   schedule:
     # Run every day at 11:47 PM UTC
-    - cron: "47 23 * * *"
+    - cron: 47 23 * * *
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/nightly-rad-CLI-tests.yaml
 
+permissions: {} # disable permissions
+
 jobs:
   download:
-    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     strategy:
       matrix:
         include:
@@ -38,9 +41,13 @@ jobs:
             arch: amd64
             file: rad
             ext: .exe
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
 
       - name: Test CLI download
         run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }}
