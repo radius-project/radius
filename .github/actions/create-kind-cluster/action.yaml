@@ -21,7 +21,7 @@ inputs:
     required: false
     default: "false"
   registry-name:
-    description: The name of the local registry"
+    description: The name of the local registry
     required: true
     default: radius-registry
   registry-server:
