@@ -17,6 +17,7 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
 name: OpenSSF scorecard analysis
+
 on:
   # Only the default branch is supported. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
