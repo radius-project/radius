@@ -1,7 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
 name: Publish Deployment Engine Image
-run-name: "(Deployment Engine) Publish Image - Tag: ${{ github.event.client_payload.tag || github.event.inputs.tag }}"
 
 on:
   workflow_dispatch:
