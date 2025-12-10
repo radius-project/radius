@@ -118,9 +118,43 @@ func Test_Run(t *testing.T) {
 							RecipePacks: []*string{
 								to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 							},
+							Providers: &corerpv20250801.Providers{
+								Azure: &corerpv20250801.ProvidersAzure{
+									SubscriptionID:    to.Ptr("test-subscription-id"),
+									ResourceGroupName: to.Ptr("test-resource-group"),
+								},
+								Aws: &corerpv20250801.ProvidersAws{
+									AccountID: to.Ptr("test-account-id"),
+									Region:    to.Ptr("test-region"),
+								},
+								Kubernetes: &corerpv20250801.ProvidersKubernetes{
+									Namespace: to.Ptr("test-namespace"),
+								},
+							},
 						},
 					},
 					Options: objectformats.GetResourceTableFormat(),
+				},
+				output.LogOutput{
+					Format: "",
+				},
+				output.FormattedOutput{
+					Format: "table",
+					Obj: []EnvProviders{
+						{
+							Provider:   "azure",
+							Properties: "subscriptionId: 'test-subscription-id', resourceGroupName: 'test-resource-group'",
+						},
+						{
+							Provider:   "aws",
+							Properties: "accountId: 'test-account-id', region: 'test-region'",
+						},
+						{
+							Provider:   "kubernetes",
+							Properties: "namespace: 'test-namespace'",
+						},
+					},
+					Options: objectformats.GetProvidersForEnvironmentTableFormat(),
 				},
 				output.LogOutput{
 					Format: "",

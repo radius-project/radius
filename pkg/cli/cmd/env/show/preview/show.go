@@ -73,6 +73,15 @@ type EnvRecipes struct {
 	RecipeLocation string
 }
 
+// EnvProviders represents a provider and its properties for an environment.
+type EnvProviders struct {
+	// Provider is the type of the provider (e.g., "azure", "aws", "kubernetes").
+	Provider string
+	// Properties contains the provider details in a comma-separated key-value format.
+	// e.g., "subscriptionId: 'sub-id', resourceGroupName: 'rg-name'" for azure provider."
+	Properties string
+}
+
 // Runner is the runner implementation for the `rad env show` preview command.
 type Runner struct {
 	ConfigHolder            *framework.ConfigHolder
@@ -136,6 +145,32 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	envProviders := []EnvProviders{}
+	if resp.EnvironmentResource.Properties.Providers != nil {
+		if resp.EnvironmentResource.Properties.Providers.Azure != nil {
+			azureProvider := EnvProviders{
+				Provider: "azure",
+			}
+			azureProvider.Properties = "subscriptionId: '" + *resp.EnvironmentResource.Properties.Providers.Azure.SubscriptionID + "', resourceGroupName: '" + *resp.EnvironmentResource.Properties.Providers.Azure.ResourceGroupName + "'"
+			envProviders = append(envProviders, azureProvider)
+		}
+
+		if resp.EnvironmentResource.Properties.Providers.Aws != nil {
+			awsProvider := EnvProviders{
+				Provider: "aws",
+			}
+			awsProvider.Properties = "accountId: '" + *resp.EnvironmentResource.Properties.Providers.Aws.AccountID + "', region: '" + *resp.EnvironmentResource.Properties.Providers.Aws.Region + "'"
+			envProviders = append(envProviders, awsProvider)
+		}
+		if resp.EnvironmentResource.Properties.Providers.Kubernetes != nil {
+			k8sProvider := EnvProviders{
+				Provider: "kubernetes",
+			}
+			k8sProvider.Properties = "namespace: '" + *resp.EnvironmentResource.Properties.Providers.Kubernetes.Namespace + "'"
+			envProviders = append(envProviders, k8sProvider)
+		}
+	}
+
 	recipepackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
 	envRecipes := []EnvRecipes{}
 	for _, rp := range resp.EnvironmentResource.Properties.RecipePacks {
@@ -180,6 +215,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	})
 
 	err = r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
+	r.Output.LogInfo("")
+
+	err = r.Output.WriteFormatted(r.Format, envProviders, objectformats.GetProvidersForEnvironmentTableFormat())
 	if err != nil {
 		return err
 	}
