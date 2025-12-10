@@ -68,7 +68,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -89,7 +89,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -231,10 +231,6 @@ func Test_Run(t *testing.T) {
 
 	clientMock := clients.NewMockApplicationsManagementClient(ctrl)
 	clientMock.EXPECT().
-		GetEnvironment(gomock.Any(), "test-environment").
-		Return(v20231001preview.EnvironmentResource{}, nil).
-		Times(1)
-	clientMock.EXPECT().
 		CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 		Return(nil).
 		Times(1)
@@ -248,7 +244,8 @@ func Test_Run(t *testing.T) {
 			"kind":    "kubernetes",
 			"context": "kind-kind",
 		},
-		Name: "kind-kind",
+		Name:        "kind-kind",
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 	}
 	outputSink := &output.MockOutput{}
 	providers := &clients.Providers{
@@ -406,10 +403,6 @@ func Test_Run_NoDashboard(t *testing.T) {
 
 	clientMock := clients.NewMockApplicationsManagementClient(ctrl)
 	clientMock.EXPECT().
-		GetEnvironment(gomock.Any(), "test-environment").
-		Return(v20231001preview.EnvironmentResource{}, nil).
-		Times(1)
-	clientMock.EXPECT().
 		CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 		Return(nil).
 		Times(1)
@@ -423,7 +416,8 @@ func Test_Run_NoDashboard(t *testing.T) {
 			"kind":    "kubernetes",
 			"context": "kind-kind",
 		},
-		Name: "kind-kind",
+		Name:        "kind-kind",
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 	}
 	outputSink := &output.MockOutput{}
 	providers := &clients.Providers{
