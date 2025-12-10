@@ -16,6 +16,7 @@ You can find our full **contributor documentation** including instructions at th
 - [Contribute to issues](./docs/contributing/contributing-issues/)
 - [Create pull requests](./docs/contributing/contributing-pull-requests/)
 - [Contribute to documentation](https://github.com/radius-project/docs)
+- [Repository access management (for maintainers)](./docs/contributing/contributing-maintainers/)
 
 ## Current status
 
