@@ -154,16 +154,19 @@ brew install --cask visual-studio-code
 
 **Ubuntu/Debian:**
 ```bash
+# Install Go 1.25+ from official source (apt version is too old)
+wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
+echo 'export PATH="/usr/local/go/bin:$PATH"' >> ~/.bashrc
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
 # Core tools
 sudo apt update
-sudo apt install golang-go kubectl postgresql-client
+sudo apt install kubectl postgresql-client
 
 # Delve debugger
 go install github.com/go-delve/delve/cmd/dlv@latest
-
-# Add Go binaries to PATH (required for delve)
-echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
 
 # Terraform (HashiCorp official method)
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
