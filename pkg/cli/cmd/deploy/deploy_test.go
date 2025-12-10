@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -53,6 +52,10 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
 					Return(v20231001preview.EnvironmentResource{}, nil).
@@ -68,6 +71,10 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), radcli.TestEnvironmentID).
 					Return(v20231001preview.EnvironmentResource{}, nil).
@@ -84,6 +91,10 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{
@@ -108,6 +119,10 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
@@ -124,6 +139,10 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{
@@ -148,6 +167,10 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{
@@ -179,6 +202,10 @@ func Test_Validate(t *testing.T) {
 				},
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
@@ -194,6 +221,10 @@ func Test_Validate(t *testing.T) {
 				Config:         radcli.LoadEmptyConfig(t),
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
@@ -227,10 +258,46 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), gomock.Any()).
 					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 					Times(1)
+			},
+		},
+		{
+			Name:          "rad deploy - template creates environment",
+			Input:         []string{"env.bicep", "--group", "dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Template contains an environment resource
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("env.bicep").
+					Return(map[string]any{
+						"resources": map[string]any{
+							"env": map[string]any{
+								"type": "Applications.Core/environments@2023-10-01-preview",
+								"name": "dev",
+							},
+						},
+					}, nil).
+					Times(1)
+				// No GetEnvironment call should be made since template creates it
+			},
+			ValidateCallback: func(t *testing.T, obj framework.Runner) {
+				runner := obj.(*Runner)
+				// Environment name should be empty since template creates it
+				require.Empty(t, runner.EnvironmentNameOrID)
+				// Providers should be initialized
+				require.NotNil(t, runner.Providers)
+				require.NotNil(t, runner.Providers.Radius)
 			},
 		},
 	}
@@ -242,12 +309,6 @@ func Test_Run(t *testing.T) {
 	t.Run("Environment-scoped deployment with az provider", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-
-		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
@@ -293,12 +354,12 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:               bicep,
 			Deploy:              deployMock,
 			Output:              outputSink,
 			FilePath:            filePath,
 			EnvironmentNameOrID: radcli.TestEnvironmentID,
 			Parameters:          map[string]map[string]any{},
+			Template:            map[string]any{}, // Template is prepared in Validate
 			Workspace:           workspace,
 			Providers:           provider,
 		}
@@ -318,12 +379,6 @@ func Test_Run(t *testing.T) {
 	t.Run("Environment-scoped deployment with aws provider", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-
-		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
@@ -367,13 +422,13 @@ func Test_Run(t *testing.T) {
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:               bicep,
 			Deploy:              deployMock,
 			Output:              outputSink,
 			Providers:           &ProviderConfig,
 			FilePath:            filePath,
 			EnvironmentNameOrID: radcli.TestEnvironmentID,
 			Parameters:          map[string]map[string]any{},
+			Template:            map[string]any{}, // Template is prepared in Validate
 			Workspace:           workspace,
 		}
 
@@ -392,12 +447,6 @@ func Test_Run(t *testing.T) {
 	t.Run("Application-scoped deployment", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-
-		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		options := deploy.Options{}
 
@@ -437,7 +486,6 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:               bicep,
 			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
 			Deploy:              deployMock,
 			Output:              outputSink,
@@ -446,6 +494,7 @@ func Test_Run(t *testing.T) {
 			ApplicationName:     "test-application",
 			EnvironmentNameOrID: radcli.TestEnvironmentName,
 			Parameters:          map[string]map[string]any{},
+			Template:            map[string]any{}, // Template is prepared in Validate
 			Workspace:           workspace,
 		}
 
@@ -464,12 +513,6 @@ func Test_Run(t *testing.T) {
 	t.Run("Deployment that doesn't need an app or env", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-
-		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
 
@@ -504,7 +547,6 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:               bicep,
 			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
 			Deploy:              deployMock,
 			Output:              outputSink,
@@ -513,6 +555,7 @@ func Test_Run(t *testing.T) {
 			ApplicationName:     "appdoesntexist",
 			EnvironmentNameOrID: "envdoesntexist",
 			Parameters:          map[string]map[string]any{},
+			Template:            map[string]any{}, // Template is prepared in Validate
 			Workspace:           workspace,
 		}
 
@@ -530,19 +573,6 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{
-				"parameters": map[string]any{
-					"application": map[string]any{},
-					"environment": map[string]any{},
-					"location":    map[string]any{},
-					"size":        map[string]any{"defaultValue": "BIG!"},
-				},
-			}, nil).
-			Times(1)
-
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
 				"kind":    "kubernetes",
@@ -559,14 +589,21 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			Bicep:               bicep,
 			ConnectionFactory:   &connections.MockFactory{},
 			Output:              outputSink,
 			Providers:           &providers,
 			EnvironmentNameOrID: radcli.TestEnvironmentName,
 			FilePath:            "app.bicep",
 			Parameters:          map[string]map[string]any{},
-			Workspace:           workspace,
+			Template: map[string]any{ // Template is prepared in Validate
+				"parameters": map[string]any{
+					"application": map[string]any{},
+					"environment": map[string]any{},
+					"location":    map[string]any{},
+					"size":        map[string]any{"defaultValue": "BIG!"},
+				},
+			},
+			Workspace: workspace,
 		}
 
 		err := runner.Run(context.Background())
