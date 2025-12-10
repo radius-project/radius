@@ -1,21 +1,35 @@
 {
     "version": "0.2.0",
     "configurations": [
+        {
+            "name": "Start Control Plane",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "make debug-start && exit",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Stop Control Plane",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "make debug-stop && exit",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Control Plane Status",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "make debug-status && exit",
+            "cwd": "${workspaceFolder}"
+        },
         { "name": "Attach UCP (dlv 40001)", "type": "go", "request": "attach", "mode": "remote", "port": 40001, "host": "127.0.0.1" },
         { "name": "Attach Controller (dlv 40002)", "type": "go", "request": "attach", "mode": "remote", "port": 40002, "host": "127.0.0.1" },
         { "name": "Attach Applications RP (dlv 40003)", "type": "go", "request": "attach", "mode": "remote", "port": 40003, "host": "127.0.0.1" },
         { "name": "Attach Dynamic RP (dlv 40004)", "type": "go", "request": "attach", "mode": "remote", "port": 40004, "host": "127.0.0.1" },
-        { "name": "Launch UCP", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/ucpd/main.go", "env": { "BASE_PATH": "/apis/api.ucp.dev/v1alpha3", "PORT": "9000", "AWS_REGION": "us-east-1" }, "args": ["--config-file", "${workspaceFolder}/cmd/ucpd/ucp-dev.yaml"] },
-        { "name": "Launch Controller", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/controller/main.go", "args": ["--config-file", "${workspaceFolder}/cmd/controller/controller.yaml"] },
-        { "name": "Launch Applications RP", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/applications-rp/main.go", "args": ["--config-file", "${workspaceFolder}/cmd/applications-rp/applications-rp.yaml"] },
-        { "name": "Launch Dynamic RP", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/dynamic-rp/main.go", "args": ["--config-file", "${workspaceFolder}/cmd/dynamic-rp/dynamic-rp.yaml"] },
-        { "name": "Debug rad CLI", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/rad/main.go", "args": ["version"], "env": { "RADIUS_ENV": "self-hosted" } },
-       { "name": "Debug rad CLI (prompt for args)", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/rad/main.go", "args": "${input:radArgs}", "env": { "RADIUS_ENV": "self-hosted" } },
-        { "name": "Debug drad CLI (debug environment)", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/rad/main.go", "args": "--config ${workspaceFolder}/build/configs/rad-debug-config.yaml ${input:radArgs}", "env": { "RADIUS_ENV": "self-hosted" } }
+        { "name": "Debug rad CLI (prompt for args)", "type": "go", "request": "launch", "mode": "auto", "program": "${workspaceFolder}/cmd/rad/main.go", "args": "${input:radArgs}", "env": { "RADIUS_ENV": "self-hosted" } }
     ],
     "compounds": [
-        { "name": "Attach Radius (all)", "configurations": ["Attach UCP (dlv 40001)", "Attach Controller (dlv 40002)", "Attach Applications RP (dlv 40003)", "Attach Dynamic RP (dlv 40004)"], "stopAll": true },
-        { "name": "Launch Control Plane (all)", "configurations": ["Launch UCP", "Launch Applications RP", "Launch Dynamic RP", "Launch Controller"], "stopAll": true }
+        { "name": "Attach Radius (all)", "configurations": ["Attach UCP (dlv 40001)", "Attach Controller (dlv 40002)", "Attach Applications RP (dlv 40003)", "Attach Dynamic RP (dlv 40004)"], "stopAll": true }
     ],
     "inputs": [
         { "id": "radArgs", "type": "promptString", "description": "Arguments for the rad command (e.g. 'env list')", "default": "version" }

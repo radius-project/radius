@@ -41,18 +41,27 @@ make debug-start
 make debug-status
 ```
 
+**VS Code Tasks:**
+- Use `Cmd+Shift+P` (or `Ctrl+Shift+P`) → "Tasks: Run Task"
+- Available tasks:
+  - "Debug: Start All Components" - Starts the control plane
+  - "Debug: Stop All Components" - Stops the control plane
+  - "Debug: Component Status" - Check component health
+  - "Debug: View Logs" - Tail all component logs
+
 **VS Code Debugging:**
+- After starting components with the task above, use F5 to attach debuggers
 - Debugger attach configurations are pre-configured in `.vscode/launch.json`
-- Set breakpoints in your code, then use F5 to attach to any component
 - Debug ports: UCP (40001), Controller (40002), Applications RP (40003), Dynamic RP (40004)
 
 **CLI Debugging Options:**
 - **Use `./drad` for convenience**: When you only need to test CLI commands against the debug environment without debugging the CLI code itself
-- **Use "Debug drad CLI (debug environment)" in VS Code**: When you need to debug CLI code with breakpoints, variable inspection, and step-through debugging
+- **Use "Debug rad CLI (prompt for args)" in VS Code**: When you need to debug CLI code with breakpoints, variable inspection, and step-through debugging
 
 **For code changes:**
-1. Use "Rebuild and Restart [Component]" task
-2. Re-attach debugger to new process
+1. Stop components: `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Stop All Components"
+2. Restart (rebuilds automatically): `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Start All Components"
+3. Re-attach debugger with F5
 
 The project could take on Air as a depdendency and allow for golang hot-reload, this would be a huge value if someone wants to contribute.
 
@@ -274,62 +283,71 @@ And VS Code configuration files are already included in the repository:
 
 The following attach-based debug configurations are available in `.vscode/launch.json`:
 
-- **"Attach to UCP"** - Attach debugger to running UCP process
-- **"Attach to Applications RP"** - Attach debugger to running Applications RP process  
-- **"Attach to Controller"** - Attach debugger to running Controller process
-- **"Attach to Dynamic RP"** - Attach debugger to running Dynamic RP process
+- **"Attach UCP (dlv 40001)"** - Attach debugger to running UCP process
+- **"Attach Controller (dlv 40002)"** - Attach debugger to running Controller process
+- **"Attach Applications RP (dlv 40003)"** - Attach debugger to running Applications RP process
+- **"Attach Dynamic RP (dlv 40004)"** - Attach debugger to running Dynamic RP process
+- **"Attach Radius (all)"** - Compound configuration to attach to all components at once
 
-**CLI Debug Configurations:**
-- **"Debug rad CLI"** - Basic CLI debugging with hardcoded 'version' command
-- **"Debug rad CLI (prompt for args)"** - CLI debugging with argument prompts (uses default rad config)
-- **"Debug drad CLI (debug environment)"** - CLI debugging with debug environment configuration (equivalent to `./drad` but debuggable)
+**CLI Debug Configuration:**
+- **"Debug rad CLI (prompt for args)"** - CLI debugging with argument prompts
 
 All server configurations use "attach" mode - they connect to already running processes started via `make debug-start`.
 
 **When to use each CLI option:**
 - **`./drad` command**: Use for quick CLI testing when you don't need to debug the CLI code itself. Perfect for testing server-side functionality while working on UCP, RP, or Controller code.
-- **"Debug drad CLI (debug environment)"**: Use when you need to debug CLI code with breakpoints and variable inspection while connected to your debug environment.
+- **"Debug rad CLI (prompt for args)"**: Use when you need to debug CLI code with breakpoints and variable inspection.
 
 ### Debugging Workflow in VS Code
 
 **Important**: This workflow assumes you have already completed the [Automated Workflow](#automated-workflow-recommended) and have components running via `make debug-start`.
 
-This workflow separates process management (via make) from debugging (via VS Code), making it much cleaner and more reliable.
+This workflow separates process management (via VS Code tasks calling make) from debugging (via VS Code debugger attach), making it much cleaner and more reliable.
 
 #### Step-by-Step Debugging Process
 
-**Prerequisites**: Components must be running via `make debug-start` before you can attach debuggers.
+**Prerequisites**: Start components using VS Code tasks before attaching debuggers:
+- Press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
+- Select "Tasks: Run Task"
+- Select "Debug: Start All Components"
+- Wait for all components to start (check with "Debug: Component Status" task)
 
 1. **Set Breakpoints**: Add breakpoints in your code in VS Code
 
 2. **Attach Debugger** (Choose one method):
    
-   **Method A: VS Code Process Picker**
-   - Open Debug panel and select "Attach to [Component]"
-   - Press F5 - VS Code will show a process picker
-   - Select the component process (e.g., "ucpd")
+   **Method A: Attach to Individual Component**
+   - Open Debug panel (sidebar or `Cmd+Shift+D`)
+   - Select a configuration: "Attach UCP (dlv 40001)", "Attach Controller (dlv 40002)", etc.
+   - Press F5 or click the green play button
+   - The debugger will attach to the running component
 
-   **Method B: CLI Debugging**
-   - For CLI testing without debugging: Use `./drad <command>` 
-   - For CLI debugging with breakpoints: Select "Debug drad CLI (debug environment)" and press F5
-   - Enter your CLI command when prompted (e.g., `env list`, `app deploy app.bicep`)
+   **Method B: Attach to All Components**
+   - Open Debug panel
+   - Select "Attach Radius (all)" from the dropdown
+   - Press F5 to attach to all components simultaneously
 
-   **Method C: Attach to All Components**
-   - Use compound configuration "Attach to All Components" for multi-component debugging
+   **Method C: CLI Debugging**
+   - For CLI testing without debugging: Use `./drad <command>` in the terminal
+   - For CLI debugging with breakpoints:
+     - Open Debug panel
+     - Select "Debug rad CLI (prompt for args)"
+     - Press F5
+     - Enter your CLI command when prompted (e.g., `env list`, `app deploy app.bicep`)
 
 3. **Code Changes**: 
    - Make your code changes
-   - Use rebuild/restart tasks: Ctrl+Shift+P → "Tasks: Run Task" → "Rebuild and Restart [Component]"
-   - Re-run "Update Launch.json PIDs" task if using Method A
-   - Re-attach debugger to the new process
+   - Stop components: `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Stop All Components"
+   - Restart (rebuilds automatically): `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Start All Components"
+   - Re-attach debugger using F5
 
 #### Advantages of This Approach
 
-- **Clean Separation**: Make handles processes, VS Code handles debugging
-- **Reliable**: No complex launch configurations that can break
+- **Clean Separation**: VS Code tasks handle process lifecycle (start/stop), debugger handles debugging
+- **Reliable**: Simple attach-based debugging with pre-configured ports
 - **Flexible**: Debug any combination of components
-- **Fast Iteration**: Rebuild/restart only the component you're working on
-- **Preserved State**: Other components keep running while you restart one
+- **Fast Iteration**: Stop, rebuild specific components, restart, re-attach
+- **Discoverable**: All operations available via Command Palette (`Cmd+Shift+P`)
 
 ### Debugging Specific Issues
 
