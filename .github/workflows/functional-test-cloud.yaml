@@ -38,7 +38,7 @@ on:
     - cron: "0 1,13,19 * * *"
   # Dispatch on external events
   repository_dispatch:
-    types: [de-functional-test]
+    types: [deployment-engine.run-functional-tests]
   workflow_run:
     workflows: ["Approve Functional Tests"]
     types:
@@ -164,7 +164,7 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
 
@@ -237,23 +237,17 @@ jobs:
                 `BASE_SHA=${baseSha}\n`
             );
 
-      - name: Set DE image and tag (repository_dispatch from de-functional-test)
+      - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          script: |
-            const clientPayload = context.payload.client_payload;
-            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
-              var fs = require('fs');
-              // Set environment variables
-              fs.appendFileSync(process.env.GITHUB_ENV,
-                `DE_IMAGE=${clientPayload.de_image}\n`+
-                `DE_TAG=${clientPayload.de_tag}\n`+
-                `CHECKOUT_REPO=${{ github.repository }}\n`+
-                `CHECKOUT_REF=refs/heads/main`
-              );
-            }
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ github.event.client_payload.image_name }}
+          TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          {
+            echo "DE_IMAGE=${IMAGE_NAME}"
+            echo "DE_TAG=${TAG}"
+          } >> "$GITHUB_ENV"
 
       - name: Generate ID for release
         id: gen-id
@@ -307,14 +301,14 @@ jobs:
       ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
     steps:
       - name: Get GitHub app token
-        uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Check out code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -330,9 +324,11 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
+          src_image: ${{ env.DE_IMAGE }}
+          dest_image: ghcr.io/radius-project/deployment-engine
 
       - name: Check out code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -451,7 +447,7 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version-file: .node-version
 
@@ -546,7 +542,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get GitHub app token
-        uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -589,7 +585,7 @@ jobs:
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -610,14 +606,14 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
 
       - name: Checkout Samples repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -1021,7 +1017,7 @@ jobs:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
       - name: Get GitHub app token
-        uses: actions/create-github-app-token@7e473efe3cb98aa54f8d4bac15400b15fad77d94 # v2.2.0
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}

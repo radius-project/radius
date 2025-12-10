@@ -6,26 +6,12 @@ inputs:
   tag:
     description: Tag to apply to the destination image and pull from the source image.
     required: true
-  acr-name:
-    description: Name of the Azure Container Registry that hosts the deployment engine image.
-    required: false
-    default: radiusdeploymentengine
-  source-repository:
-    description: Repository name for the image inside the ACR.
-    required: false
-    default: deployment-engine
-  destination-registry:
-    description: Hostname for the destination registry (defaults to GHCR).
-    required: false
-    default: ghcr.io
-  destination-repository:
-    description: Repository path in the destination registry.
-    required: false
-    default: radius-project/deployment-engine
-  ghcr-username:
-    description: Username to authenticate against the destination registry.
-    required: false
-    default: rad-ci-bot
+  src_image:
+    description: Name of the source image in Azure Container Registry (e.g. radiusdeploymentengine.azurecr.io/deployment-engine).
+    required: true
+  dest_image:
+    description: Name of the GitHub Container Registry repository to push the deployment engine image to (e.g. ghcr.io/radius-project/deployment-engine).
+    required: true
 
 # Expected environment variables:
 #   GHCR_PASSWORD: Password to authenticate against the destination registry.
@@ -48,25 +34,27 @@ runs:
 
     - name: Log in to Azure Container Registry
       shell: bash
+      env:
+        SRC_IMAGE: ${{ inputs.src_image }}
       run: |
-        az acr login --name "${{ inputs.acr-name }}"
+        # Example: SRC_REGISTRY_NAME=myregistry
+        SRC_REGISTRY_NAME=$(echo "${SRC_IMAGE}" | cut -d'.' -f1)
+        az acr login --name "${SRC_REGISTRY_NAME}"
 
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
-        registry: ${{ inputs.destination-registry }}
-        username: ${{ inputs.ghcr-username }}
+        registry: ghcr.io
+        username: rad-ci-bot
         password: ${{ env.GHCR_PASSWORD }}
 
     - name: Copy Deployment Engine image from ACR to GHCR
       shell: bash
       env:
+        SRC_IMAGE: ${{ inputs.src_image }}
+        DEST_IMAGE: ${{ inputs.dest_image }}
         TAG: ${{ inputs.tag }}
-        ACR_NAME: ${{ inputs.acr-name }}
-        SRC_REPO: ${{ inputs.source-repository }}
-        DEST_REGISTRY: ${{ inputs.destination-registry }}
-        DEST_REPO: ${{ inputs.destination-repository }}
       run: |
         docker buildx imagetools create \
-          --tag "${DEST_REGISTRY}/${DEST_REPO}:${TAG}" \
-          "${ACR_NAME}.azurecr.io/${SRC_REPO}:${TAG}"
+          --tag "${DEST_IMAGE}:${TAG}" \
+          "${SRC_IMAGE}:${TAG}"
