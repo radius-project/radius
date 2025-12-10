@@ -64,11 +64,13 @@ For maintainers who prefer command-line tools:
 # Grant admin access to a user
 gh api repos/radius-project/resource-types-contrib/collaborators/USERNAME \
   -X PUT \
+  -H 'Accept: application/vnd.github.v3+json' \
   -f permission=admin
 
 # Grant admin access to a team
-gh api repos/radius-project/resource-types-contrib/teams/TEAM-SLUG \
+gh api orgs/radius-project/teams/TEAM-SLUG/repos/radius-project/resource-types-contrib \
   -X PUT \
+  -H 'Accept: application/vnd.github.v3+json' \
   -f permission=admin
 ```
 
@@ -108,6 +110,7 @@ To give a member admin access to the `resource-types-contrib` repository:
    # Using GitHub CLI
    gh api repos/radius-project/resource-types-contrib/collaborators/USERNAME \
      -X PUT \
+     -H 'Accept: application/vnd.github.v3+json' \
      -f permission=admin
    ```
 
