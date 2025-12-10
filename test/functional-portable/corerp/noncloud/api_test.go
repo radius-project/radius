@@ -19,6 +19,7 @@ package corerp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -41,7 +42,6 @@ func Test_ResourceList(t *testing.T) {
 	// Extract the scope and client options from the management client so we can make our own API calls.
 	require.IsType(t, options.ManagementClient, &clients.UCPApplicationsManagementClient{})
 	scope := options.ManagementClient.(*clients.UCPApplicationsManagementClient).RootScope
-	clientOptions := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ClientOptions
 
 	parsed, err := resources.ParseScope(scope)
 	require.NoError(t, err)
@@ -55,11 +55,22 @@ func Test_ResourceList(t *testing.T) {
 	resourceTypes = append(resourceTypes, resourceTypesList...)
 
 	listResources := func(t *testing.T, resourceType string) {
+		clientOptions := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ClientOptions
 		ctx, cancel := testcontext.NewWithCancel(t)
+		var client *generated.GenericResourcesClient
 		t.Cleanup(cancel)
-		client, err := generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
-		require.NoError(t, err)
-
+		// Radius.Core resources use a different API version.
+		// Once Applications.Core namespace is deprecated, we can remove this special case.
+		// Then the NewGenericResourcesClient will by default use the correct API version 2025-08-01-preview.
+		if strings.HasPrefix(resourceType, "Radius.Core") {
+			radiusCoreClientOptions := *clientOptions
+			radiusCoreClientOptions.APIVersion = "2025-08-01-preview"
+			client, err = generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, &radiusCoreClientOptions)
+			require.NoError(t, err)
+		} else {
+			client, err = generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
+			require.NoError(t, err)
+		}
 		pager := client.NewListByRootScopePager(nil)
 		for pager.More() {
 			nextPage, err := pager.NextPage(ctx)

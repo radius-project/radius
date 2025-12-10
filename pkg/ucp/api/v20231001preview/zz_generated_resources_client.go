@@ -31,7 +31,7 @@ func NewResourcesClient(credential azcore.TokenCredential, options *arm.ClientOp
 		return nil, err
 	}
 	client := &ResourcesClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -42,13 +42,13 @@ func NewResourcesClient(credential azcore.TokenCredential, options *arm.ClientOp
 //   - planeName - The plane name.
 //   - resourceGroupName - The name of resource group
 //   - options - ResourcesClientListOptions contains the optional parameters for the ResourcesClient.NewListPager method.
-func (client *ResourcesClient) NewListPager(planeName string, resourceGroupName string, options *ResourcesClientListOptions) (*runtime.Pager[ResourcesClientListResponse]) {
+func (client *ResourcesClient) NewListPager(planeName string, resourceGroupName string, options *ResourcesClientListOptions) *runtime.Pager[ResourcesClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ResourcesClientListResponse]{
 		More: func(page ResourcesClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ResourcesClientListResponse) (ResourcesClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourcesClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourcesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -60,7 +60,7 @@ func (client *ResourcesClient) NewListPager(planeName string, resourceGroupName 
 				return ResourcesClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -95,4 +95,3 @@ func (client *ResourcesClient) listHandleResponse(resp *http.Response) (Resource
 	}
 	return result, nil
 }
-

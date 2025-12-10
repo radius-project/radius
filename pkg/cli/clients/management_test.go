@@ -18,6 +18,7 @@ package clients
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -108,6 +109,20 @@ var (
 							"east": {},
 						},
 					},
+					{
+						Name: to.Ptr("Radius.Core"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"environments": {
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+									"2025-08-01-preview": {},
+								},
+								DefaultAPIVersion: to.Ptr("2025-08-01-preview"),
+							},
+						},
+						Locations: map[string]map[string]any{
+							"east": {},
+						},
+					},
 				},
 				NextLink: to.Ptr("1"),
 			},
@@ -115,7 +130,152 @@ var (
 	}
 )
 
+// Test helper functions to reduce repetition
+
+// mockResourceGroupExists sets up expectation for resource group existence check
+func mockResourceGroupExists(mock *MockresourceGroupClient, planeName, rgName string, times int) {
+	mock.EXPECT().
+		Get(gomock.Any(), planeName, rgName, gomock.Any()).
+		Return(ucp.ResourceGroupsClientGetResponse{
+			ResourceGroupResource: ucp.ResourceGroupResource{
+				Name: to.Ptr(rgName),
+			},
+		}, nil).Times(times)
+}
+
+// mockListProviders sets up standard provider listing expectation
+func mockListProviders(mock *MockresourceProviderClient, planeName string) {
+	mock.EXPECT().
+		NewListProviderSummariesPager(planeName, gomock.Any()).
+		Return(pager(resourceProviderSummaryPages))
+}
+
+// mockProviderSummaries sets up provider summary expectations with findProviderSummary logic
+func mockProviderSummaries(mock *MockresourceProviderClient, planeName string, times int) {
+	mock.EXPECT().
+		GetProviderSummary(gomock.Any(), planeName, gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, plane string, providerName string, opts *ucp.ResourceProvidersClientGetProviderSummaryOptions) (ucp.ResourceProvidersClientGetProviderSummaryResponse, error) {
+			summary := findProviderSummary(providerName)
+			if summary != nil {
+				return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+					ResourceProviderSummary: *summary,
+				}, nil
+			}
+			return ucp.ResourceProvidersClientGetProviderSummaryResponse{}, nil
+		}).Times(times)
+}
+
+// mockProviderSummaryForDeletion mocks API version lookup for a specific provider during deletion
+func mockProviderSummaryForDeletion(mock *MockresourceProviderClient, planeName, providerName string) {
+	summary := findProviderSummary(providerName)
+	if summary != nil {
+		mock.EXPECT().
+			GetProviderSummary(gomock.Any(), planeName, providerName, gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *summary,
+			}, nil).Times(1)
+	} else {
+		// If no test data found, create a minimal provider summary for Applications.Core
+		if providerName == "Applications.Core" {
+			mock.EXPECT().
+				GetProviderSummary(gomock.Any(), planeName, providerName, gomock.Any()).
+				Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+					ResourceProviderSummary: ucp.ResourceProviderSummary{
+						Name: to.Ptr("Applications.Core"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"environments": {
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+									version: {},
+								},
+							},
+						},
+					},
+				}, nil).Times(1)
+		}
+	}
+}
+
+// mockResourceDeletion mocks successful resource deletion
+func mockResourceDeletion(mock *MockgenericResourceClient, resourceName string) {
+	mock.EXPECT().
+		BeginDelete(gomock.Any(), resourceName, gomock.Any()).
+		Return(poller(&generated.GenericResourcesClientDeleteResponse{}), nil)
+}
+
+// mockResourceDeletionFailure mocks failed resource deletion
+func mockResourceDeletionFailure(mock *MockgenericResourceClient, resourceName string, errorMsg string) {
+	mock.EXPECT().
+		BeginDelete(gomock.Any(), resourceName, gomock.Any()).
+		Return(nil, fmt.Errorf("%s", errorMsg))
+}
+
+// mockResourceGroupDeletion mocks successful resource group deletion
+func mockResourceGroupDeletion(mock *MockresourceGroupClient, planeName, rgName string) {
+	mock.EXPECT().
+		Delete(gomock.Any(), planeName, rgName, gomock.Any()).
+		DoAndReturn(func(ctx context.Context, s1, s2 string, opts *ucp.ResourceGroupsClientDeleteOptions) (ucp.ResourceGroupsClientDeleteResponse, error) {
+			setCapture(ctx, &http.Response{StatusCode: 200})
+			return ucp.ResourceGroupsClientDeleteResponse{}, nil
+		})
+}
+
+// setupResourceGroupMocks creates a client and all necessary mocks for resource group operations
+func setupResourceGroupMocks(t *testing.T) (*UCPApplicationsManagementClient, *MockresourceGroupClient, *MockgenericResourceClient, *MockresourceProviderClient) {
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	rgClient := NewMockresourceGroupClient(ctrl)
+	genericClient := NewMockgenericResourceClient(ctrl)
+	rpClient := NewMockresourceProviderClient(ctrl)
+
+	client := &UCPApplicationsManagementClient{
+		RootScope: testScope,
+		resourceGroupClientFactory: func() (resourceGroupClient, error) {
+			return rgClient, nil
+		},
+		genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
+			return genericClient, nil
+		},
+		resourceProviderClientFactory: func() (resourceProviderClient, error) {
+			return rpClient, nil
+		},
+		capture: testCapture,
+	}
+
+	return client, rgClient, genericClient, rpClient
+}
+
+// createResource creates a test resource with the given name and type
+func createResource(name, resourceType string) *generated.GenericResource {
+	id := fmt.Sprintf("/planes/radius/local/resourceGroups/test-rg/providers/%s/%s", resourceType, name)
+	return &generated.GenericResource{
+		ID:       to.Ptr(id),
+		Type:     to.Ptr(resourceType),
+		Name:     to.Ptr(name),
+		Location: to.Ptr(v1.LocationGlobal),
+	}
+}
+
+// createResourceList wraps resources in the response format expected by the pager
+func createResourceList(resources ...*generated.GenericResource) []generated.GenericResourcesClientListByRootScopeResponse {
+	return []generated.GenericResourcesClientListByRootScopeResponse{
+		{
+			GenericResourcesList: generated.GenericResourcesList{
+				Value:    resources,
+				NextLink: to.Ptr("0"),
+			},
+		},
+	}
+}
+
+// withProperties adds properties to a resource
+func withProperties(resource *generated.GenericResource, props map[string]any) *generated.GenericResource {
+	resource.Properties = props
+	return resource
+}
+
 func Test_Resource(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped genericResourceClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -261,7 +421,12 @@ func Test_Resource(t *testing.T) {
 
 		resourceTypes, err := client.ListAllResourceTypesNames(context.Background(), "local")
 		require.NoError(t, err)
-		require.Equal(t, []string{"Applications.Test1/resourceType1", "Applications.Test2/resourceType2", "Applications.Test3/resourceType3"}, resourceTypes)
+		require.Equal(t, []string{
+			"Applications.Test1/resourceType1",
+			"Applications.Test2/resourceType2",
+			"Applications.Test3/resourceType3",
+			"Applications.Core/environments",
+		}, resourceTypes)
 	})
 
 	t.Run("ListResourcesOfTypeInApplication", func(t *testing.T) {
@@ -350,6 +515,14 @@ func Test_Resource(t *testing.T) {
 		mockResourceProviderClient.EXPECT().
 			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, plane string, providerName string, opts *ucp.ResourceProvidersClientGetProviderSummaryOptions) (ucp.ResourceProvidersClientGetProviderSummaryResponse, error) {
+				summary := findProviderSummary(providerName)
+				if summary != nil {
+					return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+						ResourceProviderSummary: *summary,
+					}, nil
+				}
+
+				// Fallback for providers not in test data
 				return ucp.ResourceProvidersClientGetProviderSummaryResponse{
 					ResourceProviderSummary: ucp.ResourceProviderSummary{
 						Name: &providerName,
@@ -384,6 +557,14 @@ func Test_Resource(t *testing.T) {
 		mockResourceProviderClient.EXPECT().
 			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, plane string, providerName string, opts *ucp.ResourceProvidersClientGetProviderSummaryOptions) (ucp.ResourceProvidersClientGetProviderSummaryResponse, error) {
+				summary := findProviderSummary(providerName)
+				if summary != nil {
+					return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+						ResourceProviderSummary: *summary,
+					}, nil
+				}
+
+				// Fallback for providers not in test data
 				return ucp.ResourceProvidersClientGetProviderSummaryResponse{
 					ResourceProviderSummary: ucp.ResourceProviderSummary{
 						Name: &providerName,
@@ -485,9 +666,60 @@ func Test_Resource(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
+
+	t.Run("Radius.Core resources use specific API version", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mock := NewMockgenericResourceClient(ctrl)
+		resourceProviderMock := NewMockresourceProviderClient(ctrl)
+
+		client := &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
+				return mock, nil
+			},
+			resourceProviderClientFactory: func() (resourceProviderClient, error) {
+				return resourceProviderMock, nil
+			},
+			capture: testCapture,
+		}
+
+		// Mock the resource provider summary for Radius.Core
+		resourceProviderMock.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Radius.Core", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: ucp.ResourceProviderSummary{
+					Name: to.Ptr("Radius.Core"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"environments": {
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+								"2025-08-01-preview": {},
+								"other-version":      {},
+							},
+						},
+					},
+				},
+			}, nil)
+
+		// Set up expectation for the resource call
+		mock.EXPECT().
+			Get(gomock.Any(), "test-env", gomock.Any()).
+			Return(generated.GenericResourcesClientGetResponse{
+				GenericResource: generated.GenericResource{
+					ID:   to.Ptr("/test/id"),
+					Name: to.Ptr("test-env"),
+					Type: to.Ptr("Radius.Core/environments"),
+				},
+			}, nil)
+
+		// Test via GetResource which calls getGenericClient internally
+		// This indirectly tests that getGenericClient handles Radius.Core resources correctly
+		_, err := client.GetResource(context.Background(), "Radius.Core/environments", "test-env")
+		require.NoError(t, err)
+	})
 }
 
 func Test_Application(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped applicationResourceClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -698,6 +930,14 @@ func Test_Application(t *testing.T) {
 		mockResourceProviderClient.EXPECT().
 			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, plane string, providerName string, opts *ucp.ResourceProvidersClientGetProviderSummaryOptions) (ucp.ResourceProvidersClientGetProviderSummaryResponse, error) {
+				summary := findProviderSummary(providerName)
+				if summary != nil {
+					return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+						ResourceProviderSummary: *summary,
+					}, nil
+				}
+
+				// Fallback for providers not in test data
 				return ucp.ResourceProvidersClientGetProviderSummaryResponse{
 					ResourceProviderSummary: ucp.ResourceProviderSummary{
 						Name: &providerName,
@@ -732,9 +972,131 @@ func Test_Application(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
+
+	t.Run("DeleteApplication_WithResourceGroupNotFound", func(t *testing.T) {
+		// Test case where ListResourcesInApplication returns 404 error (resource group doesn't exist)
+		// This should be ignored and deletion should continue
+		ctrl := gomock.NewController(t)
+		mock := NewMockapplicationResourceClient(ctrl)
+		mockResourceProviderClient := NewMockresourceProviderClient(ctrl)
+		genericResourceMock := NewMockgenericResourceClient(ctrl)
+		client := createClient(mock)
+		client.genericResourceClientFactory = func(scope string, resourceType string) (genericResourceClient, error) {
+			return genericResourceMock, nil
+		}
+		client.resourceProviderClientFactory = func() (resourceProviderClient, error) {
+			return mockResourceProviderClient, nil
+		}
+
+		// Mock ListAllResourceTypesNames to return one provider with resource types
+		mockResourceProviderClient.EXPECT().
+			NewListProviderSummariesPager("local", gomock.Any()).
+			Return(pager(resourceProviderSummaryPages))
+
+		// Mock GetProviderSummary to return valid responses for listing resource types
+		mockResourceProviderClient.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, plane string, providerName string, opts *ucp.ResourceProvidersClientGetProviderSummaryOptions) (ucp.ResourceProvidersClientGetProviderSummaryResponse, error) {
+				summary := findProviderSummary(providerName)
+				if summary != nil {
+					return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+						ResourceProviderSummary: *summary,
+					}, nil
+				}
+
+				// Fallback for providers not in test data
+				return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+					ResourceProviderSummary: ucp.ResourceProviderSummary{
+						Name: &providerName,
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"resourceType1": {
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+									version: {},
+								},
+							},
+						},
+					},
+				}, nil
+			}).AnyTimes()
+
+		// Mock genericResourceClient to return 404 when listing resources
+		// This simulates the resource group not existing
+		genericResourceMock.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			DoAndReturn(func(opts *generated.GenericResourcesClientListByRootScopeOptions) *runtime.Pager[generated.GenericResourcesClientListByRootScopeResponse] {
+				// Create a handler that returns error immediately
+				handler := runtime.PagingHandler[generated.GenericResourcesClientListByRootScopeResponse]{
+					More: func(page generated.GenericResourcesClientListByRootScopeResponse) bool {
+						return false
+					},
+					Fetcher: func(ctx context.Context, page *generated.GenericResourcesClientListByRootScopeResponse) (generated.GenericResourcesClientListByRootScopeResponse, error) {
+						// Return 404 error immediately
+						return generated.GenericResourcesClientListByRootScopeResponse{}, &azcore.ResponseError{
+							StatusCode: http.StatusNotFound,
+							ErrorCode:  v1.CodeNotFound,
+						}
+					},
+				}
+				return runtime.NewPager(handler)
+			}).AnyTimes()
+
+		// Even though ListResourcesInApplication fails with 404, Delete should still be called
+		mock.EXPECT().
+			Delete(gomock.Any(), testResourceName, gomock.Any()).
+			DoAndReturn(func(ctx context.Context, s string, acdo *corerp.ApplicationsClientDeleteOptions) (corerp.ApplicationsClientDeleteResponse, error) {
+				setCapture(ctx, &http.Response{StatusCode: 200})
+				return corerp.ApplicationsClientDeleteResponse{}, nil
+			})
+
+		deleted, err := client.DeleteApplication(context.Background(), testResourceID)
+		require.NoError(t, err)
+		require.True(t, deleted)
+	})
+
+	t.Run("DeleteApplication_WithListResourcesError", func(t *testing.T) {
+		// Test case where ListResourcesInApplication returns a non-404 error
+		// This should cause DeleteApplication to fail and return the error
+		ctrl := gomock.NewController(t)
+		mock := NewMockapplicationResourceClient(ctrl)
+		mockResourceProviderClient := NewMockresourceProviderClient(ctrl)
+		client := createClient(mock)
+		client.resourceProviderClientFactory = func() (resourceProviderClient, error) {
+			return mockResourceProviderClient, nil
+		}
+
+		// Mock ListProviderSummaries to return an error
+		mockResourceProviderClient.EXPECT().
+			NewListProviderSummariesPager("local", gomock.Any()).
+			DoAndReturn(func(plane string, opts *ucp.ResourceProvidersClientListProviderSummariesOptions) *runtime.Pager[ucp.ResourceProvidersClientListProviderSummariesResponse] {
+				// Create a handler that returns error immediately
+				handler := runtime.PagingHandler[ucp.ResourceProvidersClientListProviderSummariesResponse]{
+					More: func(page ucp.ResourceProvidersClientListProviderSummariesResponse) bool {
+						return false
+					},
+					Fetcher: func(ctx context.Context, page *ucp.ResourceProvidersClientListProviderSummariesResponse) (ucp.ResourceProvidersClientListProviderSummariesResponse, error) {
+						// Return internal server error immediately
+						return ucp.ResourceProvidersClientListProviderSummariesResponse{}, &azcore.ResponseError{
+							StatusCode: http.StatusInternalServerError,
+							ErrorCode:  "InternalServerError",
+						}
+					},
+				}
+				return runtime.NewPager(handler)
+			})
+
+		// Delete should NOT be called when ListResourcesInApplication fails with non-404 error
+		// No expectation set for mock.Delete()
+
+		deleted, err := client.DeleteApplication(context.Background(), testResourceID)
+		require.Error(t, err)
+		require.False(t, deleted)
+		// Verify the error is propagated correctly
+		require.Contains(t, err.Error(), "failed to list resource provider summaries")
+	})
 }
 
 func Test_Environment(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped environmentResourceClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -922,6 +1284,14 @@ func Test_Environment(t *testing.T) {
 		resourceProviderMock.EXPECT().
 			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, plane string, providerName string, opts *ucp.ResourceProvidersClientGetProviderSummaryOptions) (ucp.ResourceProvidersClientGetProviderSummaryResponse, error) {
+				summary := findProviderSummary(providerName)
+				if summary != nil {
+					return ucp.ResourceProvidersClientGetProviderSummaryResponse{
+						ResourceProviderSummary: *summary,
+					}, nil
+				}
+
+				// Fallback for providers not in test data
 				return ucp.ResourceProvidersClientGetProviderSummaryResponse{
 					ResourceProviderSummary: ucp.ResourceProviderSummary{
 						Name: &providerName,
@@ -993,6 +1363,7 @@ func Test_Environment(t *testing.T) {
 }
 
 func Test_ResourceGroup(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped resourceGroupClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -1094,10 +1465,48 @@ func Test_ResourceGroup(t *testing.T) {
 	})
 
 	t.Run("DeleteResourceGroup", func(t *testing.T) {
-		mock := NewMockresourceGroupClient(gomock.NewController(t))
-		client := createClient(mock)
+		ctrl := gomock.NewController(t)
+		mockResourceGroupClient := NewMockresourceGroupClient(ctrl)
+		mockGenericClient := NewMockgenericResourceClient(ctrl)
+		mockResourceProviderClient := NewMockresourceProviderClient(ctrl)
 
-		mock.EXPECT().
+		client := &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			resourceGroupClientFactory: func() (resourceGroupClient, error) {
+				return mockResourceGroupClient, nil
+			},
+			genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
+				return mockGenericClient, nil
+			},
+			resourceProviderClientFactory: func() (resourceProviderClient, error) {
+				return mockResourceProviderClient, nil
+			},
+			capture: testCapture,
+		}
+
+		// Expect resource group existence check (called twice: once in DeleteResourceGroup, once in ListResourcesInResourceGroup)
+		mockResourceGroupExists(mockResourceGroupClient, "local", testResourceName, 2)
+
+		// Expect listing all resource types
+		mockListProviders(mockResourceProviderClient, "local")
+
+		// Expect provider summaries for listing resources
+		mockProviderSummaries(mockResourceProviderClient, "local", 4)
+
+		// Expect listing resources for each type (empty results)
+		emptyResources := []generated.GenericResourcesClientListByRootScopeResponse{
+			{
+				GenericResourcesList: generated.GenericResourcesList{
+					Value:    []*generated.GenericResource{},
+					NextLink: to.Ptr("0"),
+				},
+			},
+		}
+		mockGenericClient.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(emptyResources)).Times(4)
+
+		mockResourceGroupClient.EXPECT().
 			Delete(gomock.Any(), "local", testResourceName, gomock.Any()).
 			DoAndReturn(func(ctx context.Context, s1, s2 string, rgcdo *ucp.ResourceGroupsClientDeleteOptions) (ucp.ResourceGroupsClientDeleteResponse, error) {
 				setCapture(ctx, &http.Response{StatusCode: 200})
@@ -1110,7 +1519,412 @@ func Test_ResourceGroup(t *testing.T) {
 	})
 }
 
+func Test_DeleteResourceGroup(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty group", func(t *testing.T) {
+		client, rgClient, genericClient, rpClient := setupResourceGroupMocks(t)
+
+		// Setup: group exists but is empty
+		mockResourceGroupExists(rgClient, "local", "test-rg", 2)
+		mockListProviders(rpClient, "local")
+		mockProviderSummaries(rpClient, "local", 4)
+
+		// No resources in group
+		emptyList := createResourceList()
+		genericClient.EXPECT().NewListByRootScopePager(gomock.Any()).Return(pager(emptyList)).Times(4)
+
+		// Expect group deletion
+		mockResourceGroupDeletion(rgClient, "local", "test-rg")
+
+		deleted, err := client.DeleteResourceGroup(context.Background(), "local", "test-rg")
+		require.NoError(t, err)
+		require.True(t, deleted)
+	})
+
+	t.Run("group with resources", func(t *testing.T) {
+		client, rgClient, genericClient, rpClient := setupResourceGroupMocks(t)
+
+		// Setup standard expectations
+		mockResourceGroupExists(rgClient, "local", "test-rg", 2)
+		mockListProviders(rpClient, "local")
+		mockProviderSummaries(rpClient, "local", 4)
+
+		// Create test resources
+		resources := createResourceList(
+			createResource("resource1", "Applications.Test1/resourceType1"),
+			createResource("test-env", "Applications.Core/environments"),
+		)
+		genericClient.EXPECT().NewListByRootScopePager(gomock.Any()).Return(pager(resources)).Times(4)
+
+		// Expect deletion of each resource
+		mockProviderSummaryForDeletion(rpClient, "local", "Applications.Test1")
+		mockProviderSummaryForDeletion(rpClient, "local", "Applications.Core")
+		mockResourceDeletion(genericClient, "resource1")
+		mockResourceDeletion(genericClient, "test-env")
+
+		// Expect group deletion
+		mockResourceGroupDeletion(rgClient, "local", "test-rg")
+
+		deleted, err := client.DeleteResourceGroup(context.Background(), "local", "test-rg")
+		require.NoError(t, err)
+		require.True(t, deleted)
+	})
+
+	t.Run("resource deletion fails", func(t *testing.T) {
+		client, rgClient, genericClient, rpClient := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(rgClient, "local", "test-rg", 2)
+		mockListProviders(rpClient, "local")
+		mockProviderSummaries(rpClient, "local", 4)
+
+		resources := createResourceList(
+			createResource("test-env", "Applications.Core/environments"),
+		)
+		genericClient.EXPECT().NewListByRootScopePager(gomock.Any()).Return(pager(resources)).Times(4)
+
+		mockProviderSummaryForDeletion(rpClient, "local", "Applications.Core")
+		mockResourceDeletionFailure(genericClient, "test-env", "deletion failed")
+
+		deleted, err := client.DeleteResourceGroup(context.Background(), "local", "test-rg")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to delete resources in group")
+		require.False(t, deleted)
+	})
+}
+
+// runListTest is a helper for testing list operations with filters
+func runListTest(t *testing.T, client *UCPApplicationsManagementClient, resourceGroupName, environmentID, applicationID string, expectedNames []string) {
+	resources, err := client.ListResourcesInResourceGroupFiltered(
+		context.Background(), "local", resourceGroupName, environmentID, applicationID)
+	require.NoError(t, err)
+	require.Len(t, resources, len(expectedNames))
+	for i, expectedName := range expectedNames {
+		require.Equal(t, expectedName, *resources[i].Name)
+	}
+}
+
+func Test_ListResourcesInResourceGroup(t *testing.T) {
+	t.Parallel()
+
+	envID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env"
+	appID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app"
+
+	// Test data
+	resource1 := withProperties(
+		createResource("resource1", "Applications.Test1/resourceType1"),
+		map[string]any{"environment": envID, "application": appID})
+	resource2 := withProperties(
+		createResource("resource2", "Applications.Core/environments"),
+		map[string]any{"environment": envID})
+	resource3 := withProperties(
+		createResource("resource3", "Applications.Test1/resourceType1"),
+		map[string]any{"application": appID})
+	resource4 := createResource("resource4", "Applications.Test2/resourceType2")
+
+	allResources := createResourceList(resource1, resource2, resource3, resource4)
+	emptyResources := createResourceList()
+
+	t.Run("list all resources", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 4)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResources)).Times(4)
+
+		resources, err := client.ListResourcesInResourceGroup(context.Background(), "local", "test-group")
+		require.NoError(t, err)
+		require.Len(t, resources, 4)
+		require.Equal(t, "resource1", *resources[0].Name)
+		require.Equal(t, "resource2", *resources[1].Name)
+		require.Equal(t, "resource3", *resources[2].Name)
+		require.Equal(t, "resource4", *resources[3].Name)
+	})
+
+	t.Run("empty resource group", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 4)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(emptyResources)).Times(4)
+
+		resources, err := client.ListResourcesInResourceGroup(context.Background(), "local", "test-group")
+		require.NoError(t, err)
+		require.Empty(t, resources)
+	})
+
+	t.Run("API version errors", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		// Provider summaries with partial API versions
+		summariesWithErrors := []ucp.ResourceProvidersClientListProviderSummariesResponse{{
+			PagedResourceProviderSummary: ucp.PagedResourceProviderSummary{
+				Value: []*ucp.ResourceProviderSummary{
+					{
+						Name: to.Ptr("Applications.Test"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"resources": {APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{version: {}}},
+						},
+					},
+					{
+						Name: to.Ptr("Applications.TestNoVersion"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"resources": {}, // Empty API versions
+						},
+					},
+				},
+				NextLink: to.Ptr("0"),
+			},
+		}}
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			NewListProviderSummariesPager("local", gomock.Any()).
+			Return(pager(summariesWithErrors))
+
+		// First provider succeeds
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *summariesWithErrors[0].Value[0],
+			}, nil)
+
+		// Second provider has empty API versions
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.TestNoVersion", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *summariesWithErrors[0].Value[1],
+			}, nil)
+
+		testResource := createResourceList(createResource("resource1", "Applications.Test/resources"))
+
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(testResource)).Times(1)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(emptyResources)).Times(1)
+
+		resources, err := client.ListResourcesInResourceGroup(context.Background(), "local", "test-group")
+		require.NoError(t, err)
+		require.Len(t, resources, 1)
+		require.Equal(t, "resource1", *resources[0].Name)
+	})
+
+	t.Run("filter by environment", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 4)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResources)).Times(4)
+
+		runListTest(t, client, "test-group", envID, "", []string{"resource1", "resource2"})
+	})
+
+	t.Run("filter by application", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 4)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResources)).Times(4)
+
+		runListTest(t, client, "test-group", "", appID, []string{"resource1", "resource3"})
+	})
+
+	t.Run("filter by both", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 4)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResources)).Times(4)
+
+		runListTest(t, client, "test-group", envID, appID, []string{"resource1"})
+	})
+
+	t.Run("no filters", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 4)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResources)).Times(4)
+
+		runListTest(t, client, "test-group", "", "", []string{"resource1", "resource2", "resource3", "resource4"})
+	})
+}
+
+// runListResourcesOfTypeTest is a helper for testing list resources of type operations with filters
+func runListResourcesOfTypeTest(t *testing.T, client *UCPApplicationsManagementClient, resourceGroupName, resourceType, environmentID, applicationID string, expectedNames []string) {
+	resources, err := client.ListResourcesOfTypeInResourceGroupFiltered(
+		context.Background(), "local", resourceGroupName, resourceType, environmentID, applicationID)
+	require.NoError(t, err)
+	require.Len(t, resources, len(expectedNames))
+	for i, expectedName := range expectedNames {
+		require.Equal(t, expectedName, *resources[i].Name)
+	}
+}
+
+func Test_ListResourcesOfTypeInResourceGroup(t *testing.T) {
+	t.Parallel()
+
+	testResourceType := "Applications.Test1/resourceType1"
+	envID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env"
+	appID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app"
+
+	// Test data
+	resource1 := withProperties(
+		createResource("resource1", testResourceType),
+		map[string]any{"environment": envID, "application": appID})
+	resource2 := withProperties(
+		createResource("resource2", testResourceType),
+		map[string]any{"environment": envID})
+	resource3 := withProperties(
+		createResource("resource3", testResourceType),
+		map[string]any{"application": appID})
+
+	allResourcesOfType := createResourceList(resource1, resource2, resource3)
+	emptyResources := createResourceList()
+
+	t.Run("list specific type", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test1", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *resourceProviderSummaryPages[0].Value[0],
+			}, nil)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResourcesOfType))
+
+		resources, err := client.ListResourcesOfTypeInResourceGroup(
+			context.Background(), "local", "test-group", testResourceType)
+		require.NoError(t, err)
+		require.Len(t, resources, 3)
+		require.Equal(t, "resource1", *resources[0].Name)
+		require.Equal(t, "resource2", *resources[1].Name)
+		require.Equal(t, "resource3", *resources[2].Name)
+	})
+
+	t.Run("empty results", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test1", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *resourceProviderSummaryPages[0].Value[0],
+			}, nil)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(emptyResources))
+
+		resources, err := client.ListResourcesOfTypeInResourceGroup(
+			context.Background(), "local", "test-group", testResourceType)
+		require.NoError(t, err)
+		require.Empty(t, resources)
+	})
+
+	t.Run("API version error", func(t *testing.T) {
+		client, mockRG, _, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Unknown.Provider", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{}, fmt.Errorf("provider not found"))
+
+		_, err := client.ListResourcesOfTypeInResourceGroup(
+			context.Background(), "local", "test-group", "Unknown.Provider/unknownType")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "provider not found")
+	})
+
+	t.Run("filter by environment", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test1", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *resourceProviderSummaryPages[0].Value[0],
+			}, nil)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResourcesOfType))
+
+		runListResourcesOfTypeTest(t, client, "test-group", testResourceType, envID, "", []string{"resource1", "resource2"})
+	})
+
+	t.Run("filter by application", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test1", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *resourceProviderSummaryPages[0].Value[0],
+			}, nil)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResourcesOfType))
+
+		runListResourcesOfTypeTest(t, client, "test-group", testResourceType, "", appID, []string{"resource1", "resource3"})
+	})
+
+	t.Run("filter by both", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test1", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *resourceProviderSummaryPages[0].Value[0],
+			}, nil)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResourcesOfType))
+
+		runListResourcesOfTypeTest(t, client, "test-group", testResourceType, envID, appID, []string{"resource1"})
+	})
+
+	t.Run("no matches", func(t *testing.T) {
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test1", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+				ResourceProviderSummary: *resourceProviderSummaryPages[0].Value[0],
+			}, nil)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(allResourcesOfType))
+
+		otherEnvID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/other-env"
+		runListResourcesOfTypeTest(t, client, "test-group", testResourceType, otherEnvID, "", []string{})
+	})
+}
+
 func Test_ResourceProvider(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped resourceProviderClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -1235,7 +2049,7 @@ func Test_ResourceProvider(t *testing.T) {
 		mock.EXPECT().
 			NewListProviderSummariesPager(gomock.Any(), gomock.Any()).
 			Return(pager(resourceProviderSummaryPages))
-		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0], *resourceProviderSummaryPages[1].Value[1]}
+		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0], *resourceProviderSummaryPages[1].Value[1], *resourceProviderSummaryPages[1].Value[2]}
 
 		resourceProviderSummaries, err := client.ListResourceProviderSummaries(context.Background(), "local")
 		require.NoError(t, err)
@@ -1272,6 +2086,7 @@ func Test_ResourceProvider(t *testing.T) {
 }
 
 func Test_ResourceType(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped resourceTypeClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -1322,6 +2137,7 @@ func Test_ResourceType(t *testing.T) {
 }
 
 func Test_APIVersion(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped apiVersionClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -1357,6 +2173,7 @@ func Test_APIVersion(t *testing.T) {
 }
 
 func Test_Location(t *testing.T) {
+	t.Parallel()
 	createClient := func(wrapped locationClient) *UCPApplicationsManagementClient {
 		return &UCPApplicationsManagementClient{
 			RootScope: testScope,
@@ -1391,6 +2208,7 @@ func Test_Location(t *testing.T) {
 }
 
 func Test_extractScopeAndName(t *testing.T) {
+	t.Parallel()
 	client := UCPApplicationsManagementClient{
 		RootScope: testScope,
 	}
@@ -1421,6 +2239,7 @@ func Test_extractScopeAndName(t *testing.T) {
 }
 
 func Test_fullyQualifyID(t *testing.T) {
+	t.Parallel()
 	client := UCPApplicationsManagementClient{
 		RootScope: testScope,
 	}
@@ -1445,6 +2264,19 @@ func Test_fullyQualifyID(t *testing.T) {
 		require.Equal(t, "'/local/resourceGroups/my-rg/providers/Applications.Core/environments/my-env' is not a valid resource id", err.Error())
 		require.Empty(t, id)
 	})
+}
+
+// findProviderSummary is a helper function to find a provider summary from test data
+func findProviderSummary(providerName string) *ucp.ResourceProviderSummary {
+	for _, page := range resourceProviderSummaryPages {
+		for _, provider := range page.Value {
+			if *provider.Name == providerName {
+				return provider
+			}
+		}
+	}
+
+	return nil
 }
 
 func pager[S ~[]E, E any](pages S) *runtime.Pager[E] {
@@ -1480,12 +2312,12 @@ func pager[S ~[]E, E any](pages S) *runtime.Pager[E] {
 		},
 	}
 
-	return runtime.NewPager[E](handler)
+	return runtime.NewPager(handler)
 }
 
 func poller[T any](response *T) *runtime.Poller[T] {
 
-	p, err := runtime.NewPoller[T](nil, runtime.Pipeline{}, &runtime.NewPollerOptions[T]{
+	p, err := runtime.NewPoller(nil, runtime.Pipeline{}, &runtime.NewPollerOptions[T]{
 		Response: response,
 		Handler:  &pollingHandler[T]{Response: response},
 	})

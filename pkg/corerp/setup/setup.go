@@ -28,8 +28,10 @@ import (
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
+	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments/v20250801preview"
 	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
+	rp_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/recipepacks"
 	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
 	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 	ext_processor "github.com/radius-project/radius/pkg/corerp/processors/extenders"
@@ -245,6 +247,53 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 
 	// Optional
 	ns.SetAvailableOperations(operationList)
+
+	return ns
+}
+
+// SetupRadiusCoreNamespace builds the namespace for core resource provider.
+func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeControllerConfig) *builder.Namespace {
+	ns := builder.NewNamespace("Radius.Core")
+
+	_ = ns.AddResource("recipePacks", &builder.ResourceOption[*datamodel.RecipePack, datamodel.RecipePack]{
+		RequestConverter:  converter.RecipePackDataModelFromVersioned,
+		ResponseConverter: converter.RecipePackDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.RecipePack]{
+			APIController: rp_ctrl.NewCreateOrUpdateRecipePack,
+		},
+		Patch: builder.Operation[datamodel.RecipePack]{
+			APIController: rp_ctrl.NewCreateOrUpdateRecipePack,
+		},
+	})
+
+	_ = ns.AddResource("environments", &builder.ResourceOption[*datamodel.Environment_v20250801preview, datamodel.Environment_v20250801preview]{
+		RequestConverter:  converter.Environment20250801DataModelFromVersioned,
+		ResponseConverter: converter.Environment20250801DataModelToVersioned,
+
+		Put: builder.Operation[datamodel.Environment_v20250801preview]{
+			APIController: env_v20250801_ctrl.NewCreateOrUpdateEnvironmentv20250801preview,
+		},
+		Patch: builder.Operation[datamodel.Environment_v20250801preview]{
+			APIController: env_v20250801_ctrl.NewCreateOrUpdateEnvironmentv20250801preview,
+		},
+	})
+
+	_ = ns.AddResource("applications", &builder.ResourceOption[*datamodel.Application_v20250801preview, datamodel.Application_v20250801preview]{
+		RequestConverter:  converter.Application20250801DataModelFromVersioned,
+		ResponseConverter: converter.Application20250801DataModelToVersioned,
+
+		Put: builder.Operation[datamodel.Application_v20250801preview]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.Application_v20250801preview]{
+				rp_frontend.PrepareRadiusResource[*datamodel.Application_v20250801preview],
+			},
+		},
+		Patch: builder.Operation[datamodel.Application_v20250801preview]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.Application_v20250801preview]{
+				rp_frontend.PrepareRadiusResource[*datamodel.Application_v20250801preview],
+			},
+		},
+	})
 
 	return ns
 }

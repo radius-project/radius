@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -34,6 +35,27 @@ func FetchEnvironment(ctx context.Context, environmentID string, ucpOptions *arm
 	}
 
 	client, err := v20231001preview.NewEnvironmentsClient(envID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := client.Get(ctx, envID.Name(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response.EnvironmentResource, nil
+}
+
+// FetchEnvironment fetches an environment resource using the provided environmentID and ClientOptions,
+// and returns the EnvironmentResource or an error.
+func FetchEnvironmentV20250801(ctx context.Context, environmentID string, ucpOptions *arm.ClientOptions) (*v20250801preview.EnvironmentResource, error) {
+	envID, err := resources.ParseResource(environmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := v20250801preview.NewEnvironmentsClient(envID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}

@@ -44,32 +44,32 @@ model ApplicationResource
   @path
   @key("applicationName")
   @segment("applications")
-  @visibility("read", "create")
+  @visibility(Lifecycle.Read, Lifecycle.Create)
   name: ResourceNameString;
 }
 
 @doc("Application properties")
 model ApplicationProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment: string;
 
   @doc("The application extension.")
-  @extension("x-ms-identifiers", [])
-  extensions?: Array<Extension>;
+  @extension("x-ms-identifiers", #[])
+  extensions?: Array<global.Extension>;
 
   @doc("Status of a resource.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   status?: ResourceStatus;
 }
 
 @doc("Describes the application architecture and its dependencies.")
 model ApplicationGraphResponse {
   @doc("The resources in the application graph.")
-  @extension("x-ms-identifiers", ["id"])
+  @extension("x-ms-identifiers", #["id"])
   resources: Array<ApplicationGraphResource>;
 }
 
@@ -103,11 +103,11 @@ model ApplicationGraphResource {
   name: string;
 
   @doc("The resources that comprise this resource.")
-  @extension("x-ms-identifiers", ["id"])
+  @extension("x-ms-identifiers", #["id"])
   outputResources: Array<ApplicationGraphOutputResource>;
 
   @doc("The connections between resources in the application graph.")
-  @extension("x-ms-identifiers", [])
+  @extension("x-ms-identifiers", #[])
   connections: Array<ApplicationGraphConnection>;
 
   @doc("provisioningState of this resource.")

@@ -19,9 +19,9 @@ package delete
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	"strings"
 	"testing"
+
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -37,6 +37,11 @@ import (
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
 }
+
+const (
+	deleteConfirmationEmpty = "The environment %s is empty. Are you sure you want to delete the environment?"
+	deleteConfirmationWithResources = "The environment %s contains %d deployed resource(s). Are you sure you want to delete the environment and its resources?"
+)
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
@@ -106,6 +111,13 @@ func Test_Show(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		// Now we always list resources for better feedback
+		appManagementClient.EXPECT().
+			ListResourcesInEnvironment(gomock.Any(), "test-env").
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
 		appManagementClient.EXPECT().
 			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(true, nil).
@@ -134,7 +146,11 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Environment deleted",
+				Format: msgDeletingEnvironment,
+				Params: []any{"test-env"},
+			},
+			output.LogOutput{
+				Format: msgEnvironmentDeleted,
 			},
 		}
 
@@ -147,7 +163,7 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationEmpty, "test-env")).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
@@ -155,11 +171,6 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient.EXPECT().
 			ListResourcesInEnvironment(gomock.Any(), "test-env").
-			Return([]generated.GenericResource{}, nil).
-			Times(1)
-
-		appManagementClient.EXPECT().
-			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
@@ -191,7 +202,11 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Environment deleted",
+				Format: msgDeletingEnvironment,
+				Params: []any{"test-env"},
+			},
+			output.LogOutput{
+				Format: msgEnvironmentDeleted,
 			},
 		}
 
@@ -201,10 +216,8 @@ func Test_Show(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		expectedPrompt := strings.Join([]string{
-			warnDependencies,
-			fmt.Sprintf(deleteConfirmation, "test-env"),
-		}, " ")
+		// 1 resource (application)
+		expectedPrompt := fmt.Sprintf(deleteConfirmationWithResources, "test-env", 1)
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
 			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, expectedPrompt).
@@ -215,11 +228,6 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient.EXPECT().
 			ListResourcesInEnvironment(gomock.Any(), "test-env").
-			Return([]generated.GenericResource{}, nil).
-			Times(1)
-
-		appManagementClient.EXPECT().
-			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
 			Return([]generated.GenericResource{
 				{},
 			}, nil).
@@ -253,7 +261,15 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Environment deleted",
+				Format: msgDeletingResourceCount,
+				Params: []any{1, "test-env"},
+			},
+			output.LogOutput{
+				Format: msgDeletingEnvironment,
+				Params: []any{"test-env"},
+			},
+			output.LogOutput{
+				Format: msgEnvironmentDeleted,
 			},
 		}
 
@@ -263,10 +279,8 @@ func Test_Show(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		expectedPrompt := strings.Join([]string{
-			warnDependencies,
-			fmt.Sprintf(deleteConfirmation, "test-env"),
-		}, " ")
+		// 1 resource
+		expectedPrompt := fmt.Sprintf(deleteConfirmationWithResources, "test-env", 1)
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
 			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, expectedPrompt).
@@ -280,11 +294,6 @@ func Test_Show(t *testing.T) {
 			Return([]generated.GenericResource{
 				{},
 			}, nil).
-			Times(1)
-
-		appManagementClient.EXPECT().
-			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
-			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
 		appManagementClient.EXPECT().
@@ -315,7 +324,15 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Environment deleted",
+				Format: msgDeletingResourceCount,
+				Params: []any{1, "test-env"},
+			},
+			output.LogOutput{
+				Format: msgDeletingEnvironment,
+				Params: []any{"test-env"},
+			},
+			output.LogOutput{
+				Format: msgEnvironmentDeleted,
 			},
 		}
 
@@ -327,7 +344,7 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationEmpty, "test-env")).
 			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
@@ -335,11 +352,6 @@ func Test_Show(t *testing.T) {
 
 		appManagementClient.EXPECT().
 			ListResourcesInEnvironment(gomock.Any(), "test-env").
-			Return([]generated.GenericResource{}, nil).
-			Times(1)
-
-		appManagementClient.EXPECT().
-			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
@@ -363,7 +375,14 @@ func Test_Show(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
-		require.Empty(t, outputSink.Writes)
+
+		expected := []any{
+			output.LogOutput{
+				Format: "Environment %q NOT deleted",
+				Params: []any{"test-env"},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
 	})
 
 	// YES, this is a success case. Delete means "make it be gone", so if the environment is already
@@ -375,6 +394,13 @@ func Test_Show(t *testing.T) {
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		// Now we always list resources for better feedback
+		appManagementClient.EXPECT().
+			ListResourcesInEnvironment(gomock.Any(), "test-env").
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
 		appManagementClient.EXPECT().
 			DeleteEnvironment(gomock.Any(), "test-env").
 			Return(false, nil).
@@ -403,7 +429,11 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Environment '%s' does not exist or has already been deleted.",
+				Format: msgDeletingEnvironment,
+				Params: []any{"test-env"},
+			},
+			output.LogOutput{
+				Format: msgEnvironmentNotFound,
 				Params: []any{"test-env"},
 			},
 		}
@@ -418,17 +448,13 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmationEmpty, "test-env")).
 			Return("", &prompt.ErrExitConsole{}).
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
 			ListResourcesInEnvironment(gomock.Any(), "test-env").
-			Return([]generated.GenericResource{}, nil).
-			Times(1)
-		appManagementClient.EXPECT().
-			ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "Applications.Core/applications").
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 

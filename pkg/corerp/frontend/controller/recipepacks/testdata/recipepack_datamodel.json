@@ -1,0 +1,39 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/default/providers/Radius.Core/recipePacks/testrecipepack",
+  "name": "testrecipepack",
+  "type": "Radius.Core/recipePacks",
+  "location": "global",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "test@example.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "test@example.com",
+    "lastModifiedByType": "User"
+  },
+  "properties": {
+    "recipes": {
+      "Applications.Core/extenders": {
+        "recipeKind": "bicep",
+        "recipeLocation": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
+      },
+      "Radius.Resources/postgreSQL": {
+        "recipeKind": "bicep",
+        "recipeLocation": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
+      },
+      "Applications.Datastores/redisCaches": {
+        "recipeKind": "bicep",
+        "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep",
+        "parameters": {
+          "tier": "basic"
+        }
+      }
+    }
+  },
+  "provisioningState": "Succeeded",
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "default",
+  "createdApiVersion": "2025-08-01-preview",
+  "updatedApiVersion": "2025-08-01-preview"
+}

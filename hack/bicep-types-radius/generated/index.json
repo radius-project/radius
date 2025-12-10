@@ -44,6 +44,15 @@
     },
     "Applications.Messaging/rabbitMQQueues@2023-10-01-preview": {
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/55"
+    },
+    "Radius.Core/applications@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/44"
+    },
+    "Radius.Core/environments@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/67"
+    },
+    "Radius.Core/recipePacks@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/89"
     }
   },
   "resourceFunctions": {},

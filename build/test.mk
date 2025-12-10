@@ -16,6 +16,18 @@
 
 ##@ Test
 
+CLI_DOWNLOAD_TEST_SCRIPT := ./build/test-cli-download.sh
+
+# Default values for CLI download test
+CLI_DOWNLOAD_OS ?= linux
+CLI_DOWNLOAD_ARCH ?= amd64
+CLI_DOWNLOAD_FILE ?= rad
+CLI_DOWNLOAD_EXT ?=
+
+.PHONY: test-cli-download
+test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [CLI_DOWNLOAD_OS=linux] [CLI_DOWNLOAD_ARCH=amd64] [CLI_DOWNLOAD_FILE=rad] [CLI_DOWNLOAD_EXT=]
+	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) $(CLI_DOWNLOAD_OS) $(CLI_DOWNLOAD_ARCH) $(CLI_DOWNLOAD_FILE) $(CLI_DOWNLOAD_EXT)
+
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
@@ -49,7 +61,7 @@ test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes contr
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."
-	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.20)
 	@echo "$(ARROW) Instructions:"
 	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
 	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
@@ -159,7 +171,7 @@ test-helm: ## Runs Helm chart unit tests
 .PHONY: oav-installed
 oav-installed:
 	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
-	@which oav > /dev/null || { echo "run 'npm install -g oav' to install oav"; exit 1; }
+	@which oav > /dev/null || { echo "run 'npm install -g oav@4.0.2' to install oav"; exit 1; }
 	@echo "$(ARROW) OK"
 
 # TODO re-enable https://github.com/radius-project/radius/issues/5091

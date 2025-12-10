@@ -210,6 +210,34 @@ var handlerTests = []rpctest.HandlerTestSpec{
 	},
 }
 
+var radiusCoreHandlerTests = []rpctest.HandlerTestSpec{
+	{
+		OperationType: v1.OperationType{Type: "Radius.Core/recipePacks", Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/radius.core/recipepacks/recipe0",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: "Radius.Core/recipePacks", Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/radius.core/recipepacks/recipe0",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: "Radius.Core/environments", Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/radius.core/environments/env0",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: "Radius.Core/environments", Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/radius.core/environments/env0",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: "Radius.Core/applications", Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/radius.core/applications/app0",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: "Radius.Core/applications", Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/radius.core/applications/app0",
+		Method:        http.MethodPatch,
+	},
+}
+
 func TestRouter(t *testing.T) {
 	conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
 	require.NoError(t, err)
@@ -222,6 +250,31 @@ func TestRouter(t *testing.T) {
 	rpctest.AssertRouters(t, handlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
 		r := chi.NewRouter()
 		validator, err := builder.NewOpenAPIValidator(ctx, "/api.ucp.dev", "applications.core")
+		require.NoError(t, err)
+
+		options := apictrl.Options{
+			Address:        "localhost:9000",
+			PathBase:       "/api.ucp.dev",
+			DatabaseClient: inmemory.NewClient(),
+			StatusManager:  statusmanager.NewMockStatusManager(gomock.NewController(t)),
+		}
+
+		return r, nsBuilder.ApplyAPIHandlers(ctx, r, options, validator)
+	})
+}
+
+func TestRadiusCoreRouter(t *testing.T) {
+	conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+	require.NoError(t, err)
+	cfg := &controllerconfig.RecipeControllerConfig{
+		UCPConnection: &conn,
+	}
+	ns := SetupRadiusCoreNamespace(cfg)
+	nsBuilder := ns.GenerateBuilder()
+
+	rpctest.AssertRouters(t, radiusCoreHandlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
+		r := chi.NewRouter()
+		validator, err := builder.NewOpenAPIValidator(ctx, "/api.ucp.dev", "radius.core")
 		require.NoError(t, err)
 
 		options := apictrl.Options{

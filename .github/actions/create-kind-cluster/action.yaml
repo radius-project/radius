@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 name: "Create a KinD cluster"
 description: |
   Create a KinD cluster.
@@ -31,7 +33,7 @@ inputs:
     required: true
     default: "5000"
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Install KinD
       shell: bash
@@ -45,7 +47,7 @@ runs:
       run: |
         # https://kind.sigs.k8s.io/docs/user/local-registry/
         # Create the cluster with necessary configurations
-        # to expose 30080 port for Gitea
+        # to expose 30080 port for the local Git server
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
@@ -62,7 +64,7 @@ runs:
       shell: bash
       run: |
         # Create the cluster with necessary configurations
-        # to expose 30080 port for Gitea
+        # to expose 30080 port for the local Git server
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
@@ -109,7 +111,7 @@ runs:
       shell: bash
       run: |
         # Create the cluster with necessary configurations for the secure local registry
-        # and to expose 30080 port for Gitea
+        # and to expose 30080 port for the local Git server
         cat <<EOF | kind create cluster --config=-
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4

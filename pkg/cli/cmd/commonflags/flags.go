@@ -37,12 +37,21 @@ const (
 	ClearEnvAzureFlag = "clear-azure"
 	// ClearEnvAWSFlag tells the command to clear aws scope on the environment it is configured.
 	ClearEnvAWSFlag = "clear-aws"
+	// KubernetesNamespaceFlag provides kubernetes namespace.
+	KubernetesNamespaceFlag = "kubernetes-namespace"
+	// ClearEnvKubernetesFlag tells the command to clear kubernetes scope on the environment it is configured.
+	ClearEnvKubernetesFlag = "clear-kubernetes"
 )
 
 // AddOutputFlag adds a flag to the given command that allows the user to specify the output format of the command's output.
 func AddOutputFlag(cmd *cobra.Command) {
 	description := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	cmd.Flags().StringP("output", "o", output.DefaultFormat, description)
+}
+
+func AddOutputFlagWithPlainText(cmd *cobra.Command) {
+	description := fmt.Sprintf("output format (supported formats are %s)", strings.Join([]string{output.FormatPlainText, output.FormatJson}, ", "))
+	cmd.Flags().StringP("output", "o", output.FormatPlainText, description)
 }
 
 // AddWorkspaceFlag adds a flag to the given command that allows the user to specify a workspace name.
@@ -124,6 +133,18 @@ func AddAWSRegionFlag(cmd *cobra.Command) {
 // AddAWSAccountFlag adds a flag to the given command that allows the user to specify an AWS account ID.
 func AddAWSAccountFlag(cmd *cobra.Command) {
 	cmd.Flags().String(AWSAccountIdFlag, "", "The account ID where AWS resources will be deployed")
+}
+
+// AddKubernetesScopeFlags adds flags to a command to specify a Kubernetes namespace, and marks it as mutually
+// exclusive with a flag to clear the Kubernetes configuration on the environment.
+func AddKubernetesScopeFlags(cmd *cobra.Command) {
+	AddKubernetesNamespaceFlag(cmd)
+	cmd.MarkFlagsMutuallyExclusive(KubernetesNamespaceFlag, ClearEnvKubernetesFlag)
+}
+
+// AddNamespaceFlag adds a flag to the given command that allows the user to specify a Kubernetes namespace.
+func AddKubernetesNamespaceFlag(cmd *cobra.Command) {
+	cmd.Flags().String(KubernetesNamespaceFlag, "", "The namespace where Kubernetes resources will be deployed (preview)")
 }
 
 // AddKubeContextFlagVar adds a flag to the given command that allows the user to specify a Kubernetes context to use.

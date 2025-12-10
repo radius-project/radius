@@ -32,6 +32,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
@@ -43,6 +44,7 @@ type UCPApplicationsManagementClient struct {
 	genericResourceClientFactory     func(scope string, resourceType string) (genericResourceClient, error)
 	applicationResourceClientFactory func(scope string) (applicationResourceClient, error)
 	environmentResourceClientFactory func(scope string) (environmentResourceClient, error)
+	recipePackResourceClientFactory  func(scope string) (recipePackResourceClient, error)
 	resourceGroupClientFactory       func() (resourceGroupClient, error)
 	resourceProviderClientFactory    func() (resourceProviderClient, error)
 	resourceTypeClientFactory        func() (resourceTypeClient, error)
@@ -55,7 +57,6 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
-
 	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
@@ -132,6 +133,7 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
+
 	scope, name, err := amc.extractScopeAndName(resourceNameOrID)
 	if err != nil {
 		return generated.GenericResource{}, err
@@ -372,8 +374,8 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	for _, resource := range resources {
 		resource := resource
 		g.Go(func() error {
-			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.Name)
-			if err != nil {
+			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)
+			if err != nil && !clientv2.Is404Error(err) {
 				return err
 			}
 			return nil
@@ -400,6 +402,63 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	}
 
 	return response.StatusCode != 204, nil
+}
+
+// ListRecipePacksInResourceGroup lists all recipe packs in the configured scope (assumes configured scope is a resource group).
+func (amc *UCPApplicationsManagementClient) ListRecipePacksInResourceGroup(ctx context.Context) ([]corerpv20250801.RecipePackResource, error) {
+	client, err := amc.createRecipePackClient(amc.RootScope)
+	if err != nil {
+		return nil, err
+	}
+
+	result := []corerpv20250801.RecipePackResource{}
+	pager := client.NewListByScopePager(&corerpv20250801.RecipePacksClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, rp := range page.RecipePackResourceListResult.Value {
+			result = append(result, *rp)
+		}
+	}
+
+	return result, nil
+}
+
+// ListRecipePacks lists all recipe packs in all resource groups.
+func (amc *UCPApplicationsManagementClient) ListRecipePacks(ctx context.Context) ([]corerpv20250801.RecipePackResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return []corerpv20250801.RecipePackResource{}, err
+	}
+
+	// Query at plane scope, not resource group scope. We don't enforce the exact structure of the scope, so handle both cases.
+	//
+	// - /planes/radius/local
+	// - /planes/radius/local/resourceGroups/my-group
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
+		scope = scope.Truncate()
+	}
+
+	client, err := amc.createRecipePackClient(scope.String())
+	if err != nil {
+		return nil, err
+	}
+
+	result := []corerpv20250801.RecipePackResource{}
+	pager := client.NewListByScopePager(&corerpv20250801.RecipePacksClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, rp := range page.RecipePackResourceListResult.Value {
+			result = append(result, *rp)
+		}
+	}
+
+	return result, nil
 }
 
 // ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
@@ -479,6 +538,49 @@ func (amc *UCPApplicationsManagementClient) GetEnvironment(ctx context.Context, 
 	}
 
 	return response.EnvironmentResource, nil
+}
+
+// GetRecipePack retrieves a recipe pack by name (in the configured scope) or full resource ID.
+func (amc *UCPApplicationsManagementClient) GetRecipePack(ctx context.Context, recipePackNameOrID string) (corerpv20250801.RecipePackResource, error) {
+	scope, name, err := amc.extractScopeAndName(recipePackNameOrID)
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, err
+	}
+
+	client, err := amc.createRecipePackClient(scope)
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, err
+	}
+
+	resp, err := client.Get(ctx, name, &corerpv20250801.RecipePacksClientGetOptions{})
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, err
+	}
+
+	return resp.RecipePackResource, nil
+}
+
+// DeleteRecipePack deletes a recipe pack by its name (in the configured scope) or resource ID.
+func (amc *UCPApplicationsManagementClient) DeleteRecipePack(ctx context.Context, recipePackNameOrID string) (bool, error) {
+	scope, name, err := amc.extractScopeAndName(recipePackNameOrID)
+	if err != nil {
+		return false, err
+	}
+
+	client, err := amc.createRecipePackClient(scope)
+	if err != nil {
+		return false, err
+	}
+
+	var response *http.Response
+	ctx = amc.captureResponse(ctx, &response)
+
+	_, err = client.Delete(ctx, name, nil)
+	if err != nil {
+		return false, err
+	}
+
+	return response.StatusCode != 204, nil
 }
 
 // GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
@@ -624,6 +726,46 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 
 // DeleteResourceGroup deletes a resource group by its name.
 func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
+	// First check if the resource group exists
+	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		if clientv2.Is404Error(err) {
+			// Resource group doesn't exist - idempotent success
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get resource group: %w", err)
+	}
+
+	// Get all resources in the group (we know it exists now)
+	resources, err := amc.ListResourcesInResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		return false, fmt.Errorf("failed to list resources in resource group: %w", err)
+	}
+
+	// Delete all resources if there are any
+	if len(resources) > 0 {
+		// Delete all resources in parallel
+		g, groupCtx := errgroup.WithContext(ctx)
+		for _, resource := range resources {
+			resource := resource
+			g.Go(func() error {
+				// Delete each resource using its full ID to ensure correct scope
+				_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)
+				if err != nil && !clientv2.Is404Error(err) {
+					return err
+				}
+
+				return nil
+			})
+		}
+
+		// Wait for all resources to be deleted
+		if err := g.Wait(); err != nil {
+			return false, fmt.Errorf("failed to delete resources in group: %w", err)
+		}
+	}
+
+	// Now delete the empty resource group
 	client, err := amc.createResourceGroupClient()
 	if err != nil {
 		return false, err
@@ -638,6 +780,143 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 	}
 
 	return response.StatusCode != 204, nil
+}
+
+// ListResourcesInResourceGroup lists all resources in a specific resource group.
+func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error) {
+	// First check if the resource group exists
+	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the resource group scope
+	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
+
+	results := []generated.GenericResource{}
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, planeName)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, resourceType := range resourceTypesList {
+		// Create a client scoped to this resource group
+		apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+		if err != nil {
+			continue // Skip this resource type if we can't get API versions
+		}
+
+		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions)
+		if err != nil {
+			continue
+		}
+
+		pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				break
+			}
+
+			for _, resource := range page.GenericResourcesList.Value {
+				results = append(results, *resource)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// ListResourcesInResourceGroupFiltered lists resources in a resource group, optionally filtered by environment and/or application.
+func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroupFiltered(ctx context.Context, planeName string, resourceGroupName string, environmentID string, applicationID string) ([]generated.GenericResource, error) {
+	// First get all resources in the group
+	resources, err := amc.ListResourcesInResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply filters if provided
+	results := []generated.GenericResource{}
+	for _, resource := range resources {
+		// Check environment filter
+		if environmentID != "" && !isResourceInEnvironment(resource, environmentID) {
+			continue
+		}
+
+		// Check application filter
+		if applicationID != "" && !isResourceInApplication(resource, applicationID) {
+			continue
+		}
+
+		results = append(results, resource)
+	}
+
+	return results, nil
+}
+
+// ListResourcesOfTypeInResourceGroup lists resources of a specific type in a resource group.
+func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resourceType string) ([]generated.GenericResource, error) {
+	// Check if resource group exists first
+	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the resource group scope
+	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
+
+	// Get API versions for the resource type
+	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, resource := range page.GenericResourcesList.Value {
+			results = append(results, *resource)
+		}
+	}
+
+	return results, nil
+}
+
+// ListResourcesOfTypeInResourceGroupFiltered lists resources of a specific type in a resource group, optionally filtered by environment and/or application.
+func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroupFiltered(ctx context.Context, planeName string, resourceGroupName string, resourceType string, environmentID string, applicationID string) ([]generated.GenericResource, error) {
+	// First get all resources of the type in the group
+	resources, err := amc.ListResourcesOfTypeInResourceGroup(ctx, planeName, resourceGroupName, resourceType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply filters if provided
+	results := []generated.GenericResource{}
+	for _, resource := range resources {
+		// Check environment filter
+		if environmentID != "" && !isResourceInEnvironment(resource, environmentID) {
+			continue
+		}
+
+		// Check application filter
+		if applicationID != "" && !isResourceInApplication(resource, applicationID) {
+			continue
+		}
+
+		results = append(results, resource)
+	}
+
+	return results, nil
 }
 
 // ListResourceProviders lists all resource providers in the configured plane.
@@ -761,13 +1040,12 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 
 // ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
 func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
-	// excludedResourceTypesList is a list of resource types that should be excluded from the list of application resources
-	// to be displayed to the user.
+	// excludedResourceTypesList contains resource types that should be excluded
 	// Lowercase is used to avoid case sensitivity issues.
 	excludedResourceTypesList := []string{
-		"microsoft.resources/deployments",
-		"applications.core/applications",
-		"applications.core/environments",
+		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+		"radius.core/environments",
+		"radius.core/applications",
 	}
 
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
@@ -832,6 +1110,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 		if err != nil {
 			return nil, err
 		}
+
 		results = append(results, resources...)
 	}
 
@@ -928,6 +1207,13 @@ func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string
 	}
 
 	return amc.applicationResourceClientFactory(scope)
+}
+
+func (amc *UCPApplicationsManagementClient) createRecipePackClient(scope string) (recipePackResourceClient, error) {
+	if amc.recipePackResourceClientFactory == nil {
+		return corerpv20250801.NewRecipePacksClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+	return amc.recipePackResourceClientFactory(scope)
 }
 
 func (amc *UCPApplicationsManagementClient) createEnvironmentClient(scope string) (environmentResourceClient, error) {
@@ -1095,6 +1381,12 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 // getGenericClient returns a generic resource client for the specified scope and resource type.
 // if apiVersions is empty, it uses the default version i.e 2023-10-01-preview else uses any version supported by the resource type.
 func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
+	// Radius.Core resources require a specific API version.
+	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
+	// Then we will not need this special case.
+	if strings.HasPrefix(resourceType, "Radius.Core") {
+		apiVersions = []string{"2025-08-01-preview"}
+	}
 	if len(apiVersions) == 0 {
 		client, err = amc.createGenericClient(scope, resourceType)
 	} else {

@@ -1,0 +1,58 @@
+{
+  "operationId": "Environments_CreateOrUpdate",
+  "title": "Create or Update an environment with Kubernetes provider",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "environmentName": "my-k8s-env",
+    "api-version": "2025-08-01-preview",
+    "EnvironmentResource": {
+      "location": "West US",
+      "properties": {
+        "recipePacks": [
+          "/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"
+        ],
+        "recipeParameters": {
+          "Radius.Compute/containers": {
+            "allowPlatformOptions": false
+          },
+          "Radius.Data/sqlDatabases": {
+            "sku": "Basic"
+          }
+        },
+        "providers": {
+          "kubernetes": {
+            "namespace": "default"
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-k8s-env",
+        "name": "my-k8s-env",
+        "type": "Radius.Core/environments",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "recipePacks": [
+            "/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"
+          ],
+          "recipeParameters": {
+            "Radius.Compute/containers": {
+              "allowPlatformOptions": false
+            },
+            "Radius.Data/sqlDatabases": {
+              "sku": "Basic"
+            }
+          },
+          "providers": {
+            "kubernetes": {
+              "namespace": "default"
+            }
+          }
+        }
+      }
+    }
+  }
+}

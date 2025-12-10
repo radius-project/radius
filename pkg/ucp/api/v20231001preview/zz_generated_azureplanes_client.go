@@ -31,7 +31,7 @@ func NewAzurePlanesClient(credential azcore.TokenCredential, options *arm.Client
 		return nil, err
 	}
 	client := &AzurePlanesClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -52,7 +52,7 @@ func (client *AzurePlanesClient) BeginCreateOrUpdate(ctx context.Context, planeN
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -103,9 +103,9 @@ func (client *AzurePlanesClient) createOrUpdateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a plane
@@ -122,7 +122,7 @@ func (client *AzurePlanesClient) BeginDelete(ctx context.Context, planeName stri
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -234,13 +234,13 @@ func (client *AzurePlanesClient) getHandleResponse(resp *http.Response) (AzurePl
 //
 // Generated from API version 2023-10-01-preview
 //   - options - AzurePlanesClientListOptions contains the optional parameters for the AzurePlanesClient.NewListPager method.
-func (client *AzurePlanesClient) NewListPager(options *AzurePlanesClientListOptions) (*runtime.Pager[AzurePlanesClientListResponse]) {
+func (client *AzurePlanesClient) NewListPager(options *AzurePlanesClientListOptions) *runtime.Pager[AzurePlanesClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[AzurePlanesClientListResponse]{
 		More: func(page AzurePlanesClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *AzurePlanesClientListResponse) (AzurePlanesClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzurePlanesClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzurePlanesClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -252,7 +252,7 @@ func (client *AzurePlanesClient) NewListPager(options *AzurePlanesClientListOpti
 				return AzurePlanesClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -295,7 +295,7 @@ func (client *AzurePlanesClient) BeginUpdate(ctx context.Context, planeName stri
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -346,8 +346,7 @@ func (client *AzurePlanesClient) updateCreateRequest(ctx context.Context, planeN
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

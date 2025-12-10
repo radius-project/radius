@@ -138,6 +138,7 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 				Enabled: true,
 			},
 			AzureCredentials: &AzureCredentialProperties{
+				Kind: (*string)(azureServicePrincipal.Kind),
 				ServicePrincipal: &AzureServicePrincipalCredentialProperties{
 					ClientID: azureServicePrincipal.ClientID,
 					Kind:     (*string)(azureServicePrincipal.Kind),
@@ -159,6 +160,7 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 				Enabled: true,
 			},
 			AzureCredentials: &AzureCredentialProperties{
+				Kind: (*string)(azureWorkloadIdentity.Kind),
 				WorkloadIdentity: &AzureWorkloadIdentityCredentialProperties{
 					ClientID: azureWorkloadIdentity.ClientID,
 					Kind:     (*string)(azureWorkloadIdentity.Kind),

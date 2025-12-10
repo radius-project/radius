@@ -18,21 +18,18 @@ package publishextension
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
+	"github.com/radius-project/radius/bicep-tools/generator"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
-	"golang.org/x/mod/semver"
 )
 
 // NewCommand creates a new instance of the `rad bicep publish-extension` command.
@@ -108,17 +105,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad bicep publish-extension` command.
 func (r *Runner) Run(ctx context.Context) error {
-	// This command ties together two separate shell commands:
-	// 1. We use NPX to run https://github.com/radius-project/bicep-tools/tree/main/packages/manifest-to-bicep-extension
-	//       - This generates a Bicep extension "index"
+	// This command performs three steps:
+	// 1. Run the generator (bicep-tools/generator) to build the Bicep extension "index"
 	// 2. We use `bicep publish-extension` to publish the extension "index" to the "target"
-	//
 	// 3. We can clean up the "index" directory after publishing.
-
-	_, err := exec.LookPath("npx")
-	if errors.Is(err, exec.ErrNotFound) {
-		return clierrors.Message("The command 'npx' was not found on the PATH. Please install Node.js 16+ to use this command.")
-	}
 
 	temp, err := os.MkdirTemp("", "bicep-extension-*")
 	if err != nil {
@@ -142,28 +132,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outputDirectoryPath string) error {
-	// npx @radius-project/manifest-to-bicep-extension generate <resource provider> <temp>
-	bicepExtension := "@radius-project/manifest-to-bicep-extension@edge"
-	if isValidSemver(version.Release()) {
-		bicepExtension = "@radius-project/manifest-to-bicep-extension@" + version.Release()
-	}
-
-	args := []string{
-		bicepExtension,
-		"generate",
-		inputFilePath,
-		outputDirectoryPath,
-	}
-	cmd := exec.CommandContext(ctx, "npx", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to generate Bicep extension")
-	}
-
-	return nil
+	return generator.RunGenerate(inputFilePath, outputDirectoryPath)
 }
 
 func publishExtension(ctx context.Context, inputDirectoryPath string, target string, force bool) error {
@@ -193,12 +162,4 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 	}
 
 	return nil
-}
-
-func isValidSemver(version string) bool {
-	// The semver package expects versions to start with 'v'
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
-	}
-	return semver.IsValid(version)
 }

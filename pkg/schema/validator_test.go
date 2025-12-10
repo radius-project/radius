@@ -73,6 +73,90 @@ func TestValidator_ValidateSchema(t *testing.T) {
 	})
 }
 
+func TestValidator_ValidateSchema_PlatformOptionsTypeAny(t *testing.T) {
+	validator := NewValidator()
+	ctx := context.Background()
+
+	t.Run("platformOptions additionalProperties type any succeeds", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"platformOptions": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"any"}}},
+						},
+					},
+				},
+			},
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("non-platform additionalProperties type any fails", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"otherOptions": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"any"}}},
+						},
+					},
+				},
+			},
+		}
+
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unsupported 'type' value \"any\"")
+	})
+}
+
+func TestNormalizePlatformOptionsAny(t *testing.T) {
+	platformSchema := &openapi3.Schema{
+		Type: &openapi3.Types{"object"},
+		AdditionalProperties: openapi3.AdditionalProperties{
+			Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"any"}}},
+		},
+	}
+	otherSchema := &openapi3.Schema{
+		Type: &openapi3.Types{"object"},
+		AdditionalProperties: openapi3.AdditionalProperties{
+			Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"any"}}},
+		},
+	}
+
+	root := &openapi3.Schema{
+		Type: &openapi3.Types{"object"},
+		Properties: openapi3.Schemas{
+			"platformOptions": {Value: platformSchema},
+			"otherOptions":    {Value: otherSchema},
+		},
+	}
+
+	normalizePlatformOptionsAny(root)
+
+	platformAdditional := platformSchema.AdditionalProperties.Schema.Value
+	otherAdditional := otherSchema.AdditionalProperties.Schema.Value
+
+	require.NotNil(t, platformAdditional)
+	require.Nil(t, platformAdditional.Type)
+	require.NotNil(t, otherAdditional)
+	require.NotNil(t, otherAdditional.Type)
+	require.Equal(t, "any", (*otherAdditional.Type)[0])
+}
+
 func TestValidator_checkProhibitedFeatures(t *testing.T) {
 	validator := NewValidator()
 
@@ -235,7 +319,7 @@ func TestValidator_validateTypeConstraints(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateTypeConstraints(tt.schema)
+			err := validator.validateTypeConstraints(tt.schema, "")
 			if tt.hasErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
@@ -817,10 +901,12 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 	validator := NewValidator()
 
 	tests := []struct {
-		name   string
-		schema *openapi3.Schema
-		hasErr bool
-		errMsg string
+		name       string
+		schema     *openapi3.Schema
+		path       string
+		hasErr     bool
+		errMsg     string
+		expectPath bool
 	}{
 		{
 			name: "object with only properties - allowed",
@@ -836,6 +922,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 				},
 			},
 			hasErr: false,
+			path:   "spec",
 		},
 		{
 			name: "object with only additionalProperties schema - allowed",
@@ -847,6 +934,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					},
 				},
 			},
+			path:   "spec",
 			hasErr: false,
 		},
 		{
@@ -864,6 +952,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					},
 				},
 			},
+			path:   "spec",
 			hasErr: true,
 			errMsg: "object schemas cannot have both 'properties' and 'additionalProperties' defined",
 		},
@@ -880,6 +969,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					Has: &[]bool{false}[0],
 				},
 			},
+			path:   "spec",
 			hasErr: false,
 		},
 		{
@@ -893,6 +983,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					},
 				},
 			},
+			path:   "spec",
 			hasErr: false,
 		},
 		{
@@ -908,6 +999,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					Has: &[]bool{true}[0],
 				},
 			},
+			path:   "spec",
 			hasErr: false, // Constraint only applies to object types
 		},
 		{
@@ -925,6 +1017,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					},
 				},
 			},
+			path:   "spec",
 			hasErr: true,
 			errMsg: "object schemas cannot have both 'properties' and 'additionalProperties' defined",
 		},
@@ -933,6 +1026,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 			schema: &openapi3.Schema{
 				Type: &openapi3.Types{"object"},
 			},
+			path:   "spec",
 			hasErr: false,
 		},
 		{
@@ -943,6 +1037,7 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					Has: &[]bool{true}[0],
 				},
 			},
+			path:   "spec",
 			hasErr: true,
 			errMsg: "additionalProperties: true is not allowed, use a schema object instead",
 		},
@@ -958,14 +1053,44 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 					Has: &[]bool{true}[0],
 				},
 			},
+			path:   "spec",
 			hasErr: true,
 			errMsg: "additionalProperties: true is not allowed, use a schema object instead",
+		},
+		{
+			name: "platformOptions allows unconstrained additionalProperties",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{}},
+				},
+			},
+			path:   "spec.platformOptions",
+			hasErr: false,
+		},
+		{
+			name: "non-platform property rejects unconstrained additionalProperties",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				AdditionalProperties: openapi3.AdditionalProperties{
+					Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{}},
+				},
+			},
+			path:       "spec.otherOptions",
+			hasErr:     true,
+			errMsg:     "additionalProperties may be type `any` only for the platformOptions property",
+			expectPath: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.checkObjectPropertyConstraints(tt.schema)
+			if tt.name == "non-platform property rejects unconstrained additionalProperties" {
+				require.NotNil(t, tt.schema.AdditionalProperties.Schema)
+				require.NotNil(t, tt.schema.AdditionalProperties.Schema.Value)
+				require.True(t, isUnconstrainedSchema(tt.schema.AdditionalProperties.Schema.Value))
+			}
+			err := validator.checkObjectPropertyConstraints(tt.schema, tt.path)
 			if tt.hasErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMsg)
@@ -973,6 +1098,9 @@ func TestValidator_checkObjectPropertyConstraints(t *testing.T) {
 				var constraintErr *ValidationError
 				require.ErrorAs(t, err, &constraintErr)
 				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
+				if tt.expectPath {
+					require.Contains(t, err.Error(), tt.path)
+				}
 			} else {
 				require.NoError(t, err)
 			}
@@ -1010,7 +1138,7 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 				"name": {
 					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
 				},
-				"environment": &openapi3.SchemaRef{
+				"environment": {
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"string"},
 					},
@@ -1044,6 +1172,43 @@ func TestValidator_ObjectPropertyConstraintsIntegration(t *testing.T) {
 		err := validator.validateRadiusConstraints(schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "additionalProperties: true is not allowed, use a schema object instead")
+	})
+
+	t.Run("schema allows platformOptions additionalProperties any", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: map[string]*openapi3.SchemaRef{
+				"platformOptions": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{}},
+						},
+					},
+				},
+			},
+		}
+		err := validator.validateRadiusConstraints(schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("schema rejects non-platform any additionalProperties", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: map[string]*openapi3.SchemaRef{
+				"otherOptions": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{Value: &openapi3.Schema{}},
+						},
+					},
+				},
+			},
+		}
+		err := validator.validateRadiusConstraints(schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "additionalProperties may be type `any` only for the platformOptions property")
 	})
 }
 
@@ -1939,6 +2104,33 @@ func TestValidateResourceAgainstSchema(t *testing.T) {
 
 		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
 		require.NoError(t, err) // empty object is valid against object schema
+	})
+
+	t.Run("platformOptions additionalProperties type any", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"platformOptions": map[string]any{
+					"type": "object",
+					"additionalProperties": map[string]any{
+						"type": "any",
+					},
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"platformOptions": map[string]any{
+					"custom": map[string]any{
+						"flag": true,
+					},
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
 	})
 
 	t.Run("structured error message with field path", func(t *testing.T) {

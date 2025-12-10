@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: Copy Deployment Engine image
+description: Copy a deployment engine image from Azure Container Registry to GitHub Container Registry.
+inputs:
+  tag:
+    description: Tag to apply to the destination image and pull from the source image.
+    required: true
+  src_image:
+    description: Name of the source image in Azure Container Registry (e.g. radiusdeploymentengine.azurecr.io/deployment-engine).
+    required: true
+  dest_image:
+    description: Name of the GitHub Container Registry repository to push the deployment engine image to (e.g. ghcr.io/radius-project/deployment-engine).
+    required: true
+
+# Expected environment variables:
+#   GHCR_PASSWORD: Password to authenticate against the destination registry.
+#   DE_CONTAINER_AZURE_CLIENT_ID: Client ID for Azure login.
+#   DE_CONTAINER_AZURE_TENANT_ID: Tenant ID for Azure login.
+#   DE_CONTAINER_AZURE_SUBSCRIPTION_ID: Subscription ID for Azure login.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+    - name: Log in to Azure
+      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+      with:
+        client-id: ${{ env.DE_CONTAINER_AZURE_CLIENT_ID }}
+        tenant-id: ${{ env.DE_CONTAINER_AZURE_TENANT_ID }}
+        subscription-id: ${{ env.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
+
+    - name: Log in to Azure Container Registry
+      shell: bash
+      env:
+        SRC_IMAGE: ${{ inputs.src_image }}
+      run: |
+        # Example: SRC_REGISTRY_NAME=myregistry
+        SRC_REGISTRY_NAME=$(echo "${SRC_IMAGE}" | cut -d'.' -f1)
+        az acr login --name "${SRC_REGISTRY_NAME}"
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      with:
+        registry: ghcr.io
+        username: rad-ci-bot
+        password: ${{ env.GHCR_PASSWORD }}
+
+    - name: Copy Deployment Engine image from ACR to GHCR
+      shell: bash
+      env:
+        SRC_IMAGE: ${{ inputs.src_image }}
+        DEST_IMAGE: ${{ inputs.dest_image }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        docker buildx imagetools create \
+          --tag "${DEST_IMAGE}:${TAG}" \
+          "${SRC_IMAGE}:${TAG}"

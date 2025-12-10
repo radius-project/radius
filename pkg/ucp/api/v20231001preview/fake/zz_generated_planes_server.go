@@ -16,11 +16,10 @@ import (
 )
 
 // PlanesServer is a fake server for instances of the v20231001preview.PlanesClient type.
-type PlanesServer struct{
+type PlanesServer struct {
 	// NewListPlanesPager is the fake for method PlanesClient.NewListPlanesPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPlanesPager func(options *v20231001preview.PlanesClientListPlanesOptions) (resp azfake.PagerResponder[v20231001preview.PlanesClientListPlanesResponse])
-
 }
 
 // NewPlanesServerTransport creates a new instance of PlanesServerTransport with the provided implementation.
@@ -28,7 +27,7 @@ type PlanesServer struct{
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
 func NewPlanesServerTransport(srv *PlanesServer) *PlanesServerTransport {
 	return &PlanesServerTransport{
-		srv: srv,
+		srv:                srv,
 		newListPlanesPager: newTracker[azfake.PagerResponder[v20231001preview.PlanesClientListPlanesResponse]](),
 	}
 }
@@ -36,7 +35,7 @@ func NewPlanesServerTransport(srv *PlanesServer) *PlanesServerTransport {
 // PlanesServerTransport connects instances of v20231001preview.PlanesClient to instances of PlanesServer.
 // Don't use this type directly, use NewPlanesServerTransport instead.
 type PlanesServerTransport struct {
-	srv *PlanesServer
+	srv                *PlanesServer
 	newListPlanesPager *tracker[azfake.PagerResponder[v20231001preview.PlanesClientListPlanesResponse]]
 }
 
@@ -58,15 +57,15 @@ func (p *PlanesServerTransport) dispatchToMethodFake(req *http.Request, method s
 	go func() {
 		var intercepted bool
 		var res result
-		 if planesServerTransportInterceptor != nil {
-			 res.resp, res.err, intercepted = planesServerTransportInterceptor.Do(req)
+		if planesServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = planesServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
 			case "PlanesClient.NewListPlanesPager":
 				res.resp, res.err = p.dispatchNewListPlanesPager(req)
-				default:
-		res.err = fmt.Errorf("unhandled API %s", method)
+			default:
+				res.err = fmt.Errorf("unhandled API %s", method)
 			}
 
 		}
@@ -90,7 +89,7 @@ func (p *PlanesServerTransport) dispatchNewListPlanesPager(req *http.Request) (*
 	}
 	newListPlanesPager := p.newListPlanesPager.get(req)
 	if newListPlanesPager == nil {
-resp := p.srv.NewListPlanesPager(nil)
+		resp := p.srv.NewListPlanesPager(nil)
 		newListPlanesPager = &resp
 		p.newListPlanesPager.add(req, newListPlanesPager)
 		server.PagerResponderInjectNextLinks(newListPlanesPager, req, func(page *v20231001preview.PlanesClientListPlanesResponse, createLink func() string) {

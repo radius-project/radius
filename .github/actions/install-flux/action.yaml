@@ -1,18 +1,21 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 name: "Install Flux CLI and Source Controller"
 description: "Installs Flux CLI and Source Controller."
 inputs:
-  flux-version:
+  version:
     description: "Flux version to install"
     required: false
-    default: "2.5.1"
+    default: "2.6.4"
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Install Flux CLI
-      uses: fluxcd/flux2/action@main
+      uses: fluxcd/flux2/action@8454b02a32e48d775b9f563cb51fdcb1787b5b93 # v2.7.5
       with:
-        version: ${{ inputs.flux-version }}
+        version: ${{ inputs.version }}
+
     - name: Install Flux Source Controller
       shell: bash
       run: |
-        .github/actions/install-flux/install-flux.sh ${{ inputs.flux-version }}
+        .github/actions/install-flux/install-flux.sh ${{ inputs.version }}

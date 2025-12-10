@@ -40,17 +40,17 @@ import (
 )
 
 var (
-	s3BucketResourceType    = "AWS.S3/Bucket"
-	awsS3BucketResourceType = "AWS::S3::Bucket"
+	logGroupResourceType    = "AWS.Logs/LogGroup"
+	awsLogGroupResourceType = "AWS::Logs::LogGroup"
 )
 
 func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := context.Background()
 
 	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		bucketName := generateS3BucketName()
-		setupTestAWSResource(t, ctx, bucketName)
-		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+		logGroupName := generateLogGroupName()
+		setupTestAWSResource(t, ctx, logGroupName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
 
 		// Construct resource collection url
@@ -60,7 +60,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20231001preview.Version)
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
-				"BucketName": bucketName,
+				"LogGroupName": logGroupName,
 			},
 		}
 		deleteBody, err := json.Marshal(deleteRequestBody)
@@ -109,9 +109,9 @@ func Test_AWS_ListResources(t *testing.T) {
 	ctx := context.Background()
 
 	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		var bucketName = generateS3BucketName()
-		setupTestAWSResource(t, ctx, bucketName)
-		resourceID, err := validation.GetResourceIdentifier(ctx, s3BucketResourceType, bucketName)
+		var logGroupName = generateLogGroupName()
+		setupTestAWSResource(t, ctx, logGroupName)
+		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
 
 		// Construct resource collection url
@@ -150,8 +150,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]any{
-		"BucketName":    resourceName,
-		"AccessControl": "Private",
+		"LogGroupName": resourceName,
 	}
 	desiredStateBytes, err := json.Marshal(desiredState)
 	require.NoError(t, err)
@@ -159,7 +158,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
 
 	response, err := awsClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-		TypeName:     &awsS3BucketResourceType,
+		TypeName:     &awsLogGroupResourceType,
 		DesiredState: awsgo.String(string(desiredStateBytes)),
 	}, cloudControlOpts...)
 	require.NoError(t, err)
@@ -170,7 +169,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		// seems to fail if the resource does not exist
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
-			TypeName:   &awsS3BucketResourceType,
+			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		if aws.IsAWSResourceNotFoundError(err) {
 			return
@@ -178,7 +177,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		// Just in case delete fails
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
-			TypeName:   &awsS3BucketResourceType,
+			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		require.NoError(t, err)
 
@@ -198,6 +197,6 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 	require.NoError(t, err)
 }
 
-func generateS3BucketName() string {
-	return "ucpfunctionaltestbucket-" + uuid.NewString()
+func generateLogGroupName() string {
+	return "ucpfunctionaltest-" + uuid.NewString()
 }

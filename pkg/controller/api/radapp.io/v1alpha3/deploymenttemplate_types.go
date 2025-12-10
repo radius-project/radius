@@ -38,6 +38,7 @@ type DeploymentTemplateSpec struct {
 // DeploymentTemplateStatus defines the observed state of a DeploymentTemplate resource.
 type DeploymentTemplateStatus struct {
 	// ObservedGeneration is the most recent generation observed for this DeploymentTemplate.
+	// +kubebuilder:validation:Format=""
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,1,opt,name=observedGeneration"`
 
 	// StatusHash is a hash of the DeploymentTemplate's state (template, parameters, and provider config).

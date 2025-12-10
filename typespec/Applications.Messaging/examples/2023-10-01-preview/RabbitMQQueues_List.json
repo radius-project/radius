@@ -1,5 +1,5 @@
 {
-  "operationId": "RabbitMqQueues_ListByScope",
+  "operationId": "RabbitMQQueues_ListByScope",
   "title": "List RabbitMQQueue resources by resource group",
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",

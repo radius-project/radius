@@ -36,21 +36,22 @@ const (
 	deleteConfirmation = "Are you sure you want to delete resource type %q? This will delete all resources of the specified resource type."
 )
 
-// NewCommand creates an instance of the `rad resource-provider delete` command and runner.
+// NewCommand creates an instance of the `rad resource-type delete` command and runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "delete [resource type]",
-		Short: "Delete resource type",
-		Long: `Delete resource type
-		
-Resource types are the entities that implement resource types such as 'Applications.Core/containers'. Each resource type can define multiple API versions, and each API version defines a schema that resource instances conform to. Resource providers can be created and deleted by users.
+		Use:   "delete [resource-type-name]",
+		Short: "Delete a resource type",
+		Long: `Delete a resource type
 
-Deleting a resource type will delete all resources of the specified resource type. For example, deleting 'Applications.Core/containers' will delete all containers.`,
+Deleting a resource type will delete the specified resource type. For example, deleting 'Applications.Core/containers' will delete that type (but not deployed instances of the type).
+
+The resource type name argument must be a fully qualified resource type name in the format 'ResourceType.Namespace/resourceTypeName' (e.g., 'Radius.Compute/containers').
+`,
 		Example: `
-# Delete a resource type
-rad resource-type delete Applications.Core/containers
+# Delete a resource type (fully qualified name required)
+rad resource-type delete Radius.Compute/containers
 
 # Delete a resource type (bypass confirmation)
 rad resource-type delete Applications.Core/containers --yes`,
@@ -65,7 +66,7 @@ rad resource-type delete Applications.Core/containers --yes`,
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad resource-provider delete` command.
+// Runner is the Runner implementation for the `rad resource-type delete` command.
 type Runner struct {
 	ConnectionFactory connections.Factory
 	ConfigHolder      *framework.ConfigHolder
@@ -80,7 +81,7 @@ type Runner struct {
 	ResourceTypeSuffix        string
 }
 
-// NewRunner creates an instance of the runner for the `rad resource-provider delete` command.
+// NewRunner creates an instance of the runner for the `rad resource-type delete` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
@@ -90,7 +91,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad resource-provider delete` command.
+// Validate runs validation for the `rad resource-type delete` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -118,7 +119,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad resource-provider delete` command.
+// Run runs the `rad resource-type delete` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
