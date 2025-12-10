@@ -122,7 +122,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Check out code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -137,6 +137,8 @@ jobs:
           DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
         with:
           tag: ${{ env.DE_TAG }}
+          src_image: ${{ env.DE_IMAGE }}
+          dest_image: ghcr.io/radius-project/deployment-engine
 
       - name: Generate ID for release
         id: gen-id
@@ -202,12 +204,12 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
 
       - name: Checkout samples repo
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -222,7 +224,7 @@ jobs:
           cache: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
           node-version-file: .node-version
 
