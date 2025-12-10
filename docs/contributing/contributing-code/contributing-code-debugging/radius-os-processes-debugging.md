@@ -80,7 +80,7 @@ The project could take on Air as a depdendency and allow for golang hot-reload, 
 The automation checks for all required tools. Install any missing prerequisites:
 
 ### Required Tools
-- **Go 1.21+** - `go version`
+- **Go 1.25+** - `go version`
 - **Delve debugger** - `dlv version` (Go debugger for VS Code integration)
 - **kubectl** - Kubernetes cluster access
 - **psql** - PostgreSQL client for database verification
