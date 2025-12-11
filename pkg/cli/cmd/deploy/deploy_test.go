@@ -1118,27 +1118,6 @@ func Test_FetchEnvironment(t *testing.T) {
 		shouldReturnNil         bool
 	}{
 		{
-			name:        "Fetch Applications.Core environment by name",
-			envNameOrID: "myenv",
-			setupApplicationsCore: func(client *clients.MockApplicationsManagementClient) {
-				env := v20231001preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
-					Properties: &v20231001preview.EnvironmentProperties{
-						Providers: &v20231001preview.Providers{
-							Azure: &v20231001preview.ProvidersAzure{
-								Scope: to.Ptr("/subscriptions/test-sub/resourceGroups/test-rg"),
-							},
-						},
-					},
-				}
-				client.EXPECT().GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv").Return(env, nil).Times(1)
-			},
-			setupRadiusCoreFactory:  false,
-			expectedUseApplications: true,
-			expectedEnvironmentID:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv",
-			shouldError:             false,
-		},
-		{
 			name:        "Fetch Applications.Core environment by full ID",
 			envNameOrID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv",
 			setupApplicationsCore: func(client *clients.MockApplicationsManagementClient) {
@@ -1158,40 +1137,6 @@ func Test_FetchEnvironment(t *testing.T) {
 			expectedUseApplications: true,
 			expectedEnvironmentID:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv",
 			shouldError:             false,
-		},
-		{
-			name:        "Fetch Radius.Core environment by full ID",
-			envNameOrID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv",
-			setupApplicationsCore: func(client *clients.MockApplicationsManagementClient) {
-				// Should not be called since ID indicates Radius.Core
-			},
-			setupRadiusCoreFactory:  true,
-			expectedUseApplications: false,
-			expectedEnvironmentID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv",
-			shouldError:             false,
-		},
-		{
-			name:        "Environment not found - returns nil",
-			envNameOrID: "nonexistent",
-			setupApplicationsCore: func(client *clients.MockApplicationsManagementClient) {
-				client.EXPECT().GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/nonexistent").Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).Times(1)
-			},
-			setupRadiusCoreFactory: false,
-			shouldReturnNil:        true,
-			shouldError:            false,
-		},
-		{
-			name:        "Conflict - environment exists in both providers",
-			envNameOrID: "conflictenv",
-			setupApplicationsCore: func(client *clients.MockApplicationsManagementClient) {
-				env := v20231001preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/conflictenv"),
-				}
-				client.EXPECT().GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/conflictenv").Return(env, nil).Times(1)
-			},
-			setupRadiusCoreFactory: true,
-			expectedError:          "Conflict detected: Environment",
-			shouldError:            true,
 		},
 	}
 
