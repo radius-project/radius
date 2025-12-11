@@ -277,7 +277,6 @@ func Test_Validate(t *testing.T) {
 				Config:         radcli.LoadEmptyConfig(t),
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Template contains an environment resource
 				mocks.Bicep.EXPECT().
 					PrepareTemplate("env.bicep").
 					Return(map[string]any{
@@ -289,13 +288,10 @@ func Test_Validate(t *testing.T) {
 						},
 					}, nil).
 					Times(1)
-				// No GetEnvironment call should be made since template creates it
 			},
 			ValidateCallback: func(t *testing.T, obj framework.Runner) {
 				runner := obj.(*Runner)
-				// Environment name should be empty since template creates it
 				require.Empty(t, runner.EnvironmentNameOrID)
-				// Providers should be initialized
 				require.NotNil(t, runner.Providers)
 				require.NotNil(t, runner.Providers.Radius)
 			},
@@ -600,7 +596,6 @@ func Test_Run(t *testing.T) {
 					"application": map[string]any{},
 					"environment": map[string]any{},
 					"location":    map[string]any{},
-					"size":        map[string]any{"defaultValue": "BIG!"},
 				},
 			},
 			Workspace: workspace,

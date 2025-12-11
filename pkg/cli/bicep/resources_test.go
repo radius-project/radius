@@ -53,7 +53,7 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "Template with environment resource",
+			name: "Template with legacy environment resource",
 			template: map[string]any{
 				"resources": map[string]any{
 					"env": map[string]any{
@@ -65,7 +65,7 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 			expected: true,
 		},
 		{
-			name: "Template with environment resource - case insensitive",
+			name: "Template with legacy environment resource - case insensitive",
 			template: map[string]any{
 				"resources": map[string]any{
 					"env": map[string]any{
@@ -157,7 +157,7 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "Template with new Radius.Core environment resource type",
+			name: "Template with Radius.Core environment resource type",
 			template: map[string]any{
 				"resources": map[string]any{
 					"env": map[string]any{
@@ -169,7 +169,7 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 			expected: true,
 		},
 		{
-			name: "Template with new Radius.Core environment resource type - case insensitive",
+			name: "Template with Radius.Core environment resource type - case insensitive",
 			template: map[string]any{
 				"resources": map[string]any{
 					"env": map[string]any{
@@ -181,7 +181,7 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 			expected: true,
 		},
 		{
-			name: "Template with mixed resource types including new Radius.Core environment",
+			name: "Template with mixed resource types including Radius.Core environment",
 			template: map[string]any{
 				"resources": map[string]any{
 					"app": map[string]any{
