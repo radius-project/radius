@@ -91,32 +91,56 @@ func Test_Validate(t *testing.T) {
 
 			},
 		}, /*
-			{
-				Name:          "rad deploy - app set by directory config",
-				Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
-				ExpectedValid: true,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         configWithWorkspace,
-					DirectoryConfig: &config.DirectoryConfig{
-						Workspace: config.DirectoryWorkspaceConfig{
-							Application: "my-app",
+				{
+					Name:          "rad deploy - app set by directory config",
+					Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
+					ExpectedValid: true,
+					ConfigHolder: framework.ConfigHolder{
+						ConfigFilePath: "",
+						Config:         configWithWorkspace,
+						DirectoryConfig: &config.DirectoryConfig{
+							Workspace: config.DirectoryWorkspaceConfig{
+								Application: "my-app",
+							},
 						},
 					},
+					ConfigureMocks: func(mocks radcli.ValidateMocks) {
+						mocks.Bicep.EXPECT().
+							PrepareTemplate("app.bicep").
+							Return(map[string]any{}, nil).
+							Times(1)
+						// Since environment name "prod" will trigger dual-check logic,
+						// it will first try the full Applications.Core path
+						mocks.ApplicationManagementClient.EXPECT().
+							GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
+							Return(v20231001preview.EnvironmentResource{
+								ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
+							}, nil).
+							Times(1)
+					},
 				},
-				ConfigureMocks: func(mocks radcli.ValidateMocks) {
-					mocks.Bicep.EXPECT().
-						PrepareTemplate("app.bicep").
-						Return(map[string]any{}, nil).
-						Times(1)
-					// Since environment name "prod" will trigger dual-check logic,
-					// it will first try the full Applications.Core path
-					mocks.ApplicationManagementClient.EXPECT().
-						GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
-						Return(v20231001preview.EnvironmentResource{
-							ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
-						}, nil).
-						Times(1)
+				{
+					Name:          "rad deploy - fallback workspace",
+					Input:         []string{"app.bicep", "--group", "my-group", "--environment", "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"},
+					ExpectedValid: true,
+					ConfigHolder: framework.ConfigHolder{
+						ConfigFilePath: "",
+						Config:         radcli.LoadEmptyConfig(t),
+					},
+					ConfigureMocks: func(mocks radcli.ValidateMocks) {
+						mocks.Bicep.EXPECT().
+							PrepareTemplate("app.bicep").
+							Return(map[string]any{}, nil).
+							Times(1)
+						// Since environment name "prod" will trigger dual-check logic,
+						// it will first try the full Applications.Core path with my-group scope
+						mocks.ApplicationManagementClient.EXPECT().
+							GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod").
+							Return(v20231001preview.EnvironmentResource{
+								ID: to.Ptr("/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"),
+							}, nil).
+							Times(1)
+					},
 				},
 			},
 			{
@@ -127,49 +151,25 @@ func Test_Validate(t *testing.T) {
 					ConfigFilePath: "",
 					Config:         radcli.LoadEmptyConfig(t),
 				},
-				ConfigureMocks: func(mocks radcli.ValidateMocks) {
-					mocks.Bicep.EXPECT().
-						PrepareTemplate("app.bicep").
-						Return(map[string]any{}, nil).
-						Times(1)
-					// Since environment name "prod" will trigger dual-check logic,
-					// it will first try the full Applications.Core path with my-group scope
-					mocks.ApplicationManagementClient.EXPECT().
-						GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod").
-						Return(v20231001preview.EnvironmentResource{
-							ID: to.Ptr("/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"),
-						}, nil).
-						Times(1)
-				},
-			},
-			{
-				Name:          "rad deploy - too many args",
-				Input:         []string{"app.bicep", "anotherfile.json"},
-				ExpectedValid: false,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         radcli.LoadEmptyConfig(t),
-				},
-			},
-			{
-				Name:          "rad deploy succeeds -  env not found is OK when not explicitly specified",
-				Input:         []string{"app.bicep", "--group", "new-group"},
-				ExpectedValid: true,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         configWithWorkspace,
-				},
-				ConfigureMocks: func(mocks radcli.ValidateMocks) {
-					mocks.Bicep.EXPECT().
-						PrepareTemplate("app.bicep").
-						Return(map[string]any{}, nil).
-						Times(1)
-					mocks.ApplicationManagementClient.EXPECT().
-						GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
-						Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
-						Times(1)
-				},
-			},*/
+				{
+					Name:          "rad deploy succeeds -  env not found is OK when not explicitly specified",
+					Input:         []string{"app.bicep", "--group", "new-group"},
+					ExpectedValid: true,
+					ConfigHolder: framework.ConfigHolder{
+						ConfigFilePath: "",
+						Config:         configWithWorkspace,
+					},
+					ConfigureMocks: func(mocks radcli.ValidateMocks) {
+						mocks.Bicep.EXPECT().
+							PrepareTemplate("app.bicep").
+							Return(map[string]any{}, nil).
+							Times(1)
+						mocks.ApplicationManagementClient.EXPECT().
+							GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
+							Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+							Times(1)
+					},
+				},*/
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
