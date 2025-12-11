@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/config"
@@ -32,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/spf13/cobra"
@@ -46,45 +48,10 @@ func Test_CommandValidation(t *testing.T) {
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 
-	testcases := []radcli.ValidateInput{ /*
-			{
-				Name:          "rad deploy - valid",
-				Input:         []string{"app.bicep"},
-				ExpectedValid: true,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         configWithWorkspace,
-				},
-				ConfigureMocks: func(mocks radcli.ValidateMocks) {
-					mocks.ApplicationManagementClient.EXPECT().
-						GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
-						Return(v20231001preview.EnvironmentResource{
-							ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment"),
-						}, nil).
-						Times(1)
-				},
-			},
-			{
-				Name:          "rad deploy - valid with parameters",
-				Input:         []string{"app.bicep", "-p", "foo=bar", "--parameters", "a=b"},
-				ExpectedValid: true,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         configWithWorkspace,
-				},
-				ConfigureMocks: func(mocks radcli.ValidateMocks) {
-					mocks.ApplicationManagementClient.EXPECT().
-						GetEnvironment(gomock.Any(), radcli.TestEnvironmentID).
-						Return(v20231001preview.EnvironmentResource{
-							ID: to.Ptr(radcli.TestEnvironmentID),
-						}, nil).
-						Times(1)
-
-				},
-			},*/
+	testcases := []radcli.ValidateInput{
 		{
-			Name:          "rad deploy - valid with environment",
-			Input:         []string{"app.bicep", "-e", "prod"},
+			Name:          "rad deploy - valid",
+			Input:         []string{"app.bicep"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -92,42 +59,16 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
 					Return(v20231001preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
-						Properties: &v20231001preview.EnvironmentProperties{
-							Providers: &v20231001preview.Providers{
-								Azure: &v20231001preview.ProvidersAzure{
-									Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
-								},
-							},
-						},
+						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment"),
 					}, nil).
 					Times(1)
-
 			},
 		},
 		{
-			Name:          "rad deploy - env specified with -e does not exist invalid",
-			Input:         []string{"app.bicep", "-e", "prod"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Since environment name "prod" will trigger dual-check logic,
-				// it will first try the full Applications.Core path and fail
-				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
-					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
-					Times(1)
-
-			},
-		},
-		{
-			Name:          "rad deploy - valid with env ID",
-			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"},
+			Name:          "rad deploy - valid with parameters",
+			Input:         []string{"app.bicep", "-p", "foo=bar", "--parameters", "a=b"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -135,23 +76,17 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod").
+					GetEnvironment(gomock.Any(), radcli.TestEnvironmentID).
 					Return(v20231001preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"),
+						ID: to.Ptr(radcli.TestEnvironmentID),
 					}, nil).
 					Times(1)
-			},
-			ValidateCallback: func(t *testing.T, obj framework.Runner) {
-				runner := obj.(*Runner)
-				scope := "/planes/radius/local/resourceGroups/test-resource-group"
-				environmentID := scope + "/providers/applications.core/environments/prod"
-				require.Equal(t, scope, runner.Workspace.Scope)
-				require.Equal(t, environmentID, runner.Workspace.Environment)
+
 			},
 		},
 		{
 			Name:          "rad deploy - app set by directory config",
-			Input:         []string{"app.bicep", "-e", "prod"},
+			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -219,6 +154,152 @@ func Test_Validate(t *testing.T) {
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_ValidateWithFakeEnvServer(t *testing.T) {
+	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+
+	// Test case: rad deploy with environment that returns 404 from Radius.Core
+	t.Run("rad deploy - valid with environment using fake env server 404", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create a fake env server that returns 404
+		nonExistentEnvServer := corerpfake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				errResp.SetError(fmt.Errorf("Environment not found"))
+				errResp.SetResponseError(404, "Not Found")
+				return
+			},
+		}
+
+		workspace := &workspaces.Workspace{
+			Name:  "test-workspace",
+			Scope: "/planes/radius/local/resourceGroups/test-resource-group",
+		}
+
+		// Create test client factory with fake env server factory function
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			func() corerpfake.EnvironmentsServer {
+				return nonExistentEnvServer
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		// Set up Applications.Core mock to return successful environment
+		// Since we're using `-e prod`, it should call GetEnvironment with the constructed Applications.Core ID for "prod"
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
+			Return(v20231001preview.EnvironmentResource{
+				ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
+				Properties: &v20231001preview.EnvironmentProperties{
+					Providers: &v20231001preview.Providers{
+						Azure: &v20231001preview.ProvidersAzure{
+							Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+						},
+					},
+				},
+			}, nil).
+			Times(1)
+
+		f := &framework.Impl{
+			ConfigHolder: &framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		cmd, runner := NewCommand(f)
+		r := runner.(*Runner)
+		r.Workspace = workspace
+		r.RadiusCoreClientFactory = factory
+		r.ConnectionFactory = &connections.MockFactory{ApplicationsManagementClient: mockAppClient}
+
+		// Parse the flags manually to set the environment flag
+		cmd.SetArgs([]string{"app.bicep", "-e", "prod"})
+		cmd.SetContext(context.Background())
+		err = cmd.ParseFlags([]string{"-e", "prod"})
+		require.NoError(t, err)
+
+		// Now validate with the parsed arguments
+		err = r.Validate(cmd, []string{"app.bicep"})
+		require.NoError(t, err, "Deploy should succeed when environment returns 404 from Radius.Core but exists in Applications.Core")
+	})
+
+	// Test case: rad deploy with environment that returns 404 from both Radius.Core and Applications.Core
+	t.Run("rad deploy - env specified with -e returns 404 from both providers should fail", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create a fake env server that returns 404
+		nonExistentEnvServer := corerpfake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				errResp.SetError(fmt.Errorf("Environment not found"))
+				errResp.SetResponseError(404, "Not Found")
+				return
+			},
+		}
+
+		workspace := &workspaces.Workspace{
+			Name:  "test-workspace",
+			Scope: "/planes/radius/local/resourceGroups/test-resource-group",
+		}
+
+		// Create test client factory with fake env server
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			func() corerpfake.EnvironmentsServer {
+				return nonExistentEnvServer
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		// Set up Applications.Core mock to also return 404
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/nonexistent").
+			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+			Times(1)
+
+		f := &framework.Impl{
+			ConfigHolder: &framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		cmd, runner := NewCommand(f)
+		r := runner.(*Runner)
+		r.Workspace = workspace
+		r.RadiusCoreClientFactory = factory
+		r.ConnectionFactory = &connections.MockFactory{ApplicationsManagementClient: mockAppClient}
+
+		// Parse the flags manually to set the environment flag with a non-existent environment
+		cmd.SetArgs([]string{"app.bicep", "-e", "nonexistent"})
+		cmd.SetContext(context.Background())
+		err = cmd.ParseFlags([]string{"-e", "nonexistent"})
+		require.NoError(t, err)
+
+		// This should fail because both providers return 404 and user specified environment name
+		err = r.Validate(cmd, []string{"app.bicep"})
+		require.Error(t, err, "Deploy should fail when both Radius.Core and Applications.Core return 404 for specified environment")
+		require.Contains(t, err.Error(), "The environment \"nonexistent\" does not exist in scope", "Error should indicate environment doesn't exist")
+		require.Contains(t, err.Error(), "Run `rad env create` first", "Error should suggest creating environment")
+	})
 }
 
 func Test_Run(t *testing.T) {

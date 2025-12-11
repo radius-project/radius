@@ -495,6 +495,7 @@ type EnvironmentCheckResult struct {
 }
 
 // FetchEnvironment fetches Applications.Core and Radius.Core environments for a given name/id and returns the result
+// If no environment is found, returns (nil, nil)
 func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, command *cobra.Command, args []string) (*EnvironmentCheckResult, error) {
 	result := &EnvironmentCheckResult{}
 	// If the environment is specified as a full resource ID, we can skip the check and based on the provider get the environment
