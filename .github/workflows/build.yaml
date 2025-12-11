@@ -138,7 +138,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
-        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
