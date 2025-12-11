@@ -1101,7 +1101,7 @@ func Test_constructRadiusCoreEnvironmentID(t *testing.T) {
 func createCommandWithEnvironmentFlag(envName string) *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("environment", "", "Environment name")
-	cmd.Flags().Set("environment", envName)
+	_ = cmd.Flags().Set("environment", envName)
 	return cmd
 }
 
