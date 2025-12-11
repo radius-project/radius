@@ -110,7 +110,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "rad deploy - fallback workspace",
-			Input:         []string{"app.bicep", "--group", "my-group", "--environment", "prod"},
+			Input:         []string{"app.bicep", "--group", "my-group", "--environment", "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
