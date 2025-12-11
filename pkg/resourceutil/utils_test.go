@@ -48,6 +48,11 @@ func (p *PropertiesTestResource) OutputResources() []rpv1.OutputResource {
 	return nil
 }
 
+type InvalidResourceForAll struct {
+	Properties map[string]any `json:"properties"`
+	BadField   func()         `json:"badField"` // Functions cannot be marshaled
+}
+
 func TestGetPropertiesFromResource(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -304,4 +309,128 @@ func TestGetConnectionNameandSourceIDs_InvalidJSONMarshaling(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), errMarshalResource)
+}
+
+func TestGetAllPropertiesFromResource(t *testing.T) {
+	tests := []struct {
+		name         string
+		resource     any
+		resourceID   string
+		expected     *ResourceMetadata
+		expectError  bool
+		errorMsg     string
+	}{
+		{
+			name: "Valid resource with properties",
+			resource: &PropertiesTestResource{
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"host":        "localhost",
+					"port":        float64(5432),
+				},
+			},
+			resourceID: TestResourceID,
+			expected: &ResourceMetadata{
+				ID:   TestResourceID,
+				Name: "tr",
+				Type: "MyResources.Test/testResources",
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"host":        "localhost",
+					"port":        float64(5432),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Resource with empty properties",
+			resource: &PropertiesTestResource{
+				Properties: nil,
+			},
+			resourceID: TestResourceID,
+			expected: &ResourceMetadata{
+				ID:         TestResourceID,
+				Name:       "tr",
+				Type:       "MyResources.Test/testResources",
+				Properties: map[string]any{},
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid resource ID",
+			resource: &PropertiesTestResource{
+				Properties: map[string]any{
+					"host": "localhost",
+				},
+			},
+			resourceID:  "invalid-resource-id",
+			expected:    nil,
+			expectError: true,
+			errorMsg:    "failed to parse resource ID",
+		},
+		{
+			name: "Resource with complex nested properties",
+			resource: &PropertiesTestResource{
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"config": map[string]any{
+						"nested": "value",
+						"array":  []string{"item1", "item2"},
+					},
+					"enabled": true,
+				},
+			},
+			resourceID: TestResourceID,
+			expected: &ResourceMetadata{
+				ID:   TestResourceID,
+				Name: "tr",
+				Type: "MyResources.Test/testResources",
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"config": map[string]any{
+						"nested": "value",
+						"array":  []any{"item1", "item2"}, // JSON unmarshaling converts to []any
+					},
+					"enabled": true,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Resource with GetPropertiesFromResource error",
+			resource: &InvalidResourceForAll{
+				Properties: map[string]any{
+					"host": "localhost",
+				},
+				BadField: func() {}, // This will cause JSON marshaling to fail
+			},
+			resourceID:  TestResourceID,
+			expected:    nil,
+			expectError: true,
+			errorMsg:    errMarshalResource,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := GetAllPropertiesFromResource(tt.resource, tt.resourceID)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, result)
+				require.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, tt.expected.ID, result.ID)
+				require.Equal(t, tt.expected.Name, result.Name)
+				require.Equal(t, tt.expected.Type, result.Type)
+				require.Equal(t, tt.expected.Properties, result.Properties)
+			}
+		})
+	}
 }
