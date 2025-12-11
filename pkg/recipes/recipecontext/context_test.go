@@ -304,3 +304,82 @@ func TestNewContext_failures(t *testing.T) {
 		})
 	}
 }
+
+func TestNewContext_WithConnectedResources(t *testing.T) {
+	testMetadata := &recipes.ResourceMetadata{
+		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+		ApplicationID: "/planes/radius/local/resourceGroups/testGroup/providers/applications.core/applications/testApplication",
+		EnvironmentID: "/planes/radius/local/resourceGroups/testGroup/providers/applications.core/environments/testEnvironment",
+		Name:          "recipe0",
+		Properties: map[string]any{
+			"property1": "value1",
+		},
+		ConnectedResourcesProperties: map[string]recipes.ConnectedResource{
+			"database": {
+				ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/sqldatabases/testdb",
+				Name: "testdb",
+				Type: "Applications.Datastores/sqlDatabases",
+				Properties: map[string]any{
+					"host":     "localhost",
+					"port":     5432,
+					"database": "testdb",
+				},
+			},
+			"cache": {
+				ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/redis/testcache",
+				Name: "testcache",
+				Type: "Applications.Datastores/redis",
+				Properties: map[string]any{
+					"host": "cache-host",
+					"port": 6379,
+				},
+			},
+		},
+	}
+
+	testConfig := &recipes.Configuration{
+		Providers: coredm.Providers{
+			Azure: coredm.ProvidersAzure{
+				Scope: "/planes/radius/local/resourceGroups/testGroup",
+			},
+			AWS: coredm.ProvidersAWS{
+				Scope: "/planes/aws/aws/accounts/1234567890/regions/us-west-2",
+			},
+		},
+	}
+
+	result, err := New(testMetadata, testConfig)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Verify basic resource properties
+	require.Equal(t, "mongo0", result.Resource.Name)
+	require.Equal(t, testMetadata.ResourceID, result.Resource.ID)
+	require.Equal(t, "applications.datastores/mongodatabases", result.Resource.Type)
+
+	// Verify connected resources metadata is available (connections are set by recipe engines)
+	require.NotNil(t, testMetadata.ConnectedResourcesProperties)
+	require.Len(t, testMetadata.ConnectedResourcesProperties, 2)
+
+	// Verify the metadata contains the expected connected resources
+	dbConn, exists := testMetadata.ConnectedResourcesProperties["database"]
+	require.True(t, exists)
+	require.Equal(t, "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/sqldatabases/testdb", dbConn.ID)
+	require.Equal(t, "testdb", dbConn.Name)
+	require.Equal(t, "Applications.Datastores/sqlDatabases", dbConn.Type)
+	require.Equal(t, map[string]any{
+		"host":     "localhost",
+		"port":     5432,
+		"database": "testdb",
+	}, dbConn.Properties)
+
+	cacheConn, exists := testMetadata.ConnectedResourcesProperties["cache"]
+	require.True(t, exists)
+	require.Equal(t, "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/redis/testcache", cacheConn.ID)
+	require.Equal(t, "testcache", cacheConn.Name)
+	require.Equal(t, "Applications.Datastores/redis", cacheConn.Type)
+	require.Equal(t, map[string]any{
+		"host": "cache-host",
+		"port": 6379,
+	}, cacheConn.Properties)
+}
