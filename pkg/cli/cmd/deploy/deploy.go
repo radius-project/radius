@@ -517,8 +517,11 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, comma
 	fetchAppCoreEnv := true
 	fetchRadiusCoreEnv := true
 
-	if parsedID, err := resources.Parse(envNameOrID); err == nil {
-		if strings.EqualFold(parsedID.ProviderNamespace(), appCoreProviderName) {
+	envID, err := resources.Parse(envNameOrID)
+	isID := false
+	if err == nil {
+		isID = true
+		if strings.EqualFold(envID.ProviderNamespace(), appCoreProviderName) {
 			fetchRadiusCoreEnv = false
 		} else {
 			fetchAppCoreEnv = false
@@ -528,51 +531,49 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, comma
 	// Check Applications.Core environment
 	if fetchAppCoreEnv {
 		// If its ID, use it directly, otherwise construct ID from name
-		if _, err := resources.Parse(envNameOrID); err != nil {
-			envNameOrID = r.ConstructApplicationsCoreEnvironmentID(envNameOrID)
+		var appCoreEnvID string
+		if !isID {
+			appCoreEnvID = r.ConstructApplicationsCoreEnvironmentID(envNameOrID)
+		} else {
+			appCoreEnvID = envNameOrID
 		}
-		appCoreEnv, err := r.getApplicationsCoreEnvironment(ctx, envNameOrID)
+		appCoreEnv, err := r.getApplicationsCoreEnvironment(ctx, appCoreEnvID)
 		if err != nil {
 			appCoreEnv = nil
 			// Only return error if it's not a 404
-			// In case of 404, this function will return nil, nil and the caller will handle it
 			if !clients.Is404Error(err) {
 				return nil, err
 			}
-			err = nil
 		}
 		if appCoreEnv != nil {
 			result.ApplicationsCoreEnv = appCoreEnv
 		}
 	}
 	if fetchRadiusCoreEnv {
-		// Check Radius.Core environment
-		if _, err := resources.Parse(envNameOrID); err != nil {
-			envNameOrID = r.ConstructRadiusCoreEnvironmentID(envNameOrID)
+		var radCoreEnvID string
+		if !isID {
+			radCoreEnvID = r.ConstructRadiusCoreEnvironmentID(envNameOrID)
+		} else {
+			radCoreEnvID = envNameOrID
 		}
-		// Initialize RadiusCoreClientFactory if needed
-		// Only attempt initialization if we haven't found an Applications.Core environment yet,
-		// or if the factory is already set (test scenario or explicitly configured)
-		if r.RadiusCoreClientFactory == nil && result.ApplicationsCoreEnv == nil {
+
+		if r.RadiusCoreClientFactory == nil {
 			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
 			if err != nil {
-				// If we can't initialize the Radius.Core client, skip checking Radius.Core
-				// This allows tests and environments without Radius.Core support to continue
-				fetchRadiusCoreEnv = false
+				return nil, err
 			} else {
 				r.RadiusCoreClientFactory = clientFactory
 			}
 		}
 
-		if fetchRadiusCoreEnv && r.RadiusCoreClientFactory != nil {
-			radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, envNameOrID)
+		if fetchRadiusCoreEnv {
+			radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvID)
 			if err != nil {
 				radiusCoreEnv = nil
 				// Only return error if it's not a 404
 				if !clients.Is404Error(err) {
 					return nil, err
 				}
-				err = nil
 			}
 			if radiusCoreEnv != nil {
 				result.RadiusCoreEnv = radiusCoreEnv
@@ -582,8 +583,7 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, comma
 
 	// Determine which one to use and check for conflicts
 	if result.ApplicationsCoreEnv != nil && result.RadiusCoreEnv != nil {
-		appCoreID := "unknown"
-		radiusCoreID := "unknown"
+		var appCoreID, radiusCoreID string
 		if result.ApplicationsCoreEnv.ID != nil {
 			appCoreID = *result.ApplicationsCoreEnv.ID
 		}
