@@ -156,11 +156,11 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_ValidateWithFakeEnvServer(t *testing.T) {
+func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 
 	// Test case: rad deploy with environment that returns 404 from Radius.Core
-	t.Run("rad deploy - valid with environment using fake env server 404", func(t *testing.T) {
+	t.Run("rad deploy - application.core env found, radius.core env not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -234,8 +234,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		require.NoError(t, err, "Deploy should succeed when environment returns 404 from Radius.Core but exists in Applications.Core")
 	})
 
-	// Test case: rad deploy with environment that returns 404 from both Radius.Core and Applications.Core
-	t.Run("rad deploy - env specified with -e returns 404 from both providers should fail", func(t *testing.T) {
+	t.Run("rad deploy - env specified with -e returns 404 from both Radius.Core and Applications.Core should fail", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -300,6 +299,93 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		require.Contains(t, err.Error(), "The environment \"nonexistent\" does not exist in scope", "Error should indicate environment doesn't exist")
 		require.Contains(t, err.Error(), "Run `rad env create` first", "Error should suggest creating environment")
 	})
+
+	t.Run("rad deploy - env specified with -e returns conflict when both Radius.Core and Applications.Core environments exist", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Create a fake env server that returns an environment (not 404)
+		existingRadiusCoreEnvServer := corerpfake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
+					EnvironmentResource: v20250801preview.EnvironmentResource{
+						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
+						Properties: &v20250801preview.EnvironmentProperties{
+							Providers: &v20250801preview.Providers{
+								Azure: &v20250801preview.ProvidersAzure{
+									SubscriptionID:    to.Ptr("test-sub-id"),
+									ResourceGroupName: to.Ptr("test-rg-name"),
+								},
+							},
+						},
+					},
+				}, nil)
+				return
+			},
+		}
+
+		workspace := &workspaces.Workspace{
+			Name:  "test-workspace",
+			Scope: "/planes/radius/local/resourceGroups/test-resource-group",
+		}
+
+		// Create test client factory with fake env server that returns existing environment
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			func() corerpfake.EnvironmentsServer {
+				return existingRadiusCoreEnvServer
+			},
+			nil,
+		)
+		require.NoError(t, err)
+
+		// Set up Applications.Core mock to also return successful environment
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/conflictenv").
+			Return(v20231001preview.EnvironmentResource{
+				ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/conflictenv"),
+				Properties: &v20231001preview.EnvironmentProperties{
+					Providers: &v20231001preview.Providers{
+						Azure: &v20231001preview.ProvidersAzure{
+							Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+						},
+					},
+				},
+			}, nil).
+			Times(1)
+
+		f := &framework.Impl{
+			ConfigHolder: &framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		cmd, runner := NewCommand(f)
+		r := runner.(*Runner)
+		r.Workspace = workspace
+		r.RadiusCoreClientFactory = factory
+		r.ConnectionFactory = &connections.MockFactory{ApplicationsManagementClient: mockAppClient}
+
+		// Parse the flags manually to set the environment flag with a conflicting environment name
+		cmd.SetArgs([]string{"app.bicep", "-e", "conflictenv"})
+		cmd.SetContext(context.Background())
+		err = cmd.ParseFlags([]string{"-e", "conflictenv"})
+		require.NoError(t, err)
+
+		// This should fail because both providers return valid environments - conflict scenario
+		err = r.Validate(cmd, []string{"app.bicep"})
+		require.Error(t, err, "Deploy should fail when both Radius.Core and Applications.Core have environments with the same name")
+		require.Contains(t, err.Error(), "Conflict detected: Environment 'conflictenv' exists in both Applications.Core and Radius.Core providers", "Error should indicate environment name conflict")
+		require.Contains(t, err.Error(), "Please specify the full resource ID to disambiguate", "Error should suggest using full resource ID")
+	})
+
 }
 
 func Test_Run(t *testing.T) {
