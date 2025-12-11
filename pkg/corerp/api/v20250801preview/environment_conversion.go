@@ -142,7 +142,8 @@ func toProvidersDataModel(providers *Providers) *datamodel.Providers_v20250801pr
 	// Convert AWS provider
 	if providers.Aws != nil {
 		result.AWS = &datamodel.ProvidersAWS_v20250801preview{
-			Scope: to.String(providers.Aws.Scope),
+			Region:    to.String(providers.Aws.Region),
+			AccountID: to.String(providers.Aws.AccountID),
 		}
 	}
 
@@ -184,7 +185,8 @@ func fromProvidersDataModel(providers *datamodel.Providers_v20250801preview) *Pr
 	// Convert AWS provider
 	if providers.AWS != nil {
 		result.Aws = &ProvidersAws{
-			Scope: to.Ptr(providers.AWS.Scope),
+			Region:    to.Ptr(providers.AWS.Region),
+			AccountID: to.Ptr(providers.AWS.AccountID),
 		}
 	}
 

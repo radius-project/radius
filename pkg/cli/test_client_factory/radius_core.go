@@ -108,6 +108,19 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 				EnvironmentResource: v20250801preview.EnvironmentResource{
 					Name: to.Ptr(environmentName),
 					Properties: &v20250801preview.EnvironmentProperties{
+						Providers: &v20250801preview.Providers{
+							Azure: &v20250801preview.ProvidersAzure{
+								SubscriptionID:    to.Ptr("test-subscription-id"),
+								ResourceGroupName: to.Ptr("test-resource-group"),
+							},
+							Aws: &v20250801preview.ProvidersAws{
+								AccountID: to.Ptr("test-account-id"),
+								Region:    to.Ptr("test-region"),
+							},
+							Kubernetes: &v20250801preview.ProvidersKubernetes{
+								Namespace: to.Ptr("test-namespace"),
+							},
+						},
 						RecipePacks: []*string{
 							to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 						},
