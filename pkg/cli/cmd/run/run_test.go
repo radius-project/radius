@@ -302,7 +302,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		// Set up Applications.Core mock to return successful environment
+		// Set up Applications.Core mock to return 404
 		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
 		mockAppClient.EXPECT().
 			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
