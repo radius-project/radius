@@ -17,6 +17,7 @@ limitations under the License.
 package preview
 
 import (
+	"cmp"
 	"context"
 	"slices"
 
@@ -169,14 +170,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	// Sort for deterministic output
 	slices.SortFunc(envRecipes, func(a, b EnvRecipes) int {
-		if a.RecipePack < b.RecipePack {
-			return -1
+		if v := cmp.Compare(a.RecipePack, b.RecipePack); v != 0 {
+			return v
 		}
-		if a.RecipePack > b.RecipePack {
-			return 1
-		}
-		return 0
+		return cmp.Compare(a.ResourceType, b.ResourceType)
 	})
 
 	err = r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
