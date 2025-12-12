@@ -24,6 +24,10 @@ on:
     branches:
       - main
       - release/*
+  merge_group:
+    branches:
+      - main
+      - release/*
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
