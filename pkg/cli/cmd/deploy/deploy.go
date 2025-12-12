@@ -185,16 +185,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Check if the template contains an environment resource
 	templateCreatesEnvironment := bicep.ContainsEnvironmentResource(r.Template)
 
-	// Try to get environment name/ID from flags or workspace
-	r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
-	if err != nil {
-		// If no environment was provided and the template creates an environment, that's okay
-		if templateCreatesEnvironment {
-			r.EnvironmentNameOrID = ""
-		} else {
-			// Otherwise, the environment is required
+	if !templateCreatesEnvironment {
+		// Template doesn't create environment, so environment is required
+		r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
+		if err != nil {
 			return err
 		}
+	} else {
+		// Template creates the environment, so environment is optional
+		// Set to empty string to indicate no pre-existing environment
+		r.EnvironmentNameOrID = ""
 	}
 
 	// This might be empty, and that's fine!
@@ -216,16 +216,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			// If the error is not a 404, return it
 			if !clients.Is404Error(err) {
 				return err
-			}
-
-			// If the environment doesn't exist, but the user specified its name or resource id as
-			// a command-line option, return an error
-			if cli.DidSpecifyEnvironmentName(cmd, args) {
+			} else {
+				// If the environment doesn't exist, but the user specified its name or resource id as
+				// a command-line option or defined it in the workspace, return an error
 				return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
 			}
-
-			// If we got here, it means that the error was a 404 and the user did not specify the environment name.
-			// This is fine, because an environment is not required.
 		}
 
 		r.Providers = &clients.Providers{}

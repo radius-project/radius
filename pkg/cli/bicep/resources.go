@@ -21,11 +21,11 @@ import (
 )
 
 const (
-	// EnvironmentResourceType is the resource type for Radius environments
-	EnvironmentResourceType = "Radius.Core/environments"
+	// environmentResourceType is the resource type for Radius environments
+	environmentResourceType = "radius.core/environments"
 
-	// LegacyEnvironmentResourceType is the legacy resource type for Radius environments
-	LegacyEnvironmentResourceType = "Applications.Core/environments"
+	// legacyEnvironmentResourceType is the legacy resource type for Radius environments
+	legacyEnvironmentResourceType = "applications.core/environments"
 )
 
 // ContainsEnvironmentResource inspects the compiled Radius Bicep template's resources to determine if an
@@ -62,8 +62,8 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 		// Resource types include API version (e.g., "Radius.Core/environments@2023-10-01-preview")
 		// Check if it starts with either resource type (case-insensitive)
 		resourceTypeLower := strings.ToLower(resourceType)
-		if strings.HasPrefix(resourceTypeLower, strings.ToLower(EnvironmentResourceType)) ||
-			strings.HasPrefix(resourceTypeLower, strings.ToLower(LegacyEnvironmentResourceType)) {
+		if strings.HasPrefix(resourceTypeLower, environmentResourceType) ||
+			strings.HasPrefix(resourceTypeLower, legacyEnvironmentResourceType) {
 			return true
 		}
 	}

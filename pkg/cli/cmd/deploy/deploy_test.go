@@ -258,13 +258,16 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithEnv := map[string]any{
+					"resources": map[string]any{
+						"env": map[string]any{
+							"type": "Applications.Core/environments@2023-10-01-preview",
+						},
+					},
+				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate("app.bicep").
-					Return(map[string]any{}, nil).
-					Times(1)
-				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), gomock.Any()).
-					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+					Return(templateWithEnv, nil).
 					Times(1)
 			},
 		},
