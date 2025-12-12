@@ -92,6 +92,8 @@ jobs:
             target_arch: amd64
           - target_os: linux
             target_arch: arm64
+          - target_os: linux
+            target_arch: arm
           - target_os: windows
             target_arch: amd64
           - target_os: darwin
