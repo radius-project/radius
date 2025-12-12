@@ -86,11 +86,11 @@ test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## R
 
 .PHONY: test-functional-ucp-noncloud
 test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 -p 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 8 -p 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 -p 1 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 -p 2 $(GOTEST_OPTS)
 
 .PHONY: test-functional-kubernetes
 test-functional-kubernetes: test-functional-kubernetes-noncloud ## Runs all Kubernetes functional tests
@@ -105,43 +105,43 @@ test-functional-corerp: test-functional-corerp-noncloud test-functional-corerp-c
 
 .PHONY: test-functional-corerp-noncloud
 test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 -p 1 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 15 -p 3 $(GOTEST_OPTS)
 
 .PHONY: test-functional-corerp-cloud
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 -p 1 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 -p 2 $(GOTEST_OPTS)
 
 .PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)
 
 .PHONY: test-functional-msgrp-noncloud
 test-functional-msgrp-noncloud: ## Runs Messaging RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/messagingrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 2 -p 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/messagingrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 4 -p 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-cli
 test-functional-cli: test-functional-cli-noncloud ## Runs all cli functional tests (both cloud and non-cloud)
 
 .PHONY: test-functional-cli-noncloud
 test-functional-cli-noncloud: ## Runs cli functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/cli/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 -p 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/cli/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 -p 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-daprrp
 test-functional-daprrp: test-functional-daprrp-noncloud ## Runs all Dapr RP functional tests (both cloud and non-cloud)
 
 .PHONY: test-functional-daprrp-noncloud
 test-functional-daprrp-noncloud: ## Runs Dapr RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 -p 1 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 -p 2 $(GOTEST_OPTS)
 
 .PHONY: test-functional-datastoresrp
 test-functional-datastoresrp: test-functional-datastoresrp-noncloud ## Runs all Datastores RP functional tests (non-cloud)
 
 .PHONY: test-functional-datastoresrp-noncloud
 test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 -p 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/datastoresrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 -p 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-dynamicrp-noncloud
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 -p 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 3 -p 2 $(GOTEST_OPTS)
 
 .PHONY: test-functional-upgrade
 test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests
@@ -155,7 +155,7 @@ test-functional-samples: test-functional-samples-noncloud ## Runs all Samples fu
 
 .PHONY: test-functional-samples-noncloud
 test-functional-samples-noncloud: ## Runs Samples functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 -p 2 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 8 -p 4 $(GOTEST_OPTS)
 
 .PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
