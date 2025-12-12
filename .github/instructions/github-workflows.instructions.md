@@ -77,7 +77,7 @@ These principles are specific to the Radius project and must be applied when cre
 - **Development Phase Pattern:**
 
   ```yaml
-  # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+  # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
   ---
   name: build-and-test
 
@@ -100,7 +100,7 @@ These principles are specific to the Radius project and must be applied when cre
 - **Production-Ready Pattern:**
 
   ```yaml
-  # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+  # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
   ---
   name: build-and-test
 
@@ -138,7 +138,7 @@ These principles are specific to the Radius project and must be applied when cre
 - **Pattern:**
 
   ```yaml
-  # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+  # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
   ---
   name: Scheduled
 
@@ -262,7 +262,7 @@ These principles are specific to the Radius project and must be applied when cre
 
   ```yaml
   # .github/workflows/__reusable-test.yml
-  # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+  # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
   ---
   name: __reusable-test
 
@@ -535,7 +535,7 @@ These principles are specific to the Radius project and must be applied when cre
       strategy:
         fail-fast: false
         matrix:
-          os: [ubuntu-24.04, windows-latest, macos-latest]
+          os: [ubuntu-24.04, windows-2025, macos-15]
           go-version: ["1.21", "1.22"]
       steps:
         - uses: actions/checkout@<SHA> # vX.Y.Z
