@@ -141,7 +141,7 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 		return err
 	}
 
-	// rad-bicep publish-extension <temp>/index.json --target <target>
+	// bicep publish-extension <temp>/index.json --target <target>
 	args := []string{
 		"publish-extension",
 		filepath.Join(inputDirectoryPath, "index.json"),
