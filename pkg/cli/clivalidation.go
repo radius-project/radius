@@ -124,12 +124,6 @@ func RequireEnvironmentNameOrID(cmd *cobra.Command, args []string, workspace wor
 	return environmentNameOrID, err
 }
 
-// DidSpecifyEnvironmentName checks if an environment name is provided as a flag
-func DidSpecifyEnvironmentName(cmd *cobra.Command, args []string) bool {
-	environmentName, err := cmd.Flags().GetString("environment")
-	return err == nil && environmentName != "" && !strings.HasPrefix(environmentName, resources.SegmentSeparator)
-}
-
 // RequireKubeContext is used by commands that need a kubernetes context name to be specified using -c flag or has a default kubecontext
 //
 
