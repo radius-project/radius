@@ -41,7 +41,7 @@ resource usertypealpha 'apps/Deployment@v1' = {
             env: [
               {
                 name: 'CONN_INJECTED'
-                value: contains(context.resource, 'connections') && contains(context.resource.connections, 'externalresource') ? context.resource.connections.externalresource.configMap : ''
+                value: contains(context.resource, 'connections') && contains(context.resource.connections, 'externalresource') ? context.resource.connections.externalresource.properties.configMap : ''
               }
             ]
           }
