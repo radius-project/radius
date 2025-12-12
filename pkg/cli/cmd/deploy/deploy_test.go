@@ -213,25 +213,6 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad deploy - fallback workspace",
-			Input:         []string{"app.bicep", "--group", "my-group", "--environment", "prod"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadEmptyConfig(t),
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
-					Return(map[string]any{}, nil).
-					Times(1)
-				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "prod").
-					Return(v20231001preview.EnvironmentResource{}, nil).
-					Times(1)
-			},
-		},
-		{
 			Name:          "rad deploy - fallback workspace requires resource group",
 			Input:         []string{"app.bicep", "--environment", "prod"},
 			ExpectedValid: false,
@@ -250,7 +231,87 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad deploy - missing env and app succeeds",
+			Name:          "rad deploy - no env in config, no env flag, no env in template invalid",
+			Input:         []string{"app.bicep", "--group", "test-group"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad deploy - no env in config, env flag provided, no env in template valid",
+			Input:         []string{"app.bicep", "-e", "prod", "--group", "test-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvironment(gomock.Any(), "prod").
+					Return(v20231001preview.EnvironmentResource{}, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad deploy - no env in config, no env flag, env in template valid",
+			Input:         []string{"app.bicep", "--group", "test-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithEnv := map[string]any{
+					"resources": map[string]any{
+						"env": map[string]any{
+							"type": "Radius.Core/environments@2023-10-01-preview",
+						},
+					},
+				}
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(templateWithEnv, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad deploy - no env in config, env flag provided, env in template valid",
+			Input:         []string{"app.bicep", "-e", "prod", "--group", "test-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithEnv := map[string]any{
+					"resources": map[string]any{
+						"env": map[string]any{
+							"type": "Radius.Core/environments@2023-10-01-preview",
+						},
+					},
+				}
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(templateWithEnv, nil).
+					Times(1)
+				// When template creates environment, env validation is skipped even if flag provided
+				// No GetEnvironment call expected
+			},
+		},
+		{
+			Name:          "rad deploy - missing env and app succeeds with env in config",
 			Input:         []string{"app.bicep", "--group", "new-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -269,34 +330,6 @@ func Test_Validate(t *testing.T) {
 					PrepareTemplate("app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
-			},
-		},
-		{
-			Name:          "rad deploy - template creates environment",
-			Input:         []string{"env.bicep", "--group", "dev"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadEmptyConfig(t),
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				mocks.Bicep.EXPECT().
-					PrepareTemplate("env.bicep").
-					Return(map[string]any{
-						"resources": map[string]any{
-							"env": map[string]any{
-								"type": "Applications.Core/environments@2023-10-01-preview",
-								"name": "dev",
-							},
-						},
-					}, nil).
-					Times(1)
-			},
-			ValidateCallback: func(t *testing.T, obj framework.Runner) {
-				runner := obj.(*Runner)
-				require.Empty(t, runner.EnvironmentNameOrID)
-				require.NotNil(t, runner.Providers)
-				require.NotNil(t, runner.Providers.Radius)
 			},
 		},
 	}

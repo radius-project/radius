@@ -121,6 +121,130 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "rad run - missing env succeeds when template creates it",
+			Input:         []string{"app.bicep", "-a", "my-app", "--group", "new-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithEnv := map[string]any{
+					"resources": map[string]any{
+						"env": map[string]any{
+							"type": "Applications.Core/environments@2023-10-01-preview",
+						},
+					},
+				}
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(templateWithEnv, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad run - template creates environment but app required",
+			Input:         []string{"env.bicep", "--group", "dev"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("env.bicep").
+					Return(map[string]any{
+						"resources": map[string]any{
+							"env": map[string]any{
+								"type": "Applications.Core/environments@2023-10-01-preview",
+								"name": "dev",
+							},
+						},
+					}, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad run - no env in config, no env flag, no env in template invalid",
+			Input:         []string{"app.bicep", "-a", "my-app", "--group", "test-group"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad run - no env in config, env flag provided, no env in template valid",
+			Input:         []string{"app.bicep", "-a", "my-app", "-e", "prod", "--group", "test-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvironment(gomock.Any(), "prod").
+					Return(v20231001preview.EnvironmentResource{}, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad run - no env in config, no env flag, env in template valid",
+			Input:         []string{"app.bicep", "-a", "my-app", "--group", "test-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithEnv := map[string]any{
+					"resources": map[string]any{
+						"env": map[string]any{
+							"type": "Radius.Core/environments@2023-10-01-preview",
+						},
+					},
+				}
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(templateWithEnv, nil).
+					Times(1)
+			},
+		},
+		{
+			Name:          "rad run - no env in config, env flag provided, env in template valid",
+			Input:         []string{"app.bicep", "-a", "my-app", "-e", "prod", "--group", "test-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				templateWithEnv := map[string]any{
+					"resources": map[string]any{
+						"env": map[string]any{
+							"type": "Radius.Core/environments@2023-10-01-preview",
+						},
+					},
+				}
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(templateWithEnv, nil).
+					Times(1)
+				// When template creates environment, env validation is skipped even if flag provided
+				// No GetEnvironment call expected
+			},
+		},
+		{
 			Name:          "rad run - fallback workspace invalid",
 			Input:         []string{"app.bicep"},
 			ExpectedValid: false,
