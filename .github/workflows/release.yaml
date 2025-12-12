@@ -32,7 +32,7 @@ on:
     paths:
       - versions.yaml
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   generate_release_note:

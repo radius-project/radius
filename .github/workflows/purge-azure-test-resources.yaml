@@ -25,7 +25,7 @@ on:
     # Run twice a day
     - cron: 30 0,12 * * *
 
-permissions: {} # disable permissions
+permissions: {}
 
 env:
   AZURE_RG_DELETE_LIST_FILE: az_rg_list.txt

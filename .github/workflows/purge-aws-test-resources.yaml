@@ -23,7 +23,7 @@ on:
     # Run at 12:00AM PST every day.
     - cron: 0 7 * * 0-6
 
-permissions: {} # disable permissions
+permissions: {}
 
 env:
   AWS_REGION: us-west-2

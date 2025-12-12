@@ -21,8 +21,6 @@ on:
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. 1.0)
 
-run-name: "(Deployment Engine) Publish Image - Tag: ${{ github.event.client_payload.tag || github.event.inputs.tag }}"
-
 permissions: {}
 
 # secrets from GitHub organization

@@ -87,15 +87,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target_os: [linux, windows, darwin]
-        target_arch: [amd64, arm64, arm]
-        exclude:
-          - target_os: windows
+        include:
+          - target_os: linux
+            target_arch: amd64
+          - target_os: linux
             target_arch: arm64
           - target_os: windows
-            target_arch: arm
+            target_arch: amd64
           - target_os: darwin
-            target_arch: arm
+            target_arch: amd64
+          - target_os: darwin
+            target_arch: arm64
     steps:
       - name: Checkout
         if: needs.changes.outputs.only_changed != 'true'
@@ -169,7 +171,7 @@ jobs:
 
       - name: Upload CLI binary
         if: needs.changes.outputs.only_changed != 'true'
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: ${{ env.RELEASE_PATH }}
@@ -382,7 +384,7 @@ jobs:
           make generate-bicep-types VERSION=${{ env.REL_CHANNEL == 'edge' && 'latest' || env.REL_CHANNEL }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: radius-bicep-types
           path: ./hack/bicep-types-radius/generated
@@ -433,7 +435,7 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
 
       - name: Download release artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: rad_cli_*
           merge-multiple: true

@@ -12,7 +12,7 @@ on:
 env:
   ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   purge_ghcr_dev:

@@ -5,7 +5,7 @@ name: Release dev container feature
 on:
   workflow_dispatch:
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   call-workflow-test:

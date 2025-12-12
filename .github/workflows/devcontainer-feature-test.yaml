@@ -15,7 +15,7 @@ on:
       - main
   workflow_call:
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   test:

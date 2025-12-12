@@ -27,7 +27,7 @@ concurrency:
   group: rad-installer-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   verify-installers:

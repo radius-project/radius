@@ -10,7 +10,7 @@ on:
         required: true
         default: "0"
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   delete-artifacts:

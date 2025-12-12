@@ -22,7 +22,7 @@ on:
   issues:
     types: [labeled, unlabeled]
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   build:
@@ -43,7 +43,7 @@ jobs:
           private-key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
           permission-issues: write
 
-      - uses: dessant/label-actions@102faf474a544be75fbaf4df54e73d3c515a0e65 # v4.0.1
+      - uses: dessant/label-actions@9e5fd757ffe1e065abf55e9f74d899dbe012922a # v5.0.0
         with:
           github-token: ${{ steps.get_installation_token.outputs.token }}
           config-path: .github/triage-bot/triage-bot-config.yaml

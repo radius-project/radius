@@ -418,7 +418,7 @@ jobs:
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
@@ -467,7 +467,7 @@ jobs:
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: radius_bicep_types_cloud
           path: ./hack/bicep-types-radius/generated
@@ -651,7 +651,7 @@ jobs:
           cache: true
 
       - name: Download rad CLI
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
@@ -962,7 +962,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -984,7 +984,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
@@ -1096,7 +1096,7 @@ jobs:
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0.0.0
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

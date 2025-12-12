@@ -27,7 +27,7 @@ on:
         default: ""
         type: string
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   release-verification:

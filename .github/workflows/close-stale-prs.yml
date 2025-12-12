@@ -11,7 +11,7 @@ on:
   schedule:
     - cron: 0 18 * * * # Run the workflow every day at 6PM UTC (10AM PST).
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   stale:

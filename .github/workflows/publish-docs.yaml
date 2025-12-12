@@ -22,7 +22,7 @@ on:
     branches:
       - main
 
-permissions: {} # disable permissions
+permissions: {}
 
 jobs:
   changes:
@@ -122,7 +122,7 @@ jobs:
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
 
       - name: Upload resource reference docs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: resource-docs
           path: docs/docs/content/reference/resources
@@ -135,7 +135,7 @@ jobs:
           go run cmd/docgen/main.go ../docs/docs/content/reference/cli
 
       - name: Upload CLI docs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli
