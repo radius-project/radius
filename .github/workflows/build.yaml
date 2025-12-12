@@ -79,7 +79,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       packages: write # Required for uploading the package
-      contents: read
+      contents: read # Required for actions/checkout
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
