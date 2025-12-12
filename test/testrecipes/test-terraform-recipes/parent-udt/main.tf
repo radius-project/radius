@@ -58,7 +58,7 @@ resource "kubernetes_deployment" "usertypealpha" {
           
           env {
             name  = "CONN_INJECTED"
-            value = try(var.context.resource.connections.externalresource.configMap, "")
+            value = try(var.context.resource.connections.externalresource.properties.configMap, "")
           }
         }
       }

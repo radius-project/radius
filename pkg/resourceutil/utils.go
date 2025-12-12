@@ -92,3 +92,34 @@ func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error)
 
 	return connectionNamesAndSourceIDs, nil
 }
+
+// ResourceMetadata represents resource metadata including ID, Name, Type and Properties
+type ResourceMetadata struct {
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
+	Properties map[string]any `json:"properties,omitempty"`
+}
+
+// GetAllPropertiesFromResource extracts the resource metadata including ID, Name, Type and properties
+// by parsing the resource ID and extracting properties.
+func GetAllPropertiesFromResource[P any](resource P, resourceID string) (*ResourceMetadata, error) {
+	// Parse resource ID to get name and type
+	parsedResourceID, err := resources.Parse(resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse resource ID %s: %w", resourceID, err)
+	}
+
+	// Get properties using existing method
+	properties, err := GetPropertiesFromResource(resource)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ResourceMetadata{
+		ID:         resourceID,
+		Name:       parsedResourceID.Name(),
+		Type:       parsedResourceID.Type(),
+		Properties: properties,
+	}, nil
+}

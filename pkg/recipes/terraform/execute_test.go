@@ -43,9 +43,14 @@ func TestGenerateConfig(t *testing.T) {
 					TemplatePath: "test/module/source",
 				},
 				ResourceRecipe: &recipes.ResourceMetadata{
-					ConnectedResourcesProperties: map[string]map[string]any{
+					ConnectedResourcesProperties: map[string]recipes.ConnectedResource{
 						"conn1": {
-							"dbName": "db",
+							ID:   "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Datastores/redis/redis",
+							Name: "redis",
+							Type: "Applications.Datastores/redis",
+							Properties: map[string]any{
+								"dbName": "db",
+							},
 						},
 					},
 				},

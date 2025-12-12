@@ -61,9 +61,14 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
-		ConnectedResourcesProperties: map[string]map[string]any{
+		ConnectedResourcesProperties: map[string]recipes.ConnectedResource{
 			"database": {
-				"name": "db",
+				ID:   "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/database",
+				Name: "database",
+				Type: "Applications.Datastores/sqlDatabases",
+				Properties: map[string]any{
+					"name": "db",
+				},
 			},
 		},
 	}
