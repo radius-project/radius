@@ -22,4 +22,10 @@ We welcome and encourage users to contribute to the Radius open-source project i
 
 * Spread the word: Share your positive experiences with Radius through blog posts, talks, or social media. Promote the project to attract more users and contributors. Star the project on GitHub!
 
+## For Maintainers
+
+If you're a maintainer of a Radius repository, check out these additional resources:
+
+* [Repository Access Management](./contributing-maintainers/): Learn how to manage repository access, grant admin permissions, and update CODEOWNERS files.
+
 Join us in shaping the future of Radius. Together, we can build a robust and innovative open-source project. Happy contributing!
