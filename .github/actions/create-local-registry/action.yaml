@@ -1,30 +1,30 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-action.json
 ---
-name: "Create a local registry"
+name: Create a local registry
 description: |
   This action creates a local registry for the images to be pushed to.
   It uses the `docker` CLI to create a registry container and then starts it.
   The registry is then available at `localhost:5000` by default.
 inputs:
   secure:
-    description: "Whether the registry should be secure or not"
+    description: Whether the registry should be secure or not
     required: false
     default: "false"
   registry-name:
-    description: "The name of the local registry"
+    description: The name of the local registry
     required: false
-    default: "radius-registry"
+    default: radius-registry
   registry-server:
-    description: "The server name for the local registry"
+    description: The server name for the local registry
     required: false
-    default: "localhost"
+    default: localhost
   registry-port:
-    description: "The port for the local registry"
+    description: The port for the local registry
     required: false
     default: "5000"
 outputs:
   temp-cert-dir:
-    description: "The temporary directory where the certificates are stored"
+    description: The temporary directory where the certificates are stored
     value: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
 runs:
   using: composite

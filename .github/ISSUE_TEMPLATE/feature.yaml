@@ -1,7 +1,9 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-issue-forms.json
+---
 name: Feature Request
 description: Request a feature in Radius
-title: "<FEATURE TITLE>"
-labels: ["feature"]
+title: <FEATURE TITLE>
+labels: [feature]
 body:
   - type: textarea
     attributes:
