@@ -306,8 +306,11 @@ func Test_Validate(t *testing.T) {
 					PrepareTemplate("app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
-				// When template creates environment, env validation is skipped even if flag provided
-				// No GetEnvironment call expected
+				// When env flag is explicitly provided, we honor it and validate even if template creates environment
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvironment(gomock.Any(), "prod").
+					Return(v20231001preview.EnvironmentResource{}, nil).
+					Times(1)
 			},
 		},
 		{
@@ -329,6 +332,11 @@ func Test_Validate(t *testing.T) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate("app.bicep").
 					Return(templateWithEnv, nil).
+					Times(1)
+				// Since workspace has default environment (full ID), we validate it even though template creates one
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},

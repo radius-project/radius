@@ -240,8 +240,11 @@ func Test_Validate(t *testing.T) {
 					PrepareTemplate("app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
-				// When template creates environment, env validation is skipped even if flag provided
-				// No GetEnvironment call expected
+				// When env flag is explicitly provided, we honor it and validate even if template creates environment
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvironment(gomock.Any(), "prod").
+					Return(v20231001preview.EnvironmentResource{}, nil).
+					Times(1)
 			},
 		},
 		{

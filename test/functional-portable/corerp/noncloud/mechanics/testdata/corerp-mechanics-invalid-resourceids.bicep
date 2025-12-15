@@ -3,8 +3,8 @@ extension radius
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-// @description('Specifies the environment for resources.')
-// param environment string = 'test'
+@description('Specifies the environment for resources.')
+param environment string = 'test'
 
 @description('Specifies the image to be deployed.')
 param magpieimage string
@@ -16,7 +16,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-mechanics-invalid-resourceids'
   location: location
   properties: {
-    environment: env.id
+    environment: environment
   }
 }
 

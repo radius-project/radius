@@ -182,17 +182,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Check if environment was explicitly provided via flag or workspace default
+	environmentFlag, _ := cmd.Flags().GetString("environment")
+	environmentProvidedExplicitly := environmentFlag != "" || workspace.Environment != ""
+
 	// Check if the template contains an environment resource
 	templateCreatesEnvironment := bicep.ContainsEnvironmentResource(r.Template)
 
-	if !templateCreatesEnvironment {
-		// Template doesn't create environment, so environment is required
+	if !templateCreatesEnvironment || environmentProvidedExplicitly {
+		// Environment is required if:
+		// 1. Template doesn't create environment, OR
+		// 2. User explicitly provided --environment flag or workspace has default environment
 		r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
 		if err != nil {
 			return err
 		}
 	} else {
-		// Template creates the environment, so environment is optional
+		// Template creates the environment and no environment was explicitly provided
 		// Set to empty string to indicate no pre-existing environment
 		r.EnvironmentNameOrID = ""
 	}
