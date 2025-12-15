@@ -229,19 +229,6 @@ func TestWriteVersionInfo(t *testing.T) {
 			showHeaders:     false,
 			isCombined:      true,
 		},
-		{
-			name:   "Radius installed - YAML format",
-			format: "yaml",
-			installState: helm.InstallState{
-				RadiusInstalled: true,
-				RadiusVersion:   "v0.45.0",
-			},
-			helmError:       nil,
-			expectedStatus:  "Installed",
-			expectedVersion: "v0.45.0",
-			showHeaders:     false,
-			isCombined:      true,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -261,11 +248,11 @@ func TestWriteVersionInfo(t *testing.T) {
 			mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(tc.installState, tc.helmError)
 
 			if tc.isCombined {
-				// For JSON/YAML, expect a single WriteFormatted call with combined data
+				// For JSON, expect a single WriteFormatted call with combined data
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Do(
 					func(format string, data any, options output.FormatterOptions) error {
 						combined, ok := data.(CombinedVersionInfo)
-						require.True(t, ok, "Expected CombinedVersionInfo for JSON/YAML format")
+						require.True(t, ok, "Expected CombinedVersionInfo for JSON format")
 						require.Equal(t, tc.expectedStatus, combined.ControlPlane.Status)
 						require.Equal(t, tc.expectedVersion, combined.ControlPlane.Version)
 						require.Equal(t, version.Release(), combined.CLI.Release)

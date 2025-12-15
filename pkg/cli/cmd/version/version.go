@@ -143,8 +143,8 @@ func (r *Runner) writeVersionInfo(format string) error {
 	// Get control plane info (handles errors internally)
 	cpInfo := r.getControlPlaneVersionInfo()
 
-	// For JSON and YAML formats, output a single combined object
-	if format == "json" || format == "yaml" {
+	// For JSON format, output a single combined object
+	if format == "json" {
 		combinedInfo := CombinedVersionInfo{
 			CLI:          cliVersion,
 			ControlPlane: cpInfo,
