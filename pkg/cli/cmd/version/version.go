@@ -23,6 +23,11 @@ type ControlPlaneVersionInfo struct {
 	Status  string `json:"status"`
 }
 
+type CombinedVersionInfo struct {
+	CLI          CLIVersionInfo          `json:"cli"`
+	ControlPlane ControlPlaneVersionInfo `json:"controlPlane"`
+}
+
 // getCliVersionInfo returns the CLI version information
 func getCliVersionInfo() CLIVersionInfo {
 	return CLIVersionInfo{
@@ -135,23 +140,27 @@ func (r *Runner) writeVersionInfo(format string) error {
 	// Display CLI version information
 	cliVersion := getCliVersionInfo()
 
-	// Only show headers for human-readable formats
-	if format != "json" && format != "yaml" {
-		r.Output.LogInfo("CLI Version Information:")
+	// Get control plane info (handles errors internally)
+	cpInfo := r.getControlPlaneVersionInfo()
+
+	// For JSON and YAML formats, output a single combined object
+	if format == "json" || format == "yaml" {
+		combinedInfo := CombinedVersionInfo{
+			CLI:          cliVersion,
+			ControlPlane: cpInfo,
+		}
+		return r.Output.WriteFormatted(format, combinedInfo, output.FormatterOptions{})
 	}
+
+	// For table and other formats, show headers and separate sections
+	r.Output.LogInfo("CLI Version Information:")
 
 	err := r.Output.WriteFormatted(format, cliVersion, getCliVersionFormatterOptions())
 	if err != nil {
 		return err
 	}
 
-	// Get control plane info (handles errors internally)
-	cpInfo := r.getControlPlaneVersionInfo()
-
-	// Only show headers for human-readable formats
-	if format != "json" && format != "yaml" {
-		r.Output.LogInfo("\nControl Plane Information:")
-	}
+	r.Output.LogInfo("\nControl Plane Information:")
 
 	return r.Output.WriteFormatted(format, cpInfo, getControlPlaneFormatterOptions())
 }

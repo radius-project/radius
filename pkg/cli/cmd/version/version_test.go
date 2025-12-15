@@ -179,6 +179,7 @@ func TestWriteVersionInfo(t *testing.T) {
 		expectedStatus  string
 		expectedVersion string
 		showHeaders     bool
+		isCombined      bool
 	}{
 		{
 			name:   "Radius installed - table format",
@@ -191,6 +192,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Installed",
 			expectedVersion: "v0.45.0",
 			showHeaders:     true,
+			isCombined:      false,
 		},
 		{
 			name:   "Radius not installed - table format",
@@ -202,6 +204,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Not installed",
 			expectedVersion: "Not installed",
 			showHeaders:     true,
+			isCombined:      false,
 		},
 		{
 			name:            "Connection error - table format",
@@ -211,6 +214,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Not connected",
 			expectedVersion: "Not installed",
 			showHeaders:     true,
+			isCombined:      false,
 		},
 		{
 			name:   "Radius installed - JSON format",
@@ -223,6 +227,20 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Installed",
 			expectedVersion: "v0.45.0",
 			showHeaders:     false,
+			isCombined:      true,
+		},
+		{
+			name:   "Radius installed - YAML format",
+			format: "yaml",
+			installState: helm.InstallState{
+				RadiusInstalled: true,
+				RadiusVersion:   "v0.45.0",
+			},
+			helmError:       nil,
+			expectedStatus:  "Installed",
+			expectedVersion: "v0.45.0",
+			showHeaders:     false,
+			isCombined:      true,
 		},
 	}
 
@@ -242,25 +260,41 @@ func TestWriteVersionInfo(t *testing.T) {
 
 			mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(tc.installState, tc.helmError)
 
-			// Only expect headers for formats that show them
-			if tc.showHeaders {
-				mockOutput.EXPECT().LogInfo("CLI Version Information:")
+			if tc.isCombined {
+				// For JSON/YAML, expect a single WriteFormatted call with combined data
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Do(
+					func(format string, data any, options output.FormatterOptions) error {
+						combined, ok := data.(CombinedVersionInfo)
+						require.True(t, ok, "Expected CombinedVersionInfo for JSON/YAML format")
+						require.Equal(t, tc.expectedStatus, combined.ControlPlane.Status)
+						require.Equal(t, tc.expectedVersion, combined.ControlPlane.Version)
+						require.Equal(t, version.Release(), combined.CLI.Release)
+						require.Equal(t, version.Version(), combined.CLI.Version)
+						require.Equal(t, bicep.Version(), combined.CLI.Bicep)
+						require.Equal(t, version.Commit(), combined.CLI.Commit)
+						return nil
+					}).Return(nil)
+			} else {
+				// For table format, expect headers and separate WriteFormatted calls
+				if tc.showHeaders {
+					mockOutput.EXPECT().LogInfo("CLI Version Information:")
+				}
+
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
+
+				if tc.showHeaders {
+					mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
+				}
+
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Do(
+					func(format string, data any, options output.FormatterOptions) error {
+						controlPlane, ok := data.(ControlPlaneVersionInfo)
+						require.True(t, ok)
+						require.Equal(t, tc.expectedStatus, controlPlane.Status)
+						require.Equal(t, tc.expectedVersion, controlPlane.Version)
+						return nil
+					}).Return(nil)
 			}
-
-			mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
-
-			if tc.showHeaders {
-				mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
-			}
-
-			mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Do(
-				func(format string, data any, options output.FormatterOptions) error {
-					controlPlane, ok := data.(ControlPlaneVersionInfo)
-					require.True(t, ok)
-					require.Equal(t, tc.expectedStatus, controlPlane.Status)
-					require.Equal(t, tc.expectedVersion, controlPlane.Version)
-					return nil
-				}).Return(nil)
 
 			err := runner.writeVersionInfo(tc.format)
 			require.NoError(t, err)
@@ -275,24 +309,35 @@ func TestRun(t *testing.T) {
 		cliOnly       bool
 		format        string
 		expectCLIOnly bool
+		isCombined    bool
 	}{
 		{
 			name:          "CLI and Control Plane versions - table format",
 			cliOnly:       false,
 			format:        "table",
 			expectCLIOnly: false,
+			isCombined:    false,
 		},
 		{
 			name:          "CLI version only - table format",
 			cliOnly:       true,
 			format:        "table",
 			expectCLIOnly: true,
+			isCombined:    false,
 		},
 		{
 			name:          "CLI and Control Plane versions - JSON format",
 			cliOnly:       false,
 			format:        "json",
 			expectCLIOnly: false,
+			isCombined:    true,
+		},
+		{
+			name:          "CLI version only - JSON format",
+			cliOnly:       true,
+			format:        "json",
+			expectCLIOnly: true,
+			isCombined:    false,
 		},
 	}
 
@@ -312,12 +357,18 @@ func TestRun(t *testing.T) {
 			}
 
 			if tc.expectCLIOnly {
+				// When --cli flag is used, always output CLI version only
+				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
+			} else if tc.isCombined {
+				// For JSON/YAML without --cli, output combined version
+				mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{
+					RadiusInstalled: true,
+					RadiusVersion:   "v0.45.0",
+				}, nil)
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 			} else {
-				// Setup expected calls for full version info
-				if tc.format != "json" && tc.format != "yaml" {
-					mockOutput.EXPECT().LogInfo("CLI Version Information:")
-				}
+				// For table format without --cli, output separate sections with headers
+				mockOutput.EXPECT().LogInfo("CLI Version Information:")
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 
 				mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{
@@ -325,9 +376,7 @@ func TestRun(t *testing.T) {
 					RadiusVersion:   "v0.45.0",
 				}, nil)
 
-				if tc.format != "json" && tc.format != "yaml" {
-					mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
-				}
+				mockOutput.EXPECT().LogInfo("\nControl Plane Information:")
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 			}
 
