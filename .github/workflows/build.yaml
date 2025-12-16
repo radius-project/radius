@@ -80,6 +80,8 @@ jobs:
     permissions:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
+      checks: write # Required for EnricoMi/publish-unit-test-result-action
+      pull-requests: write # Required for EnricoMi/publish-unit-test-result-action
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
