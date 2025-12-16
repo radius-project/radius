@@ -1192,7 +1192,7 @@ func Test_constructApplicationsCoreEnvironmentID(t *testing.T) {
 		},
 	}
 
-	result := runner.ConstructApplicationsCoreEnvironmentID("myenv")
+	result := runner.constructApplicationsCoreEnvironmentID("myenv")
 	expected := "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"
 	require.Equal(t, expected, result)
 }
@@ -1204,7 +1204,7 @@ func Test_constructRadiusCoreEnvironmentID(t *testing.T) {
 		},
 	}
 
-	result := runner.ConstructRadiusCoreEnvironmentID("myenv")
+	result := runner.constructRadiusCoreEnvironmentID("myenv")
 	expected := "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv"
 	require.Equal(t, expected, result)
 }

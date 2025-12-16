@@ -37,7 +37,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -134,7 +133,7 @@ type Runner struct {
 	Bicep                   bicep.Interface
 	ConfigHolder            *framework.ConfigHolder
 	ConnectionFactory       connections.Factory
-	RadiusCoreClientFactory *corerpv20250801.ClientFactory
+	RadiusCoreClientFactory *v20250801preview.ClientFactory
 	Deploy                  deploy.Interface
 	Output                  output.Interface
 
@@ -239,10 +238,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
+	if err != nil {
+		return err
+	}
 
 	parser := bicep.ParameterParser{FileSystem: filesystem.NewOSFS()}
 	r.Parameters, err = parser.Parse(parameterArgs...)
-
 	if err != nil {
 		return err
 	}
@@ -493,14 +494,13 @@ func (r *Runner) constructEnvironmentID(envName, providerType string) string {
 	return r.Workspace.Scope + "/providers/" + providerType + "/environments/" + envName
 }
 
-// ConstructApplicationsCoreEnvironmentID constructs an Applications.Core environment ID from a name
-func (r *Runner) ConstructApplicationsCoreEnvironmentID(envNameOrID string) string {
-
+// constructApplicationsCoreEnvironmentID constructs an Applications.Core environment ID from a name
+func (r *Runner) constructApplicationsCoreEnvironmentID(envNameOrID string) string {
 	return r.constructEnvironmentID(envNameOrID, appCoreProviderName)
 }
 
-// ConstructRadiusCoreEnvironmentID constructs a Radius.Core environment ID from a name
-func (r *Runner) ConstructRadiusCoreEnvironmentID(envName string) string {
+// constructRadiusCoreEnvironmentID constructs a Radius.Core environment ID from a name
+func (r *Runner) constructRadiusCoreEnvironmentID(envName string) string {
 	return r.constructEnvironmentID(envName, radiusCoreProviderName)
 }
 
@@ -535,14 +535,12 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, comma
 		// If its ID, use it directly, otherwise construct ID from name
 		var appCoreEnvID string
 		if !isID {
-			appCoreEnvID = r.ConstructApplicationsCoreEnvironmentID(envNameOrID)
+			appCoreEnvID = r.constructApplicationsCoreEnvironmentID(envNameOrID)
 		} else {
 			appCoreEnvID = envNameOrID
 		}
 		appCoreEnv, err := r.getApplicationsCoreEnvironment(ctx, appCoreEnvID)
 		if err != nil {
-			appCoreEnv = nil
-			// Only return error if it's not a 404
 			if !clients.Is404Error(err) {
 				return nil, err
 			}
@@ -554,7 +552,7 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, comma
 	if fetchRadiusCoreEnv {
 		var radCoreEnvID string
 		if !isID {
-			radCoreEnvID = r.ConstructRadiusCoreEnvironmentID(envNameOrID)
+			radCoreEnvID = r.constructRadiusCoreEnvironmentID(envNameOrID)
 		} else {
 			radCoreEnvID = envNameOrID
 		}
@@ -568,18 +566,14 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string, comma
 			}
 		}
 
-		if fetchRadiusCoreEnv {
-			radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvID)
-			if err != nil {
-				radiusCoreEnv = nil
-				// Only return error if it's not a 404
-				if !clients.Is404Error(err) {
-					return nil, err
-				}
+		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvID)
+		if err != nil {
+			if !clients.Is404Error(err) {
+				return nil, err
 			}
-			if radiusCoreEnv != nil {
-				result.RadiusCoreEnv = radiusCoreEnv
-			}
+		}
+		if radiusCoreEnv != nil {
+			result.RadiusCoreEnv = radiusCoreEnv
 		}
 	}
 
