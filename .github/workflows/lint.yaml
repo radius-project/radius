@@ -99,7 +99,7 @@ jobs:
 
       - name: Run Helm unit tests
         run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 || true
           cd ${{ env.HELM_CHARTS_DIR }} && helm unittest .
 
       - name: Run TypeSpec format check
