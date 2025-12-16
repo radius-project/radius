@@ -374,6 +374,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for actions/checkout
+      packages: write # Required for publishing Bicep recipes to ghcr.io
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
