@@ -82,4 +82,4 @@ demo
 .debug/
 
 # Folder for Copilot generated files
-.github-tracking/
+.copilot-tracking/
