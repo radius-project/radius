@@ -1,6 +1,6 @@
 module github.com/radius-project/radius
 
-go 1.25.0
+go 1.25.5
 
 // Replace digest lib to master to gather access to BLAKE3.
 // xref: https://github.com/opencontainers/go-digest/pull/66
@@ -9,7 +9,7 @@ replace github.com/opencontainers/go-digest => github.com/opencontainers/go-dige
 // replace github.com/radius-project/radius/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
 replace github.com/Azure/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
 
-replace github.com/stretchr/testify => github.com/stretchr/testify v1.10.0
+replace github.com/stretchr/testify => github.com/stretchr/testify v1.11.1
 
 // Pin golang.org/x/tools to v0.23.0 to avoid compiler crash with Go 1.24.x
 // xref: https://github.com/golang/go/issues/64875
