@@ -58,4 +58,4 @@ The multi-repo workspace enables two key workflows:
 - [design-notes Repository](https://github.com/radius-project/design-notes)
 - [Spec Kit Documentation](https://github.com/github/spec-kit)
 - [Design Note Template](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-design-template.md)
-- [Feature Spec Template](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-feature-spec.md)
+- [Feature Spec Template](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-feature-spec-template.md)
