@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	goruntime "runtime"
+	"strings"
 
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -76,14 +78,18 @@ func getKubeAssetsDir() (string, error) {
 
 	// We require one or more versions of the test assets to be installed already. This
 	// will use whatever's latest of the installed versions.
-	cmd := exec.Command("setup-envtest", "use", "-i", "-p", "path", "--arch", "amd64")
+	cmd := exec.Command("setup-envtest", "use", "-i", "-p", "path", "--arch", goruntime.GOARCH)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("failed to call setup-envtest to find path: %w", err)
 	} else {
-		return out.String(), err
+		assetsPath := strings.TrimSpace(out.String())
+		if assetsPath == "" {
+			return "", fmt.Errorf("failed to call setup-envtest to find path: empty output")
+		}
+		return assetsPath, nil
 	}
 }
 

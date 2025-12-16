@@ -42,7 +42,7 @@ import (
 
 const (
 	deploymentTemplateTestWaitDuration            = time.Second * 10
-	deploymentTemplateTestWaitInterval            = time.Second * 1
+	deploymentTemplateTestWaitInterval            = 200 * time.Millisecond
 	deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 )
 
@@ -770,10 +770,8 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.DeploymentTemplateStatus{}
 	require.EventuallyWithT(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
 		current := &radappiov1alpha3.DeploymentTemplate{
 			Status: radappiov1alpha3.DeploymentTemplateStatus{
 				Phrase: radappiov1alpha3.DeploymentTemplatePhrase(radappiov1alpha3.DeploymentResourcePhraseDeleting),
@@ -783,7 +781,6 @@ func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Clien
 		require.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseUpdating, current.Status.Phrase) {
@@ -799,16 +796,13 @@ func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Clien
 func waitForDeploymentTemplateStateReady(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.DeploymentTemplateStatus{}
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
 		current := &radappiov1alpha3.DeploymentTemplate{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, current.Status.Phrase) {
@@ -822,16 +816,13 @@ func waitForDeploymentTemplateStateReady(t *testing.T, client k8sclient.Client, 
 func waitForDeploymentTemplateStateDeleting(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.DeploymentTemplateStatus{}
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
 		current := &radappiov1alpha3.DeploymentTemplate{}
 		err := client.Get(ctx, name, current)
 		assert.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseDeleting, current.Status.Phrase)
@@ -843,16 +834,13 @@ func waitForDeploymentTemplateStateDeleting(t *testing.T, client k8sclient.Clien
 func waitForDeploymentTemplateStateDeleted(t *testing.T, client k8sclient.Client, name types.NamespacedName) {
 	ctx := testcontext.New(t)
 
-	logger := t
 	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
 		current := &radappiov1alpha3.DeploymentTemplate{}
 		err := client.Get(ctx, name, current)
 		if apierrors.IsNotFound(err) {
 			return true
 		}
 
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
 		return false
 
 	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "DeploymentTemplate still exists")

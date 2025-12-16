@@ -88,11 +88,21 @@ func Test_ResourceProvider_CascadingDelete(t *testing.T) {
 	deleteResourceProvider(server)
 
 	// The resource type should be gone now.
+	require.Eventually(t, func() bool {
+		response := server.MakeRequest(http.MethodGet, resourceTypeURL, nil)
+		return response.Raw.StatusCode == http.StatusNotFound
+	}, 10*time.Second, 100*time.Millisecond)
+
 	response := server.MakeRequest(http.MethodGet, resourceTypeURL, nil)
 	response.EqualsErrorCode(404, "NotFound")
 	require.Equal(t, resourceTypeID, response.Error.Error.Target)
 
 	// The location should be gone now.
+	require.Eventually(t, func() bool {
+		response := server.MakeRequest(http.MethodGet, locationURL, nil)
+		return response.Raw.StatusCode == http.StatusNotFound
+	}, 10*time.Second, 100*time.Millisecond)
+
 	response = server.MakeRequest(http.MethodGet, locationURL, nil)
 	response.EqualsErrorCode(404, "NotFound")
 	require.Equal(t, locationID, response.Error.Error.Target)

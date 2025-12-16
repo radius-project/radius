@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	TestMessageLockTime = time.Duration(1) * time.Second
+	TestMessageLockTime = 200 * time.Millisecond
 
 	pollingInterval = time.Duration(100) * time.Millisecond
 

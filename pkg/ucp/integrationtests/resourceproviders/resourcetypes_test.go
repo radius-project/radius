@@ -19,6 +19,7 @@ package resourceproviders
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
@@ -81,6 +82,11 @@ func Test_ResourceType_CascadingDelete(t *testing.T) {
 	deleteResourceType(server)
 
 	// The API version should be gone now.
+	require.Eventually(t, func() bool {
+		response := server.MakeRequest(http.MethodGet, apiVersionURL, nil)
+		return response.Raw.StatusCode == http.StatusNotFound
+	}, 10*time.Second, 100*time.Millisecond)
+
 	response := server.MakeRequest(http.MethodGet, apiVersionURL, nil)
 	response.EqualsErrorCode(404, "NotFound")
 	require.Equal(t, apiVersionID, response.Error.Error.Target)
