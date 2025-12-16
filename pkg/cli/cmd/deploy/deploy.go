@@ -667,6 +667,12 @@ func (r *Runner) configureProviders() error {
 			r.setupCloudProviders(e.Properties)
 		}
 		if r.ApplicationName != "" {
+			if r.Providers == nil {
+				r.Providers = &clients.Providers{}
+			}
+			if r.Providers.Radius == nil {
+				r.Providers.Radius = &clients.RadiusProvider{}
+			}
 			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + appCoreProviderName + "/applications/" + r.ApplicationName
 		}
 	case *v20250801preview.EnvironmentResource:
@@ -675,6 +681,12 @@ func (r *Runner) configureProviders() error {
 			r.setupCloudProviders(e.Properties)
 		}
 		if r.ApplicationName != "" {
+			if r.Providers == nil {
+				r.Providers = &clients.Providers{}
+			}
+			if r.Providers.Radius == nil {
+				r.Providers.Radius = &clients.RadiusProvider{}
+			}
 			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + radiusCoreProviderName + "/applications/" + r.ApplicationName
 		}
 	}

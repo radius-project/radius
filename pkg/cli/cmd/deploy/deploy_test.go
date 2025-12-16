@@ -24,6 +24,7 @@ import (
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -90,7 +91,7 @@ func Test_Validate(t *testing.T) {
 					Times(1)
 
 			},
-		}, /*
+		}, 
 				{
 					Name:          "rad deploy - app set by directory config",
 					Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
@@ -142,34 +143,21 @@ func Test_Validate(t *testing.T) {
 							Times(1)
 					},
 				},
+		{
+			Name:          "rad deploy fails - env required when not explicitly specified and template doesn't create env",
+			Input:         []string{"app.bicep", "--group", "new-group"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
 			},
-			{
-				Name:          "rad deploy - fallback workspace",
-				Input:         []string{"app.bicep", "--group", "my-group", "--environment", "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"},
-				ExpectedValid: true,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         radcli.LoadEmptyConfig(t),
-				},
-				{
-					Name:          "rad deploy succeeds -  env not found is OK when not explicitly specified",
-					Input:         []string{"app.bicep", "--group", "new-group"},
-					ExpectedValid: true,
-					ConfigHolder: framework.ConfigHolder{
-						ConfigFilePath: "",
-						Config:         configWithWorkspace,
-					},
-					ConfigureMocks: func(mocks radcli.ValidateMocks) {
-						mocks.Bicep.EXPECT().
-							PrepareTemplate("app.bicep").
-							Return(map[string]any{}, nil).
-							Times(1)
-						mocks.ApplicationManagementClient.EXPECT().
-							GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
-							Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
-							Times(1)
-					},
-				},*/
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					PrepareTemplate("app.bicep").
+					Return(map[string]any{}, nil).
+					Times(1)
+			},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
@@ -299,12 +287,19 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 			Times(1)
 
+		mockBicep := bicep.NewMockInterface(ctrl)
+		mockBicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{}, nil).
+			Times(1)
+
 		f := &framework.Impl{
 			ConfigHolder: &framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
 			Output: &output.MockOutput{},
+			Bicep:  mockBicep,
 		}
 
 		cmd, runner := NewCommand(f)
@@ -385,12 +380,19 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 			}, nil).
 			Times(1)
 
+		mockBicep := bicep.NewMockInterface(ctrl)
+		mockBicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{}, nil).
+			Times(1)
+
 		f := &framework.Impl{
 			ConfigHolder: &framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
 			Output: &output.MockOutput{},
+			Bicep:  mockBicep,
 		}
 
 		cmd, runner := NewCommand(f)
@@ -420,10 +422,6 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
@@ -477,6 +475,7 @@ func Test_Run(t *testing.T) {
 			Parameters:          map[string]map[string]any{},
 			Workspace:           workspace,
 			Providers:           provider,
+			Template:            map[string]any{},
 		}
 
 		err := runner.Run(context.Background())
@@ -496,10 +495,6 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
@@ -552,6 +547,7 @@ func Test_Run(t *testing.T) {
 			EnvironmentNameOrID: radcli.TestEnvironmentID,
 			Parameters:          map[string]map[string]any{},
 			Workspace:           workspace,
+			Template:            map[string]any{},
 		}
 
 		err := runner.Run(context.Background())
@@ -571,10 +567,6 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		options := deploy.Options{}
 
@@ -621,6 +613,7 @@ func Test_Run(t *testing.T) {
 			EnvironmentNameOrID: radcli.TestEnvironmentName,
 			Parameters:          map[string]map[string]any{},
 			Workspace:           workspace,
+			Template:            map[string]any{},
 		}
 
 		err := runner.Run(context.Background())
@@ -640,10 +633,6 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{}, nil).
-			Times(1)
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
 
@@ -683,6 +672,7 @@ func Test_Run(t *testing.T) {
 			Parameters:          map[string]map[string]any{},
 			Workspace:           workspace,
 			EnvResult:           nil,
+			Template:            map[string]any{},
 		}
 
 		err := runner.Run(context.Background())
@@ -700,17 +690,6 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
-			PrepareTemplate("app.bicep").
-			Return(map[string]any{
-				"parameters": map[string]any{
-					"application": map[string]any{},
-					"environment": map[string]any{},
-					"location":    map[string]any{},
-					"size":        map[string]any{"defaultValue": "BIG!"},
-				},
-			}, nil).
-			Times(1)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]any{
@@ -736,6 +715,14 @@ func Test_Run(t *testing.T) {
 			FilePath:            "app.bicep",
 			Parameters:          map[string]map[string]any{},
 			Workspace:           workspace,
+			Template: map[string]any{
+				"parameters": map[string]any{
+					"application": map[string]any{},
+					"environment": map[string]any{},
+					"location":    map[string]any{},
+					"size":        map[string]any{"defaultValue": "BIG!"},
+				},
+			},
 		}
 
 		err := runner.Run(context.Background())
