@@ -486,7 +486,10 @@ func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, id string) (*v202
 
 	environmentClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
 	env, err := environmentClient.Get(ctx, id, nil)
-	return &env.EnvironmentResource, err
+	if err != nil {
+		return nil, err
+	}
+	return &env.EnvironmentResource, nil
 }
 
 // constructEnvironmentID constructs an environment ID from a name and provider type
