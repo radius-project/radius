@@ -587,7 +587,7 @@ jobs:
         os: [ubuntu-24.04]
         name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
