@@ -377,7 +377,7 @@ function getStringModifiers(type: StringType): string {
     type.minLength !== undefined ? `minLength: ${type.minLength}` : undefined,
     type.maxLength !== undefined ? `maxLength: ${type.maxLength}` : undefined,
     type.pattern !== undefined
-      ? `pattern: "${type.pattern.replace(/"/g, '\\"')}"`
+      ? `pattern: "${type.pattern.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
       : undefined
   );
 }
