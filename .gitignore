@@ -83,3 +83,5 @@ demo
 
 # Folder for Copilot generated files
 .copilot-tracking/
+
+.codeql-results
