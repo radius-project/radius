@@ -470,34 +470,3 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		})
 	}
 }
-
-func TestGetAllPropertiesFromResource_Integration(t *testing.T) {
-	// Simple integration test for resourceutil.GetAllPropertiesFromResource
-	connectedResourceID := "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/test-db"
-	
-	// Create a test resource with properties
-	testResource := struct {
-		Properties map[string]any `json:"properties"`
-	}{
-		Properties: map[string]any{
-			"host":     "localhost",
-			"port":     5432,
-			"database": "testdb",
-		},
-	}
-
-	// Test the GetAllPropertiesFromResource function
-	metadata, err := resourceutil.GetAllPropertiesFromResource(testResource, connectedResourceID)
-	
-	// Assertions
-	require.NoError(t, err)
-	require.NotNil(t, metadata)
-	require.Equal(t, connectedResourceID, metadata.ID)
-	require.Equal(t, "test-db", metadata.Name)
-	require.Equal(t, "Applications.Datastores/sqlDatabases", metadata.Type)
-	require.Equal(t, map[string]any{
-		"host":     "localhost",
-		"port":     float64(5432), // JSON unmarshaling converts to float64
-		"database": "testdb",
-	}, metadata.Properties)
-}

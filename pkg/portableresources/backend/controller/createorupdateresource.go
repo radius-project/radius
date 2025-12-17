@@ -188,7 +188,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 			return nil, fmt.Errorf("failed to get connected resource %s: %w", connectedResourceID, err)
 		}
 
-		connectedResourceMetadata, err := resourceutil.GetAllPropertiesFromResource(connectedResource.Data, connectedResourceID)
+		connectedResourceMetadata, err := resourceutil.GetAllPropertiesFromResource(connectedResource.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get metadata from connected resource %s: %w", connectedResourceID, err)
 		}
