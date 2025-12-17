@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
 # ============================================================================
 # Manage Radius Control Plane Installation
 #
@@ -28,15 +44,6 @@ get_cli_version() {
     rad version | grep -A1 "RELEASE" | tail -1 | awk '{print $1}'
 }
 
-# Parse rad version output to extract control plane status and version
-get_control_plane_info() {
-    local cp_line
-    cp_line=$(rad version | grep -A1 "STATUS" | tail -1)
-    
-    CP_STATUS=$(echo "${cp_line}" | awk '{print $1}')
-    CP_VERSION=$(echo "${cp_line}" | awk '{print $2}')
-}
-
 main() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         usage
@@ -62,19 +69,24 @@ main() {
     echo "CLI Version: ${cli_version}"
 
     # Get control plane info
-    get_control_plane_info
-    if [[ -z "${CP_STATUS}" || -z "${CP_VERSION}" ]]; then
+    local cp_line cp_status cp_version
+    cp_line=$(rad version | grep -A1 "STATUS" | tail -1)
+    cp_status=$(echo "${cp_line}" | awk '{print $1}')
+    cp_version=$(echo "${cp_line}" | awk '{print $2}')
+    if [[ -z "${cp_status}" || -z "${cp_version}" ]]; then
         echo "Error: Failed to parse control plane status or version from 'rad version' output." >&2
         exit 1
     fi
-    echo "Control Plane Status: ${CP_STATUS}"
-    echo "Control Plane Version: ${CP_VERSION}"
+    echo "Control Plane Status: ${cp_status}"
+    echo "Control Plane Version: ${cp_version}"
 
     # Determine action based on control plane status
-    if [[ "${CP_STATUS}" == "Not" ]]; then
+    if [[ "${cp_status}" == "Not" ]]; then
         echo ""
         echo "Radius is not installed on the cluster. Installing..."
-        if ! rad install kubernetes; then
+        if ! rad install kubernetes \
+            --set global.azureWorkloadIdentity.enabled=true \
+            --set database.enabled=true; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius installation failed"
@@ -84,20 +96,22 @@ main() {
             exit 1
         fi
         echo "Radius installation complete."
-    elif [[ "${CP_VERSION}" == "${cli_version}" ]]; then
+    elif [[ "${cp_version}" == "${cli_version}" ]]; then
         echo ""
         echo "Radius control plane version matches CLI version (${cli_version}). No action needed."
     else
         echo ""
-        echo "Version mismatch detected. Attempting upgrade from ${CP_VERSION} to ${cli_version}..."
+        echo "Version mismatch detected. Attempting upgrade from ${cp_version} to ${cli_version}..."
+        # There are scenarios when an upgrade may not be possible, and we are relying on the rad upgrade command to
+        # detect and report an error, which will cause the workflow to fail. Manual intervention may be required in such cases.
         if ! rad upgrade kubernetes; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius upgrade failed"
             echo "============================================================================"
-            echo "The upgrade from version ${CP_VERSION} to ${cli_version} could not be completed."
+            echo "The upgrade from version ${cp_version} to ${cli_version} could not be completed."
             echo "This may be due to an incompatible version transition or other upgrade constraints."
-            echo "Please check the error message above for details."
+            echo "Please check the error message above for details and manually upgrade if necessary."
             exit 1
         fi
         echo "Radius upgrade complete."
