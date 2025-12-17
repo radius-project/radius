@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	deploycmd "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	"github.com/radius-project/radius/pkg/cli/config"
@@ -63,7 +64,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "rad run - valid with app and env",
-			Input:         []string{"app.bicep", "-e", "prod", "-a", "my-app"},
+			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod", "-a", "my-app"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -185,7 +186,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "rad run - no env in config, env flag provided, no env in template valid",
-			Input:         []string{"app.bicep", "-a", "my-app", "-e", "prod", "--group", "test-group"},
+			Input:         []string{"app.bicep", "-a", "my-app", "-e", "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/prod", "--group", "test-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -197,7 +198,7 @@ func Test_Validate(t *testing.T) {
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -214,7 +215,7 @@ func Test_Validate(t *testing.T) {
 				templateWithEnv := map[string]any{
 					"resources": map[string]any{
 						"env": map[string]any{
-							"type": "Radius.Core/environments@2023-10-01-preview",
+							"type": "Applications.Core/environments@2023-10-01-preview",
 						},
 					},
 				}
@@ -226,7 +227,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "rad run - no env in config, env flag provided, env in template valid",
-			Input:         []string{"app.bicep", "-a", "my-app", "-e", "prod", "--group", "test-group"},
+			Input:         []string{"app.bicep", "-a", "my-app", "-e", "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/prod", "--group", "test-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -236,7 +237,7 @@ func Test_Validate(t *testing.T) {
 				templateWithEnv := map[string]any{
 					"resources": map[string]any{
 						"env": map[string]any{
-							"type": "Radius.Core/environments@2023-10-01-preview",
+							"type": "Applications.Core/environments@2023-10-01-preview",
 						},
 					},
 				}
@@ -246,7 +247,7 @@ func Test_Validate(t *testing.T) {
 					Times(1)
 				// When env flag is explicitly provided, we honor it and validate even if template creates environment
 				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "prod").
+					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
@@ -308,6 +309,13 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
 			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).Times(1)
 
+		// Set up Bicep mock to return empty template
+		mockBicep := bicep.NewMockInterface(ctrl)
+		mockBicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{}, nil).
+			Times(1)
+
 		f := &framework.Impl{
 			ConfigHolder: &framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -321,6 +329,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		r.Workspace = workspace
 		r.RadiusCoreClientFactory = factory
 		r.ConnectionFactory = &connections.MockFactory{ApplicationsManagementClient: mockAppClient}
+		r.Bicep = mockBicep
 
 		// Parse the flags manually to set the environment and app flags
 		cmd.SetArgs([]string{"app.bicep", "-e", "prod", "-a", "my-app"})
@@ -373,6 +382,13 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 			Times(1)
 
+		// Set up Bicep mock to return empty template
+		mockBicep := bicep.NewMockInterface(ctrl)
+		mockBicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{}, nil).
+			Times(1)
+
 		f := &framework.Impl{
 			ConfigHolder: &framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -386,6 +402,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		r.Workspace = workspace
 		r.RadiusCoreClientFactory = factory
 		r.ConnectionFactory = &connections.MockFactory{ApplicationsManagementClient: mockAppClient}
+		r.Bicep = mockBicep
 
 		// Parse the flags manually to set the environment flag with a non-existent environment
 		cmd.SetArgs([]string{"app.bicep", "-e", "nonexistent", "-a", "my-app"})

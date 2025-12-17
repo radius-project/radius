@@ -646,6 +646,13 @@ func (r *Runner) setupCloudProviders(properties any) {
 // configureProviders configures environment and cloud providers based on the environment and provider type
 func (r *Runner) configureProviders() error {
 	var env any
+	if r.Providers == nil {
+		r.Providers = &clients.Providers{}
+	}
+	if r.Providers.Radius == nil {
+		r.Providers.Radius = &clients.RadiusProvider{}
+	}
+
 	if r.EnvResult != nil {
 		if r.EnvResult.UseApplicationsCore {
 			if r.EnvResult.ApplicationsCoreEnv != nil {
@@ -663,31 +670,32 @@ func (r *Runner) configureProviders() error {
 	switch e := env.(type) {
 	case *v20231001preview.EnvironmentResource:
 		if e != nil && e.ID != nil {
+			r.Providers.Radius.EnvironmentID = *e.ID
 			r.setupEnvironmentID(e.ID)
 			r.setupCloudProviders(e.Properties)
 		}
 		if r.ApplicationName != "" {
-			if r.Providers == nil {
-				r.Providers = &clients.Providers{}
+			// Extract provider namespace from environment ID to preserve casing
+			providerNamespace := appCoreProviderName
+			if parsedID, err := resources.Parse(r.Providers.Radius.EnvironmentID); err == nil {
+				providerNamespace = parsedID.ProviderNamespace()
 			}
-			if r.Providers.Radius == nil {
-				r.Providers.Radius = &clients.RadiusProvider{}
-			}
-			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + appCoreProviderName + "/applications/" + r.ApplicationName
+			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + providerNamespace + "/applications/" + r.ApplicationName
+
 		}
 	case *v20250801preview.EnvironmentResource:
 		if e != nil && e.ID != nil {
+			r.Providers.Radius.EnvironmentID = *e.ID
 			r.setupEnvironmentID(e.ID)
 			r.setupCloudProviders(e.Properties)
 		}
 		if r.ApplicationName != "" {
-			if r.Providers == nil {
-				r.Providers = &clients.Providers{}
+			// Extract provider namespace from environment ID to preserve casing
+			providerNamespace := radiusCoreProviderName
+			if parsedID, err := resources.Parse(r.Providers.Radius.EnvironmentID); err == nil {
+				providerNamespace = parsedID.ProviderNamespace()
 			}
-			if r.Providers.Radius == nil {
-				r.Providers.Radius = &clients.RadiusProvider{}
-			}
-			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + radiusCoreProviderName + "/applications/" + r.ApplicationName
+			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + providerNamespace + "/applications/" + r.ApplicationName
 		}
 	}
 
