@@ -791,6 +791,10 @@ func Test_Run(t *testing.T) {
 		bicep := bicep.NewMockInterface(ctrl)
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagmentMock.EXPECT().
+			CreateApplicationIfNotFound(gomock.Any(), "appdoesntexist", gomock.Any()).
+			Return(nil).
+			Times(1)
 
 		deployMock := deploy.NewMockInterface(ctrl)
 		deployMock.EXPECT().

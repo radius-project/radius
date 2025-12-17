@@ -282,7 +282,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	if r.ApplicationName != "" {
 		// Environment validation has already happened, so only create application if we have an environment
-		if r.Workspace.Environment != "" {
+		if r.Providers.Radius.EnvironmentID != "" {
 			if _, err := isApplicationsCoreProvider(r.Providers.Radius.EnvironmentID); err == nil {
 				client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 				if err != nil {
