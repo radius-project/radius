@@ -587,7 +587,7 @@ jobs:
         os: [ubuntu-24.04]
         name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
@@ -615,6 +615,7 @@ jobs:
             terraform-private-modules
           permission-checks: write
           permission-pull-requests: write
+          permission-contents: read
 
       - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2.0.0
         if: always()

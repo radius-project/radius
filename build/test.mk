@@ -164,7 +164,7 @@ test-validate-bicep: ## Validates that all .bicep files compile cleanly
 .PHONY: test-helm
 test-helm: ## Runs Helm chart unit tests
 	@echo "$(ARROW) Installing helm-unittest plugin if not already installed..."
-	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git
+	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2
 	@echo "$(ARROW) Running Helm unit tests..."
 	cd deploy/Chart && helm unittest .
 

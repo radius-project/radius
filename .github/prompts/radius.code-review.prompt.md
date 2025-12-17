@@ -11,17 +11,17 @@ PR is an acronym for Pull Request.
 
 You will create three files as part of this process: two markdown documents and one shell script. The first markdown document will detail the changes made in the PR on a file-by-file basis. The second markdown document will contain your review comments for each file and an overall assessment of the PR. The shell script will use the GitHub API to post your review comments from the second markdown file to the PR.
 
-All files you create as part of this PR review will go into a folder named `pr-reviews` at the root of the project. If this folder does not exist, create it.
+All files you create as part of this PR review will go into a folder named `.copilot-tracking` at the root of the project. If this folder does not exist, create it.
 
 **Before Starting:**
 Follow the "Before Starting a Review" section in `.github/instructions/code-review.instructions.md`, and additionally:
-1. Create the `pr-reviews` folder if it does not exist.
+1. Create the `.copilot-tracking` folder if it does not exist.
 
 **Step 1: Analyze the Changes**
 Follow the "Step 1: Analyze the Changes" section in `.github/instructions/code-review.instructions.md`.
-For this pr, ${activePullRequest}, create a markdown document in the `pr-reviews` folder that describes in detail how each file has changed and what each file does, and what the changes are. Consider what the PR author wrote in the PR description as well as the changes that exist in each file.
+For this pr, ${activePullRequest}, create a markdown document in the `.copilot-tracking` folder that describes in detail how each file has changed and what each file does, and what the changes are. Consider what the PR author wrote in the PR description as well as the changes that exist in each file.
 
-Create `pr-reviews/pr-analysis-${prNumber}.md` with:
+Create `.copilot-tracking/pr-analysis-${prNumber}.md` with:
 - PR Summary section
 - File-by-file analysis with:
   - File purpose and role
@@ -31,7 +31,7 @@ Create `pr-reviews/pr-analysis-${prNumber}.md` with:
 **Step 2: Provide Review Feedback**
 Follow the "Step 2: Provide Review Feedback" section in `.github/instructions/code-review.instructions.md`, including all General Code Quality Criteria and Unit Test Review Criteria.
 
-Create `pr-reviews/pr-review-${prNumber}.md` with:
+Create `.copilot-tracking/pr-review-${prNumber}.md` with:
 - Overall PR assessment
 - Per-file review comments in this format:
     path/to/file.ext

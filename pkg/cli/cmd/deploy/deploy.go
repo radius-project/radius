@@ -132,6 +132,7 @@ type Runner struct {
 	EnvironmentNameOrID string
 	FilePath            string
 	Parameters          map[string]map[string]any
+	Template            map[string]any
 	Workspace           *workspaces.Workspace
 	Providers           *clients.Providers
 }
@@ -171,9 +172,35 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// does not exist.
 	workspace.Scope = scope
 
-	r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
+	// Get the file path early so we can prepare the template
+	r.FilePath = args[0]
+
+	// Prepare the template early to check if it contains an environment resource.
+	// This allows us to skip environment validation if the template will create one.
+	r.Template, err = r.Bicep.PrepareTemplate(r.FilePath)
 	if err != nil {
 		return err
+	}
+
+	// Check if environment was explicitly provided via flag or workspace default
+	environmentFlag, _ := cmd.Flags().GetString("environment")
+	environmentProvidedExplicitly := environmentFlag != "" || workspace.Environment != ""
+
+	// Check if the template contains an environment resource
+	templateCreatesEnvironment := bicep.ContainsEnvironmentResource(r.Template)
+
+	if !templateCreatesEnvironment || environmentProvidedExplicitly {
+		// Environment is required if:
+		// 1. Template doesn't create environment, OR
+		// 2. User explicitly provided --environment flag or workspace has default environment
+		r.EnvironmentNameOrID, err = cli.RequireEnvironmentNameOrID(cmd, args, *workspace)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Template creates the environment and no environment was explicitly provided
+		// Set to empty string to indicate no pre-existing environment
+		r.EnvironmentNameOrID = ""
 	}
 
 	// This might be empty, and that's fine!
@@ -182,54 +209,57 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Validate that the environment exists.
-	// Right now we assume that every deployment uses a Radius Environment.
+	// Validate that the environment exists if one was provided.
+	// If the template creates an environment and no environment was specified, we skip this validation.
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
 	}
-	env, err := client.GetEnvironment(cmd.Context(), r.EnvironmentNameOrID)
-	if err != nil {
-		// If the error is not a 404, return it
-		if !clients.Is404Error(err) {
-			return err
-		}
 
-		// If the environment doesn't exist, but the user specified its name or resource id as
-		// a command-line option, return an error
-		if cli.DidSpecifyEnvironmentName(cmd, args) {
-			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
-		}
-
-		// If we got here, it means that the error was a 404 and the user did not specify the environment name.
-		// This is fine, because an environment is not required.
-	}
-
-	r.Providers = &clients.Providers{}
-	r.Providers.Radius = &clients.RadiusProvider{}
-	if env.ID != nil {
-		r.Providers.Radius.EnvironmentID = *env.ID
-		r.Workspace.Environment = r.Providers.Radius.EnvironmentID
-	}
-
-	if r.ApplicationName != "" {
-		r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
-	}
-
-	if env.Properties != nil && env.Properties.Providers != nil {
-		if env.Properties.Providers.Aws != nil {
-			r.Providers.AWS = &clients.AWSProvider{
-				Scope: *env.Properties.Providers.Aws.Scope,
+	if r.EnvironmentNameOrID != "" {
+		env, err := client.GetEnvironment(cmd.Context(), r.EnvironmentNameOrID)
+		if err != nil {
+			// If the error is not a 404, return it
+			if !clients.Is404Error(err) {
+				return err
+			} else {
+				// If the environment doesn't exist, but the user specified its name or resource id as
+				// a command-line option or defined it in the workspace, return an error
+				return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
 			}
 		}
-		if env.Properties.Providers.Azure != nil {
-			r.Providers.Azure = &clients.AzureProvider{
-				Scope: *env.Properties.Providers.Azure.Scope,
+
+		r.Providers = &clients.Providers{}
+		r.Providers.Radius = &clients.RadiusProvider{}
+		if env.ID != nil {
+			r.Providers.Radius.EnvironmentID = *env.ID
+			r.Workspace.Environment = r.Providers.Radius.EnvironmentID
+		}
+
+		if r.ApplicationName != "" {
+			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
+		}
+
+		if env.Properties != nil && env.Properties.Providers != nil {
+			if env.Properties.Providers.Aws != nil {
+				r.Providers.AWS = &clients.AWSProvider{
+					Scope: *env.Properties.Providers.Aws.Scope,
+				}
+			}
+			if env.Properties.Providers.Azure != nil {
+				r.Providers.Azure = &clients.AzureProvider{
+					Scope: *env.Properties.Providers.Azure.Scope,
+				}
 			}
 		}
+	} else {
+		// No environment provided - initialize empty providers
+		r.Providers = &clients.Providers{}
+		r.Providers.Radius = &clients.RadiusProvider{}
+		if r.ApplicationName != "" {
+			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
+		}
 	}
-
-	r.FilePath = args[0]
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
 	if err != nil {
@@ -251,14 +281,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run deploys a Bicep template into an environment from a workspace, optionally creating an application if
 // specified, and displays progress and completion messages. It returns an error if any of the operations fail.
 func (r *Runner) Run(ctx context.Context) error {
-	template, err := r.Bicep.PrepareTemplate(r.FilePath)
-	if err != nil {
-		return err
-	}
+	// Use the template that was prepared during validation
+	template := r.Template
 
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
-	err = r.injectAutomaticParameters(template)
+	err := r.injectAutomaticParameters(template)
 	if err != nil {
 		return err
 	}
@@ -272,7 +300,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Create application if specified. This supports the case where the application resource
 	// is not specified in Bicep. Creating the application automatically helps us "bootstrap" in a new environment.
-	if r.ApplicationName != "" {
+	// Note: This only applies when the environment already exists. If the template is creating the environment,
+	// r.EnvironmentNameOrID will be empty and we'll skip this step (the template deployment will create
+	// whatever resources it defines).
+	if r.ApplicationName != "" && r.EnvironmentNameOrID != "" {
 		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 		if err != nil {
 			return err

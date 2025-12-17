@@ -186,7 +186,7 @@ jobs:
             upgrade-noncloud,
           ]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
