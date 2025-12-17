@@ -55,18 +55,34 @@ main() {
     # Get CLI version
     local cli_version
     cli_version=$(get_cli_version)
+    if [[ -z "${cli_version}" ]]; then
+        echo "Error: Failed to parse CLI version from 'rad version' output." >&2
+        exit 1
+    fi
     echo "CLI Version: ${cli_version}"
 
     # Get control plane info
     get_control_plane_info
+    if [[ -z "${CP_STATUS}" || -z "${CP_VERSION}" ]]; then
+        echo "Error: Failed to parse control plane status or version from 'rad version' output." >&2
+        exit 1
+    fi
     echo "Control Plane Status: ${CP_STATUS}"
-    echo "Control Plane Version: ${CP_VERSION:-N/A}"
+    echo "Control Plane Version: ${CP_VERSION}"
 
     # Determine action based on control plane status
     if [[ "${CP_STATUS}" == "Not" ]]; then
         echo ""
         echo "Radius is not installed on the cluster. Installing..."
-        rad install kubernetes
+        if ! rad install kubernetes; then
+            echo ""
+            echo "============================================================================"
+            echo "ERROR: Radius installation failed"
+            echo "============================================================================"
+            echo "The installation could not be completed."
+            echo "Please check the error message above for details."
+            exit 1
+        fi
         echo "Radius installation complete."
     elif [[ "${CP_VERSION}" == "${cli_version}" ]]; then
         echo ""
