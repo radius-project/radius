@@ -38,7 +38,7 @@ import (
 
 const (
 	DeploymentResourceTestWaitDuration            = time.Second * 10
-	DeploymentResourceTestWaitInterval            = time.Second * 1
+	DeploymentResourceTestWaitInterval            = 200 * time.Millisecond
 	DeploymentResourceTestControllerDelayInterval = time.Millisecond * 100
 
 	TestDeploymentResourceNamespace           = "deploymentresource-basic"
@@ -125,16 +125,13 @@ func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentResource: %+v", name)
 		current := &radappiov1alpha3.DeploymentResource{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("DeploymentResource.Status: %+v", current.Status)
 		if assert.Equal(t, radappiov1alpha3.DeploymentResourcePhraseReady, current.Status.Phrase) {
 			assert.Empty(t, current.Status.Operation)
 		}
@@ -146,16 +143,13 @@ func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, 
 func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentResourceStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentResource: %+v", name)
 		current := &radappiov1alpha3.DeploymentResource{}
 		err := client.Get(ctx, name, current)
 		assert.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("DeploymentResource.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		if assert.Equal(t, radappiov1alpha3.DeploymentResourcePhraseDeleting, current.Status.Phrase) {
@@ -170,16 +164,13 @@ func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Clien
 func waitForDeploymentResourceDeleted(t *testing.T, client k8sClient.Client, name types.NamespacedName) {
 	ctx := testcontext.New(t)
 
-	logger := t
 	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching DeploymentResource: %+v", name)
 		current := &radappiov1alpha3.DeploymentResource{}
 		err := client.Get(ctx, name, current)
 		if apierrors.IsNotFound(err) {
 			return true
 		}
 
-		logger.Logf("DeploymentResource.Status: %+v", current.Status)
 		return false
 
 	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval, "DeploymentResource still exists")

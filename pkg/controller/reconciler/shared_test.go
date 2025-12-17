@@ -39,7 +39,7 @@ import (
 
 const (
 	recipeTestWaitDuration            = time.Second * 10
-	recipeTestWaitInterval            = time.Second * 1
+	recipeTestWaitInterval            = 200 * time.Millisecond
 	recipeTestControllerDelayInterval = time.Millisecond * 100
 )
 
@@ -69,16 +69,13 @@ func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha
 func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
 	require.EventuallyWithT(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
 		current := &radappiov1alpha3.Recipe{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		if assert.Equal(t, radappiov1alpha3.PhraseUpdating, current.Status.Phrase) {
@@ -94,16 +91,13 @@ func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.N
 func waitForRecipeStateReady(t *testing.T, client client.Client, name types.NamespacedName) *radappiov1alpha3.RecipeStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
 		current := &radappiov1alpha3.Recipe{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		if assert.Equal(t, radappiov1alpha3.PhraseReady, current.Status.Phrase) {
@@ -117,16 +111,13 @@ func waitForRecipeStateReady(t *testing.T, client client.Client, name types.Name
 func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
 	ctx := testcontext.New(t)
 
-	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
 		current := &radappiov1alpha3.Recipe{}
 		err := client.Get(ctx, name, current)
 		assert.NoError(t, err)
 
 		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
 		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
 
 		if assert.Equal(t, radappiov1alpha3.PhraseDeleting, current.Status.Phrase) {
@@ -141,16 +132,13 @@ func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.N
 func waitForRecipeDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
 	ctx := testcontext.New(t)
 
-	logger := t
 	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching Recipe: %+v", name)
 		current := &radappiov1alpha3.Recipe{}
 		err := client.Get(ctx, name, current)
 		if apierrors.IsNotFound(err) {
 			return true
 		}
 
-		logger.Logf("Recipe.Status: %+v", current.Status)
 		return false
 
 	}, recipeTestWaitDuration, recipeTestWaitInterval, "recipe still exists")

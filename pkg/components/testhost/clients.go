@@ -72,6 +72,10 @@ func (th *TestHost) MakeTypedRequest(method string, pathAndQuery string, body an
 
 // MakeRequest sends a request to the server.
 func (th *TestHost) MakeRequest(method string, pathAndQuery string, body []byte) *TestResponse {
+	return th.makeRequest(method, pathAndQuery, body, true)
+}
+
+func (th *TestHost) makeRequest(method string, pathAndQuery string, body []byte, logResponse bool) *TestResponse {
 	// Prepend the base path if this is a relative URL.
 	requestUrl := pathAndQuery
 	parsed, err := url.Parse(pathAndQuery)
@@ -98,15 +102,17 @@ func (th *TestHost) MakeRequest(method string, pathAndQuery string, body []byte)
 
 	response.Body = io.NopCloser(responseBuffer)
 
-	// Pretty-print response for logs.
-	if len(responseBuffer.Bytes()) > 0 {
-		var data any
-		err = json.Unmarshal(responseBuffer.Bytes(), &data)
-		require.NoError(th.t, err, "unmarshalling response failed")
+	if logResponse {
+		// Pretty-print response for logs.
+		if len(responseBuffer.Bytes()) > 0 {
+			var data any
+			err = json.Unmarshal(responseBuffer.Bytes(), &data)
+			require.NoError(th.t, err, "unmarshalling response failed")
 
-		text, err := json.MarshalIndent(&data, "", "  ")
-		require.NoError(th.t, err, "marshalling response failed")
-		th.t.Log("Response Body: \n" + string(text))
+			text, err := json.MarshalIndent(&data, "", "  ")
+			require.NoError(th.t, err, "marshalling response failed")
+			th.t.Log("Response Body: \n" + string(text))
+		}
 	}
 
 	var errorResponse *v1.ErrorResponse
@@ -223,27 +229,38 @@ func (tr *TestResponse) WaitForOperationComplete(timeout *time.Duration) *TestRe
 		timeout = &x
 	}
 
-	timer := time.After(*timeout)
-	poller := time.NewTicker(1 * time.Second)
-	defer poller.Stop()
+	operationURL := tr.Raw.Header.Get("Azure-AsyncOperation")
+	require.NotEmpty(tr.t, operationURL, "expected Azure-AsyncOperation header")
+
+	deadline := time.Now().Add(*timeout)
+
+	pollInterval := 50 * time.Millisecond
+	maxPollInterval := 1 * time.Second
+
 	for {
-		select {
-		case <-timer:
+		if time.Now().After(deadline) {
 			tr.t.Fatalf("timed out waiting for operation to complete")
 			return nil // unreachable
-		case <-poller.C:
-			// The Location header should give us the operation status URL.
-			response := tr.host.MakeRequest(http.MethodGet, tr.Raw.Header.Get("Azure-AsyncOperation"), nil)
+		}
 
-			// To determine if the response is terminal we need to read the provisioning state field.
-			operationStatus := v1.AsyncOperationStatus{}
-			response.ReadAs(&operationStatus)
-			if operationStatus.Status.IsTerminal() {
-				// Response is terminal.
-				return response
+		// Poll the async-operation status endpoint.
+		//
+		// This uses a "quiet" request path to avoid flooding `-v` output when polling.
+		response := tr.host.makeRequest(http.MethodGet, operationURL, nil, false)
+
+		// To determine if the response is terminal we need to read the provisioning state field.
+		operationStatus := v1.AsyncOperationStatus{}
+		response.ReadAs(&operationStatus)
+		if operationStatus.Status.IsTerminal() {
+			return response
+		}
+
+		time.Sleep(pollInterval)
+		if pollInterval < maxPollInterval {
+			pollInterval *= 2
+			if pollInterval > maxPollInterval {
+				pollInterval = maxPollInterval
 			}
-
-			continue
 		}
 	}
 }
