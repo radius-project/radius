@@ -65,10 +65,10 @@ func Test_ResourceList(t *testing.T) {
 		if strings.HasPrefix(resourceType, "Radius.Core") {
 			radiusCoreClientOptions := *clientOptions
 			radiusCoreClientOptions.APIVersion = "2025-08-01-preview"
-			client, err = generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, &radiusCoreClientOptions)
+			client, err = generated.NewGenericResourcesClient(resourceType, resourceGroupScope, &aztoken.AnonymousCredential{}, &radiusCoreClientOptions)
 			require.NoError(t, err)
 		} else {
-			client, err = generated.NewGenericResourcesClient(resourceGroupScope, resourceType, &aztoken.AnonymousCredential{}, clientOptions)
+			client, err = generated.NewGenericResourcesClient(resourceType, resourceGroupScope, &aztoken.AnonymousCredential{}, clientOptions)
 			require.NoError(t, err)
 		}
 		pager := client.NewListByRootScopePager(nil)
