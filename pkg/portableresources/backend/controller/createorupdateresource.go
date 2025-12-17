@@ -177,7 +177,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connected resource IDs: %w", err)
 	}
-	connectedResourcesProperties := make(map[string]recipes.ConnectedResource)
+	connectedResourcesMetadata := make(map[string]recipes.ConnectedResource)
 
 	// If there are connected resources, we need to fetch their properties and add them to the recipe context.
 	for connName, connectedResourceID := range connectionsAndSourceIDs {
@@ -193,7 +193,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 			return nil, fmt.Errorf("failed to get metadata from connected resource %s: %w", connectedResourceID, err)
 		}
 
-		connectedResourcesProperties[connName] = recipes.ConnectedResource{
+		connectedResourcesMetadata[connName] = recipes.ConnectedResource{
 			ID:         connectedResourceMetadata.ID,
 			Name:       connectedResourceMetadata.Name,
 			Type:       connectedResourceMetadata.Type,
@@ -208,7 +208,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		ApplicationID:                resource.ResourceMetadata().ApplicationID(),
 		ResourceID:                   resource.GetBaseResource().ID,
 		Properties:                   resourceProperties,
-		ConnectedResourcesProperties: connectedResourcesProperties,
+		ConnectedResourcesProperties: connectedResourcesMetadata,
 	}
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
