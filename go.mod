@@ -11,7 +11,7 @@ replace github.com/Azure/bicep-types/src/bicep-types-go => ./bicep-types/src/bic
 
 // Pin golang.org/x/tools to v0.23.0 to avoid compiler crash with Go 1.24.x
 // xref: https://github.com/golang/go/issues/64875
-// replace golang.org/x/tools => golang.org/x/tools v0.23.0
+replace golang.org/x/tools => golang.org/x/tools v0.23.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
