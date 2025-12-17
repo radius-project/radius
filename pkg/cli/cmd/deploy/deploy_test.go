@@ -1423,8 +1423,7 @@ func Test_FetchEnvironment(t *testing.T) {
 				runner.RadiusCoreClientFactory = factory
 			}
 
-			cmd := &cobra.Command{}
-			result, err := runner.FetchEnvironment(context.Background(), tc.envNameOrID, cmd, []string{"template.bicep"})
+			result, err := runner.FetchEnvironment(context.Background(), tc.envNameOrID)
 
 			if tc.shouldError {
 				require.Error(t, err)
