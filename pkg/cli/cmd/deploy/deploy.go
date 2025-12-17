@@ -225,7 +225,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// If no environment found and user didn't specify environment name using -e, that's ok
 		if envResult == nil {
 			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
 		}
