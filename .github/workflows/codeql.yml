@@ -60,42 +60,15 @@ jobs:
 
       - name: Set matrix
         id: set-matrix
-        shell: bash
-        run: |
-          echo "Modified keys: ${MODIFIED_KEYS}"
-
-          # Define the full matrix configuration
-          FULL_MATRIX='[
-            {"language": "actions", "build-mode": "none", "working-directory": "."},
-            {"language": "go", "build-mode": "manual", "working-directory": "."},
-            {"language": "javascript", "build-mode": "none", "working-directory": "typespec"},
-            {"language": "custom-go", "build-mode": "none", "working-directory": "."}
-          ]'
-
-          # Filter matrix based on changed keys
-          # - actions: runs if 'actions' changed
-          # - go: runs if 'go' changed
-          # - javascript: runs if 'javascript' changed
-          # - custom-go: runs if 'go' changed (GoSec analysis)
-          FILTERED_MATRIX=$(echo "${FULL_MATRIX}" | jq -c --argjson changed "${MODIFIED_KEYS}" '
-            map(select(
-              (.language == "actions" and ($changed | index("actions"))) or
-              (.language == "go" and ($changed | index("go"))) or
-              (.language == "javascript" and ($changed | index("javascript"))) or
-              (.language == "custom-go" and ($changed | index("go")))
-            ))
-          ')
-
-          echo "Filtered matrix: ${FILTERED_MATRIX}"
-
-          # Output the matrix (use empty array if no matches)
-          if [ "${FILTERED_MATRIX}" == "[]" ] || [ -z "${FILTERED_MATRIX}" ]; then
-            echo "matrix={\"include\":[]}" >> "${GITHUB_OUTPUT}"
-          else
-            echo "matrix={\"include\":${FILTERED_MATRIX}}" >> "${GITHUB_OUTPUT}"
-          fi
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/codeql-matrix.mjs`
+            );
+            await script({ context, core });
         env:
-          MODIFIED_KEYS: ${{ toJson(steps.filter.outputs.modified_keys) }}
+          INPUT_MODIFIED_KEYS: ${{ toJson(steps.filter.outputs.modified_keys) }}
 
   codeql:
     name: Analyze (${{ matrix.language }})
