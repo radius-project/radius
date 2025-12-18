@@ -76,7 +76,7 @@ async function shouldRunFullMatrix(context, github, core) {
 }
 
 /** @param {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-export default async ({ github, context, core }) => {
+export default async ({ context, github, core }) => {
   try {
     if (!context?.eventName) {
       throw new Error("GitHub context is missing or invalid");
