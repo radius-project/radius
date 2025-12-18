@@ -13,7 +13,8 @@
     "ghcr.io/devcontainers/features/python:1": {},
     //Container and K8s
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
-      "minikube": "none"
+      "minikube": "none",
+      "helm": "3.15.3"
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
