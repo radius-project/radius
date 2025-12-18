@@ -8,6 +8,8 @@ We welcome and encourage users to contribute to the Radius open-source project i
 
 * Take on bigger projects: Issues that are groomed and ready to be picked up are labeled as ["triaged"](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
 
+* Contribute to designs: For larger features that require design review before implementation, learn about [design documents and Spec Kit](./contributing-code/contributing-code-design/). Design proposals are created in the [design-notes repository](https://github.com/radius-project/design-notes).
+
 * Fork the project: Create a personal copy (fork) of the Radius repository on GitHub. This enables you to make changes and experiment as well as submit pull requests.
 
 * Submit pull requests: Once you've made changes or improvements to your forked repository, [submit a pull request](./contributing-pull-requests/) to the main project. Provide clear descriptions of the purpose and benefits of your changes.
