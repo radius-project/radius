@@ -1,0 +1,171 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: CodeQL Advanced
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  schedule:
+    # Runs at 05:15, only on Friday
+    - cron: 15 5 * * 5
+
+permissions: {}
+
+jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Debug
+        uses: raven-actions/debug@9dbdeb7eea607a7d73411895c65987e71d59a466 # v1.2.0
+
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Filter
+        id: filter
+        uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891 # v47.0.1
+        with:
+          json: true
+          escape_json: false
+          files_yaml: |
+            go:
+              - "**.go"
+              - "**.mod"
+              - "**.sum"
+            javascript:
+              - "typespec/**"
+            actions:
+              - ".github/workflows/**"
+              - ".github/actions/**"
+
+      - name: Filter outputs
+        run: |
+          echo "${FILTER_OUTPUTS}"
+        env:
+          FILTER_OUTPUTS: ${{ toJson(steps.filter.outputs) }}
+
+      - name: Set matrix
+        id: set-matrix
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/codeql-matrix.mjs`
+            );
+            await script({ context, github, core });
+        env:
+          INPUT_MODIFIED_KEYS: ${{ toJson(steps.filter.outputs.modified_keys) }}
+
+  codeql:
+    name: Analyze (${{ matrix.language }})
+    if: ${{ needs.changes.outputs.matrix != '{"include":[]}' && needs.changes.outputs.matrix != '' }}
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-15') || 'ubuntu-24.04' }}
+    needs: changes
+    timeout-minutes: 30
+    permissions:
+      security-events: write # Needed for Code scanning upload
+      packages: read # required to fetch internal or private CodeQL packs
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Initialize CodeQL
+        if: ${{ !startsWith(matrix.language, 'custom-') }}
+        uses: github/codeql-action/init@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
+        with:
+          config-file: .github/configs/.codeql.yml
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Auto build
+        if: matrix.build-mode == 'autobuild'
+        uses: github/codeql-action/autobuild@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
+        with:
+          working-directory: ${{ matrix.working-directory }}
+
+      - name: Build (${{ matrix.language }})
+        if: matrix.language == 'go' && matrix.build-mode == 'manual'
+        run: |
+          make build
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: Perform GoSec Analysis
+        if: matrix.language == 'custom-go'
+        uses: securego/gosec@25804378cd3eb8715e79649ea5266b811713b6ee
+        with:
+          args: -no-fail -fmt sarif -out gosec-results.sarif ./...
+        continue-on-error: true
+
+      - name: Upload GoSec result
+        if: ${{ always() && matrix.language == 'custom-go' }}
+        uses: github/codeql-action/upload-sarif@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
+        with:
+          sarif_file: gosec-results.sarif
+          wait-for-processing: true
+
+      - name: Perform CodeQL Analysis
+        if: ${{ !startsWith(matrix.language, 'custom-') }}
+        uses: github/codeql-action/analyze@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
+        id: codeql-analyze
+        with:
+          category: /language:${{matrix.language}}
+          upload: never
+          output: .codeql-results
+
+      - name: Upload CodeQL result
+        if: ${{ always() && !startsWith(matrix.language, 'custom-') }}
+        uses: github/codeql-action/upload-sarif@5d4e8d1aca955e8d8589aabd499c5cae939e33c7 # v4.31.9
+        with:
+          sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
+          wait-for-processing: true
+
+  check-codeql:
+    if: always()
+    name: CodeQL
+    needs: codeql
+    runs-on: ubuntu-24.04
+    steps:
+      - name: ✅ OK
+        if: ${{ !(contains(needs.*.result, 'failure')) }}
+        run: exit 0
+      - name: 🛑 Failure
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: exit 1
