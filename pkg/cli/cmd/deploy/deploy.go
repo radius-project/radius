@@ -415,7 +415,8 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
 }
 
-// determineEnvironmentProvider determines which provider to use based on the environment ID
+// isApplicationsCoreProvider returns true if the provider is Applications.Core based on the environment ID
+// It returns an error if the ID cannot be parsed
 func isApplicationsCoreProvider(id string) (bool, error) {
 	parsedID, err := resources.Parse(id)
 	if err != nil {
@@ -559,15 +560,6 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string) (*Env
 			radCoreEnvID = envNameOrID
 		}
 
-		if r.RadiusCoreClientFactory == nil {
-			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
-			if err != nil {
-				return nil, err
-			} else {
-				r.RadiusCoreClientFactory = clientFactory
-			}
-		}
-
 		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvID)
 		if err != nil {
 			if !clients.Is404Error(err) {
@@ -669,7 +661,6 @@ func (r *Runner) configureProviders() error {
 	switch e := env.(type) {
 	case *v20231001preview.EnvironmentResource:
 		if e != nil && e.ID != nil {
-			r.Providers.Radius.EnvironmentID = *e.ID
 			r.setupEnvironmentID(e.ID)
 			r.setupCloudProviders(e.Properties)
 		}
@@ -684,7 +675,6 @@ func (r *Runner) configureProviders() error {
 		}
 	case *v20250801preview.EnvironmentResource:
 		if e != nil && e.ID != nil {
-			r.Providers.Radius.EnvironmentID = *e.ID
 			r.setupEnvironmentID(e.ID)
 			r.setupCloudProviders(e.Properties)
 		}
