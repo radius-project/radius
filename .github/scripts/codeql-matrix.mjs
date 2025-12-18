@@ -26,8 +26,51 @@ const LANGUAGE_TO_KEYS = {
   "custom-go": ["go"], // GoSec analysis runs when Go files change
 };
 
+const FULL_MATRIX_TRIGGER = "/codeql full";
+
+/**
+ * Check if the PR body or comments contain the full matrix trigger
+ * @param {import('@actions/github-script').AsyncFunctionArguments['context']} context
+ * @param {import('@actions/github-script').AsyncFunctionArguments['github']} github
+ * @param {import('@actions/github-script').AsyncFunctionArguments['core']} core
+ * @returns {Promise<boolean>}
+ */
+async function shouldRunFullMatrix(context, github, core) {
+  // Check PR body
+  const prBody = context.payload.pull_request?.body || "";
+  if (prBody.includes(FULL_MATRIX_TRIGGER)) {
+    core.info(`Found "${FULL_MATRIX_TRIGGER}" in PR body`);
+    return true;
+  }
+
+  // Check PR comments
+  const prNumber = context.payload.pull_request?.number;
+  if (prNumber) {
+    try {
+      const { data: comments } = await github.rest.issues.listComments({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: prNumber,
+      });
+
+      for (const comment of comments) {
+        if (comment.body?.includes(FULL_MATRIX_TRIGGER)) {
+          core.info(
+            `Found "${FULL_MATRIX_TRIGGER}" in PR comment by ${comment.user?.login}`,
+          );
+          return true;
+        }
+      }
+    } catch (error) {
+      core.warning(`Failed to fetch PR comments: ${error}`);
+    }
+  }
+
+  return false;
+}
+
 /** @param {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-export default async ({ context, core }) => {
+export default async ({ github, context, core }) => {
   try {
     if (!context?.eventName) {
       throw new Error("GitHub context is missing or invalid");
@@ -51,20 +94,23 @@ export default async ({ context, core }) => {
     core.info(`Modified keys: ${JSON.stringify(modifiedKeys)}`);
 
     // For non-PR events (push, schedule), run all languages
-    // For PR events, filter based on changed files
+    // For PR events, filter based on changed files unless "/codeql full" is found
     const isPrEvent =
       eventName === "pull_request" || eventName === "pull_request_target";
 
     let filteredMatrix;
-    if (isPrEvent) {
+    if (!isPrEvent) {
+      core.info("Non-PR event detected - running full matrix");
+      filteredMatrix = FULL_MATRIX;
+    } else if (await shouldRunFullMatrix(github, context, core)) {
+      core.info(`"${FULL_MATRIX_TRIGGER}" trigger found - running full matrix`);
+      filteredMatrix = FULL_MATRIX;
+    } else {
       core.info("PR event detected - filtering matrix based on changed files");
       filteredMatrix = FULL_MATRIX.filter((item) => {
         const requiredKeys = LANGUAGE_TO_KEYS[item.language] || [];
         return requiredKeys.some((key) => modifiedKeys.includes(key));
       });
-    } else {
-      core.info("Non-PR event detected - running full matrix");
-      filteredMatrix = FULL_MATRIX;
     }
 
     core.info(`Filtered matrix: ${JSON.stringify(filteredMatrix)}`);

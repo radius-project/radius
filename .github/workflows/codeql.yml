@@ -66,7 +66,7 @@ jobs:
             const { default: script } = await import(
               `${process.env.GITHUB_WORKSPACE}/.github/scripts/codeql-matrix.mjs`
             );
-            await script({ context, core });
+            await script({ context, github, core });
         env:
           INPUT_MODIFIED_KEYS: ${{ toJson(steps.filter.outputs.modified_keys) }}
 
