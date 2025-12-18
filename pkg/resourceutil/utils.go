@@ -31,23 +31,31 @@ const (
 // BasicProperties is a list of common properties that are expected to be present in all resources
 var BasicProperties = []string{"application", "environment", "status", "connections"}
 
+// marshalAndUnmarshalResource serializes a resource to JSON and then deserializes it into the target structure
+func marshalAndUnmarshalResource[P any, T any](resource P, target *T) error {
+	bytes, err := json.Marshal(resource)
+	if err != nil {
+		return fmt.Errorf("%s: %w", errMarshalResource, err)
+	}
+
+	if err := json.Unmarshal(bytes, target); err != nil {
+		return fmt.Errorf("%s: %w", errUnmarshalResourceProperties, err)
+	}
+
+	return nil
+}
+
 // GetPropertiesFromResource extracts the "properties" field from the resource
 // by serializing it to JSON and deserializing just the "properties" field.
 func GetPropertiesFromResource[P any](resource P) (map[string]any, error) {
-	// Serialize the resource to JSON
-	bytes, err := json.Marshal(resource)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errMarshalResource, err)
-	}
-
 	// Define a minimal struct to capture just the "properties" field
 	var partialResource struct {
 		Properties map[string]any `json:"properties"`
 	}
 
-	// Deserialize the JSON into the partialResource struct
-	if err := json.Unmarshal(bytes, &partialResource); err != nil {
-		return nil, fmt.Errorf("%s: %w", errUnmarshalResourceProperties, err)
+	// Use the common marshal/unmarshal helper
+	if err := marshalAndUnmarshalResource(resource, &partialResource); err != nil {
+		return nil, err
 	}
 
 	// Return an empty map if properties is nil
@@ -91,4 +99,41 @@ func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error)
 	}
 
 	return connectionNamesAndSourceIDs, nil
+}
+
+// ResourceMetadata represents resource metadata including ID, Name, Type and Properties
+type ResourceMetadata struct {
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
+	Properties map[string]any `json:"properties,omitempty"`
+}
+
+// GetAllPropertiesFromResource extracts the resource metadata including ID, Name, Type and properties
+// by unmarshalling the resource and extracting the required fields.
+func GetAllPropertiesFromResource[P any](resource P) (*ResourceMetadata, error) {
+	// Define a struct to capture ID, Name, Type, and properties fields
+	var partialResource struct {
+		ID         string         `json:"id"`
+		Name       string         `json:"name"`
+		Type       string         `json:"type"`
+		Properties map[string]any `json:"properties"`
+	}
+
+	// Use the common marshal/unmarshal helper
+	if err := marshalAndUnmarshalResource(resource, &partialResource); err != nil {
+		return nil, err
+	}
+
+	// Return empty properties map if properties is nil
+	if partialResource.Properties == nil {
+		partialResource.Properties = map[string]any{}
+	}
+
+	return &ResourceMetadata{
+		ID:         partialResource.ID,
+		Name:       partialResource.Name,
+		Type:       partialResource.Type,
+		Properties: partialResource.Properties,
+	}, nil
 }
