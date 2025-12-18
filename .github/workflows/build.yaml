@@ -76,7 +76,7 @@ jobs:
     # if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
