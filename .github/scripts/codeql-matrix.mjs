@@ -36,6 +36,12 @@ const FULL_MATRIX_TRIGGER = "/codeql full";
  * @returns {Promise<boolean>}
  */
 async function shouldRunFullMatrix(context, github, core) {
+  // Ensure payload exists
+  if (!context.payload) {
+    core.info("No payload available - skipping full matrix trigger check");
+    return false;
+  }
+
   // Check PR body
   const prBody = context.payload.pull_request?.body || "";
   if (prBody.includes(FULL_MATRIX_TRIGGER)) {
@@ -102,7 +108,7 @@ export default async ({ github, context, core }) => {
     if (!isPrEvent) {
       core.info("Non-PR event detected - running full matrix");
       filteredMatrix = FULL_MATRIX;
-    } else if (await shouldRunFullMatrix(github, context, core)) {
+    } else if (await shouldRunFullMatrix(context, github, core)) {
       core.info(`"${FULL_MATRIX_TRIGGER}" trigger found - running full matrix`);
       filteredMatrix = FULL_MATRIX;
     } else {
