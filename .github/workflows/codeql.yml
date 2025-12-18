@@ -159,7 +159,7 @@ jobs:
 
   check-codeql:
     if: always()
-    name: Check CodeQL
+    name: CodeQL
     needs: codeql
     runs-on: ubuntu-24.04
     steps:
