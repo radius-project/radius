@@ -84,6 +84,9 @@ type ProvidersKubernetes_v20250801preview struct {
 
 // ProvidersAWS_v20250801preview represents the AWS provider configuration.
 type ProvidersAWS_v20250801preview struct {
-	// Scope is the target scope for AWS resources to be deployed into.
-	Scope string `json:"scope"`
+	// AccountID is the AWS account ID hosting deployed resources.
+	AccountID string `json:"accountId"`
+
+	// Region is the AWS region hosting deployed resources.
+	Region string `json:"region"`
 }
