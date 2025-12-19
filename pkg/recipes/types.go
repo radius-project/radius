@@ -158,6 +158,8 @@ type RecipeDefinition struct {
 	RecipeLocation string
 	// Parameters represents parameters to pass to the recipe
 	Parameters map[string]any
+	// PlainHTTP connects to the location using HTTP (not-HTTPS)
+	PlainHTTP bool
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
