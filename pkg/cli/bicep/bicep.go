@@ -25,14 +25,14 @@ import (
 )
 
 const (
-	radBicepEnvVar = "RAD_BICEP"
-	binaryName     = "rad-bicep"
+	BicepEnvVar    = "BICEP"
+	binaryName     = "bicep"
 	retryAttempts  = 10
 	retryDelaySecs = 5
 )
 
 func GetBicepFilePath() (string, error) {
-	return tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+	return tools.GetLocalFilepath(BicepEnvVar, binaryName)
 }
 
 // IsBicepInstalled returns true if our local copy of bicep is installed

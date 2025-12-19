@@ -159,7 +159,7 @@ test-functional-samples-noncloud: ## Runs Samples functional tests that do not r
 
 .PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
-	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
+	BICEP_PATH="${HOME}/.rad/bin/bicep" ./build/validate-bicep.sh
 
 .PHONY: test-helm
 test-helm: ## Runs Helm chart unit tests
