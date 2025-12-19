@@ -115,7 +115,7 @@ func (c *RadiusClientImpl) Groups(scope string) ResourceGroupClient {
 }
 
 func (c *RadiusClientImpl) Resources(scope string, resourceType string) ResourceClient {
-	gc, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	gc, err := generated.NewGenericResourcesClient(resourceType, scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
 	}
