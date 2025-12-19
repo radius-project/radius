@@ -12,7 +12,7 @@ const FULL_MATRIX = [
     "build-mode": "none",
     "working-directory": "typespec",
   },
-  { language: "custom-go", "build-mode": "none", "working-directory": "." },
+  { language: "custom-gosec", "build-mode": "none", "working-directory": "." },
 ];
 
 /**
@@ -23,7 +23,7 @@ const LANGUAGE_TO_KEYS = {
   actions: ["actions"],
   go: ["go"],
   javascript: ["javascript"],
-  "custom-go": ["go"], // GoSec analysis runs when Go files change
+  "custom-gosec": ["go"], // GoSec analysis runs when Go files change
 };
 
 const FULL_MATRIX_TRIGGER = "/codeql full";
