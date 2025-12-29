@@ -435,7 +435,8 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
 						Aws: &modelv20250801.ProvidersAws{
-							Scope: to.Ptr(awsScope),
+							AccountID: to.Ptr("000"),
+							Region:    to.Ptr("cool-region"),
 						},
 						Kubernetes: &modelv20250801.ProvidersKubernetes{
 							Namespace: to.Ptr(envNamespace),
