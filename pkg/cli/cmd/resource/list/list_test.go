@@ -61,6 +61,24 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Valid List Command with environment",
+			Input:         []string{"Applications.Core/containers", "-e", "test-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "List Command with both application and environment",
+			Input:         []string{"Applications.Core/containers", "-a", "test-app", "-e", "test-env"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
 			Name:          "List Command with fallback workspace",
 			Input:         []string{"Applications.Core/containers", "-g", "my-group"},
 			ExpectedValid: true,
@@ -211,6 +229,83 @@ func Test_Run(t *testing.T) {
 				Output:                    outputSink,
 				Workspace:                 workspace,
 				ApplicationName:           "",
+				ResourceType:              "MyCompany.Resources/testResources",
+				Format:                    "table",
+				ResourceTypeSuffix:        "testResources",
+				ResourceProviderNamespace: "MyCompany.Resources",
+			}
+
+			err = runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     resources,
+					Options: objectformats.GetGenericResourceTableFormat(),
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
+	})
+
+	t.Run("List resources by type in environment", func(t *testing.T) {
+		t.Run("Environment does not exist", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+			appManagementClient.EXPECT().
+				GetEnvironment(gomock.Any(), "test-env").
+				Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
+			runner := &Runner{
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:          clientFactory,
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				EnvironmentName:           "test-env",
+				ResourceType:              "MyCompany.Resources/testResources",
+				Format:                    "table",
+				ResourceTypeSuffix:        "testResources",
+				ResourceProviderNamespace: "MyCompany.Resources",
+			}
+
+			err = runner.Run(context.Background())
+			require.Error(t, err)
+			require.IsType(t, err, clierrors.Message("The environment %q could not be found in workspace %q. Make sure you specify the correct environment with '-e/--environment'.", "test-env", radcli.TestWorkspaceName))
+		})
+
+		t.Run("Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			resources := []generated.GenericResource{
+				radcli.CreateResource("testResources", "A"),
+				radcli.CreateResource("testResources", "B"),
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvironment(gomock.Any(), "test-env").
+				Return(v20231001preview.EnvironmentResource{}, nil).Times(1)
+			appManagementClient.EXPECT().
+				ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "MyCompany.Resources/testResources").
+				Return(resources, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
+			runner := &Runner{
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:          clientFactory,
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{},
+				EnvironmentName:           "test-env",
 				ResourceType:              "MyCompany.Resources/testResources",
 				Format:                    "table",
 				ResourceTypeSuffix:        "testResources",
