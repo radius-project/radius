@@ -204,15 +204,28 @@ func addSchemaTypeInternal(schema *manifest.Schema, name string, typeFactory *fa
 		if len(schema.Enum) > 0 {
 			var enumTypeRefs []types.ITypeReference
 			for _, value := range schema.Enum {
-				stringLiteralType := typeFactory.CreateStringLiteralType(value)
+				var stringLiteralType *types.StringLiteralType
+				// Check if parent string type is marked sensitive
+				if schema.IsSensitive != nil && *schema.IsSensitive {
+					stringLiteralType = typeFactory.CreateSensitiveStringLiteralType(value)
+				} else {
+					stringLiteralType = typeFactory.CreateStringLiteralType(value)
+				}
 				enumTypeRefs = append(enumTypeRefs, typeFactory.GetReference(stringLiteralType))
 			}
 			unionType := typeFactory.CreateUnionType(enumTypeRefs)
 			return typeFactory.GetReference(unionType), nil
 		}
 
-		// Regular string without constraints
-		stringType := typeFactory.CreateStringType()
+		// Regular string - check if it should be sensitive
+		var stringType *types.StringType
+		if schema.IsSensitive != nil && *schema.IsSensitive {
+			// Use CreateStringTypeWithConstraints with sensitive=true
+			stringType = typeFactory.CreateStringTypeWithConstraints(nil, nil, "", true)
+		} else {
+			// Regular non-sensitive string
+			stringType = typeFactory.CreateStringType()
+		}
 		return typeFactory.GetReference(stringType), nil
 
 	case "enum":
@@ -256,7 +269,14 @@ func addSchemaTypeInternal(schema *manifest.Schema, name string, typeFactory *fa
 			return nil, fmt.Errorf("failed to add object properties: %w", err)
 		}
 
-		objectType := typeFactory.CreateObjectType(name, nil, nil, nil)
+		// Determine sensitive flag for object
+		var sensitive *bool
+		if schema.IsSensitive != nil && *schema.IsSensitive {
+			trueVal := true
+			sensitive = &trueVal
+		}
+
+		objectType := typeFactory.CreateObjectType(name, nil, nil, sensitive)
 		objectType.Properties = objectProperties
 
 		// Handle additionalProperties if specified

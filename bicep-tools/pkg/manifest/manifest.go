@@ -38,6 +38,7 @@ type Schema struct {
 	ReadOnly             *bool             `yaml:"readOnly,omitempty" json:"readOnly,omitempty"`
 	Items                *Schema           `yaml:"items,omitempty" json:"items,omitempty"`
 	Enum                 []string          `yaml:"enum,omitempty" json:"enum,omitempty"`
+	IsSensitive          *bool             `yaml:"x-radius-sensitive,omitempty" json:"x-radius-sensitive,omitempty"`
 }
 
 // ParseManifest parses a YAML manifest string into a ResourceProvider struct
@@ -118,6 +119,13 @@ func (s *Schema) Validate(context string) error {
 
 	if !validTypes[s.Type] {
 		return fmt.Errorf("invalid schema type '%s' in %s", s.Type, context)
+	}
+
+	// Validate x-radius-sensitive is only used on valid types
+	if s.IsSensitive != nil && *s.IsSensitive {
+		if s.Type != "string" && s.Type != "object" {
+			return fmt.Errorf("x-radius-sensitive annotation is only supported on string and object types, got '%s' in %s", s.Type, context)
+		}
 	}
 
 	// Validate nested properties if this is an object type

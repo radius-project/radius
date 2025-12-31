@@ -3,6 +3,7 @@ package manifest
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -407,5 +408,157 @@ types:
 	}
 	if mymapProp.AdditionalProperties.Description == nil || *mymapProp.AdditionalProperties.Description != "A map of key-value pairs" {
 		t.Errorf("Expected description to be 'A map of key-value pairs', got: %v", mymapProp.AdditionalProperties.Description)
+	}
+}
+
+func TestSchema_Validate_SensitiveOnInvalidType(t *testing.T) {
+	sensitive := true
+
+	// Test that x-radius-sensitive on integer fails validation
+	intSchema := Schema{
+		Type:        "integer",
+		IsSensitive: &sensitive,
+	}
+	if err := intSchema.Validate("test"); err == nil {
+		t.Error("Expected validation error for x-radius-sensitive on integer type")
+	} else if !strings.Contains(err.Error(), "only supported on string and object types") {
+		t.Errorf("Expected error message about supported types, got: %v", err)
+	}
+
+	// Test that x-radius-sensitive on boolean fails validation
+	boolSchema := Schema{
+		Type:        "boolean",
+		IsSensitive: &sensitive,
+	}
+	if err := boolSchema.Validate("test"); err == nil {
+		t.Error("Expected validation error for x-radius-sensitive on boolean type")
+	} else if !strings.Contains(err.Error(), "only supported on string and object types") {
+		t.Errorf("Expected error message about supported types, got: %v", err)
+	}
+
+	// Test that x-radius-sensitive on array fails validation
+	arraySchema := Schema{
+		Type:        "array",
+		IsSensitive: &sensitive,
+		Items: &Schema{
+			Type: "string",
+		},
+	}
+	if err := arraySchema.Validate("test"); err == nil {
+		t.Error("Expected validation error for x-radius-sensitive on array type")
+	} else if !strings.Contains(err.Error(), "only supported on string and object types") {
+		t.Errorf("Expected error message about supported types, got: %v", err)
+	}
+
+	// Test that x-radius-sensitive on enum fails validation
+	enumSchema := Schema{
+		Type:        "enum",
+		Enum:        []string{"value1", "value2"},
+		IsSensitive: &sensitive,
+	}
+	if err := enumSchema.Validate("test"); err == nil {
+		t.Error("Expected validation error for x-radius-sensitive on enum type")
+	} else if !strings.Contains(err.Error(), "only supported on string and object types") {
+		t.Errorf("Expected error message about supported types, got: %v", err)
+	}
+}
+
+func TestSchema_Validate_SensitiveOnValidTypes(t *testing.T) {
+	sensitive := true
+
+	// Test that x-radius-sensitive on string passes validation
+	stringSchema := Schema{
+		Type:        "string",
+		IsSensitive: &sensitive,
+	}
+	if err := stringSchema.Validate("test"); err != nil {
+		t.Errorf("Expected no validation error for x-radius-sensitive on string, got: %v", err)
+	}
+
+	// Test that x-radius-sensitive on object passes validation
+	objectSchema := Schema{
+		Type: "object",
+		Properties: map[string]Schema{
+			"prop1": {Type: "string"},
+		},
+		IsSensitive: &sensitive,
+	}
+	if err := objectSchema.Validate("test"); err != nil {
+		t.Errorf("Expected no validation error for x-radius-sensitive on object, got: %v", err)
+	}
+}
+
+func TestParseManifest_WithSensitiveAnnotation(t *testing.T) {
+	input := `
+namespace: MyCompany.Resources
+types:
+  testResources:
+    apiVersions:
+      '2025-01-01-preview':
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+              description: "Public username"
+            password:
+              type: string
+              description: "User password"
+              x-radius-sensitive: true
+            apiKey:
+              type: string
+              x-radius-sensitive: true
+            credentials:
+              type: object
+              x-radius-sensitive: true
+              properties:
+                key:
+                  type: string
+                value:
+                  type: string
+        capabilities: ['Recipes']
+`
+
+	result, err := ParseManifest(input)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	schema := result.Types["testResources"].APIVersions["2025-01-01-preview"].Schema
+
+	// Test that username is NOT sensitive (default)
+	usernameProp, exists := schema.Properties["username"]
+	if !exists {
+		t.Fatal("Expected property 'username' to exist")
+	}
+	if usernameProp.IsSensitive != nil && *usernameProp.IsSensitive {
+		t.Error("Expected username to NOT be marked as sensitive")
+	}
+
+	// Test that password IS sensitive
+	passwordProp, exists := schema.Properties["password"]
+	if !exists {
+		t.Fatal("Expected property 'password' to exist")
+	}
+	if passwordProp.IsSensitive == nil || !*passwordProp.IsSensitive {
+		t.Error("Expected password to be marked as sensitive")
+	}
+
+	// Test that apiKey IS sensitive
+	apiKeyProp, exists := schema.Properties["apiKey"]
+	if !exists {
+		t.Fatal("Expected property 'apiKey' to exist")
+	}
+	if apiKeyProp.IsSensitive == nil || !*apiKeyProp.IsSensitive {
+		t.Error("Expected apiKey to be marked as sensitive")
+	}
+
+	// Test that credentials object IS sensitive
+	credentialsProp, exists := schema.Properties["credentials"]
+	if !exists {
+		t.Fatal("Expected property 'credentials' to exist")
+	}
+	if credentialsProp.IsSensitive == nil || !*credentialsProp.IsSensitive {
+		t.Error("Expected credentials object to be marked as sensitive")
 	}
 }
