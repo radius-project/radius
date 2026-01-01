@@ -475,7 +475,7 @@ func (r *Runner) getApplicationsCoreEnvironment(ctx context.Context, id string) 
 }
 
 // getRadiusCoreEnvironment retrieves environment using Radius Core client and returns as Applications.Core format
-func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, id string) (*v20250801preview.EnvironmentResource, error) {
+func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v20250801preview.EnvironmentResource, error) {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
 		if err != nil {
@@ -485,7 +485,7 @@ func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, id string) (*v202
 	}
 
 	environmentClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	env, err := environmentClient.Get(ctx, id, nil)
+	env, err := environmentClient.Get(ctx, name, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -553,14 +553,14 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string) (*Env
 		}
 	}
 	if fetchRadiusCoreEnv {
-		var radCoreEnvID string
-		if !isID {
-			radCoreEnvID = r.constructRadiusCoreEnvironmentID(envNameOrID)
+		var radCoreEnvName string
+		if isID {
+			radCoreEnvName = envID.Name()
 		} else {
-			radCoreEnvID = envNameOrID
+			radCoreEnvName = envNameOrID
 		}
 
-		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvID)
+		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvName)
 		if err != nil {
 			if !clients.Is404Error(err) {
 				return nil, err
