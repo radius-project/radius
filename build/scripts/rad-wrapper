@@ -1,0 +1,32 @@
+#!/bin/bash
+# Debug wrapper for rad CLI that automatically configures UCP endpoint
+
+# Resolve the actual script path even when called via symlink
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [ -L "$SCRIPT_PATH" ]; do
+    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+    SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+    [[ $SCRIPT_PATH != /* ]] && SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+DEBUG_CONFIG="$PROJECT_ROOT/build/configs/rad-debug-config.yaml"
+RAD_BINARY="$PROJECT_ROOT/debug_files/bin/rad"
+
+# Check if debug config exists
+if [ ! -f "$DEBUG_CONFIG" ]; then
+    echo "Error: Debug config not found at $DEBUG_CONFIG"
+    echo "Run 'make debug-start' to start the debug environment"
+    exit 1
+fi
+
+# Check if rad binary exists
+if [ ! -f "$RAD_BINARY" ]; then
+    echo "Error: rad binary not found at $RAD_BINARY"
+    echo "Run 'make debug-start' to build and start the debug environment"
+    exit 1
+fi
+
+# Execute rad with debug config, passing through all arguments
+exec "$RAD_BINARY" --config "$DEBUG_CONFIG" "$@"
