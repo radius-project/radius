@@ -114,7 +114,11 @@ func Test_PreflightContainer_PreflightDisabled(t *testing.T) {
 	_ = exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Wait for cleanup to complete
-	time.Sleep(3 * time.Second)
+	require.Eventually(t, func() bool {
+		cmd := exec.Command("helm", "status", "radius", "--namespace", radiusNamespace)
+		err := cmd.Run()
+		return err != nil
+	}, 30*time.Second, 1*time.Second, "Radius release was not uninstalled")
 
 	t.Log("Installing Radius with preflight disabled using helm")
 	installCommand := []string{
@@ -180,7 +184,11 @@ func Test_PreflightContainer_JobConfiguration(t *testing.T) {
 	_ = exec.Command(cleanupCommand[0], cleanupCommand[1:]...).Run() // Ignore errors during cleanup
 
 	// Wait for cleanup to complete
-	time.Sleep(3 * time.Second)
+	require.Eventually(t, func() bool {
+		cmd := exec.Command("helm", "status", "radius", "--namespace", radiusNamespace)
+		err := cmd.Run()
+		return err != nil
+	}, 30*time.Second, 1*time.Second, "Radius release was not uninstalled")
 
 	// Use local registry image for testing
 	t.Log("Installing Radius with custom preflight configuration using helm")
