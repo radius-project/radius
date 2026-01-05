@@ -30,6 +30,10 @@
               ]
             }
           },
+          "aws": {
+            "region": "eastus",
+            "accountId" : "123456789012"
+          },
           "kubernetes": {
             "namespace": "default"
           }
