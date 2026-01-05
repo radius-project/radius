@@ -1116,3 +1116,176 @@ func TestAddResourceTypeForAPIVersion_WithAdditionalProperties(t *testing.T) {
 		t.Errorf("Expected status union to have 2 elements, got %d", len(statusType.Elements))
 	}
 }
+
+func TestAddSchemaType_SensitiveString(t *testing.T) {
+	sensitive := true
+	schema := &manifest.Schema{
+		Type:        "string",
+		IsSensitive: &sensitive,
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "password", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	addedType, ok := allTypes[typeRef.Ref].(*types.StringType)
+	if !ok {
+		t.Fatal("Expected result to be a StringType")
+	}
+
+	if !addedType.Sensitive {
+		t.Error("Expected string to be marked as sensitive")
+	}
+}
+
+func TestAddSchemaType_NonSensitiveString(t *testing.T) {
+	schema := &manifest.Schema{Type: "string"}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "username", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	addedType, ok := allTypes[typeRef.Ref].(*types.StringType)
+	if !ok {
+		t.Fatal("Expected result to be a StringType")
+	}
+
+	if addedType.Sensitive {
+		t.Error("Expected string to NOT be marked as sensitive by default")
+	}
+}
+
+func TestAddSchemaType_SensitiveObject(t *testing.T) {
+	sensitive := true
+	schema := &manifest.Schema{
+		Type: "object",
+		Properties: map[string]manifest.Schema{
+			"username": {Type: "string"},
+			"password": {Type: "string"},
+		},
+		IsSensitive: &sensitive,
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "credentials", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	addedType, ok := allTypes[typeRef.Ref].(*types.ObjectType)
+	if !ok {
+		t.Fatal("Expected result to be an ObjectType")
+	}
+
+	if addedType.Sensitive == nil || !*addedType.Sensitive {
+		t.Error("Expected object to be marked as sensitive")
+	}
+}
+
+func TestAddSchemaType_SensitiveStringEnum(t *testing.T) {
+	sensitive := true
+	schema := &manifest.Schema{
+		Type:        "string",
+		Enum:        []string{"secret1", "secret2", "secret3"},
+		IsSensitive: &sensitive,
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "secretType", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	unionType, ok := allTypes[typeRef.Ref].(*types.UnionType)
+	if !ok {
+		t.Fatal("Expected result to be a UnionType")
+	}
+
+	// Verify each literal is marked sensitive
+	if len(unionType.Elements) != 3 {
+		t.Errorf("Expected 3 enum elements, got %d", len(unionType.Elements))
+	}
+
+	for i, element := range unionType.Elements {
+		elementRef, ok := element.(types.TypeReference)
+		if !ok {
+			t.Fatalf("Expected element %d to be a TypeReference", i)
+		}
+		stringLiteral, ok := allTypes[elementRef.Ref].(*types.StringLiteralType)
+		if !ok {
+			t.Fatalf("Expected element %d to be a StringLiteralType", i)
+		}
+		if !stringLiteral.Sensitive {
+			t.Errorf("Expected enum literal '%s' to be marked as sensitive", stringLiteral.Value)
+		}
+	}
+}
+
+func TestAddSchemaType_ArrayOfSensitiveObjects(t *testing.T) {
+	sensitive := true
+	schema := &manifest.Schema{
+		Type: "array",
+		Items: &manifest.Schema{
+			Type: "object",
+			Properties: map[string]manifest.Schema{
+				"key": {Type: "string"},
+			},
+			IsSensitive: &sensitive,
+		},
+	}
+	typeFactory := factory.NewTypeFactory()
+
+	result, err := addSchemaType(schema, "secretsList", typeFactory)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+	typeRef, ok := result.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected result to be a TypeReference")
+	}
+	arrayType, ok := allTypes[typeRef.Ref].(*types.ArrayType)
+	if !ok {
+		t.Fatal("Expected result to be an ArrayType")
+	}
+
+	// Get the item type
+	itemRef, ok := arrayType.ItemType.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected array item type to be a TypeReference")
+	}
+	itemObject, ok := allTypes[itemRef.Ref].(*types.ObjectType)
+	if !ok {
+		t.Fatal("Expected array item to be an ObjectType")
+	}
+
+	// Item object should be sensitive
+	if itemObject.Sensitive == nil || !*itemObject.Sensitive {
+		t.Error("Expected array item object to be marked as sensitive")
+	}
+}
