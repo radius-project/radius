@@ -18,34 +18,31 @@
 ---
 name: Purge Azure test resources
 
-permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read # Required for actions/checkout
-  packages: write # Required for reading package versions and deleting packages
-
 on:
   # Enable manual trigger
   workflow_dispatch:
   schedule:
     # Run twice a day
-    - cron: "30 0,12 * * *"
+    - cron: 30 0,12 * * *
+
+permissions: {}
 
 env:
-  AZURE_RG_DELETE_LIST_FILE: "az_rg_list.txt"
+  AZURE_RG_DELETE_LIST_FILE: az_rg_list.txt
   # The valid resource time window in seconds to delete the test resources. 6 hours
   VALID_RESOURCE_WINDOW: 6*60*60
   # The current GitHub action link
-  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
 jobs:
   purge_azure_resources:
     name: Clean up unused Azure resources
-    runs-on: ubuntu-latest
     if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      id-token: write
     steps:
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
@@ -95,7 +92,10 @@ jobs:
           done
 
   purge_bicep_types:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      id-token: write # Required for azure/login
     steps:
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
@@ -124,10 +124,12 @@ jobs:
   create_issue_on_failure:
     name: Create issue for failing purge Azure test resources run
     needs: [purge_azure_resources, purge_bicep_types]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

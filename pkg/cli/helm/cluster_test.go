@@ -496,6 +496,7 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 			Info: &release.Info{
 				Status:        release.StatusSuperseded,
 				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
 				Description:   "Install complete",
 			},
 		},
@@ -505,6 +506,7 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 			Info: &release.Info{
 				Status:        release.StatusDeployed,
 				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 2, 14, 30, 0, 0, time.UTC)},
 				Description:   "Upgrade complete",
 			},
 		},
@@ -524,12 +526,13 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 	require.Equal(t, "0.46.0", revisions[0].ChartVersion)
 	require.Equal(t, "deployed", revisions[0].Status)
 	require.Equal(t, "Upgrade complete", revisions[0].Description)
-	require.Equal(t, "2023-01-01 12:00:00", revisions[0].UpdatedAt)
+	require.Equal(t, "2023-01-02 14:30:00", revisions[0].UpdatedAt)
 
 	require.Equal(t, 1, revisions[1].Revision)
 	require.Equal(t, "0.45.0", revisions[1].ChartVersion)
 	require.Equal(t, "superseded", revisions[1].Status)
 	require.Equal(t, "Install complete", revisions[1].Description)
+	require.Equal(t, "2023-01-01 12:00:00", revisions[1].UpdatedAt)
 }
 
 func Test_Helm_GetRadiusRevisions_NoRevisions(t *testing.T) {
@@ -571,6 +574,93 @@ func Test_Helm_GetRadiusRevisions_HistoryError(t *testing.T) {
 	_, err := impl.GetRadiusRevisions(ctx, kubeContext)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to get release history")
+}
+
+func Test_Helm_GetRadiusRevisions_MultipleUpgradesWithDifferentTimestamps(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{Helm: mockHelmClient}
+	ctx := context.Background()
+	kubeContext := "test-context"
+
+	// Mock history simulating multiple upgrades and rollbacks across different days
+	// This test validates that each revision shows its own LastDeployed timestamp,
+	// not the FirstDeployed timestamp which would be the same for all revisions
+	history := []*release.Release{
+		{
+			Version: 1,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
+			Info: &release.Info{
+				Status:        release.StatusSuperseded,
+				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
+				Description:   "Install complete",
+			},
+		},
+		{
+			Version: 2,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}},
+			Info: &release.Info{
+				Status:        release.StatusSuperseded,
+				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 2, 15, 30, 0, 0, time.UTC)},
+				Description:   "Upgrade complete",
+			},
+		},
+		{
+			Version: 3,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
+			Info: &release.Info{
+				Status:        release.StatusSuperseded,
+				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 3, 9, 15, 0, 0, time.UTC)},
+				Description:   "Rollback to 1",
+			},
+		},
+		{
+			Version: 4,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.47.0"}},
+			Info: &release.Info{
+				Status:        release.StatusDeployed,
+				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
+				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 4, 11, 45, 0, 0, time.UTC)},
+				Description:   "Upgrade complete",
+			},
+		},
+	}
+
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+		Return(history, nil).
+		Times(1)
+
+	revisions, err := impl.GetRadiusRevisions(ctx, kubeContext)
+	require.NoError(t, err)
+	require.Len(t, revisions, 4)
+
+	// Verify that each revision has its own unique LastDeployed timestamp
+	// (not the same FirstDeployed timestamp for all)
+	require.Equal(t, 4, revisions[0].Revision)
+	require.Equal(t, "0.47.0", revisions[0].ChartVersion)
+	require.Equal(t, "deployed", revisions[0].Status)
+	require.Equal(t, "2023-01-04 11:45:00", revisions[0].UpdatedAt)
+
+	require.Equal(t, 3, revisions[1].Revision)
+	require.Equal(t, "0.45.0", revisions[1].ChartVersion)
+	require.Equal(t, "superseded", revisions[1].Status)
+	require.Equal(t, "2023-01-03 09:15:00", revisions[1].UpdatedAt)
+
+	require.Equal(t, 2, revisions[2].Revision)
+	require.Equal(t, "0.46.0", revisions[2].ChartVersion)
+	require.Equal(t, "superseded", revisions[2].Status)
+	require.Equal(t, "2023-01-02 15:30:00", revisions[2].UpdatedAt)
+
+	require.Equal(t, 1, revisions[3].Revision)
+	require.Equal(t, "0.45.0", revisions[3].ChartVersion)
+	require.Equal(t, "superseded", revisions[3].Status)
+	require.Equal(t, "2023-01-01 10:00:00", revisions[3].UpdatedAt)
 }
 
 func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {

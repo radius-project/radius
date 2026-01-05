@@ -24,6 +24,18 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
+// ConnectedResource represents a connected resource's metadata and properties
+type ConnectedResource struct {
+	// ID represents the fully qualified resource id
+	ID string `json:"id"`
+	// Name represents the resource name
+	Name string `json:"name"`
+	// Type represents the resource type
+	Type string `json:"type"`
+	// Properties represents the resource properties
+	Properties map[string]any `json:"properties,omitempty"`
+}
+
 // Configuration represents runtime and cloud provider configuration, which is used by the driver while deploying recipes.
 type Configuration struct {
 	// Kubernetes Runtime configuration for the environment.
@@ -85,11 +97,10 @@ type ResourceMetadata struct {
 	ResourceID string
 	// Properties represents the properties of the resource that the recipe is deploying
 	Properties map[string]any
-	// ConnectedResourcesProperties represents the properties of the connected resources that the recipe is deploying.
-	// the key is connection name and the value is a map of properties for the connected resource.
-	// properties are inturn a map of key/value pairs, where the key is the property name and the value is the property value.
-	// these properties are passed into the recipe context.
-	ConnectedResourcesProperties map[string]map[string]any
+	// ConnectedResourcesProperties represents the connected resources that the recipe is deploying.
+	// The key is connection name and the value contains the connected resource's metadata and properties.
+	// These are passed into the recipe context.
+	ConnectedResourcesProperties map[string]ConnectedResource
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }
@@ -147,6 +158,8 @@ type RecipeDefinition struct {
 	RecipeLocation string
 	// Parameters represents parameters to pass to the recipe
 	Parameters map[string]any
+	// PlainHTTP connects to the location using HTTP (not-HTTPS)
+	PlainHTTP bool
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.

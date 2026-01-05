@@ -361,7 +361,7 @@ func assertExpectedResourcesExist(ctx context.Context, scope string, expectedRes
 		resourceType := resource[0]
 		resourceName := resource[1]
 
-		client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
+		client, err := generated.NewGenericResourcesClient(resourceType, scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
 		if err != nil {
 			return err
 		}
@@ -382,7 +382,7 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 		resourceType := resource[0]
 		resourceName := resource[1]
 
-		client, err := generated.NewGenericResourcesClient(scope, resourceType, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
+		client, err := generated.NewGenericResourcesClient(resourceType, scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
 		if err != nil {
 			return err
 		}
