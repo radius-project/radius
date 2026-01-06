@@ -115,13 +115,6 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-          persist-credentials: false
-
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
         shell: bash
