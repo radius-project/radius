@@ -38,8 +38,8 @@ func NewClientFactory(rootScope string, resourceType string, credential azcore.T
 // NewGenericResourcesClient creates a new instance of GenericResourcesClient.
 func (c *ClientFactory) NewGenericResourcesClient() *GenericResourcesClient {
 	return &GenericResourcesClient{
-		rootScope:    c.rootScope,
 		resourceType: c.resourceType,
+		rootScope:    c.rootScope,
 		internal:     c.internal,
 	}
 }

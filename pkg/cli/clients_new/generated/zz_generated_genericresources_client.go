@@ -20,23 +20,23 @@ import (
 // Don't use this type directly, use NewGenericResourcesClient() instead.
 type GenericResourcesClient struct {
 	internal     *arm.Client
-	rootScope    string
 	resourceType string
+	rootScope    string
 }
 
 // NewGenericResourcesClient creates a new instance of GenericResourcesClient with the specified values.
-//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
 //   - resourceType - The azure resource type. For example RedisCache, RabbitMQ and other
+//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
-//   - options - pass nil to accept the default values.
-func NewGenericResourcesClient(rootScope string, resourceType string, credential azcore.TokenCredential, options *arm.ClientOptions) (*GenericResourcesClient, error) {
+//   - options - Contains optional client configuration. Pass nil to accept the default values.
+func NewGenericResourcesClient(resourceType string, rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*GenericResourcesClient, error) {
 	cl, err := arm.NewClient(moduleName, moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &GenericResourcesClient{
-		rootScope:    rootScope,
 		resourceType: resourceType,
+		rootScope:    rootScope,
 		internal:     cl,
 	}
 	return client, nil

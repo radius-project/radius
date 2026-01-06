@@ -115,22 +115,22 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 		}
 
 		clientOpts := sdk.NewClientOptions(connection)
-		appClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/applications", &aztoken.AnonymousCredential{}, clientOpts)
+		appClient, err := generated.NewGenericResourcesClient("Applications.Core/applications", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
 		if err != nil {
 			return nil, err
 		}
 
-		cntrClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/containers", &aztoken.AnonymousCredential{}, clientOpts)
+		cntrClient, err := generated.NewGenericResourcesClient("Applications.Core/containers", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
 		if err != nil {
 			return nil, err
 		}
 
-		envClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/environments", &aztoken.AnonymousCredential{}, clientOpts)
+		envClient, err := generated.NewGenericResourcesClient("Applications.Core/environments", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
 		if err != nil {
 			return nil, err
 		}
 
-		gwClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/gateways", &aztoken.AnonymousCredential{}, clientOpts)
+		gwClient, err := generated.NewGenericResourcesClient("Applications.Core/gateways", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
 		if err != nil {
 			return nil, err
 		}
