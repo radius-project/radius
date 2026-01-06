@@ -37,7 +37,9 @@ runs:
       env:
         SRC_IMAGE: ${{ inputs.src_image }}
       run: |
-        # Example: SRC_REGISTRY_NAME=myregistry
+        # Example: 
+        #  SRC_IMAGE=radiusdeploymentengine.azurecr.io/deployment-engine
+        #  SRC_REGISTRY_NAME=radiusdeploymentengine
         SRC_REGISTRY_NAME=$(echo "${SRC_IMAGE}" | cut -d'.' -f1)
         az acr login --name "${SRC_REGISTRY_NAME}"
 
