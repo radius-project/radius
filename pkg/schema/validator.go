@@ -233,6 +233,15 @@ func (v *Validator) validateRadiusConstraintsWithPath(schema *openapi3.Schema, p
 		}
 	}
 
+	// Check x-radius-sensitive annotation constraints
+	if err := v.checkSensitiveAnnotation(schema, path); err != nil {
+		if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
+	}
+
 	// Validate type constraints
 	if err := v.validateTypeConstraints(schema, path); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
@@ -403,6 +412,42 @@ func (v *Validator) checkProhibitedFeatures(schema *openapi3.Schema) error {
 	}
 	if schema.Discriminator != nil {
 		return NewConstraintError("", "discriminator is not supported")
+	}
+
+	return nil
+}
+
+// checkSensitiveAnnotation validates that x-radius-sensitive annotation is only used on string and object types
+func (v *Validator) checkSensitiveAnnotation(schema *openapi3.Schema, path string) error {
+	if schema.Extensions == nil {
+		return nil
+	}
+
+	sensitive, exists := schema.Extensions["x-radius-sensitive"]
+	if !exists {
+		return nil
+	}
+
+	// Validate that the value is a boolean
+	boolVal, ok := sensitive.(bool)
+	if !ok {
+		return NewConstraintError(path, "x-radius-sensitive must be a boolean value")
+	}
+
+	// Only validate type constraints when x-radius-sensitive is true
+	if boolVal {
+		// Require explicit type when x-radius-sensitive is used
+		if schema.Type == nil || len(*schema.Type) == 0 {
+			return NewConstraintError(path, "x-radius-sensitive annotation requires an explicit type (string or object)")
+		}
+
+		// Validate it's only on string or object types
+		typeStr := (*schema.Type)[0]
+		isString := schema.Type.Is("string")
+		isObject := schema.Type.Is("object")
+		if !isString && !isObject {
+			return NewConstraintError(path, fmt.Sprintf("x-radius-sensitive annotation is only supported on string and object types, got '%s'", typeStr))
+		}
 	}
 
 	return nil
