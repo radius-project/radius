@@ -135,11 +135,7 @@ func waitForRecipeDeleted(t *testing.T, client client.Client, name types.Namespa
 	require.Eventuallyf(t, func() bool {
 		current := &radappiov1alpha3.Recipe{}
 		err := client.Get(ctx, name, current)
-		if apierrors.IsNotFound(err) {
-			return true
-		}
-
-		return false
+		return apierrors.IsNotFound(err)
 
 	}, recipeTestWaitDuration, recipeTestWaitInterval, "recipe still exists")
 }

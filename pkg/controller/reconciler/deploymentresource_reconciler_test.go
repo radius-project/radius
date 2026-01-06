@@ -167,11 +167,7 @@ func waitForDeploymentResourceDeleted(t *testing.T, client k8sClient.Client, nam
 	require.Eventuallyf(t, func() bool {
 		current := &radappiov1alpha3.DeploymentResource{}
 		err := client.Get(ctx, name, current)
-		if apierrors.IsNotFound(err) {
-			return true
-		}
-
-		return false
+		return apierrors.IsNotFound(err)
 
 	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval, "DeploymentResource still exists")
 }

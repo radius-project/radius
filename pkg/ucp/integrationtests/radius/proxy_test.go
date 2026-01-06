@@ -46,7 +46,7 @@ const (
 	locationID               = testResourceProviderID + "/locations/global"
 
 	assertTimeout = time.Second * 10
-	assertRetry   = 200 * time.Millisecond
+	assertRetry   = time.Second * 2
 )
 
 func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {

@@ -837,11 +837,7 @@ func waitForDeploymentTemplateStateDeleted(t *testing.T, client k8sclient.Client
 	require.Eventuallyf(t, func() bool {
 		current := &radappiov1alpha3.DeploymentTemplate{}
 		err := client.Get(ctx, name, current)
-		if apierrors.IsNotFound(err) {
-			return true
-		}
-
-		return false
+		return apierrors.IsNotFound(err)
 
 	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "DeploymentTemplate still exists")
 }
