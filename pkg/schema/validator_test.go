@@ -2309,6 +2309,18 @@ func TestValidator_checkSensitiveAnnotation(t *testing.T) {
 			hasErr: true,
 			errMsg: "x-radius-sensitive must be a boolean value",
 		},
+		{
+			name: "x-radius-sensitive on string enum - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Enum: []any{"value1", "value2", "value3"},
+				Extensions: map[string]any{
+					"x-radius-sensitive": true,
+				},
+			},
+			path:   "status",
+			hasErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -2513,5 +2525,27 @@ func TestValidator_ValidateSchema_WithSensitiveAnnotation(t *testing.T) {
 		err := validator.ValidateSchema(ctx, schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "x-radius-sensitive must be a boolean value")
+	})
+
+	t.Run("valid string enum with x-radius-sensitive", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"secretType": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Enum: []any{"apiKey", "password", "certificate"},
+						Extensions: map[string]any{
+							"x-radius-sensitive": true,
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
 	})
 }
