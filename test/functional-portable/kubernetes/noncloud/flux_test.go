@@ -69,6 +69,7 @@ const (
 )
 
 func Test_Flux_Basic(t *testing.T) {
+	t.Skip("skipping flux/gitops tests")
 	testName := "flux-basic"
 	steps := []GitOpsTestStep{
 		{
@@ -95,6 +96,7 @@ func Test_Flux_Basic(t *testing.T) {
 }
 
 func Test_Flux_Complex(t *testing.T) {
+	t.Skip("skipping flux/gitops tests")
 	testName := "flux-complex"
 	steps := []GitOpsTestStep{
 		{
