@@ -10,6 +10,8 @@ import "../radius/v1/resources.tsp";
 import "../radius/v1/trackedresource.tsp";
 import "./applications.tsp";
 import "./environments.tsp";
+import "./terraformSettings.tsp";
+import "./bicepSettings.tsp";
 import "./recipePacks.tsp";
 
 using Azure.ResourceManager;

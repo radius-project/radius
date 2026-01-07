@@ -64,6 +64,16 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Simulated = true
 	}
 
+	// Convert TerraformSettings
+	if src.Properties.TerraformSettings != nil {
+		converted.Properties.TerraformSettings = to.String(src.Properties.TerraformSettings)
+	}
+
+	// Convert BicepSettings
+	if src.Properties.BicepSettings != nil {
+		converted.Properties.BicepSettings = to.String(src.Properties.BicepSettings)
+	}
+
 	return converted, nil
 }
 
@@ -102,6 +112,16 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	// Convert Simulated
 	if env.Properties.Simulated {
 		dst.Properties.Simulated = to.Ptr(env.Properties.Simulated)
+	}
+
+	// Convert TerraformSettings
+	if env.Properties.TerraformSettings != "" {
+		dst.Properties.TerraformSettings = to.Ptr(env.Properties.TerraformSettings)
+	}
+
+	// Convert BicepSettings
+	if env.Properties.BicepSettings != "" {
+		dst.Properties.BicepSettings = to.Ptr(env.Properties.BicepSettings)
 	}
 
 	return nil
