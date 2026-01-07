@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	goruntime "runtime"
 	"strings"
 
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
@@ -78,7 +77,7 @@ func getKubeAssetsDir() (string, error) {
 
 	// We require one or more versions of the test assets to be installed already. This
 	// will use whatever's latest of the installed versions.
-	cmd := exec.Command("setup-envtest", "use", "-i", "-p", "path", "--arch", goruntime.GOARCH)
+	cmd := exec.Command("setup-envtest", "use", "-i", "-p", "path", "--arch", "amd64")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
