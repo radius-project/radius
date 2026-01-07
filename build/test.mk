@@ -35,6 +35,7 @@ REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.30.*
+ENVTEST_ARCH ?= $(shell go env GOHOSTARCH)
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
 
 # Use gotestsum if available, otherwise use go test. We want to enable testing with just 'make test'
@@ -55,8 +56,8 @@ GOTEST_TOOL ?= gotestsum $(GOTESTSUM_OPTS) --
 endif
 
 .PHONY: test
-test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm ## Runs Go tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch $(ENVTEST_ARCH))" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-get-envtools
 test-get-envtools:
@@ -64,7 +65,7 @@ test-get-envtools:
 	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.20)
 	@echo "$(ARROW) Instructions:"
 	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
-	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
+	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch $(ENVTEST_ARCH))\""
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests

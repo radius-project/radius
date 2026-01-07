@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -83,7 +84,11 @@ func getKubeAssetsDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to call setup-envtest to find path: %w", err)
 	} else {
-		return out.String(), err
+		assetsPath := strings.TrimSpace(out.String())
+		if assetsPath == "" {
+			return "", fmt.Errorf("failed to call setup-envtest to find path: empty output")
+		}
+		return assetsPath, nil
 	}
 }
 
