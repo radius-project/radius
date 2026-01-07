@@ -94,6 +94,19 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
+// setupTestClient creates a mock client with default behavior for common calls
+func setupTestClient(ctrl *gomock.Controller) *clients.MockApplicationsManagementClient {
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	
+	// Default behavior: GetEnvironment returns "not found" error (most common case)
+	appManagementClient.EXPECT().
+		GetEnvironment(gomock.Any(), gomock.Any()).
+		Return(v20231001preview.EnvironmentResource{}, fmt.Errorf("not found")).
+		AnyTimes()
+	
+	return appManagementClient
+}
+
 func Test_Run(t *testing.T) {
 	t.Run("Show bicep recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -133,7 +146,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
@@ -210,7 +223,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
@@ -247,7 +260,7 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expected, outputSink.Writes)
 	})
 
-	t.Run("Show terraformn recipe details - Success", func(t *testing.T) {
+	t.Run("Show terraform recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		envRecipe := v20231001preview.RecipeGetMetadataResponse{
 			TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
@@ -287,7 +300,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
@@ -465,16 +478,10 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
-
-		// Mock GetEnvironment to fail - this should be handled gracefully
-		// The environment will be nil, so we get original behavior
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), gomock.Any()).
-			Return(v20231001preview.EnvironmentResource{}, fmt.Errorf("environment not found")).Times(1)
 
 		outputSink := &output.MockOutput{}
 
