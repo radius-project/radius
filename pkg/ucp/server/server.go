@@ -21,6 +21,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
+	installerworker "github.com/radius-project/radius/pkg/terraform/installer"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/backend"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
@@ -32,6 +33,7 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 	services := []hosting.Service{
 		api.NewService(options),
 		backend.NewService(options),
+		installerworker.NewWorkerService(options),
 	}
 
 	if options.Config.Metrics.Enabled {
