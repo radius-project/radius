@@ -176,13 +176,13 @@ installFile() {
     if [ -f "$RADIUS_CLI_FILE" ]; then
         echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully"
 
-        echo "Installing rad-bicep (\"rad bicep download\")..."
+        echo "Installing bicep (\"rad bicep download\")..."
         $RADIUS_CLI_FILE bicep download
         result=$?
         if [ $result -eq 0 ]; then
-            echo "rad-bicep installed successfully"
+            echo "bicep installed successfully"
         else
-           echo "Failed to install rad-bicep"
+           echo "Failed to install bicep"
            exit 1
         fi
 

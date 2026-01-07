@@ -98,10 +98,10 @@ jobs:
 
           # Also ensure rad CLI can find bicep by creating the expected directory structure
           mkdir -p ~/.rad/bin
-          cp /usr/local/bin/bicep ~/.rad/bin/rad-bicep
+          cp /usr/local/bin/bicep ~/.rad/bin/bicep
 
-          # Verify rad-bicep also works
-          ~/.rad/bin/rad-bicep --version
+          # Verify bicep also works
+          ~/.rad/bin/bicep --version
 
       - name: Create a temporary file system
         run: |
