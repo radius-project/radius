@@ -73,9 +73,6 @@ type Options struct {
 	// StateLockTimeout is the timeout duration for acquiring Terraform state locks.
 	// If not specified, Terraform's default timeout will be used.
 	StateLockTimeout string
-
-	// LogLevel is the log level for Terraform execution (e.g., TRACE, DEBUG, INFO, WARN, ERROR).
-	LogLevel string
 }
 
 // NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.

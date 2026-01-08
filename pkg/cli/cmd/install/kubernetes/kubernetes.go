@@ -90,9 +90,6 @@ rad install kubernetes --chart /root/radius/deploy/Chart
 
 # Force re-install Radius with latest version
 rad install kubernetes --reinstall
-
-# Install Radius with custom Terraform log level
-rad install kubernetes --set global.terraform.loglevel=DEBUG
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),

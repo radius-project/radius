@@ -66,10 +66,6 @@ global:
     # Leave empty to automatically fetch the latest version from HashiCorp
     # Or provide a complete direct download URL for custom sources
     downloadUrl: ""
-    # Configure Terraform log level for terraform-exec execution
-    # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
-    # Default: ERROR
-    loglevel: "ERROR"
 
 controller:
   image: controller

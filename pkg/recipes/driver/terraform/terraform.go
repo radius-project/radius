@@ -60,9 +60,6 @@ func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *secretprovider.S
 type TerraformOptions struct {
 	// Path is the path to the directory mounted to the container where terraform can be installed and executed.
 	Path string
-
-	// LogLevel is the log level for Terraform execution. Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF. Default: ERROR.
-	LogLevel string
 }
 
 // terraformDriver represents a driver to interact with Terraform Recipe - deploy recipe, delete resources, etc.
@@ -108,7 +105,6 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		EnvRecipe:        &opts.Definition,
 		Secrets:          opts.Secrets,
 		StateLockTimeout: terraform.DefaultStateLockTimeout,
-		LogLevel:         d.options.LogLevel,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -162,7 +158,6 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 		EnvRecipe:        &opts.Definition,
 		Secrets:          opts.Secrets,
 		StateLockTimeout: terraform.DefaultStateLockTimeout,
-		LogLevel:         d.options.LogLevel,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
@@ -288,7 +283,6 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
-		LogLevel:       d.options.LogLevel,
 	})
 
 	unsetError := unsetGitConfigForDirIfApplicable(secretStoreID, opts.Secrets, requestDirPath, opts.Definition.TemplatePath)
