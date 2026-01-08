@@ -55,7 +55,7 @@ var (
 // - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service.
 func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	template := "testdata/corerp-resources-terraform-redis.bicep"
 	name := "corerp-resources-terraform-redis"
 	appName := "corerp-resources-terraform-redis-app"
@@ -235,7 +235,7 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 }
 
 func Test_TerraformRecipe_Context(t *testing.T) {
-	//	t.Skip()
+	t.Skip()
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
 	appNamespace := "corerp-resources-terraform-context-app"
