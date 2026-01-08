@@ -141,7 +141,7 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 		// For non-OCI registries (like contour), we need to set the repo URL
 		// to the registry URL. The chartRef is the release name.
 		// ex.
-		// pull.RepoURL = https://projectcontour.github.io/helm-charts
+		// pull.RepoURL = https://charts.bitnami.com/bitnami
 		// pull.Run("contour")
 		pullopts = append(pullopts, func(p *helm.Pull) {
 			p.RepoURL = repoUrl
