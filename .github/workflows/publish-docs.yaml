@@ -1,10 +1,13 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Generate reference docs
 
 on:
   workflow_dispatch:
     inputs:
       open_pull_request:
-        description: 'Open a pull request against the docs repository. Defaults to false for a "dry run" of the workflow that generates the docs and uploads them as artifacts.'
+        description: |
+          Open a pull request against the docs repository. Defaults to false for a "dry run" of the workflow that generates the docs and uploads them as artifacts.
         required: false
         default: "false"
         type: choice
@@ -18,22 +21,45 @@ on:
   pull_request:
     branches:
       - main
+
+permissions: {}
+
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   reference-docs:
     name: Generate and PR reference documentation
-    runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    needs: [changes]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       GOPRIVATE: github.com/radius-project
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout radius repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/radius
           path: radius
           submodules: recursive
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: radius/.python-version
+
       - name: Parse release version and set environment variables
         run: python radius/.github/scripts/get_release_version.py
+
       - name: Generate docs release branch name
         run: |
           if [[ ${{ env.REL_CHANNEL }} != "edge" ]]; then
@@ -41,72 +67,88 @@ jobs:
           else
             echo DOCS_BRANCH="edge" >> $GITHUB_ENV
           fi
+
       - name: Checkout docs repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/docs
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
+          persist-credentials: false
+
       # Setup dependencies
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: radius/go.mod
           cache-dependency-path: radius/go.sum
           cache: true
+
       - name: Setup NodeJS
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: "22"
+          node-version-file: radius/.node-version
+
       - name: Install TypeSpec compiler
         run: |
           pushd radius/typespec
           npm ci
           popd
+
       - name: Install autorest
         run: npm install -g autorest@3.7.2
+
       - name: Install oav
         run: npm install -g oav@4.0.2
+
       - name: Install mockgen
         run: |
           cd radius
           go install go.uber.org/mock/mockgen@v0.4.0
+
       - name: Install controller-gen
         run: |
           cd radius
           go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
+
       # Generate Bicep docs
       - name: Generate Bicep docs
         run: |
           cd radius
           make generate
+
       # Generate resource reference docs
       - name: Generate resource reference docs
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
+
       - name: Upload resource reference docs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: resource-docs
           path: docs/docs/content/reference/resources
+
       # Generate and upload CLI docs
       - name: Generate CLI docs
         run: |
           find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
           cd radius
           go run cmd/docgen/main.go ../docs/docs/content/reference/cli
+
       - name: Upload CLI docs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli
+
       # Open PR against docs repository
       - name: Show git diff
         run: |
           cd docs
           git status --porcelain -unormal -- *.md
+
       - name: Create pull request
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@98357b18bf14b5342f975ff684046ec3b2a07725 # v8.0.0
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: docs

@@ -1,4 +1,6 @@
-name: "Process Test Results"
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: Process Test Results
 description: |
   Processes a batch of test results including creating a github artifact and annotating the Pull Request (if applicable).
 
@@ -8,7 +10,7 @@ description: |
 
   You will also need to set the path for the results file using an environment variable. This would output the jUnit
   test results format which is what we require.
-    
+
     GOTESTSUM_OPTS: '--junitfile ./dist/unit_test_results_raw.xml'
 
   Then running 'make <test target>' will do the right thing :)
@@ -21,19 +23,19 @@ inputs:
     description: "Name to use for uploading artifacts (eg: unit_test_results)"
     required: true
   result_directory:
-    description: "Directory containing result XML files. These should be in jUnit format. See the description of the action."
+    description: Directory containing result XML files. These should be in jUnit format. See the description of the action.
     required: true
 runs:
-  using: "composite"
+  using: composite
   steps:
     # The test results file output by gotestsum is missing file and line number on the XML elements
     # which is needed for the annotations to work. This script adds the missing information.
-    - name: "Transform ${{ inputs.test_group_name }} Results"
+    - name: Transform ${{ inputs.test_group_name }} Results
       # Always is REQUIRED here. Otherwise, the action will be skipped when the unit tests fail, which
       # defeats the purpose. YES it is counterintuitive. This applies to all of the actions in this file.
       if: always()
-      id: "process_files"
-      shell: "bash"
+      id: process_files
+      shell: bash
       working-directory: ${{ github.workspace }}
       env:
         INPUT_DIRECTORY: ${{ inputs.result_directory }}
@@ -42,7 +44,7 @@ runs:
 
         INPUT_FILES="$INPUT_DIRECTORY*.xml"
         mkdir -p "$INPUT_DIRECTORY/processed"
-        
+
         # Check if any XML files exist
         if ! ls $INPUT_FILES 1> /dev/null 2>&1; then
           echo "No XML files found in $INPUT_DIRECTORY"
@@ -50,7 +52,7 @@ runs:
           touch "$INPUT_DIRECTORY/processed/.gitkeep"
           exit 0
         fi
-        
+
         for INPUT_FILE in $INPUT_FILES
         do
           # Skip if the file doesn't exist (shouldn't happen after the check above, but being safe)
@@ -58,7 +60,7 @@ runs:
             echo "Skipping non-existent file: $INPUT_FILE"
             continue
           fi
-          
+
           DIRECTORY=$(dirname -- "$INPUT_FILE")
           FILENAME=$(basename -- "$INPUT_FILE")
           FILENAME="${FILENAME%.*}"
@@ -67,19 +69,21 @@ runs:
           python3 ./.github/scripts/transform_test_results.py $GITHUB_WORKSPACE "$INPUT_FILE" "$OUTPUT_FILE"
           echo "wrote ${OUTPUT_FILE}"
         done
-    - name: "Create ${{ inputs.test_group_name }} Result Report"
-      uses: EnricoMi/publish-unit-test-result-action@v2
+
+    - name: Create ${{ inputs.test_group_name }} Result Report
+      uses: EnricoMi/publish-unit-test-result-action@34d7c956a59aed1bfebf31df77b8de55db9bbaaf # v2.21.0
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
-    - name: "Upload ${{ inputs.test_group_name }} Results"
-      uses: actions/upload-artifact@v4
+
+    - name: Upload ${{ inputs.test_group_name }} Results
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       if: always()
       with:
         name: ${{ inputs.artifact_name }}
         path: |
-          ${{ inputs.result_directory }}/*.xml 
+          ${{ inputs.result_directory }}/*.xml
           ${{ inputs.result_directory }}/processed/*.xml
         if-no-files-found: warn

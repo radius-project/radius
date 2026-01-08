@@ -279,5 +279,21 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		},
 	})
 
+	_ = ns.AddResource("applications", &builder.ResourceOption[*datamodel.Application_v20250801preview, datamodel.Application_v20250801preview]{
+		RequestConverter:  converter.Application20250801DataModelFromVersioned,
+		ResponseConverter: converter.Application20250801DataModelToVersioned,
+
+		Put: builder.Operation[datamodel.Application_v20250801preview]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.Application_v20250801preview]{
+				rp_frontend.PrepareRadiusResource[*datamodel.Application_v20250801preview],
+			},
+		},
+		Patch: builder.Operation[datamodel.Application_v20250801preview]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.Application_v20250801preview]{
+				rp_frontend.PrepareRadiusResource[*datamodel.Application_v20250801preview],
+			},
+		},
+	})
+
 	return ns
 }

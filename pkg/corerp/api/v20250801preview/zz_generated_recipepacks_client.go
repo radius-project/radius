@@ -28,7 +28,7 @@ type RecipePacksClient struct {
 //     and Azure resource scope is
 //     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
-//   - options - pass nil to accept the default values.
+//   - options - Contains optional client configuration. Pass nil to accept the default values.
 func NewRecipePacksClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*RecipePacksClient, error) {
 	cl, err := arm.NewClient(moduleName, moduleVersion, credential, options)
 	if err != nil {
@@ -51,7 +51,9 @@ func NewRecipePacksClient(rootScope string, credential azcore.TokenCredential, o
 //     method.
 func (client *RecipePacksClient) CreateOrUpdate(ctx context.Context, recipePackName string, resource RecipePackResource, options *RecipePacksClientCreateOrUpdateOptions) (RecipePacksClientCreateOrUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.CreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.CreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, recipePackName, resource, options)
 	if err != nil {
@@ -108,7 +110,9 @@ func (client *RecipePacksClient) createOrUpdateHandleResponse(resp *http.Respons
 //   - options - RecipePacksClientDeleteOptions contains the optional parameters for the RecipePacksClient.Delete method.
 func (client *RecipePacksClient) Delete(ctx context.Context, recipePackName string, options *RecipePacksClientDeleteOptions) (RecipePacksClientDeleteResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.Delete", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.Delete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, recipePackName, options)
 	if err != nil {
@@ -152,7 +156,9 @@ func (client *RecipePacksClient) deleteCreateRequest(ctx context.Context, recipe
 //   - options - RecipePacksClientGetOptions contains the optional parameters for the RecipePacksClient.Get method.
 func (client *RecipePacksClient) Get(ctx context.Context, recipePackName string, options *RecipePacksClientGetOptions) (RecipePacksClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.Get", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, recipePackName, options)
 	if err != nil {
@@ -209,6 +215,7 @@ func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientL
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *RecipePacksClientListByScopeResponse) (RecipePacksClientListByScopeResponse, error) {
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RecipePacksClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -258,7 +265,9 @@ func (client *RecipePacksClient) listByScopeHandleResponse(resp *http.Response) 
 //   - options - RecipePacksClientUpdateOptions contains the optional parameters for the RecipePacksClient.Update method.
 func (client *RecipePacksClient) Update(ctx context.Context, recipePackName string, properties RecipePackResourceUpdate, options *RecipePacksClientUpdateOptions) (RecipePacksClientUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.Update", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.Update"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, recipePackName, properties, options)
 	if err != nil {

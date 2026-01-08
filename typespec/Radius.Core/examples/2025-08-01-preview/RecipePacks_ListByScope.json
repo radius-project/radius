@@ -16,7 +16,6 @@
             "location": "West US",
             "properties": {
               "provisioningState": "Succeeded",
-              "description": "Azure container recipes for common container patterns",
               "referencedBy": [
                 "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-env"
               ],
@@ -35,7 +34,6 @@
             "location": "East US",
             "properties": {
               "provisioningState": "Succeeded",
-              "description": "Kubernetes native recipes",
               "referencedBy": [],
               "recipes": {
                 "Applications.Core/containers": {

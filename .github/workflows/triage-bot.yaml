@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,28 +14,37 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: 'Radius Triage Bot'
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Radius Triage Bot
+
 on:
   issues:
     types: [labeled, unlabeled]
-permissions:
-  contents: read
-  issues: write
+
+permissions: {}
+
 jobs:
   build:
-    name: 'Process Triage Labels'
-    runs-on: ubuntu-latest
+    name: Process Triage Labels
     if: github.repository == 'radius-project/radius'
-    env: 
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
       RADIUS_TRIAGE_BOT_APP_ID: 417813
     steps:
-    - uses: tibdex/github-app-token@v2
-      id: get_installation_token
-      with: 
-        app_id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
-        private_key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
-    - uses: dessant/label-actions@v4
-      with:
-        github-token: ${{ steps.get_installation_token.outputs.token }}
-        config-path: '.github/triage-bot/triage-bot-config.yaml'
-        process-only: 'issues'
+      - uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        id: get_installation_token
+        with:
+          app-id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
+          private-key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
+          permission-issues: write
+
+      - uses: dessant/label-actions@9e5fd757ffe1e065abf55e9f74d899dbe012922a # v5.0.0
+        with:
+          github-token: ${{ steps.get_installation_token.outputs.token }}
+          config-path: .github/triage-bot/triage-bot-config.yaml
+          process-only: issues

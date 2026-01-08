@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Changes
+
+on:
+  workflow_call:
+    inputs:
+      files:
+        description: File patterns to detect changes
+        required: false
+        type: string
+        default: |
+          .github/**/*.md
+          .github/*.md
+          docs/**/*.md
+          docs/*.md
+          test/**/*.md
+          test/*.md
+          *.md
+          versions.yaml
+          !docs/release-notes/v*.md
+      ref:
+        description: The branch, tag or SHA to checkout
+        required: false
+        default: ""
+        type: string
+      repository:
+        description: Repository name with owner
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      base_sha:
+        description: The base SHA to compare against
+        required: false
+        default: ""
+        type: string
+    outputs:
+      only_changed:
+        description: Returns 'true' when only files in the configured patterns have changed.
+        value: ${{ jobs.changes.outputs.only_changed }}
+
+permissions: {}
+
+jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      only_changed: ${{ steps.set-result.outputs.only_changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.ref }}
+          repository: ${{ inputs.repository }}
+
+      - name: Filter
+        id: filter
+        uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891 # v47.0.1
+        with:
+          json: true
+          files: ${{ inputs.files }}
+          base_sha: ${{ inputs.base_sha }}
+
+      - name: Set result
+        id: set-result
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            // Change detection filtering only applies when:
+            // 1. Event is pull_request/pull_request_target, OR
+            // 2. A base_sha is provided (indicates PR-like context, e.g., workflow_run for PRs)
+            //
+            // For other events (schedule, repository_dispatch, workflow_dispatch without base_sha),
+            // always return 'false' to ensure all jobs run without filtering.
+
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/changes.mjs`)
+            await script({context, core})
+        env:
+          INPUT_ONLY_CHANGED: ${{ steps.filter.outputs.only_changed }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}

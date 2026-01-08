@@ -434,6 +434,7 @@ func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
 	populate(objectMap, "recipePacks", e.RecipePacks)
+	populate(objectMap, "recipeParameters", e.RecipeParameters)
 	populate(objectMap, "simulated", e.Simulated)
 	return json.Marshal(objectMap)
 }
@@ -455,6 +456,9 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "recipePacks":
 			err = unpopulate(val, "RecipePacks", &e.RecipePacks)
+			delete(rawMsg, key)
+		case "recipeParameters":
+			err = unpopulate(val, "RecipeParameters", &e.RecipeParameters)
 			delete(rawMsg, key)
 		case "simulated":
 			err = unpopulate(val, "Simulated", &e.Simulated)
@@ -1085,7 +1089,6 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipePackProperties.
 func (r RecipePackProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "description", r.Description)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipes", r.Recipes)
 	populate(objectMap, "referencedBy", r.ReferencedBy)
@@ -1101,9 +1104,6 @@ func (r *RecipePackProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "description":
-			err = unpopulate(val, "Description", &r.Description)
-			delete(rawMsg, key)
 		case "provisioningState":
 			err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
 			delete(rawMsg, key)

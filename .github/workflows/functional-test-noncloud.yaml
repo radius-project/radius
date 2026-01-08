@@ -14,47 +14,49 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Functional Tests (with Non-Cloud Resources)
-
-permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read # Required for listing the commits
-  packages: write # Required for uploading the package
-  checks: write # Required for creating a check run
 
 on:
   # Enable manual trigger
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to run the workflow on"
+        description: Branch to run the workflow on
         required: true
-        default: "main"
+        default: main
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
-    - cron: "0 1,13,19 * * *"
+    - cron: 0 1,13,19 * * *
   # Dispatch on external events
   repository_dispatch:
-    types: [de-functional-test]
+    types: [deployment-engine.run-functional-tests]
+    # Expected client_payload:
+    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
+    #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
   pull_request:
     branches:
       - main
       - features/*
       - release/*
 
+permissions: {}
+
 env:
   # Helm version
-  HELM_VER: "v3.15.3"
+  HELM_VER: v3.19.4
   # KinD cluster version
-  KIND_VER: "v0.29.0"
+  KIND_VER: v0.29.0
   # Kubectl version
-  KUBECTL_VER: "v1.30.0"
+  KUBECTL_VER: v1.30.0
   # Dapr CLI version
-  DAPR_CLI_VER: "1.15.1"
+  DAPR_CLI_VER: 1.15.1
   # Dapr runtime version
-  DAPR_RUNTIME_VER: "1.15.4"
+  DAPR_RUNTIME_VER: 1.15.4
   # Dapr dashboard version
-  DAPR_DASHBOARD_VER: "0.15.0"
+  DAPR_DASHBOARD_VER: 0.15.0
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 15m
   # The base directory for storing test logs
@@ -62,77 +64,69 @@ env:
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The current GitHub action link
-  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
   # Server where terraform test modules are deployed
-  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
   # Private Git repository where terraform module for testing is stored.
-  TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
+  TF_RECIPE_PRIVATE_GIT_SOURCE: git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis
   # Local Docker registry name
-  LOCAL_REGISTRY_NAME: "radius-registry"
+  LOCAL_REGISTRY_NAME: radius-registry
   # Local Docker registry server
-  LOCAL_REGISTRY_SERVER: "localhost"
+  LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_REGISTRY: 'biceptypes.azurecr.io'
-  # Gitea server URL
-  GITEA_SERVER_URL: "http://localhost:30080"
-  # Gitea username
-  GITEA_USERNAME: "testuser"
-  # Gitea email
-  GITEA_EMAIL: "testuser@radapp.io"
-  # Gitea access token name
-  GITEA_ACCESS_TOKEN_NAME: "radius-functional-test"
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  # Git HTTP server URL
+  GIT_HTTP_SERVER_URL: http://localhost:30080
+  # Git username used for pushing commits during tests
+  GIT_HTTP_USERNAME: testuser
+  # Git email used for commit authorship during tests
+  GIT_HTTP_EMAIL: testuser@radapp.io
+  # Git password used for pushing commits during tests
+  GIT_HTTP_PASSWORD: not-a-secret-password
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build:
     name: Build Radius for test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
+    permissions:
+      id-token: write # Required for requesting the JWT
+      contents: read # Required for listing the commits
+      packages: write # Required for uploading the package
+      checks: write # Required for creating a check run
     env:
-      DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
-      DE_TAG: "latest"
+      DE_IMAGE: ghcr.io/radius-project/deployment-engine
+      DE_TAG: latest
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Set DE image and tag (repository_dispatch from de-functional-test)
+      - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v8
-        with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          script: |
-            const clientPayload = context.payload.client_payload;
-            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
-              var fs = require('fs');
-              // Set environment variables
-              fs.appendFileSync(process.env.GITHUB_ENV,
-                `DE_IMAGE=${clientPayload.de_image}\n`+
-                `DE_TAG=${clientPayload.de_tag}\n`+
-                `CHECKOUT_REPO=${{ github.repository }}\n`+
-                `CHECKOUT_REF=refs/heads/main`
-              );
-            }
-
-      - name: Check out code
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-
-      - name: Copy Deployment Engine image to GHCR
-        if: github.event_name == 'repository_dispatch'
-        uses: ./.github/actions/copy-deployment-engine-image
+        shell: bash
         env:
-          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
-        with:
-          tag: ${{ env.DE_TAG }}
-      
+          DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
+          TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          {
+            echo "DE_IMAGE=${DEST_IMAGE}"
+            echo "DE_TAG=${TAG}"
+          } >> "$GITHUB_ENV"
+
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -145,16 +139,23 @@ jobs:
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
 
           # Set output variables to be used in the other jobs
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-          echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
-          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT    
+          {
+            echo "REL_VERSION=pr-${UNIQUE_ID}"
+            echo "DE_IMAGE=${{ env.DE_IMAGE }}"
+            echo "DE_TAG=${{ env.DE_TAG }}"
+          } >> "${GITHUB_OUTPUT}"
+
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: build
+    needs: [changes, build]
+    if: needs.changes.outputs.only_changed != 'true'
+    permissions:
+      contents: read # Required for listing the commits
+      checks: write # Required for creating a check run
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         name:
           [
             cli-noncloud,
@@ -169,6 +170,7 @@ jobs:
             upgrade-noncloud,
           ]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -178,57 +180,65 @@ jobs:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REF=refs/heads/main"
+          } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REF=${{ github.ref }}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+          } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}"
+          } >> "${GITHUB_ENV}"
 
-      - name: Check out code
-        uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
           ref: refs/heads/edge
           path: samples
+          persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: '18'
+          node-version-file: .node-version
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
-          if-no-files-found: error       
+          if-no-files-found: error
 
       - name: Create a secure local registry
         id: create-local-registry
@@ -239,9 +249,9 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
       - name: Generate test bicepconfig.json
         run: |
@@ -266,7 +276,7 @@ jobs:
         run: |
           make build && make docker-build && make docker-push
         env:
-          DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Install rad CLI
@@ -279,7 +289,7 @@ jobs:
           rad bicep download
           rad version
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: ${{ env.HELM_VER }}
 
@@ -350,7 +360,7 @@ jobs:
           # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
           for i in {1..6}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
-            
+
             # Exit on error
             if grep -qi "Service initializer terminated with error" registermanifest_logs.txt; then
               echo "Error found in ucp logs."
@@ -386,37 +396,31 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-      
+
       - name: Install Flux CLI and Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux
 
-      # https://github.com/radius-project/radius/issues/10441
-      # - name: Install Gitea
-      #   if: matrix.name == 'kubernetes-noncloud'
-      #   id: install-gitea
-      #   uses: ./.github/actions/install-gitea
-      #   env:
-      #     GITEA_PASSWORD: ${{ secrets.GITEA_PASSWORD }}
-      #   with:
-      #     gitea-username: ${{ env.GITEA_USERNAME }}
-      #     gitea-email: ${{ env.GITEA_EMAIL }}
-      #     gitea-access-token-name: ${{ env.GITEA_ACCESS_TOKEN_NAME }}
- 
-      # https://github.com/radius-project/radius/issues/10441
-      # - name: Port-forward to Gitea
-      #   if: matrix.name == 'kubernetes-noncloud'
-      #   run: |
-      #     # Start port forwarding in the background
-      #     kubectl port-forward -n gitea svc/gitea-http 30080:3000 &
-          
-      #     # Wait for port forwarding to be established
-      #     sleep 5
-          
-      #     # Test the connection to ensure port forwarding is working
-      #     curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-          
-      #     echo "Port forwarding established successfully"
+      - name: Install Git HTTP backend
+        if: matrix.name == 'kubernetes-noncloud'
+        uses: ./.github/actions/install-git-http-backend
+        with:
+          git-username: ${{ env.GIT_HTTP_USERNAME }}
+          git-password: ${{ env.GIT_HTTP_PASSWORD }}
+
+      - name: Port-forward to Git server
+        if: matrix.name == 'kubernetes-noncloud'
+        run: |
+          # Start port forwarding in the background
+          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
+
+          # Wait for port forwarding to be established
+          sleep 5
+
+          # Test the connection to ensure port forwarding is working
+          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
+
+          echo "Port forwarding established successfully"
 
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
@@ -435,11 +439,11 @@ jobs:
           sudo mv ./bicep /usr/local/bin/bicep
           bicep --version
 
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force     
+      - name: Publish bicep types
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
 
-      - name: Publish UDT types 
+      - name: Publish UDT types
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -474,7 +478,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
@@ -484,32 +488,32 @@ jobs:
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
-          mkdir -p ./dist/functional_test 
+          mkdir -p ./dist/functional_test
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
 
           make test-functional-${{ matrix.name }}
         env:
-          DOCKER_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-          BICEP_RECIPE_REGISTRY: "${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}"
+          BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
-          # GITEA_ACCESS_TOKEN: ${{ steps.install-gitea.outputs.gitea-access-token }}
+          GH_TOKEN: ${{ github.token }}
+          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
           RADIUS_TEST_FAST_CLEANUP: true
+          GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
         # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
         if: failure() && github.repository == 'radius-project/radius'
         with:
-          test_group_name: "Functional Tests - ${{ matrix.name }}"
-          artifact_name: "functional_test_results_${{ matrix.name }}"
-          result_directory: "dist/functional_test/"
+          test_group_name: Functional Tests - ${{ matrix.name }}
+          artifact_name: functional_test_results_${{ matrix.name }}
+          result_directory: dist/functional_test/
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events
@@ -529,7 +533,7 @@ jobs:
           kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
 
       - name: Upload Pod logs for failed tests
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always() && steps.radius-logs-events.outcome == 'success'
         with:
           name: ${{ matrix.name }}-radius-pod-logs
@@ -542,14 +546,16 @@ jobs:
         run: |
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
           mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
-          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
-          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
-          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
-          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
-      
+          {
+            echo "kubectl get pods -A"
+            kubectl get pods -A
+            echo "kubectl describe pods -A"
+            kubectl describe pods -A
+          }  >> "${POD_STATE_LOG_FILENAME}"
+
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -571,7 +577,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
@@ -579,13 +585,15 @@ jobs:
           if-no-files-found: error
 
   report-failure:
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     name: Report test failure
-    needs: [build, tests]
-    runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    needs: [changes, build, tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,7 +14,10 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Validate Bicep Code
+
 on:
   # Enable manual trigger
   workflow_dispatch:
@@ -23,14 +26,11 @@ on:
       - main
       - release/*
 
-permissions:
-  id-token: write # Required for requesting the JWT
-
 env:
   # Local Docker registry name
-  LOCAL_REGISTRY_NAME: "radius-registry"
+  LOCAL_REGISTRY_NAME: radius-registry
   # Local Docker registry server
-  LOCAL_REGISTRY_SERVER: "localhost"
+  LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
 
@@ -39,15 +39,41 @@ concurrency:
   group: bicep-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   build:
     name: Validate Bicep Code
-    runs-on: ubuntu-latest
+    if: needs.changes.outputs.only_changed != 'true'
+    needs: [changes]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          node-version: '18'
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Verify npx installation
         run: |
@@ -60,27 +86,39 @@ jobs:
 
       - name: Setup and verify bicep CLI
         run: |
+          # Download bicep CLI
           curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
           chmod +x ./bicep
+
+          # Install in both locations for maximum compatibility
           sudo mv ./bicep /usr/local/bin/bicep
+
+          # Verify bicep works
           bicep --version
-      - name: Check out repo
-        uses: actions/checkout@v5
-      - name: Create a temporary file system 
+
+          # Also ensure rad CLI can find bicep by creating the expected directory structure
+          mkdir -p ~/.rad/bin
+          cp /usr/local/bin/bicep ~/.rad/bin/rad-bicep
+
+          # Verify rad-bicep also works
+          ~/.rad/bin/rad-bicep --version
+
+      - name: Create a temporary file system
         run: |
           mkdir tmp-radius-bicep-extension
           mkdir tmp-testresources-bicep-extension
-      - name: Publish bicep types 
-        run: | 
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
-      - name: Generate testresources extension index
+
+      - name: Publish bicep types
         run: |
-          npx @radius-project/manifest-to-bicep-extension@edge generate ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml ./tmp-testresources-bicep-extension
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
+
       - name: Publish testresources extension
         run: |
-          bicep publish-extension ./tmp-testresources-bicep-extension/index.json --target ./tmp-testresources-bicep-extension/testresources.tgz --force
+          go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
+
       - name: Install jq
         run: sudo apt-get install -y jq
+
       - name: Modify bicepconfig.json
         run: |
           # Update bicepconfig.json with paths for extensions
@@ -93,9 +131,11 @@ jobs:
 
            # Copy to the dynamicrp resources test directory so the .bicep files there can find it
            cp -f bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
+
       - name: Print updated bicepconfig.json
         run: cat bicepconfig.json
+
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
-          BICEP_PATH: 'bicep'
+          BICEP_PATH: bicep

@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -98,6 +99,10 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		}
 	}
 
+	if resp, err := e.validateRecipePacks(ctx, newResource.Properties.RecipePacks); resp != nil || err != nil {
+		return resp, err
+	}
+
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
@@ -105,4 +110,42 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	}
 
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
+}
+
+// Validate recipe packs ensures that no two recipe packs define recipe for the same resource type.
+func (e *CreateOrUpdateEnvironmentv20250801preview) validateRecipePacks(ctx context.Context, recipePacks []string) (rest.Response, error) {
+	if len(recipePacks) <= 1 {
+		return nil, nil
+	}
+
+	// map to store map[resourceType]recipePackID
+	resourceTypeMap := make(map[string]string)
+
+	for _, recipePackID := range recipePacks {
+		id, err := resources.ParseResource(recipePackID)
+		if err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack resource ID: %s", recipePackID)), nil
+		}
+
+		// Get the recipe pack resource
+		obj, err := e.DatabaseClient().Get(ctx, id.String())
+		if err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Failed to retrieve recipe pack %s: %v", recipePackID, err)), nil
+		}
+
+		recipePack := &datamodel.RecipePack{}
+		if err := obj.As(recipePack); err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Failed to parse recipe pack %s: %v", recipePackID, err)), nil
+		}
+
+		// Check for conflicting resource types across recipe packs
+		for resourceType := range recipePack.Properties.Recipes {
+			if existingPackID, exists := resourceTypeMap[resourceType]; exists {
+				return rest.NewConflictResponse(fmt.Sprintf("Resource type '%s' is defined in multiple recipe packs: %s and %s", resourceType, existingPackID, recipePackID)), nil
+			}
+			resourceTypeMap[resourceType] = recipePackID
+		}
+	}
+
+	return nil, nil
 }
