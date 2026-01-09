@@ -594,8 +594,8 @@ func (i *Impl) GetRadiusRevisions(ctx context.Context, kubeContext string) ([]Re
 			Description: release.Info.Description,
 		}
 
-		if !release.Info.FirstDeployed.IsZero() {
-			info.UpdatedAt = release.Info.FirstDeployed.Format("2006-01-02 15:04:05")
+		if !release.Info.LastDeployed.IsZero() {
+			info.UpdatedAt = release.Info.LastDeployed.Format("2006-01-02 15:04:05")
 		}
 
 		if release.Chart != nil && release.Chart.Metadata != nil {

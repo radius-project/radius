@@ -13,6 +13,7 @@ You can find our full **contributor documentation** including instructions at th
 - [Building the repo](./docs/contributing/contributing-code/contributing-code-building/)
 - [Run tests](./docs/contributing/contributing-code/contributing-code-tests/README.md)
 - [Understanding repo organization](./docs/contributing/contributing-code/contributing-code-organization/)
+- [Working with design documents](./docs/contributing/contributing-code/contributing-code-design/)
 - [Contribute to issues](./docs/contributing/contributing-issues/)
 - [Create pull requests](./docs/contributing/contributing-pull-requests/)
 - [Contribute to documentation](https://github.com/radius-project/docs)

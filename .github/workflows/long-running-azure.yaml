@@ -102,7 +102,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for actions/checkout
-      packages: write # Required for publishing test recipes
+      packages: write # Required for publishing Bicep recipes to ghcr.io
     steps:
       - name: Generate unique ID for test run
         id: gen-id

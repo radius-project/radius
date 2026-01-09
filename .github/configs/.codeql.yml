@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/github/codeql-action/main/src/db-config-schema.json
+---
+name: CodeQL config
+
+queries:
+  - name: Security Extended
+    uses: security-extended
+  - name: Security and Quality
+    uses: security-and-quality
+  - name: Security Experimental
+    uses: security-experimental
+
+paths-ignore:
+  - "**/node_modules/**"
