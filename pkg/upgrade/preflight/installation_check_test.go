@@ -20,14 +20,20 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
+
 func TestRadiusInstallationCheck_Run(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "TestRadiusInstallationCheck_Run", start)
+	
 	tests := []struct {
 		name          string
 		installState  helm.InstallState
@@ -100,6 +106,9 @@ func TestRadiusInstallationCheck_Run(t *testing.T) {
 }
 
 func TestRadiusInstallationCheck_Properties(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "TestRadiusInstallationCheck_Properties", start)
+	
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

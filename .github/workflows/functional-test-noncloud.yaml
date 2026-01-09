@@ -308,6 +308,9 @@ jobs:
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
+          
+          echo "⏱️  Starting Radius installation at $(date '+%Y-%m-%d %H:%M:%S')"
+          INSTALL_START_TIME=$(date +%s)
 
           # Check if Radius release exists and delete it if found
           if helm status radius -n radius-system >/dev/null 2>&1; then
@@ -392,6 +395,11 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
+          
+          # Log installation timing
+          INSTALL_END_TIME=$(date +%s)
+          INSTALL_DURATION=$((INSTALL_END_TIME - INSTALL_START_TIME))
+          echo "⏱️  Radius installation completed in ${INSTALL_DURATION}s at $(date '+%Y-%m-%d %H:%M:%S')"
 
         env:
           USE_CERT_FILE: "true"

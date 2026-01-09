@@ -46,6 +46,14 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
+// LogTestTiming logs the execution time of a test function for CI/CD monitoring
+func LogTestTiming(t *testing.T, testName string, start time.Time) {
+	duration := time.Since(start)
+	if os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true" {
+		t.Logf("⏱️  Test %s completed in %v", testName, duration)
+	}
+}
+
 // GetMagpieImage creates a string with the default Docker registry and image tag for MagpieGo.
 func GetMagpieImage() string {
 	defaultDockerReg, imageTag := SetDefault()

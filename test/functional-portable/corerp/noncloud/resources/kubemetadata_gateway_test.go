@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -27,7 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+
 func Test_Gateway_KubernetesMetadata(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_KubernetesMetadata", start)
+	
 	template := "testdata/corerp-resources-gateway-kubernetesmetadata.bicep"
 	name := "corerp-resources-gateway-kme"
 	appNamespace := "default-corerp-resources-gateway-kme"

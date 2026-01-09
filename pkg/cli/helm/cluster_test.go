@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v3/pkg/action"
@@ -33,7 +34,11 @@ import (
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
+
 func Test_Helm_InstallRadius(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Helm_InstallRadius", start)
+	
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -90,6 +95,9 @@ func Test_Helm_InstallRadius(t *testing.T) {
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Helm_UninstallRadius", start)
+	
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -154,6 +162,9 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 }
 
 func Test_Helm_CheckRadiusInstall(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Helm_CheckRadiusInstall", start)
+	
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)

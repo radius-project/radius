@@ -46,7 +46,11 @@ type GatewayTestConfig struct {
 	ExpectedStatusCode int
 }
 
+
 func Test_GatewayDNS(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_GatewayDNS", start)
+	
 	template := "testdata/corerp-resources-gateway-dns.bicep"
 	name := "corerp-resources-gateway-dns"
 	appNamespace := "default-corerp-resources-gateway-dns"
@@ -126,6 +130,9 @@ func Test_GatewayDNS(t *testing.T) {
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_SSLPassthrough", start)
+	
 	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
 	name := "corerp-resources-gateway-sslpassthrough"
 	appNamespace := "default-corerp-resources-gateway-sslpassthrough"
@@ -192,6 +199,9 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 }
 
 func Test_Gateway_Timeout(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_Timeout", start)
+	
 	template := "testdata/corerp-resources-gateway-timeout.bicep"
 	appName := "gateway-timeout-app"
 	appNamespace := "default-gateway-timeout-app"
@@ -254,6 +264,9 @@ func Test_Gateway_Timeout(t *testing.T) {
 }
 
 func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_Timeout_Backend_Exceeds_Request", start)
+	
 	template := "testdata/corerp-resources-gateway-timeout-ber.bicep"
 	appName := "gateway-timeout-ber-app"
 	containerName := "gateway-timeout-ber-ctnr"
@@ -281,6 +294,9 @@ func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
 }
 
 func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_Timeout_Invalid_Duration", start)
+	
 	template := "testdata/corerp-resources-gateway-timeout-invalid.bicep"
 	appName := "gateway-timeout-invalid-app"
 	containerName := "gateway-timeout-invalid-ctnr"
@@ -309,6 +325,9 @@ func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 }
 
 func Test_Gateway_TLSTermination(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_TLSTermination", start)
+	
 	template := "testdata/corerp-resources-gateway-tlstermination.bicep"
 	name := "corerp-resources-gateway-tlstermination"
 	appNamespace := "default-corerp-resources-gateway-tlstermination"
@@ -381,6 +400,9 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 }
 
 func Test_Gateway_Failure(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_Failure", start)
+	
 	template := "testdata/corerp-resources-gateway-failure.bicep"
 	name := "corerp-resources-gateway-failure"
 	secret := "secret"
