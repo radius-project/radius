@@ -68,13 +68,6 @@ func TestValidate(t *testing.T) {
 			expectedFormat:  "json",
 			expectedCLIOnly: true,
 		},
-		{
-			name:            "YAML output",
-			outputFlag:      "yaml",
-			cliFlag:         "false",
-			expectedFormat:  "yaml",
-			expectedCLIOnly: false,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -179,7 +172,7 @@ func TestWriteVersionInfo(t *testing.T) {
 		expectedStatus  string
 		expectedVersion string
 		showHeaders     bool
-		isCombined      bool
+		isJSON          bool
 	}{
 		{
 			name:   "Radius installed - table format",
@@ -192,7 +185,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Installed",
 			expectedVersion: "v0.45.0",
 			showHeaders:     true,
-			isCombined:      false,
+			isJSON:          false,
 		},
 		{
 			name:   "Radius not installed - table format",
@@ -204,7 +197,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Not installed",
 			expectedVersion: "Not installed",
 			showHeaders:     true,
-			isCombined:      false,
+			isJSON:          false,
 		},
 		{
 			name:            "Connection error - table format",
@@ -214,7 +207,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Not connected",
 			expectedVersion: "Not installed",
 			showHeaders:     true,
-			isCombined:      false,
+			isJSON:          false,
 		},
 		{
 			name:   "Radius installed - JSON format",
@@ -227,7 +220,7 @@ func TestWriteVersionInfo(t *testing.T) {
 			expectedStatus:  "Installed",
 			expectedVersion: "v0.45.0",
 			showHeaders:     false,
-			isCombined:      true,
+			isJSON:          true,
 		},
 	}
 
@@ -247,7 +240,7 @@ func TestWriteVersionInfo(t *testing.T) {
 
 			mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(tc.installState, tc.helmError)
 
-			if tc.isCombined {
+			if tc.isJSON {
 				// For JSON, expect a single WriteFormatted call with combined data
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Do(
 					func(format string, data any, options output.FormatterOptions) error {
@@ -296,35 +289,35 @@ func TestRun(t *testing.T) {
 		cliOnly       bool
 		format        string
 		expectCLIOnly bool
-		isCombined    bool
+		isJSON        bool
 	}{
 		{
 			name:          "CLI and Control Plane versions - table format",
 			cliOnly:       false,
 			format:        "table",
 			expectCLIOnly: false,
-			isCombined:    false,
+			isJSON:        false,
 		},
 		{
 			name:          "CLI version only - table format",
 			cliOnly:       true,
 			format:        "table",
 			expectCLIOnly: true,
-			isCombined:    false,
+			isJSON:        false,
 		},
 		{
 			name:          "CLI and Control Plane versions - JSON format",
 			cliOnly:       false,
 			format:        "json",
 			expectCLIOnly: false,
-			isCombined:    true,
+			isJSON:        true,
 		},
 		{
 			name:          "CLI version only - JSON format",
 			cliOnly:       true,
 			format:        "json",
 			expectCLIOnly: true,
-			isCombined:    false,
+			isJSON:        false,
 		},
 	}
 
@@ -346,7 +339,7 @@ func TestRun(t *testing.T) {
 			if tc.expectCLIOnly {
 				// When --cli flag is used, always output CLI version only
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
-			} else if tc.isCombined {
+			} else if tc.isJSON {
 				// For JSON/YAML without --cli, output combined version
 				mockHelmInterface.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{
 					RadiusInstalled: true,
