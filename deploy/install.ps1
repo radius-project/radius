@@ -208,7 +208,7 @@ Write-Output "rad CLI has been successfully installed"
 Write-Output "`r`nInstalling Bicep..."
 $cmd = (Start-Process -NoNewWindow -FilePath $RadiusCliFilePath -ArgumentList "bicep download" -PassThru -Wait)
 if ($cmd.ExitCode -ne 0) {
-    Write-Warning "`r`nFailed to install rad-bicep"
+    Write-Warning "`r`nFailed to install bicep"
 }
 else {
     Write-Output "Bicep has been successfully installed"

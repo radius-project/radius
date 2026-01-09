@@ -32,19 +32,19 @@ import (
 // https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
 
-// Run rad-bicep with the given args and return the stdout. The stderr
+// Run bicep with the given args and return the stdout. The stderr
 // is not capture but instead redirected to that of the current process.
 func runBicepRaw(args ...string) ([]byte, error) {
 	if installed, _ := IsBicepInstalled(); !installed {
-		return nil, fmt.Errorf("rad-bicep not installed, run \"rad bicep download\" to install")
+		return nil, fmt.Errorf("bicep not installed, run \"rad bicep download\" to install")
 	}
 
-	binPath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
+	binPath, err := tools.GetLocalFilepath(BicepEnvVar, binaryName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find rad-bicep: %w", err)
+		return nil, fmt.Errorf("failed to find bicep: %w", err)
 	}
 
-	// runs 'rad-bicep'
+	// runs 'bicep'
 	fullCmd := binPath + " " + strings.Join(args, " ")
 	c := exec.Command(binPath, args...)
 	c.Stderr = os.Stderr
@@ -72,7 +72,7 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	// read the content
 	bytes, err := io.ReadAll(&buf)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read rad-bicep output: %w", err)
+		return nil, fmt.Errorf("failed to read bicep output: %w", err)
 	}
 
 	return bytes, nil
