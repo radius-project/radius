@@ -124,7 +124,7 @@ func Test_GenerateSecretSuffix_invalid_appid(t *testing.T) {
 }
 
 func Test_ValidateBackendExists(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	secret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-secret",
