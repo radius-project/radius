@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -30,6 +31,8 @@ import (
 )
 
 func Test_Container(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container", start)
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
 	appNamespace := "corerp-resources-container-app"
@@ -64,6 +67,8 @@ func Test_Container(t *testing.T) {
 }
 
 func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ContainerDNSSD_TwoContainersDNS", start)
 	template := "testdata/corerp-resources-container-two-containers-dns.bicep"
 	name := "corerp-resources-container-two-containers-dns"
 	appNamespace := "corerp-resources-container-two-containers-dns"
@@ -105,6 +110,8 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 }
 
 func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ContainerDNSSD_OptionalPortScheme", start)
 	template := "testdata/corerp-resources-container-optional-port-scheme.bicep"
 	name := "corerp-resources-container-optional-port-scheme"
 	appNamespace := "corerp-resources-container-optional-port-scheme"
@@ -154,6 +161,8 @@ func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
 }
 
 func Test_ContainerReadinessLiveness(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ContainerReadinessLiveness", start)
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
 	appNamespace := "corerp-resources-container-live-ready-app"
@@ -188,6 +197,8 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 }
 
 func Test_ContainerManualScale(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ContainerManualScale", start)
 	template := "testdata/corerp-azure-container-manualscale.bicep"
 	name := "corerp-resources-container-manualscale"
 	appNamespace := "corerp-resources-container-manualscale-app"
@@ -222,6 +233,8 @@ func Test_ContainerManualScale(t *testing.T) {
 }
 
 func Test_ContainerWithCommandAndArgs(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ContainerWithCommandAndArgs", start)
 	container := "testdata/corerp-resources-container-cmd-args.bicep"
 	name := "corerp-resources-container-cmd-args"
 	appNamespace := "corerp-resources-container-cmd-args-app"
@@ -273,6 +286,8 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 }
 
 func Test_Container_FailDueToNonExistentImage(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container_FailDueToNonExistentImage", start)
 	template := "testdata/corerp-resources-container-nonexistent-container-image.bicep"
 	name := "corerp-resources-container-badimage"
 	appNamespace := "corerp-resources-container-badimage-app"
@@ -321,6 +336,8 @@ func Test_Container_FailDueToNonExistentImage(t *testing.T) {
 }
 
 func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container_FailDueToBadHealthProbe", start)
 	template := "testdata/corerp-resources-container-bad-healthprobe.bicep"
 	name := "corerp-resources-container-bad-healthprobe"
 	appNamespace := "corerp-resources-container-bad-healthprobe-app"
@@ -356,6 +373,8 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 }
 
 func Test_Container_Secrets(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container_Secrets", start)
 	template := "testdata/corerp-resources-container-secrets.bicep"
 	name := "corerp-resources-container-secrets"
 	appNamespace := "corerp-resources-container-secrets"

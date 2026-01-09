@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -26,6 +27,9 @@ import (
 )
 
 func Test_Extender_Manual(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Extender_Manual", start)
+
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 	appNamespace := "default-corerp-resources-extender"
@@ -64,6 +68,9 @@ func Test_Extender_Manual(t *testing.T) {
 }
 
 func Test_Extender_Recipe(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Extender_Recipe", start)
+
 	template := "testdata/corerp-resources-extender-recipe.bicep"
 	name := "corerp-resources-extender-recipe"
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -34,6 +35,9 @@ import (
 )
 
 func Test_Application(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Application", start)
+
 	template := "testdata/corerp-resources-application.bicep"
 	name := "corerp-resources-application"
 	appNamespace := "corerp-resources-application-app"
@@ -61,6 +65,9 @@ func Test_Application(t *testing.T) {
 }
 
 func Test_ApplicationGraph(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ApplicationGraph", start)
+
 	// Deploy a simple app
 	template := "testdata/corerp-resources-application-graph.bicep"
 	name := "corerp-application-simple1"

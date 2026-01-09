@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -37,6 +38,8 @@ Applications.Core/containers resource. This enables Radius to render kubernetes 
 resource.
 */
 func Test_Container_YAMLManifest(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container_YAMLManifest", start)
 	template := "testdata/corerp-resources-container-manifest.bicep"
 	name := "corerp-resources-container-manifest"
 	appNamespace := "corerp-resources-container-manifest"
@@ -103,6 +106,8 @@ has the fluentbit sidecar. Radius injects the application container described in
 base deployment. With this, user can add multiple sidecars to their final deployment with application container.
 */
 func Test_Container_YAMLManifest_SideCar(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container_YAMLManifest_SideCar", start)
 	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
 	name := "corerp-resources-container-sidecar"
 	appNamespace := "corerp-resources-container-sidecar"
@@ -149,6 +154,8 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 }
 
 func Test_Container_pod_patching(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Container_pod_patching", start)
 	template := "testdata/corerp-resources-container-pod-patching.bicep"
 	name := "corerp-resources-container-podpatch"
 	appNamespace := "corerp-resources-container-podpatch"

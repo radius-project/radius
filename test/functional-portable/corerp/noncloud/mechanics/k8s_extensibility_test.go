@@ -22,9 +22,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -33,6 +35,8 @@ import (
 )
 
 func Test_Kubernetes_Extensibility(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Kubernetes_Extensibility", start)
 	template := "testdata/k8s-extensibility/connection-string.bicep"
 	name := "corerp-mechanics-k8s-extensibility"
 

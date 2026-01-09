@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -30,6 +31,8 @@ import (
 )
 
 func Test_KubeMetadataContainer(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_KubeMetadataContainer", start)
 	template := "testdata/corerp-resources-kubemetadata-container.bicep"
 	name := "corerp-kmd-app"
 	appNamespace := "corerp-kmd-ns-corerp-kmd-app"

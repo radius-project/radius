@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -33,6 +34,8 @@ import (
 )
 
 func Test_NestedModules(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_NestedModules", start)
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
@@ -59,6 +62,8 @@ func Test_NestedModules(t *testing.T) {
 }
 
 func Test_RedeployWithAnotherResource(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_RedeployWithAnotherResource", start)
 	name := "corerp-mechanics-redeploy-with-another-resource"
 	appNamespace := "default-corerp-mechanics-redeploy-with-another-resource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
@@ -122,6 +127,8 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 }
 
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_RedeployWithUpdatedResourceUpdatesResource", start)
 	name := "corerp-mechanics-redeploy-withupdatedresource"
 	appNamespace := "default-corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
@@ -192,6 +199,8 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 }
 
 func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_RedeployWithTwoSeparateResourcesKeepsResource", start)
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
 	appNamespace := "default-corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
@@ -255,6 +264,8 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 }
 
 func Test_CommunicationCycle(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_CommunicationCycle", start)
 	name := "corerp-mechanics-communication-cycle"
 	appNamespace := "default-corerp-mechanics-communication-cycle"
 	template := "testdata/corerp-mechanics-communication-cycle.bicep"
@@ -295,6 +306,8 @@ func Test_CommunicationCycle(t *testing.T) {
 }
 
 func Test_InvalidResourceIDs(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_InvalidResourceIDs", start)
 	name := "corerp-mechanics-invalid-resourceids"
 	template := "testdata/corerp-mechanics-invalid-resourceids.bicep"
 

@@ -19,15 +19,19 @@ package resource_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ApplicationAndEnvironment", start)
 	template := "testdata/corerp-resources-app-env.bicep"
 	name := "corerp-resources-app-env"
 

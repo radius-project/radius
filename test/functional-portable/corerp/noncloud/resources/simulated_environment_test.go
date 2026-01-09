@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -30,6 +31,8 @@ import (
 )
 
 func Test_Deployment_SimulatedEnv(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Deployment_SimulatedEnv", start)
 	template := "testdata/corerp-resources-simulatedenv.bicep"
 	name := "corerp-resources-simulatedenv"
 	appNamespace := "default-corerp-resources-simulatedenv"

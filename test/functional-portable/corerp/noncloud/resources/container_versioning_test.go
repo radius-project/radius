@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -31,6 +32,9 @@ import (
 )
 
 func Test_ContainerVersioning(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ContainerVersioning", start)
+
 	containerV1 := "testdata/containers/corerp-resources-friendly-container-version-1.bicep"
 	containerV2 := "testdata/containers/corerp-resources-friendly-container-version-2.bicep"
 
