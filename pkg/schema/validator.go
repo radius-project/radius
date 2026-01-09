@@ -35,6 +35,11 @@ const (
 	reservedPropConnections = "connections"
 )
 
+// Constants for annotation names
+const (
+	annotationRadiusSensitive = "x-radius-sensitive"
+)
+
 // joinPath concatenates two path segments with a dot separator for property path tracking.
 func joinPath(parent, child string) string {
 	if parent == "" {
@@ -344,6 +349,38 @@ func (v *Validator) validateRadiusConstraintsWithPath(schema *openapi3.Schema, p
 		}
 	}
 
+	// Validate array items if present
+	if schema.Items != nil {
+		if schema.Items.Ref != "" {
+			// The $ref validation is already handled by checkRefUsage above
+		} else if schema.Items.Value != nil {
+			if err := v.validateRadiusConstraintsWithPath(schema.Items.Value, joinPath(path, "items")); err != nil {
+				// Add context to error
+				if valErrs, ok := err.(*ValidationErrors); ok {
+					for _, ve := range valErrs.Errors {
+						// Clone the error to avoid modifying the original
+						contextualErr := &ValidationError{
+							Type:    ve.Type,
+							Field:   joinPath(joinPath(path, "items"), ve.Field),
+							Message: ve.Message,
+						}
+						errors.Add(contextualErr)
+					}
+				} else if valErr, ok := err.(*ValidationError); ok {
+					// Clone the error to avoid modifying the original
+					contextualErr := &ValidationError{
+						Type:    valErr.Type,
+						Field:   joinPath(joinPath(path, "items"), valErr.Field),
+						Message: valErr.Message,
+					}
+					errors.Add(contextualErr)
+				} else {
+					errors.Add(NewSchemaError(joinPath(path, "items"), err.Error()))
+				}
+			}
+		}
+	}
+
 	if errors.HasErrors() {
 		return &errors
 	}
@@ -423,7 +460,7 @@ func (v *Validator) checkSensitiveAnnotation(schema *openapi3.Schema, path strin
 		return nil
 	}
 
-	sensitive, exists := schema.Extensions["x-radius-sensitive"]
+	sensitive, exists := schema.Extensions[annotationRadiusSensitive]
 	if !exists {
 		return nil
 	}
@@ -431,22 +468,24 @@ func (v *Validator) checkSensitiveAnnotation(schema *openapi3.Schema, path strin
 	// Validate that the value is a boolean
 	boolVal, ok := sensitive.(bool)
 	if !ok {
-		return NewConstraintError(path, "x-radius-sensitive must be a boolean value")
+		return NewConstraintError(path, fmt.Sprintf("%s must be a boolean value", annotationRadiusSensitive))
 	}
 
 	// Only validate type constraints when x-radius-sensitive is true
 	if boolVal {
 		// Require explicit type when x-radius-sensitive is used
 		if schema.Type == nil || len(*schema.Type) == 0 {
-			return NewConstraintError(path, "x-radius-sensitive annotation requires an explicit type (string or object)")
+			return NewConstraintError(path, fmt.Sprintf("%s annotation requires an explicit type (string or object)", annotationRadiusSensitive))
 		}
 
-		// Validate it's only on string or object types
+		// Validate it's only on string or object types.
+		// This restriction comes from Bicep's type system, which only supports
+		// sensitive string and object types.
 		typeStr := (*schema.Type)[0]
 		isString := schema.Type.Is("string")
 		isObject := schema.Type.Is("object")
 		if !isString && !isObject {
-			return NewConstraintError(path, fmt.Sprintf("x-radius-sensitive annotation is only supported on string and object types, got '%s'", typeStr))
+			return NewConstraintError(path, fmt.Sprintf("%s annotation is only supported on string and object types, got '%s'", annotationRadiusSensitive, typeStr))
 		}
 	}
 
