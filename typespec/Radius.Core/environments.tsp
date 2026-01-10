@@ -88,8 +88,11 @@ model ProvidersKubernetes {
 
 @doc("The AWS cloud provider definition.")
 model ProvidersAws {
-  @doc("Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'.")
-  scope: string;
+  @doc("AWS account ID for AWS resources to be deployed into.")
+  accountId: string;
+
+  @doc("AWS region for AWS resources to be deployed into.")
+  region: string;
 }
 
 model Providers {

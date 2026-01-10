@@ -961,7 +961,8 @@ func (p *Providers) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ProvidersAws.
 func (p ProvidersAws) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "scope", p.Scope)
+	populate(objectMap, "accountId", p.AccountID)
+	populate(objectMap, "region", p.Region)
 	return json.Marshal(objectMap)
 }
 
@@ -974,8 +975,11 @@ func (p *ProvidersAws) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "scope":
-			err = unpopulate(val, "Scope", &p.Scope)
+		case "accountId":
+			err = unpopulate(val, "AccountID", &p.AccountID)
+			delete(rawMsg, key)
+		case "region":
+			err = unpopulate(val, "Region", &p.Region)
 			delete(rawMsg, key)
 		}
 		if err != nil {

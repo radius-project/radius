@@ -18,7 +18,6 @@ package preview
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -37,7 +36,6 @@ import (
 
 const (
 	envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
-	awsScopeTemplate         = "/planes/aws/aws/accounts/%s/regions/%s"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env update` preview command.
@@ -87,8 +85,8 @@ rad env update myenv --clear-kubernetes
 	commonflags.AddResourceGroupFlag(cmd)
 	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
-	cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "Specify if kubernetes provider needs to be cleared on env (preview)")
-	cmd.Flags().StringArrayP("recipe-packs", "", []string{}, "Specify recipe packs to be added to the environment (preview)")
+	cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "Specify if kubernetes provider needs to be cleared on env (--preview)")
+	cmd.Flags().StringArrayP("recipe-packs", "", []string{}, "Specify recipe packs to be added to the environment (--preview)")
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
 	commonflags.AddKubernetesScopeFlags(cmd)
@@ -185,7 +183,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Aws.Scope = to.Ptr(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
+		r.providers.Aws.Region = to.Ptr(awsRegion)
+		r.providers.Aws.AccountID = to.Ptr(awsAccountId)
 	}
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
@@ -257,10 +256,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	// only update aws provider info if user requires it.
 	if r.clearEnvAws && env.Properties.Providers != nil {
 		env.Properties.Providers.Aws = nil
-	} else if r.providers.Aws != nil && r.providers.Aws.Scope != nil {
+	} else if r.providers.Aws != nil && (r.providers.Aws.AccountID != nil && r.providers.Aws.Region != nil) {
 		if env.Properties.Providers == nil {
 			env.Properties.Providers = &corerpv20250801.Providers{}
 		}
+
 		env.Properties.Providers.Aws = r.providers.Aws
 	}
 

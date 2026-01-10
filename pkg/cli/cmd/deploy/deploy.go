@@ -622,7 +622,7 @@ func (r *Runner) setupCloudProviders(properties any) {
 		if props != nil && props.Providers != nil {
 			if props.Providers.Aws != nil {
 				r.Providers.AWS = &clients.AWSProvider{
-					Scope: *props.Providers.Aws.Scope,
+					Scope: "/planes/aws/aws/accounts/" + *props.Providers.Aws.AccountID + "/regions/" + *props.Providers.Aws.Region,
 				}
 			}
 			if props.Providers.Azure != nil {
