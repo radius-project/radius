@@ -1,501 +1,319 @@
-# Running Radius as OS Processes for Advanced Debugging
+# Debugging Radius with VS Code
 
-This guide details how to leverage the fully-integrated VS Code debugging experience for Radius development. By running core components as native OS processes instead of in containers, you can take advantage of pre-configured launch configurations and tasks to enable a seamless "inner-loop" workflow. This setup allows for advanced debugging capabilities, such as setting breakpoints, inspecting variables, and stepping through code in real-time—all directly within the VS Code editor—significantly accelerating development and troubleshooting.
+Run Radius components as OS processes with full debugger support - set breakpoints, inspect variables, and step through code in real-time.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Quick Start](#quick-start)
-3. [Prerequisites](#prerequisites)
-4. [Development Workflow](#development-workflow)
-5. [VS Code Debugging](#vs-code-debugging)
-6. [Troubleshooting](#troubleshooting)
+1. [Quick Start](#quick-start)
+2. [Prerequisites](#prerequisites)
+3. [Debugging Workflow](#debugging-workflow)
+4. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-Radius consists of several key components that normally run in Kubernetes containers:
-- **Applications Resource Provider (applications-rp)** - Manages Applications.Core resources
-- **UCP Daemon (ucpd)** - Universal Control Plane for resource management
-- **Controller** - Kubernetes controller for managing Radius resources
-- **Dynamic Resource Provider (dynamic-rp)** - Handles dynamic resource types
-
-Running these as OS processes enables:
-- Full debugger support with breakpoints and variable inspection
-- Real-time configuration changes
-- Performance profiling and analysis
-- Network traffic inspection
+**What you get:**
+- Radius components (UCP, Applications RP, Controller, Dynamic RP) running as debuggable OS processes
+- Pre-configured VS Code launch configurations for one-click debugging
+- Full breakpoint support, variable inspection, and step-through debugging
+- Fast iteration cycle - modify code, restart, and re-attach debugger
 
 ## Quick Start
 
-The simplest way to get debugging working:
+### 1. Start Components
 
-### Prerequisites
-- PostgreSQL database running locally
+**Option A: Using VS Code (Recommended)**
+1. Open Run and Debug panel (`Cmd+Shift+D` or `Ctrl+Shift+D`)
+2. Select "Start Control Plane" from dropdown
+3. Press F5
 
-### Setup Commands
+**Option B: Using Make**
 ```bash
-# Start all components as OS processes with debugging (Checks prereqs and creates necessary folders)
 make debug-start
-
-# Check that everything is running
-make debug-status
 ```
 
-**VS Code Tasks:**
-- Use `Cmd+Shift+P` (or `Ctrl+Shift+P`) → "Tasks: Run Task"
-- Available tasks:
-  - "Debug: Start All Components" - Starts the control plane
-  - "Debug: Stop All Components" - Stops the control plane
-  - "Debug: Component Status" - Check component health
-  - "Debug: View Logs" - Tail all component logs
+Both methods:
+- Check prerequisites automatically
+- Build all components
+- Start UCP, Controller, Applications RP, and Dynamic RP
+- Initialize default environment and recipes
 
-**VS Code Debugging:**
-- After starting components with the task above, use F5 to attach debuggers
-- Debugger attach configurations are pre-configured in `.vscode/launch.json`
-- Debug ports: UCP (40001), Controller (40002), Applications RP (40003), Dynamic RP (40004)
+### 2. Attach Debugger
 
-**CLI Debugging Options:**
-- **Use `./drad` for convenience**: When you only need to test CLI commands against the debug environment without debugging the CLI code itself
-- **Use "Debug rad CLI (prompt for args)" in VS Code**: When you need to debug CLI code with breakpoints, variable inspection, and step-through debugging
+1. Set breakpoints in your code
+2. Open Run and Debug panel (`Cmd+Shift+D`)
+3. Select a debug configuration:
+   - "Attach UCP (dlv 40001)" - Debug UCP
+   - "Attach Controller (dlv 40002)" - Debug Controller
+   - "Attach Applications RP (dlv 40003)" - Debug Applications RP
+   - "Attach Dynamic RP (dlv 40004)" - Debug Dynamic RP
+   - "Attach Radius (all)" - Debug all components at once
+4. Press F5
 
-**For code changes:**
-1. Stop components: `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Stop All Components"
-2. Restart (rebuilds automatically): `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Start All Components"
-3. Re-attach debugger with F5
+**Your debugger is now attached** - breakpoints will trigger when code is executed.
 
-The project could take on Air as a depdendency and allow for golang hot-reload, this would be a huge value if someone wants to contribute.
+### 3. Test with rad CLI
 
-**What the automation provides:**
-- Environment directory structure at `debug_files/` (in project root)
-- Component configuration files with correct schemas
-- Controller configured to skip webhooks in local development (no TLS certs required)
-- Database setup verification
-- Management scripts (start/stop/status)
-- Incremental builds for individual components
-- Convenient `./drad` symlink in workspace root for easy CLI access
-- Debug CLI wrapper `./drad` with automatic UCP endpoint configuration
+**Quick testing (no CLI debugging):**
+```bash
+./drad env list
+./drad app deploy my-app.bicep
+```
+
+**Debug CLI code:**
+1. Run and Debug panel → "Debug rad CLI (prompt for args)"
+2. Press F5
+3. Enter command arguments when prompted (e.g., `env list`)
+
+### 4. Make Code Changes
+
+1. Stop components: Run and Debug → "Stop Control Plane" → F5
+2. Edit your code
+3. Restart: Run and Debug → "Start Control Plane" → F5 (rebuilds automatically)
+4. Re-attach debugger: Select attach configuration → F5
 
 ## Prerequisites
 
-The automation checks for all required tools. Install any missing prerequisites:
-
 ### Required Tools
+
 - **Go 1.25+** - `go version`
-- **Delve debugger** - `dlv version` (Go debugger for VS Code integration)
-- **kubectl** - Kubernetes cluster access
-- **psql** - PostgreSQL client for database verification
-- **terraform** - Terraform CLI for recipe execution
-- **docker** - To host k3d
+- **Delve debugger** - `dlv version`
+- **kubectl** - Kubernetes CLI
+- **PostgreSQL** - Database (Docker or local install)
+- **terraform** - For recipe execution
+- **docker** - To host k3d cluster
 
-#### Quick PostgreSQL Setup (if you don't already have one)
-
-The automation automatically detects and works with different PostgreSQL setups:
-
-**Option 1: Docker PostgreSQL (Recommended for Development)**
-If you need a throwaway local PostgreSQL instance for debugging Radius:
-
-```bash
-# Quick setup (uses postgres superuser - works with current automation)
-docker run --name radius-postgres \
-   -e POSTGRES_PASSWORD=radius_pass \
-   -p 5432:5432 \
-   -d postgres:15
-```
-
-**Alternative Docker setup with custom user:**
-```bash
-# Custom user setup (more production-like)
-docker run --name dev-postgres \
-  -e POSTGRES_USER=radius_user \
-  -e POSTGRES_PASSWORD=radius_pass \
-  -e POSTGRES_DB=radius \
-  -p 5432:5432 \
-  -d postgres
-```
-*Note: If using the custom user setup, you'll need to update the PostgreSQL connection variables in `build/scripts/start-radius.sh` to match.*
-
-**Option 2: Local PostgreSQL Installation (Homebrew/System)**
-If you already have PostgreSQL installed locally (via Homebrew, apt, etc.), the automation will detect and use it automatically.
-
-**Automatic Database Setup**
-The automation handles all database setup automatically when you run `make debug-start`:
-- Creates required users (`applications_rp`, `ucp`) with proper passwords
-- Creates databases with correct ownership
-- Sets up proper permissions and table structures
-- Works with both Docker and local PostgreSQL installations
-
-The automation will verify connectivity during `make debug-check-prereqs` and create all required users/databases during `make debug-start`. No manual database setup is required.
-
-### Optional Tools
-- **VS Code** - For integrated debugging experience
-
-### Installation Commands
+### Quick Install
 
 **macOS:**
 ```bash
-# Core tools
-brew install go kubectl postgresql
-
-# Delve debugger
+brew install go kubectl postgresql terraform docker
 go install github.com/go-delve/delve/cmd/dlv@latest
-
-# Add Go binaries to PATH (required for delve)
-echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-
-# Terraform (HashiCorp official method)
-brew tap hashicorp/tap
-brew install hashicorp/tap/terraform
-
-# Optional tools
-brew install --cask docker
-brew install --cask visual-studio-code
+echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 ```
 
-**Ubuntu/Debian:**
+**Linux:**
 ```bash
-# Install Go 1.25+ from official source (apt version is too old)
+# Install Go 1.25+
 wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
-echo 'export PATH="/usr/local/go/bin:$PATH"' >> ~/.bashrc
-echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+sudo tar -C /usr/local -xzf go1.25.0.linux-amd64.tar.gz
+echo 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 
-# Core tools
-sudo apt update
-sudo apt install kubectl postgresql-client
-
-# Delve debugger
+# Other tools
+sudo apt update && sudo apt install kubectl postgresql-client docker.io
 go install github.com/go-delve/delve/cmd/dlv@latest
 
-# Terraform (HashiCorp official method)
+# Terraform
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt update && sudo apt install terraform
-
-# Optional tools
-sudo apt install docker.io
 ```
 
-**Verification:**
+### PostgreSQL Setup
+
+**Option 1: Docker (Recommended)**
 ```bash
-# Check all prerequisites
-make debug-check-prereqs
+docker run --name radius-postgres \
+  -e POSTGRES_PASSWORD=radius_pass \
+  -p 5432:5432 -d postgres:15
 ```
 
-## Development Workflow
+**Option 2: Use existing local PostgreSQL**
+The automation detects and works with Homebrew or system PostgreSQL installations automatically.
 
-### Step 1: Automated Setup and Process Management
+**Database setup is automatic** - `make debug-start` creates required users, databases, and tables.
 
-The automation handles all setup, configuration, and management tasks:
+## Debugging Workflow
 
+### Understanding the Attach Model
+
+Components run as independent processes started by `make debug-start` or the "Start Control Plane" launch configuration. Each component runs under Delve (dlv) listening on a specific port:
+
+- **UCP**: Port 40001
+- **Controller**: Port 40002  
+- **Applications RP**: Port 40003
+- **Dynamic RP**: Port 40004
+
+**To debug, you attach VS Code to the already-running process.** You don't launch the process from VS Code.
+
+### Step-by-Step Debugging
+
+**1. Start Components (one time)**
 ```bash
-# Complete setup and start development environment
 make debug-start
-
-# This single command:
-# 1. Sets up directory structure and configuration files
-# 2. Builds components with debug symbols
-# 3. Starts all components as OS processes
-# 4. Initializes a clean dev environment with default recipes
-
-# Check that everything is running
-make debug-status
-
-# Stop development environment when done
-make debug-stop
+# OR use VS Code: Run and Debug → "Start Control Plane" → F5
 ```
 
-### Step 2: VS Code Debugging (Optional)
+**2. Set Breakpoints**
+- Open the source file you want to debug
+- Click in the gutter to add breakpoints
 
-Once components are running via `make debug-start`, you can attach VS Code debuggers to debug specific components. See the [VS Code Debugging](#vs-code-debugging) section below for detailed instructions.
+**3. Attach Debugger**
+- Run and Debug panel (`Cmd+Shift+D`)
+- Select component to debug (e.g., "Attach UCP (dlv 40001)")
+- Press F5
+- Status bar turns orange when attached
 
-### Available Make Targets
+**4. Trigger Your Code**
+- Use `./drad` commands or deploy Bicep files
+- Breakpoints will pause execution
+- Inspect variables, step through code, etc.
+
+**5. Detach When Done**
+- Click the disconnect button or press `Shift+F5`
+- Components keep running - you can re-attach anytime
+
+### Code Change Workflow
 
 ```bash
-# Setup and Configuration
-make debug-help           # Show all available debug commands
-make debug-check-prereqs  # Verify all prerequisites are installed
-make debug-setup          # Complete one-time environment setup
+# 1. Stop components
+make debug-stop
+# OR VS Code: "Stop Control Plane" → F5
 
-# Development Workflow
-make debug-start          # Start all components as OS processes
-make debug-stop           # Stop all running components and clean up database
-make debug-status         # Show component health status
-make debug-build          # Build all components with debug symbols (incremental)
+# 2. Edit code
 
-# Individual Component Builds (incremental - only changed code is recompiled)
-make debug-build-ucpd             # Build only UCP daemon
+# 3. Restart (rebuilds changed components automatically)
+make debug-start  
+# OR VS Code: "Start Control Plane" → F5
+
+# 4. Re-attach debugger
+# Run and Debug → Select attach configuration → F5
+```
+
+### Available VS Code Configurations
+
+**Process Management:**
+- **Start Control Plane** - Start all components
+- **Stop Control Plane** - Stop all components  
+- **Control Plane Status** - Check health
+
+**Attach Debuggers:**
+- **Attach UCP (dlv 40001)** - Attach to UCP
+- **Attach Controller (dlv 40002)** - Attach to Controller
+- **Attach Applications RP (dlv 40003)** - Attach to Applications RP
+- **Attach Dynamic RP (dlv 40004)** - Attach to Dynamic RP
+- **Attach Radius (all)** - Attach to all components simultaneously
+
+**CLI Debugging:**
+- **Debug rad CLI (prompt for args)** - Debug the rad CLI itself (launches a new process)
+
+### Useful Make Commands
+
+```bash
+# Start/Stop
+make debug-start          # Start all components
+make debug-stop           # Stop all components
+make debug-status         # Show component status
+
+# Build Individual Components (incremental - faster for iterating on one component)
+make debug-build-ucpd             # Build only UCP
 make debug-build-applications-rp  # Build only Applications RP
 make debug-build-controller       # Build only Controller
 make debug-build-dynamic-rp       # Build only Dynamic RP
-make debug-build-rad             # Build only rad CLI
+make debug-build-rad              # Build only rad CLI
 
-# Monitoring and Troubleshooting
-make debug-logs                   # Tail all component logs
+# Logs
+make debug-logs           # Tail all component logs
 
-# Complete Development Setup
-make debug-dev-start             # Setup + VS Code config + start components
-make debug-dev-stop              # Stop all components
+# Help
+make debug-help           # Show all debug commands
 ```
-
-### What the Automation Creates
-
-When you run `make debug-setup`, the following structure is created in `debug_files/`:
-
-```
-debug_files/
-├── bin/                    # Built Radius binaries with debug symbols
-│   ├── rad                 # rad CLI binary
-│   └── rad-wrapper         # Debug wrapper that auto-configures UCP
-├── configs/                # Component configuration files
-│   ├── ucp.yaml
-│   ├── applications-rp.yaml
-│   ├── controller.yaml
-│   ├── dynamic-rp.yaml
-│   ├── rad-debug-config.yaml  # CLI config with UCP override (used by wrapper)
-│   └── terraformrc
-├── logs/                   # Component logs
-├── scripts/                # Management scripts
-│   ├── start-radius.sh
-│   ├── stop-radius.sh
-│   ├── status-radius.sh
-│   ├── start-deployment-engine.sh
-│   └── stop-deployment-engine.sh
-├── terraform-cache/        # Terraform provider cache
-└── env-setup.sh           # Environment variables
-```
-
-And VS Code configuration files are already included in the repository:
-
-```
-.vscode/
-├── launch.json            # Debug configurations
-├── tasks.json             # VS Code tasks
-├── settings.json          # Workspace settings
-└── extensions.json        # Recommended extensions
-```
-
-## VS Code Debugging
-
-> 💡 **Prerequisites**: You must first complete the [Automated Workflow](#automated-workflow-recommended) to have components running before you can debug them. This section describes how to attach debuggers to the already-running processes.
-
-> 💡 **Quick Setup**: VS Code configuration files are included in the repository and ready to use.
-
-### Available Debug Configurations
-
-The following attach-based debug configurations are available in `.vscode/launch.json`:
-
-- **"Attach UCP (dlv 40001)"** - Attach debugger to running UCP process
-- **"Attach Controller (dlv 40002)"** - Attach debugger to running Controller process
-- **"Attach Applications RP (dlv 40003)"** - Attach debugger to running Applications RP process
-- **"Attach Dynamic RP (dlv 40004)"** - Attach debugger to running Dynamic RP process
-- **"Attach Radius (all)"** - Compound configuration to attach to all components at once
-
-**CLI Debug Configuration:**
-- **"Debug rad CLI (prompt for args)"** - CLI debugging with argument prompts
-
-All server configurations use "attach" mode - they connect to already running processes started via `make debug-start`.
-
-**When to use each CLI option:**
-- **`./drad` command**: Use for quick CLI testing when you don't need to debug the CLI code itself. Perfect for testing server-side functionality while working on UCP, RP, or Controller code.
-- **"Debug rad CLI (prompt for args)"**: Use when you need to debug CLI code with breakpoints and variable inspection.
-
-### Debugging Workflow in VS Code
-
-**Important**: This workflow assumes you have already completed the [Automated Workflow](#automated-workflow-recommended) and have components running via `make debug-start`.
-
-This workflow separates process management (via VS Code tasks calling make) from debugging (via VS Code debugger attach), making it much cleaner and more reliable.
-
-#### Step-by-Step Debugging Process
-
-**Prerequisites**: Start components using VS Code tasks before attaching debuggers:
-- Press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
-- Select "Tasks: Run Task"
-- Select "Debug: Start All Components"
-- Wait for all components to start (check with "Debug: Component Status" task)
-
-1. **Set Breakpoints**: Add breakpoints in your code in VS Code
-
-2. **Attach Debugger** (Choose one method):
-   
-   **Method A: Attach to Individual Component**
-   - Open Debug panel (sidebar or `Cmd+Shift+D`)
-   - Select a configuration: "Attach UCP (dlv 40001)", "Attach Controller (dlv 40002)", etc.
-   - Press F5 or click the green play button
-   - The debugger will attach to the running component
-
-   **Method B: Attach to All Components**
-   - Open Debug panel
-   - Select "Attach Radius (all)" from the dropdown
-   - Press F5 to attach to all components simultaneously
-
-   **Method C: CLI Debugging**
-   - For CLI testing without debugging: Use `./drad <command>` in the terminal
-   - For CLI debugging with breakpoints:
-     - Open Debug panel
-     - Select "Debug rad CLI (prompt for args)"
-     - Press F5
-     - Enter your CLI command when prompted (e.g., `env list`, `app deploy app.bicep`)
-
-3. **Code Changes**: 
-   - Make your code changes
-   - Stop components: `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Stop All Components"
-   - Restart (rebuilds automatically): `Cmd+Shift+P` → "Tasks: Run Task" → "Debug: Start All Components"
-   - Re-attach debugger using F5
-
-#### Advantages of This Approach
-
-- **Clean Separation**: VS Code tasks handle process lifecycle (start/stop), debugger handles debugging
-- **Reliable**: Simple attach-based debugging with pre-configured ports
-- **Flexible**: Debug any combination of components
-- **Fast Iteration**: Stop, rebuild specific components, restart, re-attach
-- **Discoverable**: All operations available via Command Palette (`Cmd+Shift+P`)
-
-### Debugging Specific Issues
-
-**Authentication Problems:**
-- Set breakpoints in authentication-related code
-- Monitor environment variables in the Debug Console
-
-**Database Issues:**
-- UCP database connections are pre-configured
-- PostgreSQL setup is verified during `make debug-setup`
-
-**Kubernetes Integration:**
-- Controller uses your current kubectl context
-- RBAC permissions are checked during setup
 
 ## Troubleshooting
 
-### Common Issues and Solutions
-
-**1. Component Startup Failures**
+### Components Won't Start
 
 ```bash
-# Check component status
+# Check status
 make debug-status
 
-# View logs for specific components
+# View logs
 cat debug_files/logs/ucp.log
 cat debug_files/logs/applications-rp.log
 cat debug_files/logs/controller.log
 cat debug_files/logs/dynamic-rp.log
 
-# Restart specific components in VS Code debugger
-# Or rebuild and restart all components
+# Clean restart
 make debug-stop
 make debug-start
 ```
 
-**2. Missing Prerequisites**
+### Port Conflicts
 
 ```bash
-# Check what's missing
-make debug-check-prereqs
+# Check what's using ports
+lsof -i :9000   # UCP
+lsof -i :8080   # Applications RP  
+lsof -i :8082   # Dynamic RP
+lsof -i :7073   # Controller
+lsof -i :40001  # UCP debug port
+lsof -i :40002  # Controller debug port
+lsof -i :40003  # Applications RP debug port
+lsof -i :40004  # Dynamic RP debug port
 
-# Install missing tools (example for macOS)
-brew install go kubectl postgresql terraform docker
-
-# Verify installation
-make debug-check-prereqs
+# Kill process using a port
+kill -9 <PID>
 ```
 
-**3. Database Connection Issues**
-
-The automation handles database setup automatically and works with your current user. If you see database errors:
+### PostgreSQL Connection Issues
 
 ```bash
-# Check if PostgreSQL is running
-# macOS:
-brew services start postgresql
+# Check PostgreSQL is running
+docker ps | grep postgres          # If using Docker
+brew services list | grep postgres # If using Homebrew
 
-# Linux:
-sudo systemctl start postgresql
+# Start PostgreSQL
+docker start radius-postgres       # Docker
+brew services start postgresql     # Homebrew
 
-# Docker:
-docker start radius-postgres  # If using Docker PostgreSQL
-
-# The automation will automatically:
-# - Detect your PostgreSQL installation (Docker vs local)
-# - Create required users and databases
-# - Set up proper permissions and table structures
-
-# If you need to test connections manually:
-# For Docker PostgreSQL:
+# Test connection
 psql "postgresql://postgres:radius_pass@localhost:5432/postgres" -c "SELECT 1;"
-
-# For local PostgreSQL (Homebrew/system):
-psql postgres -c "SELECT 1;"
-
-# Test the actual databases created by automation:
-psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "SELECT 1;"
-psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "SELECT 1;"
 ```
 
-**4. Port Conflicts**
+### Debugger Won't Attach
+
+**Issue:** "Failed to attach to dlv"
+
+**Solutions:**
+1. Verify component is running: `make debug-status`
+2. Check debug port is listening: `lsof -i :40001`
+3. Restart component: `make debug-stop && make debug-start`
+4. Verify dlv is installed: `dlv version`
+
+### Breakpoints Not Hitting
+
+1. **Verify debugger is attached** - VS Code status bar should be orange
+2. **Check the code path is executed** - Try logging to confirm
+3. **Rebuild the component** - Old binaries won't match source
+   ```bash
+   make debug-stop
+   make debug-start  # Rebuilds automatically
+   ```
+
+### `./drad` Command Not Found
 
 ```bash
-# Check for port conflicts
-lsof -i :9000  # UCP
-lsof -i :8080  # Applications RP
-lsof -i :8082  # Dynamic RP
-lsof -i :7073  # Controller health
-lsof -i :5017  # Deployment Engine
-```
+# Verify symlink exists
+ls -la ./drad
 
-**5. Kubernetes Permission Issues**
-
-```bash
-# Test current permissions
-kubectl auth can-i "*" "*" --all-namespaces
-
-# Verify kubectl context
-kubectl config current-context
-
-# Check if radius-system namespace exists
-kubectl get namespace radius-system || kubectl create namespace radius-system
-
-# Check if radius-testing namespace exists  
-kubectl get namespace radius-testing || kubectl create namespace radius-testing
+# Recreate if missing
+make debug-build-rad
 ```
 
 ### Getting Help
 
-If you encounter issues not covered here:
+**Check component logs:**
+```bash
+make debug-logs
+```
 
-1. **Check the rad CLI configuration**: The `./drad` wrapper is automatically configured for local debugging
-2. **Check component logs**: Use `make debug-logs` to see all component output
-3. **Verify prerequisites**: Run `make debug-check-prereqs` 
-4. **Clean and restart**: Use `make debug-stop && make debug-start`
-5. **Use VS Code debugging**: Set breakpoints and step through problematic code paths
+**Verify setup:**
+```bash
+make debug-check-prereqs
+make debug-status
+```
 
-The automation handles ~90% of the setup complexity, but understanding the underlying components helps with advanced debugging scenarios.
-
-## Summary
-
-The Radius debug automation provides:
-
-✅ **Fully Automated:**
-- Directory structure creation
-- Configuration file generation with correct schemas
-- VS Code integration (launch.json, tasks.json, settings.json)
-- Build process with debug symbols
-- Component management (start/stop/status)
-- Controller webhook configuration (automatic TLS certificate handling)
-- Environment variables and path setup
-- Deployment engine configuration
-- Log aggregation and monitoring
-- Health checking and verification
-- Incremental builds for individual components
-- Database setup
-
-🔶 **Partially Automated:**
-- Kubernetes prerequisites (namespace creation, permission verification)
-- Prerequisites validation (automated checking with installation guidance)
-
-❌ **Manual Steps Required:**
-- Tool installation (Go, Docker, kubectl, PostgreSQL, Terraform) - one-time setup
-- Cloud credentials configuration (Azure/AWS) - as needed for your development
-
-The automation eliminates the complexity of manual configuration while preserving the flexibility needed for advanced debugging scenarios.
+**Clean restart:**
+```bash
+make debug-stop
+make debug-start
+```
