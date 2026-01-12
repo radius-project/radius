@@ -58,7 +58,7 @@ env:
   # Dapr dashboard version
   DAPR_DASHBOARD_VER: 0.15.0
   # The radius functional test timeout
-  FUNCTIONALTEST_TIMEOUT: 15m
+  FUNCTIONALTEST_TIMEOUT: 20m
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.

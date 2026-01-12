@@ -53,10 +53,21 @@ runs:
         apiVersion: kind.x-k8s.io/v1alpha4
         nodes:
         - role: control-plane
+          image: kindest/node:v1.30.0
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
           extraPortMappings:
             - containerPort: 30080
               hostPort: 30080
               protocol: TCP
+        - role: worker
+          image: kindest/node:v1.30.0
+        - role: worker
+          image: kindest/node:v1.30.0
         EOF
 
     - name: Create a KinD cluster with an insecure local registry
@@ -70,10 +81,21 @@ runs:
         apiVersion: kind.x-k8s.io/v1alpha4
         nodes:
         - role: control-plane
+          image: kindest/node:v1.30.0
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
           extraPortMappings:
             - containerPort: 30080
               hostPort: 30080
               protocol: TCP
+        - role: worker
+          image: kindest/node:v1.30.0
+        - role: worker
+          image: kindest/node:v1.30.0
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry]
@@ -117,6 +139,13 @@ runs:
         apiVersion: kind.x-k8s.io/v1alpha4
         nodes:
         - role: control-plane
+          image: kindest/node:v1.30.0
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
           extraMounts:
             - containerPath: "/etc/containerd/certs.d/${{ inputs.registry-name }}"
               hostPath: "${{ inputs.temp-cert-dir }}/certs/${{ inputs.registry-server }}"
@@ -124,6 +153,10 @@ runs:
             - containerPort: 30080
               hostPort: 30080
               protocol: TCP
+        - role: worker
+          image: kindest/node:v1.30.0
+        - role: worker
+          image: kindest/node:v1.30.0
         containerdConfigPatches:
         - |-
           [plugins."io.containerd.grpc.v1.cri".registry]
