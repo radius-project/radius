@@ -337,6 +337,75 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 			},
 			expected: []string{},
 		},
+		{
+			name: "sensitive object skips nested properties",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"credentials": map[string]any{
+						"type":                     "object",
+						XRadiusSensitiveAnnotation: true,
+						"properties": map[string]any{
+							"username": map[string]any{
+								"type": "string",
+							},
+							"password": map[string]any{
+								"type":                     "string",
+								XRadiusSensitiveAnnotation: true,
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"credentials"},
+		},
+		{
+			name: "sensitive array skips nested item properties",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secrets": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type":                     "object",
+							XRadiusSensitiveAnnotation: true,
+							"properties": map[string]any{
+								"key": map[string]any{
+									"type": "string",
+								},
+								"value": map[string]any{
+									"type":                     "string",
+									XRadiusSensitiveAnnotation: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"secrets[*]"},
+		},
+		{
+			name: "sensitive additionalProperties skips nested value properties",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secretMap": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type":                     "object",
+							XRadiusSensitiveAnnotation: true,
+							"properties": map[string]any{
+								"data": map[string]any{
+									"type": "string",
+								},
+								"secret": map[string]any{
+									"type":                     "string",
+									XRadiusSensitiveAnnotation: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"secretMap[*]"},
+		},
 	}
 
 	for _, tt := range tests {

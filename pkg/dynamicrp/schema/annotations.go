@@ -76,6 +76,7 @@ func GetSensitiveFieldPaths(ctx context.Context, ucpClient *v20231001preview.Cli
 // ExtractSensitiveFieldPaths recursively walks the schema and returns paths to fields marked with x-radius-sensitive.
 // The prefix parameter builds up the path as we traverse nested objects.
 // Supports object properties, array items, and additionalProperties (maps).
+// If a field is marked sensitive, its nested properties are not checked since the entire field is considered sensitive.
 func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 	var paths []string
 
@@ -99,8 +100,10 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 		}
 
 		// Check if this field has the x-radius-sensitive annotation
+		// If sensitive, add the path and skip nested properties since the entire field is sensitive
 		if isSensitive, ok := fieldSchemaMap[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
 			paths = append(paths, fullPath)
+			continue
 		}
 
 		// Recursively check nested objects
@@ -116,15 +119,16 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 			arrayItemPath := fullPath + "[*]"
 
 			// Check if items themselves are marked sensitive
+			// If sensitive, add the path and skip nested properties
 			if isSensitive, ok := items[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
 				paths = append(paths, arrayItemPath)
-			}
-
-			// Recursively check nested properties within array items
-			if itemProps, ok := items["properties"].(map[string]any); ok {
-				itemSchema := map[string]any{"properties": itemProps}
-				nestedPaths := ExtractSensitiveFieldPaths(itemSchema, arrayItemPath)
-				paths = append(paths, nestedPaths...)
+			} else {
+				// Recursively check nested properties within array items
+				if itemProps, ok := items["properties"].(map[string]any); ok {
+					itemSchema := map[string]any{"properties": itemProps}
+					nestedPaths := ExtractSensitiveFieldPaths(itemSchema, arrayItemPath)
+					paths = append(paths, nestedPaths...)
+				}
 			}
 		}
 
@@ -134,15 +138,16 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 			mapValuePath := fullPath + "[*]"
 
 			// Check if additionalProperties values are marked sensitive
+			// If sensitive, add the path and skip nested properties
 			if isSensitive, ok := additionalProps[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
 				paths = append(paths, mapValuePath)
-			}
-
-			// Recursively check nested properties within additionalProperties
-			if addProps, ok := additionalProps["properties"].(map[string]any); ok {
-				addPropsSchema := map[string]any{"properties": addProps}
-				nestedPaths := ExtractSensitiveFieldPaths(addPropsSchema, mapValuePath)
-				paths = append(paths, nestedPaths...)
+			} else {
+				// Recursively check nested properties within additionalProperties
+				if addProps, ok := additionalProps["properties"].(map[string]any); ok {
+					addPropsSchema := map[string]any{"properties": addProps}
+					nestedPaths := ExtractSensitiveFieldPaths(addPropsSchema, mapValuePath)
+					paths = append(paths, nestedPaths...)
+				}
 			}
 		}
 	}
