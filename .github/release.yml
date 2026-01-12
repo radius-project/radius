@@ -1,3 +1,6 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-release-config.json
+# docs: https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes#configuration-options
+---
 changelog:
   exclude:
     labels:
@@ -5,9 +8,9 @@ changelog:
     authors:
       - rad-ci-bot
   categories:
-    - title: '## Breaking Changes'
+    - title: "## Breaking Changes"
       labels:
         - breaking-change
-    - title: '## changelog'
+    - title: "## changelog"
       labels:
         - "*"

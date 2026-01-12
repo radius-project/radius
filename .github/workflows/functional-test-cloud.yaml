@@ -18,48 +18,45 @@
 ---
 name: Functional Tests (with Cloud Resources)
 
-permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read # Required for listing the commits
-  packages: write # Required for uploading the package
-  checks: write # Required for creating a check run
-  pull-requests: read # Required for fetching PR details
-
 on:
   # Enable manual trigger
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to run the workflow on"
+        description: Branch to run the workflow on
         required: true
-        default: "main"
+        default: main
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
-    - cron: "0 1,13,19 * * *"
+    - cron: 0 1,13,19 * * *
   # Dispatch on external events
   repository_dispatch:
     types: [deployment-engine.run-functional-tests]
+    # Expected client_payload:
+    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
+    #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
   workflow_run:
-    workflows: ["Approve Functional Tests"]
+    workflows: [Approve Functional Tests]
     types:
       - completed
 
+permissions: {}
+
 env:
   GOPROXY: https://proxy.golang.org
-
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUM_VER: 1.13.0
-
   # Helm version
-  HELM_VER: "v3.12.0"
+  HELM_VER: v3.19.4
   # KinD cluster version
-  KIND_VER: "v0.29.0"
+  KIND_VER: v0.29.0
   # Kubectl version
-  KUBECTL_VER: "v1.25.0"
+  KUBECTL_VER: v1.25.0
   # Azure Keyvault CSI driver chart version
-  AZURE_KEYVAULT_CSI_DRIVER_VER: "1.4.2"
+  AZURE_KEYVAULT_CSI_DRIVER_VER: 1.4.2
   # Azure workload identity webhook chart version
-  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: "1.3.0"
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: 1.3.0
   # Container registry for storing container images
   CONTAINER_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing Bicep recipe artifacts
@@ -73,34 +70,37 @@ env:
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
-  AWS_REGION: "us-west-2"
-  # The AWS account ID
-  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
+  AWS_REGION: us-west-2
   # The current GitHub action link
-  ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
   # Server where terraform test modules are deployed
-  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
   # The functional test GitHub app id
   FUNCTIONAL_TEST_APP_ID: 425843
   # Private Git repository where terraform module for testing is stored.
-  TF_RECIPE_PRIVATE_GIT_SOURCE: "git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis"
+  TF_RECIPE_PRIVATE_GIT_SOURCE: git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis
   # bicep-types ACR url for uploading Radius Bicep types
-  BICEP_TYPES_REGISTRY: "biceptypes.azurecr.io"
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
+
 jobs:
   setup:
     name: Setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read # Required for listing the commits
+      pull-requests: read # Required for fetching PR details
     env:
-      DE_IMAGE: "ghcr.io/radius-project/deployment-engine"
-      DE_TAG: "latest"
+      DE_IMAGE: ghcr.io/radius-project/deployment-engine
+      DE_TAG: latest
       # Head branch, only populated for workflow_run dispatch.
-      HEAD_BRANCH: "${{ github.event.workflow_run.head_branch }}"
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -138,7 +138,6 @@ jobs:
             echo "Created At: ${{ github.event.workflow_run.created_at }}"
             echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
           fi
-
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -154,30 +153,35 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          echo "BASE_SHA=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REF=${{ github.ref }}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+          } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+          {
+            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}"
+          } >> "${GITHUB_ENV}"
 
-      - name: Check out code
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+          persist-credentials: false
 
-      - name: "Download PR data artifacts"
+      - name: Download PR data artifacts
         if: github.event_name == 'workflow_run'
         uses: ./.github/actions/download-pr-data-artifact
         id: get-pr-number
 
-      - name: "Set PR context (workflow_run)"
+      - name: Set PR context (workflow_run)
         if: github.event_name == 'workflow_run'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
           PR_NUMBER: ${{ steps.get-pr-number.outputs.pr_number }}
         with:
@@ -243,11 +247,11 @@ jobs:
         if: github.event_name == 'repository_dispatch'
         shell: bash
         env:
-          IMAGE_NAME: ${{ github.event.client_payload.image_name }}
+          DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
           TAG: ${{ github.event.client_payload.tag }}
         run: |
           {
-            echo "DE_IMAGE=${IMAGE_NAME}"
+            echo "DE_IMAGE=${DEST_IMAGE}"
             echo "DE_TAG=${TAG}"
           } >> "$GITHUB_ENV"
 
@@ -263,15 +267,17 @@ jobs:
           echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
 
           # Set output variables to be used in the other jobs
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_OUTPUT
-          echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-          echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
-          echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
-          echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
-          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
-          echo "BASE_SHA=${{ env.BASE_SHA }}" >> $GITHUB_OUTPUT
+          {
+            echo "REL_VERSION=pr-${UNIQUE_ID}"
+            echo "UNIQUE_ID=${UNIQUE_ID}"
+            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}"
+            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}"
+            echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64"
+            echo "PR_NUMBER=${{ env.PR_NUMBER }}"
+            echo "DE_IMAGE=${{ env.DE_IMAGE }}"
+            echo "DE_TAG=${{ env.DE_TAG }}"
+            echo "BASE_SHA=${{ env.BASE_SHA }}"
+          } >> "${GITHUB_OUTPUT}"
 
   changes:
     name: Changes
@@ -289,7 +295,13 @@ jobs:
     name: Build Radius for test
     needs: [setup, changes]
     if: needs.changes.outputs.only_changed != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # Required for listing the commits
+      packages: write # Required for uploading the package
+      pull-requests: write # Required for updating pull requests
+      id-token: write # Required for azure/login
     env:
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
@@ -299,8 +311,8 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
-      DAPR_VER: "1.14.4"
-      ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      DAPR_VER: 1.14.4
+      ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Get GitHub app token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -308,35 +320,25 @@ jobs:
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          permission-pull-requests: write
 
-      - name: Check out code
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
+          persist-credentials: false
 
-      - name: Copy Deployment Engine image to GHCR
-        if: github.event_name == 'repository_dispatch'
-        uses: ./.github/actions/copy-deployment-engine-image
-        env:
-          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
-        with:
-          tag: ${{ env.DE_TAG }}
-          src_image: ${{ env.DE_IMAGE }}
-          dest_image: ghcr.io/radius-project/deployment-engine
-
-      - name: Check out code
+      - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
+          persist-credentials: false
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -486,7 +488,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
@@ -535,13 +537,13 @@ jobs:
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: radius_bicep_types_cloud
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
-      - name: "Login via Azure CLI"
+      - name: Login via Azure CLI
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
           client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
@@ -618,7 +620,10 @@ jobs:
     name: Skip Functional Tests
     needs: [setup, changes]
     if: needs.changes.outputs.only_changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read # Required for listing the commits
     steps:
       - name: Get GitHub app token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -626,6 +631,7 @@ jobs:
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          permission-checks: write
 
       - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2.0.0
         with:
@@ -648,9 +654,13 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      id-token: write # Required for requesting the JWT
+      contents: read # Required for listing the commits
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -673,12 +683,15 @@ jobs:
           repositories: |
             radius
             terraform-private-modules
+          permission-checks: write
+          permission-pull-requests: write
+          permission-contents: read
 
       - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
-          name: "Functional Test Run"
+          name: Functional Test Run
           status: in_progress
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
@@ -690,6 +703,7 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
+          persist-credentials: false
 
       - name: Checkout Samples repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -698,8 +712,9 @@ jobs:
           repository: radius-project/samples
           ref: refs/heads/edge
           path: samples
+          persist-credentials: false
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
@@ -707,7 +722,7 @@ jobs:
           cache: true
 
       - name: Download rad CLI
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
@@ -1004,30 +1019,32 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          GOTESTSUM_OPTS: "--junitfile ./dist/functional_test/results.xml"
+          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
         # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
         if: failure() && github.repository == 'radius-project/radius'
         with:
-          test_group_name: "Functional Tests - ${{ matrix.name }}"
-          artifact_name: "functional_test_results_${{ matrix.name }}"
-          result_directory: "dist/functional_test/"
+          test_group_name: Functional Tests - ${{ matrix.name }}
+          artifact_name: functional_test_results_${{ matrix.name }}
+          result_directory: dist/functional_test/
 
       - name: Collect Pod details
         if: always()
         run: |
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
           mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
-          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
-          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
-          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
-          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
+          {
+            echo "kubectl get pods -A"
+            kubectl get pods -A
+            echo "kubectl describe pods -A"
+            kubectl describe pods -A
+          } >> "${POD_STATE_LOG_FILENAME}"
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -1049,7 +1066,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
@@ -1099,10 +1116,14 @@ jobs:
             --yes --verbose
 
   report-test-results:
+    if: always()
     name: Report test results
     needs: [setup, build, tests]
-    runs-on: ubuntu-latest
-    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
     env:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
@@ -1112,6 +1133,7 @@ jobs:
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          permission-checks: write
 
       - name: Get tests job status
         id: get_test_status
@@ -1138,7 +1160,7 @@ jobs:
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
-          name: "Functional Test Run"
+          name: Functional Test Run
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
           status: completed
@@ -1150,11 +1172,13 @@ jobs:
   report-failure:
     name: Report test failure
     needs: [build, tests]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

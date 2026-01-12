@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -93,6 +94,83 @@ func TestRunner_extractDestination(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Runner.extractDestination() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
+	tests := []struct {
+		name                string
+		target              string
+		wantErr             bool
+		expectedErrContains []string
+	}{
+		{
+			name:    "uppercase in repository name",
+			target:  "localhost:5000/myregistry/Data/mySqlDatabases/kubernetes/kubernetesmysql:latest",
+			wantErr: true,
+			expectedErrContains: []string{
+				"Invalid OCI reference",
+				"br:",
+			},
+		},
+		{
+			name:    "uppercase at start of repository",
+			target:  "localhost:5000/MyRegistry/data:latest",
+			wantErr: true,
+			expectedErrContains: []string{
+				"Invalid OCI reference",
+				"br:",
+			},
+		},
+		{
+			name:    "invalid tag starting with hyphen",
+			target:  "localhost:5000/myregistry/data:-invalid",
+			wantErr: true,
+			expectedErrContains: []string{
+				"Invalid OCI reference",
+				"br:",
+			},
+		},
+		{
+			name:    "missing repository",
+			target:  "localhost:5000",
+			wantErr: true,
+			expectedErrContains: []string{
+				"Invalid OCI reference",
+				"br:",
+			},
+		},
+		{
+			name:    "valid lowercase repository",
+			target:  "localhost:5000/myregistry/data/mysqldatabases/kubernetes/kubernetesmysql:latest",
+			wantErr: false,
+		},
+		{
+			name:    "valid with hyphens and underscores",
+			target:  "localhost:5000/my-registry/my_data:v1.0.0",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Runner{
+				Target: tt.target,
+			}
+			_, err := r.extractDestination()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Runner.extractDestination() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.wantErr {
+				errStr := err.Error()
+				for _, expectedStr := range tt.expectedErrContains {
+					if !strings.Contains(errStr, expectedStr) {
+						t.Errorf("Runner.extractDestination() error = %q, expected to contain %q", errStr, expectedStr)
+					}
+				}
 			}
 		})
 	}
