@@ -24,11 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-const (
-	// XRadiusSensitiveAnnotation is the annotation key used to mark fields as sensitive in the resource schema.
-	XRadiusSensitiveAnnotation = "x-radius-sensitive"
-)
-
 // GetSensitiveFieldPaths fetches the schema for a resource and returns paths to fields marked with x-radius-sensitive.
 // Paths are in dot notation, e.g., "credentials.password" or "config.apiKey".
 //
@@ -101,7 +96,7 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 
 		// Check if this field has the x-radius-sensitive annotation
 		// If sensitive, add the path and skip nested properties since the entire field is sensitive
-		if isSensitive, ok := fieldSchemaMap[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
+		if isSensitive, ok := fieldSchemaMap[annotationRadiusSensitive].(bool); ok && isSensitive {
 			paths = append(paths, fullPath)
 			continue
 		}
@@ -120,7 +115,7 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 
 			// Check if items themselves are marked sensitive
 			// If sensitive, add the path and skip nested properties
-			if isSensitive, ok := items[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
+			if isSensitive, ok := items[annotationRadiusSensitive].(bool); ok && isSensitive {
 				paths = append(paths, arrayItemPath)
 			} else {
 				// Recursively check nested properties within array items
@@ -139,7 +134,7 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 
 			// Check if additionalProperties values are marked sensitive
 			// If sensitive, add the path and skip nested properties
-			if isSensitive, ok := additionalProps[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
+			if isSensitive, ok := additionalProps[annotationRadiusSensitive].(bool); ok && isSensitive {
 				paths = append(paths, mapValuePath)
 			} else {
 				// Recursively check nested properties within additionalProperties

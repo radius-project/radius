@@ -63,8 +63,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 						"type": "string",
 					},
 					"password": map[string]any{
-						"type":                     "string",
-						XRadiusSensitiveAnnotation: true,
+						"type":                    "string",
+						annotationRadiusSensitive: true,
 					},
 				},
 			},
@@ -78,12 +78,12 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 						"type": "string",
 					},
 					"password": map[string]any{
-						"type":                     "string",
-						XRadiusSensitiveAnnotation: true,
+						"type":                    "string",
+						annotationRadiusSensitive: true,
 					},
 					"apiKey": map[string]any{
-						"type":                     "string",
-						XRadiusSensitiveAnnotation: true,
+						"type":                    "string",
+						annotationRadiusSensitive: true,
 					},
 				},
 			},
@@ -103,8 +103,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 								"type": "string",
 							},
 							"password": map[string]any{
-								"type":                     "string",
-								XRadiusSensitiveAnnotation: true,
+								"type":                    "string",
+								annotationRadiusSensitive: true,
 							},
 						},
 					},
@@ -123,8 +123,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 								"type": "object",
 								"properties": map[string]any{
 									"connectionString": map[string]any{
-										"type":                     "string",
-										XRadiusSensitiveAnnotation: true,
+										"type":                    "string",
+										annotationRadiusSensitive: true,
 									},
 									"host": map[string]any{
 										"type": "string",
@@ -142,15 +142,15 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 			schema: map[string]any{
 				"properties": map[string]any{
 					"apiKey": map[string]any{
-						"type":                     "string",
-						XRadiusSensitiveAnnotation: true,
+						"type":                    "string",
+						annotationRadiusSensitive: true,
 					},
 					"settings": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
 							"token": map[string]any{
-								"type":                     "string",
-								XRadiusSensitiveAnnotation: true,
+								"type":                    "string",
+								annotationRadiusSensitive: true,
 							},
 							"endpoint": map[string]any{
 								"type": "string",
@@ -166,8 +166,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 			schema: map[string]any{
 				"properties": map[string]any{
 					"password": map[string]any{
-						"type":                     "string",
-						XRadiusSensitiveAnnotation: false,
+						"type":                    "string",
+						annotationRadiusSensitive: false,
 					},
 				},
 			},
@@ -180,8 +180,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 					"secrets": map[string]any{
 						"type": "array",
 						"items": map[string]any{
-							"type":                     "string",
-							XRadiusSensitiveAnnotation: true,
+							"type":                    "string",
+							annotationRadiusSensitive: true,
 						},
 					},
 				},
@@ -201,8 +201,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 									"type": "string",
 								},
 								"password": map[string]any{
-									"type":                     "string",
-									XRadiusSensitiveAnnotation: true,
+									"type":                    "string",
+									annotationRadiusSensitive: true,
 								},
 							},
 						},
@@ -224,8 +224,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 									"type": "object",
 									"properties": map[string]any{
 										"connectionString": map[string]any{
-											"type":                     "string",
-											XRadiusSensitiveAnnotation: true,
+											"type":                    "string",
+											annotationRadiusSensitive: true,
 										},
 									},
 								},
@@ -243,8 +243,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 					"envVars": map[string]any{
 						"type": "object",
 						"additionalProperties": map[string]any{
-							"type":                     "string",
-							XRadiusSensitiveAnnotation: true,
+							"type":                    "string",
+							annotationRadiusSensitive: true,
 						},
 					},
 				},
@@ -261,8 +261,8 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 							"type": "object",
 							"properties": map[string]any{
 								"value": map[string]any{
-									"type":                     "string",
-									XRadiusSensitiveAnnotation: true,
+									"type":                    "string",
+									annotationRadiusSensitive: true,
 								},
 								"version": map[string]any{
 									"type": "string",
@@ -279,29 +279,29 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 			schema: map[string]any{
 				"properties": map[string]any{
 					"apiKey": map[string]any{
-						"type":                     "string",
-						XRadiusSensitiveAnnotation: true,
+						"type":                    "string",
+						annotationRadiusSensitive: true,
 					},
 					"tokens": map[string]any{
 						"type": "array",
 						"items": map[string]any{
-							"type":                     "string",
-							XRadiusSensitiveAnnotation: true,
+							"type":                    "string",
+							annotationRadiusSensitive: true,
 						},
 					},
 					"secretMap": map[string]any{
 						"type": "object",
 						"additionalProperties": map[string]any{
-							"type":                     "string",
-							XRadiusSensitiveAnnotation: true,
+							"type":                    "string",
+							annotationRadiusSensitive: true,
 						},
 					},
 					"config": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
 							"password": map[string]any{
-								"type":                     "string",
-								XRadiusSensitiveAnnotation: true,
+								"type":                    "string",
+								annotationRadiusSensitive: true,
 							},
 						},
 					},
@@ -342,15 +342,15 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 			schema: map[string]any{
 				"properties": map[string]any{
 					"credentials": map[string]any{
-						"type":                     "object",
-						XRadiusSensitiveAnnotation: true,
+						"type":                    "object",
+						annotationRadiusSensitive: true,
 						"properties": map[string]any{
 							"username": map[string]any{
 								"type": "string",
 							},
 							"password": map[string]any{
-								"type":                     "string",
-								XRadiusSensitiveAnnotation: true,
+								"type":                    "string",
+								annotationRadiusSensitive: true,
 							},
 						},
 					},
@@ -365,15 +365,15 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 					"secrets": map[string]any{
 						"type": "array",
 						"items": map[string]any{
-							"type":                     "object",
-							XRadiusSensitiveAnnotation: true,
+							"type":                    "object",
+							annotationRadiusSensitive: true,
 							"properties": map[string]any{
 								"key": map[string]any{
 									"type": "string",
 								},
 								"value": map[string]any{
-									"type":                     "string",
-									XRadiusSensitiveAnnotation: true,
+									"type":                    "string",
+									annotationRadiusSensitive: true,
 								},
 							},
 						},
@@ -389,15 +389,15 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 					"secretMap": map[string]any{
 						"type": "object",
 						"additionalProperties": map[string]any{
-							"type":                     "object",
-							XRadiusSensitiveAnnotation: true,
+							"type":                    "object",
+							annotationRadiusSensitive: true,
 							"properties": map[string]any{
 								"data": map[string]any{
 									"type": "string",
 								},
 								"secret": map[string]any{
-									"type":                     "string",
-									XRadiusSensitiveAnnotation: true,
+									"type":                    "string",
+									annotationRadiusSensitive: true,
 								},
 							},
 						},
@@ -422,8 +422,8 @@ func TestExtractSensitiveFieldPaths_WithPrefix(t *testing.T) {
 	schema := map[string]any{
 		"properties": map[string]any{
 			"secret": map[string]any{
-				"type":                     "string",
-				XRadiusSensitiveAnnotation: true,
+				"type":                    "string",
+				annotationRadiusSensitive: true,
 			},
 		},
 	}
@@ -449,8 +449,8 @@ func TestGetSensitiveFieldPaths(t *testing.T) {
 					"type": "string",
 				},
 				"password": map[string]any{
-					"type":                     "string",
-					XRadiusSensitiveAnnotation: true,
+					"type":                    "string",
+					annotationRadiusSensitive: true,
 				},
 			},
 		})
