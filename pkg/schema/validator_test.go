@@ -18,6 +18,7 @@ package schema
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -2160,5 +2161,481 @@ func TestValidateResourceAgainstSchema(t *testing.T) {
 		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "property \"age\" is missing")
+	})
+}
+
+func TestValidator_checkSensitiveAnnotation(t *testing.T) {
+	validator := NewValidator()
+
+	tests := []struct {
+		name   string
+		schema *openapi3.Schema
+		path   string
+		hasErr bool
+		errMsg string
+	}{
+		{
+			name: "x-radius-sensitive on string type - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "password",
+			hasErr: false,
+		},
+		{
+			name: "x-radius-sensitive on object type - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"object"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "credentials",
+			hasErr: false,
+		},
+		{
+			name: "x-radius-sensitive on integer type - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"integer"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "count",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s annotation is only supported on string and object types, got 'integer'", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive on boolean type - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"boolean"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "flag",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s annotation is only supported on string and object types, got 'boolean'", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive on array type - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"array"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "items",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s annotation is only supported on string and object types, got 'array'", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive on number type - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"number"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "value",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s annotation is only supported on string and object types, got 'number'", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive set to false - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"integer"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: false,
+				},
+			},
+			path:   "count",
+			hasErr: false,
+		},
+		{
+			name: "no x-radius-sensitive annotation - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"integer"},
+			},
+			path:   "count",
+			hasErr: false,
+		},
+		{
+			name: "x-radius-sensitive with no type - invalid",
+			schema: &openapi3.Schema{
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "field",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s annotation requires an explicit type (string or object)", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive with string value - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: "true",
+				},
+			},
+			path:   "password",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s must be a boolean value", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive with integer value - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: 1,
+				},
+			},
+			path:   "apiKey",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s must be a boolean value", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive with null value - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: nil,
+				},
+			},
+			path:   "token",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s must be a boolean value", annotationRadiusSensitive),
+		},
+		{
+			name: "x-radius-sensitive on string enum - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Enum: []any{"value1", "value2", "value3"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "status",
+			hasErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.checkSensitiveAnnotation(tt.schema, tt.path)
+			if tt.hasErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+				var constraintErr *ValidationError
+				require.ErrorAs(t, err, &constraintErr)
+				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidator_ValidateSchema_WithSensitiveAnnotation(t *testing.T) {
+	validator := NewValidator()
+	ctx := context.Background()
+
+	t.Run("valid string with x-radius-sensitive", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"password": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid object with x-radius-sensitive", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"credentials": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{
+								Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid integer with x-radius-sensitive", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"count": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("%s annotation is only supported on string and object types, got 'integer'", annotationRadiusSensitive))
+	})
+
+	t.Run("invalid nested property with x-radius-sensitive on boolean", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"config": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						Properties: openapi3.Schemas{
+							"enabled": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"boolean"},
+									Extensions: map[string]any{
+										annotationRadiusSensitive: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("%s annotation is only supported on string and object types, got 'boolean'", annotationRadiusSensitive))
+	})
+
+	t.Run("invalid array with x-radius-sensitive", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"tags": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"array"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+						Items: &openapi3.SchemaRef{
+							Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("%s annotation is only supported on string and object types, got 'array'", annotationRadiusSensitive))
+	})
+
+	t.Run("valid multiple sensitive strings in nested structure", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"auth": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						Properties: openapi3.Schemas{
+							"username": {
+								Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+							},
+							"password": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+									Extensions: map[string]any{
+										annotationRadiusSensitive: true,
+									},
+								},
+							},
+							"apiKey": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+									Extensions: map[string]any{
+										annotationRadiusSensitive: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid non-boolean x-radius-sensitive value", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"password": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: "true",
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("%s must be a boolean value", annotationRadiusSensitive))
+	})
+
+	t.Run("valid string enum with x-radius-sensitive", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"secretType": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Enum: []any{"apiKey", "password", "certificate"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid array with sensitive string items", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"apiKeys": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"array"},
+						Items: &openapi3.SchemaRef{
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"string"},
+								Extensions: map[string]any{
+									annotationRadiusSensitive: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("valid array with sensitive object items", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"secrets": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"array"},
+						Items: &openapi3.SchemaRef{
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"object"},
+								Properties: openapi3.Schemas{
+									"name": {
+										Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+									},
+									"token": {
+										Value: &openapi3.Schema{
+											Type: &openapi3.Types{"string"},
+											Extensions: map[string]any{
+												annotationRadiusSensitive: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("invalid array with sensitive integer items", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"environment": {
+					Value: &openapi3.Schema{Type: &openapi3.Types{"string"}},
+				},
+				"codes": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"array"},
+						Items: &openapi3.SchemaRef{
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"integer"},
+								Extensions: map[string]any{
+									annotationRadiusSensitive: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := validator.ValidateSchema(ctx, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), fmt.Sprintf("%s annotation is only supported on string and object types, got 'integer'", annotationRadiusSensitive))
 	})
 }
