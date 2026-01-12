@@ -1304,13 +1304,18 @@
       "type": "object",
       "description": "The AWS cloud provider definition.",
       "properties": {
-        "scope": {
+        "accountId": {
           "type": "string",
-          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
+          "description": "AWS account ID for AWS resources to be deployed into."
+        },
+        "region": {
+          "type": "string",
+          "description": "AWS region for AWS resources to be deployed into."
         }
       },
       "required": [
-        "scope"
+        "accountId",
+        "region"
       ]
     },
     "ProvidersAzure": {
