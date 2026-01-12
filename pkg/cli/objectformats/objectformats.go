@@ -150,3 +150,18 @@ func GetRecipesForEnvironmentTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetProvidersForEnvironmentTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "PROVIDER",
+				JSONPath: "{ .Provider }",
+			},
+			{
+				Heading:  "PROPERTIES",
+				JSONPath: "{ .Properties }",
+			},
+		},
+	}
+}
