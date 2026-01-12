@@ -75,6 +75,7 @@ func GetSensitiveFieldPaths(ctx context.Context, ucpClient *v20231001preview.Cli
 
 // ExtractSensitiveFieldPaths recursively walks the schema and returns paths to fields marked with x-radius-sensitive.
 // The prefix parameter builds up the path as we traverse nested objects.
+// Supports object properties, array items, and additionalProperties (maps).
 func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 	var paths []string
 
@@ -107,6 +108,42 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 			nestedSchema := map[string]any{"properties": nestedProps}
 			nestedPaths := ExtractSensitiveFieldPaths(nestedSchema, fullPath)
 			paths = append(paths, nestedPaths...)
+		}
+
+		// Handle array types - check items schema
+		// Path uses [*] to indicate all array elements, e.g., "secrets[*].value"
+		if items, ok := fieldSchemaMap["items"].(map[string]any); ok {
+			arrayItemPath := fullPath + "[*]"
+
+			// Check if items themselves are marked sensitive
+			if isSensitive, ok := items[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
+				paths = append(paths, arrayItemPath)
+			}
+
+			// Recursively check nested properties within array items
+			if itemProps, ok := items["properties"].(map[string]any); ok {
+				itemSchema := map[string]any{"properties": itemProps}
+				nestedPaths := ExtractSensitiveFieldPaths(itemSchema, arrayItemPath)
+				paths = append(paths, nestedPaths...)
+			}
+		}
+
+		// Handle additionalProperties (map/dictionary types)
+		// Path uses [*] to indicate all map values, e.g., "secrets[*]" or "config[*].password"
+		if additionalProps, ok := fieldSchemaMap["additionalProperties"].(map[string]any); ok {
+			mapValuePath := fullPath + "[*]"
+
+			// Check if additionalProperties values are marked sensitive
+			if isSensitive, ok := additionalProps[XRadiusSensitiveAnnotation].(bool); ok && isSensitive {
+				paths = append(paths, mapValuePath)
+			}
+
+			// Recursively check nested properties within additionalProperties
+			if addProps, ok := additionalProps["properties"].(map[string]any); ok {
+				addPropsSchema := map[string]any{"properties": addProps}
+				nestedPaths := ExtractSensitiveFieldPaths(addPropsSchema, mapValuePath)
+				paths = append(paths, nestedPaths...)
+			}
 		}
 	}
 

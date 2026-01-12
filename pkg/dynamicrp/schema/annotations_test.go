@@ -173,6 +173,170 @@ func TestExtractSensitiveFieldPaths(t *testing.T) {
 			},
 			expected: []string{},
 		},
+		{
+			name: "array with sensitive items",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secrets": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type":                     "string",
+							XRadiusSensitiveAnnotation: true,
+						},
+					},
+				},
+			},
+			expected: []string{"secrets[*]"},
+		},
+		{
+			name: "array with nested sensitive field in items",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"credentials": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"username": map[string]any{
+									"type": "string",
+								},
+								"password": map[string]any{
+									"type":                     "string",
+									XRadiusSensitiveAnnotation: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"credentials[*].password"},
+		},
+		{
+			name: "array with deeply nested sensitive field",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"connections": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"database": map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"connectionString": map[string]any{
+											"type":                     "string",
+											XRadiusSensitiveAnnotation: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"connections[*].database.connectionString"},
+		},
+		{
+			name: "additionalProperties with sensitive values",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"envVars": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type":                     "string",
+							XRadiusSensitiveAnnotation: true,
+						},
+					},
+				},
+			},
+			expected: []string{"envVars[*]"},
+		},
+		{
+			name: "additionalProperties with nested sensitive field",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secrets": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"value": map[string]any{
+									"type":                     "string",
+									XRadiusSensitiveAnnotation: true,
+								},
+								"version": map[string]any{
+									"type": "string",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"secrets[*].value"},
+		},
+		{
+			name: "mixed array and additionalProperties with sensitive fields",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"apiKey": map[string]any{
+						"type":                     "string",
+						XRadiusSensitiveAnnotation: true,
+					},
+					"tokens": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type":                     "string",
+							XRadiusSensitiveAnnotation: true,
+						},
+					},
+					"secretMap": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type":                     "string",
+							XRadiusSensitiveAnnotation: true,
+						},
+					},
+					"config": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"password": map[string]any{
+								"type":                     "string",
+								XRadiusSensitiveAnnotation: true,
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"apiKey", "tokens[*]", "secretMap[*]", "config.password"},
+		},
+		{
+			name: "array items without sensitive annotation",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"names": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type": "string",
+						},
+					},
+				},
+			},
+			expected: []string{},
+		},
+		{
+			name: "additionalProperties without sensitive annotation",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"labels": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type": "string",
+						},
+					},
+				},
+			},
+			expected: []string{},
+		},
 	}
 
 	for _, tt := range tests {
