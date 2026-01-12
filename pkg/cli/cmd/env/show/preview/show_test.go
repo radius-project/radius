@@ -142,7 +142,7 @@ func Test_Run(t *testing.T) {
 				},
 				output.FormattedOutput{
 					Format: "table",
-					Obj: []EnvProviders{
+					Obj: []EnvProvider{
 						{
 							Provider:   "azure",
 							Properties: "subscriptionId: 'test-subscription-id', resourceGroupName: 'test-resource-group'",

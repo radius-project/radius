@@ -19,9 +19,7 @@ package preview
 import (
 	"cmp"
 	"context"
-	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -76,8 +74,8 @@ type EnvRecipes struct {
 	RecipeLocation string
 }
 
-// EnvProviders represents a provider and its properties for an environment.
-type EnvProviders struct {
+// EnvProvider represents a provider and its properties for an environment.
+type EnvProvider struct {
 	// Provider is the type of the provider (e.g., "azure", "aws", "kubernetes")
 	Provider string
 	// Properties contains the provider details in a comma-separated key-value format
@@ -148,10 +146,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	envProviders := []EnvProviders{}
+	envProviders := []EnvProvider{}
 	if resp.EnvironmentResource.Properties.Providers != nil {
 		if resp.EnvironmentResource.Properties.Providers.Azure != nil {
-			azureProvider := EnvProviders{
+			azureProvider := EnvProvider{
 				Provider:   "azure",
 				Properties: formatAzureProperties(resp.EnvironmentResource.Properties.Providers.Azure),
 			}
@@ -159,14 +157,15 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		if resp.EnvironmentResource.Properties.Providers.Aws != nil {
-			awsProvider := EnvProviders{
+			awsProvider := EnvProvider{
 				Provider:   "aws",
 				Properties: formatAWSProperties(resp.EnvironmentResource.Properties.Providers.Aws),
 			}
 			envProviders = append(envProviders, awsProvider)
 		}
+
 		if resp.EnvironmentResource.Properties.Providers.Kubernetes != nil {
-			k8sProvider := EnvProviders{
+			k8sProvider := EnvProvider{
 				Provider:   "kubernetes",
 				Properties: formatKubernetesProperties(resp.EnvironmentResource.Properties.Providers.Kubernetes),
 			}
@@ -237,65 +236,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func formatProviderProperties(parts []string) string {
-	if len(parts) == 0 {
-		return ""
-	}
-
-	var b strings.Builder
-	for i, part := range parts {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(part)
-	}
-
-	return b.String()
-}
-
-func formatAzureProperties(provider *corerpv20250801.ProvidersAzure) string {
-	if provider == nil {
-		return ""
-	}
-
-	parts := []string{}
-	if provider.SubscriptionID != nil {
-		parts = append(parts, fmt.Sprintf("subscriptionId: '%s'", *provider.SubscriptionID))
-	}
-	if provider.ResourceGroupName != nil {
-		parts = append(parts, fmt.Sprintf("resourceGroupName: '%s'", *provider.ResourceGroupName))
-	}
-
-	return formatProviderProperties(parts)
-}
-
-func formatAWSProperties(provider *corerpv20250801.ProvidersAws) string {
-	if provider == nil {
-		return ""
-	}
-
-	parts := []string{}
-	if provider.AccountID != nil {
-		parts = append(parts, fmt.Sprintf("accountId: '%s'", *provider.AccountID))
-	}
-	if provider.Region != nil {
-		parts = append(parts, fmt.Sprintf("region: '%s'", *provider.Region))
-	}
-
-	return formatProviderProperties(parts)
-}
-
-func formatKubernetesProperties(provider *corerpv20250801.ProvidersKubernetes) string {
-	if provider == nil {
-		return ""
-	}
-
-	parts := []string{}
-	if provider.Namespace != nil {
-		parts = append(parts, fmt.Sprintf("namespace: '%s'", *provider.Namespace))
-	}
-
-	return formatProviderProperties(parts)
 }
