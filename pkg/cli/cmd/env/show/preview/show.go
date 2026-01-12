@@ -74,15 +74,6 @@ type EnvRecipes struct {
 	RecipeLocation string
 }
 
-// EnvProvider represents a provider and its properties for an environment.
-type EnvProvider struct {
-	// Provider is the type of the provider (e.g., "azure", "aws", "kubernetes")
-	Provider string
-	// Properties contains the provider details in a comma-separated key-value format
-	// e.g., "subscriptionId: 'sub-id', resourceGroupName: 'rg-name'" for azure provider"
-	Properties string
-}
-
 // Runner is the runner implementation for the `rad env show` preview command.
 type Runner struct {
 	ConfigHolder            *framework.ConfigHolder

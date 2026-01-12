@@ -23,6 +23,16 @@ import (
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 )
 
+// EnvProvider represents a provider and its properties for an environment.
+type EnvProvider struct {
+	// Provider is the type of the provider (e.g., "azure", "aws", "kubernetes")
+	Provider string
+	// Properties contains the provider details in a comma-separated key-value format
+	// e.g., "subscriptionId: 'sub-id', resourceGroupName: 'rg-name'" for azure provider"
+	Properties string
+}
+
+// formatProviderProperties joins provider property fragments into a comma-separated string.
 func formatProviderProperties(parts []string) string {
 	if len(parts) == 0 {
 		return ""
