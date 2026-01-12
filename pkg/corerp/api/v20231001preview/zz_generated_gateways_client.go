@@ -19,7 +19,7 @@ import (
 // GatewaysClient contains the methods for the Gateways group.
 // Don't use this type directly, use NewGatewaysClient() instead.
 type GatewaysClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewGatewaysClient(rootScope string, credential azcore.TokenCredential, opti
 	}
 	client := &GatewaysClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -56,7 +56,7 @@ func (client *GatewaysClient) BeginCreate(ctx context.Context, gatewayName strin
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientCreateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -106,9 +106,9 @@ func (client *GatewaysClient) createCreateRequest(ctx context.Context, gatewayNa
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginCreateOrUpdate - Update a GatewayResource
@@ -127,7 +127,7 @@ func (client *GatewaysClient) BeginCreateOrUpdate(ctx context.Context, gatewayNa
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -177,9 +177,9 @@ func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, g
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a GatewayResource
@@ -196,7 +196,7 @@ func (client *GatewaysClient) BeginDelete(ctx context.Context, gatewayName strin
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -307,7 +307,7 @@ func (client *GatewaysClient) getHandleResponse(resp *http.Response) (GatewaysCl
 // Generated from API version 2023-10-01-preview
 //   - options - GatewaysClientListByScopeOptions contains the optional parameters for the GatewaysClient.NewListByScopePager
 //     method.
-func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByScopeOptions) (*runtime.Pager[GatewaysClientListByScopeResponse]) {
+func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByScopeOptions) *runtime.Pager[GatewaysClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[GatewaysClientListByScopeResponse]{
 		More: func(page GatewaysClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -324,7 +324,7 @@ func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByS
 				return GatewaysClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -352,4 +352,3 @@ func (client *GatewaysClient) listByScopeHandleResponse(resp *http.Response) (Ga
 	}
 	return result, nil
 }
-

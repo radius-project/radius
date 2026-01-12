@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Check code is up-to-date
 
 on:
@@ -29,92 +31,122 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   linter_check:
     name: Lint
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.only_changed != 'true'
     timeout-minutes: 30
     env:
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Check out repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
+
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
+
       - name: Setup NodeJS
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: "22"
+          node-version-file: .node-version
+
       - name: Install TypeSpec compiler
         run: |
           pushd typespec
           npm ci
           popd
+
       - name: Install autorest
-        run: npm install -g autorest@3.7.1
+        run: npm install -g autorest@3.7.2
+
       - name: Install oav
-        run: npm install -g oav@3.3.5
+        run: npm install -g oav@4.0.2
+
       - name: Install mockgen
         run: go install go.uber.org/mock/mockgen@v0.4.0
+
       - name: Install controller-gen
         run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
+
       - name: Install helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: "v3.11.1"
+
       - name: Run Helm linter
         run: |
           helm lint ${{ env.HELM_CHARTS_DIR }}
+
       - name: Run Helm unit tests
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
           cd ${{ env.HELM_CHARTS_DIR }} && helm unittest .
+
       - name: Run TypeSpec format check
         run: |
           pushd typespec
           npx tsp format --check "**/*.tsp"
           popd
+
       - name: Run linter
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
         with:
           version: "v2.5.0"
           args: --timeout=10m
           skip-cache: true
           install-mode: "binary"
+
       - name: Run make generate
         run: make generate
+
       - name: Check if generated code is up to date
         continue-on-error: true
         id: gitdiff
         run: |
           git diff --exit-code
+
       - name: Check failures
         if: steps.gitdiff.outcome != 'success'
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
           exit 1
+
   format-check:
     name: Format check with Prettier
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.only_changed != 'true'
     timeout-minutes: 30
     steps:
       - name: Check out repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
       - name: Setup NodeJS
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: "22"
+          node-version-file: .node-version
+
       - name: Run `make format-check`
         id: format-check
         continue-on-error: true
         run: |
           make format-check
+
       - name: Check for formatting failures
         if: steps.format-check.outcome == 'failure'
         run: |

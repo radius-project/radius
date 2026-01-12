@@ -1,5 +1,5 @@
 {
-  "operationId": "RabbitMqQueues_CreateOrUpdate",
+  "operationId": "RabbitMQQueues_CreateOrUpdate",
   "title": "Create Or Update a RabbitMQQueue resource",
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",

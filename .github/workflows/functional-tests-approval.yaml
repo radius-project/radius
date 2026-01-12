@@ -1,18 +1,39 @@
-name: "Approve Functional Tests"
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Approve Functional Tests
+
 on:
   pull_request:
     branches:
       - main
       - features/*
       - release/*
+
+permissions: {}
+
 jobs:
   approve-functional-tests-run:
-    name: "Approve Functional Tests"
-    runs-on: ubuntu-latest
+    name: Approve Functional Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     environment: functional-tests
+    permissions:
+      contents: read
     steps:
       - name: Checkout Radius repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Get PR number
+        run: |
+          mkdir -p ./pr
+          echo "${PR_NUMBER}" > ./pr/pr_number
+        env:
+          PR_NUMBER: ${{ github.event.number }}
 
       - name: Save PR number
-        uses: ./.github/actions/save-pr-as-artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: pr_number
+          path: pr/

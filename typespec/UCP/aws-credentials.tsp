@@ -74,7 +74,7 @@ model AwsCredentialProperties {
   kind: AWSCredentialKind;
 
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 
@@ -136,6 +136,7 @@ interface AwsCredentials {
   >;
 
   @doc("Update an AWS credential")
+  @patch(#{ implicitOptionality: true })
   update is UcpCustomPatchSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>

@@ -70,7 +70,7 @@ model GenericPlaneResource
 @doc("The properties of the generic representation of a plane resource.")
 model GenericPlaneResourceProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 }
 

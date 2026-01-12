@@ -31,7 +31,7 @@ func NewAPIVersionsClient(credential azcore.TokenCredential, options *arm.Client
 		return nil, err
 	}
 	client := &APIVersionsClient{
-	internal: cl,
+		internal: cl,
 	}
 	return client, nil
 }
@@ -55,7 +55,7 @@ func (client *APIVersionsClient) BeginCreateOrUpdate(ctx context.Context, planeN
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[APIVersionsClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -118,9 +118,9 @@ func (client *APIVersionsClient) createOrUpdateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete an API version.
@@ -140,7 +140,7 @@ func (client *APIVersionsClient) BeginDelete(ctx context.Context, planeName stri
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[APIVersionsClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -282,13 +282,13 @@ func (client *APIVersionsClient) getHandleResponse(resp *http.Response) (APIVers
 //   - resourceProviderName - The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.
 //   - resourceTypeName - The resource type name.
 //   - options - APIVersionsClientListOptions contains the optional parameters for the APIVersionsClient.NewListPager method.
-func (client *APIVersionsClient) NewListPager(planeName string, resourceProviderName string, resourceTypeName string, options *APIVersionsClientListOptions) (*runtime.Pager[APIVersionsClientListResponse]) {
+func (client *APIVersionsClient) NewListPager(planeName string, resourceProviderName string, resourceTypeName string, options *APIVersionsClientListOptions) *runtime.Pager[APIVersionsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[APIVersionsClientListResponse]{
 		More: func(page APIVersionsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *APIVersionsClientListResponse) (APIVersionsClientListResponse, error) {
-		ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "APIVersionsClient.NewListPager")
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "APIVersionsClient.NewListPager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -300,7 +300,7 @@ func (client *APIVersionsClient) NewListPager(planeName string, resourceProvider
 				return APIVersionsClientListResponse{}, err
 			}
 			return client.listHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -339,4 +339,3 @@ func (client *APIVersionsClient) listHandleResponse(resp *http.Response) (APIVer
 	}
 	return result, nil
 }
-

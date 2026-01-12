@@ -19,7 +19,7 @@ import (
 // ApplicationsClient contains the methods for the Applications group.
 // Don't use this type directly, use NewApplicationsClient() instead.
 type ApplicationsClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &ApplicationsClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -51,7 +51,9 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 //     method.
 func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOrUpdateOptions) (ApplicationsClientCreateOrUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.CreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "ApplicationsClient.CreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, applicationName, resource, options)
 	if err != nil {
@@ -86,9 +88,9 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -108,7 +110,9 @@ func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Respon
 //   - options - ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
 func (client *ApplicationsClient) Delete(ctx context.Context, applicationName string, options *ApplicationsClientDeleteOptions) (ApplicationsClientDeleteResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.Delete", client.internal.Tracer(), nil)
+	const operationName = "ApplicationsClient.Delete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, applicationName, options)
 	if err != nil {
@@ -152,7 +156,9 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, appli
 //   - options - ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
 func (client *ApplicationsClient) Get(ctx context.Context, applicationName string, options *ApplicationsClientGetOptions) (ApplicationsClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.Get", client.internal.Tracer(), nil)
+	const operationName = "ApplicationsClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, applicationName, options)
 	if err != nil {
@@ -207,7 +213,9 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 //   - options - ApplicationsClientGetGraphOptions contains the optional parameters for the ApplicationsClient.GetGraph method.
 func (client *ApplicationsClient) GetGraph(ctx context.Context, applicationName string, body any, options *ApplicationsClientGetGraphOptions) (ApplicationsClientGetGraphResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.GetGraph", client.internal.Tracer(), nil)
+	const operationName = "ApplicationsClient.GetGraph"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getGraphCreateRequest(ctx, applicationName, body, options)
 	if err != nil {
@@ -242,9 +250,9 @@ func (client *ApplicationsClient) getGraphCreateRequest(ctx context.Context, app
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, body); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // getGraphHandleResponse handles the GetGraph response.
@@ -261,12 +269,13 @@ func (client *ApplicationsClient) getGraphHandleResponse(resp *http.Response) (A
 // Generated from API version 2025-08-01-preview
 //   - options - ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.NewListByScopePager
 //     method.
-func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) (*runtime.Pager[ApplicationsClientListByScopeResponse]) {
+func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) *runtime.Pager[ApplicationsClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ApplicationsClientListByScopeResponse]{
 		More: func(page ApplicationsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *ApplicationsClientListByScopeResponse) (ApplicationsClientListByScopeResponse, error) {
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ApplicationsClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -278,7 +287,7 @@ func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClien
 				return ApplicationsClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -316,7 +325,9 @@ func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response)
 //   - options - ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
 func (client *ApplicationsClient) Update(ctx context.Context, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (ApplicationsClientUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "ApplicationsClient.Update", client.internal.Tracer(), nil)
+	const operationName = "ApplicationsClient.Update"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, applicationName, properties, options)
 	if err != nil {
@@ -351,9 +362,9 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, appli
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -364,4 +375,3 @@ func (client *ApplicationsClient) updateHandleResponse(resp *http.Response) (App
 	}
 	return result, nil
 }
-

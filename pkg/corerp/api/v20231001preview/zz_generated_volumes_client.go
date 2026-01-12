@@ -19,7 +19,7 @@ import (
 // VolumesClient contains the methods for the Volumes group.
 // Don't use this type directly, use NewVolumesClient() instead.
 type VolumesClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewVolumesClient(rootScope string, credential azcore.TokenCredential, optio
 	}
 	client := &VolumesClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *VolumesClient) BeginCreateOrUpdate(ctx context.Context, volumeName
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[VolumesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *VolumesClient) createOrUpdateCreateRequest(ctx context.Context, vo
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a VolumeResource
@@ -126,7 +126,7 @@ func (client *VolumesClient) BeginDelete(ctx context.Context, volumeName string,
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[VolumesClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -236,7 +236,7 @@ func (client *VolumesClient) getHandleResponse(resp *http.Response) (VolumesClie
 //
 // Generated from API version 2023-10-01-preview
 //   - options - VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.NewListByScopePager method.
-func (client *VolumesClient) NewListByScopePager(options *VolumesClientListByScopeOptions) (*runtime.Pager[VolumesClientListByScopeResponse]) {
+func (client *VolumesClient) NewListByScopePager(options *VolumesClientListByScopeOptions) *runtime.Pager[VolumesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[VolumesClientListByScopeResponse]{
 		More: func(page VolumesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -253,7 +253,7 @@ func (client *VolumesClient) NewListByScopePager(options *VolumesClientListBySco
 				return VolumesClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -297,7 +297,7 @@ func (client *VolumesClient) BeginUpdate(ctx context.Context, volumeName string,
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[VolumesClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -347,8 +347,7 @@ func (client *VolumesClient) updateCreateRequest(ctx context.Context, volumeName
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

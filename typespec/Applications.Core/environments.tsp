@@ -50,7 +50,7 @@ model EnvironmentResource
 @doc("Environment properties")
 model EnvironmentProperties {
   @doc("The status of the asynchronous operation.")
-  @visibility("read")
+  @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
   @doc("The compute resource used by application environment.")
@@ -69,8 +69,8 @@ model EnvironmentProperties {
   recipeConfig?: RecipeConfigProperties;
 
   @doc("The environment extension.")
-  @extension("x-ms-identifiers", [])
-  extensions?: Array<Extension>;
+  @extension("x-ms-identifiers", #[])
+  extensions?: Array<global.Extension>;
 }
 
 @doc("Configuration for Recipes. Defines how each type of Recipe should be configured and run.")

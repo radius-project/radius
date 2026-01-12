@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Functional Tests (with Cloud Resources)
 
 permissions:
@@ -21,6 +23,7 @@ permissions:
   contents: read # Required for listing the commits
   packages: write # Required for uploading the package
   checks: write # Required for creating a check run
+  pull-requests: read # Required for fetching PR details
 
 on:
   # Enable manual trigger
@@ -35,7 +38,7 @@ on:
     - cron: "0 1,13,19 * * *"
   # Dispatch on external events
   repository_dispatch:
-    types: [de-functional-test]
+    types: [deployment-engine.run-functional-tests]
   workflow_run:
     workflows: ["Approve Functional Tests"]
     types:
@@ -86,8 +89,8 @@ env:
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
 jobs:
-  build:
-    name: Build Radius for test
+  setup:
+    name: Setup
     runs-on: ubuntu-latest
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
@@ -107,6 +110,7 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
+      BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
     steps:
       - name: Check out code
         uses: actions/checkout@v5
@@ -134,12 +138,6 @@ jobs:
             echo "Created At: ${{ github.event.workflow_run.created_at }}"
             echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
           fi
-      - name: Get GitHub app token
-        uses: tibdex/github-app-token@v2
-        id: get_installation_token
-        with:
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -159,6 +157,7 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
           echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "BASE_SHA=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -167,7 +166,7 @@ jobs:
           echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}" >> $GITHUB_ENV
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           submodules: recursive
 
@@ -178,67 +177,79 @@ jobs:
 
       - name: "Set PR context (workflow_run)"
         if: github.event_name == 'workflow_run'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PR_NUMBER: ${{ steps.get-pr-number.outputs.pr_number }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           script: |
             const payload = context.payload.workflow_run;
-            let fs = require('fs');
-            // Set environment variables
-            fs.appendFileSync(process.env.GITHUB_ENV,
-              `CHECKOUT_REPO=${payload.head_repository.full_name}\n`+
-              `CHECKOUT_REF=${payload.head_sha}\n` +
-              `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n`);
+            const fs = require('fs');
+            // Use env var to avoid syntax errors from newlines in the output
+            const prNumber = (process.env.PR_NUMBER || '').trim();
 
-      - name: Set DE image and tag (repository_dispatch from de-functional-test)
-        if: github.event_name == 'repository_dispatch'
-        uses: actions/github-script@v8
-        with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          script: |
-            const clientPayload = context.payload.client_payload;
-            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
-              var fs = require('fs');
-              // Set environment variables
-              fs.appendFileSync(process.env.GITHUB_ENV,
-                `DE_IMAGE=${clientPayload.de_image}\n`+
-                `DE_TAG=${clientPayload.de_tag}\n`+
-                `CHECKOUT_REPO=${{ github.repository }}\n`+
-                `CHECKOUT_REF=refs/heads/main`
+            let baseSha = '';
+            let checkoutRepo = payload.head_repository.full_name;
+            let checkoutRef = payload.head_sha;
+
+            // For fork PRs, payload.pull_requests is empty due to GitHub security restrictions.
+            // We need to fetch the PR details using the API to get the base SHA for change detection.
+            if (prNumber) {
+              try {
+                const { data: pr } = await github.rest.pulls.get({
+                  ...context.repo,
+                  pull_number: parseInt(prNumber, 10)
+                });
+
+                baseSha = pr.base?.sha || baseSha;
+
+                // Use PR head info which works for both fork and non-fork PRs
+                if (pr.head && pr.head.repo) {
+                  checkoutRepo = pr.head.repo.full_name;
+                  checkoutRef = pr.head.sha;
+                } else {
+                  console.log(`PR #${prNumber} head repo missing; falling back to workflow_run payload data.`);
+                }
+
+                console.log(`Fetched PR #${prNumber}: base_sha=${baseSha}, head_repo=${checkoutRepo}, head_sha=${checkoutRef}`);
+              } catch (error) {
+                console.log(`Warning: Could not fetch PR #${prNumber}: ${error.message}`);
+                // Fall back to workflow_run payload data
+                if (payload.pull_requests && payload.pull_requests.length > 0) {
+                  baseSha = payload.pull_requests[0].base.sha;
+                }
+              }
+            } else if (payload.pull_requests && payload.pull_requests.length > 0) {
+              // Fallback for cases where PR number artifact is not available
+              baseSha = payload.pull_requests[0].base.sha;
+            }
+
+            if (!baseSha) {
+              console.log(
+                `Warning: BASE_SHA is empty for workflow_run (PR: ${prNumber || 'n/a'}). Change detection may be skipped.`
               );
             }
 
-      - name: Check out code
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-          submodules: recursive
-      
-      - name: Copy Deployment Engine image to GHCR
-        if: github.event_name == 'repository_dispatch'
-        uses: ./.github/actions/copy-deployment-engine-image
-        env:
-          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
-        with:
-          tag: ${{ env.DE_TAG }}
-      
-      - name: Check out code
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-          submodules: recursive
+            // Set environment variables
+            fs.appendFileSync(
+              process.env.GITHUB_ENV,
+              `CHECKOUT_REPO=${checkoutRepo}\n` +
+                `CHECKOUT_REF=${checkoutRef}\n` +
+                `PR_NUMBER=${prNumber}\n` +
+                `BASE_SHA=${baseSha}\n`
+            );
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-          cache: true
+      - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
+        if: github.event_name == 'repository_dispatch'
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ github.event.client_payload.image_name }}
+          TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          {
+            echo "DE_IMAGE=${IMAGE_NAME}"
+            echo "DE_TAG=${TAG}"
+          } >> "$GITHUB_ENV"
 
       - name: Generate ID for release
         id: gen-id
@@ -256,13 +267,83 @@ jobs:
           echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
           echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
+          echo "BASE_SHA=${{ env.BASE_SHA }}" >> $GITHUB_OUTPUT
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+  changes:
+    name: Changes
+    needs: setup
+    uses: ./.github/workflows/__changes.yml
+    with:
+      ref: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      repository: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      base_sha: ${{ needs.setup.outputs.BASE_SHA }}
+    permissions:
+      contents: read
+      pull-requests: read
+
+  build:
+    name: Build Radius for test
+    needs: [setup, changes]
+    if: needs.changes.outputs.only_changed != 'true'
+    runs-on: ubuntu-latest
+    env:
+      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
+      PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
+      DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
+      DAPR_VER: "1.14.4"
+      ACTION_LINK: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    steps:
+      - name: Get GitHub app token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        id: get_installation_token
+        with:
+          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+
+      - name: Check out code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
+
+      - name: Copy Deployment Engine image to GHCR
+        if: github.event_name == 'repository_dispatch'
+        uses: ./.github/actions/copy-deployment-engine-image
+        env:
+          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
+          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
+          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
+        with:
+          tag: ${{ env.DE_TAG }}
+          src_image: ${{ env.DE_IMAGE }}
+          dest_image: ghcr.io/radius-project/deployment-engine
+
+      - name: Check out code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -280,10 +361,10 @@ jobs:
 
             | Name | Value |
             |------|-------|
-            |**Repository** | ${{ steps.gen-id.outputs.CHECKOUT_REPO }} |
-            |**Commit ref** | ${{ steps.gen-id.outputs.CHECKOUT_REF }} |
-            |**Unique ID** | ${{ steps.gen-id.outputs.UNIQUE_ID }} |
-            |**Image tag** | ${{ steps.gen-id.outputs.REL_VERSION }} |
+            |**Repository** | ${{ env.CHECKOUT_REPO }} |
+            |**Commit ref** | ${{ env.CHECKOUT_REF }} |
+            |**Unique ID** | ${{ env.UNIQUE_ID }} |
+            |**Image tag** | ${{ env.REL_VERSION }} |
 
             * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
@@ -303,13 +384,13 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -405,13 +486,13 @@ jobs:
           if-no-files-found: error
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+          name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -422,7 +503,7 @@ jobs:
           message: |
             :white_check_mark: Container images build succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -433,7 +514,7 @@ jobs:
           message: |
             :x: Container images build failed
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -445,23 +526,23 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
         with:
-          node-version: "18"
+          node-version-file: .node-version
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: radius_bicep_types_cloud
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
       - name: "Login via Azure CLI"
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
           client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
           tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
@@ -511,7 +592,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -522,7 +603,7 @@ jobs:
           message: |
             :white_check_mark: Recipe publishing succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -533,9 +614,33 @@ jobs:
           message: |
             :x: Test recipe publishing failed
 
+  skip-tests:
+    name: Skip Functional Tests
+    needs: [setup, changes]
+    if: needs.changes.outputs.only_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub app token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        id: get_installation_token
+        with:
+          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2.0.0
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: Functional Test Run
+          status: completed
+          conclusion: success
+          repo: ${{ github.repository }}
+          sha: ${{ needs.setup.outputs.CHECKOUT_REF }}
+          output: |
+            {"summary":"Skipped functional tests"}
+
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: [build]
+    needs: [setup, build]
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
@@ -547,25 +652,29 @@ jobs:
         name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     env:
-      UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
-      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-      CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
-      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
-      PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
-      RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
-      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
-      DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
-      DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
+      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            radius
+            terraform-private-modules
 
-      - uses: LouisBrunner/checks-action@v2.0.0
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
@@ -576,14 +685,14 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
 
       - name: Checkout Samples repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -591,26 +700,26 @@ jobs:
           path: samples
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
 
       - name: Download rad CLI
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
 
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
@@ -632,14 +741,14 @@ jobs:
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: ${{ env.HELM_VER }}
 
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@v5.1.0
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -712,6 +821,13 @@ jobs:
             ./kind load image-archive "$f" --name radius
           done
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Download Bicep
         run: |
           chmod +x ./bin/rad
@@ -724,7 +840,7 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -746,7 +862,7 @@ jobs:
             --set global.imageTag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
             --set global.azureWorkloadIdentity.enabled=true \
-            --set global.aws.irsa.enabled=true 
+            --set global.aws.irsa.enabled=true
 
           echo "*** Verify manifests are registered ***"
           rm -f registermanifest_logs.txt
@@ -814,7 +930,7 @@ jobs:
           rad credential register aws irsa \
             --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -854,14 +970,14 @@ jobs:
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
-          # Restore AWS Bicep types 
+          # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
-          mkdir -p ./dist/functional_test 
+          mkdir -p ./dist/functional_test
           cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
@@ -911,7 +1027,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -933,14 +1049,14 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
           path: recipes/pod-logs
           if-no-files-found: error
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -951,7 +1067,7 @@ jobs:
           message: |
             :white_check_mark: ${{ matrix.name }} functional tests succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -962,7 +1078,7 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
-      - uses: marocchino/sticky-pull-request-comment@v2
+      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: cancelled() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -984,18 +1100,18 @@ jobs:
 
   report-test-results:
     name: Report test results
-    needs: [build, tests]
+    needs: [setup, build, tests]
     runs-on: ubuntu-latest
     if: always()
     env:
-      CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
       - name: Get GitHub app token
-        uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
 
       - name: Get tests job status
         id: get_test_status
@@ -1018,7 +1134,7 @@ jobs:
           echo "Test Status: $TEST_STATUS"
           echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
 
-      - uses: LouisBrunner/checks-action@v2.0.0
+      - uses: LouisBrunner/checks-action@6b626ffbad7cc56fd58627f774b9067e6118af23 # v2.0.0
         if: always()
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
@@ -1038,7 +1154,7 @@ jobs:
     if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

@@ -19,7 +19,7 @@ import (
 // EnvironmentsClient contains the methods for the Environments group.
 // Don't use this type directly, use NewEnvironmentsClient() instead.
 type EnvironmentsClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &EnvironmentsClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -51,7 +51,9 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 //     method.
 func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (EnvironmentsClientCreateOrUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.CreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "EnvironmentsClient.CreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, environmentName, resource, options)
 	if err != nil {
@@ -86,9 +88,9 @@ func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Contex
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -108,7 +110,9 @@ func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Respon
 //   - options - EnvironmentsClientDeleteOptions contains the optional parameters for the EnvironmentsClient.Delete method.
 func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName string, options *EnvironmentsClientDeleteOptions) (EnvironmentsClientDeleteResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.Delete", client.internal.Tracer(), nil)
+	const operationName = "EnvironmentsClient.Delete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, environmentName, options)
 	if err != nil {
@@ -152,7 +156,9 @@ func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, envir
 //   - options - EnvironmentsClientGetOptions contains the optional parameters for the EnvironmentsClient.Get method.
 func (client *EnvironmentsClient) Get(ctx context.Context, environmentName string, options *EnvironmentsClientGetOptions) (EnvironmentsClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.Get", client.internal.Tracer(), nil)
+	const operationName = "EnvironmentsClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, environmentName, options)
 	if err != nil {
@@ -203,12 +209,13 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 // Generated from API version 2025-08-01-preview
 //   - options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.NewListByScopePager
 //     method.
-func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) (*runtime.Pager[EnvironmentsClientListByScopeResponse]) {
+func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) *runtime.Pager[EnvironmentsClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[EnvironmentsClientListByScopeResponse]{
 		More: func(page EnvironmentsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *EnvironmentsClientListByScopeResponse) (EnvironmentsClientListByScopeResponse, error) {
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "EnvironmentsClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -220,7 +227,7 @@ func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClien
 				return EnvironmentsClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -258,7 +265,9 @@ func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response)
 //   - options - EnvironmentsClientUpdateOptions contains the optional parameters for the EnvironmentsClient.Update method.
 func (client *EnvironmentsClient) Update(ctx context.Context, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (EnvironmentsClientUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "EnvironmentsClient.Update", client.internal.Tracer(), nil)
+	const operationName = "EnvironmentsClient.Update"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, environmentName, properties, options)
 	if err != nil {
@@ -293,9 +302,9 @@ func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, envir
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -306,4 +315,3 @@ func (client *EnvironmentsClient) updateHandleResponse(resp *http.Response) (Env
 	}
 	return result, nil
 }
-

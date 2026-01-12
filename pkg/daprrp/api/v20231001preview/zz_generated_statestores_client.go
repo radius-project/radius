@@ -19,7 +19,7 @@ import (
 // StateStoresClient contains the methods for the StateStores group.
 // Don't use this type directly, use NewStateStoresClient() instead.
 type StateStoresClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewStateStoresClient(rootScope string, credential azcore.TokenCredential, o
 	}
 	client := &StateStoresClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -57,7 +57,7 @@ func (client *StateStoresClient) BeginCreateOrUpdate(ctx context.Context, stateS
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[StateStoresClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -107,9 +107,9 @@ func (client *StateStoresClient) createOrUpdateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // BeginDelete - Delete a DaprStateStoreResource
@@ -126,7 +126,7 @@ func (client *StateStoresClient) BeginDelete(ctx context.Context, stateStoreName
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[StateStoresClientDeleteResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -237,7 +237,7 @@ func (client *StateStoresClient) getHandleResponse(resp *http.Response) (StateSt
 // Generated from API version 2023-10-01-preview
 //   - options - StateStoresClientListByScopeOptions contains the optional parameters for the StateStoresClient.NewListByScopePager
 //     method.
-func (client *StateStoresClient) NewListByScopePager(options *StateStoresClientListByScopeOptions) (*runtime.Pager[StateStoresClientListByScopeResponse]) {
+func (client *StateStoresClient) NewListByScopePager(options *StateStoresClientListByScopeOptions) *runtime.Pager[StateStoresClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[StateStoresClientListByScopeResponse]{
 		More: func(page StateStoresClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -254,7 +254,7 @@ func (client *StateStoresClient) NewListByScopePager(options *StateStoresClientL
 				return StateStoresClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -298,7 +298,7 @@ func (client *StateStoresClient) BeginUpdate(ctx context.Context, stateStoreName
 		}
 		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[StateStoresClientUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaLocation,
-			Tracer: client.internal.Tracer(),
+			Tracer:        client.internal.Tracer(),
 		})
 		return poller, err
 	} else {
@@ -348,8 +348,7 @@ func (client *StateStoresClient) updateCreateRequest(ctx context.Context, stateS
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
+		return nil, err
+	}
+	return req, nil
 }
-;	return req, nil
-}
-

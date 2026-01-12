@@ -88,4 +88,3 @@ type RecipePacksClientListByScopeOptions struct {
 type RecipePacksClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
-

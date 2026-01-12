@@ -1,5 +1,5 @@
 {
-  "operationId": "RabbitMqQueues_Get",
+  "operationId": "RabbitMQQueues_Get",
   "title": "Get a RabbitMQQueue resource",
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",

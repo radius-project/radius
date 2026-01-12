@@ -19,7 +19,7 @@ import (
 // RecipePacksClient contains the methods for the RecipePacks group.
 // Don't use this type directly, use NewRecipePacksClient() instead.
 type RecipePacksClient struct {
-	internal *arm.Client
+	internal  *arm.Client
 	rootScope string
 }
 
@@ -36,7 +36,7 @@ func NewRecipePacksClient(rootScope string, credential azcore.TokenCredential, o
 	}
 	client := &RecipePacksClient{
 		rootScope: rootScope,
-	internal: cl,
+		internal:  cl,
 	}
 	return client, nil
 }
@@ -51,7 +51,9 @@ func NewRecipePacksClient(rootScope string, credential azcore.TokenCredential, o
 //     method.
 func (client *RecipePacksClient) CreateOrUpdate(ctx context.Context, recipePackName string, resource RecipePackResource, options *RecipePacksClientCreateOrUpdateOptions) (RecipePacksClientCreateOrUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.CreateOrUpdate", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.CreateOrUpdate"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.createOrUpdateCreateRequest(ctx, recipePackName, resource, options)
 	if err != nil {
@@ -86,9 +88,9 @@ func (client *RecipePacksClient) createOrUpdateCreateRequest(ctx context.Context
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, resource); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
@@ -108,7 +110,9 @@ func (client *RecipePacksClient) createOrUpdateHandleResponse(resp *http.Respons
 //   - options - RecipePacksClientDeleteOptions contains the optional parameters for the RecipePacksClient.Delete method.
 func (client *RecipePacksClient) Delete(ctx context.Context, recipePackName string, options *RecipePacksClientDeleteOptions) (RecipePacksClientDeleteResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.Delete", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.Delete"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.deleteCreateRequest(ctx, recipePackName, options)
 	if err != nil {
@@ -152,7 +156,9 @@ func (client *RecipePacksClient) deleteCreateRequest(ctx context.Context, recipe
 //   - options - RecipePacksClientGetOptions contains the optional parameters for the RecipePacksClient.Get method.
 func (client *RecipePacksClient) Get(ctx context.Context, recipePackName string, options *RecipePacksClientGetOptions) (RecipePacksClientGetResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.Get", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.Get"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.getCreateRequest(ctx, recipePackName, options)
 	if err != nil {
@@ -203,12 +209,13 @@ func (client *RecipePacksClient) getHandleResponse(resp *http.Response) (RecipeP
 // Generated from API version 2025-08-01-preview
 //   - options - RecipePacksClientListByScopeOptions contains the optional parameters for the RecipePacksClient.NewListByScopePager
 //     method.
-func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientListByScopeOptions) (*runtime.Pager[RecipePacksClientListByScopeResponse]) {
+func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientListByScopeOptions) *runtime.Pager[RecipePacksClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[RecipePacksClientListByScopeResponse]{
 		More: func(page RecipePacksClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
 		Fetcher: func(ctx context.Context, page *RecipePacksClientListByScopeResponse) (RecipePacksClientListByScopeResponse, error) {
+			ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RecipePacksClient.NewListByScopePager")
 			nextLink := ""
 			if page != nil {
 				nextLink = *page.NextLink
@@ -220,7 +227,7 @@ func (client *RecipePacksClient) NewListByScopePager(options *RecipePacksClientL
 				return RecipePacksClientListByScopeResponse{}, err
 			}
 			return client.listByScopeHandleResponse(resp)
-			},
+		},
 		Tracer: client.internal.Tracer(),
 	})
 }
@@ -258,7 +265,9 @@ func (client *RecipePacksClient) listByScopeHandleResponse(resp *http.Response) 
 //   - options - RecipePacksClientUpdateOptions contains the optional parameters for the RecipePacksClient.Update method.
 func (client *RecipePacksClient) Update(ctx context.Context, recipePackName string, properties RecipePackResourceUpdate, options *RecipePacksClientUpdateOptions) (RecipePacksClientUpdateResponse, error) {
 	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, "RecipePacksClient.Update", client.internal.Tracer(), nil)
+	const operationName = "RecipePacksClient.Update"
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
+	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
 	req, err := client.updateCreateRequest(ctx, recipePackName, properties, options)
 	if err != nil {
@@ -293,9 +302,9 @@ func (client *RecipePacksClient) updateCreateRequest(ctx context.Context, recipe
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-;	return req, nil
+		return nil, err
+	}
+	return req, nil
 }
 
 // updateHandleResponse handles the Update response.
@@ -306,4 +315,3 @@ func (client *RecipePacksClient) updateHandleResponse(resp *http.Response) (Reci
 	}
 	return result, nil
 }
-

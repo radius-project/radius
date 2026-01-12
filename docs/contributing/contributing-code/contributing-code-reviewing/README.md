@@ -169,7 +169,7 @@ More details about those roles can be found in the [community repo](https://gith
 
 Approvers are expected to display good judgement, responsibility, and competence over the *top* of the code review pyramid (Style, Correctness, Design).
 
-It's likely that for for small changes a maintainer will delegate responsibility for approval to a maintainer working in the relevant area.
+It's likely that for small changes a maintainer will delegate responsibility for approval to a maintainer working in the relevant area.
 
 Approvers are responsible for enforcing the **completeness** of a change. Each pull-request that is merged to `main` must stand on its own merits. We do not allow a submitter to merge and then "follow up" to complete the work (for example merging a change without tests). If you encounter this situation, **DO NOT** merge the pull-request, ask the submitter to complete the work. If they are unable to do so, then it is appropriate to close the pull-request without merging.
 

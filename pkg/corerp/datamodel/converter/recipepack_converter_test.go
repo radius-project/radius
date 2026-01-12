@@ -56,7 +56,6 @@ func TestRecipePackDataModelToVersioned(t *testing.T) {
 					},
 				},
 				Properties: datamodel.RecipePackProperties{
-					Description: "Test recipe pack",
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
 							RecipeKind:     "bicep",
@@ -128,10 +127,6 @@ func TestRecipePackDataModelToVersioned(t *testing.T) {
 					require.Equal(t, tc.dataModel.Type, to.String(versionedResource.Type))
 					require.Equal(t, tc.dataModel.Location, to.String(versionedResource.Location))
 
-					if tc.dataModel.Properties.Description != "" {
-						require.Equal(t, tc.dataModel.Properties.Description, to.String(versionedResource.Properties.Description))
-					}
-
 					if len(tc.dataModel.Properties.ReferencedBy) > 0 {
 						require.Equal(t, len(tc.dataModel.Properties.ReferencedBy), len(versionedResource.Properties.ReferencedBy))
 					}
@@ -165,7 +160,6 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 						"env": "test"
 					},
 					"properties": {
-						"description": "Test recipe pack",
 						"recipes": {
 							"Applications.Core/containers": {
 								"recipeKind": "bicep",
@@ -207,7 +201,6 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 					},
 				},
 				Properties: datamodel.RecipePackProperties{
-					Description: "Test recipe pack",
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
 							RecipeKind:     "bicep",
@@ -383,7 +376,6 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 				} else {
 					require.Equal(t, tc.expected.Tags, result.Tags)
 				}
-				require.Equal(t, tc.expected.Properties.Description, result.Properties.Description)
 				require.Equal(t, tc.expected.Properties.ReferencedBy, result.Properties.ReferencedBy)
 
 				// Validate recipes
@@ -432,7 +424,6 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 			},
 		},
 		Properties: datamodel.RecipePackProperties{
-			Description: "Round-trip test recipe pack",
 			Recipes: map[string]*datamodel.RecipeDefinition{
 				"Applications.Core/containers": {
 					RecipeKind:     "bicep",
@@ -470,7 +461,6 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 	require.Equal(t, originalDataModel.Type, resultDataModel.Type)
 	require.Equal(t, originalDataModel.Location, resultDataModel.Location)
 	require.Equal(t, originalDataModel.Tags, resultDataModel.Tags)
-	require.Equal(t, originalDataModel.Properties.Description, resultDataModel.Properties.Description)
 	require.Equal(t, originalDataModel.Properties.ReferencedBy, resultDataModel.Properties.ReferencedBy)
 
 	// Validate recipes

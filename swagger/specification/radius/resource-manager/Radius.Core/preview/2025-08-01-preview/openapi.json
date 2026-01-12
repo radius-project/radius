@@ -1011,6 +1011,7 @@
     },
     "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
       "type": "object",
+      "title": "Tracked Resource",
       "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
       "properties": {
         "tags": {
@@ -1103,6 +1104,13 @@
           "description": "List of Recipe Pack resource IDs linked to this environment.",
           "items": {
             "type": "string"
+          }
+        },
+        "recipeParameters": {
+          "type": "object",
+          "description": "Recipe specific parameters that apply to all resources of a given type in this environment.",
+          "additionalProperties": {
+            "$ref": "#/definitions/RecipeParameterValue"
           }
         },
         "providers": {
@@ -1459,10 +1467,6 @@
           "description": "The status of the asynchronous operation",
           "readOnly": true
         },
-        "description": {
-          "type": "string",
-          "description": "Description of what this recipe pack provides"
-        },
         "referencedBy": {
           "type": "array",
           "description": "List of environment IDs that reference this recipe pack",
@@ -1535,6 +1539,11 @@
           "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
       ]
+    },
+    "RecipeParameterValue": {
+      "type": "object",
+      "description": "Recipe parameter configuration for a specific resource type.",
+      "additionalProperties": {}
     },
     "RecipeStatus": {
       "type": "object",
