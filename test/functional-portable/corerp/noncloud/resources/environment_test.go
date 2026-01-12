@@ -18,13 +18,17 @@ package resource_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_Environment(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Environment", start)
 	template := "testdata/corerp-resources-environment.bicep"
 	name := "corerp-resources-environment"
 

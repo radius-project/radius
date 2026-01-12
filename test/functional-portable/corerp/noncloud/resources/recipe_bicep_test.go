@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -42,6 +43,8 @@ import (
 
 // This tests parameters on the input side and values/secrets on the output side.
 func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_BicepRecipe_ParametersAndOutputs", start)
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-parametersandoutputs"
 
@@ -112,6 +115,8 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 
 // This test validates that the recipe context parameter is populated as expected.
 func Test_BicepRecipe_ContextParameter(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_BicepRecipe_ContextParameter", start)
 	t.Skip("https://github.com/radius-project/radius/issues/10002")
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-contextparameter"
@@ -177,6 +182,8 @@ func Test_BicepRecipe_ContextParameter(t *testing.T) {
 //
 // Each of these cases requires a distinct behavior from the driver.
 func Test_BicepRecipe_ResourceCreation(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_BicepRecipe_ResourceCreation", start)
 	templateFmt := "testdata/corerp-resources-recipe-bicep-resourcecreation.%s.bicep"
 	name := "corerp-resources-recipe-bicep-resourcecreation"
 
@@ -274,6 +281,8 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 }
 
 func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_BicepRecipe_ParameterNotDefined", start)
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-parameternotdefined"
 
@@ -336,6 +345,8 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 }
 
 func Test_BicepRecipe_WrongOutput(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_BicepRecipe_WrongOutput", start)
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-wrongoutput"
 	parameters := []string{
@@ -377,6 +388,8 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 }
 
 func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_BicepRecipe_ResourceCreationFailure", start)
 	template := "testdata/corerp-resources-recipe-bicep.bicep"
 	name := "corerp-resources-recipe-bicep-resourcecreationfailure"
 	parameters := []string{

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -29,6 +30,7 @@ import (
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,6 +39,8 @@ import (
 // This test exists as a smoke test that these APIs can be called safely. They are mainly used by the CLI
 // at this time, and this is a better way to get coverage.
 func Test_ResourceList(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_ResourceList", start)
 	options := rp.NewRPTestOptions(t)
 
 	// Extract the scope and client options from the management client so we can make our own API calls.

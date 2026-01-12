@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -30,6 +31,8 @@ import (
 )
 
 func Test_KubeMetadataCascade(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_KubeMetadataCascade", start)
 	template := "testdata/corerp-resources-kubemetadata-cascade.bicep"
 	name := "corerp-kmd-cascade-app"
 	appNamespace := "corerp-kmd-cascade-ns-corerp-kmd-cascade-app"

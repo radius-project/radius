@@ -19,10 +19,12 @@ package resource_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -34,6 +36,8 @@ import (
 // behaviors. Some functionality needs to be tested for each driver.
 
 func Test_Recipe_NotFound(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Recipe_NotFound", start)
 	template := "testdata/corerp-resources-recipe-notfound.bicep"
 	name := "corerp-resources-recipe-notfound"
 

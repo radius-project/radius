@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +56,8 @@ var (
 // - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service.
 func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_TerraformRecipe_KubernetesRedis", start)
 	template := "testdata/corerp-resources-terraform-redis.bicep"
 	name := "corerp-resources-terraform-redis"
 	appName := "corerp-resources-terraform-redis-app"
@@ -140,6 +143,8 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 // - Create an extender resource using a Terraform recipe that deploys Postgres on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service and a postgres db.
 func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_TerraformRecipe_KubernetesPostgres", start)
 	t.Skip("https://github.com/radius-project/radius/issues/10358")
 	template := "testdata/corerp-resources-terraform-postgres.bicep"
 	appName := "corerp-resources-terraform-pg-app"
@@ -234,6 +239,8 @@ func Test_TerraformRecipe_KubernetesPostgres(t *testing.T) {
 }
 
 func Test_TerraformRecipe_Context(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_TerraformRecipe_Context", start)
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
 	appNamespace := "corerp-resources-terraform-context-app"
@@ -328,6 +335,8 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 
 // Test_TerraformRecipe_ParametersAndOutputs Validates input parameters correctly set and output values/secrets are populated.
 func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_TerraformRecipe_ParametersAndOutputs", start)
 	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"
 	name := "corerp-resources-terraform-parametersandoutputs"
 
@@ -399,6 +408,8 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 
 // Test_TerraformRecipe_WrongOutput validates that a Terraform recipe with invalid "result" output schema returns an error.
 func Test_TerraformRecipe_WrongOutput(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_TerraformRecipe_WrongOutput", start)
 	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"
 	name := "corerp-resources-terraform-wrong-output"
 

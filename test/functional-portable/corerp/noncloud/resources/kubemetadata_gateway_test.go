@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -28,6 +29,8 @@ import (
 )
 
 func Test_Gateway_KubernetesMetadata(t *testing.T) {
+	start := time.Now()
+	defer testutil.LogTestTiming(t, "Test_Gateway_KubernetesMetadata", start)
 	t.Skip("Skipping test temporarily due to Bitnami repo issues affecting Contour installation - issue #10484")
 	template := "testdata/corerp-resources-gateway-kubernetesmetadata.bicep"
 	name := "corerp-resources-gateway-kme"
