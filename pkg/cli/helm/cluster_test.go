@@ -55,35 +55,20 @@ func Test_Helm_InstallRadius(t *testing.T) {
 			require.NoError(t, err)
 			return "Pulled", nil
 		}).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
-		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
-			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
-			require.NoError(t, err)
-			return "Pulled", nil
-		}).Times(1)
 
 	radiusRelease := &release.Release{
 		Name:  options.Radius.ReleaseName,
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
-	contourRelease := &release.Release{
-		Name:  options.Contour.ReleaseName,
-		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-	}
 
 	// Mock Helm Get
 	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	// Mock Helm Install
 	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", false).Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
 
 	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
@@ -101,19 +86,10 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	// Expect uninstall calls for Radius / Contour.
-	for _, c := range []struct {
-		releaseName string
-		ns          string
-	}{
-		{options.Radius.ReleaseName, options.Radius.Namespace},
-		{options.Contour.ReleaseName, options.Contour.Namespace},
-	} {
-		mockHelmClient.EXPECT().
-			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns, true).
-			Return(&release.UninstallReleaseResponse{}, nil).
-			Times(1)
-	}
+	mockHelmClient.EXPECT().
+		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace, true).
+		Return(&release.UninstallReleaseResponse{}, nil).
+		Times(1)
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
@@ -131,23 +107,11 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	// Radius missing, other releases present.
+	// Radius missing, Contour uninstall is skipped
 	mockHelmClient.EXPECT().
 		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace, true).
 		Return(&release.UninstallReleaseResponse{}, driver.ErrReleaseNotFound).
 		Times(1)
-
-	for _, c := range []struct {
-		releaseName string
-		ns          string
-	}{
-		{options.Contour.ReleaseName, options.Contour.Namespace},
-	} {
-		mockHelmClient.EXPECT().
-			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns, true).
-			Return(&release.UninstallReleaseResponse{}, nil).
-			Times(1)
-	}
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err) // ErrReleaseNotFound should be swallowed
@@ -184,9 +148,6 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return([]*release.Release{radiusRelease}, nil).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
-		Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	state, err := impl.CheckRadiusInstall(kubeContext)
 	require.NoError(t, err)
@@ -241,31 +202,17 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 			require.NoError(t, err)
 			return "Pulled", nil
 		}).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
-		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
-			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
-			require.NoError(t, err)
-			return "Pulled", nil
-		}).Times(1)
 
 	radiusRelease := &release.Release{
 		Name:  options.Radius.ReleaseName,
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
-	contourRelease := &release.Release{
-		Name:  options.Contour.ReleaseName,
-		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-	}
 
 	// Mock Helm Upgrade
 	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", false).Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
 
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
@@ -693,9 +640,6 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return([]*release.Release{radiusRelease}, nil).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
-		Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	state, err := impl.CheckRadiusInstall(kubeContext)
 	require.NoError(t, err)

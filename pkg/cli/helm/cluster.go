@@ -67,6 +67,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 		},
 		Contour: ContourChartOptions{
 			ChartOptions: ChartOptions{
+				Disabled:     true,
 				ChartVersion: ContourChartDefaultVersion,
 				Namespace:    RadiusSystemNamespace,
 				ReleaseName:  contourReleaseName,
@@ -229,37 +230,28 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
 
-	if clusterOptions.Contour.Disabled {
-		output.LogInfo("Contour is disabled, skipping installation")
-		return nil
+	// Contour installation is temporarily disabled due to Bitnami repository changes
+	// See: https://community.broadcom.com/tanzu/blogs/beltran-rueda-borrego/2025/08/18/how-to-prepare-for-the-bitnami-changes-coming-soon
+	if !clusterOptions.Contour.Disabled {
+		output.LogInfo(ContourDisabledReason)
+		output.LogInfo("For more information, see: https://community.broadcom.com/tanzu/blogs/beltran-rueda-borrego/2025/08/18/how-to-prepare-for-the-bitnami-changes-coming-soon")
 	}
-
-	// Install Contour
-	output.LogInfo("Installing Contour...")
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
-	}
-
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
-	if err != nil {
-		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
-	}
+	output.LogInfo("Skipping Contour installation")
 
 	return nil
 }
 
-// UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
+// UninstallRadius uninstalls Radius from the cluster using the provided options.
+// Note: Contour uninstallation is skipped due to Bitnami repository changes.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
 		return err
 	}
 
-	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
-		return err
-	}
+	// Skip Contour uninstall due to Bitnami repository changes
+	// If Contour cleanup is needed, it should be done manually
+	output.LogInfo("Skipping Contour uninstall (" + ContourDisabledReason + ")")
 
 	return nil
 }
@@ -317,12 +309,10 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		}
 	}
 
-	// Check if Contour is installed
-	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
-	if err != nil {
-		return InstallState{}, fmt.Errorf("failed to check Contour installation (release: %s, namespace: %s, context: %s): %w",
-			clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, kubeContext, err)
-	}
+	// Contour installation is disabled due to Bitnami repository changes
+	// Skip checking Contour status to avoid potential repository access issues
+	contourInstalled := false
+	contourVersion := ""
 
 	state := InstallState{
 		RadiusInstalled:  radiusInstalled,
@@ -350,16 +340,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	output.LogInfo("Radius upgrade complete")
 
-	output.LogInfo("Upgrading Contour...")
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
-	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
-	if err != nil {
-		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
-	}
-	output.LogInfo("Contour upgrade complete")
+	// Contour upgrade is temporarily disabled due to Bitnami repository changes
+	output.LogInfo("Skipping Contour upgrade (" + ContourDisabledReason + ")")
 
 	return nil
 }
