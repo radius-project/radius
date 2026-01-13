@@ -151,7 +151,8 @@ func Test_Run(t *testing.T) {
 						ResourceGroupName: to.Ptr("testResourceGroup"),
 					},
 					Aws: &v20250801preview.ProvidersAws{
-						Scope: to.Ptr("test-aws-scope"),
+						Region:    to.Ptr("us-west-2"),
+						AccountID: to.Ptr("testAWSAccount"),
 					},
 					Kubernetes: &v20250801preview.ProvidersKubernetes{
 						Namespace: to.Ptr("test-namespace"),

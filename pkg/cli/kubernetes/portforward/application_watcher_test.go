@@ -176,7 +176,7 @@ func createDeployment(name, value, revision string) *appsv1.Deployment {
 }
 
 func createDeploymentWatchFakes(objects ...runtime.Object) (*fake.Clientset, *watch.FakeWatcher) {
-	client := fake.NewSimpleClientset(objects...)
+	client := fake.NewClientset(objects...)
 	watcher := watch.NewFake()
 	client.PrependWatchReactor("deployments", k8stest.DefaultWatchReactor(watcher, nil))
 
