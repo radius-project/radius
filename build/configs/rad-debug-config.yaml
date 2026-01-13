@@ -1,0 +1,11 @@
+workspaces:
+  default: debug
+  items:
+    debug:
+      connection:
+        context: 'k3d-radius-debug'
+        kind: kubernetes
+        overrides:
+          ucp: http://localhost:9000
+      environment: /planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default
+      scope: /planes/radius/local/resourceGroups/default

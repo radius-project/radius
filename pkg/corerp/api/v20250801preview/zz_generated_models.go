@@ -394,8 +394,11 @@ type Providers struct {
 
 // ProvidersAws - The AWS cloud provider definition.
 type ProvidersAws struct {
-	// REQUIRED; Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'.
-	Scope *string
+	// REQUIRED; AWS account ID for AWS resources to be deployed into.
+	AccountID *string
+
+	// REQUIRED; AWS region for AWS resources to be deployed into.
+	Region *string
 }
 
 // ProvidersAzure - The Azure cloud provider definition.
