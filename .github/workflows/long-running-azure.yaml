@@ -154,7 +154,9 @@ jobs:
 
       - name: Install Radius CLI from official release
         run: |
-          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | /bin/bash
+          # Install the latest Radius CLI, including release candidates if available.
+          # The INCLUDE_RC environment variable tells the installer to consider RC versions.
+          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | INCLUDE_RC=true /bin/bash
           mkdir -p ./bin
           cp /usr/local/bin/rad ./bin/rad
           chmod +x ./bin/rad
@@ -395,7 +397,6 @@ jobs:
           # Enable Azure resource location verification in tests
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
