@@ -168,6 +168,13 @@ jobs:
           rad version
           echo "Radius CLI installed successfully"
 
+      - name: Checkout release codebase
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          # Read the entire script into memory before executing to prevent issues
+          # when git checkout overwrites the script file during execution.
+          bash -c "$(cat ./.github/scripts/checkout-release-codebase.sh)"
+
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
         with:
