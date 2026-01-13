@@ -102,7 +102,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 		// Doing a basic check that the recipe has a resource provisioned.
 		require.NotEmpty(t, recipe.Status.Resource)
 
-		client, err := generated.NewGenericResourcesClient(recipe.Status.Scope, recipe.Spec.Type, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(opts.Connection))
+		client, err := generated.NewGenericResourcesClient(recipe.Spec.Type, recipe.Status.Scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(opts.Connection))
 		require.NoError(t, err)
 
 		_, err = client.Get(ctx, recipe.Name, nil)
@@ -125,7 +125,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 		require.NotEmpty(t, deployment.Spec.Template.Spec.Containers[0].EnvFrom)
 
 		// Doing a basic check that the deployment has a resource provisioned.
-		client, err := generated.NewGenericResourcesClient(recipe.Status.Scope, "Applications.Core/containers", &aztoken.AnonymousCredential{}, sdk.NewClientOptions(opts.Connection))
+		client, err := generated.NewGenericResourcesClient("Applications.Core/containers", recipe.Status.Scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(opts.Connection))
 		require.NoError(t, err)
 
 		_, err = client.Get(ctx, deployment.Name, nil)

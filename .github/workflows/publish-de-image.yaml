@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       src_image:
-        description: 'Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)'
+        description: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
         required: true
       dest_image:
-        description: 'Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)'
+        description: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
         required: true
       tag:
-        description: 'Tag for the image (e.g. 1.0)'
+        description: Tag for the image (e.g. 1.0)
         required: true
   repository_dispatch:
     types: [deployment-engine.publish]
@@ -24,14 +24,15 @@ on:
 permissions: {}
 
 # secrets from GitHub organization
-  # ${{ secrets.GHCR_PASSWORD }}
-  # ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-  # ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-  # ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
+# ${{ secrets.GHCR_PASSWORD }}
+# ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
+# ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
+# ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   publish-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     environment:
       name: publish-de-image
     permissions:

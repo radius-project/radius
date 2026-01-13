@@ -1,7 +1,9 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-issue-forms.json
+---
 name: Engineering Improvement
 description: Report problems or suggestions to improve the Radius engineering processes and/or pipelines
-title: "<TITLE>"
-labels: ["maintenance"]
+title: <TITLE>
+labels: [maintenance]
 body:
   - type: markdown
     attributes:

@@ -37,6 +37,7 @@ import (
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	oraserr "oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -293,11 +294,31 @@ func (r *Runner) prepareDestination() (*remote.Repository, error) {
 	return dst, nil
 }
 
+// The 'br:' prefix indicates this is a Bicep OCI registry reference.
+// The target parameter should be the OCI reference without the 'br:' prefix (as stored in Runner.Target).
+func enhanceOCIError(target string, err error) error {
+	const helpMessage = "The target must be a valid Bicep OCI registry reference in the form 'br:<OCI-registry-hostname>/<module-path>:<tag>'."
+
+	// Display the target with the 'br:' prefix to match what the user provided
+	displayTarget := "br:" + target
+
+	// All OCI validation errors from oras-go (invalid repository, invalid tag,
+	// invalid registry, missing registry or repository) wrap errdef.ErrInvalidReference.
+	if errors.Is(err, oraserr.ErrInvalidReference) {
+		return clierrors.MessageWithCause(err,
+			"Invalid OCI reference in target %q.\n\n"+helpMessage,
+			displayTarget)
+	}
+
+	// Return the original error if we don't recognize it
+	return err
+}
+
 // extractDestination extracts the host, repo, and tag from the target
 func (r *Runner) extractDestination() (*destination, error) {
 	ref, err := registry.ParseReference(r.Target)
 	if err != nil {
-		return nil, err
+		return nil, enhanceOCIError(r.Target, err)
 	}
 
 	host := ref.Host()

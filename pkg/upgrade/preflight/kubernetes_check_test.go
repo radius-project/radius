@@ -37,7 +37,7 @@ func TestKubernetesConnectivityCheck_Properties(t *testing.T) {
 }
 
 func TestKubernetesConnectivityCheck_WithClientset(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	check := NewKubernetesConnectivityCheckWithClientset("test-context", clientset)
 
 	assert.Equal(t, "test-context", check.kubeContext)
@@ -49,7 +49,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 
 	t.Run("successful connection with permissions", func(t *testing.T) {
 		// Setup: namespace exists, deployments can be listed
-		clientset := fake.NewSimpleClientset(
+		clientset := fake.NewClientset(
 			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
 			},
@@ -65,7 +65,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 
 	t.Run("namespace not found", func(t *testing.T) {
 		// Setup: empty cluster
-		clientset := fake.NewSimpleClientset()
+		clientset := fake.NewClientset()
 
 		check := NewKubernetesConnectivityCheckWithClientset("test", clientset)
 		pass, msg, err := check.Run(ctx)
@@ -77,7 +77,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 
 	t.Run("insufficient permissions", func(t *testing.T) {
 		// Setup: namespace exists but can't list deployments
-		clientset := fake.NewSimpleClientset(
+		clientset := fake.NewClientset(
 			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
 			},
@@ -97,7 +97,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 	})
 
 	t.Run("connection failure", func(t *testing.T) {
-		clientset := fake.NewSimpleClientset()
+		clientset := fake.NewClientset()
 
 		// Simulate connection error on discovery calls
 		clientset.PrependReactor("*", "*", func(action clienttesting.Action) (bool, runtime.Object, error) {

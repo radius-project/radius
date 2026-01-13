@@ -1,7 +1,9 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-issue-forms.json
+---
 name: Bug Report
 description: Report broken functionality within Radius
-title: "<BUG TITLE>"
-labels: ["bug"]
+title: <BUG TITLE>
+labels: [bug]
 body:
   - type: markdown
     attributes:

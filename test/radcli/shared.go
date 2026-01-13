@@ -29,6 +29,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
@@ -69,6 +70,7 @@ type ValidateMocks struct {
 	Namespace                   *namespace.MockInterface
 	Prompter                    *prompt.MockInterface
 	Helm                        *helm.MockInterface
+	Bicep                       *bicep.MockInterface
 	ApplicationManagementClient *clients.MockApplicationsManagementClient
 	AzureClient                 *azure.MockClient
 	AWSClient                   *aws.MockClient
@@ -104,6 +106,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 					Namespace:                   namespace.NewMockInterface(ctrl),
 					Prompter:                    prompt.NewMockInterface(ctrl),
 					Helm:                        helm.NewMockInterface(ctrl),
+					Bicep:                       bicep.NewMockInterface(ctrl),
 					ApplicationManagementClient: clients.NewMockApplicationsManagementClient(ctrl),
 					AzureClient:                 azure.NewMockClient(ctrl),
 					AWSClient:                   aws.NewMockClient(ctrl),
@@ -115,6 +118,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				framework.NamespaceInterface = mocks.Namespace
 				framework.Prompter = mocks.Prompter
 				framework.HelmInterface = mocks.Helm
+				framework.Bicep = mocks.Bicep
 				framework.ConnectionFactory = &connections.MockFactory{
 					ApplicationsManagementClient: mocks.ApplicationManagementClient,
 				}
