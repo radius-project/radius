@@ -1078,7 +1078,8 @@ func Test_setupCloudProviders(t *testing.T) {
 			properties: &v20250801preview.EnvironmentProperties{
 				Providers: &v20250801preview.Providers{
 					Aws: &v20250801preview.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/account/account-id/regions/us-west-2"),
+						AccountID: to.Ptr("account-id"),
+						Region:    to.Ptr("us-west-2"),
 					},
 					Azure: &v20250801preview.ProvidersAzure{
 						SubscriptionID:    to.Ptr("test-subscription"),
@@ -1087,7 +1088,7 @@ func Test_setupCloudProviders(t *testing.T) {
 				},
 			},
 			expectedAWS: &clients.AWSProvider{
-				Scope: "/planes/aws/aws/account/account-id/regions/us-west-2",
+				Scope: "/planes/aws/aws/accounts/account-id/regions/us-west-2",
 			},
 			expectedAzure: &clients.AzureProvider{
 				Scope: "/planes/azure/azure/Subscriptions/test-subscription/ResourceGroups/test-rg",
@@ -1493,7 +1494,8 @@ func Test_ConfigureProviders(t *testing.T) {
 								ResourceGroupName: to.Ptr("test-rg-name"),
 							},
 							Aws: &v20250801preview.ProvidersAws{
-								Scope: to.Ptr("/planes/aws/aws/accounts/123456789012/regions/us-west-2"),
+								AccountID: to.Ptr("123456789012"),
+								Region:    to.Ptr("us-west-2"),
 							},
 						},
 					},

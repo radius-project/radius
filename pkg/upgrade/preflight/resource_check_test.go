@@ -39,7 +39,7 @@ func TestKubernetesResourceCheck_Properties(t *testing.T) {
 }
 
 func TestKubernetesResourceCheck_WithClientset(t *testing.T) {
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	check := NewKubernetesResourceCheckWithClientset("test-context", clientset)
 
 	assert.Equal(t, "test-context", check.kubeContext)
@@ -94,7 +94,7 @@ func TestKubernetesResourceCheck_Run(t *testing.T) {
 
 	t.Run("no nodes found - uses estimated usage", func(t *testing.T) {
 		// Create a scenario with no nodes but namespace exists (so estimated usage is used)
-		clientset := fake.NewSimpleClientset()
+		clientset := fake.NewClientset()
 		// Simulate error when getting radius deployments to force estimated usage
 		clientset.PrependReactor("list", "deployments", func(action clienttesting.Action) (bool, runtime.Object, error) {
 			return true, nil, fmt.Errorf("namespace not found")
@@ -110,7 +110,7 @@ func TestKubernetesResourceCheck_Run(t *testing.T) {
 	})
 
 	t.Run("connection failure", func(t *testing.T) {
-		clientset := fake.NewSimpleClientset()
+		clientset := fake.NewClientset()
 		clientset.PrependReactor("*", "*", func(action clienttesting.Action) (bool, runtime.Object, error) {
 			return true, nil, fmt.Errorf("connection refused")
 		})
@@ -229,5 +229,5 @@ func createRadiusDeployment(name, cpu, memory string, replicas int32) *appsv1.De
 }
 
 func createClientsetWithResources(objects ...runtime.Object) *fake.Clientset {
-	return fake.NewSimpleClientset(objects...)
+	return fake.NewClientset(objects...)
 }

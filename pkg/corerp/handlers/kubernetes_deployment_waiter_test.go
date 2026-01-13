@@ -138,7 +138,7 @@ func TestWaitUntilReady_NewResource(t *testing.T) {
 		},
 	}
 
-	clientset := fake.NewSimpleClientset(deployment)
+	clientset := fake.NewClientset(deployment)
 
 	// The deployment is not marked as ready till we find a replica set. Therefore, we need to create one.
 	addReplicaSetToDeployment(t, ctx, clientset, deployment)
@@ -177,7 +177,7 @@ func TestWaitUntilReady_Timeout(t *testing.T) {
 		},
 	}
 
-	deploymentClient := fake.NewSimpleClientset(deployment)
+	deploymentClient := fake.NewClientset(deployment)
 
 	handler := kubernetesHandler{
 		client: k8sutil.NewFakeKubeClient(nil),
@@ -214,7 +214,7 @@ func TestWaitUntilReady_DifferentResourceName(t *testing.T) {
 		},
 	}
 
-	clientset := fake.NewSimpleClientset(deployment)
+	clientset := fake.NewClientset(deployment)
 
 	handler := kubernetesHandler{
 		deploymentWaiter: &deploymentWaiter{
@@ -238,7 +238,7 @@ func TestWaitUntilReady_DifferentResourceName(t *testing.T) {
 
 func TestGetPodsInDeployment(t *testing.T) {
 	// Create a fake Kubernetes clientset
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	// Create a Deployment object
 	deployment := &v1.Deployment{
@@ -331,7 +331,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 
 func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	// Create a fake Kubernetes clientset
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	// Create a Deployment object
 	deployment := &v1.Deployment{
@@ -560,7 +560,7 @@ func TestCheckPodStatus(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	deploymentWaiter := NewDeploymentWaiter(fake.NewSimpleClientset())
+	deploymentWaiter := NewDeploymentWaiter(fake.NewClientset())
 	for _, tc := range podTests {
 		pod.Status.Conditions = tc.podCondition
 		pod.Status.ContainerStatuses = tc.containerStatus
@@ -577,7 +577,7 @@ func TestCheckPodStatus(t *testing.T) {
 
 func TestCheckAllPodsReady_Success(t *testing.T) {
 	// Create a fake Kubernetes clientset
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 
 	ctx := context.Background()
 
@@ -637,7 +637,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 
 func TestCheckAllPodsReady_Fail(t *testing.T) {
 	// Create a fake Kubernetes clientset
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 
 	ctx := context.Background()
 
@@ -704,7 +704,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 
 func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	ctx := context.Background()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
@@ -782,7 +782,7 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 
 func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	ctx := context.Background()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
@@ -854,7 +854,7 @@ func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
 
 func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	ctx := context.Background()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
@@ -939,7 +939,7 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 	generationMismatchDeployment.Generation = 2
 
 	// Create a fake Kubernetes fakeClient
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	ctx := context.Background()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, generationMismatchDeployment, metav1.CreateOptions{})
@@ -1015,7 +1015,7 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 
 func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 
 	deploymentNotProgressing := testDeployment.DeepCopy()
 
