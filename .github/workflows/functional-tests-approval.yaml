@@ -3,7 +3,11 @@
 name: Approve Functional Tests
 
 on:
-  pull_request:
+  # Trigger after build workflow completes successfully
+  workflow_run:
+    workflows: [Build and Test]
+    types:
+      - completed
     branches:
       - main
       - features/*
@@ -12,62 +16,10 @@ on:
 permissions: {}
 
 jobs:
-  wait-for-build:
-    name: Wait for Build to Complete
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      actions: read
-      contents: read
-    steps:
-      - name: Wait for build workflow to complete
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const head_sha = context.payload.pull_request.head.sha;
-            
-            console.log(`Waiting for build workflow to complete for SHA: ${head_sha}`);
-            
-            // Poll for up to 60 minutes
-            const maxAttempts = 360; // 60 minutes with 10 second intervals
-            let attempt = 0;
-            
-            while (attempt < maxAttempts) {
-              // Get workflow runs for this SHA
-              const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
-                owner,
-                repo,
-                head_sha,
-                workflow_id: 'build.yaml',
-                per_page: 1
-              });
-              
-              if (runs.workflow_runs.length > 0) {
-                const run = runs.workflow_runs[0];
-                console.log(`Build workflow status: ${run.status}, conclusion: ${run.conclusion}`);
-                
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('Build workflow completed successfully!');
-                    return;
-                  } else {
-                    core.setFailed(`Build workflow failed with conclusion: ${run.conclusion}`);
-                    return;
-                  }
-                }
-              }
-              
-              // Wait 10 seconds before checking again
-              await new Promise(resolve => setTimeout(resolve, 10000));
-              attempt++;
-            }
-            
-            core.setFailed('Timeout waiting for build workflow to complete');
-
   approve-functional-tests-run:
     name: Approve Functional Tests
-    needs: wait-for-build
+    # Only run if build workflow succeeded
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: functional-tests
@@ -77,16 +29,38 @@ jobs:
       - name: Checkout Radius repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
-      - name: Get PR number
-        run: |
-          mkdir -p ./pr
-          echo "${PR_NUMBER}" > ./pr/pr_number
-        env:
-          PR_NUMBER: ${{ github.event.number }}
+      - name: Get PR number from workflow_run
+        id: get-pr-number
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.payload.workflow_run.head_repository.owner.login}:${context.payload.workflow_run.head_branch}`
+            });
+            
+            if (pullRequests.length > 0) {
+              const prNumber = pullRequests[0].number;
+              console.log(`Found PR number: ${prNumber}`);
+              return prNumber;
+            } else {
+              console.log('No PR found for this workflow run');
+              return '';
+            }
 
       - name: Save PR number
+        if: steps.get-pr-number.outputs.result != ''
+        run: |
+          mkdir -p ./pr
+          echo "${{ steps.get-pr-number.outputs.result }}" > ./pr/pr_number
+
+      - name: Upload PR number artifact
+        if: steps.get-pr-number.outputs.result != ''
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: pr_number
