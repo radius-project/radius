@@ -177,7 +177,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 	labelSelector, err := CreateLabelSelectorForApplication("test-app")
 	require.NoError(t, err)
 
-	client := fake.NewSimpleClientset(objs...)
+	client := fake.NewClientset(objs...)
 	actual, err := findStaleReplicaSets(context.Background(), client, "default", "3", labelSelector)
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)

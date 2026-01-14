@@ -169,7 +169,7 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 		}
 		if envDatamodel.Properties.Providers.AWS != nil {
 			config.Providers.AWS = datamodel.ProvidersAWS{
-				Scope: envDatamodel.Properties.Providers.AWS.Scope,
+				Scope: "/planes/aws/aws/accounts/" + envDatamodel.Properties.Providers.AWS.AccountID + "/regions/" + envDatamodel.Properties.Providers.AWS.Region,
 			}
 		}
 	}
