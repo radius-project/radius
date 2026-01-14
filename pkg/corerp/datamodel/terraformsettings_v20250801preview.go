@@ -88,7 +88,7 @@ type SecretRef struct {
 // TerraformBackendConfiguration mirrors the Terraform backend block (type + config).
 type TerraformBackendConfiguration struct {
 	Type   string            `json:"type"`
-	Config map[string]any    `json:"config,omitempty"`
+	Config map[string]string `json:"config,omitempty"`
 }
 
 // TerraformLoggingConfiguration captures TF_LOG/TF_LOG_PATH settings.

@@ -202,10 +202,16 @@ func toTerraformBackendConfigurationDataModel(src *TerraformBackendConfiguration
 		return nil
 	}
 
-	return &datamodel.TerraformBackendConfiguration{
-		Type:   to.String(src.Type),
-		Config: src.Config,
+	result := &datamodel.TerraformBackendConfiguration{
+		Type: to.String(src.Type),
 	}
+
+	// Convert map[string]*string to map[string]string
+	if src.Config != nil {
+		result.Config = to.StringMap(src.Config)
+	}
+
+	return result
 }
 
 func fromTerraformBackendConfigurationDataModel(src *datamodel.TerraformBackendConfiguration) *TerraformBackendConfiguration {
@@ -213,10 +219,16 @@ func fromTerraformBackendConfigurationDataModel(src *datamodel.TerraformBackendC
 		return nil
 	}
 
-	return &TerraformBackendConfiguration{
-		Type:   to.Ptr(src.Type),
-		Config: src.Config,
+	result := &TerraformBackendConfiguration{
+		Type: to.Ptr(src.Type),
 	}
+
+	// Convert map[string]string to map[string]*string
+	if src.Config != nil {
+		result.Config = *to.StringMapPtr(src.Config)
+	}
+
+	return result
 }
 
 func toTerraformLoggingConfigurationDataModel(src *TerraformLoggingConfiguration) *datamodel.TerraformLoggingConfiguration {

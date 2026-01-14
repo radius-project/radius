@@ -118,14 +118,13 @@ model TerraformCredentialConfiguration {
   token?: SecretReference;
 }
 
-#suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("Terraform backend configuration matching the terraform block.")
-model TerraformBackendConfiguration extends Record<unknown> {
+model TerraformBackendConfiguration {
   @doc("Backend type (for example 'kubernetes').")
   type: string;
 
   @doc("Backend-specific configuration values.")
-  config?: Record<unknown>;
+  config?: Record<string>;
 }
 
 @doc("Logging options for Terraform executions.")

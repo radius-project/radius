@@ -166,8 +166,8 @@ func getTestModels() (*v20250801preview.TerraformSettingsResource, *datamodel.Te
 			},
 			Backend: &v20250801preview.TerraformBackendConfiguration{
 				Type: to.Ptr("kubernetes"),
-				Config: map[string]any{
-					"namespace": "radius-system",
+				Config: map[string]*string{
+					"namespace": to.Ptr("radius-system"),
 				},
 			},
 			Env: map[string]*string{
@@ -196,7 +196,7 @@ func getTestModels() (*v20250801preview.TerraformSettingsResource, *datamodel.Te
 			},
 			Backend: &datamodel.TerraformBackendConfiguration{
 				Type: "kubernetes",
-				Config: map[string]any{
+				Config: map[string]string{
 					"namespace": "radius-system",
 				},
 			},
@@ -223,8 +223,8 @@ func getTestModels() (*v20250801preview.TerraformSettingsResource, *datamodel.Te
 			},
 			Backend: &v20250801preview.TerraformBackendConfiguration{
 				Type: to.Ptr("kubernetes"),
-				Config: map[string]any{
-					"namespace": "radius-system",
+				Config: map[string]*string{
+					"namespace": to.Ptr("radius-system"),
 				},
 			},
 			Env: map[string]*string{

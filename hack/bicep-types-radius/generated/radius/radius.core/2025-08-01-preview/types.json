@@ -1730,9 +1730,6 @@
         "flags": 0,
         "description": "Backend-specific configuration values."
       }
-    },
-    "additionalProperties": {
-      "$ref": "#/81"
     }
   },
   {
@@ -1740,7 +1737,7 @@
     "name": "TerraformBackendConfigurationConfig",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/81"
+      "$ref": "#/0"
     }
   },
   {

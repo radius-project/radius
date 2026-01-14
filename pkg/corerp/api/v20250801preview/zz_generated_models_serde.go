@@ -1765,11 +1765,6 @@ func (t TerraformBackendConfiguration) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "config", t.Config)
 	populate(objectMap, "type", t.Type)
-	if t.AdditionalProperties != nil {
-		for key, val := range t.AdditionalProperties {
-			objectMap[key] = val
-		}
-	}
 	return json.Marshal(objectMap)
 }
 
@@ -1787,16 +1782,6 @@ func (t *TerraformBackendConfiguration) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "type":
 			err = unpopulate(val, "Type", &t.Type)
-			delete(rawMsg, key)
-		default:
-			if t.AdditionalProperties == nil {
-				t.AdditionalProperties = map[string]any{}
-			}
-			if val != nil {
-				var aux any
-				err = json.Unmarshal(val, &aux)
-				t.AdditionalProperties[key] = aux
-			}
 			delete(rawMsg, key)
 		}
 		if err != nil {

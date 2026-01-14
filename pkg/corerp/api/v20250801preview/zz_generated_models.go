@@ -686,11 +686,8 @@ type TerraformBackendConfiguration struct {
 	// REQUIRED; Backend type (for example 'kubernetes').
 	Type *string
 
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]any
-
 	// Backend-specific configuration values.
-	Config map[string]any
+	Config map[string]*string
 }
 
 // TerraformCliConfiguration - Terraform CLI configuration matching the terraformrc file.

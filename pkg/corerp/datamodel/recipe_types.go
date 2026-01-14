@@ -42,6 +42,7 @@ type TerraformConfigProperties struct {
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
 
 	// ProviderMirror specifies the Terraform provider mirror configuration.
+	// See: https://developer.hashicorp.com/terraform/cli/config/config-file#provider-installation
 	ProviderMirror *TerraformProviderMirrorConfig `json:"providerMirror,omitempty"`
 
 	// ModuleRegistries specifies configuration for Terraform module registries (e.g., Terraform Cloud/Enterprise).

@@ -58,9 +58,9 @@ func TestTerraformSettingsConvertVersionedToDataModel(t *testing.T) {
 			},
 			Backend: &TerraformBackendConfiguration{
 				Type: to.Ptr("kubernetes"),
-				Config: map[string]any{
-					"secretSuffix": "prod-terraform-state",
-					"namespace":    "radius-system",
+				Config: map[string]*string{
+					"secretSuffix": to.Ptr("prod-terraform-state"),
+					"namespace":    to.Ptr("radius-system"),
 				},
 			},
 			Env: map[string]*string{
@@ -156,7 +156,7 @@ func TestTerraformSettingsConvertDataModelToVersioned(t *testing.T) {
 			},
 			Backend: &datamodel.TerraformBackendConfiguration{
 				Type: "kubernetes",
-				Config: map[string]any{
+				Config: map[string]string{
 					"namespace": "terraform",
 				},
 			},
@@ -197,7 +197,7 @@ func TestTerraformSettingsConvertDataModelToVersioned(t *testing.T) {
 	// Backend
 	require.NotNil(t, versionedResource.Properties.Backend)
 	require.Equal(t, to.Ptr("kubernetes"), versionedResource.Properties.Backend.Type)
-	require.Equal(t, "terraform", versionedResource.Properties.Backend.Config["namespace"])
+	require.Equal(t, to.Ptr("terraform"), versionedResource.Properties.Backend.Config["namespace"])
 
 	// Env
 	require.Equal(t, map[string]*string{

@@ -64,7 +64,7 @@ func TestTerraformSettingsDataModelToVersioned(t *testing.T) {
 					},
 					Backend: &datamodel.TerraformBackendConfiguration{
 						Type: "kubernetes",
-						Config: map[string]any{
+						Config: map[string]string{
 							"namespace": "radius-system",
 						},
 					},
@@ -273,7 +273,7 @@ func TestTerraformSettingsRoundTripConversion(t *testing.T) {
 			},
 			Backend: &datamodel.TerraformBackendConfiguration{
 				Type: "kubernetes",
-				Config: map[string]any{
+				Config: map[string]string{
 					"namespace":    "radius-system",
 					"secretSuffix": "prod-state",
 				},

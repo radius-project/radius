@@ -2207,17 +2207,13 @@
         "config": {
           "type": "object",
           "description": "Backend-specific configuration values.",
-          "additionalProperties": {}
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [
         "type"
-      ],
-      "allOf": [
-        {
-          "type": "object",
-          "additionalProperties": {}
-        }
       ]
     },
     "TerraformCliConfiguration": {
