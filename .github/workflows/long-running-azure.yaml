@@ -145,13 +145,6 @@ jobs:
           path: samples
           persist-credentials: false
 
-      - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-          cache: true
-
       - name: Install Radius CLI from official release
         run: |
           # Install the latest Radius CLI, including release candidates if available.
@@ -174,6 +167,13 @@ jobs:
           # Read the entire script into memory before executing to prevent issues
           # when git checkout overwrites the script file during execution.
           bash -c "$(cat ./.github/scripts/checkout-release-codebase.sh)"
+
+      - name: Setup Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
 
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0

@@ -85,6 +85,21 @@ main() {
         exit 1
     fi
 
+    # Validate that we have a proper semantic version, not "edge"
+    if [[ "${release_version}" == "edge" ]]; then
+        echo "Error: CLI reports 'edge' version instead of a release version."
+        echo "This script requires an official Radius release to be installed."
+        echo "Please verify that the Radius CLI was installed from an official release."
+        exit 1
+    fi
+
+    # Validate version format (should be semver like X.Y.Z or X.Y.Z-rcN)
+    if ! [[ "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+        echo "Error: Invalid version format '${release_version}'"
+        echo "Expected semantic version format (e.g., '0.54.0' or '0.54.0-rc1')"
+        exit 1
+    fi
+
     local release_tag="v${release_version}"
     echo "Installed Radius version: ${release_version}"
     echo "Release tag: ${release_tag}"
@@ -106,11 +121,27 @@ main() {
     git checkout "${release_tag}" -- .
 
     echo ""
+    echo "Updating submodules to match release tag..."
+    git submodule update --init --recursive
+
+    echo ""
     echo "Restoring workflow infrastructure from ${GITHUB_SHA}..."
     rm -rf .github build
     cp -r "${temp_dir}/.github" .github
     cp -r "${temp_dir}/build" build
     rm -rf "${temp_dir}"
+
+    echo ""
+    echo "Verifying checkout..."
+    local checkout_version
+    checkout_version=$(git describe --tags --always 2>/dev/null || echo "unknown")
+    echo "Git describe output: ${checkout_version}"
+    
+    # Verify that go.mod exists (basic sanity check)
+    if [[ ! -f "go.mod" ]]; then
+        echo "Error: go.mod not found after checkout. Something went wrong."
+        exit 1
+    fi
 
     echo ""
     echo "============================================================================"
