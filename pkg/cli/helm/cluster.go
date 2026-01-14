@@ -356,8 +356,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to check Contour installation status: %w", err)
 	}
 
-	if !state.ContourInstalled {
-		output.LogInfo("Contour is not installed, skipping Contour upgrade")
+	if !state.ContourInstalled || clusterOptions.Contour.Disabled {
+		output.LogInfo("Contour is not installed or is disabled, skipping Contour upgrade")
 		return nil
 	}
 
