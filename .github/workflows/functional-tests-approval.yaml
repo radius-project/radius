@@ -21,7 +21,7 @@ jobs:
       contents: read
       actions: read
     outputs:
-      build-completed: ${{ steps.check-build.outputs.completed }}
+      build-completed: ${{ steps.check-build.outputs.result }}
     steps:
       - name: Wait for build workflow to complete
         id: check-build
