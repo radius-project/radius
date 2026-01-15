@@ -16,7 +16,8 @@
 
 # Commit and release info is used by multiple categories of commands
 
-GIT_COMMIT  = $(shell git rev-list -1 HEAD)
+# GIT_COMMIT can be overridden from environment variable
+GIT_COMMIT  ?= $(shell git rev-list -1 HEAD)
 GIT_VERSION = $(shell git describe --always --abbrev=7 --dirty --tags)
 
 REL_VERSION ?= edge
