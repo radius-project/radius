@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Unit Tests
+
+on:
+  workflow_run:
+    workflows: [Build and Test]
+    types:
+      - completed
+    branches:
+      - main
+      - features/*
+      - release/*
+
+permissions: {}
+
+env:
+  GOTESTSUMVERSION: 1.12.0
+
+jobs:
+  unit-tests:
+    name: Run Unit Tests
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout Radius repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: .python-version
+
+      - name: Run make test (unit tests)
+        env:
+          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
+          GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
+        run: |
+          mkdir -p ./dist/unit_test
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
+          make test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          codecov_yml_path: ./.codecov.yml
+          files: ./dist/unit_test/ut_coverage.out
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Process Unit Test Results
+        uses: ./.github/actions/process-test-results
+        if: always()
+        with:
+          test_group_name: Unit Tests
+          artifact_name: unit_test_results
+          result_directory: dist/unit_test/

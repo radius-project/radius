@@ -58,6 +58,11 @@ endif
 test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
 
+.PHONY: test-compile
+test-compile: test-get-envtools ## Compiles all tests without running them
+	@echo "$(ARROW) Compiling unit tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -c ./pkg/... -o /dev/null
+
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."
