@@ -138,7 +138,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python (for version script)
-        if: github.event_name != 'workflow_run' || github.event.workflow_run.name == 'Build and Test'
+        if: github.event_name != 'workflow_run'
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: .python-version
@@ -147,7 +147,7 @@ jobs:
         if: github.event_name != 'workflow_run' || github.event.workflow_run.name == 'Build and Test'
         id: gen-id-local
         run: |
-          # For workflow_run from Build and Test (merge to main), or non-PR events, generate a unique ID
+          # For workflow_run events or non-PR events, generate a unique ID
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
             BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
             if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
