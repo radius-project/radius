@@ -163,7 +163,7 @@ jobs:
           fi
 
       - name: Generate ID for release (workflow_run - from build artifacts)
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
         id: gen-id-workflow
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
@@ -189,7 +189,7 @@ jobs:
       - name: Set output variables
         id: gen-id
         run: |
-          if [ "$GITHUB_EVENT_NAME" == "workflow_run" ]; then
+          if [ "$GITHUB_EVENT_NAME" == "workflow_run" ] && [ "${{ github.event.workflow_run.name }}" == "Approve Functional Tests" ]; then
             REL_VERSION="${{ steps.gen-id-workflow.outputs.REL_VERSION }}"
           else
             REL_VERSION="${{ steps.gen-id-local.outputs.REL_VERSION }}"
@@ -296,8 +296,8 @@ jobs:
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
-      - name: Download container image artifacts (workflow_run)
-        if: github.event_name == 'workflow_run'
+      - name: Download container image artifacts (workflow_run from PR approval)
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: container-images-${{ env.REL_VERSION }}
@@ -306,8 +306,8 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Load container images (workflow_run)
-        if: github.event_name == 'workflow_run'
+      - name: Load container images (workflow_run from PR approval)
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
         run: make docker-load-images
 
       - name: Create a secure local registry
