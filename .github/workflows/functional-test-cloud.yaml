@@ -36,9 +36,8 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  # Wait for build or approval workflow to complete
   workflow_run:
-    workflows: [Build and Test, Approve Functional Tests]
+    workflows: [Approve Functional Tests]
     types:
       - completed
 
@@ -90,13 +89,9 @@ jobs:
     name: Setup
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    if: |
-      github.event_name == 'repository_dispatch' ||
+    if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'workflow_run' && 
-        github.event.workflow_run.conclusion == 'success' && 
-        (github.event.workflow_run.name == 'Approve Functional Tests' || 
-         github.event.workflow_run.event != 'pull_request')) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       github.event_name == 'workflow_dispatch'
     permissions:
       contents: read # Required for listing the commits
@@ -116,7 +111,6 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
       BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
-      BUILD_RUN_ID: ${{ steps.find-build-run.outputs.BUILD_RUN_ID || '' }}
     steps:
       - name: Log Event Information
         run: |
@@ -283,39 +277,6 @@ jobs:
             echo "BASE_SHA=${{ env.BASE_SHA }}"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Find Build workflow run ID (workflow_run from Approve)
-        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
-        id: find-build-run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        with:
-          script: |
-            const headSha = context.payload.workflow_run.head_sha;
-            console.log(`Looking for Build workflow run with head_sha: ${headSha}`);
-            
-            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              event: 'pull_request',
-              head_sha: headSha,
-              per_page: 100
-            });
-            
-            const buildRun = workflowRuns.workflow_runs.find(run => 
-              run.name === 'Build and Test' && 
-              run.head_sha === headSha &&
-              run.status === 'completed' &&
-              run.conclusion === 'success'
-            );
-            
-            if (!buildRun) {
-              core.setFailed('No successful Build and Test workflow run found');
-              return;
-            }
-            
-            console.log(`Found Build workflow run: ${buildRun.id}`);
-            core.setOutput('BUILD_RUN_ID', buildRun.id.toString());
-            core.exportVariable('BUILD_RUN_ID', buildRun.id.toString());
-
   changes:
     name: Changes
     needs: setup
@@ -348,7 +309,6 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
-      BUILD_RUN_ID: ${{ needs.setup.outputs.BUILD_RUN_ID }}
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
@@ -441,31 +401,7 @@ jobs:
           message: |
             :hourglass: Building Radius and pushing container images for functional tests...
 
-      - name: Download container image artifacts (PR)
-        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: container-images-${{ env.REL_VERSION }}
-          path: ./dist/images/
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ env.BUILD_RUN_ID }}
-
-      - name: Load container images (PR)
-        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
-        run: make docker-load-images
-
-      - name: Push images to GHCR (PR)
-        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
-        run: |
-          for img in applications-rp controller dynamic-rp ucpd bicep pre-upgrade; do
-            docker tag ghcr.io/radius-project/dev/${img}:${{ env.REL_VERSION }} \
-              ${{ env.CONTAINER_REGISTRY }}/${img}:${{ env.REL_VERSION }}
-            docker push ${{ env.CONTAINER_REGISTRY }}/${img}:${{ env.REL_VERSION }}
-          done
-
-      - name: Build and Push container images (non-PR)
-        if: github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Approve Functional Tests'
+      - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
         env:

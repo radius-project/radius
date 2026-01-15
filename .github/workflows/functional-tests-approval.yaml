@@ -3,7 +3,6 @@
 name: Approve Functional Tests
 
 on:
-  # Trigger on PR to show as a PR check
   pull_request:
     branches:
       - main
@@ -13,86 +12,8 @@ on:
 permissions: {}
 
 jobs:
-  wait-for-build:
-    name: Wait for Build to Complete
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      actions: read
-    outputs:
-      build-completed: ${{ steps.check-build.outputs.result }}
-    steps:
-      - name: Wait for build workflow to complete
-        id: check-build
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const maxAttempts = 180; // 30 minutes max (10 second intervals)
-            const delay = 10000; // 10 seconds
-            let buildRunFound = false;
-            
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              console.log(`Checking build status (attempt ${attempt}/${maxAttempts})...`);
-              
-              // Get workflow runs for the same commit
-              const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                event: 'pull_request',
-                head_sha: context.payload.pull_request.head.sha,
-                per_page: 100
-              });
-              
-              // Find the "Build and Test" workflow run
-              const buildRun = workflowRuns.workflow_runs.find(run => 
-                run.name === 'Build and Test' && 
-                run.head_sha === context.payload.pull_request.head.sha
-              );
-              
-              if (buildRun) {
-                buildRunFound = true;
-                console.log(`Build workflow status: ${buildRun.status}, conclusion: ${buildRun.conclusion}`);
-                
-                if (buildRun.status === 'completed') {
-                  if (buildRun.conclusion === 'success') {
-                    console.log('Build completed successfully!');
-                    console.log('Setting output: build-completed=success');
-                    core.setOutput('result', 'success');
-                    return 'success';
-                  } else {
-                    console.log(`Build failed with conclusion: ${buildRun.conclusion}`);
-                    console.log('Setting output: build-completed=failed');
-                    core.setOutput('result', 'failed');
-                    core.setFailed(`Build workflow failed with conclusion: ${buildRun.conclusion}`);
-                    return 'failed';
-                  }
-                }
-              } else if (attempt === 1) {
-                console.log('Build workflow not found yet, waiting for it to start...');
-              } else if (!buildRunFound && attempt > 30) {
-                // After 5 minutes, if still no build workflow, something is wrong
-                console.log('Setting output: build-completed=not-found');
-                core.setOutput('result', 'not-found');
-                core.setFailed('Build workflow did not start within 5 minutes');
-                return 'not-found';
-              }
-              
-              // Wait before next attempt
-              if (attempt < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-              }
-            }
-            
-            console.log('Setting output: build-completed=timeout');
-            core.setOutput('result', 'timeout');
-            core.setFailed('Build workflow did not complete within timeout period');
-            return 'timeout';
-
   approve-functional-tests-run:
     name: Approve Functional Tests
-    needs: wait-for-build
-    if: needs.wait-for-build.outputs.build-completed == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: functional-tests
@@ -104,12 +25,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Save PR number
+      - name: Get PR number
         run: |
           mkdir -p ./pr
-          echo "${{ github.event.pull_request.number }}" > ./pr/pr_number
+          echo "${PR_NUMBER}" > ./pr/pr_number
+        env:
+          PR_NUMBER: ${{ github.event.number }}
 
-      - name: Upload PR number artifact
+      - name: Save PR number
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: pr_number
