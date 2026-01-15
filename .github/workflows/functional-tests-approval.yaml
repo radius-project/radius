@@ -3,6 +3,7 @@
 name: Approve Functional Tests
 
 on:
+  # Trigger on PR to show as a PR check
   pull_request:
     branches:
       - main
@@ -17,57 +18,72 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
-      actions: read
       contents: read
+      actions: read
+    outputs:
+      build-completed: ${{ steps.check-build.outputs.result }}
     steps:
       - name: Wait for build workflow to complete
+        id: check-build
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
-            const { owner, repo } = context.repo;
-            const head_sha = context.payload.pull_request.head.sha;
+            const maxAttempts = 180; // 30 minutes max (10 second intervals)
+            const delay = 10000; // 10 seconds
+            let buildRunFound = false;
             
-            console.log(`Waiting for build workflow to complete for SHA: ${head_sha}`);
-            
-            // Poll for up to 60 minutes
-            const maxAttempts = 360; // 60 minutes with 10 second intervals
-            let attempt = 0;
-            
-            while (attempt < maxAttempts) {
-              // Get workflow runs for this SHA
-              const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
-                owner,
-                repo,
-                head_sha,
-                workflow_id: 'build.yaml',
-                per_page: 1
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              console.log(`Checking build status (attempt ${attempt}/${maxAttempts})...`);
+              
+              // Get workflow runs for the same commit
+              const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                event: 'pull_request',
+                head_sha: context.payload.pull_request.head.sha,
+                per_page: 100
               });
               
-              if (runs.workflow_runs.length > 0) {
-                const run = runs.workflow_runs[0];
-                console.log(`Build workflow status: ${run.status}, conclusion: ${run.conclusion}`);
+              // Find the "Build and Test" workflow run
+              const buildRun = workflowRuns.workflow_runs.find(run => 
+                run.name === 'Build and Test' && 
+                run.head_sha === context.payload.pull_request.head.sha
+              );
+              
+              if (buildRun) {
+                buildRunFound = true;
+                console.log(`Build workflow status: ${buildRun.status}, conclusion: ${buildRun.conclusion}`);
                 
-                if (run.status === 'completed') {
-                  if (run.conclusion === 'success') {
-                    console.log('Build workflow completed successfully!');
-                    return;
+                if (buildRun.status === 'completed') {
+                  if (buildRun.conclusion === 'success') {
+                    console.log('Build completed successfully!');
+                    return 'success';
                   } else {
-                    core.setFailed(`Build workflow failed with conclusion: ${run.conclusion}`);
-                    return;
+                    core.setFailed(`Build workflow failed with conclusion: ${buildRun.conclusion}`);
+                    return 'failed';
                   }
                 }
+              } else if (attempt === 1) {
+                console.log('Build workflow not found yet, waiting for it to start...');
+              } else if (!buildRunFound && attempt > 30) {
+                // After 5 minutes, if still no build workflow, something is wrong
+                core.setFailed('Build workflow did not start within 5 minutes');
+                return 'not-found';
               }
               
-              // Wait 10 seconds before checking again
-              await new Promise(resolve => setTimeout(resolve, 10000));
-              attempt++;
+              // Wait before next attempt
+              if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
             }
             
-            core.setFailed('Timeout waiting for build workflow to complete');
+            core.setFailed('Build workflow did not complete within timeout period');
+            return 'timeout';
 
   approve-functional-tests-run:
     name: Approve Functional Tests
     needs: wait-for-build
+    if: needs.wait-for-build.outputs.build-completed == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: functional-tests
@@ -79,14 +95,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Get PR number
+      - name: Save PR number
         run: |
           mkdir -p ./pr
-          echo "${PR_NUMBER}" > ./pr/pr_number
-        env:
-          PR_NUMBER: ${{ github.event.number }}
+          echo "${{ github.event.pull_request.number }}" > ./pr/pr_number
 
-      - name: Save PR number
+      - name: Upload PR number artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: pr_number
