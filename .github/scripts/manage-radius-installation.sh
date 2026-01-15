@@ -44,6 +44,23 @@ get_cli_version() {
     rad version | grep -A1 "RELEASE" | tail -1 | awk '{print $1}'
 }
 
+# Install Radius on the cluster
+install_radius() {
+    echo "Installing Radius..."
+    if ! rad install kubernetes \
+        --set global.azureWorkloadIdentity.enabled=true \
+        --set database.enabled=true; then
+        echo ""
+        echo "============================================================================"
+        echo "ERROR: Radius installation failed"
+        echo "============================================================================"
+        echo "The installation could not be completed."
+        echo "Please check the error message above for details."
+        exit 1
+    fi
+    echo "Radius installation complete."
+}
+
 main() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         usage
@@ -83,19 +100,22 @@ main() {
     # Determine action based on control plane status
     if [[ "${cp_status}" == "Not" ]]; then
         echo ""
-        echo "Radius is not installed on the cluster. Installing..."
-        if ! rad install kubernetes \
-            --set global.azureWorkloadIdentity.enabled=true \
-            --set database.enabled=true; then
+        echo "Radius is not installed on the cluster."
+        install_radius
+    elif [[ "${cp_version}" == "edge" ]]; then
+        echo ""
+        echo "Edge version detected. Uninstalling and reinstalling with release version..."
+        if ! rad uninstall kubernetes --purge --yes; then
             echo ""
             echo "============================================================================"
-            echo "ERROR: Radius installation failed"
+            echo "ERROR: Radius uninstall failed"
             echo "============================================================================"
-            echo "The installation could not be completed."
+            echo "The uninstall could not be completed."
             echo "Please check the error message above for details."
             exit 1
         fi
-        echo "Radius installation complete."
+        echo "Radius uninstall complete."
+        install_radius
     elif [[ "${cp_version}" == "${cli_version}" ]]; then
         echo ""
         echo "Radius control plane version matches CLI version (${cli_version}). No action needed."
