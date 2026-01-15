@@ -42,7 +42,7 @@ concurrency:
 
 env:
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUMVERSION: 1.10.0
+  GOTESTSUMVERSION: 1.13.0
 
   # GitHub Actor for pushing images to GHCR
   GHCR_ACTOR: rad-ci-bot
