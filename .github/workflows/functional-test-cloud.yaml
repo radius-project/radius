@@ -116,7 +116,7 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
       BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
-      BUILD_RUN_ID: ${{ steps.find-build-run.outputs.BUILD_RUN_ID }}
+      BUILD_RUN_ID: ${{ steps.find-build-run.outputs.BUILD_RUN_ID || '' }}
     steps:
       - name: Log Event Information
         run: |
