@@ -25,7 +25,7 @@ echo "Using skip-resource-list from: $SKIP_RESOURCE_FILE"
 # Delete all test resources in queuemessages.
 if kubectl get crd queuemessages.ucp.dev >/dev/null 2>&1; then
     echo "delete all resources in queuemessages.ucp.dev"
-    kubectl delete queuemessages.ucp.dev -n radius-system --all
+    kubectl delete queuemessages.ucp.dev -n radius-system --all --wait=false
 fi
 
 # Testing deletion of deployment.apps.
@@ -42,7 +42,7 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
             echo "Skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"    
         else
             echo "delete resource: $r"
-            kubectl delete resources.ucp.dev $r -n radius-system --ignore-not-found=true
+            kubectl delete resources.ucp.dev $r -n radius-system --ignore-not-found=true --wait=false
         fi
     done
 fi
@@ -78,6 +78,6 @@ for ns in $namespaces; do
         echo "skip deletion: $ns"
     else
         echo "deleting namespaces: $ns"
-        kubectl delete namespace $ns --ignore-not-found=true
+        kubectl delete namespace $ns --ignore-not-found=true --wait=false
     fi
 done
