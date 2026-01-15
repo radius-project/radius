@@ -103,7 +103,7 @@ jobs:
 
       - name: Setup Node
         if: matrix.language == 'javascript'
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
 
@@ -129,7 +129,7 @@ jobs:
 
       - name: Perform GoSec Analysis
         if: matrix.language == 'custom-gosec'
-        uses: securego/gosec@7a4ccefd8880ecced95e2947fb7a4088d66a221c
+        uses: securego/gosec@726d847c79d4ea7582376aec0ad94fcbec11fa50
         with:
           args: -no-fail -fmt sarif -out gosec-results.sarif ./...
         continue-on-error: true
