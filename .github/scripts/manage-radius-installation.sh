@@ -44,6 +44,62 @@ get_cli_version() {
     rad version | grep -A1 "RELEASE" | tail -1 | awk '{print $1}'
 }
 
+# Verify that manifests are successfully registered in the UCP pod
+# This should be called after rad install kubernetes completes
+verify_manifests_registered() {
+    echo ""
+    echo "Verifying manifests are registered..."
+
+    local log_file="registermanifest_logs.txt"
+    rm -f "${log_file}"
+
+    # Find the pod with container "ucp"
+    local pod_name
+    pod_name=$(
+        kubectl get pods -n radius-system \
+            -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.containers[*].name}{"\n"}{end}' \
+        | grep "ucp" \
+        | head -n1 \
+        | cut -d" " -f1
+    )
+    echo "Found ucp pod: ${pod_name}"
+
+    if [[ -z "${pod_name}" ]]; then
+        echo "No pod with container 'ucp' found in namespace radius-system."
+        exit 1
+    fi
+
+    # Poll logs for up to 20 iterations, 30 seconds each (up to 10 minutes total)
+    local _i
+    for _i in {1..20}; do
+        kubectl logs "${pod_name}" -n radius-system | tee "${log_file}" > /dev/null
+
+        # Exit on error
+        if grep -qi "Service initializer terminated with error" "${log_file}"; then
+            echo "Error found in ucp logs."
+            grep -i "Service initializer terminated with error" "${log_file}"
+            exit 1
+        fi
+
+        # Check for success
+        if grep -q "Successfully registered manifests" "${log_file}"; then
+            echo "Successfully registered manifests - message found."
+            break
+        fi
+
+        echo "Logs not ready, waiting 30 seconds..."
+        sleep 30
+    done
+
+    # Final check to ensure success message was found
+    if ! grep -q "Successfully registered manifests" "${log_file}"; then
+        echo "Manifests not registered after 10 minutes."
+        exit 1
+    fi
+
+    echo "Manifest verification complete."
+}
+
 # Install Radius on the cluster
 install_radius() {
     echo "Installing Radius..."
@@ -59,6 +115,8 @@ install_radius() {
         exit 1
     fi
     echo "Radius installation complete."
+
+    verify_manifests_registered
 }
 
 main() {
