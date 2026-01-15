@@ -407,18 +407,21 @@ jobs:
             :hourglass: Building Radius and pushing container images for functional tests...
 
       - name: Download container image artifacts (PR)
-        if: env.PR_NUMBER != ''
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: container-images-${{ env.REL_VERSION }}
           path: ./dist/images/
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Load container images (PR)
-        if: env.PR_NUMBER != ''
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
         run: make docker-load-images
 
       - name: Push images to GHCR (PR)
-        if: env.PR_NUMBER != ''
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
         run: |
           for img in applications-rp controller dynamic-rp ucpd bicep pre-upgrade; do
             docker tag ghcr.io/radius-project/dev/${img}:${{ env.REL_VERSION }} \
@@ -427,7 +430,7 @@ jobs:
           done
 
       - name: Build and Push container images (non-PR)
-        if: env.PR_NUMBER == ''
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.name != 'Approve Functional Tests'
         run: |
           make build && make docker-build && make docker-push
         env:

@@ -189,10 +189,11 @@ jobs:
       - name: Set output variables
         id: gen-id
         run: |
-          if [ "$GITHUB_EVENT_NAME" == "workflow_run" ] && [ "${{ github.event.workflow_run.name }}" == "Approve Functional Tests" ]; then
-            REL_VERSION="${{ steps.gen-id-workflow.outputs.REL_VERSION }}"
-          else
-            REL_VERSION="${{ steps.gen-id-local.outputs.REL_VERSION }}"
+          # REL_VERSION is set by either gen-id-local or gen-id-workflow via exportVariable
+          # If neither ran, REL_VERSION will be empty
+          if [ -z "$REL_VERSION" ]; then
+            echo "Error: REL_VERSION not set by any version generation step"
+            exit 1
           fi
           
           {
