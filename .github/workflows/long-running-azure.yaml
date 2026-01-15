@@ -376,8 +376,9 @@ jobs:
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Get OIDC Issuer from AKS cluster
+        id: get-oidc-issuer
         run: |
-          echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV
+          echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_OUTPUT
 
       - name: Restore Bicep artifacts before running functional tests
         # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
@@ -403,7 +404,7 @@ jobs:
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
           # Enable Azure resource location verification in tests
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-          FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
+          FUNC_TEST_OIDC_ISSUER: ${{ steps.get-oidc-issuer.outputs.FUNCTEST_OIDC_ISSUER }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
