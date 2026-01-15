@@ -58,6 +58,22 @@ endif
 test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
 
+.PHONY: test-compile
+test-compile: test-get-envtools ## Compiles all tests without running them
+	@echo "$(ARROW) Compiling unit tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -c ./pkg/... -o /dev/null
+
+.PHONY: test-warm-cache
+test-warm-cache: test-get-envtools ## Warms Go build cache for all test configurations (regular, race, coverage)
+	@echo "$(ARROW) Warming build cache for regular tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -i ./pkg/... ./test/... 2>/dev/null || true
+	@echo "$(ARROW) Warming build cache for race-enabled tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -race -i ./pkg/... 2>/dev/null || true
+	@echo "$(ARROW) Compiling tests to warm cache..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -c ./pkg/... -o /dev/null
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -race -c ./pkg/... -o /dev/null
+	@echo "$(ARROW) Build cache warmed for all test configurations"
+
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."

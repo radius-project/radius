@@ -132,6 +132,10 @@ jobs:
         if: needs.changes.outputs.only_changed != 'true'
         run: make build
 
+      - name: Warm test build cache
+        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
+        run: make test-warm-cache
+
       - name: Run make test (unit tests)
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
         env:
@@ -294,6 +298,14 @@ jobs:
         with:
           name: container-images-${{ env.REL_VERSION }}
           path: ./dist/images/
+          retention-days: 1
+
+      - name: Upload Go build cache artifacts (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: go-build-cache-${{ env.REL_VERSION }}
+          path: ~/.cache/go-build
           retention-days: 1
 
       - name: Push container images (latest)

@@ -30,6 +30,7 @@ jobs:
           script: |
             const maxAttempts = 180; // 30 minutes max (10 second intervals)
             const delay = 10000; // 10 seconds
+            let buildRunFound = false;
             
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
               console.log(`Checking build status (attempt ${attempt}/${maxAttempts})...`);
@@ -50,6 +51,7 @@ jobs:
               );
               
               if (buildRun) {
+                buildRunFound = true;
                 console.log(`Build workflow status: ${buildRun.status}, conclusion: ${buildRun.conclusion}`);
                 
                 if (buildRun.status === 'completed') {
@@ -62,7 +64,11 @@ jobs:
                   }
                 }
               } else if (attempt === 1) {
-                console.log('Build workflow not found yet, waiting...');
+                console.log('Build workflow not found yet, waiting for it to start...');
+              } else if (!buildRunFound && attempt > 30) {
+                // After 5 minutes, if still no build workflow, something is wrong
+                core.setFailed('Build workflow did not start within 5 minutes');
+                return 'not-found';
               }
               
               // Wait before next attempt

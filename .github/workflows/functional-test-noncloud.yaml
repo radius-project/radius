@@ -302,6 +302,16 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ github.event.workflow_run.id }}
 
+      - name: Download Go build cache artifacts (workflow_run)
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: go-build-cache-${{ env.REL_VERSION }}
+          path: ~/.cache/go-build
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
       - name: Load container images (workflow_run)
         if: github.event_name == 'workflow_run'
         run: make docker-load-images
