@@ -471,7 +471,7 @@ jobs:
           az group delete \
             --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --name "${AZURE_TEST_RESOURCE_GROUP}" \
-            --yes --verbose
+            --yes --verbose --no-wait
 
       - name: Restore skip-delete-resources-list
         if: always()
