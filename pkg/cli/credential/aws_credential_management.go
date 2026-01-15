@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
@@ -188,7 +188,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 // without an error. If an error occurs, it returns false and the error.
 func (cpm *AWSCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
 	var respFromCtx *http.Response
-	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+	ctxWithResp := policy.WithCaptureResponse(ctx, &respFromCtx)
 	_, err := cpm.AWSCredentialClient.Delete(ctxWithResp, AWSPlaneName, name, nil)
 	if err != nil {
 		return false, err
