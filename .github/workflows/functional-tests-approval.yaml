@@ -57,8 +57,13 @@ jobs:
                 if (buildRun.status === 'completed') {
                   if (buildRun.conclusion === 'success') {
                     console.log('Build completed successfully!');
+                    console.log('Setting output: build-completed=success');
+                    core.setOutput('result', 'success');
                     return 'success';
                   } else {
+                    console.log(`Build failed with conclusion: ${buildRun.conclusion}`);
+                    console.log('Setting output: build-completed=failed');
+                    core.setOutput('result', 'failed');
                     core.setFailed(`Build workflow failed with conclusion: ${buildRun.conclusion}`);
                     return 'failed';
                   }
@@ -67,6 +72,8 @@ jobs:
                 console.log('Build workflow not found yet, waiting for it to start...');
               } else if (!buildRunFound && attempt > 30) {
                 // After 5 minutes, if still no build workflow, something is wrong
+                console.log('Setting output: build-completed=not-found');
+                core.setOutput('result', 'not-found');
                 core.setFailed('Build workflow did not start within 5 minutes');
                 return 'not-found';
               }
@@ -77,6 +84,8 @@ jobs:
               }
             }
             
+            console.log('Setting output: build-completed=timeout');
+            core.setOutput('result', 'timeout');
             core.setFailed('Build workflow did not complete within timeout period');
             return 'timeout';
 
