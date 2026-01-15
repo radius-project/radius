@@ -408,13 +408,6 @@ jobs:
           name: container-images-${{ env.REL_VERSION }}
           path: ./dist/images/
 
-      - name: Download Go build cache artifacts (PR)
-        if: env.PR_NUMBER != ''
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: go-build-cache-${{ env.REL_VERSION }}
-          path: ~/.cache/go-build
-
       - name: Load container images (PR)
         if: env.PR_NUMBER != ''
         run: make docker-load-images

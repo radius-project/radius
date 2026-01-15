@@ -45,41 +45,6 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Get release version from build workflow
-        id: get-version
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id,
-              per_page: 100
-            });
-            
-            // Extract version from artifact name (e.g., go-build-cache-pr-12345-abc123)
-            const cacheArtifact = artifacts.artifacts.find(a => a.name.startsWith('go-build-cache-'));
-            if (cacheArtifact) {
-              const version = cacheArtifact.name.replace('go-build-cache-', '');
-              console.log(`Found version: ${version}`);
-              return version;
-            } else {
-              core.setFailed('Could not find build cache artifact');
-              return '';
-            }
-
-      - name: Set REL_VERSION environment variable
-        run: echo "REL_VERSION=${{ steps.get-version.outputs.result }}" >> $GITHUB_ENV
-
-      - name: Download Go build cache artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: go-build-cache-${{ env.REL_VERSION }}
-          path: ~/.cache/go-build
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
-
       - name: Run make test (unit tests)
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
