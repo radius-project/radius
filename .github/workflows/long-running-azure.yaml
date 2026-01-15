@@ -161,17 +161,16 @@ jobs:
           echo "Radius CLI installed successfully"
 
       - name: Checkout release codebase
+        id: checkout-release-codebase
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          # Read the entire script into memory before executing to prevent issues
-          # when git checkout overwrites the script file during execution.
-          bash -c "$(cat ./.github/scripts/checkout-release-codebase.sh)"
+          ./.github/scripts/checkout-release-codebase.sh
 
       - name: Setup Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
+          go-version-file: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.mod
+          cache-dependency-path: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.sum
           cache: true
 
       - name: Login to Azure
@@ -239,7 +238,7 @@ jobs:
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.TEST_BICEP_TYPES_REGISTRY}}/testresources:latest --force
+          rad bicep publish-extension -f ./${{ steps.checkout-release-codebase.outputs.release-dir }}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.TEST_BICEP_TYPES_REGISTRY}}/testresources:latest --force
 
       - name: Publish Bicep Test Recipes
         run: |
@@ -249,6 +248,7 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Install gotestsum (test reporting tool)
         run: |
@@ -373,6 +373,7 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Get OIDC Issuer from AKS cluster
         run: |
@@ -383,9 +384,9 @@ jobs:
         # so we can restore all Bicep artifacts before the tests start.
         run: |
           # Restore Radius Bicep types
-          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
+          bicep restore ./${{ steps.checkout-release-codebase.outputs.release-dir }}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
           # Restore AWS Bicep types
-          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
+          bicep restore ./${{ steps.checkout-release-codebase.outputs.release-dir }}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
 
       - name: Run functional tests
         env:
@@ -407,10 +408,10 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          cd $GITHUB_WORKSPACE
 
           which rad || { echo "cannot find rad"; exit 1; }
 

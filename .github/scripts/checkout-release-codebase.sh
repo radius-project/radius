@@ -19,37 +19,24 @@
 # ============================================================================
 # Checkout Release Codebase
 #
-# This script aligns the codebase with the installed Radius release version
-# while preserving the workflow infrastructure from the triggering commit.
+# This script clones the Radius repository at the tag matching the installed
+# Radius CLI version into a "current_release" subfolder.
 #
-# The problem: When running long-running tests against the current Radius
-# release, the tests and Go code must match the release version. If tests
-# from main are run against an older release, they may fail due to API
-# changes, new features, or dependency mismatches.
-#
-# The solution:
-# 1. Detect the installed Radius release version from the CLI
-# 2. Checkout the entire codebase at the release tag
-# 3. Restore .github/ and build/ from the triggering commit (GITHUB_SHA)
-#
-# This ensures:
-# - Go code, tests, and dependencies match the installed release
-# - Workflow scripts and build infrastructure are from the current branch
+# This allows long-running tests to run against the release codebase while
+# keeping the main repository clone intact for workflow infrastructure.
 # ============================================================================
 
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
+readonly RELEASE_DIR="current_release"
 
 usage() {
     echo "Usage: ${SCRIPT_NAME}"
     echo ""
-    echo "Aligns the codebase with the installed Radius release version."
-    echo "Preserves .github/ and build/ directories from the triggering commit."
-    echo ""
-    echo "Required environment variables:"
-    echo "  GITHUB_SHA - The commit SHA that triggered the workflow"
+    echo "Clones the Radius repository at the installed release tag into"
+    echo "a '${RELEASE_DIR}' subfolder."
     echo ""
     echo "Requires rad CLI to be installed and in PATH."
     exit 0
@@ -66,11 +53,6 @@ main() {
 
     if ! command -v rad &> /dev/null; then
         echo "Error: rad CLI not found in PATH"
-        exit 1
-    fi
-
-    if [[ -z "${GITHUB_SHA:-}" ]]; then
-        echo "Error: GITHUB_SHA environment variable is not set"
         exit 1
     fi
 
@@ -103,52 +85,41 @@ main() {
     local release_tag="v${release_version}"
     echo "Installed Radius version: ${release_version}"
     echo "Release tag: ${release_tag}"
-    echo "Workflow commit: ${GITHUB_SHA}"
 
-    echo ""
-    echo "Saving workflow infrastructure to temp location..."
-    local temp_dir
-    temp_dir=$(mktemp -d)
-    cp -r .github "${temp_dir}/.github"
-    cp -r build "${temp_dir}/build"
-
-    echo ""
-    echo "Fetching release tag ${release_tag}..."
-    git fetch origin "refs/tags/${release_tag}:refs/tags/${release_tag}"
-
-    echo ""
-    echo "Checking out codebase at release tag ${release_tag}..."
-    git checkout "${release_tag}" -- .
-
-    echo ""
-    echo "Updating submodules to match release tag..."
-    git submodule update --init --recursive
-
-    echo ""
-    echo "Restoring workflow infrastructure from ${GITHUB_SHA}..."
-    rm -rf .github build
-    cp -r "${temp_dir}/.github" .github
-    cp -r "${temp_dir}/build" build
-    rm -rf "${temp_dir}"
-
-    echo ""
-    echo "Verifying checkout..."
-    local checkout_version
-    checkout_version=$(git describe --tags --always 2>/dev/null || echo "unknown")
-    echo "Git describe output: ${checkout_version}"
-    
-    # Verify that go.mod exists (basic sanity check)
-    if [[ ! -f "go.mod" ]]; then
-        echo "Error: go.mod not found after checkout. Something went wrong."
-        exit 1
+    # Remove existing release directory if present
+    if [[ -d "${RELEASE_DIR}" ]]; then
+        echo ""
+        echo "Removing existing ${RELEASE_DIR} directory..."
+        rm -rf "${RELEASE_DIR}"
     fi
 
     echo ""
+    echo "Cloning repository at tag ${release_tag} into ${RELEASE_DIR}..."
+    git clone --depth 1 --branch "${release_tag}" --recurse-submodules \
+        "https://github.com/radius-project/radius.git" "${RELEASE_DIR}"
+
+    echo ""
+    echo "Verifying clone..."
+    if [[ ! -f "${RELEASE_DIR}/go.mod" ]]; then
+        echo "Error: go.mod not found in ${RELEASE_DIR}. Something went wrong."
+        exit 1
+    fi
+
+    local checkout_version
+    checkout_version=$(cd "${RELEASE_DIR}" && git describe --tags --always 2>/dev/null || echo "unknown")
+    echo "Cloned version: ${checkout_version}"
+
+    echo ""
     echo "============================================================================"
-    echo "Codebase Alignment Complete"
+    echo "Release Codebase Clone Complete"
     echo "============================================================================"
-    echo "Go code and tests: ${release_tag}"
-    echo "Workflow infrastructure: ${GITHUB_SHA}"
+    echo "Release codebase location: ${RELEASE_DIR}"
+    echo "Release tag: ${release_tag}"
+
+    # Output the release directory for use in subsequent workflow steps
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "release-dir=${RELEASE_DIR}" >> "${GITHUB_OUTPUT}"
+    fi
 }
 
 main "$@"
