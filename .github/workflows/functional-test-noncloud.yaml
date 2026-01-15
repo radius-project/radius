@@ -36,9 +36,9 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  # Wait for approval workflow to complete for PRs
+  # Wait for build or approval workflow to complete
   workflow_run:
-    workflows: [Approve Functional Tests]
+    workflows: [Build and Test, Approve Functional Tests]
     types:
       - completed
 
@@ -101,7 +101,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [changes]
-    if: needs.changes.outputs.only_changed != 'true'
+    if: |
+      needs.changes.outputs.only_changed != 'true' &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.name == 'Approve Functional Tests' ||
+       github.event.workflow_run.event != 'pull_request')
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
