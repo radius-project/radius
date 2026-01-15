@@ -118,6 +118,7 @@ jobs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
+      BUILD_RUN_ID: ${{ steps.gen-id.outputs.BUILD_RUN_ID }}
     steps:
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
@@ -168,23 +169,60 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |
+            // When triggered by Approve workflow, we need to find the Build workflow run
+            // that has the artifacts (same commit SHA)
+            const headSha = context.payload.workflow_run.head_sha;
+            
+            console.log(`Looking for Build workflow run with head_sha: ${headSha}`);
+            
+            // List workflow runs for this commit
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event: 'pull_request',
+              head_sha: headSha,
+              per_page: 100
+            });
+            
+            // Find the Build and Test workflow run
+            const buildRun = workflowRuns.workflow_runs.find(run => 
+              run.name === 'Build and Test' && 
+              run.head_sha === headSha &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            );
+            
+            if (!buildRun) {
+              core.setFailed('No successful Build and Test workflow run found for this commit');
+              return;
+            }
+            
+            console.log(`Found Build workflow run: ${buildRun.id}`);
+            
+            // Get artifacts from the Build workflow run
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id,
+              run_id: buildRun.id,
             });
             
             // Find container images artifact
             const artifact = artifacts.data.artifacts.find(a => a.name.startsWith('container-images-'));
             if (!artifact) {
-              core.setFailed('No container images artifact found');
+              core.setFailed('No container images artifact found in Build workflow');
               return;
             }
             
+            console.log(`Found artifact: ${artifact.name}`);
+            
             // Extract version from artifact name: container-images-pr-123
             const version = artifact.name.replace('container-images-', '');
+            
+            // Export both version and build run ID (needed for artifact download)
             core.setOutput('REL_VERSION', version);
+            core.setOutput('BUILD_RUN_ID', buildRun.id.toString());
             core.exportVariable('REL_VERSION', version);
+            core.exportVariable('BUILD_RUN_ID', buildRun.id.toString());
 
       - name: Set output variables
         id: gen-id
@@ -200,6 +238,7 @@ jobs:
             echo "REL_VERSION=${REL_VERSION}"
             echo "DE_IMAGE=${{ env.DE_IMAGE }}"
             echo "DE_TAG=${{ env.DE_TAG }}"
+            echo "BUILD_RUN_ID=${BUILD_RUN_ID:-}"
           } >> "${GITHUB_OUTPUT}"
 
   tests:
@@ -233,6 +272,7 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      BUILD_RUN_ID: ${{ needs.build.outputs.BUILD_RUN_ID }}
     steps:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
@@ -305,7 +345,7 @@ jobs:
           path: ./dist/images/
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ env.BUILD_RUN_ID }}
 
       - name: Load container images (workflow_run from PR approval)
         if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'

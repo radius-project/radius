@@ -116,6 +116,7 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
       BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
+      BUILD_RUN_ID: ${{ steps.find-build-run.outputs.BUILD_RUN_ID }}
     steps:
       - name: Log Event Information
         run: |
@@ -282,6 +283,39 @@ jobs:
             echo "BASE_SHA=${{ env.BASE_SHA }}"
           } >> "${GITHUB_OUTPUT}"
 
+      - name: Find Build workflow run ID (workflow_run from Approve)
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
+        id: find-build-run
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const headSha = context.payload.workflow_run.head_sha;
+            console.log(`Looking for Build workflow run with head_sha: ${headSha}`);
+            
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event: 'pull_request',
+              head_sha: headSha,
+              per_page: 100
+            });
+            
+            const buildRun = workflowRuns.workflow_runs.find(run => 
+              run.name === 'Build and Test' && 
+              run.head_sha === headSha &&
+              run.status === 'completed' &&
+              run.conclusion === 'success'
+            );
+            
+            if (!buildRun) {
+              core.setFailed('No successful Build and Test workflow run found');
+              return;
+            }
+            
+            console.log(`Found Build workflow run: ${buildRun.id}`);
+            core.setOutput('BUILD_RUN_ID', buildRun.id.toString());
+            core.exportVariable('BUILD_RUN_ID', buildRun.id.toString());
+
   changes:
     name: Changes
     needs: setup
@@ -314,6 +348,7 @@ jobs:
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
+      BUILD_RUN_ID: ${{ needs.setup.outputs.BUILD_RUN_ID }}
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
@@ -414,7 +449,7 @@ jobs:
           path: ./dist/images/
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ env.BUILD_RUN_ID }}
 
       - name: Load container images (PR)
         if: github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Approve Functional Tests'
