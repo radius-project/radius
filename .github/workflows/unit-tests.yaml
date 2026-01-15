@@ -15,7 +15,7 @@ on:
 permissions: {}
 
 env:
-  GOTESTSUMVERSION: 1.12.0
+  GOTESTSUMVERSION: 1.13.0
 
 jobs:
   unit-tests:

@@ -36,11 +36,11 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  # Wait for build or approval workflow to complete
-  workflow_run:
-    workflows: [Build and Test, Approve Functional Tests]
-    types:
-      - completed
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
 
 permissions: {}
 
@@ -101,11 +101,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [changes]
-    if: |
-      needs.changes.outputs.only_changed != 'true' &&
-      (github.event_name != 'workflow_run' ||
-       github.event.workflow_run.name == 'Approve Functional Tests' ||
-       github.event.workflow_run.event != 'pull_request')
+    if: needs.changes.outputs.only_changed != 'true'
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
@@ -131,72 +127,20 @@ jobs:
             echo "DE_TAG=${TAG}"
           } >> "$GITHUB_ENV"
 
-      - name: Checkout (for version script)
-        if: github.event_name != 'workflow_run'
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup Python (for version script)
-        if: github.event_name != 'workflow_run'
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version-file: .python-version
-
-      - name: Generate ID for release (non-workflow_run)
-        if: github.event_name != 'workflow_run'
-        id: gen-id-local
-        run: |
-          # For non-PR events, generate a unique ID
-          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
-            BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-            if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
-              BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
-            fi
-            UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
-            echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-            echo "REL_VERSION=pr-${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
-          else
-            # For PRs not triggered by workflow_run, use the version script
-            python ./.github/scripts/get_release_version.py
-            echo "REL_VERSION=${REL_VERSION}" >> "${GITHUB_OUTPUT}"
-          fi
-
-      - name: Generate ID for release (workflow_run - from build artifacts)
-        if: github.event_name == 'workflow_run'
-        id: gen-id-workflow
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        with:
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id,
-            });
-            
-            // Find container images artifact
-            const artifact = artifacts.data.artifacts.find(a => a.name.startsWith('container-images-'));
-            if (!artifact) {
-              core.setFailed('No container images artifact found');
-              return;
-            }
-            
-            // Extract version from artifact name: container-images-pr-123
-            const version = artifact.name.replace('container-images-', '');
-            core.setOutput('REL_VERSION', version);
-            core.exportVariable('REL_VERSION', version);
-
-      - name: Set output variables
+      - name: Generate ID for release
         id: gen-id
         run: |
-          if [ "$GITHUB_EVENT_NAME" == "workflow_run" ]; then
-            REL_VERSION="${{ steps.gen-id-workflow.outputs.REL_VERSION }}"
-          else
-            REL_VERSION="${{ steps.gen-id-local.outputs.REL_VERSION }}"
+          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
+          if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+            # Add run number to randomize unique id for scheduled runs.
+            BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
           fi
-          
+          UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
+          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+
+          # Set output variables to be used in the other jobs
           {
-            echo "REL_VERSION=${REL_VERSION}"
+            echo "REL_VERSION=pr-${UNIQUE_ID}"
             echo "DE_IMAGE=${{ env.DE_IMAGE }}"
             echo "DE_TAG=${{ env.DE_TAG }}"
           } >> "${GITHUB_OUTPUT}"
@@ -296,20 +240,6 @@ jobs:
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
-      - name: Download container image artifacts (workflow_run)
-        if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: container-images-${{ env.REL_VERSION }}
-          path: ./dist/images/
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Load container images (workflow_run)
-        if: github.event_name == 'workflow_run'
-        run: make docker-load-images
-
       - name: Create a secure local registry
         id: create-local-registry
         uses: ./.github/actions/create-local-registry
@@ -342,23 +272,12 @@ jobs:
           }
           EOF
 
-      - name: Build and Push container images (non-workflow_run)
-        if: github.event_name != 'workflow_run'
+      - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
-
-      - name: Tag and push images to local registry (workflow_run)
-        if: github.event_name == 'workflow_run'
-        run: |
-          for img in applications-rp controller dynamic-rp ucpd bicep pre-upgrade testrp magpiego; do
-            # Images were saved with ghcr.io/radius-project/dev prefix, retag for local registry
-            docker tag ghcr.io/radius-project/dev/${img}:${{ env.REL_VERSION }} \
-              ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/${img}:${{ env.REL_VERSION }}
-            docker push ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/${img}:${{ env.REL_VERSION }}
-          done
 
       - name: Install rad CLI
         run: |

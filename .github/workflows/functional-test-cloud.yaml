@@ -36,9 +36,8 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  # Wait for build or approval workflow to complete
   workflow_run:
-    workflows: [Build and Test, Approve Functional Tests]
+    workflows: [Approve Functional Tests]
     types:
       - completed
 
@@ -90,13 +89,9 @@ jobs:
     name: Setup
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    if: |
-      github.event_name == 'repository_dispatch' ||
+    if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'workflow_run' && 
-        github.event.workflow_run.conclusion == 'success' && 
-        (github.event.workflow_run.name == 'Approve Functional Tests' || 
-         github.event.workflow_run.event != 'pull_request')) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       github.event_name == 'workflow_dispatch'
     permissions:
       contents: read # Required for listing the commits
@@ -406,28 +401,7 @@ jobs:
           message: |
             :hourglass: Building Radius and pushing container images for functional tests...
 
-      - name: Download container image artifacts (PR)
-        if: env.PR_NUMBER != ''
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: container-images-${{ env.REL_VERSION }}
-          path: ./dist/images/
-
-      - name: Load container images (PR)
-        if: env.PR_NUMBER != ''
-        run: make docker-load-images
-
-      - name: Push images to GHCR (PR)
-        if: env.PR_NUMBER != ''
-        run: |
-          for img in applications-rp controller dynamic-rp ucpd bicep pre-upgrade; do
-            docker tag ghcr.io/radius-project/dev/${img}:${{ env.REL_VERSION }} \
-              ${{ env.CONTAINER_REGISTRY }}/${img}:${{ env.REL_VERSION }}
-            docker push ${{ env.CONTAINER_REGISTRY }}/${img}:${{ env.REL_VERSION }}
-          done
-
-      - name: Build and Push container images (non-PR)
-        if: env.PR_NUMBER == ''
+      - name: Build and Push container images
         run: |
           make build && make docker-build && make docker-push
         env:
