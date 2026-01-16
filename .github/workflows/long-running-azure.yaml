@@ -140,7 +140,6 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           repository: radius-project/samples
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
           persist-credentials: false
 
@@ -235,10 +234,12 @@ jobs:
           rad version
 
       - name: Publish UDT types
-        run: |
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./${{ steps.checkout-release-codebase.outputs.release-dir }}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.TEST_BICEP_TYPES_REGISTRY}}/testresources:latest --force
+        run: |  
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH  
+          which rad || { echo "cannot find rad"; exit 1; }  
+          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force  
+        env:  
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Publish Bicep Test Recipes
         run: |
@@ -338,11 +339,13 @@ jobs:
       - name: Restore Bicep artifacts before running functional tests
         # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
         # so we can restore all Bicep artifacts before the tests start.
-        run: |
-          # Restore Radius Bicep types
-          bicep restore ./${{ steps.checkout-release-codebase.outputs.release-dir }}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
-          # Restore AWS Bicep types
-          bicep restore ./${{ steps.checkout-release-codebase.outputs.release-dir }}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep --force
+        run: |  
+          # Restore Radius Bicep types  
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force  
+          # Restore AWS Bicep types  
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force  
+        env:  
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Run functional tests
         env:
