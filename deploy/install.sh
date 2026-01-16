@@ -22,6 +22,10 @@
 # sudo is required to copy binary to RADIUS_INSTALL_DIR for linux
 : ${USE_SUDO:="false"}
 
+# Include release candidates when determining latest version
+# Can be set via environment variable or --include-rc flag
+: ${INCLUDE_RC:="false"}
+
 # Http request CLI
 RADIUS_HTTP_REQUEST_CLI=curl
 
@@ -100,10 +104,20 @@ getLatestRelease() {
     local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
     local latest_release=""
 
-    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
-        latest_release=$(curl -s $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
+    if [ "$INCLUDE_RC" == "true" ]; then
+        # Include release candidates when determining latest version
+        if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
+            latest_release=$(curl -s $radReleaseUrl | grep \"tag_name\" | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
+        else
+            latest_release=$(wget -q --header="Accept: application/json" -O - $radReleaseUrl | grep \"tag_name\" | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
+        fi
     else
-        latest_release=$(wget -q --header="Accept: application/json" -O - $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
+        # Exclude release candidates (default behavior)
+        if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
+            latest_release=$(curl -s $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
+        else
+            latest_release=$(wget -q --header="Accept: application/json" -O - $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
+        fi
     fi
 
     ret_val=$latest_release
@@ -221,13 +235,31 @@ trap "fail_trap" EXIT
 getSystemInfo
 checkHttpRequestCLI
 
-if [ -z "$1" ]; then
+# Parse command-line arguments
+VERSION_ARG=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --include-rc)
+            INCLUDE_RC="true"
+            shift
+            ;;
+        *)
+            VERSION_ARG="$1"
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$VERSION_ARG" ]; then
     echo "Getting the latest Radius CLI..."
+    if [ "$INCLUDE_RC" == "true" ]; then
+        echo "Including release candidates in version selection..."
+    fi
     getLatestRelease
-elif [ "$1" == "edge" ]; then
+elif [ "$VERSION_ARG" == "edge" ]; then
     ret_val="edge"
 else
-    ret_val=v$1
+    ret_val=v$VERSION_ARG
 fi
 
 verifySupported $ret_val
