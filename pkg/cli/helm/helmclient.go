@@ -26,9 +26,9 @@ import (
 )
 
 const (
-	installTimeout   = time.Duration(5) * time.Minute
+	installTimeout   = time.Duration(10) * time.Minute
 	uninstallTimeout = time.Duration(5) * time.Minute
-	upgradeTimeout   = time.Duration(5) * time.Minute
+	upgradeTimeout   = time.Duration(10) * time.Minute
 	rollbackTimeout  = time.Duration(5) * time.Minute
 )
 
