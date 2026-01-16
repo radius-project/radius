@@ -350,6 +350,17 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	output.LogInfo("Radius upgrade complete")
 
+	// Check if Contour is installed before attempting to upgrade it
+	state, err := i.CheckRadiusInstall(kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to check Contour installation status: %w", err)
+	}
+
+	if !state.ContourInstalled || clusterOptions.Contour.Disabled {
+		output.LogInfo("Contour is not installed or is disabled, skipping Contour upgrade")
+		return nil
+	}
+
 	output.LogInfo("Upgrading Contour...")
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
