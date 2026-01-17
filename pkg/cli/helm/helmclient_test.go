@@ -73,9 +73,9 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 func TestHelmClient_Constants(t *testing.T) {
 	// Test that our new timeout constant is defined
 	require.Equal(t, time.Duration(5)*time.Minute, rollbackTimeout)
-	require.Equal(t, time.Duration(5)*time.Minute, installTimeout)
+	require.Equal(t, time.Duration(10)*time.Minute, installTimeout)
 	require.Equal(t, time.Duration(5)*time.Minute, uninstallTimeout)
-	require.Equal(t, time.Duration(5)*time.Minute, upgradeTimeout)
+	require.Equal(t, time.Duration(10)*time.Minute, upgradeTimeout)
 }
 
 func TestHelmClient_Interface(t *testing.T) {
