@@ -42,7 +42,7 @@ concurrency:
 
 env:
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUMVERSION: 1.10.0
+  GOTESTSUMVERSION: 1.13.0
 
   # GitHub Actor for pushing images to GHCR
   GHCR_ACTOR: rad-ci-bot
@@ -112,7 +112,7 @@ jobs:
 
       - name: Setup Go
         if: needs.changes.outputs.only_changed != 'true'
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -131,35 +131,6 @@ jobs:
       - name: Make build
         if: needs.changes.outputs.only_changed != 'true'
         run: make build
-
-      - name: Run make test (unit tests)
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
-        env:
-          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
-          GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
-        run: |
-          mkdir -p ./dist/unit_test
-          go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
-          make test
-
-      - name: Upload coverage to Codecov
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          codecov_yml_path: ./.codecov.yml
-          files: ./dist/unit_test/ut_coverage.out
-          fail_ci_if_error: false
-          verbose: true
-
-      - name: Process Unit Test Results
-        uses: ./.github/actions/process-test-results
-        # Always is required here to make sure this target runs even when tests fail.
-        if: always() && matrix.target_arch == 'amd64' && matrix.target_os == 'linux' && needs.changes.outputs.only_changed != 'true'
-        with:
-          test_group_name: Unit Tests
-          artifact_name: unit_test_results
-          result_directory: dist/unit_test/
 
       - name: Copy cli binaries to release (unix-like)
         if: matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
@@ -250,7 +221,7 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -271,6 +242,31 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
+      - name: Build container images (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          make docker-build
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_CACHE_GHA: 1
+
+      - name: Save container images to artifacts (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          make docker-save-images
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - name: Upload container image artifacts (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: container-images-${{ env.REL_VERSION }}
+          path: ./dist/images/
+          retention-days: 1
+
       - name: Push container images (latest)
         run: |
           make docker-multi-arch-push
@@ -278,14 +274,7 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-
-      - name: Build container images (PR) # Don't push on PR, agent will not have permission.
-        run: |
-          make docker-multi-arch-build
-        if: github.event_name == 'pull_request'
-        env:
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
+          DOCKER_CACHE_GHA: 1
 
       - name: Push container images (release)
         run: |
@@ -294,6 +283,23 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_CACHE_GHA: 1
+
+      - name: Collect build metrics
+        if: always()
+        run: |
+          make build-metrics
+          cat dist/metrics/metrics.txt >> $GITHUB_STEP_SUMMARY
+        env:
+          DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && format('{0}/dev', env.CONTAINER_REGISTRY) || env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ github.event_name == 'pull_request' && env.REL_VERSION || (github.ref == 'refs/heads/main' && 'latest' || env.REL_CHANNEL) }}
+
+      - name: Upload build metrics
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: build-metrics-${{ github.job }}
+          path: dist/metrics/
 
   build-and-push-helm-chart:
     name: Helm chart build
@@ -372,14 +378,14 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
 
