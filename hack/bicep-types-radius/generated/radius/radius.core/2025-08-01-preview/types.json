@@ -541,7 +541,7 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "Radius.Core/environments"
+    "value": "Radius.Core/bicepSettings"
   },
   {
     "$type": "StringLiteralType",
@@ -549,7 +549,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Radius.Core/environments",
+    "name": "Radius.Core/bicepSettings",
     "properties": {
       "id": {
         "type": {
@@ -584,11 +584,11 @@
           "$ref": "#/48"
         },
         "flags": 1,
-        "description": "Environment properties"
+        "description": "Bicep settings properties."
       },
       "tags": {
         "type": {
-          "$ref": "#/66"
+          "$ref": "#/65"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -611,7 +611,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "EnvironmentProperties",
+    "name": "BicepSettingsProperties",
     "properties": {
       "provisioningState": {
         "type": {
@@ -620,32 +620,12 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
-      "recipePacks": {
+      "authentication": {
         "type": {
           "$ref": "#/58"
         },
         "flags": 0,
-        "description": "List of Recipe Pack resource IDs linked to this environment."
-      },
-      "recipeParameters": {
-        "type": {
-          "$ref": "#/61"
-        },
-        "flags": 0,
-        "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
-      },
-      "providers": {
-        "type": {
-          "$ref": "#/62"
-        },
-        "flags": 0
-      },
-      "simulated": {
-        "type": {
-          "$ref": "#/30"
-        },
-        "flags": 0,
-        "description": "Simulated environment."
+        "description": "Authentication configuration for Bicep registries."
       }
     }
   },
@@ -711,6 +691,344 @@
     ]
   },
   {
+    "$type": "ObjectType",
+    "name": "BicepAuthenticationConfiguration",
+    "properties": {
+      "registries": {
+        "type": {
+          "$ref": "#/64"
+        },
+        "flags": 0,
+        "description": "Authentication entries keyed by registry hostname."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepRegistryAuthentication",
+    "properties": {
+      "basic": {
+        "type": {
+          "$ref": "#/60"
+        },
+        "flags": 0,
+        "description": "Basic authentication configuration for a Bicep registry."
+      },
+      "azureWorkloadIdentity": {
+        "type": {
+          "$ref": "#/62"
+        },
+        "flags": 0,
+        "description": "Azure Workload Identity configuration for a Bicep registry."
+      },
+      "awsIrsa": {
+        "type": {
+          "$ref": "#/63"
+        },
+        "flags": 0,
+        "description": "AWS IRSA configuration for a Bicep registry."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepBasicAuthentication",
+    "properties": {
+      "username": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Username for basic authentication."
+      },
+      "password": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0,
+        "description": "Reference to a secret stored in Radius.Security/secrets."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SecretReference",
+    "properties": {
+      "secretId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Resource ID of the Radius.Security/secrets entry."
+      },
+      "key": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Key within the secret to retrieve."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepAzureWorkloadIdentityAuthentication",
+    "properties": {
+      "clientId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Client ID used for Azure Workload Identity."
+      },
+      "tenantId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Tenant ID used for Azure Workload Identity."
+      },
+      "token": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0,
+        "description": "Reference to a secret stored in Radius.Security/secrets."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepAwsIrsaAuthentication",
+    "properties": {
+      "roleArn": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "ARN of the AWS IAM role used for IRSA."
+      },
+      "token": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0,
+        "description": "Reference to a secret stored in Radius.Security/secrets."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepAuthenticationConfigurationRegistries",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/59"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Radius.Core/bicepSettings@2025-08-01-preview",
+    "body": {
+      "$ref": "#/47"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Core/environments"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Core/environments",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/67"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/68"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/70"
+        },
+        "flags": 1,
+        "description": "Environment properties"
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/88"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "EnvironmentProperties",
+    "properties": {
+      "provisioningState": {
+        "type": {
+          "$ref": "#/79"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "terraformSettings": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Resource ID of the Terraform settings applied to this environment."
+      },
+      "bicepSettings": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Resource ID of the Bicep settings applied to this environment."
+      },
+      "recipePacks": {
+        "type": {
+          "$ref": "#/80"
+        },
+        "flags": 0,
+        "description": "List of Recipe Pack resource IDs linked to this environment."
+      },
+      "recipeParameters": {
+        "type": {
+          "$ref": "#/83"
+        },
+        "flags": 0,
+        "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
+      },
+      "providers": {
+        "type": {
+          "$ref": "#/84"
+        },
+        "flags": 0
+      },
+      "simulated": {
+        "type": {
+          "$ref": "#/30"
+        },
+        "flags": 0,
+        "description": "Simulated environment."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/71"
+      },
+      {
+        "$ref": "#/72"
+      },
+      {
+        "$ref": "#/73"
+      },
+      {
+        "$ref": "#/74"
+      },
+      {
+        "$ref": "#/75"
+      },
+      {
+        "$ref": "#/76"
+      },
+      {
+        "$ref": "#/77"
+      },
+      {
+        "$ref": "#/78"
+      }
+    ]
+  },
+  {
     "$type": "ArrayType",
     "itemType": {
       "$ref": "#/0"
@@ -724,7 +1042,7 @@
     "name": "RecipeParameterValue",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/59"
+      "$ref": "#/81"
     }
   },
   {
@@ -732,7 +1050,7 @@
     "name": "EnvironmentPropertiesRecipeParameters",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/60"
+      "$ref": "#/82"
     }
   },
   {
@@ -741,20 +1059,20 @@
     "properties": {
       "azure": {
         "type": {
-          "$ref": "#/63"
+          "$ref": "#/85"
         },
         "flags": 0,
         "description": "The Azure cloud provider definition."
       },
       "kubernetes": {
         "type": {
-          "$ref": "#/64"
+          "$ref": "#/86"
         },
         "flags": 0
       },
       "aws": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/87"
         },
         "flags": 0,
         "description": "The AWS cloud provider definition."
@@ -833,7 +1151,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/environments@2025-08-01-preview",
     "body": {
-      "$ref": "#/47"
+      "$ref": "#/69"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -867,28 +1185,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/90"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/69"
+          "$ref": "#/91"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/71"
+          "$ref": "#/93"
         },
         "flags": 1,
         "description": "Recipe Pack properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/88"
+          "$ref": "#/110"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -915,21 +1233,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/80"
+          "$ref": "#/102"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/81"
+          "$ref": "#/103"
         },
         "flags": 2,
         "description": "List of environment IDs that reference this recipe pack"
       },
       "recipes": {
         "type": {
-          "$ref": "#/87"
+          "$ref": "#/109"
         },
         "flags": 1,
         "description": "Map of resource types to their recipe configurations"
@@ -972,28 +1290,28 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/72"
+        "$ref": "#/94"
       },
       {
-        "$ref": "#/73"
+        "$ref": "#/95"
       },
       {
-        "$ref": "#/74"
+        "$ref": "#/96"
       },
       {
-        "$ref": "#/75"
+        "$ref": "#/97"
       },
       {
-        "$ref": "#/76"
+        "$ref": "#/98"
       },
       {
-        "$ref": "#/77"
+        "$ref": "#/99"
       },
       {
-        "$ref": "#/78"
+        "$ref": "#/100"
       },
       {
-        "$ref": "#/79"
+        "$ref": "#/101"
       }
     ]
   },
@@ -1009,7 +1327,7 @@
     "properties": {
       "recipeKind": {
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/107"
         },
         "flags": 1,
         "description": "The type of recipe"
@@ -1030,7 +1348,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/86"
+          "$ref": "#/108"
         },
         "flags": 0,
         "description": "Parameters to pass to the recipe"
@@ -1049,10 +1367,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/83"
+        "$ref": "#/105"
       },
       {
-        "$ref": "#/84"
+        "$ref": "#/106"
       }
     ]
   },
@@ -1061,7 +1379,7 @@
     "name": "RecipeDefinitionParameters",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/59"
+      "$ref": "#/81"
     }
   },
   {
@@ -1069,7 +1387,7 @@
     "name": "RecipePackPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/82"
+      "$ref": "#/104"
     }
   },
   {
@@ -1084,7 +1402,432 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/70"
+      "$ref": "#/92"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Core/terraformSettings"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Core/terraformSettings",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/112"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/113"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/115"
+        },
+        "flags": 1,
+        "description": "Terraform settings properties."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/146"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformSettingsProperties",
+    "properties": {
+      "provisioningState": {
+        "type": {
+          "$ref": "#/124"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "terraformrc": {
+        "type": {
+          "$ref": "#/125"
+        },
+        "flags": 0,
+        "description": "Terraform CLI configuration matching the terraformrc file."
+      },
+      "backend": {
+        "type": {
+          "$ref": "#/135"
+        },
+        "flags": 0,
+        "description": "Terraform backend configuration matching the terraform block."
+      },
+      "env": {
+        "type": {
+          "$ref": "#/137"
+        },
+        "flags": 0,
+        "description": "Environment variables injected into the Terraform process."
+      },
+      "logging": {
+        "type": {
+          "$ref": "#/138"
+        },
+        "flags": 0,
+        "description": "Logging options for Terraform executions."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/116"
+      },
+      {
+        "$ref": "#/117"
+      },
+      {
+        "$ref": "#/118"
+      },
+      {
+        "$ref": "#/119"
+      },
+      {
+        "$ref": "#/120"
+      },
+      {
+        "$ref": "#/121"
+      },
+      {
+        "$ref": "#/122"
+      },
+      {
+        "$ref": "#/123"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformCliConfiguration",
+    "properties": {
+      "providerInstallation": {
+        "type": {
+          "$ref": "#/126"
+        },
+        "flags": 0,
+        "description": "Provider installation options for Terraform."
+      },
+      "credentials": {
+        "type": {
+          "$ref": "#/134"
+        },
+        "flags": 0,
+        "description": "Credentials keyed by registry or module source hostname."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformProviderInstallationConfiguration",
+    "properties": {
+      "networkMirror": {
+        "type": {
+          "$ref": "#/127"
+        },
+        "flags": 0,
+        "description": "Network mirror configuration for Terraform providers."
+      },
+      "direct": {
+        "type": {
+          "$ref": "#/130"
+        },
+        "flags": 0,
+        "description": "Direct installation configuration for Terraform providers."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformNetworkMirrorConfiguration",
+    "properties": {
+      "url": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Mirror URL used to download providers."
+      },
+      "include": {
+        "type": {
+          "$ref": "#/128"
+        },
+        "flags": 0,
+        "description": "Provider addresses included in this mirror."
+      },
+      "exclude": {
+        "type": {
+          "$ref": "#/129"
+        },
+        "flags": 0,
+        "description": "Provider addresses excluded from this mirror."
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformDirectConfiguration",
+    "properties": {
+      "include": {
+        "type": {
+          "$ref": "#/131"
+        },
+        "flags": 0,
+        "description": "Provider addresses included when falling back to direct installation."
+      },
+      "exclude": {
+        "type": {
+          "$ref": "#/132"
+        },
+        "flags": 0,
+        "description": "Provider addresses excluded from direct installation."
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformCredentialConfiguration",
+    "properties": {
+      "token": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0,
+        "description": "Reference to a secret stored in Radius.Security/secrets."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformCliConfigurationCredentials",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/133"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformBackendConfiguration",
+    "properties": {
+      "type": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Backend type (for example 'kubernetes')."
+      },
+      "config": {
+        "type": {
+          "$ref": "#/136"
+        },
+        "flags": 0,
+        "description": "Backend-specific configuration values."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformBackendConfigurationConfig",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformSettingsPropertiesEnv",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformLoggingConfiguration",
+    "properties": {
+      "level": {
+        "type": {
+          "$ref": "#/145"
+        },
+        "flags": 0,
+        "description": "Terraform log verbosity levels."
+      },
+      "path": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Destination file path for Terraform logs (maps to TF_LOG_PATH)."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TRACE"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "DEBUG"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "INFO"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "WARN"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ERROR"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "FATAL"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/139"
+      },
+      {
+        "$ref": "#/140"
+      },
+      {
+        "$ref": "#/141"
+      },
+      {
+        "$ref": "#/142"
+      },
+      {
+        "$ref": "#/143"
+      },
+      {
+        "$ref": "#/144"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Radius.Core/terraformSettings@2025-08-01-preview",
+    "body": {
+      "$ref": "#/114"
     },
     "readableScopes": 0,
     "writableScopes": 0,

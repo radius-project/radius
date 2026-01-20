@@ -18,6 +18,9 @@ type ServerFactory struct {
 	// ApplicationsServer contains the fakes for client ApplicationsClient
 	ApplicationsServer ApplicationsServer
 
+	// BicepSettingsServer contains the fakes for client BicepSettingsClient
+	BicepSettingsServer BicepSettingsServer
+
 	// EnvironmentsServer contains the fakes for client EnvironmentsClient
 	EnvironmentsServer EnvironmentsServer
 
@@ -26,6 +29,9 @@ type ServerFactory struct {
 
 	// RecipePacksServer contains the fakes for client RecipePacksClient
 	RecipePacksServer RecipePacksServer
+
+	// TerraformSettingsServer contains the fakes for client TerraformSettingsClient
+	TerraformSettingsServer TerraformSettingsServer
 }
 
 // NewServerFactoryTransport creates a new instance of ServerFactoryTransport with the provided implementation.
@@ -40,12 +46,14 @@ func NewServerFactoryTransport(srv *ServerFactory) *ServerFactoryTransport {
 // ServerFactoryTransport connects instances of v20250801preview.ClientFactory to instances of ServerFactory.
 // Don't use this type directly, use NewServerFactoryTransport instead.
 type ServerFactoryTransport struct {
-	srv                  *ServerFactory
-	trMu                 sync.Mutex
-	trApplicationsServer *ApplicationsServerTransport
-	trEnvironmentsServer *EnvironmentsServerTransport
-	trOperationsServer   *OperationsServerTransport
-	trRecipePacksServer  *RecipePacksServerTransport
+	srv                       *ServerFactory
+	trMu                      sync.Mutex
+	trApplicationsServer      *ApplicationsServerTransport
+	trBicepSettingsServer     *BicepSettingsServerTransport
+	trEnvironmentsServer      *EnvironmentsServerTransport
+	trOperationsServer        *OperationsServerTransport
+	trRecipePacksServer       *RecipePacksServerTransport
+	trTerraformSettingsServer *TerraformSettingsServerTransport
 }
 
 // Do implements the policy.Transporter interface for ServerFactoryTransport.
@@ -64,6 +72,11 @@ func (s *ServerFactoryTransport) Do(req *http.Request) (*http.Response, error) {
 	case "ApplicationsClient":
 		initServer(s, &s.trApplicationsServer, func() *ApplicationsServerTransport { return NewApplicationsServerTransport(&s.srv.ApplicationsServer) })
 		resp, err = s.trApplicationsServer.Do(req)
+	case "BicepSettingsClient":
+		initServer(s, &s.trBicepSettingsServer, func() *BicepSettingsServerTransport {
+			return NewBicepSettingsServerTransport(&s.srv.BicepSettingsServer)
+		})
+		resp, err = s.trBicepSettingsServer.Do(req)
 	case "EnvironmentsClient":
 		initServer(s, &s.trEnvironmentsServer, func() *EnvironmentsServerTransport { return NewEnvironmentsServerTransport(&s.srv.EnvironmentsServer) })
 		resp, err = s.trEnvironmentsServer.Do(req)
@@ -73,6 +86,11 @@ func (s *ServerFactoryTransport) Do(req *http.Request) (*http.Response, error) {
 	case "RecipePacksClient":
 		initServer(s, &s.trRecipePacksServer, func() *RecipePacksServerTransport { return NewRecipePacksServerTransport(&s.srv.RecipePacksServer) })
 		resp, err = s.trRecipePacksServer.Do(req)
+	case "TerraformSettingsClient":
+		initServer(s, &s.trTerraformSettingsServer, func() *TerraformSettingsServerTransport {
+			return NewTerraformSettingsServerTransport(&s.srv.TerraformSettingsServer)
+		})
+		resp, err = s.trTerraformSettingsServer.Do(req)
 	default:
 		err = fmt.Errorf("unhandled client %s", client)
 	}

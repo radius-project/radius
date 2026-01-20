@@ -42,6 +42,14 @@ func (c *ClientFactory) NewApplicationsClient() *ApplicationsClient {
 	}
 }
 
+// NewBicepSettingsClient creates a new instance of BicepSettingsClient.
+func (c *ClientFactory) NewBicepSettingsClient() *BicepSettingsClient {
+	return &BicepSettingsClient{
+		rootScope: c.rootScope,
+		internal:  c.internal,
+	}
+}
+
 // NewEnvironmentsClient creates a new instance of EnvironmentsClient.
 func (c *ClientFactory) NewEnvironmentsClient() *EnvironmentsClient {
 	return &EnvironmentsClient{
@@ -60,6 +68,14 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 // NewRecipePacksClient creates a new instance of RecipePacksClient.
 func (c *ClientFactory) NewRecipePacksClient() *RecipePacksClient {
 	return &RecipePacksClient{
+		rootScope: c.rootScope,
+		internal:  c.internal,
+	}
+}
+
+// NewTerraformSettingsClient creates a new instance of TerraformSettingsClient.
+func (c *ClientFactory) NewTerraformSettingsClient() *TerraformSettingsClient {
+	return &TerraformSettingsClient{
 		rootScope: c.rootScope,
 		internal:  c.internal,
 	}
