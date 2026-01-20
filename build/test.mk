@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -110,11 +110,11 @@ test-functional-corerp: test-functional-corerp-noncloud test-functional-corerp-c
 
 .PHONY: test-functional-corerp-noncloud
 test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-corerp-cloud
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)

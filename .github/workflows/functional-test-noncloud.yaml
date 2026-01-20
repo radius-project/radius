@@ -397,45 +397,6 @@ jobs:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
 
-      - name: Wait for Contour to be ready
-        run: |
-          echo "*** Waiting for Contour pods to be ready ***"
-
-          # Show initial pod status
-          echo "Initial Contour pod status:"
-          kubectl get pods -n radius-system -l app.kubernetes.io/name=contour -o wide || true
-
-          # Wait for Contour controller pods
-          echo "Waiting for Contour controller pods..."
-          kubectl wait --for=condition=ready pod \
-            -l app.kubernetes.io/name=contour \
-            -n radius-system \
-            --timeout=300s || {
-              echo "ERROR: Contour controller pods did not become ready"
-              echo "Pod status:"
-              kubectl get pods -n radius-system -l app.kubernetes.io/name=contour -o wide
-              echo "Pod descriptions:"
-              kubectl describe pods -n radius-system -l app.kubernetes.io/name=contour
-              exit 1
-            }
-
-          # Wait for Envoy DaemonSet pods
-          echo "Waiting for Envoy DaemonSet pods..."
-          kubectl wait --for=condition=ready pod \
-            -l app.kubernetes.io/component=envoy \
-            -n radius-system \
-            --timeout=300s || {
-              echo "ERROR: Envoy pods did not become ready"
-              echo "Pod status:"
-              kubectl get pods -n radius-system -l app.kubernetes.io/component=envoy -o wide
-              echo "Pod descriptions:"
-              kubectl describe pods -n radius-system -l app.kubernetes.io/component=envoy
-              exit 1
-            }
-
-          echo "*** Contour is ready ***"
-          kubectl get pods -n radius-system -l 'app.kubernetes.io/name in (contour),app.kubernetes.io/component in (envoy)' -o wide
-
       - name: Install Flux CLI and Source Controller
         if: matrix.name == 'kubernetes-noncloud'
         uses: ./.github/actions/install-flux

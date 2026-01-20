@@ -27,7 +27,7 @@ import (
 const (
 	contourHelmRepo            = "https://projectcontour.github.io/helm-charts"
 	contourReleaseName         = "contour"
-	ContourChartDefaultVersion = "0.2.1"
+	ContourChartDefaultVersion = "0.1.0"
 )
 
 type ContourChartOptions struct {
