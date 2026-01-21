@@ -99,6 +99,9 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
+        - name: encryption-secret
+          mountPath: /var/secrets/encryption
+          readOnly: true
       volumes:
         - name: config-volume
           configMap:
@@ -126,3 +129,6 @@ spec:
         - name: ssl-certs
           emptyDir: {}
         {{- end }}
+        - name: encryption-secret
+          secret:
+            secretName: radius-encryption-key
