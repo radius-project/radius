@@ -68,8 +68,8 @@ func (r *RadiusInstallationCheck) Run(ctx context.Context) (bool, string, error)
 	if state.ContourInstalled {
 		message += fmt.Sprintf(", Contour is installed (version: %s)", state.ContourVersion)
 	} else {
-		// This is a warning, not an error, as upgrade might install Contour
-		message += ", Contour is not installed (will be installed during upgrade)"
+		// Contour upgrade will be skipped if it's not already installed
+		message += ", Contour is not installed (will be skipped during upgrade)"
 	}
 
 	return true, message, nil
