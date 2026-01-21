@@ -114,7 +114,7 @@ test-functional-corerp-noncloud: ## Runs corerp functional tests that do not req
 
 .PHONY: test-functional-corerp-cloud
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)
