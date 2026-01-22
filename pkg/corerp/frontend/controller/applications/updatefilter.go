@@ -82,9 +82,9 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		}
 
 		namespace := fmt.Sprintf("%s-%s", envNamespace, serviceCtx.ResourceID.Name())
-		if !kubernetes.IsValidObjectName(namespace) {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Application namespace '%s' could not be created: the combination of application and environment names is too long.",
-				namespace)), nil
+		if valid, msg := kubernetes.IsValidObjectName(namespace); !valid {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Application namespace '%s' could not be created: %s",
+				namespace, msg)), nil
 		}
 
 		kubeNamespace = kubernetes.NormalizeResourceName(namespace)
@@ -122,8 +122,8 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		}
 	}
 
-	if !kubernetes.IsValidObjectName(kubeNamespace) {
-		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace)), nil
+	if valid, msg := kubernetes.IsValidObjectName(kubeNamespace); !valid {
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace: %s. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace, msg)), nil
 	}
 
 	if oldResource != nil {

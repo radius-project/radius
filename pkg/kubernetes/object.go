@@ -146,8 +146,12 @@ func GetShortenedTargetPortName(name string) string {
 }
 
 // IsValidObjectName checks if the given string is a valid Kubernetes object name.
-func IsValidObjectName(name string) bool {
-	return len(validation.IsDNS1123Label(name)) == 0
+func IsValidObjectName(name string) (bool, string) {
+	if len(validation.IsDNS1123Label(name)) == 0 {
+		return true, ""
+	}
+
+	return false, strings.Join(validation.IsDNS1123Label(name), ", ")
 }
 
 // IsValidDaprObjectName checks if the given string is a valid Dapr object name and returns a boolean value.
