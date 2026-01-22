@@ -170,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.Destination = dest
 
-	err = r.publish(ctx)
+	digest, err := r.publish(ctx)
 	var httpErr *errcode.ErrorResponse
 	if errors.As(err, &httpErr) {
 		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", r.File, r.Target)
@@ -180,6 +180,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
+	r.Output.LogInfo("Copy the digest '%s' into your recipe pack to pin the artifact immutably.", digest)
+
 	return nil
 }
 
@@ -205,26 +207,26 @@ func handleErrorResponse(httpErr *errcode.ErrorResponse, message string) error {
 	}
 }
 
-func (r *Runner) publish(ctx context.Context) error {
+func (r *Runner) publish(ctx context.Context) (digest.Digest, error) {
 	// Prepare Source
 	src, err := r.prepareSource(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Prepare Destination
 	dst, err := r.prepareDestination()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	desc, err := oras.Copy(ctx, src, r.Destination.tag, dst, r.Destination.tag, oras.DefaultCopyOptions)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	r.Output.LogInfo("Pushed to %s:%s@%s\n", r.Destination.host, r.Destination.repo, desc.Digest)
-	return nil
+	return desc.Digest, nil
 }
 
 // prepareSource prepares the source for the publish operation
