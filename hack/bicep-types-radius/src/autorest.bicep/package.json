@@ -14,7 +14,7 @@
     "@autorest/extension-base": "^3.6.0",
     "@types/lodash": "^4.17.10",
     "autorest": "^3.7.1",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.23"
   },
   "devDependencies": {
     "@types/jest": "^29.5.13",
