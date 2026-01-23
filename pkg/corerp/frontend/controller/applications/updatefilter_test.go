@@ -252,7 +252,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		resp, err := CreateAppScopedNamespace(ctx, newResource, nil, &opts)
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
-		require.Contains(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace")
+		require.Contains(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is an invalid namespace name")
 	})
 
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {

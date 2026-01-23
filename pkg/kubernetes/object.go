@@ -145,7 +145,8 @@ func GetShortenedTargetPortName(name string) string {
 	return "a" + fmt.Sprint(h.Sum32())
 }
 
-// IsValidObjectName checks if the given string is a valid Kubernetes object name.
+// IsValidObjectName checks if the given string is a valid Kubernetes object name and returns a boolean value along with a concatenated string of error messages.
+// E.g error message: The Namespace "test-Invalid" is invalid: metadata.name: Invalid value: "test-Invalid": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name', or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?').
 func IsValidObjectName(name string) (bool, string) {
 	if len(validation.IsDNS1123Label(name)) == 0 {
 		return true, ""

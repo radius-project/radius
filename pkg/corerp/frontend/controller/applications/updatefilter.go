@@ -123,7 +123,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	}
 
 	if valid, msg := kubernetes.IsValidObjectName(kubeNamespace); !valid {
-		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace: %s. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace, msg)), nil
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is an invalid namespace name: %s. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace, msg)), nil
 	}
 
 	if oldResource != nil {
