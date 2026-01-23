@@ -129,7 +129,7 @@ jobs:
 
       - name: Perform GoSec Analysis
         if: matrix.language == 'custom-gosec'
-        uses: securego/gosec@9f202122a731425dfa2ee978fd0e4ba2d9d8e1dc
+        uses: securego/gosec@b579523bf6dbd3baf523a778c1a5d1f5c66e97fd
         with:
           args: -no-fail -fmt sarif -out gosec-results.sarif ./...
         continue-on-error: true
