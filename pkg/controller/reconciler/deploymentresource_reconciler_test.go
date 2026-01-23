@@ -84,7 +84,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	err = (&DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
+		EventRecorder:             mgr.GetEventRecorder("deploymentresource-controller"),
 		Radius:                    mockRadiusClient,
 		ResourceDeploymentsClient: mockResourceDeploymentsClient,
 		DelayInterval:             DeploymentResourceTestControllerDelayInterval,

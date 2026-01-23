@@ -18,10 +18,12 @@ package kubeutil
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -41,7 +43,13 @@ func PatchNamespace(ctx context.Context, client runtime_client.Client, namespace
 		},
 	}
 
-	err := client.Patch(ctx, ns, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	data, err := json.Marshal(ns)
+	if err != nil {
+		return fmt.Errorf("error marshaling namespace: %w", err)
+	}
+
+	patch := runtime_client.RawPatch(types.ApplyPatchType, data)
+	err = client.Patch(ctx, ns, patch, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return fmt.Errorf("error applying namespace: %w", err)
 	}

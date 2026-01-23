@@ -77,7 +77,7 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	err = (&DeploymentReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("deployment-controller"),
+		EventRecorder: mgr.GetEventRecorder("deployment-controller"),
 		Radius:        radius,
 		DelayInterval: deploymentTestControllerDelayInterval,
 	}).SetupWithManager(mgr)

@@ -24,7 +24,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	eventsv1 "k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -48,7 +48,7 @@ type RecipeReconciler struct {
 	Scheme *runtime.Scheme
 
 	// EventRecorder is the Kubernetes event recorder.
-	EventRecorder record.EventRecorder
+	EventRecorder eventsv1.EventRecorder
 
 	// Radius is the Radius client.
 	Radius RadiusClient
@@ -139,7 +139,7 @@ func (r *RecipeReconciler) reconcileOperation(ctx context.Context, recipe *radap
 		_, err = poller.Result(ctx)
 		if err != nil {
 			// Operation failed, reset state and retry.
-			r.EventRecorder.Event(recipe, corev1.EventTypeWarning, "ResourceError", err.Error())
+			r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeWarning, "ResourceError", "ReconcileResource", "%s", err.Error())
 			logger.Error(err, "Update failed.")
 
 			recipe.Status.Operation = nil
@@ -179,7 +179,7 @@ func (r *RecipeReconciler) reconcileOperation(ctx context.Context, recipe *radap
 		_, err = poller.Result(ctx)
 		if err != nil {
 			// Operation failed, reset state and retry.
-			r.EventRecorder.Event(recipe, corev1.EventTypeWarning, "ResourceError", err.Error())
+			r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 			logger.Error(err, "Delete failed.")
 
 			recipe.Status.Operation = nil
@@ -245,7 +245,7 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 
 	resourceGroupID, environmentID, applicationID, err := resolveDependencies(ctx, r.Radius, "/planes/radius/local", environmentName, applicationName)
 	if err != nil {
-		r.EventRecorder.Event(recipe, corev1.EventTypeWarning, "DependencyError", err.Error())
+		r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeWarning, "DependencyError", "ResolveDependencies", "%s", err.Error())
 		logger.Error(err, "Unable to resolve dependencies.")
 		return ctrl.Result{}, fmt.Errorf("failed to resolve dependencies: %w", err)
 	}
@@ -257,7 +257,7 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 	updatePoller, deletePoller, err := r.startPutOrDeleteOperationIfNeeded(ctx, recipe)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
-		r.EventRecorder.Event(recipe, corev1.EventTypeWarning, "ResourceError", err.Error())
+		r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeWarning, "ResourceError", "ReconcileResource", "%s", err.Error())
 		return ctrl.Result{}, err
 	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
@@ -305,7 +305,7 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 		return ctrl.Result{}, err
 	}
 
-	r.EventRecorder.Event(recipe, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeNormal, "Reconciled", "ReconcileResource", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
 
@@ -321,7 +321,7 @@ func (r *RecipeReconciler) reconcileDelete(ctx context.Context, recipe *radappio
 	poller, err := r.startDeleteOperationIfNeeded(ctx, recipe)
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
-		r.EventRecorder.Event(recipe, corev1.EventTypeWarning, "ResourceError", err.Error())
+		r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 		return ctrl.Result{}, err
 	} else if poller != nil {
 		// We've successfully started an operation. Update the status and requeue.
@@ -364,7 +364,7 @@ func (r *RecipeReconciler) reconcileDelete(ctx context.Context, recipe *radappio
 		return ctrl.Result{}, err
 	}
 
-	r.EventRecorder.Event(recipe, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	r.EventRecorder.Eventf(recipe, nil, corev1.EventTypeNormal, "Reconciled", "DeleteResource", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
 

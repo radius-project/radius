@@ -100,7 +100,7 @@ func (s *Service) Run(ctx context.Context) error {
 	err = (&reconciler.RecipeReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
+		EventRecorder: mgr.GetEventRecorder("recipe-controller"),
 		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
@@ -109,7 +109,7 @@ func (s *Service) Run(ctx context.Context) error {
 	err = (&reconciler.DeploymentReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("radius-deployment-controller"),
+		EventRecorder: mgr.GetEventRecorder("radius-deployment-controller"),
 		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
 	}).SetupWithManager(mgr)
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *Service) Run(ctx context.Context) error {
 	err = (&reconciler.DeploymentTemplateReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
+		EventRecorder:             mgr.GetEventRecorder("deploymenttemplate-controller"),
 		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
 		ResourceDeploymentsClient: resourceDeploymentsClient,
 	}).SetupWithManager(mgr)
@@ -137,7 +137,7 @@ func (s *Service) Run(ctx context.Context) error {
 	err = (&reconciler.DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
+		EventRecorder:             mgr.GetEventRecorder("deploymentresource-controller"),
 		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
 		ResourceDeploymentsClient: resourceDeploymentsClient,
 	}).SetupWithManager(mgr)

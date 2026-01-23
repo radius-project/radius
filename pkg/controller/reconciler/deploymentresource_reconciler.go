@@ -25,7 +25,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	eventsv1 "k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -48,7 +48,7 @@ type DeploymentResourceReconciler struct {
 	Scheme *runtime.Scheme
 
 	// EventRecorder is the Kubernetes event recorder.
-	EventRecorder record.EventRecorder
+	EventRecorder eventsv1.EventRecorder
 
 	// Radius is the Radius client.
 	Radius RadiusClient
@@ -120,7 +120,7 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	r.EventRecorder.Event(&deploymentResource, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	r.EventRecorder.Eventf(&deploymentResource, nil, corev1.EventTypeNormal, "Reconciled", "ReconcileResource", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
 
@@ -159,7 +159,7 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 			}
 
 			// Operation failed, reset state and retry.
-			r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
+			r.EventRecorder.Eventf(deploymentResource, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 			logger.Error(err, "Delete failed.")
 
 			if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
@@ -229,7 +229,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
-		r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
+		r.EventRecorder.Eventf(deploymentResource, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 		return ctrl.Result{}, err
 	} else if deletePoller != nil && !deletePoller.Done() {
 		// We've successfully started an operation. Update the status and requeue.
@@ -255,7 +255,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 			} else {
 				// Delete failed, update status and return error
 				logger.Error(err, "Synchronous delete failed.")
-				r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
+				r.EventRecorder.Eventf(deploymentResource, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 
 				if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
 					return ctrl.Result{}, statusErr

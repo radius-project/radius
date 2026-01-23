@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	eventsv1 "k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,7 +58,7 @@ type DeploymentReconciler struct {
 	Scheme *runtime.Scheme
 
 	// EventRecorder is the Kubernetes event recorder.
-	EventRecorder record.EventRecorder
+	EventRecorder eventsv1.EventRecorder
 
 	// Radius is the Radius client.
 	Radius RadiusClient
@@ -143,7 +143,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return r.reconcileUpdate(ctx, &deployment, &annotations)
 	}
 
-	r.EventRecorder.Event(&deployment, corev1.EventTypeNormal, "NoOp", fmt.Sprintf("Radius is not enabled for %s", deployment.Name))
+	r.EventRecorder.Eventf(&deployment, nil, corev1.EventTypeNormal, "NoOp", "ReconcileResource", "Radius is not enabled for %s", deployment.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -175,7 +175,7 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 		_, err = poller.Result(ctx)
 		if err != nil {
 			// Operation failed, reset state and retry.
-			r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
+			r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, "ResourceError", "ReconcileResource", "%s", err.Error())
 			logger.Error(err, "Update failed.")
 
 			annotations.Status.Operation = nil
@@ -214,7 +214,7 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 		_, err = poller.Result(ctx)
 		if err != nil {
 			// Operation failed, reset state and retry.
-			r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
+			r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 			logger.Error(err, "Delete failed.")
 
 			annotations.Status.Operation = nil
@@ -274,7 +274,7 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 
 	resourceGroupID, environmentID, applicationID, err := resolveDependencies(ctx, r.Radius, "/planes/radius/local", environmentName, applicationName)
 	if err != nil {
-		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "DependencyError", err.Error())
+		r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, "DependencyError", "ResolveDependencies", "%s", err.Error())
 		logger.Error(err, "Unable to resolve dependencies.")
 		return ctrl.Result{}, fmt.Errorf("failed to resolve dependencies: %w", err)
 	}
@@ -296,11 +296,11 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 	updatePoller, deletePoller, waiting, err := r.startPutOrDeleteOperationIfNeeded(ctx, deployment, annotations)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
-		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
+		r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, "ResourceError", "ReconcileResource", "%s", err.Error())
 		return ctrl.Result{}, err
 	} else if waiting {
 		logger.Info("Waiting on dependencies.")
-		r.EventRecorder.Event(deployment, corev1.EventTypeNormal, "DependencyNotReady", "Waiting on dependencies.")
+		r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeNormal, "DependencyNotReady", "ReconcileResource", "Waiting on dependencies.")
 
 		annotations.Status.Phrase = deploymentPhraseWaiting
 		err = r.saveState(ctx, deployment, annotations)
@@ -366,7 +366,7 @@ func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *
 	poller, err := r.startDeleteOperationIfNeeded(ctx, annotations)
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
-		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
+		r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, "ResourceError", "DeleteResource", "%s", err.Error())
 		return ctrl.Result{}, err
 	} else if poller != nil {
 		// We've successfully started an operation. Update the status and requeue.
@@ -400,7 +400,7 @@ func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *
 		return ctrl.Result{}, err
 	}
 
-	r.EventRecorder.Event(deployment, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	r.EventRecorder.Eventf(deployment, nil, corev1.EventTypeNormal, "Reconciled", "ReconcileResource", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
 

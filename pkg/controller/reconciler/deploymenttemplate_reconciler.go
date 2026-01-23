@@ -24,10 +24,11 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	eventsv1 "k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -39,7 +40,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // DeploymentTemplateReconciler reconciles a DeploymentTemplate object.
@@ -51,7 +51,7 @@ type DeploymentTemplateReconciler struct {
 	Scheme *k8sruntime.Scheme
 
 	// EventRecorder is the Kubernetes event recorder.
-	EventRecorder record.EventRecorder
+	EventRecorder eventsv1.EventRecorder
 
 	// Radius is the Radius client.
 	Radius RadiusClient
@@ -83,7 +83,6 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// Our algorithm is as follows:
 	//
 	// 1. Check if there is an in-progress operation. If so, check its status:
-	// 	1. If the operation is still in progress, then queue another reconcile operation and continue processing.
 	// 	2. If the operation completed successfully:
 	// 			1. Diff the resources in the `properties.outputResources` field returned by the Radius API with the resources in the `status.outputResources` field on the `DeploymentTemplate` resource.
 	// 			2. Depending on the diff, create or delete `DeploymentResource` resources on the cluster. In the case of create, add the `DeploymentTemplate` as the owner of the `DeploymentResource` and set the `radapp.io/deployment-resource-finalizer` finalizer on the `DeploymentResource`.
@@ -159,7 +158,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 
 			// Operation failed, reset state and schedule delayed retry.
-			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
+			r.EventRecorder.Eventf(deploymentTemplate, nil, corev1.EventTypeWarning, "ResourceError", "%s", err.Error())
 			logger.Error(err, "Update failed.")
 
 			if err := r.updateFailedStatus(ctx, deploymentTemplate); err != nil {
@@ -320,7 +319,7 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
-		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
+		r.EventRecorder.Eventf(deploymentTemplate, nil, corev1.EventTypeWarning, "ResourceError", "ReconcileResource", "%s", err.Error())
 
 		if statusErr := r.updateFailedStatus(ctx, deploymentTemplate); statusErr != nil {
 			return ctrl.Result{}, statusErr
@@ -355,7 +354,7 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		return ctrl.Result{}, err
 	}
 
-	r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	r.EventRecorder.Eventf(deploymentTemplate, nil, corev1.EventTypeNormal, "Reconciled", "ReconcileResource", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
 
@@ -418,7 +417,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 			return ctrl.Result{}, err
 		}
 
-		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+		r.EventRecorder.Eventf(deploymentTemplate, nil, corev1.EventTypeNormal, "Reconciled", "DeleteResource", "Successfully reconciled resource.")
 		return ctrl.Result{}, nil
 	}
 

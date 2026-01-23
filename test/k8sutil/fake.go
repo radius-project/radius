@@ -87,7 +87,7 @@ type testClient struct {
 // Patch implements client.Patch for apply patches. It checks if the patch type is Apply, then attempts to get
 // the object, create it if it doesn't exist, or update it if it does. If an error is encountered, it is returned.
 func (c *testClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	if patch.Type() != client.Apply.Type() {
+	if patch.Type() != types.ApplyPatchType {
 		return c.WithWatch.Patch(ctx, obj, patch, opts...)
 	}
 

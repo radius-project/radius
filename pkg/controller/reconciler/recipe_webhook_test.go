@@ -276,7 +276,7 @@ func setupWebhookTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	err = (&RecipeReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
+		EventRecorder: mgr.GetEventRecorder("recipe-controller"),
 		Radius:        radius,
 		DelayInterval: recipeTestControllerDelayInterval,
 	}).SetupWithManager(mgr)

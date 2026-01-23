@@ -80,7 +80,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	err = (&DeploymentTemplateReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
+		EventRecorder:             mgr.GetEventRecorder("deploymenttemplate-controller"),
 		Radius:                    mockRadiusClient,
 		ResourceDeploymentsClient: mockResourceDeploymentsClient,
 		DelayInterval:             deploymentTemplateTestControllerDelayInterval,
@@ -91,7 +91,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	err = (&DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
+		EventRecorder:             mgr.GetEventRecorder("deploymentresource-controller"),
 		Radius:                    mockRadiusClient,
 		ResourceDeploymentsClient: mockResourceDeploymentsClient,
 		DelayInterval:             DeploymentResourceTestControllerDelayInterval,

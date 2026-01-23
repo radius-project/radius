@@ -18,6 +18,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -35,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -102,7 +104,13 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		return nil, err
 	}
 
-	err = handler.client.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	data, marshalErr := json.Marshal(item)
+	if marshalErr != nil {
+		return nil, marshalErr
+	}
+
+	patch := client.RawPatch(types.ApplyPatchType, data)
+	err = handler.client.Patch(ctx, &item, patch, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ package configurationstores
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/daprrp/frontend/controller"
@@ -33,6 +34,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -101,7 +103,13 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprConfigu
 		return &processors.ValidationError{Message: err.Error()}
 	}
 
-	err = p.Client.Patch(ctx, &component, runtime.Apply, &runtime.PatchOptions{FieldManager: kubernetes.FieldManager})
+	data, marshalErr := json.Marshal(component)
+	if marshalErr != nil {
+		return &processors.ResourceError{Inner: marshalErr}
+	}
+
+	patch := runtime.RawPatch(types.ApplyPatchType, data)
+	err = p.Client.Patch(ctx, &component, patch, &runtime.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return &processors.ResourceError{Inner: err}
 	}

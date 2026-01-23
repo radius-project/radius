@@ -18,6 +18,7 @@ package secretstores
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
@@ -33,6 +34,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -97,7 +99,13 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ValidationError{Message: err.Error()}
 	}
 
-	err = p.Client.Patch(ctx, &component, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	data, marshalErr := json.Marshal(component)
+	if marshalErr != nil {
+		return &processors.ResourceError{Inner: marshalErr}
+	}
+
+	patch := runtime_client.RawPatch(types.ApplyPatchType, data)
+	err = p.Client.Patch(ctx, &component, patch, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return &processors.ResourceError{Inner: err}
 	}
