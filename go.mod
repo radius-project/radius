@@ -19,7 +19,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.3
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1
-	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260115172958-c1a289be58be
+	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260118201541-556bf5edad58
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.7.2
 	github.com/Masterminds/semver v1.5.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
