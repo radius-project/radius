@@ -58,6 +58,8 @@ github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.3/go.mod h1:9sfaaa+UF5VVus+Tr/bd1qm1oRoltnewm3HpiT9l8VU=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1 h1:/Zt+cDPnpC3OVDm/JKLOs7M2DKmLRIIp3XIx9pHHiig=
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1/go.mod h1:Ng3urmn6dYe8gnbCMoHHVl5APYz2txho3koEkV2o2HA=
+github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260115172958-c1a289be58be h1:yRx8H2QNmQ8qNcngJIfgzRjbma72V3/TS7I7BSmHuWA=
+github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260115172958-c1a289be58be/go.mod h1:Bk9rIa7p8ROWO4hK+qs5RacRf6tbU8/divPJ7PMUsyI=
 github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c h1:udKWzYgxTojEKWjV8V+WSxDXJ4NFATAsZjh8iIbsQIg=
 github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/Azure/secrets-store-csi-driver-provider-azure v1.7.2 h1:GVtAKa3sOzkHQGgOXiKQSbNf7aKo6eIHq96nmnjrugA=
