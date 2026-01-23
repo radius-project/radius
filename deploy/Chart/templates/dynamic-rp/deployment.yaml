@@ -203,6 +203,7 @@ spec:
         - name: encryption-secret
           secret:
             secretName: radius-encryption-key
+            defaultMode: 0400
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

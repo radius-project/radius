@@ -132,3 +132,4 @@ spec:
         - name: encryption-secret
           secret:
             secretName: radius-encryption-key
+            defaultMode: 0400

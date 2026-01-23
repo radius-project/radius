@@ -942,6 +942,7 @@ tests:
             name: encryption-secret
             secret:
               secretName: radius-encryption-key
+              defaultMode: 256  # 0400 in octal = 256 in decimal (read-only for owner)
 
   - it: should reference exact secret name radius-encryption-key in deployment volume
     set:
@@ -957,6 +958,7 @@ tests:
             name: encryption-secret
             secret:
               secretName: radius-encryption-key
+              defaultMode: 256
       # Additional verification using matchRegex if the volume structure is found
       - isNotNull:
           path: spec.template.spec.volumes
@@ -980,13 +982,14 @@ tests:
     templates:
       - ucp/deployment.yaml
     asserts:
-      # Verify volume is defined
+      # Verify volume is defined with strict permissions (0400 octal = 256 decimal)
       - contains:
           path: spec.template.spec.volumes
           content:
             name: encryption-secret
             secret:
               secretName: radius-encryption-key
+              defaultMode: 256
       # REQUIREMENT: Controllers must be able to load key at startup
       # Verify the volume is actually mounted at correct path with read-only access
       - contains:
@@ -1121,13 +1124,14 @@ tests:
     templates:
       - dynamic-rp/deployment.yaml
     asserts:
-      # Verify volume exists unconditionally (no 'optional' field)
+      # Verify volume exists with strict permissions (0400 = read-only for owner)
       - contains:
           path: spec.template.spec.volumes
           content:
             name: encryption-secret
             secret:
               secretName: radius-encryption-key
+              defaultMode: 256
       # Verify mount is always readOnly at correct path
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
