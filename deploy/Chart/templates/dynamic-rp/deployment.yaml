@@ -106,13 +106,7 @@ spec:
           echo "- Date: $(date)"
           echo "- PWD: $(pwd)"
           echo "- Available commands: $(which wget || echo 'no wget') $(which unzip || echo 'no unzip')"
-          
-          # Install wget and unzip if not available (Alpine doesn't include them by default)
-          if ! which wget >/dev/null 2>&1 || ! which unzip >/dev/null 2>&1; then
-            echo "Installing wget and unzip..."
-            apk add --no-cache wget unzip || { echo "ERROR: Failed to install wget/unzip"; exit 3; }
-          fi
-          
+
           # Download and extract terraform using wget
           cd /tmp
           echo "Downloading terraform using wget..."
@@ -175,6 +169,9 @@ spec:
         {{- end }}
         - name: terraform
           mountPath: {{ .Values.dynamicrp.terraform.path }}
+        - name: encryption-secret
+          mountPath: /var/secrets/encryption
+          readOnly: true
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -203,6 +200,10 @@ spec:
         {{- end }}
         - name: terraform
           emptyDir: {}
+        - name: encryption-secret
+          secret:
+            secretName: radius-encryption-key
+            defaultMode: 0400
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:
