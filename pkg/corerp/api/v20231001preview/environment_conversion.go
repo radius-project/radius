@@ -281,7 +281,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.En
 			return nil, err
 		}
 
-		if !kubernetes.IsValidObjectName(to.String(v.Namespace)) {
+		if valid, _ := kubernetes.IsValidObjectName(to.String(v.Namespace)); !valid {
 			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
