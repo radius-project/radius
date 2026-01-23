@@ -147,11 +147,11 @@ func TestFromResourceID(t *testing.T) {
 		},
 		{
 			resourceID: "namespace/namE_2",
-			err:        errors.New("'namE_2' is the invalid resource name. This must be at most 63 alphanumeric characters or '-'"),
+			err:        errors.New("'namE_2' is the invalid resource name."),
 		},
 		{
 			resourceID: "namespa_ce/name",
-			err:        errors.New("'namespa_ce' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'"),
+			err:        errors.New("'namespa_ce' is the invalid namespace."),
 		},
 	}
 
