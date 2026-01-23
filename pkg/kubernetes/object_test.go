@@ -47,7 +47,8 @@ func TestIsValidObjectName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.valid, IsValidObjectName(tt.in))
+			valid, _ := IsValidObjectName(tt.in)
+			require.Equal(t, tt.valid, valid)
 		})
 	}
 }
