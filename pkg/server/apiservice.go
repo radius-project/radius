@@ -28,11 +28,15 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 )
 
+// RouteConfigurer is a function that configures additional routes on the router.
+type RouteConfigurer func(ctx context.Context, r chi.Router, options hostoptions.HostOptions) error
+
 // APIService is the restful API server for Radius Resource Provider.
 type APIService struct {
 	server.Service
 
-	handlerBuilder []builder.Builder
+	handlerBuilder   []builder.Builder
+	routeConfigurers []RouteConfigurer
 }
 
 // NewAPIService creates a new instance of APIService.
@@ -43,6 +47,18 @@ func NewAPIService(options hostoptions.HostOptions, builder []builder.Builder) *
 			Options:      options,
 		},
 		handlerBuilder: builder,
+	}
+}
+
+// NewAPIServiceWithRoutes creates a new instance of APIService with additional route configurers.
+func NewAPIServiceWithRoutes(options hostoptions.HostOptions, builder []builder.Builder, routes ...RouteConfigurer) *APIService {
+	return &APIService{
+		Service: server.Service{
+			ProviderName: "radius",
+			Options:      options,
+		},
+		handlerBuilder:   builder,
+		routeConfigurers: routes,
 	}
 }
 
@@ -68,15 +84,16 @@ func (s *APIService) Run(ctx context.Context) error {
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
 		Configure: func(r chi.Router) error {
+			baseOpts := apictrl.Options{
+				Address:        address,
+				PathBase:       s.Options.Config.Server.PathBase,
+				DatabaseClient: databaseClient,
+				Arm:            s.Options.Arm, // This is a temporary fix to avoid ARM initialization in the test environment.
+				KubeClient:     s.KubeClient,
+				StatusManager:  s.OperationStatusManager,
+			}
 			for _, b := range s.handlerBuilder {
-				opts := apictrl.Options{
-					Address:        address,
-					PathBase:       s.Options.Config.Server.PathBase,
-					DatabaseClient: databaseClient,
-					Arm:            s.Options.Arm, // This is a temporary fix to avoid ARM initialization in the test environment.
-					KubeClient:     s.KubeClient,
-					StatusManager:  s.OperationStatusManager,
-				}
+				opts := baseOpts
 
 				validator, err := builder.NewOpenAPIValidator(ctx, opts.PathBase, b.Namespace())
 				if err != nil {
@@ -87,6 +104,14 @@ func (s *APIService) Run(ctx context.Context) error {
 					panic(err)
 				}
 			}
+
+			// Apply additional route configurers (e.g., terraform installer)
+			for _, configurer := range s.routeConfigurers {
+				if err := configurer(ctx, r, s.Options); err != nil {
+					return err
+				}
+			}
+
 			return nil
 		},
 		// set the arm cert manager for managing client certificate

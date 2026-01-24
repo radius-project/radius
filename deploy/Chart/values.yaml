@@ -70,6 +70,13 @@ global:
     # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
     # Default: ERROR
     loglevel: "ERROR"
+    # Storage size for shared terraform PVC (used by UCP installer and recipe execution)
+    # This PVC stores installed Terraform versions managed via `rad terraform install`
+    storageSize: "1Gi"
+    # Storage class name for the terraform PVC
+    # Leave empty to use the default storage class
+    # For ReadWriteMany access, use a storage class that supports it (e.g., NFS, EFS, Azure Files)
+    storageClassName: ""
 
 controller:
   image: controller
