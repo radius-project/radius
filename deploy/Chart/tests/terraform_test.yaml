@@ -1,0 +1,124 @@
+suite: test terraform configuration
+templates:
+  - rp/deployment.yaml
+  - rp/configmaps.yaml
+  - dynamic-rp/deployment.yaml
+tests:
+  # applications-rp terraform volume tests
+  - it: should create emptyDir terraform volume in applications-rp when terraform is enabled
+    set:
+      global.terraform.enabled: true
+      rp.image: applications-rp
+      rp.tag: latest
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: terraform
+            emptyDir: {}
+        template: rp/deployment.yaml
+
+  - it: should mount terraform volume in applications-rp container
+    set:
+      global.terraform.enabled: true
+      rp.image: applications-rp
+      rp.tag: latest
+      rp.terraform.path: /terraform
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: terraform
+            mountPath: /terraform
+        template: rp/deployment.yaml
+
+  - it: should include terraform init container when terraform is enabled
+    set:
+      global.terraform.enabled: true
+      rp.image: applications-rp
+      rp.tag: latest
+    asserts:
+      - isNotEmpty:
+          path: spec.template.spec.initContainers
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: terraform-init
+          any: true
+        template: rp/deployment.yaml
+
+  - it: should include terraform config in applications-rp configmap
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: "terraform:\\s+path: \"/terraform\""
+        template: rp/configmaps.yaml
+
+  # dynamic-rp terraform volume tests
+  - it: should create emptyDir terraform volume in dynamic-rp when terraform is enabled
+    set:
+      global.terraform.enabled: true
+      dynamicrp.image: dynamic-rp
+      dynamicrp.tag: latest
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: terraform
+            emptyDir: {}
+        template: dynamic-rp/deployment.yaml
+
+  - it: should mount terraform volume in dynamic-rp container
+    set:
+      global.terraform.enabled: true
+      dynamicrp.image: dynamic-rp
+      dynamicrp.tag: latest
+      dynamicrp.terraform.path: /terraform
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: terraform
+            mountPath: /terraform
+        template: dynamic-rp/deployment.yaml
+
+  - it: should include terraform init container in dynamic-rp when terraform is enabled
+    set:
+      global.terraform.enabled: true
+      dynamicrp.image: dynamic-rp
+      dynamicrp.tag: latest
+    asserts:
+      - isNotEmpty:
+          path: spec.template.spec.initContainers
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: terraform-init
+          any: true
+        template: dynamic-rp/deployment.yaml
+
+  # Both deployments use independent emptyDir volumes (pod-local storage)
+  - it: should use independent emptyDir volumes for each deployment
+    set:
+      global.terraform.enabled: true
+      rp.image: applications-rp
+      rp.tag: latest
+      dynamicrp.image: dynamic-rp
+      dynamicrp.tag: latest
+    asserts:
+      # applications-rp uses emptyDir
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: terraform
+            emptyDir: {}
+        template: rp/deployment.yaml
+      # dynamic-rp uses emptyDir
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: terraform
+            emptyDir: {}
+        template: dynamic-rp/deployment.yaml
