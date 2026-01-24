@@ -130,8 +130,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=${{ github.ref }}"
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
             echo "PR_NUMBER=${{ github.event.pull_request.number }}"
             echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
           } >> "${GITHUB_ENV}"
@@ -491,6 +491,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
+      checks: write # Required for publishing test results
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
