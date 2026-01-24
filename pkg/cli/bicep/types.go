@@ -54,14 +54,14 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 
 	ok, err := IsBicepInstalled()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find rad-bicep: %w", err)
+		return nil, fmt.Errorf("failed to find bicep: %w", err)
 	}
 
 	if !ok {
 		i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 		err = DownloadBicep()
 		if err != nil {
-			return nil, fmt.Errorf("failed to download rad-bicep: %w", err)
+			return nil, fmt.Errorf("failed to download bicep: %w", err)
 		}
 	}
 
@@ -88,7 +88,7 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	return template, nil
 }
 
-// Call runs `rad-bicep` with the given arguments.
+// Call runs `bicep` with the given arguments.
 func (i *Impl) Call(args ...string) ([]byte, error) {
 	return runBicepRaw(args...)
 }

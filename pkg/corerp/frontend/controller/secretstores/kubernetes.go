@@ -183,14 +183,18 @@ func fromResourceID(id string) (ns string, name string, err error) {
 		return
 	}
 
-	if name != "" && !kubernetes.IsValidObjectName(name) {
-		err = fmt.Errorf("'%s' is the invalid resource name. This must be at most 63 alphanumeric characters or '-'", name)
-		return
+	if name != "" {
+		if valid, msg := kubernetes.IsValidObjectName(name); !valid {
+			err = fmt.Errorf("'%s' is the invalid resource name. %s", name, msg)
+			return
+		}
 	}
 
-	if ns != "" && !kubernetes.IsValidObjectName(ns) {
-		err = fmt.Errorf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'", ns)
-		return
+	if ns != "" {
+		if valid, msg := kubernetes.IsValidObjectName(ns); !valid {
+			err = fmt.Errorf("'%s' is the invalid namespace. %s", ns, msg)
+			return
+		}
 	}
 
 	return
