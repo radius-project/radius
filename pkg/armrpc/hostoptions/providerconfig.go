@@ -101,4 +101,7 @@ type TerraformOptions struct {
 
 	// LogLevel is the log level for Terraform execution (ERROR, DEBUG, etc.).
 	LogLevel string `yaml:"logLevel,omitempty"`
+
+	// SourceBaseURL is an optional override to download Terraform from a mirror/base URL (for example in air-gapped setups).
+	SourceBaseURL string `yaml:"sourceBaseUrl,omitempty"`
 }

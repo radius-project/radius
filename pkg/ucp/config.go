@@ -76,6 +76,9 @@ type Config struct {
 
 	// Worker is the configuration for the backend worker server.
 	Worker hostoptions.WorkerServerOptions `yaml:"workerServer"`
+
+	// Terraform configures Terraform installer settings.
+	Terraform hostoptions.TerraformOptions `yaml:"terraform,omitempty"`
 }
 
 const (
