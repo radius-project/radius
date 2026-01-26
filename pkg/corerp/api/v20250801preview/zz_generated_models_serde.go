@@ -557,6 +557,7 @@ func (b BicepSettingsProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "authentication", b.Authentication)
 	populate(objectMap, "provisioningState", b.ProvisioningState)
+	populate(objectMap, "referencedBy", b.ReferencedBy)
 	return json.Marshal(objectMap)
 }
 
@@ -574,6 +575,9 @@ func (b *BicepSettingsProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "provisioningState":
 			err = unpopulate(val, "ProvisioningState", &b.ProvisioningState)
+			delete(rawMsg, key)
+		case "referencedBy":
+			err = unpopulate(val, "ReferencedBy", &b.ReferencedBy)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1984,6 +1988,7 @@ func (t TerraformSettingsProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "env", t.Env)
 	populate(objectMap, "logging", t.Logging)
 	populate(objectMap, "provisioningState", t.ProvisioningState)
+	populate(objectMap, "referencedBy", t.ReferencedBy)
 	populate(objectMap, "terraformrc", t.Terraformrc)
 	return json.Marshal(objectMap)
 }
@@ -2008,6 +2013,9 @@ func (t *TerraformSettingsProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "provisioningState":
 			err = unpopulate(val, "ProvisioningState", &t.ProvisioningState)
+			delete(rawMsg, key)
+		case "referencedBy":
+			err = unpopulate(val, "ReferencedBy", &t.ReferencedBy)
 			delete(rawMsg, key)
 		case "terraformrc":
 			err = unpopulate(val, "Terraformrc", &t.Terraformrc)

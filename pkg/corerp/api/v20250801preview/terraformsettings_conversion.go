@@ -62,6 +62,11 @@ func (src *TerraformSettingsResource) ConvertTo() (v1.DataModelInterface, error)
 		converted.Properties.Logging = toTerraformLoggingConfigurationDataModel(src.Properties.Logging)
 	}
 
+	// Convert ReferencedBy
+	if src.Properties.ReferencedBy != nil {
+		converted.Properties.ReferencedBy = to.StringArray(src.Properties.ReferencedBy)
+	}
+
 	return converted, nil
 }
 
@@ -100,6 +105,11 @@ func (dst *TerraformSettingsResource) ConvertFrom(src v1.DataModelInterface) err
 	// Convert Logging
 	if ts.Properties.Logging != nil {
 		dst.Properties.Logging = fromTerraformLoggingConfigurationDataModel(ts.Properties.Logging)
+	}
+
+	// Convert ReferencedBy
+	if len(ts.Properties.ReferencedBy) > 0 {
+		dst.Properties.ReferencedBy = to.ArrayofStringPtrs(ts.Properties.ReferencedBy)
 	}
 
 	return nil

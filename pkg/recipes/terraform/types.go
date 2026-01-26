@@ -125,6 +125,26 @@ func GetProviderEnvSecretIDs(envConfig recipes.Configuration) map[string][]strin
 	return providerSecretIDs
 }
 
+// GetTerraformSettingsSecretIDs parses the envConfig to extract secret IDs configured in TerraformSettings.
+// This includes Terraform CLI credentials configured in terraformrc.
+func GetTerraformSettingsSecretIDs(envConfig recipes.Configuration) map[string][]string {
+	settingsSecretIDs := make(map[string][]string)
+	var mu sync.Mutex
+
+	if envConfig.TerraformSettings == nil || envConfig.TerraformSettings.TerraformRC == nil {
+		return settingsSecretIDs
+	}
+
+	for _, cred := range envConfig.TerraformSettings.TerraformRC.Credentials {
+		if cred == nil || cred.Token == nil {
+			continue
+		}
+		addSecretKeys(settingsSecretIDs, cred.Token.SecretID, cred.Token.Key, &mu)
+	}
+
+	return settingsSecretIDs
+}
+
 // extractProviderSecrets extracts secrets from Terraform provider configurations
 func extractProviderSecretIDs(providers map[string][]dm.ProviderConfigProperties, secrets map[string][]string, mu *sync.Mutex) {
 	for _, config := range providers {
