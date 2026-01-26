@@ -86,6 +86,13 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 
 	if resource := manifest.GetFirst(appsv1.SchemeGroupVersion.WithKind("Deployment")); resource != nil {
 		defaultDeployment = resource.(*appsv1.Deployment)
+		// Ensure TypeMeta is set for objects from base manifest
+		if defaultDeployment.TypeMeta.Kind == "" {
+			defaultDeployment.TypeMeta.Kind = "Deployment"
+		}
+		if defaultDeployment.TypeMeta.APIVersion == "" {
+			defaultDeployment.TypeMeta.APIVersion = "apps/v1"
+		}
 	}
 
 	defaultDeployment.ObjectMeta = getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
@@ -136,6 +143,13 @@ func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamod
 	}
 	if resource := manifest.GetFirst(corev1.SchemeGroupVersion.WithKind("Service")); resource != nil {
 		defaultService = resource.(*corev1.Service)
+		// Ensure TypeMeta is set for objects from base manifest
+		if defaultService.TypeMeta.Kind == "" {
+			defaultService.TypeMeta.Kind = "Service"
+		}
+		if defaultService.TypeMeta.APIVersion == "" {
+			defaultService.TypeMeta.APIVersion = "v1"
+		}
 	}
 	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
 	return defaultService
@@ -154,6 +168,13 @@ func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *
 
 	if resource := manifest.GetFirst(corev1.SchemeGroupVersion.WithKind("ServiceAccount")); resource != nil {
 		defaultAccount = resource.(*corev1.ServiceAccount)
+		// Ensure TypeMeta is set for objects from base manifest
+		if defaultAccount.TypeMeta.Kind == "" {
+			defaultAccount.TypeMeta.Kind = "ServiceAccount"
+		}
+		if defaultAccount.TypeMeta.APIVersion == "" {
+			defaultAccount.TypeMeta.APIVersion = "v1"
+		}
 	}
 
 	defaultAccount.ObjectMeta = getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)

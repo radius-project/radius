@@ -202,6 +202,8 @@ func TestConvertToUnstructured(t *testing.T) {
 			},
 			out: unstructured.Unstructured{
 				Object: map[string]any{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
 					"metadata": map[string]any{
 						"name":      "test-deployment",
 						"namespace": "test-namespace",

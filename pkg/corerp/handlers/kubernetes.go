@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	k8s "k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -217,6 +218,15 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 		return unstructured.Unstructured{}, errors.New("inner type was not a runtime.Object")
 	}
 
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	if gvk.Empty() {
+		// Try to resolve the GVK from the global client-go scheme when TypeMeta is missing.
+		if kinds, _, err := clientgoscheme.Scheme.ObjectKinds(obj); err == nil && len(kinds) > 0 {
+			gvk = kinds[0]
+			obj.GetObjectKind().SetGroupVersionKind(gvk)
+		}
+	}
+
 	resourceType := resource.GetResourceType()
 	if resourceType.Provider != resourcemodel.ProviderKubernetes {
 		return unstructured.Unstructured{}, fmt.Errorf("invalid resource type provider: %s", resourceType.Provider)
@@ -227,5 +237,38 @@ func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructu
 		return unstructured.Unstructured{}, fmt.Errorf("could not convert object %v to unstructured: %w", obj.GetObjectKind(), err)
 	}
 
-	return unstructured.Unstructured{Object: c}, nil
+	item := unstructured.Unstructured{Object: c}
+
+	// When using RawPatch with JSON marshaling, the GVK must be explicitly set on the unstructured object.
+	apiVersion, hasAPIVersion := c["apiVersion"].(string)
+	kind, hasKind := c["kind"].(string)
+
+	if (!hasAPIVersion || apiVersion == "") && !gvk.Empty() {
+		apiVersion = gvk.GroupVersion().String()
+		c["apiVersion"] = apiVersion
+	}
+
+	if (!hasKind || kind == "") && !gvk.Empty() {
+		kind = gvk.Kind
+		c["kind"] = kind
+	}
+
+	item = unstructured.Unstructured{Object: c}
+
+	if item.GroupVersionKind().Empty() {
+		switch {
+		case !gvk.Empty():
+			item.SetGroupVersionKind(gvk)
+		case apiVersion != "" && kind != "":
+			gv, parseErr := schema.ParseGroupVersion(apiVersion)
+			if parseErr != nil {
+				return unstructured.Unstructured{}, fmt.Errorf("could not parse apiVersion %q: %w", apiVersion, parseErr)
+			}
+			item.SetGroupVersionKind(schema.GroupVersionKind{Group: gv.Group, Version: gv.Version, Kind: kind})
+		default:
+			return unstructured.Unstructured{}, errors.New("resource is missing apiVersion and kind")
+		}
+	}
+
+	return item, nil
 }
