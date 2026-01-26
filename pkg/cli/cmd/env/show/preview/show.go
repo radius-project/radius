@@ -137,6 +137,33 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	envProviders := []EnvProvider{}
+	if resp.EnvironmentResource.Properties.Providers != nil {
+		if resp.EnvironmentResource.Properties.Providers.Azure != nil {
+			azureProvider := EnvProvider{
+				Provider:   "azure",
+				Properties: formatAzureProperties(resp.EnvironmentResource.Properties.Providers.Azure),
+			}
+			envProviders = append(envProviders, azureProvider)
+		}
+
+		if resp.EnvironmentResource.Properties.Providers.Aws != nil {
+			awsProvider := EnvProvider{
+				Provider:   "aws",
+				Properties: formatAWSProperties(resp.EnvironmentResource.Properties.Providers.Aws),
+			}
+			envProviders = append(envProviders, awsProvider)
+		}
+
+		if resp.EnvironmentResource.Properties.Providers.Kubernetes != nil {
+			k8sProvider := EnvProvider{
+				Provider:   "kubernetes",
+				Properties: formatKubernetesProperties(resp.EnvironmentResource.Properties.Providers.Kubernetes),
+			}
+			envProviders = append(envProviders, k8sProvider)
+		}
+	}
+
 	recipepackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
 	envRecipes := []EnvRecipes{}
 	for _, rp := range resp.EnvironmentResource.Properties.RecipePacks {
@@ -183,10 +210,20 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("")
-	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipesForEnvironmentTableFormat())
-	if err != nil {
-		return err
+	if len(envProviders) > 0 {
+		r.Output.LogInfo("")
+		err = r.Output.WriteFormatted(r.Format, envProviders, objectformats.GetProvidersForEnvironmentTableFormat())
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(envRecipes) > 0 {
+		r.Output.LogInfo("")
+		err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipesForEnvironmentTableFormat())
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

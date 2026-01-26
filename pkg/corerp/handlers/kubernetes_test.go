@@ -96,7 +96,7 @@ func TestPut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			clientSet := fake.NewSimpleClientset(tc.in.Resource.CreateResource.Data.(runtime.Object))
+			clientSet := fake.NewClientset(tc.in.Resource.CreateResource.Data.(runtime.Object))
 			handler := kubernetesHandler{
 				client: k8sutil.NewFakeKubeClient(nil),
 				deploymentWaiter: &deploymentWaiter{

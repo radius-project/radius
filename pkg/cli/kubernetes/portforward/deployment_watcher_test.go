@@ -405,7 +405,7 @@ func createPod(name string, replicaSetName string) *corev1.Pod {
 }
 
 func createPodWatchFakes(objects ...runtime.Object) (*fake.Clientset, *watch.FakeWatcher) {
-	client := fake.NewSimpleClientset(objects...)
+	client := fake.NewClientset(objects...)
 	watcher := watch.NewFake()
 	client.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))
 

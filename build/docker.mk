@@ -19,6 +19,15 @@ DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
+# Enable GitHub Actions caching by default in CI environments
+DOCKER_CACHE_GHA?=0
+DOCKER_BUILDX_CACHE_FROM:=
+DOCKER_BUILDX_CACHE_TO:=
+ifeq ($(DOCKER_CACHE_GHA),1)
+    DOCKER_BUILDX_CACHE_FROM=--cache-from type=gha
+    DOCKER_BUILDX_CACHE_TO=--cache-to type=gha,mode=max
+endif
+
 ##@ Docker Images
 
 # Generate a target for each image we define
@@ -69,6 +78,8 @@ docker-multi-arch-build-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 buil
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		$(DOCKER_BUILDX_CACHE_FROM) \
+		$(DOCKER_BUILDX_CACHE_TO) \
 		$(2)
 
 .PHONY: docker-multi-arch-push-$(1)
@@ -85,6 +96,8 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		$(DOCKER_BUILDX_CACHE_FROM) \
+		$(DOCKER_BUILDX_CACHE_TO) \
 		--push \
 		$(2)
 endef

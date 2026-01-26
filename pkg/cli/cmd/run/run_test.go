@@ -443,7 +443,7 @@ func Test_Run(t *testing.T) {
 	portforwardMock := portforward.NewMockInterface(ctrl)
 
 	dashboardDeployment := createDashboardDeploymentObject()
-	fakeKubernetesClient := fake.NewSimpleClientset(dashboardDeployment)
+	fakeKubernetesClient := fake.NewClientset(dashboardDeployment)
 
 	appPortforwardOptionsChan := make(chan portforward.Options, 1)
 	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")
@@ -628,7 +628,7 @@ func Test_Run_NoDashboard(t *testing.T) {
 
 	portforwardMock := portforward.NewMockInterface(ctrl)
 
-	fakeKubernetesClient := fake.NewSimpleClientset()
+	fakeKubernetesClient := fake.NewClientset()
 
 	appPortforwardOptionsChan := make(chan portforward.Options, 1)
 	appLabelSelector, err := portforward.CreateLabelSelectorForApplication("test-application")

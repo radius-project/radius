@@ -59,6 +59,11 @@ endif
 test: test-get-envtools test-helm ## Runs Go tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch $(ENVTEST_ARCH))" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
 
+.PHONY: test-compile
+test-compile: test-get-envtools ## Compiles all tests without running them
+	@echo "$(ARROW) Compiling unit tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 go test -c ./pkg/... -o /dev/null
+
 .PHONY: test-get-envtools
 test-get-envtools:
 	@echo "$(ARROW) Installing Kubebuilder test tools..."
@@ -106,7 +111,7 @@ test-functional-corerp: test-functional-corerp-noncloud test-functional-corerp-c
 
 .PHONY: test-functional-corerp-noncloud
 test-functional-corerp-noncloud: ## Runs corerp functional tests that do not require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-corerp-cloud
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
@@ -160,7 +165,7 @@ test-functional-samples-noncloud: ## Runs Samples functional tests that do not r
 
 .PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
-	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
+	BICEP_PATH="${HOME}/.rad/bin/bicep" ./build/validate-bicep.sh
 
 .PHONY: test-helm
 test-helm: ## Runs Helm chart unit tests
