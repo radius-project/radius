@@ -216,6 +216,9 @@ type BicepSettingsProperties struct {
 
 	// READ-ONLY; Provisioning state of the asynchronous operation.
 	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; List of environment resource IDs that reference this settings resource.
+	ReferencedBy []*string
 }
 
 // BicepSettingsResource - Bicep settings resource.
@@ -760,6 +763,9 @@ type TerraformSettingsProperties struct {
 
 	// READ-ONLY; Provisioning state of the asynchronous operation.
 	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; List of environment resource IDs that reference this settings resource.
+	ReferencedBy []*string
 }
 
 // TerraformSettingsResource - Terraform settings resource.

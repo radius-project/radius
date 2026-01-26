@@ -444,11 +444,64 @@ func (d *bicepDriver) FindSecretIDs(ctx context.Context, envConfig recipes.Confi
 	secretStoreIDResourceKeys = make(map[string][]string)
 	if envConfig.RecipeConfig.Bicep.Authentication != nil {
 		for _, v := range envConfig.RecipeConfig.Bicep.Authentication {
-			secretStoreIDResourceKeys[v.Secret] = []string{}
+			addSecretStoreKeys(secretStoreIDResourceKeys, v.Secret)
+		}
+	}
+
+	// Also check BicepSettings.Authentication for secrets
+	if envConfig.BicepSettings != nil && envConfig.BicepSettings.Authentication != nil {
+		for _, authConfig := range envConfig.BicepSettings.Authentication.Registries {
+			if authConfig == nil {
+				continue
+			}
+			// Add secrets from basic authentication
+			if authConfig.Basic != nil && authConfig.Basic.Password != nil {
+				addSecretStoreKeys(secretStoreIDResourceKeys, authConfig.Basic.Password.SecretID, authConfig.Basic.Password.Key)
+			}
+			// Add secrets from Azure Workload Identity authentication
+			if authConfig.AzureWorkloadIdentity != nil && authConfig.AzureWorkloadIdentity.Token != nil {
+				addSecretStoreKeys(secretStoreIDResourceKeys, authConfig.AzureWorkloadIdentity.Token.SecretID, authConfig.AzureWorkloadIdentity.Token.Key)
+			}
+			// Add secrets from AWS IRSA authentication
+			if authConfig.AwsIrsa != nil && authConfig.AwsIrsa.Token != nil {
+				addSecretStoreKeys(secretStoreIDResourceKeys, authConfig.AwsIrsa.Token.SecretID, authConfig.AwsIrsa.Token.Key)
+			}
 		}
 	}
 
 	return secretStoreIDResourceKeys, err
+}
+
+func addSecretStoreKeys(secretStoreIDResourceKeys map[string][]string, secretStoreID string, keys ...string) {
+	if secretStoreID == "" {
+		return
+	}
+
+	if len(keys) == 0 {
+		// Empty slice indicates all keys should be loaded for this secret store.
+		secretStoreIDResourceKeys[secretStoreID] = []string{}
+		return
+	}
+
+	filteredKeys := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if key != "" {
+			filteredKeys = append(filteredKeys, key)
+		}
+	}
+	if len(filteredKeys) == 0 {
+		return
+	}
+
+	if existingKeys, ok := secretStoreIDResourceKeys[secretStoreID]; ok {
+		if len(existingKeys) == 0 {
+			return
+		}
+		secretStoreIDResourceKeys[secretStoreID] = append(existingKeys, filteredKeys...)
+		return
+	}
+
+	secretStoreIDResourceKeys[secretStoreID] = append([]string(nil), filteredKeys...)
 }
 
 func getRegistryAuthClient(ctx context.Context, secrets recipes.SecretData, templatePath string) (remote.Client, error) {
