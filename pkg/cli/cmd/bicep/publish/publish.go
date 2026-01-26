@@ -180,7 +180,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
-	r.Output.LogInfo("Copy the digest '%s' into your recipe pack to pin the artifact immutably.", digest)
+	r.Output.LogInfo("To pin the artifact immutable use the following recipe url: %s", computeImmutableRecipeUrl(r.Target, digest.String()))
 
 	return nil
 }
@@ -363,4 +363,11 @@ func generateManifestContent(config ocispec.Descriptor, layers ...ocispec.Descri
 		Versioned: specs.Versioned{SchemaVersion: 2},
 	}
 	return json.Marshal(content)
+}
+
+// computeImmutableRecipeUrl builds an OCI URL using the registry/repo portion of the
+// target (no leading "br:" and without the tag) and replaces the tag with the digest.
+func computeImmutableRecipeUrl(target, hash string) string {
+	host := strings.Split(target, ":")[0]
+	return fmt.Sprintf("%s@%s", host, hash)
 }
