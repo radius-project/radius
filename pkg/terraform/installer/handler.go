@@ -158,7 +158,7 @@ func (h *Handler) handleInstall(ctx context.Context, job *JobMessage) error {
 	}
 
 	targetDir := h.versionDir(job.Version)
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+	if err := os.MkdirAll(targetDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create target dir: %w", err)
 	}
 
@@ -189,7 +189,9 @@ func (h *Handler) handleInstall(ctx context.Context, job *JobMessage) error {
 		log.V(1).Info("failed to remove download archive", "path", archivePath, "error", err)
 	}
 
-	if err := os.Chmod(binaryPath, 0o755); err != nil {
+	// Use 0o700 for executable - only owner needs access. Gosec recommends 0o600 but
+	// executables require the execute bit to function.
+	if err := os.Chmod(binaryPath, 0o700); err != nil {
 		chmodErr := fmt.Errorf("failed to chmod terraform binary: %w", err)
 		_ = h.recordFailure(ctx, status, job.Version, chmodErr)
 		return chmodErr
@@ -383,6 +385,8 @@ type downloadOptions struct {
 }
 
 func (h *Handler) download(ctx context.Context, opts *downloadOptions) error {
+	log := ucplog.FromContextOrDiscard(ctx)
+
 	// Validate URL scheme to prevent file://, ftp://, or other potentially dangerous schemes
 	parsedURL, err := url.Parse(opts.URL)
 	if err != nil {
@@ -437,10 +441,16 @@ func (h *Handler) download(ctx context.Context, opts *downloadOptions) error {
 	if err != nil {
 		return err
 	}
-	// Cleanup temp file on any error; os.Remove will no-op if file was renamed.
+	// Cleanup temp file on any error; os.Remove will no-op if file was already renamed.
 	defer func() {
-		out.Close()
-		os.Remove(tmp) // Safe: will fail silently if file was already renamed
+		if err := out.Close(); err != nil {
+			// Log but don't fail - main operation error is more important
+			log.V(1).Info("failed to close temp file during cleanup", "error", err)
+		}
+		if err := os.Remove(tmp); err != nil && !os.IsNotExist(err) {
+			// Log but don't fail - file may have been renamed successfully
+			log.V(1).Info("failed to remove temp file during cleanup", "error", err)
+		}
 	}()
 
 	hasher := newHasher(opts.Checksum)
@@ -598,7 +608,14 @@ func (h *Handler) currentSymlinkPath() string {
 }
 
 func (h *Handler) versionDir(version string) string {
-	return filepath.Join(h.rootPath(), "versions", version)
+	// Version is validated by ValidateVersionForPath() before reaching here.
+	// safePath provides defense-in-depth against path traversal.
+	path, err := safePath(h.rootPath(), "versions", version)
+	if err != nil {
+		// This should never happen with validated version - indicates a bug
+		panic(fmt.Sprintf("versionDir: invalid path for version %q: %v", version, err))
+	}
+	return path
 }
 
 func (h *Handler) versionBinaryPath(version string) string {
@@ -614,6 +631,29 @@ func (h *Handler) rootPath() string {
 		return "/terraform"
 	}
 	return h.RootPath
+}
+
+// safePath constructs a path within root and validates it doesn't escape.
+// This prevents path traversal attacks even if version validation is bypassed.
+func safePath(root string, subpaths ...string) (string, error) {
+	// Clean the root first
+	root = filepath.Clean(root)
+
+	// Join and clean the full path
+	parts := append([]string{root}, subpaths...)
+	full := filepath.Clean(filepath.Join(parts...))
+
+	// Verify the result is within root (has root as prefix)
+	// Use filepath.Rel to check - if result starts with "..", it escaped
+	rel, err := filepath.Rel(root, full)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+	if strings.HasPrefix(rel, "..") {
+		return "", fmt.Errorf("path escapes root directory")
+	}
+
+	return full, nil
 }
 
 func (h *Handler) defaultTerraformURL(version string) string {
@@ -715,7 +755,8 @@ func copyFile(src, dst string) error {
 	}
 	defer in.Close()
 
-	return writeFile(in, dst, 0o755)
+	// Use 0o700 for executable - only owner needs access
+	return writeFile(in, dst, 0o700)
 }
 
 func writeFile(r io.Reader, dst string, perm os.FileMode) error {
@@ -801,7 +842,8 @@ func (h *Handler) clearQueueInProgress(ctx context.Context) {
 }
 
 func (h *Handler) acquireLock() (*os.File, error) {
-	lockPath := filepath.Join(h.rootPath(), ".terraform-installer.lock")
+	// lockPath uses only trusted h.rootPath() and a constant filename - no user input
+	lockPath := filepath.Clean(filepath.Join(h.rootPath(), ".terraform-installer.lock"))
 	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	if err != nil {
 		if os.IsExist(err) {
@@ -824,5 +866,5 @@ func (h *Handler) releaseLock(log logr.Logger, f *os.File) {
 }
 
 func (h *Handler) ensureRoot() error {
-	return os.MkdirAll(h.rootPath(), 0o755)
+	return os.MkdirAll(h.rootPath(), 0o750)
 }
