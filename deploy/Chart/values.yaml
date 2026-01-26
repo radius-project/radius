@@ -30,7 +30,7 @@ global:
   appendRootCA:
     # Auto-enabled when global.rootCA.cert is provided via --set-file
     # Init image to normalize and prepare certs directory
-    initImage: "alpine:latest"
+    initImage: "alpine:3.23"
     # Working and target mount paths
     workDir: "/work/certs"
     targetMountPath: "/etc/ssl/certs"
