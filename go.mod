@@ -6,9 +6,6 @@ go 1.25.5
 // xref: https://github.com/opencontainers/go-digest/pull/66
 replace github.com/opencontainers/go-digest => github.com/opencontainers/go-digest v1.0.1-0.20220411205349-bde1400a84be
 
-// replace github.com/radius-project/radius/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
-replace github.com/Azure/bicep-types/src/bicep-types-go => ./bicep-types/src/bicep-types-go
-
 replace github.com/stretchr/testify => github.com/stretchr/testify v1.10.0
 
 require (
@@ -22,7 +19,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.3
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1
-	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-00010101000000-000000000000
+	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260118201541-556bf5edad58
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.7.2
 	github.com/Masterminds/semver v1.5.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
