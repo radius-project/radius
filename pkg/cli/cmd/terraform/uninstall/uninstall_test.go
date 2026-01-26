@@ -293,7 +293,7 @@ func Test_Run(t *testing.T) {
 			case r.URL.Path == "/apis/api.ucp.dev/v1alpha3/installer/terraform/status" && r.Method == http.MethodGet:
 				calls := statusCalls.Add(1)
 
-				statusResponse := installer.StatusResponse{}
+				var statusResponse installer.StatusResponse
 				if calls == 1 {
 					// Before uninstall, current version is 1.6.4
 					statusResponse = installer.StatusResponse{
@@ -378,7 +378,7 @@ func Test_Run(t *testing.T) {
 			case r.URL.Path == "/apis/api.ucp.dev/v1alpha3/installer/terraform/status" && r.Method == http.MethodGet:
 				calls := statusCalls.Add(1)
 
-				statusResponse := installer.StatusResponse{}
+				var statusResponse installer.StatusResponse
 				if calls == 1 {
 					statusResponse = installer.StatusResponse{
 						CurrentVersion: "1.6.4",
