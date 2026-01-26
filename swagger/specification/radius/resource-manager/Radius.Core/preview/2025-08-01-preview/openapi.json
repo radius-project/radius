@@ -1563,6 +1563,14 @@
         "authentication": {
           "$ref": "#/definitions/BicepAuthenticationConfiguration",
           "description": "Authentication settings for private registries."
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "List of environment resource IDs that reference this settings resource.",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
         }
       }
     },
@@ -2387,6 +2395,14 @@
         "logging": {
           "$ref": "#/definitions/TerraformLoggingConfiguration",
           "description": "Logging configuration applied to Terraform executions."
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "List of environment resource IDs that reference this settings resource.",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
         }
       }
     },
