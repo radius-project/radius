@@ -180,7 +180,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
-	r.Output.LogInfo("To pin the artifact immutable use the following recipe url: %s", computeImmutableRecipeUrl(r.Target, digest.String()))
+	r.Output.LogInfo("To immutably pin the artifact, use the following Recipe url: %s", computeImmutableRecipeUrl(r.Target, digest.String()))
 
 	return nil
 }
