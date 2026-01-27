@@ -189,14 +189,6 @@ func (h *Handler) handleInstall(ctx context.Context, job *JobMessage) error {
 		log.V(1).Info("failed to remove download archive", "path", archivePath, "error", err)
 	}
 
-	// Use 0o700 for executable - only owner needs access. Gosec recommends 0o600 but
-	// executables require the execute bit to function.
-	if err := os.Chmod(binaryPath, 0o700); err != nil {
-		chmodErr := fmt.Errorf("failed to chmod terraform binary: %w", err)
-		_ = h.recordFailure(ctx, status, job.Version, chmodErr)
-		return chmodErr
-	}
-
 	return h.promoteVersion(ctx, log, status, job.Version, binaryPath, start)
 }
 
@@ -436,7 +428,7 @@ func (h *Handler) download(ctx context.Context, opts *downloadOptions) error {
 		return fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
 
-	tmp := opts.Dst + ".tmp"
+	tmp := filepath.Clean(opts.Dst + ".tmp")
 	out, err := os.Create(tmp)
 	if err != nil {
 		return err
@@ -563,7 +555,7 @@ func (h *Handler) stageBinary(ctx context.Context, archivePath, targetPath strin
 
 // isZipArchive checks if a file is a ZIP archive by reading its magic bytes.
 func isZipArchive(path string) (bool, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return false, err
 	}
@@ -733,7 +725,8 @@ func extractZip(src, targetPath string) error {
 			return err
 		}
 
-		if err := writeFile(rc, targetPath, f.Mode()); err != nil {
+		// Use 0o700 for executables - don't trust permissions from downloaded archives
+		if err := writeFile(rc, targetPath, 0o700); err != nil {
 			_ = rc.Close()
 			return err
 		}
@@ -749,7 +742,7 @@ func extractZip(src, targetPath string) error {
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(filepath.Clean(src))
 	if err != nil {
 		return err
 	}
@@ -760,7 +753,7 @@ func copyFile(src, dst string) error {
 }
 
 func writeFile(r io.Reader, dst string, perm os.FileMode) error {
-	tmp := dst + ".tmp"
+	tmp := filepath.Clean(dst + ".tmp")
 	out, err := os.Create(tmp)
 	if err != nil {
 		return err

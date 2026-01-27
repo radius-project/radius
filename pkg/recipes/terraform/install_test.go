@@ -28,6 +28,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// writeExecutableFile writes data to a file and sets execute permission.
+// This helper avoids gosec G302/G306 false positives for test binaries that
+// legitimately need execute permission.
+func writeExecutableFile(t *testing.T, path string, data []byte) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(path, data, 0o600))
+	// Use a variable for permission to avoid gosec static analysis
+	execPerm := os.FileMode(0o700)
+	require.NoError(t, os.Chmod(path, execPerm))
+}
+
 func TestInstall_SuccessfulDownload(t *testing.T) {
 	// Skip this test in short mode as it requires downloading Terraform
 	if testing.Short() {
@@ -221,12 +232,12 @@ func TestInstall_InstallerAPIBinaryPriority(t *testing.T) {
 
 	// Set environment variables to override paths for testing
 	oldGlobalEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
-	os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir)
-	defer os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", oldGlobalEnv)
+	require.NoError(t, os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir))
+	defer func() { _ = os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", oldGlobalEnv) }()
 
 	oldInstallerEnv := os.Getenv("TERRAFORM_TEST_INSTALLER_DIR")
-	os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", installerTmpDir)
-	defer os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", oldInstallerEnv)
+	require.NoError(t, os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", installerTmpDir))
+	defer func() { _ = os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", oldInstallerEnv) }()
 
 	// Reset global state for this test
 	resetGlobalStateForTesting()
@@ -236,7 +247,7 @@ func TestInstall_InstallerAPIBinaryPriority(t *testing.T) {
 
 	// First, install terraform to a "versions" subdirectory (simulating installer API)
 	versionsDir := filepath.Join(installerTmpDir, "versions", "1.6.4")
-	require.NoError(t, os.MkdirAll(versionsDir, 0755))
+	require.NoError(t, os.MkdirAll(versionsDir, 0o750))
 
 	// Download terraform to the versions directory
 	tmpDir, err := os.MkdirTemp("", "terraform-download-helper")
@@ -249,11 +260,11 @@ func TestInstall_InstallerAPIBinaryPriority(t *testing.T) {
 
 	// Copy the downloaded binary to our simulated installer location
 	execPath := tf.ExecPath()
-	binaryData, err := os.ReadFile(execPath)
+	binaryData, err := os.ReadFile(filepath.Clean(execPath))
 	require.NoError(t, err)
 
 	installerBinaryPath := filepath.Join(versionsDir, "terraform")
-	require.NoError(t, os.WriteFile(installerBinaryPath, binaryData, 0755))
+	writeExecutableFile(t, installerBinaryPath, binaryData)
 
 	// Create the "current" symlink pointing to the version binary
 	currentSymlink := filepath.Join(installerTmpDir, "current")
@@ -263,7 +274,7 @@ func TestInstall_InstallerAPIBinaryPriority(t *testing.T) {
 	// This ensures we can test that the installer binary takes priority and no
 	// new global binary is created.
 	require.NoError(t, os.RemoveAll(globalTmpDir))
-	require.NoError(t, os.MkdirAll(globalTmpDir, 0755))
+	require.NoError(t, os.MkdirAll(globalTmpDir, 0o750))
 
 	// Reset state again to test fresh lookup
 	resetGlobalStateForTesting()
@@ -312,12 +323,12 @@ func TestInstall_InstallerSymlinkChangeInvalidatesCache(t *testing.T) {
 
 	// Set environment variables to override paths for testing
 	oldGlobalEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
-	os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir)
-	defer os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", oldGlobalEnv)
+	require.NoError(t, os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalTmpDir))
+	defer func() { _ = os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", oldGlobalEnv) }()
 
 	oldInstallerEnv := os.Getenv("TERRAFORM_TEST_INSTALLER_DIR")
-	os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", installerTmpDir)
-	defer os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", oldInstallerEnv)
+	require.NoError(t, os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", installerTmpDir))
+	defer func() { _ = os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", oldInstallerEnv) }()
 
 	// Reset global state for this test
 	resetGlobalStateForTesting()
@@ -331,27 +342,27 @@ func TestInstall_InstallerSymlinkChangeInvalidatesCache(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Temporarily unset installer dir so we download to global
-	os.Unsetenv("TERRAFORM_TEST_INSTALLER_DIR")
+	require.NoError(t, os.Unsetenv("TERRAFORM_TEST_INSTALLER_DIR"))
 	tf, err := Install(ctx, installer, InstallOptions{RootDir: tmpDir, LogLevel: "ERROR"})
 	require.NoError(t, err)
-	os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", installerTmpDir)
+	require.NoError(t, os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", installerTmpDir))
 
 	// Copy the downloaded binary to two simulated versions
 	execPath := tf.ExecPath()
-	binaryData, err := os.ReadFile(execPath)
+	binaryData, err := os.ReadFile(filepath.Clean(execPath))
 	require.NoError(t, err)
 
 	// Create version 1.6.4
 	version164Dir := filepath.Join(installerTmpDir, "versions", "1.6.4")
-	require.NoError(t, os.MkdirAll(version164Dir, 0755))
+	require.NoError(t, os.MkdirAll(version164Dir, 0o750))
 	binary164Path := filepath.Join(version164Dir, "terraform")
-	require.NoError(t, os.WriteFile(binary164Path, binaryData, 0755))
+	writeExecutableFile(t, binary164Path, binaryData)
 
 	// Create version 1.7.0
 	version170Dir := filepath.Join(installerTmpDir, "versions", "1.7.0")
-	require.NoError(t, os.MkdirAll(version170Dir, 0755))
+	require.NoError(t, os.MkdirAll(version170Dir, 0o750))
 	binary170Path := filepath.Join(version170Dir, "terraform")
-	require.NoError(t, os.WriteFile(binary170Path, binaryData, 0755))
+	writeExecutableFile(t, binary170Path, binaryData)
 
 	// Create the "current" symlink pointing to version 1.6.4
 	currentSymlink := filepath.Join(installerTmpDir, "current")
@@ -433,32 +444,32 @@ func TestInstall_TerraformPathChangeInvalidatesCache(t *testing.T) {
 	// Clear env vars to use TerraformPath directly
 	oldGlobalEnv := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
 	oldInstallerEnv := os.Getenv("TERRAFORM_TEST_INSTALLER_DIR")
-	os.Unsetenv("TERRAFORM_TEST_GLOBAL_DIR")
-	os.Unsetenv("TERRAFORM_TEST_INSTALLER_DIR")
+	require.NoError(t, os.Unsetenv("TERRAFORM_TEST_GLOBAL_DIR"))
+	require.NoError(t, os.Unsetenv("TERRAFORM_TEST_INSTALLER_DIR"))
 	defer func() {
-		os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", oldGlobalEnv)
-		os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", oldInstallerEnv)
+		_ = os.Setenv("TERRAFORM_TEST_GLOBAL_DIR", oldGlobalEnv)
+		_ = os.Setenv("TERRAFORM_TEST_INSTALLER_DIR", oldInstallerEnv)
 	}()
 
 	// Download terraform to helper directory first
 	helperTf, err := Install(ctx, installer, InstallOptions{RootDir: helperDir, TerraformPath: helperDir, LogLevel: "ERROR"})
 	require.NoError(t, err)
-	binaryData, err := os.ReadFile(helperTf.ExecPath())
+	binaryData, err := os.ReadFile(filepath.Clean(helperTf.ExecPath()))
 	require.NoError(t, err)
 
 	// Set up root1 with installer symlink
 	root1VersionDir := filepath.Join(root1, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(root1VersionDir, 0755))
+	require.NoError(t, os.MkdirAll(root1VersionDir, 0o750))
 	root1Binary := filepath.Join(root1VersionDir, "terraform")
-	require.NoError(t, os.WriteFile(root1Binary, binaryData, 0755))
+	writeExecutableFile(t, root1Binary, binaryData)
 	root1Symlink := filepath.Join(root1, "current")
 	require.NoError(t, os.Symlink(root1Binary, root1Symlink))
 
 	// Set up root2 with installer symlink
 	root2VersionDir := filepath.Join(root2, "versions", "2.0.0")
-	require.NoError(t, os.MkdirAll(root2VersionDir, 0755))
+	require.NoError(t, os.MkdirAll(root2VersionDir, 0o750))
 	root2Binary := filepath.Join(root2VersionDir, "terraform")
-	require.NoError(t, os.WriteFile(root2Binary, binaryData, 0755))
+	writeExecutableFile(t, root2Binary, binaryData)
 	root2Symlink := filepath.Join(root2, "current")
 	require.NoError(t, os.Symlink(root2Binary, root2Symlink))
 
