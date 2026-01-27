@@ -115,8 +115,8 @@ func TestHandleUninstall(t *testing.T) {
 	require.NoError(t, err)
 
 	targetDir := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(targetDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o600))
 
 	handler := &Handler{
 		StatusStore: store,
@@ -149,8 +149,8 @@ func TestHandleInstall_LockContention(t *testing.T) {
 
 	// Pre-create lock to simulate concurrent operation.
 	lockPath := filepath.Join(tempDir, ".terraform-installer.lock")
-	require.NoError(t, os.MkdirAll(tempDir, 0o755))
-	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+	require.NoError(t, os.MkdirAll(tempDir, 0o750))
+	lock, err := os.OpenFile(filepath.Clean(lockPath), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	require.NoError(t, err)
 	defer func() {
 		_ = lock.Close()
@@ -181,8 +181,8 @@ func TestHandleInstall_ExistingLockFileFailsBusy(t *testing.T) {
 
 	// Create and close lock file to simulate leftover; handler should report busy.
 	lockPath := filepath.Join(tempDir, ".terraform-installer.lock")
-	require.NoError(t, os.MkdirAll(tempDir, 0o755))
-	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+	require.NoError(t, os.MkdirAll(tempDir, 0o750))
+	lock, err := os.OpenFile(filepath.Clean(lockPath), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	require.NoError(t, err)
 	_ = lock.Close()
 
@@ -302,7 +302,7 @@ func TestIsZipArchive(t *testing.T) {
 				content = buf.Bytes()
 			}
 
-			require.NoError(t, os.WriteFile(testFile, content, 0o644))
+			require.NoError(t, os.WriteFile(testFile, content, 0o600))
 
 			got, err := isZipArchive(testFile)
 			if tt.wantErr {
@@ -327,7 +327,7 @@ func TestStageBinary_PlainBinary(t *testing.T) {
 	// Create a plain binary file (not a zip)
 	binaryContent := []byte("#!/bin/bash\necho terraform")
 	sourcePath := filepath.Join(tempDir, "terraform-download")
-	require.NoError(t, os.WriteFile(sourcePath, binaryContent, 0o644))
+	require.NoError(t, os.WriteFile(sourcePath, binaryContent, 0o600))
 
 	targetPath := filepath.Join(tempDir, "terraform")
 
@@ -336,7 +336,7 @@ func TestStageBinary_PlainBinary(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the file was copied (not extracted)
-	content, err := os.ReadFile(targetPath)
+	content, err := os.ReadFile(filepath.Clean(targetPath))
 	require.NoError(t, err)
 	require.Equal(t, binaryContent, content)
 }
@@ -348,7 +348,7 @@ func TestStageBinary_ZipArchive(t *testing.T) {
 	// Create a zip archive without .zip extension (like downloads)
 	zipContent := buildZip(t)
 	sourcePath := filepath.Join(tempDir, "terraform-download") // no extension!
-	require.NoError(t, os.WriteFile(sourcePath, zipContent, 0o644))
+	require.NoError(t, os.WriteFile(sourcePath, zipContent, 0o600))
 
 	targetPath := filepath.Join(tempDir, "terraform")
 
@@ -357,7 +357,7 @@ func TestStageBinary_ZipArchive(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the binary was extracted
-	content, err := os.ReadFile(targetPath)
+	content, err := os.ReadFile(filepath.Clean(targetPath))
 	require.NoError(t, err)
 	require.Equal(t, []byte("binary"), content)
 }
@@ -378,8 +378,8 @@ func TestHandleInstall_IdempotentSkipsReinstall(t *testing.T) {
 
 	// Create the existing binary
 	targetDir := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(targetDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("existing binary"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("existing binary"), 0o600))
 
 	// Setup handler with a stub transport that would fail if called
 	downloadCalled := false
@@ -403,7 +403,7 @@ func TestHandleInstall_IdempotentSkipsReinstall(t *testing.T) {
 	require.False(t, downloadCalled, "download should be skipped for already-installed version")
 
 	// Verify the original binary is unchanged
-	content, err := os.ReadFile(filepath.Join(targetDir, "terraform"))
+	content, err := os.ReadFile(filepath.Clean(filepath.Join(targetDir, "terraform")))
 	require.NoError(t, err)
 	require.Equal(t, []byte("existing binary"), content)
 }
@@ -465,12 +465,12 @@ func TestHandleInstall_PromotesPreviouslyInstalledVersion(t *testing.T) {
 
 	// Create both version directories with binaries
 	targetDir100 := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(targetDir100, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir100, "terraform"), []byte("binary 1.0.0"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir100, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir100, "terraform"), []byte("binary 1.0.0"), 0o600))
 
 	targetDir120 := filepath.Join(tempDir, "versions", "1.2.0")
-	require.NoError(t, os.MkdirAll(targetDir120, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir120, "terraform"), []byte("binary 1.2.0"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir120, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir120, "terraform"), []byte("binary 1.2.0"), 0o600))
 
 	// Setup handler with a tracking transport to verify no download happens
 	downloadCalled := false
@@ -601,8 +601,8 @@ func TestHandleUninstall_BlockedByActiveExecutions(t *testing.T) {
 
 	// Create the version directory
 	targetDir := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(targetDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o600))
 
 	// Handler with ExecutionChecker that reports active executions
 	handler := &Handler{
@@ -641,8 +641,8 @@ func TestHandleUninstall_ExecutionCheckerAllows(t *testing.T) {
 
 	// Create the version directory
 	targetDir := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(targetDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o600))
 
 	// Handler with ExecutionChecker that reports no active executions
 	handler := &Handler{
@@ -680,8 +680,8 @@ func TestHandleUninstall_ExecutionCheckerError(t *testing.T) {
 
 	// Create the version directory
 	targetDir := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(targetDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o755))
+	require.NoError(t, os.MkdirAll(targetDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(targetDir, "terraform"), []byte("tf"), 0o600))
 
 	// Handler with ExecutionChecker that returns an error
 	handler := &Handler{
@@ -715,12 +715,12 @@ func TestExtractZip_SingleFileOnly(t *testing.T) {
 		f, _ := w.Create("terraform")
 		_, _ = f.Write([]byte("single binary"))
 		_ = w.Close()
-		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o644))
+		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o600))
 
 		err := extractZip(zipPath, targetPath)
 		require.NoError(t, err)
 
-		content, err := os.ReadFile(targetPath)
+		content, err := os.ReadFile(filepath.Clean(targetPath))
 		require.NoError(t, err)
 		require.Equal(t, []byte("single binary"), content)
 	})
@@ -738,7 +738,7 @@ func TestExtractZip_SingleFileOnly(t *testing.T) {
 		_, _ = f2.Write([]byte("binary2"))
 
 		_ = w.Close()
-		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o644))
+		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o600))
 
 		multiTarget := filepath.Join(tempDir, "terraform-multi")
 		err := extractZip(zipPath, multiTarget)
@@ -752,7 +752,7 @@ func TestExtractZip_SingleFileOnly(t *testing.T) {
 		var buf bytes.Buffer
 		w := zip.NewWriter(&buf)
 		_ = w.Close()
-		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o644))
+		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o600))
 
 		emptyTarget := filepath.Join(tempDir, "terraform-empty")
 		err := extractZip(zipPath, emptyTarget)
@@ -767,7 +767,7 @@ func TestExtractZip_SingleFileOnly(t *testing.T) {
 		w := zip.NewWriter(&buf)
 		_, _ = w.Create("somedir/") // Directory entry (trailing slash)
 		_ = w.Close()
-		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o644))
+		require.NoError(t, os.WriteFile(zipPath, buf.Bytes(), 0o600))
 
 		dirTarget := filepath.Join(tempDir, "terraform-dir")
 		err := extractZip(zipPath, dirTarget)
@@ -1014,8 +1014,8 @@ func TestHandleUninstall_CurrentVersionSwitchesToPrevious(t *testing.T) {
 	// Create both version directories
 	for _, v := range []string{"1.0.0", "2.0.0"} {
 		dir := filepath.Join(tempDir, "versions", v)
-		require.NoError(t, os.MkdirAll(dir, 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "terraform"), []byte("tf-"+v), 0o755))
+		require.NoError(t, os.MkdirAll(dir, 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "terraform"), []byte("tf-"+v), 0o600))
 	}
 
 	handler := &Handler{
@@ -1066,8 +1066,8 @@ func TestHandleUninstall_CurrentVersionNoPrevious(t *testing.T) {
 
 	// Create version directory
 	dir := filepath.Join(tempDir, "versions", "1.0.0")
-	require.NoError(t, os.MkdirAll(dir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "terraform"), []byte("tf"), 0o755))
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "terraform"), []byte("tf"), 0o600))
 
 	// Create current symlink
 	symlinkPath := filepath.Join(tempDir, "current")
@@ -1298,7 +1298,7 @@ func TestDownload_NoCABundleUsesDefaultClient(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify file was downloaded
-	downloaded, err := os.ReadFile(dstPath)
+	downloaded, err := os.ReadFile(filepath.Clean(dstPath))
 	require.NoError(t, err)
 	require.Equal(t, content, downloaded)
 }
@@ -1570,7 +1570,7 @@ func TestDownload_WithAuthHeader(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Bearer test-token-123", receivedAuthHeader)
 
-	downloaded, err := os.ReadFile(dstPath)
+	downloaded, err := os.ReadFile(filepath.Clean(dstPath))
 	require.NoError(t, err)
 	require.Equal(t, content, downloaded)
 }

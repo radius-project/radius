@@ -512,7 +512,7 @@ qE+O0LoSl/4FL9pUQuwZi+WibxoTOlw3NXpxx2WUFzU/Giwx6OYCTb773M9noKCH
 fiCLJ0WJ77/ohDKnNecDZKIWLsUo9ywMJqi9TLSiBf5oMOc9uZtDoPTPzsXzcPZP
 2JkLUbkliQ==
 -----END CERTIFICATE-----`
-		err := os.WriteFile(caFile, []byte(testCACert), 0o644)
+		err := os.WriteFile(caFile, []byte(testCACert), 0o600)
 		require.NoError(t, err)
 
 		var receivedCABundle string
