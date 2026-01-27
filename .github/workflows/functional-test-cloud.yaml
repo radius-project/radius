@@ -675,6 +675,18 @@ jobs:
                   service-account-private-key-file: /etc/kubernetes/pki/sa.key
           EOF
 
+      - name: Install NFS provisioner for ReadWriteMany PVC support
+        run: |
+          helm repo add nfs-ganesha-server-and-external-provisioner \
+            https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/ 2>/dev/null || true
+          helm repo update nfs-ganesha-server-and-external-provisioner
+
+          helm install nfs-server nfs-ganesha-server-and-external-provisioner/nfs-server-provisioner \
+            --set persistence.enabled=false \
+            --set storageClass.name=nfs \
+            --set storageClass.defaultClass=true \
+            --wait --timeout 5m
+
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts

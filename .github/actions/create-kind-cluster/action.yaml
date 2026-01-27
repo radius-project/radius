@@ -169,3 +169,18 @@ runs:
             host: "${{ inputs.registry-name }}:${{ inputs.registry-port }}"
             help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
         EOF
+
+    - name: Install NFS provisioner for ReadWriteMany PVC support
+      shell: bash
+      run: |
+        # Add NFS provisioner Helm repo (suppress "already exists" errors, but update regardless)
+        helm repo add nfs-ganesha-server-and-external-provisioner \
+          https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/ 2>/dev/null || true
+        helm repo update nfs-ganesha-server-and-external-provisioner
+
+        # Install NFS provisioner with RWX support as default storage class
+        helm install nfs-server nfs-ganesha-server-and-external-provisioner/nfs-server-provisioner \
+          --set persistence.enabled=false \
+          --set storageClass.name=nfs \
+          --set storageClass.defaultClass=true \
+          --wait --timeout 5m
