@@ -124,8 +124,10 @@ spec:
           
           echo "Terraform binary successfully pre-downloaded and installed"
         volumeMounts:
+        {{- if eq .Values.global.terraform.enabled true }}
         - name: terraform
           mountPath: {{ .Values.dynamicrp.terraform.path }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -167,8 +169,10 @@ spec:
         - name: aws-iam-token
           mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
         {{- end }}
+        {{- if eq .Values.global.terraform.enabled true }}
         - name: terraform
           mountPath: {{ .Values.dynamicrp.terraform.path }}
+        {{- end }}
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
@@ -198,8 +202,11 @@ spec:
                 expirationSeconds: 86400
                 audience: "sts.amazonaws.com"
         {{- end }}
+        {{- if eq .Values.global.terraform.enabled true }}
         - name: terraform
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: terraform-storage
+        {{- end }}
         - name: encryption-secret
           secret:
             secretName: radius-encryption-key
