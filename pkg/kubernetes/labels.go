@@ -119,7 +119,7 @@ func NormalizeResourceName(name string) string {
 		return normalized
 	}
 
-	if !IsValidObjectName(normalized) {
+	if valid, _ := IsValidObjectName(normalized); !valid {
 		// This should not happen.
 		panic(normalized + " is an invalid name.")
 	}
