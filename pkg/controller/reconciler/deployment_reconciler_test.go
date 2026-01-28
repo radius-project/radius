@@ -42,7 +42,7 @@ import (
 
 const (
 	deploymentTestWaitDuration            = time.Second * 10
-	deploymentTestWaitInterval            = time.Second * 1
+	deploymentTestWaitInterval            = 200 * time.Millisecond
 	deploymentTestControllerDelayInterval = time.Millisecond * 100
 )
 
@@ -546,10 +546,8 @@ func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled(t *testing.T) {
 func waitForStateWaiting(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
-	logger := t
 	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
@@ -557,7 +555,6 @@ func waitForStateWaiting(t *testing.T, client client.Client, name types.Namespac
 		annotations, err = readAnnotations(current)
 		require.NoError(t, err)
 		assert.NotNil(t, annotations)
-		logger.Logf("Annotations.Status: %+v", annotations.Status)
 
 		if assert.NotNil(t, annotations.Status) && assert.Equal(t, deploymentPhraseWaiting, annotations.Status.Phrase) {
 			assert.Empty(t, annotations.Status.Operation)
@@ -570,10 +567,8 @@ func waitForStateWaiting(t *testing.T, client client.Client, name types.Namespac
 func waitForStateUpdating(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
-	logger := t
 	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
@@ -581,7 +576,6 @@ func waitForStateUpdating(t *testing.T, client client.Client, name types.Namespa
 		annotations, err = readAnnotations(current)
 		require.NoError(t, err)
 		assert.NotNil(t, annotations)
-		logger.Logf("Annotations.Status: %+v", annotations.Status)
 
 		if assert.NotNil(t, annotations.Status) && assert.Equal(t, deploymentPhraseUpdating, annotations.Status.Phrase) {
 			assert.NotEmpty(t, annotations.Status.Operation)
@@ -594,10 +588,8 @@ func waitForStateUpdating(t *testing.T, client client.Client, name types.Namespa
 func waitForStateReady(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
-	logger := t
 	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
@@ -605,7 +597,6 @@ func waitForStateReady(t *testing.T, client client.Client, name types.Namespaced
 		annotations, err = readAnnotations(current)
 		require.NoError(t, err)
 		assert.NotNil(t, annotations)
-		logger.Logf("Annotations.Status: %+v", annotations.Status)
 
 		if assert.NotNil(t, annotations.Status) && assert.Equal(t, deploymentPhraseReady, annotations.Status.Phrase) {
 			assert.Empty(t, annotations.Status.Operation)
@@ -618,10 +609,8 @@ func waitForStateReady(t *testing.T, client client.Client, name types.Namespaced
 func waitForStateDeleting(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
-	logger := t
 	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
@@ -629,7 +618,6 @@ func waitForStateDeleting(t *testing.T, client client.Client, name types.Namespa
 		annotations, err = readAnnotations(current)
 		require.NoError(t, err)
 		assert.NotNil(t, annotations)
-		logger.Logf("Annotations.Status: %+v", annotations.Status)
 
 		if assert.NotNil(t, annotations.Status) && assert.Equal(t, deploymentPhraseDeleting, annotations.Status.Phrase) {
 			assert.NotEmpty(t, annotations.Status.Operation)
@@ -651,11 +639,8 @@ type expectedEvent struct {
 // We can have multiple events as the result of the List function but we are only interested in the expected event.
 func waitForEvent(t *testing.T, client client.Client, event expectedEvent) {
 	ctx := testcontext.New(t)
-	logger := t
 
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Log("Fetching Events")
-
 		events := &corev1.EventList{}
 		err := client.List(ctx, events)
 		require.NoError(t, err)
@@ -675,15 +660,12 @@ func waitForEvent(t *testing.T, client client.Client, event expectedEvent) {
 func waitForRadiusContainerDeleted(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
-	logger := t
 	var annotations *deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
 		err := client.Get(ctx, name, current)
 		require.NoError(t, err)
 
-		logger.Logf("Annotations: %+v", current.Annotations)
 		assert.NotContains(t, current.Annotations, AnnotationRadiusStatus)
 		assert.NotContains(t, current.Annotations, AnnotationRadiusConfigurationHash)
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for state to be Deleting")
@@ -694,9 +676,7 @@ func waitForRadiusContainerDeleted(t *testing.T, client client.Client, name type
 func waitForDeploymentDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
 	ctx := testcontext.New(t)
 
-	logger := t
 	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching Deployment: %+v", name)
 		err := client.Get(ctx, name, &appsv1.Deployment{})
 		return apierrors.IsNotFound(err)
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for deployment to be deleted")
