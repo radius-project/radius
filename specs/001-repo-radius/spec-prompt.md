@@ -1,5 +1,6 @@
 ---
-❯ /speckit.specify
+```
+$ /speckit.specify
 
   Use the following document as the authoritative source.
   - Do not invent new features.
@@ -7,7 +8,7 @@
   - Normalize terminology and requirements language.
  
  <Paste contents below>
-
+```
 ---
 
 # Spec Kit – Repo Radius
