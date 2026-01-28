@@ -63,6 +63,10 @@ logging:
   level: "debug"
   json: true
 
+# Terraform cache path - relative to project root where debug commands are run
+terraform:
+  path: "./debug_files/terraform-cache"
+
 tracerProvider:
   enabled: false
   serviceName: "ucp"

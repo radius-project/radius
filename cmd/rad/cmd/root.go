@@ -80,6 +80,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/rollback"
 	rollback_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/rollback/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
+	"github.com/radius-project/radius/pkg/cli/cmd/terraform"
+	terraform_install "github.com/radius-project/radius/pkg/cli/cmd/terraform/install"
+	terraform_list "github.com/radius-project/radius/pkg/cli/cmd/terraform/list"
+	terraform_status "github.com/radius-project/radius/pkg/cli/cmd/terraform/status"
+	terraform_uninstall "github.com/radius-project/radius/pkg/cli/cmd/terraform/uninstall"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/upgrade"
@@ -452,6 +457,21 @@ func initSubCommands() {
 
 	versionCmd, _ := version.NewCommand(framework)
 	RootCmd.AddCommand(versionCmd)
+
+	terraformCmd := terraform.NewCommand()
+	RootCmd.AddCommand(terraformCmd)
+
+	terraformInstallCmd, _ := terraform_install.NewCommand(framework)
+	terraformCmd.AddCommand(terraformInstallCmd)
+
+	terraformUninstallCmd, _ := terraform_uninstall.NewCommand(framework)
+	terraformCmd.AddCommand(terraformUninstallCmd)
+
+	terraformStatusCmd, _ := terraform_status.NewCommand(framework)
+	terraformCmd.AddCommand(terraformStatusCmd)
+
+	terraformListCmd, _ := terraform_list.NewCommand(framework)
+	terraformCmd.AddCommand(terraformListCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

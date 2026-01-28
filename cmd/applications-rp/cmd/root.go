@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/server"
+	tfinstaller "github.com/radius-project/radius/pkg/terraform/installer"
 
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -81,10 +83,16 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		// Create route configurer for terraform installer API endpoints
+		terraformRoutes := func(ctx context.Context, r chi.Router, opts hostoptions.HostOptions) error {
+			return tfinstaller.RegisterRoutesWithHostOptions(ctx, r, opts, opts.Config.Server.PathBase)
+		}
+
 		services = append(
 			services,
-			server.NewAPIService(options, builders),
+			server.NewAPIServiceWithRoutes(options, builders, terraformRoutes),
 			server.NewAsyncWorker(options, builders),
+			tfinstaller.NewHostOptionsWorkerService(options),
 		)
 
 		host := &hosting.Host{

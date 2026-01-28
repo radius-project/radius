@@ -34,6 +34,8 @@ type QueueProvider struct {
 
 	queueClient queue.Client
 	once        sync.Once
+	// clientInjected tracks whether SetClient was used to provide a custom client.
+	clientInjected bool
 }
 
 // New creates new QueueProvider instance.
@@ -63,4 +65,13 @@ func (p *QueueProvider) GetClient(ctx context.Context) (queue.Client, error) {
 // SetClient sets the queue client for the QueueProvider. This should be used by tests that need to mock the queue client.
 func (p *QueueProvider) SetClient(client queue.Client) {
 	p.queueClient = client
+	p.clientInjected = true
+}
+
+// HasInjectedClient reports whether SetClient was used to provide a custom queue client.
+func (p *QueueProvider) HasInjectedClient() bool {
+	if p == nil {
+		return false
+	}
+	return p.clientInjected
 }
