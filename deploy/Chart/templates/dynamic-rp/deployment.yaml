@@ -55,7 +55,7 @@ spec:
           mountPath: /etc/radius-ssl/certs
       {{- end }}
       - name: terraform-init
-        image: "alpine:latest"
+        image: "alpine:3.23"
         command:
         - /bin/sh
         - -c
