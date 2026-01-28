@@ -1,0 +1,116 @@
+namespace: Radius.Security
+location:
+  global: "http://dynamic-rp.radius-system:8082"
+types:
+  secrets:
+    description: |
+      The Radius.Security/secrets Resource Type stores sensitive data such as tokens, passwords, keys, and certificates. To create a new Secret, start by adding parameter to your application definition decorated with `@secure()`. Then add a `secrets` resource. Never include secret values in an application definition. 
+
+        @secure()
+        param myTokenValue string
+
+        resource mySecret 'Radius.Security/secrets@2025-08-01-preview' = {
+          name: 'mySecret'
+          properties: {
+            environment: environment
+            application: myApplication.id
+            data: {
+              myToken: {
+                value: myTokenValue
+                encoding: 'base64'   //optional
+              }
+            }
+          }
+        }
+
+      When `encoding` is not set, the value is assumed to be a string. For non-string secret data, set the `encoding` to `base64`.  
+
+      To use the new Secret with a Container, either, include the Secret in the `env` property or mount the Secret using the `volumes` property.
+
+      1. To use the Secret as an environment variable:
+
+        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+          name: 'myContainer'
+          properties: {
+            ...
+            container: {
+              ...
+              env: 
+                MY_SECRET_VALUE: {
+                  valueFrom: {
+                    secretRef: {
+                      source: mySecret.id
+                      key: 'myToken'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+      2. To mount the secret as a volume:
+
+        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+          name: 'myContainer'
+          properties: {
+            ...
+            container: {
+              ...
+              volumes: 
+                mySecretVolume: {
+                  kind: 'secret'
+                  mountPath: '/secrets'
+                  source: mySecret.id
+                }
+              }
+            }
+          }
+        }
+
+      Secrets may already existing in the Radius Resource Group. These can be referenced by name using the `existing` Bicep keyword. For example:
+
+        resource existingSecret 'Radius.Security/secrets@2025-08-01-preview' existing = {
+          name: 'existingSecret'
+        }
+
+    apiVersions:
+      "2025-08-01-preview":
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
+            application:
+              type: string
+              description: (Optional) The Radius Application ID. `myApplication.id` for example.
+            kind:
+              type: string
+              enum:
+                [
+                  generic,
+                  certificate-pem,
+                  certificate-pkcs12,
+                  basicAuthentication,
+                  awsIRSA,
+                  azureWorkloadIdentity,
+                ]
+              description: (Optional) The kind of content of the secret. If not specified, generic is assumed. basicAuthentication, awsIRSA, and azureWorkloadIdentity should only be used for configuring authentication to OCI registries for storing Bicep templates. This will change in the future.
+            data:
+              type: object
+              description: '(Required) Map of secret data. For example: `data: { username: { value: user1 } password: { value: pass }}`'
+              additionalProperties:
+                type: object
+                properties:
+                  encoding:
+                    type: string
+                    enum: [string, base64]
+                    description: (Optional) Content encoding of the value. If not specified, `string` is assumed.
+                  value:
+                    type: string
+                    description: (Required) The string value of the secret unless encoding is set to 'base64'.
+                required: [value]
+          required:
+            - environment
+            - data

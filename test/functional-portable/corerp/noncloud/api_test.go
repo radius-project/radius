@@ -59,13 +59,13 @@ func Test_ResourceList(t *testing.T) {
 		ctx, cancel := testcontext.NewWithCancel(t)
 		var client *generated.GenericResourcesClient
 		t.Cleanup(cancel)
-		// Radius.Core resources use a different API version.
+		// Radius.* resources use a different API version.
 		// Once Applications.Core namespace is deprecated, we can remove this special case.
 		// Then the NewGenericResourcesClient will by default use the correct API version 2025-08-01-preview.
-		if strings.HasPrefix(resourceType, "Radius.Core") {
-			radiusCoreClientOptions := *clientOptions
-			radiusCoreClientOptions.APIVersion = "2025-08-01-preview"
-			client, err = generated.NewGenericResourcesClient(resourceType, resourceGroupScope, &aztoken.AnonymousCredential{}, &radiusCoreClientOptions)
+		if strings.HasPrefix(resourceType, "Radius.") {
+			radiusClientOptions := *clientOptions
+			radiusClientOptions.APIVersion = "2025-08-01-preview"
+			client, err = generated.NewGenericResourcesClient(resourceType, resourceGroupScope, &aztoken.AnonymousCredential{}, &radiusClientOptions)
 			require.NoError(t, err)
 		} else {
 			client, err = generated.NewGenericResourcesClient(resourceType, resourceGroupScope, &aztoken.AnonymousCredential{}, clientOptions)
