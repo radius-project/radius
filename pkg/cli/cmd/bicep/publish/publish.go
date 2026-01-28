@@ -170,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.Destination = dest
 
-	err = r.publish(ctx)
+	digest, err := r.publish(ctx)
 	var httpErr *errcode.ErrorResponse
 	if errors.As(err, &httpErr) {
 		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", r.File, r.Target)
@@ -180,6 +180,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
+	r.Output.LogInfo("To immutably pin the artifact, use the following Recipe url: %s", computeImmutableRecipeUrl(r.Target, digest.String()))
+
 	return nil
 }
 
@@ -205,26 +207,26 @@ func handleErrorResponse(httpErr *errcode.ErrorResponse, message string) error {
 	}
 }
 
-func (r *Runner) publish(ctx context.Context) error {
+func (r *Runner) publish(ctx context.Context) (digest.Digest, error) {
 	// Prepare Source
 	src, err := r.prepareSource(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Prepare Destination
 	dst, err := r.prepareDestination()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	desc, err := oras.Copy(ctx, src, r.Destination.tag, dst, r.Destination.tag, oras.DefaultCopyOptions)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	r.Output.LogInfo("Pushed to %s:%s@%s\n", r.Destination.host, r.Destination.repo, desc.Digest)
-	return nil
+	return desc.Digest, nil
 }
 
 // prepareSource prepares the source for the publish operation
@@ -361,4 +363,11 @@ func generateManifestContent(config ocispec.Descriptor, layers ...ocispec.Descri
 		Versioned: specs.Versioned{SchemaVersion: 2},
 	}
 	return json.Marshal(content)
+}
+
+// computeImmutableRecipeUrl builds an OCI URL using the registry/repo portion of the
+// target (no leading "br:" and without the tag) and replaces the tag with the digest.
+func computeImmutableRecipeUrl(target, hash string) string {
+	host := strings.Split(target, ":")[0]
+	return fmt.Sprintf("%s@%s", host, hash)
 }
