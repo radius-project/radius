@@ -1,3 +1,15 @@
+---
+❯ /speckit.specify
+
+  Use the following document as the authoritative source.
+  - Do not invent new features.
+  - Call out ambiguities as open questions.
+  - Normalize terminology and requirements language.
+ 
+ <Paste contents below>
+
+---
+
 # Spec Kit – Repo Radius
 
 Modify Radius to support **two modes of operation**, taking inspiration from Terraform and Terraform Cloud:
