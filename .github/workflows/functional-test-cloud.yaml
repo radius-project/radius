@@ -41,6 +41,15 @@ on:
       - main
       - features/*
       - release/*
+  # pull_request_target is used for dependabot PRs because pull_request events
+  # from dependabot don't have access to secrets. pull_request_target runs in
+  # the context of the base branch and has access to secrets.
+  # SECURITY: Only enable for dependabot[bot] - do not use for other external PRs.
+  pull_request_target:
+    branches:
+      - main
+      - features/*
+      - release/*
 
 permissions: {}
 
@@ -93,6 +102,7 @@ jobs:
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       github.event_name == 'pull_request' ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
       github.event_name == 'workflow_dispatch'
     permissions:
       contents: read # Required for listing the commits
@@ -128,6 +138,16 @@ jobs:
 
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
+        run: |
+          {
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Set up checkout target (pull_request_target for dependabot)
+        if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
         run: |
           {
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
@@ -480,6 +500,7 @@ jobs:
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       github.event_name == 'pull_request' ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
       github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: true
