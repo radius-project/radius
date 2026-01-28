@@ -399,7 +399,7 @@ func TestGetConfigurationV20250801(t *testing.T) {
 		errString      string
 	}{
 		{
-			name: "azure provider with env resource v20250801",
+			name: "azure provider with subscription only v20250801",
 			envResource: &modelv20250801.EnvironmentResource{
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
@@ -423,7 +423,39 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				},
 				Providers: datamodel.Providers{
 					Azure: datamodel.ProvidersAzure{
-						Scope: "test-subscription-id",
+						Scope: "/subscriptions/test-subscription-id",
+					},
+				},
+				Simulated: false,
+			},
+		},
+		{
+			name: "azure provider with subscription and resource group v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Azure: &modelv20250801.ProvidersAzure{
+							SubscriptionID:    to.Ptr("85716382-aaaa-aaaa-aaaa-2126e459a123"),
+							ResourceGroupName: to.Ptr("my-resource-group"),
+						},
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: to.Ptr(envNamespace),
+						},
+					},
+					Simulated: to.Ptr(false),
+				},
+			},
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Providers: datamodel.Providers{
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/subscriptions/85716382-aaaa-aaaa-aaaa-2126e459a123/resourceGroups/my-resource-group",
 					},
 				},
 				Simulated: false,

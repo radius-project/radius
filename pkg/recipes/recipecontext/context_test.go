@@ -383,3 +383,76 @@ func TestNewContext_WithConnectedResources(t *testing.T) {
 		"port": 6379,
 	}, cacheConn.Properties)
 }
+
+func TestNewContext_AzureProviderWithResourceGroup(t *testing.T) {
+	// This test verifies the fix for the issue where Azure provider config
+	// with separate subscriptionId and resourceGroupName fields should construct
+	// the full Azure resource ID path correctly
+	testMetadata := &recipes.ResourceMetadata{
+		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		Properties: map[string]any{
+			"throughput": 100,
+		},
+	}
+
+	testConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "radius-test-app",
+				EnvironmentNamespace: "radius-test-env",
+			},
+		},
+		Providers: coredm.Providers{
+			Azure: coredm.ProvidersAzure{
+				Scope: "/subscriptions/85716382-aaaa-aaaa-aaaa-2126e459a123/resourceGroups/my-resource-group",
+			},
+		},
+	}
+
+	recipeContext, err := New(testMetadata, testConfig)
+	require.NoError(t, err)
+	require.NotNil(t, recipeContext)
+	require.NotNil(t, recipeContext.Azure)
+
+	// Verify the Azure provider fields are correctly parsed
+	require.Equal(t, "85716382-aaaa-aaaa-aaaa-2126e459a123", recipeContext.Azure.Subscription.SubscriptionID)
+	require.Equal(t, "/subscriptions/85716382-aaaa-aaaa-aaaa-2126e459a123", recipeContext.Azure.Subscription.ID)
+	require.Equal(t, "my-resource-group", recipeContext.Azure.ResourceGroup.Name)
+	require.Equal(t, "/subscriptions/85716382-aaaa-aaaa-aaaa-2126e459a123/resourceGroups/my-resource-group", recipeContext.Azure.ResourceGroup.ID)
+}
+
+func TestNewContext_AzureProviderSubscriptionOnly(t *testing.T) {
+	// Test that Azure provider with only subscription ID also works correctly
+	testMetadata := &recipes.ResourceMetadata{
+		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+	}
+
+	testConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "radius-test-app",
+				EnvironmentNamespace: "radius-test-env",
+			},
+		},
+		Providers: coredm.Providers{
+			Azure: coredm.ProvidersAzure{
+				Scope: "/subscriptions/test-subscription-id",
+			},
+		},
+	}
+
+	recipeContext, err := New(testMetadata, testConfig)
+	require.NoError(t, err)
+	require.NotNil(t, recipeContext)
+	require.NotNil(t, recipeContext.Azure)
+
+	// Verify the Azure provider fields are correctly parsed (no resource group)
+	require.Equal(t, "test-subscription-id", recipeContext.Azure.Subscription.SubscriptionID)
+	require.Equal(t, "/subscriptions/test-subscription-id", recipeContext.Azure.Subscription.ID)
+	require.Equal(t, "", recipeContext.Azure.ResourceGroup.Name)
+	require.Equal(t, "/subscriptions/test-subscription-id/resourceGroups/", recipeContext.Azure.ResourceGroup.ID)
+}
