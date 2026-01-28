@@ -1,6 +1,9 @@
----
-```
-$ /speckit.specify
+# Spec Kit – Repo Radius
+
+## Prompt
+
+```bash
+copilot> /speckit.specify
 
   Use the following document as the authoritative source.
   - Do not invent new features.
@@ -9,9 +12,8 @@ $ /speckit.specify
  
  <Paste contents below>
 ```
----
 
-# Spec Kit – Repo Radius
+## Prompt Contents
 
 Modify Radius to support **two modes of operation**, taking inspiration from Terraform and Terraform Cloud:
 
