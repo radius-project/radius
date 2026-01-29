@@ -6,7 +6,7 @@
 
 ## Vision
 
-We will make it trivial for developers to adopt Radius for their existing applications and new applications. Radius will remove the need to define Resource Types and Recipes up front. Rather, it will create Resource Types based on understanding of the application's codebase (e.g., the existence of a PostgreSQL library), infrastructure best practices they follow like naming conventions, tags, cost practices for dev/test/prod from their internal wiki or any source, and create Recipes based on either authoritative sources, such as Azure Verified Modules, or internal sources of Terraform modules or Bicep templates. Radius will use these Resource Types and its understanding of the code repo to model the application and generate a rich application definition.
+We will make it trivial for developers to adopt Radius for their existing applications and new applications. Radius will remove the need to define Resource Types and Recipes up front. Rather, it will create Resource Types based on understanding of the application's codebase (e.g., the existence of a PostgreSQL library), infrastructure best practices they follow like naming conventions, tags, cost practices for dev/test/prod from their internal wiki or any verified source, and create Recipes based on either authoritative sources, such as Azure Verified Modules, or internal sources of Terraform modules or Bicep templates. Radius will use these Resource Types and its understanding of the code repo to model the application and generate a rich application definition.
 
 ## End-to-End User Journey *(mandatory)*
 
@@ -25,145 +25,111 @@ The goal: Go from existing codebase → deployable Radius application with zero 
 ### The Workflow
 
 ```
-┌───────────────────┐      ┌───────────────────┐      ┌───────────────────┐
-│      PHASE 1      │ ───▶ │      PHASE 2      │ ───▶ │      PHASE 3      │
-│     Discover      │      │      Generate     │      │      Deploy       │
-└───────────────────┘      └───────────────────┘      └───────────────────┘
-        Skills:                   Skills:                  Existing:
-  discover_dependencies     generate (orchestrates):       rad deploy
-  discover_services         • generate_resource_types
-  discover_team_practices   • discover_recipes
-                            • generate_app_definition
-                            • validate_app_definition
-```
-
-**The logical flow:**
-1. **Discover** - Analyze the codebase to detect infrastructure dependencies, deployable services, and team infrastructure practices
-2. **Generate** - A single unified step that:
-   - Creates Resource Types (the interface/schema) for each detected dependency, incorporating team conventions
-   - Discovers IaC implementations (Recipes) from external sources (AVM, Terraform, Bicep repos)
-   - Assembles everything into a deployable `app.bicep`
-3. **Deploy** - Use existing `rad deploy` to provision infrastructure and run the application
-
-Each phase can be invoked via **AI conversation** or **CLI commands**—both call the same skills.
-
-**Complete Flow:**
-
-```
-     USER (AI or CLI)                    RADIUS                    EXTERNAL SOURCES
-           │                               │                              │
-           │  Phase 1: Discover            │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐                    │
-           │                     │ discover_dependencies                  │
-           │                     │ discover_services  │                   │
-           │                     │ discover_team_practices                │
-           │                     └─────────┬─────────┘                    │
-           │                               │                              │
-           │  Discovery Report (JSON)      │                              │
-           │◀──────────────────────────────│                              │
-           │                               │                              │
-           │  Phase 2: Generate            │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐                    │
-           │                     │generate_resource_types                 │
-           │                     │ (applies team practices)               │
-           │                     └─────────┬─────────┘                    │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐  Query Sources     │
-           │                     │  discover_recipes │─────────────────────▶
-           │                     │ • Azure Verified  │  • AVM Registry    │
-           │                     │ • Internal repos  │◀─• Terraform Repos │
-           │                     └─────────┬─────────┘  • Bicep Templates │
-           │                               │                              │
-           │  Recipe Options               │                              │
-           │◀──────────────────────────────│                              │
-           │                               │                              │
-           │  User Selections              │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐                    │
-           │                     │generate_app_definition                 │
-           │                     │validate_app_definition                 │
-           │                     └─────────┬─────────┘                    │
-           │                               │                              │
-           │  ./radius/app.bicep           │                              │
-           │◀──────────────────────────────│                              │
-           │                               │                              │
-           │  Phase 3: Deploy              │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐  Provision:        │
-           │                     │   rad deploy      │─────────────────────▶
-           │                     │ (existing Radius) │  • Azure PostgreSQL│
-           │                     │                   │◀─• Azure Redis     │
-           │                     └─────────┬─────────┘  • Storage Account │
-           │                               │                              │
-           │  ✅ Deployment Complete!      │                              │
-           │◀──────────────────────────────│                              │
-           ▼                               ▼                              ▼
+     USER                                RADIUS                           EXTERNAL SOURCES
+       |                                   |                                     |
+       |  1. DISCOVER                      |                                     |
+       |  "Analyze my codebase"            |                                     |
+       |---------------------------------->|                                     |
+       |                                   |  Analyze codebase...                |
+       |                                   |  - Detect dependencies              |
+       |                                   |  - Find services                    |
+       |                                   |  - Extract team practices           |
+       |                                   |                                     |
+       |  ./radius/discovery.md            |                                     |
+       |<----------------------------------|                                     |
+       |                                   |                                     |
+       |  2. GENERATE                      |                                     |
+       |  "Create my app definition"       |                                     |
+       |---------------------------------->|                                     |
+       |                                   |  Generate Resource Types...         |
+       |                                   |  (applying team practices)          |
+       |                                   |                                     |
+       |                                   |  Search for Recipes...              |
+       |                                   |------------------------------------>|
+       |                                   |                    AVM, Terraform,  |
+       |                                   |<------------------- Bicep repos     |
+       |                                   |                                     |
+       |  Recipe Options:                  |                                     |
+       |  PostgreSQL -> [1] Azure (AVM)    |                                     |
+       |               [2] Container       |                                     |
+       |<----------------------------------|                                     |
+       |                                   |                                     |
+       |  Select: 1                        |                                     |
+       |---------------------------------->|                                     |
+       |                                   |  Generate app.bicep...              |
+       |                                   |  Validate...                        |
+       |                                   |                                     |
+       |  ./radius/app.bicep               |                                     |
+       |<----------------------------------|                                     |
+       |                                   |                                     |
+       |  3. DEPLOY                        |                                     |
+       |  "Deploy to production"           |                                     |
+       |---------------------------------->|                                     |
+       |                                   |  Provision infrastructure...        |
+       |                                   |------------------------------------>|
+       |                                   |                    Azure PostgreSQL |
+       |                                   |<-------------------Azure Redis      |
+       |                                   |                    Storage Account  |
+       |                                   |  Deploy containers...               |
+       |                                   |                                     |
+       |  Deployment Complete!             |                                     |
+       |  https://my-app.azurecontainer... |                                     |
+       |<----------------------------------|                                     |
+       v                                   v                                     v
 ```
 
 ---
 
 ### Skills-First Architecture
 
+All interfaces (AI agents, CLI, API) invoke the same underlying skills:
+
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          RADIUS DISCOVERY                                │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│    ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐    │
-│    │    AI Agents     │   │     rad CLI      │   │  Programmatic    │    │
-│    │   (via MCP)      │   │                  │   │      API         │    │
-│    │                  │   │                  │   │                  │    │
-│    │  "Help me deploy │   │  rad app discover│   │  sdk.Discover()  │    │
-│    │   my app..."     │   │  rad app generate│   │  sdk.Generate()  │    │
-│    └────────┬─────────┘   └────────┬─────────┘   └────────┬─────────┘    │
-│             │                      │                      │              │
-│             └──────────────────────┼──────────────────────┘              │
-│                                    │                                     │
-│                                    ▼                                     │
-│    ┌────────────────────────────────────────────────────────────────┐    │
-│    │                        SKILLS LAYER                            │    │
-│    ├────────────────────────────────────────────────────────────────┤    │
-│    │  discover_dependencies │ discover_services │ discover_team_practices│
-│    │  discover_recipes │ generate_resource_types │ generate_app_definition│
-│    └────────────────────────────────────────────────────────────────┘    │
-│                                    │                                     │
-│                                    ▼                                     │
-│    ┌────────────────────────────────────────────────────────────────┐    │
-│    │                        CORE ENGINE                             │    │
-│    ├────────────────────────────────────────────────────────────────┤    │
-│    │  Language Analyzers │ Team Practices Analyzer │ Bicep Generator│    │
-│    └────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
++--------------------------------------------------------------------------+
+|                          RADIUS DISCOVERY                                |
++--------------------------------------------------------------------------+
+|                                                                          |
+|    +------------------+   +------------------+   +------------------+    |
+|    |    AI Agents     |   |     rad CLI      |   |  Programmatic    |    |
+|    |   (via MCP)      |   |                  |   |      API         |    |
+|    +--------+---------+   +--------+---------+   +--------+---------+    |
+|             |                      |                      |              |
+|             +----------------------+----------------------+              |
+|                                    |                                     |
+|                                    v                                     |
+|    +----------------------------------------------------------------+    |
+|    |                        SKILLS LAYER                            |    |
+|    +----------------------------------------------------------------+    |
+|    |  discover_dependencies | discover_services | discover_team_    |    |
+|    |  discover_recipes | generate_resource_types | generate_app_    |    |
+|    |  validate_app_definition                                       |    |
+|    +----------------------------------------------------------------+    |
+|                                    |                                     |
+|                                    v                                     |
+|    +----------------------------------------------------------------+    |
+|    |                        CORE ENGINE                             |    |
+|    +----------------------------------------------------------------+    |
+|    |  Language Analyzers | Team Practices Analyzer | Bicep Generator|    |
+|    +----------------------------------------------------------------+    |
+|                                                                          |
++--------------------------------------------------------------------------+
 ```
 
-**Available Skills:**
+**Skills Reference:**
 
-| Skill | Description | Returns |
-|-------|-------------|---------|
-| `discover_dependencies` | Analyze codebase for infrastructure dependencies | `{dependencies: [{type, technology, confidence, evidence}]}` |
-| `discover_services` | Find deployable services/entrypoints | `{services: [{name, type, port, entrypoint}]}` |
-| `discover_team_practices` | Detect team infrastructure conventions from config files, existing IaC, internal documentation (wikis, ADRs), and naming patterns | `{practices: [{category, convention, source, environment, examples}]}` |
-| `generate_resource_types` | Create Resource Type definitions (interface/schema) for dependencies, applying team conventions | `{resourceTypes: [{name, schema, outputs}]}` |
-| `discover_recipes` | Find IaC implementations from external sources that satisfy Resource Types | `{recipes: [{resourceType, name, source, iacType, parameters}]}` |
-| `generate_app_definition` | Assemble everything into a Radius app.bicep | `{path: string, content: string}` |
-| `validate_app_definition` | Validate generated Bicep | `{valid: boolean, errors: []}` |
+| Skill | Phase | Description | Output |
+|-------|-------|-------------|--------|
+| `discover_dependencies` | 1 | Analyze codebase for infrastructure dependencies | `{dependencies: [{type, technology, confidence, evidence}]}` |
+| `discover_services` | 1 | Find deployable services/entrypoints | `{services: [{name, type, port, entrypoint}]}` |
+| `discover_team_practices` | 1 | Detect conventions from IaC, config, documentation | `{practices: [{category, convention, source, environment}]}` |
+| `generate_resource_types` | 2 | Create Resource Type schemas with team conventions | `{resourceTypes: [{name, schema, outputs}]}` |
+| `discover_recipes` | 2 | Find matching IaC implementations from sources | `{recipes: [{resourceType, name, source, iacType}]}` |
+| `generate_app_definition` | 2 | Assemble into deployable app.bicep | `{path: string, content: string}` |
+| `validate_app_definition` | 2 | Validate generated Bicep syntax and references | `{valid: boolean, errors: []}` |
 
 ---
 
-### Phase 1: Discover Your Application
-
-**What happens**: Radius analyzes your codebase to identify infrastructure dependencies (databases, caches, queues, storage), deployable services (containers, entrypoints), and team infrastructure practices (naming conventions, tags, cost practices for dev/test/prod, security patterns) from config files, existing IaC, or internal documentation.
-
-**Skills invoked**: `discover_dependencies`, `discover_services`, `discover_team_practices`
-
-**CLI Command**: `rad app discover .`
+### Phase 1: Discover (`rad app discover .`)
 
 <table>
 <tr>
@@ -231,6 +197,8 @@ Team Practices Detected:
 • Prod: Premium, HA enabled, geo-redundant
   (Sources: Terraform in /infra, team wiki)
 
+📄 Output: ./radius/discovery.md
+
 Run 'rad app generate' to create your 
 application definition.
 ```
@@ -239,22 +207,9 @@ application definition.
 </tr>
 </table>
 
-**Output**: A discovery report (JSON) listing detected dependencies, services, and team practices.
-
 ---
 
-### Phase 2: Generate Application
-
-**What happens**: A single unified generation step that:
-1. **Creates Resource Types** - Generates the interface/schema for each detected dependency, applying team conventions (naming, sizing, security defaults)
-2. **Discovers Recipes** - Searches external sources (AVM, Terraform repos, Bicep templates) for IaC implementations that match team practices
-3. **Lets user select Recipes** - Presents options and confirms selections
-4. **Generates app.bicep** - Assembles services, Resource Types, and Recipes into a deployable application definition
-5. **Validates** - Ensures the generated Bicep is syntactically correct
-
-**Skills invoked**: `generate_resource_types`, `discover_recipes`, `generate_app_definition`, `validate_app_definition`
-
-**CLI Command**: `rad app generate`
+### Phase 2: Generate (`rad app generate`)
 
 <table>
 <tr>
@@ -370,13 +325,7 @@ Application Structure:
 
 ---
 
-### Phase 3: Deploy
-
-**What happens**: Standard Radius deployment. The generated `app.bicep` is deployed like any other Radius application.
-
-**Command**: `rad deploy` (existing Radius functionality—no new skills needed)
-
-**CLI Command**: `rad deploy ./radius/app.bicep -e <environment>`
+### Phase 3: Deploy (`rad deploy ./radius/app.bicep -e <env>`)
 
 <table>
 <tr>
@@ -606,7 +555,7 @@ Requirements are organized to match the three-phase workflow (Discover → Gener
 | FR-06 | P1 | System MUST detect team practices from existing IaC files (Terraform, Bicep, ARM) and config file (`.radius/team-practices.yaml`). |
 | FR-07 | P2 | System MUST support loading team practices from external documentation sources (wikis, Confluence, Notion, ADRs). |
 | FR-08 | P2 | System MUST support environment-specific practices (e.g., dev=Basic tier, prod=Premium+HA). |
-| FR-09 | P1 | System MUST output structured JSON with: dependencies, services, and team practices (with source evidence). |
+| FR-09 | P1 | System MUST output discovery results to `./radius/discovery.md`, including dependencies, services, and team practices with source evidence. |
 | FR-10 | P1 | System MUST continue discovery if individual files fail, reporting partial results with warnings. |
 
 #### Phase 2: Generate
@@ -880,7 +829,7 @@ These architectural decisions require team discussion before implementation plan
 ### Session 2026-01-28
 
 - Q: How should Radius access the codebase for analysis? → A: Local filesystem only - user provides a directory path
-- Q: What is the default output location for generated files? → A: `./radius/app.bicep`
+- Q: What is the default output location for generated files? → Depends on the model generated from Repo Radius
 - Q: Should the workflow be single command or multi-step? → A: Multi-step (discover, generate, deploy) for transparency
 - Q: Should interactive mode be default? → A: Yes, with `--accept-defaults` for CI/CD
 - Q: What confidence threshold should be used for including detected dependencies? → A: Show all ≥50% confidence, visually distinguish high (≥80%), medium (50-79%), and low (<50%) tiers
