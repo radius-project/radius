@@ -2,6 +2,7 @@
 
 **Feature Branch**: `001-repo-radius`
 **Created**: 2026-01-28
+**Updated**: 2026-01-29
 **Status**: Draft
 **Input**: Decentralized mode of Radius that runs as a CLI tool and stores state in a Git repository
 
@@ -17,29 +18,35 @@ As a developer, I want to initialize my Git repository for Repo Radius so that I
 
 **Why this priority**: Initialization is the entry point for all Repo Radius functionality. Without this, no other features can be used.
 
-**Independent Test**: Can be fully tested by running `rad init` in a Git repository and verifying the directory structure is created with appropriate defaults.
+**Independent Test**: Can be fully tested by running `rad init` in a Git repository and verifying the directory structure is created, Resource Types are populated, and environment configuration is established.
 
 **Acceptance Scenarios**:
 
-1. **Given** a Git repository exists in the current working directory, **When** I run `rad init`, **Then** the system creates the `rad/` directory structure with `config/`, `model/`, `plan/`, and `deploy/` subdirectories
+1. **Given** a Git repository exists in the current working directory, **When** I run `rad init`, **Then** the system creates the `radius/` directory structure with `config/`, `model/`, `plan/`, and `deploy/` subdirectories
 2. **Given** I am not in a Git repository, **When** I run `rad init`, **Then** the system displays an error message indicating a Git repository is required
-3. **Given** a `rad/` directory already exists, **When** I run `rad init`, **Then** the system either preserves existing configuration or prompts for confirmation before overwriting
+3. **Given** a `radius/` directory already exists, **When** I run `rad init`, **Then** the system either preserves existing configuration or prompts for confirmation before overwriting
+4. **Given** I run `rad init` in a valid Git repository, **When** initialization completes, **Then** the system creates Resource Types in `radius/config/types/` from the Radius resource-types-contrib repository
+5. **Given** existing `.env` files exist in the repository, **When** I run `rad init`, **Then** the system examines them for AWS, Azure, or Kubernetes configuration and validates their completeness
+6. **Given** no `.env` file exists or it is insufficient, **When** I run `rad init`, **Then** the system prompts me to select a cloud platform (Local only, AWS, Azure, or Kubernetes only) and collects the required configuration
+7. **Given** I select AWS or Azure as the cloud platform, **When** prompted for configuration, **Then** the system also collects Kubernetes details
+8. **Given** initialization prompts are complete, **When** I am asked about deployment tooling, **Then** I can choose between Terraform or Bicep
+9. **Given** I select a deployment tool, **When** initialization completes, **Then** the system creates a default `recipes.yaml` in `radius/config/` based on my selection
 
 ---
 
 ### User Story 2 - Generate Deployment Scripts (Priority: P1)
 
-As a developer, I want to generate deployment scripts from my application model so that I can preview and optionally customize the infrastructure changes before deployment.
+As a developer, I want to generate deployment scripts from my application model so that I can preview the infrastructure changes before deployment.
 
 **Why this priority**: Script generation is the core value proposition of Repo Radius—translating an application model into executable deployment artifacts.
 
-**Independent Test**: Can be fully tested by running `rad plan` with a valid application model and verifying deployment scripts are generated in `rad/plan/`.
+**Independent Test**: Can be fully tested by running `rad plan` with a valid application model and verifying deployment scripts are generated in `radius/plan/`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid application model exists in `rad/model/`, **When** I run `rad plan`, **Then** the system generates deployment scripts in `rad/plan/` based on the Recipes specified in the selected Environment
-2. **Given** the Environment specifies Terraform as the deployment engine, **When** I run `rad plan`, **Then** the system generates Terraform plan/apply scripts
-3. **Given** the Environment specifies Bicep as the deployment engine, **When** I run `rad plan`, **Then** the system generates Bicep deployment scripts
+1. **Given** a valid application model exists in `radius/model/`, **When** I run `rad plan`, **Then** the system generates deployment scripts in `radius/plan/` based on the recipe manifest specified in the `.env` file
+2. **Given** the deployment engine is Terraform, **When** I run `rad plan`, **Then** the system executes `terraform plan` and stores the output in `radius/plan/`
+3. **Given** the deployment engine is Bicep, **When** I run `rad plan`, **Then** the system generates Bicep deployment scripts in `radius/plan/`
 4. **Given** no application model exists, **When** I run `rad plan`, **Then** the system displays an error indicating the model is missing
 
 ---
@@ -50,31 +57,33 @@ As a developer, I want to deploy infrastructure from a specific Git commit or ta
 
 **Why this priority**: Deployment is the ultimate goal of the workflow. Requiring Git commits ensures auditability and prevents accidental deployment of uncommitted changes.
 
-**Independent Test**: Can be fully tested by committing changes, running `rad deploy`, and verifying resources are deployed and details captured in `rad/deploy/`.
+**Independent Test**: Can be fully tested by committing changes, running `rad deploy`, and verifying resources are deployed and details captured in `radius/deploy/`.
 
 **Acceptance Scenarios**:
 
-1. **Given** deployment scripts exist in `rad/plan/` and are committed to Git, **When** I run `rad deploy` specifying a commit hash or tag, **Then** the system executes the deployment scripts from that commit
-2. **Given** I have uncommitted changes in `rad/plan/`, **When** I run `rad deploy`, **Then** the system refuses to deploy and displays an error requiring committed changes
-3. **Given** a successful deployment completes, **When** the deployment finishes, **Then** the system captures and stores resource details in `rad/deploy/` including Environment used, cloud resource IDs, and full resource properties
+1. **Given** deployment scripts exist in `radius/plan/` and are committed to Git, **When** I run `rad deploy` specifying a commit hash or tag, **Then** the system orchestrates the application deployment by executing the deployment scripts from that commit
+2. **Given** I have uncommitted changes in `radius/plan/`, **When** I run `rad deploy`, **Then** the system refuses to deploy and displays an error requiring committed changes
+3. **Given** a successful deployment completes, **When** the deployment finishes, **Then** the system captures and stores resource details in `radius/deploy/` including Environment used, cloud resource IDs, and full resource properties as returned by the cloud platform
 4. **Given** a deployment fails, **When** the failure occurs, **Then** the system provides clear error output indicating what failed and why
 
 ---
 
-### User Story 4 - Configure Environments (Priority: P2)
+### User Story 4 - Configure Multiple Environments (Priority: P2)
 
 As a developer, I want to configure multiple deployment environments so that I can deploy the same application model to different cloud accounts, regions, or clusters.
 
 **Why this priority**: Multi-environment support enables the dev/staging/production workflow that enterprise teams require.
 
-**Independent Test**: Can be fully tested by creating multiple `.env` files in `rad/config/` and verifying `rad plan` and `rad deploy` respect the selected environment.
+**Independent Test**: Can be fully tested by creating multiple `.env` files and verifying `rad plan` and `rad deploy` respect the selected environment.
 
 **Acceptance Scenarios**:
 
-1. **Given** I need to deploy to AWS, **When** I create an environment configuration, **Then** I can specify AWS account and region in a `.env` file without including credentials
-2. **Given** I need to deploy to Azure, **When** I create an environment configuration, **Then** I can specify Azure subscription and resource group
-3. **Given** I need to deploy to Kubernetes, **When** I create an environment configuration, **Then** I can specify the cluster API endpoint and namespace
-4. **Given** I have multiple environments configured, **When** I run `rad plan` or `rad deploy`, **Then** I can specify which environment to target
+1. **Given** I need a default environment, **When** I create environment configuration, **Then** I store it in `.env` in the repository root
+2. **Given** I need additional named environments, **When** I create environment configuration, **Then** I store it in `.env.<ENVIRONMENT_NAME>` (e.g., `.env.production`, `.env.staging`)
+3. **Given** I need to deploy to AWS, **When** I create an environment configuration, **Then** I can specify AWS account and region without including credentials
+4. **Given** I need to deploy to Azure, **When** I create an environment configuration, **Then** I can specify Azure subscription and resource group
+5. **Given** I need to deploy to Kubernetes, **When** I create an environment configuration, **Then** I can specify the Kubernetes context name and namespace
+6. **Given** I have multiple environments configured, **When** I run `rad plan` or `rad deploy`, **Then** I can specify which environment to target
 
 ---
 
@@ -111,33 +120,20 @@ As a CI/CD engineer, I want to run Repo Radius in a GitHub Actions workflow so t
 
 ---
 
-### User Story 7 - Run Deployment Scripts Independently (Priority: P3)
-
-As a developer, I want the option to run generated deployment scripts directly (outside of Radius) so that I have flexibility in how I execute deployments.
-
-**Why this priority**: Provides escape hatch for advanced users who want more control or need to integrate with existing deployment tooling.
-
-**Independent Test**: Can be fully tested by generating scripts with `rad plan`, then executing them directly using Terraform CLI or Azure CLI.
-
-**Acceptance Scenarios**:
-
-1. **Given** Terraform scripts were generated by `rad plan`, **When** I run `terraform plan` and `terraform apply` directly, **Then** the infrastructure is deployed successfully
-2. **Given** Bicep scripts were generated by `rad plan`, **When** I run `az deployment` directly, **Then** the infrastructure is deployed successfully
-
----
-
 ### Edge Cases
 
 - What happens when `rad init` is run in a non-Git directory?
   - System MUST display a clear error message and refuse to initialize
-- What happens when `rad deploy` is run with uncommitted changes in `rad/plan/`?
+- What happens when `rad deploy` is run with uncommitted changes in `radius/plan/`?
   - System MUST refuse deployment and require changes to be committed
 - What happens when the specified Environment does not exist?
   - System MUST display an error listing available environments
-- What happens when deployment scripts reference a Recipe Pack that doesn't exist?
+- What happens when the recipe manifest specified in `.env` does not exist?
   - System MUST fail with a clear error during `rad plan`
 - What happens when cloud credentials are missing or invalid at deployment time?
   - System MUST fail with a clear error without exposing credential details
+- What happens when `rad init` finds an existing `.env` file without required cloud configuration?
+  - System MUST prompt the user to provide missing configuration
 
 ## Requirements *(mandatory)*
 
@@ -154,98 +150,96 @@ As a developer, I want the option to run generated deployment scripts directly (
 #### `rad init` Command
 
 - **FR-010**: System MUST verify the current working directory is a Git repository before initialization
-- **FR-011**: System MUST create the directory structure: `rad/config/`, `rad/model/`, `rad/plan/`, `rad/deploy/`
-- **FR-012**: System MUST create friendly default configuration in `rad/config/`
+- **FR-011**: System MUST create the directory structure: `radius/config/`, `radius/model/`, `radius/plan/`, `radius/deploy/`
+- **FR-012**: System MUST create Resource Types in `radius/config/types/` from the Radius resource-types-contrib repository
+- **FR-013**: System MUST search the repository for existing `.env` files and validate they contain cloud platform configuration (AWS account/region, Azure subscription/resource group, or Kubernetes context/namespace)
+- **FR-014**: System MUST prompt the user to select a cloud platform if no `.env` file exists or existing files are insufficient: Local only, AWS, Azure, or Kubernetes only
+- **FR-015**: System MUST collect Kubernetes details in addition to cloud provider details when AWS or Azure is selected
+- **FR-016**: System MUST prompt the user to select a deployment tool: Terraform or Bicep
+- **FR-017**: System MUST create a default `recipes.yaml` in `radius/config/` based on the selected deployment tool
 
 #### `rad plan` Command
 
 - **FR-020**: System MUST generate ready-to-execute deployment scripts (bash or PowerShell)
-- **FR-021**: System MUST derive deployment scripts from Recipes specified by the Recipe Pack selected in the Environment
+- **FR-021**: System MUST derive deployment scripts from the recipe manifest specified in the `.env` file
 - **FR-022**: System MUST support Terraform (plan/apply) as a deployment engine
 - **FR-023**: System MUST support Bicep as a deployment engine
-- **FR-024**: Generated scripts MUST be executable independently by the user outside of Radius
-- **FR-025**: Generated scripts MUST be stored in `rad/plan/`
+- **FR-024**: Generated scripts are captured for auditability and to be part of the application graph (not intended for user modification)
+- **FR-025**: Generated scripts MUST be stored in `radius/plan/`
+- **FR-026**: When the deployment engine is Terraform, system MUST execute `terraform plan` and store the output in `radius/plan/`
 
 #### `rad deploy` Command
 
-- **FR-030**: System MUST execute deployment scripts only from a Git commit hash or tag
+- **FR-030**: System MUST orchestrate application deployment by executing deployment scripts only from a Git commit hash or tag
 - **FR-031**: System MUST NOT deploy directly from uncommitted local files
 - **FR-032**: System MUST capture structured details about deployed resources after deployment
 - **FR-033**: System MUST record the Environment used for each deployment
 - **FR-034**: System MUST record cloud platform resource IDs for each deployed resource
 - **FR-035**: System MUST record the full set of properties for each deployed resource as returned by the cloud platform
-- **FR-036**: System MUST store deployment details in `rad/deploy/`
+- **FR-036**: System MUST store deployment details in `radius/deploy/`
 
 #### Configuration Model
 
-- **FR-040**: All configuration MUST be stored in the Git repository under `rad/config/`
-- **FR-041**: Resource Types MUST be stored as YAML or TypeSpec files
-- **FR-042**: Environment configuration MUST be stored as `.env` files
-- **FR-043**: Environment files MUST support AWS account and region configuration
-- **FR-044**: Environment files MUST support Azure subscription and resource group configuration
-- **FR-045**: Environment files MUST support Kubernetes cluster API endpoint and namespace configuration
-- **FR-046**: Environment files MUST support Recipe Pack selection
-- **FR-047**: Environment files MUST support Terraform CLI configuration (`terraformrc`)
-- **FR-048**: Environment files MUST NOT contain credentials
-- **FR-049**: Recipe Packs MUST be stored in the `rad/config/` directory
+- **FR-040**: All configuration MUST be stored in the Git repository
+- **FR-041**: Resource Types MUST be stored as YAML or TypeSpec files in `radius/config/types/`
+- **FR-042**: Default Environment configuration MUST be stored in `.env` file in the repository root
+- **FR-043**: Named Environment configurations MUST be stored as `.env.<ENVIRONMENT_NAME>` files
+- **FR-044**: Environment files MUST support AWS account and region configuration
+- **FR-045**: Environment files MUST support Azure subscription and resource group configuration
+- **FR-046**: Environment files MUST support Kubernetes context name and namespace configuration
+- **FR-047**: Environment files MUST support specifying an alternative `recipes.yaml` manifest file
+- **FR-048**: Environment files MUST support Terraform CLI configuration (`terraformrc`)
+- **FR-049**: Environment files MUST NOT contain credentials
+- **FR-050**: Recipe Packs MUST be stored as YAML files in the `radius/config/` directory
 
 ### Explicit Non-Goals
 
 - **NG-001**: Repo Radius does NOT have a concept of Radius Resource Groups
-- **NG-002**: Repo Radius does NOT introduce new commands related to Resource Groups
 
 ### Key Entities
 
-- **Environment**: A deployment target configuration specifying cloud provider details (account, region, subscription, resource group, cluster endpoint, namespace), selected Recipe Pack, and deployment engine settings. Stored as `.env` files. Does not contain credentials.
-- **Recipe Pack**: A collection of Recipes that define how abstract resource types are deployed to specific cloud platforms. Stored in `rad/config/`.
-- **Application Model**: The user-defined model describing the application and its resource dependencies. Stored in `rad/model/`. Produced by a separate project (out of scope).
-- **Deployment Script**: A ready-to-execute script (bash or PowerShell) generated by `rad plan` that deploys infrastructure using a supported deployment engine. Stored in `rad/plan/`.
-- **Deployment Record**: Structured details captured after `rad deploy` completes, including Environment, resource IDs, and full resource properties. Stored in `rad/deploy/`.
-- **Resource Type**: A definition of an abstract resource type stored as YAML or TypeSpec. Stored in `rad/config/`.
+- **Environment**: A deployment target configuration specifying cloud provider details (AWS account/region, Azure subscription/resource group, Kubernetes context/namespace), recipe manifest reference, and deployment engine settings. Default stored in `.env`; named environments in `.env.<NAME>`. Does not contain credentials.
+- **Recipe Pack**: A YAML file (`recipes.yaml`) that defines how abstract resource types are deployed to specific cloud platforms. Stored in `radius/config/`. Can be overridden per-environment via `.env` configuration.
+- **Application Model**: The user-defined model describing the application and its resource dependencies. Stored in `radius/model/`. Produced by a separate project (out of scope).
+- **Deployment Script**: A ready-to-execute script (bash or PowerShell) generated by `rad plan` that deploys infrastructure using a supported deployment engine. Stored in `radius/plan/`. Not intended for user modification.
+- **Deployment Record**: Structured details captured after `rad deploy` completes, including Environment, resource IDs, and full resource properties. Stored in `radius/deploy/`.
+- **Resource Type**: A definition of an abstract resource type stored as YAML or TypeSpec. Stored in `radius/config/types/`. Initialized from the Radius resource-types-contrib repository.
 
 ### Assumptions
 
-- The application model in `rad/model/` is produced by a separate project and is available at `rad plan` time
+- The application model in `radius/model/` is produced by a separate project and is available at `rad plan` time
 - Cloud provider credentials are provided externally (via environment variables, credential files, or CI/CD secrets) and are not managed by Repo Radius
 - Users have Git installed and understand basic Git operations
+- The Radius resource-types-contrib repository is accessible during `rad init`
 - Generated deployment artifacts are expected to become part of the Radius application graph in the future (future enhancement)
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Users can initialize a repository for Repo Radius in under 30 seconds
+- **SC-001**: Users can initialize a repository for Repo Radius in under 2 minutes (including interactive prompts)
 - **SC-002**: Users can generate deployment scripts with `rad plan` in under 2 minutes for a typical application model
 - **SC-003**: 90% of GitHub Actions workflows using Repo Radius complete without manual intervention
 - **SC-004**: Users can deploy infrastructure with `rad deploy` and have full resource details captured automatically
 - **SC-005**: Users can install Repo Radius via their native package manager without additional manual steps
-- **SC-006**: Generated deployment scripts can be executed independently (outside Radius) without modification
+- **SC-006**: Generated deployment scripts can be executed independently (outside Radius) for auditability purposes
+
+## Future Enhancements
+
+The following features are out of scope for the initial implementation but are planned for future releases:
+
+- **FE-001**: Adapt to existing deployment scripts by examining the Git repository for existing IaC code (`*.tf`, `*.bicep`, `chart.yaml`, `kustomize.yaml`, `template.yaml`)
+- **FE-002**: Adapt to existing GitOps configurations
+- **FE-003**: Support for Helm as a deployment engine
+- **FE-004**: Support for CloudFormation as a deployment engine
+- **FE-005**: Support for Crossplane as a deployment engine
+- **FE-006**: Support for Ansible as a deployment engine
 
 ## Open Questions
 
 The following items require clarification before implementation:
 
-### Question 1: Recipe Pack File Format
-
-**Context**: Recipe Packs are stored in `rad/config/` but the file format is not specified.
-
-**What we need to know**: What file format should Recipe Packs use?
-
-**Suggested Answers**:
-
-| Option | Answer                       | Implications                                                                 |
-| ------ | ---------------------------- | ---------------------------------------------------------------------------- |
-| A      | Bicep files                  | Aligns with existing Radius Recipes; familiar to Azure users                 |
-| B      | YAML files                   | Human-readable; easy to edit; portable across tools                          |
-| C      | Key-value (`.env` style)     | Simple but limited expressiveness; may not capture complex recipe structures |
-| D      | TypeSpec files               | Strongly typed; aligns with Resource Types; requires TypeSpec tooling        |
-| Custom | Provide your own answer      | Specify the format and rationale                                             |
-
-**Your choice**: _[Awaiting user response]_
-
----
-
-### Question 2: GitHub Actions Optimization
+### Question 1: GitHub Actions Optimization
 
 **Context**: Repo Radius is described as "optimized for non-interactive execution in a GitHub Action."
 
@@ -265,9 +259,9 @@ The following items require clarification before implementation:
 
 ---
 
-### Question 3: Deployment Record File Format
+### Question 2: Deployment Record File Format
 
-**Context**: `rad deploy` captures "structured details about the deployed resources" in `rad/deploy/`.
+**Context**: `rad deploy` captures "structured details about the deployed resources" in `radius/deploy/`.
 
 **What we need to know**: What file format should be used to store deployed resource details?
 
