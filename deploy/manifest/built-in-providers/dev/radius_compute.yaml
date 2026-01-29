@@ -1,0 +1,729 @@
+namespace: Radius.Compute
+location:
+  global: "http://localhost:8082"
+types:
+  containers:
+    description: |
+      The Radius.Compute/containers Resource Type is the primary resource type for running one or more containers. It is always part of a Radius Application. To deploy a Container add a resource to the application definition Bicep file.
+
+      extension radius
+      param environment string 
+
+      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
+
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            demo: {
+              image: 'ghcr.io/radius-project/samples/demo:latest'
+            }
+          }
+        }
+      }
+
+      By default, Containers deploys to Kubernetes. In this case, a Kubernetes Deployment named myContainer is deployed which includes a Pod named myContainer. Your Radius environment may deploy to other container platforms such as Azure Container Instances. 
+
+      To accept network connections, expose a port on the container.
+
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            demo: {
+              image: 'ghcr.io/radius-project/samples/demo:latest'
+              ports: {
+                web: {
+                  containerPort: 3000
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      When a port is included, a Kubernetes Service named demo with the type ClusterIP is created.
+      
+      To create a emphemeral emptyDir shared between two containers add a Containers.properties.volumes.
+
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            frontend: {
+              image: 'frontend:latest'
+              volumeMounts: [
+                {
+                  volumeName: 'shared'
+                  mountPath: '/var/shared' 
+                }
+              ]
+            }
+            backend: {
+              image: 'backend:latest'
+              volumeMounts: [
+                {
+                  volumeName: 'shared'
+                  mountPath: '/var/shared' 
+                }
+              ]
+            }
+          }
+          volumes: {
+            shared: {
+              emptyDir: {}
+            }
+          }
+        }
+      }
+
+      To mount a persistent volume or secret see the PersistentVolumes and Secrets Resource Types.
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
+            application:
+              type: string
+              description: (Required) The Radius Application ID. `myApplication.id` for example.
+            connections:
+              type: object
+              description: '(Optional) Map of resources this container is dependent upon. `db: { source: db.id } for example.'
+              additionalProperties:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    description: (Required) The resource ID of the resource this container is dependent upon.
+                  disableDefaultEnvVars:
+                    type: boolean
+                    description: (Optional) Disables the automatic injection of environment variables from connected resource properties.
+                required: [source]
+            containers:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  initContainer:
+                    type: boolean
+                    description: (Optional) Set to true if container should run and succeed prior to other containers starting.
+                  image:
+                    type: string
+                    description: (Required) The container image. `ghcr.io/radius-project/samples/demo:latest` for example.
+                  command:
+                    type: array
+                    description: '(Optional) Command the container runs. Overrides the container image ENTRYPOINT. `["/bin/sh", "-c"]` for example.'
+                    items:
+                      type: string
+                  args:
+                    type: array
+                    description: '(Optional) Arguments for the command. Overrides the container image CMD. `["echo Hello", "&&", "echo World"]` for example.'
+                    items:
+                      type: string
+                  env:
+                    type: object
+                    description: (Optional) Environment variables injected into the container. 
+                    additionalProperties:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                          description: (Optional) String value of the environment variable.
+                        valueFrom:
+                          type: object
+                          properties:
+                            secretKeyRef:
+                              type: object
+                              description: (Optional) Set the environment variable value based on a Radius Secrets resource.
+                              properties:
+                                secretName:
+                                  type: string
+                                  description: (Optional) The name of the Radius Secrets resource.
+                                key:
+                                  type: string
+                                  description: (Optional) The key of the Radius Secrets resource. The value of the key will be used as the environment variable value.
+                  workingDir:
+                    type: string
+                    description: (Optional) The working directory inside the container. `/usr/share` for example.
+                  resources:
+                    type: object
+                    description: (Optional) Compute resource requirements for the container.
+                    properties:
+                      requests:
+                        type: object
+                        description: (Optional) Requests define the minimum amount of CPU or memory that is required by the container.
+                        properties:
+                          cpu:
+                            # TODO: Change to float once floats are availabla https://github.com/radius-project/radius/issues/10279
+                            type: string
+                            description: (Optional) The minimum number of vCPUs required by the container. `0.1` results in one tenth of a vCPU being reserved.
+                          memoryInMib:
+                            type: integer
+                            description: (Optional) The minimum amount of memory required by the container in MiB. `1024` results in 1 GiB of memory being reserved.
+                      limits:
+                        type: object
+                        description: (Optional) Limits define the maximum amount of CPU or memory the container can consume.
+                        properties:
+                          cpu:
+                            # TODO: Change to float once floats are availabla https://github.com/radius-project/radius/issues/10279
+                            type: string
+                            description: (Optional) The maximum number of vCPUs which can be used by the container.
+                          memoryInMib:
+                            type: integer
+                            description: (Optional) The maximum amount of memory which can be used by the container in MiB.
+                  ports:
+                    type: object
+                    description: (Optional) Network ports exposed by the container. A network endpoint is created for each port. For L7 ingress create a Routes resource.
+                    additionalProperties:
+                      type: object
+                      properties:
+                        containerPort:
+                          type: integer
+                          description: (Required) The network port the container is listening on. `443` for example.
+                        protocol:
+                          type: string
+                          enum: [TCP, UDP]
+                          description: (Optional) The protocol. If not specified, `TCP` is assumed.
+                      required: [containerPort]
+                  volumeMounts:
+                    type: array
+                    description: (Optional) Volumes to mount in the container.
+                    items:
+                      type: object
+                      properties:
+                        volumeName:
+                          type: string
+                          description: (Required) The name of the volume defined in Containers.properties.volumes. 
+                        mountPath:
+                          type: string
+                          description: (Required) The path to mount the volume in the container file system.
+                      required: [volumeName, mountPath]
+                  readinessProbe:
+                    type: object
+                    description: (Optional) A readiness probe defines a check (a probe) to determine when a container is ready to begin accepting traffic.
+                    properties:
+                      exec:
+                        type: object
+                        description: (Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy. 
+                        properties:
+                          command:
+                            type: array
+                            items:
+                              type: string
+                              description: '(Required) The command to run inside the container. `["cat", "/tmp/healthy"]` for example.'
+                        required: [command]
+                      httpGet:
+                        type: object
+                        description: (Optional) A httpGet probe performs a HTTP GET against the container on the specified port. If the HTTP server returns a code greater than or equal to 200 and less than 400 the probe is healthy.
+                        properties:
+                          path:
+                            type: string
+                            description: (Required) The path to access on the HTTP server.
+                          port:
+                            type: integer
+                            description: (Required) The TCP port connect to on the container.
+                          httpHeaders:
+                            type: array
+                            description: (Optional) Custom HTTP headers to be included in the GET request.
+                            items:
+                              type: object
+                              properties:
+                                value:
+                                  type: string
+                                  description: (Required) The header field value.
+                              required: [value]
+                          scheme:
+                            type: string
+                            enum: [http, https]
+                            description: (Optional) HTTP or HTTPS. Assumes HTTP is not specified.
+                        required: [path, port]
+                      tcpSocket:
+                        type: object
+                        description: (Optional) A TCP socket probe establishes a TCP connection to the container on the specified port. If a connection is established the probe is healthy.
+                        properties:
+                          port:
+                            type: integer
+                            description: (Required) The TCP port to connect to. 
+                        required: [port]
+                      initialDelaySeconds:
+                        type: integer
+                        description: (Optional) Number of seconds after the container has started before probes are initiated.
+                      terminationGracePeriodSeconds:
+                        type: integer
+                        description: (Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal. 
+                      periodSeconds:
+                        type: integer
+                        description: (Optional) How often to perform the probe. Assumed to be 10 seconds if not specified.
+                      timeoutSeconds:
+                        type: integer
+                        description: (Optional) Number of seconds after which the probe times out. Assumed to be 1 second if not specified.
+                      failureThreshold:
+                        type: integer
+                        description: (Optional) Minimum consecutive failures for the probe to be considered failed after having succeeded. Assumed to be 3 if not specified.
+                      successThreshold: 
+                        type: integer
+                        description: (Optional) Minimum consecutive successes for the probe to be considered successful after having failed. Assumed to be 1 if not specified.
+                  livenessProbe:
+                    # TODO: livenessProbe and readinessProbe are the same object definition. Use references in the future to de-duplicate code. https://github.com/radius-project/radius/issues/10276
+                    type: object
+                    description: (Optional) A liveness probe defines a check (a probe) to determine if a container is healthy.
+                    properties:
+                      exec:
+                        type: object
+                        description: (Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy. 
+                        properties:
+                          command:
+                            type: array
+                            description: '(Required) The command to run inside the container. `["cat", "/tmp/healthy"]` for example.'
+                            items:
+                              type: string
+                        required: [command]
+                      httpGet:
+                        type: object
+                        description: (Optional) A httpGet probe performs a HTTP GET against the container on the specified port. If the HTTP server returns a code greater than or equal to 200 and less than 400 the probe is healthy.
+                        properties:
+                          path:
+                            type: string
+                            description: (Required) The path to access on the HTTP server.
+                          port:
+                            type: integer
+                            description: (Required) The TCP port connect to on the container.
+                          httpHeaders:
+                            type: array
+                            description: (Optional) Custom HTTP headers to be included in the GET request.
+                            items:
+                              type: object
+                              properties:
+                                value:
+                                  type: string
+                                  description: (Required) The header field value.
+                              required: [value]
+                          scheme:
+                            type: string
+                            enum: [http, https]
+                            description: (Optional) HTTP or HTTPS. Assumes HTTP is not specified.
+                        required: [path, port]
+                      tcpSocket:
+                        type: object
+                        description: (Optional) A TCP socket probe establishes a TCP connection to the container on the specified port. If a connection is established the probe is healthy.
+                        properties:
+                          port:
+                            type: integer
+                            description: (Required) The TCP port to connect to. 
+                        required: [port]
+                      initialDelaySeconds:
+                        type: integer
+                        description: (Optional) Number of seconds after the container has started before probes are initiated.
+                      terminationGracePeriodSeconds:
+                        type: integer
+                        description: (Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal. 
+                      periodSeconds:
+                        type: integer
+                        description: (Optional) How often to perform the probe. Assumed to be 10 seconds if not specified.
+                      timeoutSeconds:
+                        type: integer
+                        description: (Optional) Number of seconds after which the probe times out. Assumed to be 1 second if not specified.
+                      failureThreshold:
+                        type: integer
+                        description: (Optional) Minimum consecutive failures for the probe to be considered failed after having succeeded. Assumed to be 3 if not specified.
+                      successThreshold: 
+                        type: integer
+                        description: (Optional) Minimum consecutive successes for the probe to be considered successful after having failed. Assumed to be 1 if not specified.
+                required: [image]
+            volumes:
+              type: object
+              description: (Optional) List of volumes that can be mounted by a container. 
+              additionalProperties:
+                type: object
+                properties:
+                  persistentVolume:
+                    type: object
+                    description: (Optional) Mount an existing Radius PersistentVolume resource.
+                    properties:
+                      resourceId:
+                        type: string
+                        description: (Required) The Radius PersistentVolume resource ID.
+                      accessMode:
+                        type: string
+                        enum: [ReadWriteOnce, ReadOnlyMany, ReadWriteMany]
+                        description: (Optional) Set to `ReadWriteOnce` if no other Containers can mount in read/write mode. Set to `ReadOnlyMany` to enable other Containers to mount in read-only mode. Set to `ReadWriteMany` to allow multiple containers to mount in read/write mode. Assumed to be `ReadWriteOnce` if not specified.
+                  secretName:
+                    type: string
+                    description: (Optional) The Radius Secret resource name.
+                  emptyDir:
+                    type: object
+                    description: (Optional) An empty directory. 
+                    properties:
+                      medium:
+                        type: string
+                        enum: [disk, memory]
+                        description: (Optional) Set to `memory` for a tmpfs (RAM backed filesystem). Note that while tmpfs is very fast storage counts against the memory limit of the container.
+            restartPolicy:
+              type: string
+              enum: [Always, OnFailure, Never]
+              description: (Optional) Defines how a containers behave when they terminate. `Always` will restart containers regardless of their exit status. `OnFailure` will restart containers if they return a non-zero exit code.
+            replicas: 
+              type: integer
+              description: (Optional) The minimum number of replicas for the set of containers. 
+            autoScaling:
+              type: object
+              properties:
+                maxReplicas:
+                  type: integer
+                  description: (Optional) The maximum number of replicas for the autoscaler.
+                metrics:
+                  type: array
+                  description: (Required) The metric to measure and target used to autoscale. 
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum: [cpu, memory, custom]
+                        description: (Required) The metric to measure. 
+                      customMetric: 
+                        type: string
+                        description: (Optional) The custom metric exposed by the application. Implementation specific. See platform engineer for further guidance.
+                      target:
+                        type: object
+                        description: (Required) When the metric exceeds the target value specified, autoscaling is triggered. Only one target value can be specified dependent upon the type.
+                        properties:
+                          averageUtilization:
+                            type: integer
+                            description: (Optional) The average CPU or memory utilization across all containers expressed as a percentage. Kind must be CPU or memory.
+                          averageValue:
+                            type: integer
+                            description: (Optional) The average value of the metric as a quantity.
+                          value:
+                            type: integer
+                            description: (Optional) The absolute value of the metric as a quantity.
+                    required: [kind, target]
+              required: [metrics]
+            extensions:
+              type: object
+              description: (Optional) Properties for additional functionality. daprSidecar is the only available option.
+              properties:
+                daprSidecar:
+                  type: object
+                  description: (Optional) When set the daprSidecar container is configured.
+                  properties:
+                    appId:
+                      type: string
+                      description: (Optional) The unique ID of the Dapr application. Used for service discovery, state encapsulation and the pub/sub consumer ID.
+                    appPort:
+                      type: integer
+                      description: (Optional) The port your application is listening on.
+                    config:
+                      type: string
+                      description: (Optional) The Dapr Configuration resource name.
+            platformOptions:
+              type: object
+              description: (Optional) If enabled by the platform engineer, properties to be passed to the Recipe for the specified platform.
+              additionalProperties: 
+                type: any
+                description: (Required) Platform-specific properties.
+          required: [environment, application, containers]
+  routes:
+    description: |
+      The Radius.Compute/routes Resource Type defines network routes for responding to external clients. Note that a Routes resource is not required for service-to-service communication. To use Routes, define a Container and ensure a `containerPort` is specified.
+
+      extension radius
+      param environment string
+
+      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
+      
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            frontend: {
+              image: 'frontend:1.25'
+              ports: {
+                web: {
+                  containerPort: 8080
+                }
+              }
+            }
+            accounts: {
+              image: 'accounts:1.25'
+              ports: {
+                web: {
+                  containerPort: 8080
+                }
+              }
+            }
+          }
+        }
+      }
+
+      Then define a Routes resource.
+
+      resource ingressRule 'Radius.Compute/routes@2025-08-01-preview' = {
+        name: 'ingressRule'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          kind: 'HTTP'
+          rules: [
+            {
+              matches: [
+                {
+                  httpPath: '/'
+                }
+              ]
+              destinationContainer: {
+                resourceId: myContainer.id
+                containerName: 'frontend'
+                containerPortName: 'web'
+              }
+            }
+          ]
+        }
+      }
+
+      The hostname is determined by the Recipe. 
+
+      Multiple rules can be included in Routes.
+
+      resource ingressRule 'Radius.Compute/routes@2025-08-01-preview' = {
+        name: 'ingressRule'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          kind: 'HTTP'
+          rules: [
+            {
+              matches: [
+                {
+                  httpPath: '/'
+                }
+              ]
+              destinationContainer: {
+                resourceId: myContainer.id
+                containerName: 'frontend'
+                containerPortName: 'web'
+              }
+            }
+            {
+              matches: [
+                {
+                  httpPath: '/accounts'
+                }
+              ]
+              destinationContainer: {
+                resourceId: myContainer.id
+                containerName: 'accounts'
+                containerPortName: 'web'
+              }
+            }
+          ]
+        }
+      }
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
+            application:
+              type: string
+              description: (Required) The Radius Application ID. `myApplication.id` for example.
+            kind:
+              type: string 
+              enum: [HTTP, TCP, TLS, UDP]
+              description: (Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.
+            hostnames:
+              type: array
+              description: (Optional) Use only when kind is HTTP or TLS. When HTTP, match against the HTTP Host header. When using TLS, match against the SNI attribute of TLS ClientHello message. Hostname may be preceded by a * wildcard.
+              items:
+                type: string
+            rules:
+              type: array
+              description: (Required) Rules define semantics for matching a network connection request based on conditions and forwarding the request to a Container.
+              items:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    description: (Required) Matches define conditions used for matching a request. 
+                    items:
+                      type: object
+                      properties:
+                        httpHeaders:
+                          type: array
+                          description: (Optional) HTTP headers to match. Specify only when kind is HTTP. Multiple match values are ANDed together. A request must match all the specified headers to match.
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                                description: (Required) The name of the HTTP Header to be matched. Must be exact.
+                              value:
+                                type: string
+                                description: (Required) Value of HTTP Header to be matched.
+                            required: [name, value]
+                        httpMethod:
+                          type: string
+                          description: (Optional) The HTTP method to match. Specify only when kind is HTTP. 
+                          enum: [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH]
+                        httpPath:
+                          type: string
+                          description: (Optional) The HTTP request path to match. Trailing space is ignored. Requests for `/abc`, `/abc/`, and ``/abc/def/` will all match `/abc`.
+                        httpQueryParams:
+                          type: array
+                          description: (Optional) HTTP query parameters to match. Specify only when kind is HTTP.
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                                description: (Required) Name of the HTTP query parameter to be matched. Specify only when kind is HTTP.
+                              value:
+                                type: string
+                                description: (Required) Value of the HTTP query parameter to be matched.
+                            required: [name, value]
+                  destinationContainer:
+                    type: object
+                    properties:
+                      resourceId:
+                        type: string
+                        description: (Required) The Radius Container resource ID.
+                      containerName:
+                        type: string
+                        description: (Required) The specific container to target within the Container resource.
+                      containerPortName:
+                        type: string
+                        description: (Required) The port name to target from the container.
+                    required: [resourceId, containerName, containerPortName]
+                required: [matches, destinationContainer]
+            listener:
+              type: object
+              description: (Read Only) The Gateway Listener the route is assigned to.
+              readOnly: true
+              properties:
+                hostname:
+                  type: string
+                port:
+                  type: integer
+                protocol:
+                  type: string
+                  enum: [HTTP, HTTPS, TLS, TCP, UDP]
+          required: [environment, application, rules]
+  persistentVolumes:
+    description: |
+      The Radius.Compute/persistentVolumes Resource Type represents a persistent storage volume. A PersistentVolume can be referenced in the volumes property of a Container. 
+      To deploy, first add a PersistentVolume resource to the application definition Bicep file.
+      
+      extension radius
+      param environment string 
+
+      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
+
+      resource myPersistentVolume 'Radius.Compute/persistentVolumes@2025-08-01-preview' = {
+        name: 'myPersistentVolume'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          sizeInGib: 1
+        }
+      }
+
+      Then reference the PersistentVolume by ID in the volumes property of the Container. Finally, set the mountPath in the container referencing the volumeName.
+
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            demo: {
+              image: 'ghcr.io/radius-project/samples/demo:latest'
+              volumeMounts: [
+                {
+                volumeName: 'data'
+                mountPath: '/app/data'
+                } 
+              ] 
+            }
+          }
+          volumes: {
+            data: {
+              persistentVolume: {
+                resourceId: myPersistentVolume.id
+              }
+            }
+          }
+        }
+      }
+      
+      PersistentVolumes may be shared across multiple Containers. To mount an existing PersistentVolume in read-only mode, reference the PersistentVolume by name using the `existing` Bicep keyword. For example:
+      
+      resource existingPersistentVolume 'Radius.Compute/persistentVolumes@2025-08-01-preview' existing = {
+        name: 'existingPersistentVolume'
+      }
+      
+      Then add the existing PersistentVolume to the volumes property of a Container with accessMode set to `ReadOnlyMany`.
+      
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            demo: {
+              image: 'ghcr.io/radius-project/samples/demo:latest'
+              volumeMounts: [
+                {
+                  volumeName: 'readOnlyData'
+                  mountPath: '/app/data' 
+                }
+              ]
+            }
+          }
+          volumes: {
+            readOnlyData: {
+              persistentVolume: {
+                resourceId: existingPersistentVolume.id
+                accessMode: 'ReadOnlyMany'
+              }
+            }
+          }
+        }
+      }
+      
+      A PersistentVolume may be shared between multiple Containers in read/write mode if the PersistentVolume was created with `accessMode: ReadWriteMany` and the volume is set to ReadWriteMany as well. Note that not all infrastructures support this mode.
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
+            application:
+              type: string
+              description: (Optional) The Radius Application ID. `myApplication.id` for example.
+            sizeInGib:
+              type: integer
+              description: (Required) The size of the volume in gibibytes. `1` represents 1024 MiB.
+            allowedAccessModes:
+              type: string
+              enum: [ReadWriteOnce, ReadOnlyMany, ReadWriteMany]
+              description: (Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.
+          required: [environment, sizeInGib]
