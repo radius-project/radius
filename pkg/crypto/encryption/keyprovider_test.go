@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/radius-project/radius/test/k8sutil"
@@ -37,10 +38,7 @@ func createTestKeyStore(t *testing.T, keys map[int][]byte, currentVersion int) [
 		Keys:           make(map[string]KeyData),
 	}
 	for version, key := range keys {
-		versionStr := string(rune('0' + version))
-		if version >= 10 {
-			versionStr = string(rune('0'+version/10)) + string(rune('0'+version%10))
-		}
+		versionStr := strconv.Itoa(version)
 		keyStore.Keys[versionStr] = KeyData{
 			Key:       base64.StdEncoding.EncodeToString(key),
 			Version:   version,
