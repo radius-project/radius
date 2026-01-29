@@ -3,9 +3,47 @@ templates:
   - rp/deployment.yaml
   - rp/configmaps.yaml
   - dynamic-rp/deployment.yaml
+  - terraform-pvc.yaml
 tests:
+  # Terraform PVC tests
+  - it: should create terraform PVC when terraform is enabled
+    set:
+      global.terraform.enabled: true
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+        template: terraform-pvc.yaml
+      - equal:
+          path: metadata.name
+          value: terraform-storage
+        template: terraform-pvc.yaml
+      - contains:
+          path: spec.accessModes
+          content: ReadWriteMany
+        template: terraform-pvc.yaml
+
+  - it: should use custom storage class when specified
+    set:
+      global.terraform.enabled: true
+      global.terraform.storageClassName: "nfs"
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: "nfs"
+        template: terraform-pvc.yaml
+
+  - it: should use custom storage size when specified
+    set:
+      global.terraform.enabled: true
+      global.terraform.storageSize: "5Gi"
+    asserts:
+      - equal:
+          path: spec.resources.requests.storage
+          value: "5Gi"
+        template: terraform-pvc.yaml
+
   # applications-rp terraform volume tests
-  - it: should create emptyDir terraform volume in applications-rp when terraform is enabled
+  - it: should use PVC for terraform volume in applications-rp when terraform is enabled
     set:
       global.terraform.enabled: true
       rp.image: applications-rp
@@ -15,7 +53,8 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: terraform
-            emptyDir: {}
+            persistentVolumeClaim:
+              claimName: terraform-storage
         template: rp/deployment.yaml
 
   - it: should mount terraform volume in applications-rp container
@@ -56,7 +95,7 @@ tests:
         template: rp/configmaps.yaml
 
   # dynamic-rp terraform volume tests
-  - it: should create emptyDir terraform volume in dynamic-rp when terraform is enabled
+  - it: should use PVC for terraform volume in dynamic-rp when terraform is enabled
     set:
       global.terraform.enabled: true
       dynamicrp.image: dynamic-rp
@@ -66,7 +105,8 @@ tests:
           path: spec.template.spec.volumes
           content:
             name: terraform
-            emptyDir: {}
+            persistentVolumeClaim:
+              claimName: terraform-storage
         template: dynamic-rp/deployment.yaml
 
   - it: should mount terraform volume in dynamic-rp container
@@ -99,8 +139,8 @@ tests:
           any: true
         template: dynamic-rp/deployment.yaml
 
-  # Both deployments use independent emptyDir volumes (pod-local storage)
-  - it: should use independent emptyDir volumes for each deployment
+  # Both deployments use the same shared PVC
+  - it: should use shared PVC for both deployments
     set:
       global.terraform.enabled: true
       rp.image: applications-rp
@@ -108,17 +148,19 @@ tests:
       dynamicrp.image: dynamic-rp
       dynamicrp.tag: latest
     asserts:
-      # applications-rp uses emptyDir
+      # applications-rp uses shared PVC
       - contains:
           path: spec.template.spec.volumes
           content:
             name: terraform
-            emptyDir: {}
+            persistentVolumeClaim:
+              claimName: terraform-storage
         template: rp/deployment.yaml
-      # dynamic-rp uses emptyDir
+      # dynamic-rp uses same shared PVC
       - contains:
           path: spec.template.spec.volumes
           content:
             name: terraform
-            emptyDir: {}
+            persistentVolumeClaim:
+              claimName: terraform-storage
         template: dynamic-rp/deployment.yaml

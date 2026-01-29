@@ -1,0 +1,19 @@
+{{- if .Values.global.terraform.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: terraform-storage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: terraform-storage
+    app.kubernetes.io/part-of: radius
+spec:
+  accessModes:
+    - ReadWriteMany
+  {{- if .Values.global.terraform.storageClassName }}
+  storageClassName: {{ .Values.global.terraform.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.global.terraform.storageSize | default "1Gi" }}
+{{- end }}

@@ -404,7 +404,7 @@ func (h *Handler) download(ctx context.Context, opts *downloadOptions) error {
 			}
 			client = tlsClient
 		} else {
-			client = http.DefaultClient
+			client = &http.Client{Timeout: DefaultDownloadTimeout}
 		}
 	}
 
