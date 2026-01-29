@@ -34,7 +34,7 @@ Repo Radius is a lightweight, Git-centric mode of Radius designed to run without
 
 Repo Radius should:
 
-- Run as a **single executable** on Windows, Linux, and macOS.
+- Run as a executable on Windows, Linux, and macOS.
 - Be installable via native package managers:
   - WinGet (Windows)
   - Homebrew (macOS)
