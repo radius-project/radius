@@ -154,7 +154,7 @@ As a CI/CD engineer, I want to run Repo Radius in a GitHub Actions workflow so t
 
 #### Execution Model
 
-- **FR-001**: System MUST run as a single executable on Windows, Linux, and macOS
+- **FR-001**: System MUST run as an executable on Windows, Linux, and macOS
 - **FR-002**: System MUST be installable via WinGet (Windows), Homebrew (macOS), apt (Debian/Ubuntu), and dnf (Fedora/RHEL)
 - **FR-003**: System MUST be optimized for non-interactive execution in GitHub Actions
 - **FR-004**: System MUST expose a command surface similar to the existing `rad` CLI
