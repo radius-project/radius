@@ -592,3 +592,221 @@ func TestAssociatedDataPreventsContextSwitch(t *testing.T) {
 	_, err = enc.Decrypt(encryptedForResource1, resource2AD)
 	require.Error(t, err, "should not be able to decrypt with different resource context")
 }
+
+// Tests for versioned key support
+
+func TestNewEncryptorWithVersion(t *testing.T) {
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+
+	tests := []struct {
+		name    string
+		key     []byte
+		version int
+		wantErr error
+	}{
+		{
+			name:    "valid-key-with-version-1",
+			key:     key,
+			version: 1,
+			wantErr: nil,
+		},
+		{
+			name:    "valid-key-with-version-2",
+			key:     key,
+			version: 2,
+			wantErr: nil,
+		},
+		{
+			name:    "valid-key-with-version-0",
+			key:     key,
+			version: 0,
+			wantErr: nil,
+		},
+		{
+			name:    "invalid-key-size",
+			key:     make([]byte, 16),
+			version: 1,
+			wantErr: ErrInvalidKeySize,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			enc, err := NewEncryptorWithVersion(tt.key, tt.version)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				require.Nil(t, enc)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, enc)
+				require.Equal(t, tt.version, enc.keyVersion)
+			}
+		})
+	}
+}
+
+func TestEncryptedDataContainsVersion(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	testCases := []int{0, 1, 2, 99}
+
+	for _, version := range testCases {
+		t.Run("version-"+string(rune('0'+version)), func(t *testing.T) {
+			enc, err := NewEncryptorWithVersion(key, version)
+			require.NoError(t, err)
+
+			encrypted, err := enc.Encrypt([]byte("secret"), nil)
+			require.NoError(t, err)
+
+			// Parse and verify version
+			var encData EncryptedData
+			err = json.Unmarshal(encrypted, &encData)
+			require.NoError(t, err)
+			require.Equal(t, version, encData.Version)
+		})
+	}
+}
+
+func TestGetEncryptedDataVersion(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		data        []byte
+		wantVersion int
+		wantErr     error
+	}{
+		{
+			name: "valid-version-1",
+			data: func() []byte {
+				enc, _ := NewEncryptorWithVersion(key, 1)
+				data, _ := enc.Encrypt([]byte("test"), nil)
+				return data
+			}(),
+			wantVersion: 1,
+		},
+		{
+			name: "valid-version-2",
+			data: func() []byte {
+				enc, _ := NewEncryptorWithVersion(key, 2)
+				data, _ := enc.Encrypt([]byte("test"), nil)
+				return data
+			}(),
+			wantVersion: 2,
+		},
+		{
+			name: "unversioned-data-version-0",
+			data: func() []byte {
+				enc, _ := NewEncryptor(key) // Default encryptor has version 0
+				data, _ := enc.Encrypt([]byte("test"), nil)
+				return data
+			}(),
+			wantVersion: 0,
+		},
+		{
+			name:    "empty-data",
+			data:    []byte{},
+			wantErr: ErrInvalidEncryptedData,
+		},
+		{
+			name:    "invalid-json",
+			data:    []byte("not json"),
+			wantErr: ErrInvalidEncryptedData,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			version, err := GetEncryptedDataVersion(tt.data)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.wantVersion, version)
+			}
+		})
+	}
+}
+
+func TestVersionedEncryptionDecryption(t *testing.T) {
+	// Generate two different keys
+	key1, err := GenerateKey()
+	require.NoError(t, err)
+	key2, err := GenerateKey()
+	require.NoError(t, err)
+
+	// Create encryptors with different versions
+	enc1, err := NewEncryptorWithVersion(key1, 1)
+	require.NoError(t, err)
+	enc2, err := NewEncryptorWithVersion(key2, 2)
+	require.NoError(t, err)
+
+	// Encrypt with version 1
+	plaintext1 := []byte("secret encrypted with key v1")
+	encrypted1, err := enc1.Encrypt(plaintext1, nil)
+	require.NoError(t, err)
+
+	// Encrypt with version 2
+	plaintext2 := []byte("secret encrypted with key v2")
+	encrypted2, err := enc2.Encrypt(plaintext2, nil)
+	require.NoError(t, err)
+
+	// Verify versions are stored correctly
+	v1, err := GetEncryptedDataVersion(encrypted1)
+	require.NoError(t, err)
+	require.Equal(t, 1, v1)
+
+	v2, err := GetEncryptedDataVersion(encrypted2)
+	require.NoError(t, err)
+	require.Equal(t, 2, v2)
+
+	// Decrypt with correct keys
+	decrypted1, err := enc1.Decrypt(encrypted1, nil)
+	require.NoError(t, err)
+	require.Equal(t, plaintext1, decrypted1)
+
+	decrypted2, err := enc2.Decrypt(encrypted2, nil)
+	require.NoError(t, err)
+	require.Equal(t, plaintext2, decrypted2)
+
+	// Cross-decryption should fail (wrong key)
+	_, err = enc1.Decrypt(encrypted2, nil)
+	require.ErrorIs(t, err, ErrDecryptionFailed)
+
+	_, err = enc2.Decrypt(encrypted1, nil)
+	require.ErrorIs(t, err, ErrDecryptionFailed)
+}
+
+func TestBackwardsCompatibilityWithUnversionedData(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	// Create unversioned encryptor (simulates old code)
+	unversionedEnc, err := NewEncryptor(key)
+	require.NoError(t, err)
+
+	// Create versioned encryptor with same key
+	versionedEnc, err := NewEncryptorWithVersion(key, 0)
+	require.NoError(t, err)
+
+	plaintext := []byte("data from old system")
+
+	// Encrypt with unversioned encryptor
+	encrypted, err := unversionedEnc.Encrypt(plaintext, nil)
+	require.NoError(t, err)
+
+	// Should have version 0
+	version, err := GetEncryptedDataVersion(encrypted)
+	require.NoError(t, err)
+	require.Equal(t, 0, version)
+
+	// Should be decryptable by versioned encryptor with same key
+	decrypted, err := versionedEnc.Decrypt(encrypted, nil)
+	require.NoError(t, err)
+	require.Equal(t, plaintext, decrypted)
+}

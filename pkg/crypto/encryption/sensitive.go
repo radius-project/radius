@@ -42,15 +42,20 @@ var (
 // SensitiveDataHandler provides methods for encrypting and decrypting sensitive fields
 // in data structures based on field paths marked with x-radius-sensitive annotation.
 type SensitiveDataHandler struct {
-	encryptor *Encryptor
+	encryptor   *Encryptor
+	keyProvider KeyProvider
 }
 
 // NewSensitiveDataHandler creates a new SensitiveDataHandler with the provided encryptor.
+// Note: This constructor does not support versioned key rotation for decryption.
+// Use NewSensitiveDataHandlerFromProvider for full versioned key support.
 func NewSensitiveDataHandler(encryptor *Encryptor) *SensitiveDataHandler {
 	return &SensitiveDataHandler{encryptor: encryptor}
 }
 
 // NewSensitiveDataHandlerFromKey creates a new SensitiveDataHandler from a raw encryption key.
+// Note: This constructor does not support versioned key rotation for decryption.
+// Use NewSensitiveDataHandlerFromProvider for full versioned key support.
 func NewSensitiveDataHandlerFromKey(key []byte) (*SensitiveDataHandler, error) {
 	encryptor, err := NewEncryptor(key)
 	if err != nil {
@@ -59,13 +64,23 @@ func NewSensitiveDataHandlerFromKey(key []byte) (*SensitiveDataHandler, error) {
 	return &SensitiveDataHandler{encryptor: encryptor}, nil
 }
 
-// NewSensitiveDataHandlerFromProvider creates a new SensitiveDataHandler using a key provider.
+// NewSensitiveDataHandlerFromProvider creates a new SensitiveDataHandler using a versioned key provider.
+// This is the recommended constructor as it supports key rotation:
+// - Encryption uses the current key version
+// - Decryption reads the version from encrypted data and fetches the appropriate key
 func NewSensitiveDataHandlerFromProvider(ctx context.Context, provider KeyProvider) (*SensitiveDataHandler, error) {
-	key, err := provider.GetKey(ctx)
+	key, version, err := provider.GetCurrentKey(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return NewSensitiveDataHandlerFromKey(key)
+	encryptor, err := NewEncryptorWithVersion(key, version)
+	if err != nil {
+		return nil, err
+	}
+	return &SensitiveDataHandler{
+		encryptor:   encryptor,
+		keyProvider: provider,
+	}, nil
 }
 
 // EncryptSensitiveFields encrypts all sensitive fields in the data based on the provided field paths.
@@ -77,11 +92,17 @@ func NewSensitiveDataHandlerFromProvider(ctx context.Context, provider KeyProvid
 // resource ID (e.g., "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test").
 //
 // Returns an error if any field encryption fails. In case of error, partial encryption may have occurred.
+// Fields that are not found are skipped - this allows optional sensitive fields to be absent.
 func (h *SensitiveDataHandler) EncryptSensitiveFields(data map[string]any, sensitiveFieldPaths []string, resourceID string) error {
 	for _, path := range sensitiveFieldPaths {
 		// Build associated data from resource ID and field path
 		ad := buildAssociatedData(resourceID, path)
 		if err := h.encryptFieldAtPath(data, path, ad); err != nil {
+			// Skip fields that are not found - they may not exist in this resource instance
+			// (e.g., optional sensitive properties)
+			if errors.Is(err, ErrFieldNotFound) {
+				continue
+			}
 			return fmt.Errorf("%w: path %q: %v", ErrFieldEncryptionFailed, path, err)
 		}
 	}
@@ -92,16 +113,17 @@ func (h *SensitiveDataHandler) EncryptSensitiveFields(data map[string]any, sensi
 // The data is modified in place. Field paths support dot notation and [*] for arrays/maps.
 //
 // The resourceID must match what was provided during encryption for successful decryption.
+// The context is used to fetch versioned keys from the key provider when needed.
 //
 // Note: This method does not use schema information for type restoration. Numbers in decrypted
 // objects will be returned as float64 (standard Go JSON behavior). For accurate type restoration,
 // use DecryptSensitiveFieldsWithSchema instead.
 //
 // Returns an error if any field decryption fails. In case of error, partial decryption may have occurred.
-func (h *SensitiveDataHandler) DecryptSensitiveFields(data map[string]any, sensitiveFieldPaths []string, resourceID string) error {
+func (h *SensitiveDataHandler) DecryptSensitiveFields(ctx context.Context, data map[string]any, sensitiveFieldPaths []string, resourceID string) error {
 	for _, path := range sensitiveFieldPaths {
 		ad := buildAssociatedData(resourceID, path)
-		if err := h.decryptFieldAtPath(data, path, nil, ad); err != nil {
+		if err := h.decryptFieldAtPath(ctx, data, path, nil, ad); err != nil {
 			// Skip fields that are not found - they may not exist in this resource instance
 			if errors.Is(err, ErrFieldNotFound) {
 				continue
@@ -117,16 +139,17 @@ func (h *SensitiveDataHandler) DecryptSensitiveFields(data map[string]any, sensi
 // The data is modified in place. Field paths support dot notation and [*] for arrays/maps.
 //
 // The resourceID must match what was provided during encryption for successful decryption.
+// The context is used to fetch versioned keys from the key provider when needed.
 // The schema is used to restore the correct types for fields within encrypted objects (e.g., integers
 // that would otherwise be decoded as float64).
 //
 // Returns an error if any field decryption fails. In case of error, partial decryption may have occurred.
-func (h *SensitiveDataHandler) DecryptSensitiveFieldsWithSchema(data map[string]any, sensitiveFieldPaths []string, resourceID string, schema map[string]any) error {
+func (h *SensitiveDataHandler) DecryptSensitiveFieldsWithSchema(ctx context.Context, data map[string]any, sensitiveFieldPaths []string, resourceID string, schema map[string]any) error {
 	for _, path := range sensitiveFieldPaths {
 		// Get the schema for this specific field path
 		fieldSchema := getSchemaForPath(schema, path)
 		ad := buildAssociatedData(resourceID, path)
-		if err := h.decryptFieldAtPath(data, path, fieldSchema, ad); err != nil {
+		if err := h.decryptFieldAtPath(ctx, data, path, fieldSchema, ad); err != nil {
 			// Skip fields that are not found - they may not exist in this resource instance
 			if errors.Is(err, ErrFieldNotFound) {
 				continue
@@ -135,6 +158,35 @@ func (h *SensitiveDataHandler) DecryptSensitiveFieldsWithSchema(data map[string]
 		}
 	}
 	return nil
+}
+
+// getEncryptorForDecryption returns the appropriate encryptor for decrypting data.
+// If a keyProvider is available and the data contains a version, it fetches the versioned key.
+// Otherwise, it falls back to the default encryptor.
+func (h *SensitiveDataHandler) getEncryptorForDecryption(ctx context.Context, encryptedJSON []byte) (*Encryptor, error) {
+	// If no key provider, use the default encryptor
+	if h.keyProvider == nil {
+		return h.encryptor, nil
+	}
+
+	// Extract the version from the encrypted data
+	version, err := GetEncryptedDataVersion(encryptedJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	// If version is 0 (unversioned/legacy data), use the default encryptor
+	if version == 0 {
+		return h.encryptor, nil
+	}
+
+	// Fetch the key for this specific version
+	key, err := h.keyProvider.GetKeyByVersion(ctx, version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key for version %d: %w", version, err)
+	}
+
+	return NewEncryptorWithVersion(key, version)
 }
 
 // encryptFieldAtPath encrypts the value at the given field path in the data.
@@ -147,9 +199,9 @@ func (h *SensitiveDataHandler) encryptFieldAtPath(data map[string]any, path stri
 
 // decryptFieldAtPath decrypts the value at the given field path in the data.
 // If fieldSchema is provided, it will be used for type restoration.
-func (h *SensitiveDataHandler) decryptFieldAtPath(data map[string]any, path string, fieldSchema map[string]any, associatedData []byte) error {
+func (h *SensitiveDataHandler) decryptFieldAtPath(ctx context.Context, data map[string]any, path string, fieldSchema map[string]any, associatedData []byte) error {
 	processor := func(value any) (any, error) {
-		return h.decryptValue(value, fieldSchema, associatedData)
+		return h.decryptValue(ctx, value, fieldSchema, associatedData)
 	}
 	return h.processFieldAtPath(data, path, processor)
 }
@@ -337,7 +389,8 @@ func (h *SensitiveDataHandler) encryptValue(value any, associatedData []byte) (a
 }
 
 // decryptValue decrypts a single value, restoring the original type using schema information if provided.
-func (h *SensitiveDataHandler) decryptValue(value any, fieldSchema map[string]any, associatedData []byte) (any, error) {
+// If a keyProvider is available and the encrypted data contains a version, it will fetch the appropriate key.
+func (h *SensitiveDataHandler) decryptValue(ctx context.Context, value any, fieldSchema map[string]any, associatedData []byte) (any, error) {
 	if value == nil {
 		return nil, nil
 	}
@@ -363,7 +416,13 @@ func (h *SensitiveDataHandler) decryptValue(value any, fieldSchema map[string]an
 		return nil, err
 	}
 
-	decrypted, err := h.encryptor.Decrypt(encryptedJSON, associatedData)
+	// Get the appropriate encryptor based on the key version in the encrypted data
+	encryptor, err := h.getEncryptorForDecryption(ctx, encryptedJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	decrypted, err := encryptor.Decrypt(encryptedJSON, associatedData)
 	if err != nil {
 		return nil, err
 	}

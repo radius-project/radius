@@ -143,7 +143,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	require.Equal(t, "admin", data["username"])
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, []string{"password"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"password"}, testResourceID)
 	require.NoError(t, err)
 
 	// Verify password is decrypted
@@ -182,7 +182,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_NestedField(t *testing.T) {
 	require.True(t, apiKeyIsEncrypted)
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, []string{"credentials.password", "credentials.apiKey"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"credentials.password", "credentials.apiKey"}, testResourceID)
 	require.NoError(t, err)
 
 	creds = data["credentials"].(map[string]any)
@@ -221,7 +221,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_ArrayWildcard(t *testing.T) {
 	}
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, []string{"secrets[*].value"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secrets[*].value"}, testResourceID)
 	require.NoError(t, err)
 
 	secrets = data["secrets"].([]any)
@@ -259,7 +259,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_MapWildcard(t *testing.T) {
 	}
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, []string{"config[*]"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"config[*]"}, testResourceID)
 	require.NoError(t, err)
 
 	config = data["config"].(map[string]any)
@@ -299,7 +299,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_ObjectValue(t *testing.T) {
 	require.NotEmpty(t, encData["nonce"])
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, []string{"sensitiveConfig"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"sensitiveConfig"}, testResourceID)
 	require.NoError(t, err)
 
 	// Verify decrypted object
@@ -322,14 +322,56 @@ func TestSensitiveDataHandler_FieldNotFound(t *testing.T) {
 		"username": "admin",
 	}
 
-	// Encrypting non-existent field should return error
+	// Encrypting non-existent field should be skipped (no error) - supports optional sensitive fields
 	err = handler.EncryptSensitiveFields(data, []string{"password"}, testResourceID)
-	require.Error(t, err)
-	require.ErrorIs(t, err, ErrFieldEncryptionFailed)
+	require.NoError(t, err)
 
 	// Decrypting non-existent field should be skipped (no error)
-	err = handler.DecryptSensitiveFields(data, []string{"password"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"password"}, testResourceID)
 	require.NoError(t, err)
+}
+
+func TestSensitiveDataHandler_OptionalSensitiveFields(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	// Simulate a resource with optional sensitive fields - only some are present
+	data := map[string]any{
+		"name":     "my-resource",
+		"password": "secret-password", // present
+		// "apiKey" is absent (optional)
+		// "credentials.token" is absent (optional nested)
+	}
+
+	sensitivePaths := []string{"password", "apiKey", "credentials.token"}
+
+	// Encrypt should succeed even though some fields are missing
+	err = handler.EncryptSensitiveFields(data, sensitivePaths, testResourceID)
+	require.NoError(t, err)
+
+	// The present field should be encrypted
+	_, isEncrypted := data["password"].(map[string]any)
+	require.True(t, isEncrypted, "password should be encrypted")
+
+	// Name should be unchanged
+	require.Equal(t, "my-resource", data["name"])
+
+	// Missing fields should not be added
+	_, hasAPIKey := data["apiKey"]
+	require.False(t, hasAPIKey, "apiKey should not be added")
+
+	_, hasCredentials := data["credentials"]
+	require.False(t, hasCredentials, "credentials should not be added")
+
+	// Decrypt should also succeed
+	err = handler.DecryptSensitiveFields(context.Background(), data, sensitivePaths, testResourceID)
+	require.NoError(t, err)
+
+	// Verify decryption worked for the present field
+	require.Equal(t, "secret-password", data["password"])
 }
 
 func TestSensitiveDataHandler_EmptyValue(t *testing.T) {
@@ -442,7 +484,7 @@ func TestSensitiveDataHandler_RoundTrip_ComplexStructure(t *testing.T) {
 	require.Equal(t, "visible", data["config"].(map[string]any)["public_setting"])
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, sensitivePaths, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
 	// Verify values are restored
@@ -476,7 +518,7 @@ func TestSensitiveDataHandler_FromProvider(t *testing.T) {
 	_, isEncrypted := data["secret"].(map[string]any)
 	require.True(t, isEncrypted)
 
-	err = handler.DecryptSensitiveFields(data, []string{"secret"}, testResourceID)
+	err = handler.DecryptSensitiveFields(ctx, data, []string{"secret"}, testResourceID)
 	require.NoError(t, err)
 	require.Equal(t, "my-secret", data["secret"])
 }
@@ -511,7 +553,7 @@ func TestSensitiveDataHandler_SpecificIndex(t *testing.T) {
 	require.True(t, isEncrypted)
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(data, []string{"items[1].value"}, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"items[1].value"}, testResourceID)
 	require.NoError(t, err)
 
 	require.Equal(t, "secret", items[1].(map[string]any)["value"])
@@ -570,7 +612,7 @@ func TestSensitiveDataHandler_DecryptWithSchema_IntegerRestoration(t *testing.T)
 	require.True(t, isEncrypted)
 
 	// Decrypt WITH schema
-	err = handler.DecryptSensitiveFieldsWithSchema(data, sensitivePaths, testResourceID, schema)
+	err = handler.DecryptSensitiveFieldsWithSchema(context.Background(), data, sensitivePaths, testResourceID, schema)
 	require.NoError(t, err)
 
 	// Verify types are correctly restored
@@ -649,7 +691,7 @@ func TestSensitiveDataHandler_DecryptWithSchema_NestedObjects(t *testing.T) {
 	err = handler.EncryptSensitiveFields(data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
-	err = handler.DecryptSensitiveFieldsWithSchema(data, sensitivePaths, testResourceID, schema)
+	err = handler.DecryptSensitiveFieldsWithSchema(context.Background(), data, sensitivePaths, testResourceID, schema)
 	require.NoError(t, err)
 
 	// Verify nested integers are restored
@@ -702,7 +744,7 @@ func TestSensitiveDataHandler_DecryptWithSchema_ArrayWithIntegers(t *testing.T) 
 	err = handler.EncryptSensitiveFields(data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
-	err = handler.DecryptSensitiveFieldsWithSchema(data, sensitivePaths, testResourceID, schema)
+	err = handler.DecryptSensitiveFieldsWithSchema(context.Background(), data, sensitivePaths, testResourceID, schema)
 	require.NoError(t, err)
 
 	config := data["config"].(map[string]any)
@@ -735,7 +777,7 @@ func TestSensitiveDataHandler_DecryptWithoutSchema_NoTypeCoercion(t *testing.T) 
 	require.NoError(t, err)
 
 	// Decrypt WITHOUT schema
-	err = handler.DecryptSensitiveFields(data, sensitivePaths, testResourceID)
+	err = handler.DecryptSensitiveFields(context.Background(), data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
 	config := data["sensitiveConfig"].(map[string]any)
@@ -810,6 +852,155 @@ func TestGetSchemaForPath(t *testing.T) {
 			require.Equal(t, tt.expectedType, result["type"])
 		})
 	}
+}
+
+// Test versioned key rotation support
+func TestSensitiveDataHandler_VersionedKeyRotation(t *testing.T) {
+	ctx := context.Background()
+
+	// Generate two different keys
+	key1, err := GenerateKey()
+	require.NoError(t, err)
+	key2, err := GenerateKey()
+	require.NoError(t, err)
+
+	// Create a provider with both keys, version 1 is current
+	provider, err := NewInMemoryKeyProviderWithVersions(map[int][]byte{1: key1, 2: key2}, 1)
+	require.NoError(t, err)
+
+	// Create handler with version 1 as current
+	handler1, err := NewSensitiveDataHandlerFromProvider(ctx, provider)
+	require.NoError(t, err)
+
+	// Encrypt data with version 1
+	data := map[string]any{
+		"password": "secret-v1",
+	}
+	err = handler1.EncryptSensitiveFields(data, []string{"password"}, testResourceID)
+	require.NoError(t, err)
+
+	// Verify it's encrypted
+	encData := data["password"].(map[string]any)
+	require.NotEmpty(t, encData["encrypted"])
+	require.Equal(t, float64(1), encData["version"]) // JSON unmarshals to float64
+
+	// Simulate key rotation: set version 2 as current
+	err = provider.SetCurrentVersion(2)
+	require.NoError(t, err)
+
+	// Create new handler (would happen on pod restart after rotation)
+	handler2, err := NewSensitiveDataHandlerFromProvider(ctx, provider)
+	require.NoError(t, err)
+
+	// Handler2 should be able to decrypt data encrypted with version 1
+	// because it has access to all keys via the provider
+	err = handler2.DecryptSensitiveFields(ctx, data, []string{"password"}, testResourceID)
+	require.NoError(t, err)
+	require.Equal(t, "secret-v1", data["password"])
+
+	// Now encrypt new data with handler2 (should use version 2)
+	data2 := map[string]any{
+		"password": "secret-v2",
+	}
+	err = handler2.EncryptSensitiveFields(data2, []string{"password"}, testResourceID)
+	require.NoError(t, err)
+
+	encData2 := data2["password"].(map[string]any)
+	require.Equal(t, float64(2), encData2["version"]) // Should be version 2
+
+	// Decrypt the version 2 data
+	err = handler2.DecryptSensitiveFields(ctx, data2, []string{"password"}, testResourceID)
+	require.NoError(t, err)
+	require.Equal(t, "secret-v2", data2["password"])
+}
+
+func TestSensitiveDataHandler_DecryptWithOldKeyVersion(t *testing.T) {
+	ctx := context.Background()
+
+	// Generate keys
+	key1, err := GenerateKey()
+	require.NoError(t, err)
+	key2, err := GenerateKey()
+	require.NoError(t, err)
+	key3, err := GenerateKey()
+	require.NoError(t, err)
+
+	// Create provider with all three keys
+	provider, err := NewInMemoryKeyProviderWithVersions(map[int][]byte{1: key1, 2: key2, 3: key3}, 3)
+	require.NoError(t, err)
+
+	// Create handlers for each version to encrypt data
+	err = provider.SetCurrentVersion(1)
+	require.NoError(t, err)
+	handler1, err := NewSensitiveDataHandlerFromProvider(ctx, provider)
+	require.NoError(t, err)
+
+	err = provider.SetCurrentVersion(2)
+	require.NoError(t, err)
+	handler2, err := NewSensitiveDataHandlerFromProvider(ctx, provider)
+	require.NoError(t, err)
+
+	err = provider.SetCurrentVersion(3)
+	require.NoError(t, err)
+	handler3, err := NewSensitiveDataHandlerFromProvider(ctx, provider)
+	require.NoError(t, err)
+
+	// Encrypt data with each version
+	dataV1 := map[string]any{"secret": "encrypted-with-v1"}
+	dataV2 := map[string]any{"secret": "encrypted-with-v2"}
+	dataV3 := map[string]any{"secret": "encrypted-with-v3"}
+
+	err = handler1.EncryptSensitiveFields(dataV1, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+	err = handler2.EncryptSensitiveFields(dataV2, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+	err = handler3.EncryptSensitiveFields(dataV3, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+
+	// Using handler3 (current), should be able to decrypt all versions
+	err = handler3.DecryptSensitiveFields(ctx, dataV1, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+	require.Equal(t, "encrypted-with-v1", dataV1["secret"])
+
+	err = handler3.DecryptSensitiveFields(ctx, dataV2, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+	require.Equal(t, "encrypted-with-v2", dataV2["secret"])
+
+	err = handler3.DecryptSensitiveFields(ctx, dataV3, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+	require.Equal(t, "encrypted-with-v3", dataV3["secret"])
+}
+
+func TestSensitiveDataHandler_DecryptWithMissingKeyVersion(t *testing.T) {
+	ctx := context.Background()
+
+	// Generate keys
+	key1, err := GenerateKey()
+	require.NoError(t, err)
+	key2, err := GenerateKey()
+	require.NoError(t, err)
+
+	// Create provider with only key version 2 (simulates key 1 was removed after grace period)
+	provider, err := NewInMemoryKeyProviderWithVersions(map[int][]byte{2: key2}, 2)
+	require.NoError(t, err)
+
+	// Create handler with only version 2
+	handler, err := NewSensitiveDataHandlerFromProvider(ctx, provider)
+	require.NoError(t, err)
+
+	// Create data that was encrypted with version 1 (using a separate handler)
+	tempProvider, _ := NewInMemoryKeyProviderWithVersions(map[int][]byte{1: key1}, 1)
+	tempHandler, _ := NewSensitiveDataHandlerFromProvider(ctx, tempProvider)
+
+	dataV1 := map[string]any{"secret": "old-secret"}
+	err = tempHandler.EncryptSensitiveFields(dataV1, []string{"secret"}, testResourceID)
+	require.NoError(t, err)
+
+	// Trying to decrypt with handler that doesn't have version 1 should fail
+	err = handler.DecryptSensitiveFields(ctx, dataV1, []string{"secret"}, testResourceID)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrFieldDecryptionFailed)
+	require.Contains(t, err.Error(), "key version not found")
 }
 
 // Helper function to deep copy a map for testing

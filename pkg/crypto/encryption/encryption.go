@@ -61,6 +61,9 @@ var (
 // EncryptedData represents the structure for storing encrypted data.
 // It contains the base64-encoded ciphertext and nonce, plus optional associated data hash.
 type EncryptedData struct {
+	// Version is the key version used for encryption.
+	// This allows decryption to use the correct key when multiple versions exist.
+	Version int `json:"version,omitempty"`
 	// Encrypted contains the base64-encoded ciphertext.
 	Encrypted string `json:"encrypted"`
 	// Nonce contains the base64-encoded nonce used for encryption.
@@ -73,12 +76,20 @@ type EncryptedData struct {
 
 // Encryptor provides methods for encrypting and decrypting data using ChaCha20-Poly1305.
 type Encryptor struct {
-	aead cipher.AEAD
+	aead       cipher.AEAD
+	keyVersion int
 }
 
 // NewEncryptor creates a new Encryptor with the provided 256-bit key.
 // Returns an error if the key is not exactly 32 bytes.
+// The key version defaults to 0 (unversioned). Use NewEncryptorWithVersion for versioned keys.
 func NewEncryptor(key []byte) (*Encryptor, error) {
+	return NewEncryptorWithVersion(key, 0)
+}
+
+// NewEncryptorWithVersion creates a new Encryptor with the provided key and version.
+// The version is stored in encrypted data to enable decryption with the correct key.
+func NewEncryptorWithVersion(key []byte, version int) (*Encryptor, error) {
 	if len(key) != KeySize {
 		return nil, ErrInvalidKeySize
 	}
@@ -88,7 +99,7 @@ func NewEncryptor(key []byte) (*Encryptor, error) {
 		return nil, fmt.Errorf("%w: %v", ErrEncryptionFailed, err)
 	}
 
-	return &Encryptor{aead: aead}, nil
+	return &Encryptor{aead: aead, keyVersion: version}, nil
 }
 
 // Encrypt encrypts the plaintext using ChaCha20-Poly1305 with Associated Data (AD).
@@ -122,6 +133,7 @@ func (e *Encryptor) Encrypt(plaintext []byte, associatedData []byte) ([]byte, er
 
 	// Create the encrypted data structure
 	encryptedData := EncryptedData{
+		Version:   e.keyVersion,
 		Encrypted: base64.StdEncoding.EncodeToString(ciphertext),
 		Nonce:     base64.StdEncoding.EncodeToString(nonce),
 	}
@@ -266,4 +278,19 @@ func GenerateKey() ([]byte, error) {
 		return nil, fmt.Errorf("failed to generate encryption key: %w", err)
 	}
 	return key, nil
+}
+
+// GetEncryptedDataVersion extracts the key version from encrypted data without decrypting.
+// Returns 0 if the version is not present (for backwards compatibility with unversioned data).
+func GetEncryptedDataVersion(data []byte) (int, error) {
+	if len(data) == 0 {
+		return 0, ErrInvalidEncryptedData
+	}
+
+	var encryptedData EncryptedData
+	if err := json.Unmarshal(data, &encryptedData); err != nil {
+		return 0, fmt.Errorf("%w: failed to parse encrypted data: %v", ErrInvalidEncryptedData, err)
+	}
+
+	return encryptedData.Version, nil
 }
