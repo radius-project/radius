@@ -3,7 +3,10 @@
 **Feature Branch**: `001-auto-app-discovery`  
 **Created**: January 28, 2026  
 **Status**: Draft  
-**Input**: User description: "I am building a solution that will make it trivial for developers to adopt Radius for their existing applications and new applications. Radius will remove the need to define Resource Types and Recipes up front. Rather, it will create Resource Types based on understanding of the application's codebase (e.g., the existence of a PostgreSQL library), infrastructure best practices they follow like naming conventions, tags, cost practices for dev/test/prod from their internal wiki or any source, and create Recipes based on either authoritative sources, such as Azure Verified Modules, or internal sources of Terraform modules or Bicep templates. Radius will use these Resource Types and its understanding of the code repo to model the application and generate a rich application definition."
+
+## Vision
+
+We will make it trivial for developers to adopt Radius for their existing applications and new applications. Radius will remove the need to define Resource Types and Recipes up front. Rather, it will create Resource Types based on understanding of the application's codebase (e.g., the existence of a PostgreSQL library), infrastructure best practices they follow like naming conventions, tags, cost practices for dev/test/prod from their internal wiki or any source, and create Recipes based on either authoritative sources, such as Azure Verified Modules, or internal sources of Terraform modules or Bicep templates. Radius will use these Resource Types and its understanding of the code repo to model the application and generate a rich application definition.
 
 ## End-to-End User Journey *(mandatory)*
 
@@ -432,39 +435,6 @@ Run 'rad app status' for health info.
 
 ---
 
-### Alternative Workflows
-
-These variations work identically via AI or CLI—just different invocation styles.
-
-**Non-Interactive Mode (CI/CD)**:
-```bash
-# CLI: Accept all defaults for automation
-rad app discover . --output discovery.json
-rad app generate --input discovery.json --accept-defaults --output app.bicep
-rad deploy app.bicep -e production
-
-# AI: "Discover, generate with defaults, and deploy to production—no prompts"
-```
-
-**Environment-Specific Profiles**:
-```bash
-# CLI
-rad app generate --recipe-profile development  # Uses containers
-rad app generate --recipe-profile production   # Uses managed services
-
-# AI: "Generate for production" vs "Generate for local development"
-```
-
-**Skip Discovery (Known Dependencies)**:
-```bash
-# CLI
-rad app generate --add-dependency postgresql --add-dependency redis
-
-# AI: "I need PostgreSQL and Redis—skip scanning and just generate"
-```
-
----
-
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Analyze Existing Application Codebase (Priority: P1)
@@ -603,15 +573,16 @@ As a platform engineer, I want Radius to automatically detect and apply my team'
 
 ### Key Entities
 
-- **Skill**: A composable, independently-invocable capability exposed via MCP. Includes: skill name, input schema (JSON), output schema (JSON), description for AI agents. Core skills: `discover_dependencies`, `discover_services`, `discover_team_practices`, `discover_recipes`, `generate_resource_types`, `generate_app_definition`, `validate_app_definition`.
-- **Detected Dependency**: Represents an infrastructure dependency identified from codebase analysis. Includes: dependency type (database, cache, queue, etc.), specific technology (PostgreSQL, Redis, etc.), confidence score, and source evidence (file path, library name).
-- **Team Practice**: A detected or configured infrastructure convention. Includes: category (naming, tags, cost-optimization, sizing, security, availability), pattern/value, source (config file, IaC detection, internal wiki/documentation), applicable environments (dev/test/prod or all), and examples found. Supports environment-specific variations (e.g., dev uses Basic tier, prod uses Premium).
-- **Practices Source**: A configured location from which team practices can be imported. Includes: source type (config file, internal wiki, Confluence, Notion, ADR repository), location/URL, authentication method, and refresh frequency.
-- **Resource Type**: The interface/schema that defines what properties an application can consume from an infrastructure resource. Includes: type name (e.g., `Applications.Datastores/postgreSqlDatabases`), output schema (connectionString, host, port, etc.), and validation rules. Resource Types are the abstraction layer between apps and infrastructure. Team practices are applied as schema defaults and constraints.
-- **Recipe**: The IaC implementation that provisions infrastructure and satisfies a Resource Type's contract. Includes: recipe name, IaC type (Terraform or Bicep), source location (AVM, internal repo), input parameters, and the Resource Type it implements. Recipes contain the actual provisioning code.
-- **Recipe Source**: A configured location where Recipes can be discovered. Includes: source type (Azure Verified Modules, internal Terraform, internal Bicep), location/URL, priority, and authentication configuration.
-- **Application Model**: The generated representation of the application. Includes: application name, containers/services, resource references (by Resource Type), and connections between components.
-- **Application Definition**: The final Bicep file output representing the complete Radius application ready for deployment. References Resource Types and specifies which Recipes to use for each.
+| Entity | Description | Key Attributes |
+|--------|-------------|----------------|
+| **Skill** | Composable capability exposed via MCP | name, input/output schema (JSON), description |
+| **Detected Dependency** | Infrastructure dependency from codebase analysis | type, technology, confidence score, source evidence |
+| **Team Practice** | Infrastructure convention (detected or configured) | category, pattern/value, source, applicable environments |
+| **Practices Source** | Location for importing team practices | source type, location/URL, auth method, refresh frequency |
+| **Resource Type** | Interface defining what an app consumes from infrastructure | type name, output schema, validation rules |
+| **Recipe** | IaC implementation that provisions infrastructure | name, IaC type, source location, parameters, target Resource Type |
+| **Recipe Source** | Location for discovering Recipes | source type, location/URL, priority, auth config |
+| **Application Definition** | Final Bicep output for deployment | Resource Type references, Recipe bindings |
 
 ---
 
@@ -619,81 +590,83 @@ As a platform engineer, I want Radius to automatically detect and apply my team'
 
 ### Functional Requirements
 
-#### Discovery
+Requirements are organized to match the three-phase workflow (Discover → Generate → Deploy) plus Interface Layer (CLI, MCP, API).
 
-- **FR-001**: System MUST provide a `rad app discover` command that analyzes a local codebase directory to detect infrastructure dependencies.
-- **FR-002**: System MUST analyze codebases in common programming languages (Python, JavaScript/TypeScript, Go, Java, C#) to detect infrastructure dependencies, with all 5 languages supported at equal priority from initial release.
-- **FR-003**: System MUST detect common infrastructure dependencies including: databases (PostgreSQL, MySQL, MongoDB, Redis, SQL Server, Cosmos DB), message queues (RabbitMQ, Azure Service Bus, Kafka), caches (Redis, Memcached), and object storage (Azure Blob Storage, AWS S3).
-- **FR-014**: System MUST provide confidence scores for detected dependencies using three tiers: high (≥80%), medium (50-79%), and low (<50%), with only dependencies ≥50% included in reports by default.
-- **FR-020**: System MUST identify deployable services by detecting entrypoint patterns including: main files (main.go, main.py, index.js), Dockerfiles, package.json scripts (start, serve), and framework-specific entrypoints (ASP.NET Program.cs, Spring Boot @SpringBootApplication).
-- **FR-026**: System MUST detect existing Dockerfiles and extract container image names/build contexts for use in the generated application definition.
-- **FR-027**: System MUST continue discovery even if individual files fail to parse, reporting partial results with warnings for unparseable files.
+#### Phase 1: Discover
 
-#### Team Infrastructure Practices
+*Skills: `discover_dependencies`, `discover_services`, `discover_team_practices`*
 
-- **FR-037**: System MUST provide a `discover_team_practices` skill that detects team infrastructure conventions from the codebase and configured documentation sources.
-- **FR-038**: System MUST detect team practices from existing IaC files (Terraform `.tf`, Bicep `.bicep`, ARM templates) by extracting naming patterns, sizing defaults, tags, and configuration values.
-- **FR-039**: System MUST support loading team practices from a configuration file (`.radius/team-practices.yaml` or `~/.rad/team-practices.yaml`) with the following categories: naming conventions, sizing defaults, security requirements, HA configurations, tag policies, and cost optimization rules.
-- **FR-040**: System MUST apply detected team practices when generating Resource Types, incorporating conventions as schema defaults and constraints.
-- **FR-041**: System MUST present detected team practices to the user during discovery, allowing them to confirm, modify, or ignore specific practices.
-- **FR-042**: When multiple sources of team practices exist (config file, detected from IaC, documentation), system MUST merge them with explicit configuration taking precedence over detected patterns.
-- **FR-043**: System MUST support team practice categories including: naming conventions (patterns for resource names), sizing (min/max values, default tiers), security (encryption, network isolation, authentication requirements), availability (HA, geo-redundancy, backup policies), tagging (required tags, auto-generated tags), and cost optimization (dev/test/prod tier recommendations, shutdown schedules, reserved capacity).
-- **FR-044**: System MUST support configuring external documentation sources (internal wiki URLs, Confluence pages, ADR repositories, Notion pages) from which team practices can be extracted.
-- **FR-045**: System MUST support environment-specific practices (e.g., dev uses Basic tier, prod uses Premium with HA) and apply the appropriate practices based on the target deployment environment.
+| ID | Priority | Requirement |
+|----|----------|-------------|
+| FR-01 | P1 | System MUST provide a `rad app discover` command that analyzes a local codebase directory. |
+| FR-02 | P1 | System MUST detect infrastructure dependencies in Python, JavaScript/TypeScript, Go, Java, and C#. |
+| FR-03 | P1 | System MUST detect: databases (PostgreSQL, MySQL, MongoDB, Redis, SQL Server, Cosmos DB), queues (RabbitMQ, Service Bus, Kafka), caches (Redis, Memcached), storage (Blob, S3). |
+| FR-04 | P1 | System MUST detect deployable services via entrypoints (main files, Dockerfiles, package.json scripts, framework conventions). |
+| FR-05 | P2 | System MUST provide confidence scores: high (≥80%), medium (50-79%), low (<50%), with ≥50% included by default. |
+| FR-06 | P1 | System MUST detect team practices from existing IaC files (Terraform, Bicep, ARM) and config file (`.radius/team-practices.yaml`). |
+| FR-07 | P2 | System MUST support loading team practices from external documentation sources (wikis, Confluence, Notion, ADRs). |
+| FR-08 | P2 | System MUST support environment-specific practices (e.g., dev=Basic tier, prod=Premium+HA). |
+| FR-09 | P1 | System MUST output structured JSON with: dependencies, services, and team practices (with source evidence). |
+| FR-10 | P1 | System MUST continue discovery if individual files fail, reporting partial results with warnings. |
 
-#### Recipe Matching
+#### Phase 2: Generate
 
-- **FR-006**: System MUST search Azure Verified Modules for matching Recipes when configured.
-- **FR-007**: System MUST support configuring internal Terraform module repositories as Recipe sources.
-- **FR-008**: System MUST support configuring internal Bicep template repositories as Recipe sources.
-- **FR-010**: System MUST allow users to interactively select Recipes when multiple options are available.
-- **FR-019**: System MUST use graceful degradation when Recipe sources are unavailable - continue the workflow, mark affected dependencies as "no Recipe found", and allow users to proceed or manually specify Recipes.
-- **FR-028**: System MUST support recipe source configuration via a configuration file (`~/.rad/config.yaml` or project-level `.rad/config.yaml`) with the following properties per source: type, URL/path, priority, and authentication method.
-- **FR-029**: System MUST support authentication to private recipe sources via: environment variables, credential helpers, or explicit token configuration.
-- **FR-030**: System MUST provide a `rad recipe source add` command to interactively configure new recipe sources.
+*Skills: `generate_resource_types`, `discover_recipes`, `generate_app_definition`, `validate_app_definition`*
 
-#### Generation
+| ID | Priority | Requirement |
+|----|----------|-------------|
+| FR-11 | P1 | System MUST provide a `rad app generate` command that creates a Radius application definition from discovery results. |
+| FR-12 | P1 | System MUST generate valid Resource Type definitions for each detected dependency (via pre-defined catalog or generation, per OQ-1). |
+| FR-13 | P1 | System MUST apply detected team practices as Resource Type schema defaults and constraints. |
+| FR-14 | P1 | System MUST search configured Recipe sources (AVM, internal Terraform, internal Bicep repos) for matching Recipes. |
+| FR-15 | P1 | System MUST allow interactive Recipe selection when multiple options are available. |
+| FR-16 | P1 | System MUST generate valid `./radius/app.bicep` with containers/services and infrastructure dependencies wired. |
+| FR-17 | P1 | System MUST validate generated Bicep: syntax, Resource Type references, and container-to-resource connections. |
+| FR-18 | P2 | System MUST reuse existing Resource Types when they match detected dependencies. |
+| FR-19 | P2 | When Dockerfiles detected, generated definition MUST reference container image or add TODO placeholder. |
+| FR-20 | P2 | System MUST support `--update` flag for diff/patch mode instead of full regeneration. |
+| FR-21 | P2 | When existing `app.bicep` found, system MUST prompt: overwrite, merge, show diff, or cancel. |
+| FR-22 | P2 | System MUST gracefully degrade when Recipe sources unavailable—mark as "no Recipe found" and continue. |
+| FR-23 | P3 | System SHOULD provide `rad app scaffold` for new apps to generate starter app.bicep without existing code. |
+| FR-24 | P2 | System MUST support `--add-dependency <type>` to manually specify dependencies without discovery. |
 
-- **FR-004**: System MUST provide a `rad app generate` command that creates a Radius application definition based on discovered dependencies.
-- **FR-005**: System MUST provide valid Resource Type definitions for detected dependencies (via pre-defined catalog or generation, per OQ-1 resolution).
-- **FR-009**: System MUST generate a valid Radius application definition (Bicep format) to `./radius/app.bicep` that includes detected containers/services and their infrastructure dependencies.
-- **FR-013**: System MUST allow users to review and modify auto-detected Resource Types and Recipes before finalizing.
-- **FR-015**: System MUST reuse existing Resource Types when they match detected dependencies rather than creating duplicates.
-- **FR-017**: System MUST generate application definitions that are compatible with existing Radius deployment workflows (`rad deploy`).
-- **FR-031**: When Dockerfiles are detected, the generated application definition MUST reference the appropriate container image (either from Dockerfile image name or a placeholder with TODO comment for user to specify).
-- **FR-032**: System MUST support an `--update` flag that compares current discovery results with existing `app.bicep` and generates a diff/patch rather than full regeneration.
-- **FR-033**: When an existing `app.bicep` is detected, system MUST prompt user to choose: overwrite, merge (interactive), show diff, or cancel.
+#### Interface Layer (CLI, MCP, API)
 
-#### Skills & MCP Integration
+*How users invoke the skills*
 
-- **FR-021**: System MUST implement all discovery and generation capabilities as composable skills/tools that can be invoked independently.
-- **FR-022**: System MUST expose all skills via MCP (Model Context Protocol) server for AI coding agent integration.
-- **FR-023**: CLI commands (`rad app discover`, `rad app generate`) MUST be thin wrappers around the underlying skills, sharing the same implementation.
-- **FR-024**: Each skill MUST accept structured input (JSON) and return structured output (JSON) suitable for programmatic consumption by AI agents.
-- **FR-025**: System MUST provide these core skills: `discover_dependencies`, `discover_services`, `discover_team_practices`, `discover_recipes`, `generate_resource_types`, `generate_app_definition`, `validate_app_definition`.
-- **FR-034**: System MUST provide a `rad mcp serve` command that starts the MCP server as a long-running process for AI agent connections.
-- **FR-035**: The MCP server MUST be configurable via command-line flags or environment variables for: port, allowed origins, and authentication mode.
-- **FR-036**: The MCP server MUST support stdio transport (for VS Code extensions) and HTTP transport (for remote agents).
+| ID | Priority | Requirement |
+|----|----------|-------------|
+| FR-25 | P1 | All capabilities MUST be implemented as composable skills invocable independently. |
+| FR-26 | P1 | System MUST expose all skills via MCP server for AI agent integration. |
+| FR-27 | P1 | CLI commands MUST be thin wrappers around skills (shared implementation). |
+| FR-28 | P1 | Each skill MUST accept JSON input and return JSON output for programmatic consumption. |
+| FR-29 | P1 | System MUST provide `rad mcp serve` command to start MCP server. |
+| FR-30 | P2 | MCP server MUST support stdio (for VS Code extensions) and HTTP (for remote agents) transports. |
+| FR-31 | P2 | MCP server MUST be configurable via flags/env vars for port, allowed origins, auth mode. |
 
-#### CLI Options & Modes
+#### Configuration & Options
 
-- **FR-011**: System MUST provide a `--accept-defaults` flag for non-interactive/CI/CD usage.
-- **FR-012**: System MUST provide `--recipe-profile` option to select environment-specific recipe sets (e.g., development uses containers, production uses managed services). Default profiles ship with Radius; users can override via a config file.
-- **FR-016**: System MUST support both interactive (CLI) and programmatic (API) modes of operation.
-- **FR-018**: System MUST support `--output` flag to specify custom output paths for discovery results and generated definitions.
+*Shared settings across phases*
+
+| ID | Priority | Requirement |
+|----|----------|-------------|
+| FR-32 | P1 | System MUST provide `--accept-defaults` flag for non-interactive/CI usage. |
+| FR-33 | P2 | System MUST provide `--recipe-profile` to select environment-specific recipe sets. |
+| FR-34 | P2 | System MUST support `--output` flag for custom output paths. |
+| FR-35 | P1 | System MUST support recipe source config via `~/.rad/config.yaml` or `.rad/config.yaml`. |
+| FR-36 | P1 | System MUST provide `rad recipe source add` to configure new recipe sources. |
+| FR-37 | P2 | System MUST support auth to private sources via env vars, credential helpers, or tokens. |
 
 ### Non-Functional Requirements
 
-- **NFR-001**: Discovery of a codebase with up to 100 source files MUST complete within 30 seconds on standard developer hardware.
-- **NFR-002**: The system MUST provide clear progress indicators during long-running operations (discovery, recipe matching, generation).
-- **NFR-003**: All errors MUST include actionable guidance for resolution (e.g., "Recipe source unavailable - check network connectivity or configure offline mode").
-- **NFR-004**: The MCP server MUST support concurrent skill invocations from multiple AI agents without state conflicts.
-- **NFR-005**: Generated application definitions MUST be deterministic - the same input codebase with the same recipe selections MUST produce identical output.
-- **NFR-006**: The system SHOULD emit structured logs suitable for debugging and observability (JSON format, with severity levels).
-- **NFR-007**: The system MUST gracefully handle partial failures during discovery, continuing to analyze remaining files and producing partial results with clear warnings.
-- **NFR-008**: Credentials for private recipe sources MUST NOT be logged, displayed in output, or included in generated files.
-- **NFR-009**: The MCP server MUST validate all incoming requests and reject malformed or unauthorized requests with appropriate error responses.
-- **NFR-010**: Generated application definitions MUST NOT contain hardcoded secrets; connection strings and credentials MUST be referenced via Radius secret stores or environment variables.
+| ID | Category | Requirement |
+|----|----------|-------------|
+| NFR-01 | Performance | Discovery of ≤100 source files MUST complete within 30 seconds on standard developer hardware. |
+| NFR-02 | UX | System MUST provide progress indicators during long-running operations. |
+| NFR-03 | UX | All errors MUST include actionable guidance for resolution. |
+| NFR-04 | Reliability | Generated app definitions MUST be deterministic (same input → identical output). |
+| NFR-05 | Observability | System SHOULD emit structured JSON logs with severity levels. |
+| NFR-06 | Scalability | MCP server MUST support concurrent skill invocations without state conflicts. |
 
 ---
 
@@ -729,7 +702,7 @@ As a platform engineer, I want Radius to automatically detect and apply my team'
 - **SC-004**: Users can complete the entire discovery-to-deploy workflow using only auto-generated configurations for standard infrastructure patterns (no manual Resource Type or Recipe authoring required).
 - **SC-005**: Platform engineers can onboard a new internal Recipe source in under 10 minutes.
 - **SC-006**: The learning curve for using auto-discovery is reduced such that new users can successfully deploy their first application within 1 hour of installation (compared to current manual approach).
-- **SC-007**: At least 3 supported languages have comprehensive dependency detection coverage (Python, JavaScript/TypeScript, and one of Go/Java/C#).
+- **SC-007**: Each supported language detects at least the top 5 most common infrastructure libraries for that ecosystem (e.g., for Python: psycopg2, redis-py, boto3, pymongo, azure-storage-blob).
 
 ## Assumptions
 
@@ -819,11 +792,10 @@ These architectural decisions require team discussion before implementation plan
 | **A - Dockerfile detection** | If a Dockerfile exists, extract or infer the image name; otherwise, generate a placeholder with TODO comment | ✓ Works with existing Docker workflows ✓ Clear guidance for users. ✗ Doesn't help users without Dockerfiles |
 | **B - Image registry inference** | Attempt to infer image names from common patterns (project name, registry conventions) | ✓ More automated. ✗ Often wrong ✗ Magic behavior |
 | **C - Always placeholder** | Always generate placeholders requiring user to specify image names | ✓ Explicit ✓ No wrong guesses. ✗ More manual work ✗ Can't deploy without editing |
-| **D - Build integration** | Integrate with container build (detect Dockerfile, offer to build and push as part of workflow) | ✓ Complete workflow. ✗ Large scope ✗ Requires registry access |
 
 **Recommendation**: Option A for v1 - detect Dockerfiles when present, placeholder otherwise.
 
-**Impact if unresolved**: Affects FR-031 implementation and user experience during generation.
+**Impact if unresolved**: Affects FR-026, FR-031 implementation and user experience during generation.
 
 ---
 
