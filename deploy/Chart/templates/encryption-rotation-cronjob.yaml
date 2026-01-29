@@ -9,6 +9,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   schedule: {{ .Values.encryption.rotation.schedule | quote }}
+  # Set to 1 for security - prevents log retention with sensitive metadata
+  # Monitor rotation via secret annotations and CronJob status instead
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -27,7 +31,9 @@ spec:
             fsGroup: 65532
           containers:
           - name: rotate-keys
-            image: bitnami/kubectl:latest
+            # Pin to specific version for security and reproducibility
+            # Consider using Dependabot/Renovate to automate version updates
+            image: bitnami/kubectl@sha256:b349e60a6ae2969af84a778c0b976b050a0cc77f4fb6a4ad44307cd0a06e9d8f
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -49,10 +55,14 @@ spec:
 
               # Get current secret
               echo "Fetching current secret..."
-              CURRENT_SECRET=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o json)
+              # Suppress stderr to prevent secret metadata leakage
+              CURRENT_SECRET=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o json 2>/dev/null)
+              # Suppress stderr to prevent secret metadata leakage
+              CURRENT_SECRET=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o json 2>/dev/null)
 
               if [ -z "$CURRENT_SECRET" ]; then
-                echo "ERROR: Secret $SECRET_NAME not found"
+                echo "ERROR: Secret $SECRET_NAME not found in namespace $NAMESPACE"
+                echo "ERROR: Secret $SECRET_NAME not found in namespace $NAMESPACE"
                 exit 1
               fi
 
@@ -142,17 +152,17 @@ spec:
                 }')
 
               echo "Applying patch to secret..."
-              kubectl patch secret "$SECRET_NAME" \
+              # Suppress stderr to prevent potential key leakage in error messages
+              # kubectl might output patch content on error
+              if kubectl patch secret "$SECRET_NAME" \
                 -n "$NAMESPACE" \
                 --type merge \
-                --patch-file - <<<"$PATCH_JSON"
-
-              if [ $? -eq 0 ]; then
+                --patch-file - <<<"$PATCH_JSON" 2>/dev/null; then
                 echo "✓ Key rotation completed successfully at $(date)"
                 echo "  - New version: $NEW_VERSION"
                 echo "  - Active keys: $(echo "$NEW_KEYS_JSON" | jq '.keys | keys | length')"
               else
-                echo "✗ Key rotation failed"
+                echo "✗ Key rotation failed (check CronJob status for details)"
                 exit 1
               fi
             resources:
