@@ -44,6 +44,65 @@ The goal: Go from existing codebase → deployable Radius application with zero 
 
 Each phase can be invoked via **AI conversation** or **CLI commands**—both call the same skills.
 
+**Complete Flow:**
+
+```
+     USER (AI or CLI)                    RADIUS                    EXTERNAL SOURCES
+           │                               │                              │
+           │  Phase 1: Discover            │                              │
+           │──────────────────────────────▶│                              │
+           │                               │                              │
+           │                     ┌─────────┴─────────┐                    │
+           │                     │ discover_dependencies                  │
+           │                     │ discover_services  │                   │
+           │                     │ discover_team_practices                │
+           │                     └─────────┬─────────┘                    │
+           │                               │                              │
+           │  Discovery Report (JSON)      │                              │
+           │◀──────────────────────────────│                              │
+           │                               │                              │
+           │  Phase 2: Generate            │                              │
+           │──────────────────────────────▶│                              │
+           │                               │                              │
+           │                     ┌─────────┴─────────┐                    │
+           │                     │generate_resource_types                 │
+           │                     │ (applies team practices)               │
+           │                     └─────────┬─────────┘                    │
+           │                               │                              │
+           │                     ┌─────────┴─────────┐  Query Sources     │
+           │                     │  discover_recipes │─────────────────────▶
+           │                     │ • Azure Verified  │  • AVM Registry    │
+           │                     │ • Internal repos  │◀─• Terraform Repos │
+           │                     └─────────┬─────────┘  • Bicep Templates │
+           │                               │                              │
+           │  Recipe Options               │                              │
+           │◀──────────────────────────────│                              │
+           │                               │                              │
+           │  User Selections              │                              │
+           │──────────────────────────────▶│                              │
+           │                               │                              │
+           │                     ┌─────────┴─────────┐                    │
+           │                     │generate_app_definition                 │
+           │                     │validate_app_definition                 │
+           │                     └─────────┬─────────┘                    │
+           │                               │                              │
+           │  ./radius/app.bicep           │                              │
+           │◀──────────────────────────────│                              │
+           │                               │                              │
+           │  Phase 3: Deploy              │                              │
+           │──────────────────────────────▶│                              │
+           │                               │                              │
+           │                     ┌─────────┴─────────┐  Provision:        │
+           │                     │   rad deploy      │─────────────────────▶
+           │                     │ (existing Radius) │  • Azure PostgreSQL│
+           │                     │                   │◀─• Azure Redis     │
+           │                     └─────────┬─────────┘  • Storage Account │
+           │                               │                              │
+           │  ✅ Deployment Complete!      │                              │
+           │◀──────────────────────────────│                              │
+           ▼                               ▼                              ▼
+```
+
 ---
 
 ### Skills-First Architecture
@@ -402,67 +461,6 @@ rad app generate --recipe-profile production   # Uses managed services
 rad app generate --add-dependency postgresql --add-dependency redis
 
 # AI: "I need PostgreSQL and Redis—skip scanning and just generate"
-```
-
----
-
-### Complete Flow Diagram
-
-```
-     USER (AI or CLI)                    RADIUS                    EXTERNAL SOURCES
-           │                               │                              │
-           │  Phase 1: Discover            │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐                    │
-           │                     │ discover_dependencies                  │
-           │                     │ discover_services  │                   │
-           │                     │ discover_team_practices                │
-           │                     └─────────┬─────────┘                    │
-           │                               │                              │
-           │  Discovery Report (JSON)      │                              │
-           │◀──────────────────────────────│                              │
-           │                               │                              │
-           │  Phase 2: Generate            │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐                    │
-           │                     │generate_resource_types                 │
-           │                     │ (applies team practices)               │
-           │                     └─────────┬─────────┘                    │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐  Query Sources     │
-           │                     │  discover_recipes │─────────────────────▶
-           │                     │ • Azure Verified  │  • AVM Registry    │
-           │                     │ • Internal repos  │◀─• Terraform Repos │
-           │                     └─────────┬─────────┘  • Bicep Templates │
-           │                               │                              │
-           │  Recipe Options               │                              │
-           │◀──────────────────────────────│                              │
-           │                               │                              │
-           │  User Selections              │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐                    │
-           │                     │generate_app_definition                 │
-           │                     │validate_app_definition                 │
-           │                     └─────────┬─────────┘                    │
-           │                               │                              │
-           │  ./radius/app.bicep           │                              │
-           │◀──────────────────────────────│                              │
-           │                               │                              │
-           │  Phase 3: Deploy              │                              │
-           │──────────────────────────────▶│                              │
-           │                               │                              │
-           │                     ┌─────────┴─────────┐  Provision:        │
-           │                     │   rad deploy      │─────────────────────▶
-           │                     │ (existing Radius) │  • Azure PostgreSQL│
-           │                     │                   │◀─• Azure Redis     │
-           │                     └─────────┬─────────┘  • Storage Account │
-           │                               │                              │
-           │  ✅ Deployment Complete!      │                              │
-           │◀──────────────────────────────│                              │
-           ▼                               ▼                              ▼
 ```
 
 ---
