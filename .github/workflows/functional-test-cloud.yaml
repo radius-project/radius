@@ -50,6 +50,10 @@ on:
       - main
       - features/*
       - release/*
+  # issue_comment trigger allows maintainers to run tests on fork PRs by commenting
+  # '/ok-to-test' on the PR. Only org members and owners can trigger this.
+  issue_comment:
+    types: [created]
 
 permissions: {}
 
@@ -103,7 +107,10 @@ jobs:
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
       (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/ok-to-test') &&
+       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
     permissions:
       contents: read # Required for listing the commits
       pull-requests: read # Required for fetching PR details
@@ -154,6 +161,24 @@ jobs:
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
             echo "PR_NUMBER=${{ github.event.pull_request.number }}"
             echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Set up checkout target (issue_comment /ok-to-test)
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get PR details from the issue comment event
+          PR_NUMBER=${{ github.event.issue.number }}
+          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepository,baseRefOid)
+          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
+          BASE_SHA=$(echo "$PR_DATA" | jq -r '.baseRefOid')
+          {
+            echo "CHECKOUT_REPO=$HEAD_REPO"
+            echo "CHECKOUT_REF=$HEAD_SHA"
+            echo "PR_NUMBER=$PR_NUMBER"
+            echo "BASE_SHA=$BASE_SHA"
           } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
@@ -501,7 +526,10 @@ jobs:
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
       (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
       (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/ok-to-test') &&
+       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
     strategy:
       fail-fast: true
       matrix:
