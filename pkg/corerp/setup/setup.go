@@ -279,6 +279,11 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		Patch: builder.Operation[datamodel.Environment_v20250801preview]{
 			APIController: env_v20250801_ctrl.NewCreateOrUpdateEnvironmentv20250801preview,
 		},
+		Delete: builder.Operation[datamodel.Environment_v20250801preview]{
+			DeleteFilters: []apictrl.DeleteFilter[datamodel.Environment_v20250801preview]{
+				env_v20250801_ctrl.CleanupSettingsReferences,
+			},
+		},
 	})
 
 	_ = ns.AddResource("applications", &builder.ResourceOption[*datamodel.Application_v20250801preview, datamodel.Application_v20250801preview]{
@@ -307,6 +312,11 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		Patch: builder.Operation[datamodel.TerraformSettings_v20250801preview]{
 			APIController: tf_ctrl.NewCreateOrUpdateTerraformSettings,
 		},
+		Delete: builder.Operation[datamodel.TerraformSettings_v20250801preview]{
+			DeleteFilters: []apictrl.DeleteFilter[datamodel.TerraformSettings_v20250801preview]{
+				tf_ctrl.PreventDeleteIfReferenced,
+			},
+		},
 	})
 
 	_ = ns.AddResource("bicepSettings", &builder.ResourceOption[*datamodel.BicepSettings_v20250801preview, datamodel.BicepSettings_v20250801preview]{
@@ -318,6 +328,11 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		},
 		Patch: builder.Operation[datamodel.BicepSettings_v20250801preview]{
 			APIController: bicep_ctrl.NewCreateOrUpdateBicepSettings,
+		},
+		Delete: builder.Operation[datamodel.BicepSettings_v20250801preview]{
+			DeleteFilters: []apictrl.DeleteFilter[datamodel.BicepSettings_v20250801preview]{
+				bicep_ctrl.PreventDeleteIfReferenced,
+			},
 		},
 	})
 

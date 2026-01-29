@@ -323,17 +323,23 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 
 	// Get the secret IDs and associated keys in provider configuration and environment variables
 	providerSecretIDs := terraform.GetProviderEnvSecretIDs(envConfig)
+	settingsSecretIDs := terraform.GetTerraformSettingsSecretIDs(envConfig)
 
 	// Merge secretStoreIDResourceKeys with providerSecretIDs
-	for secretStoreID, keys := range providerSecretIDs {
-		if _, ok := secretStoreIDResourceKeys[secretStoreID]; !ok {
-			secretStoreIDResourceKeys[secretStoreID] = keys
-		} else {
-			secretStoreIDResourceKeys[secretStoreID] = append(secretStoreIDResourceKeys[secretStoreID], keys...)
-		}
-	}
+	mergeSecretKeys(secretStoreIDResourceKeys, providerSecretIDs)
+	mergeSecretKeys(secretStoreIDResourceKeys, settingsSecretIDs)
 
 	return secretStoreIDResourceKeys, nil
+}
+
+func mergeSecretKeys(dest map[string][]string, src map[string][]string) {
+	for secretStoreID, keys := range src {
+		if _, ok := dest[secretStoreID]; !ok {
+			dest[secretStoreID] = append([]string(nil), keys...)
+		} else {
+			dest[secretStoreID] = append(dest[secretStoreID], keys...)
+		}
+	}
 }
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.

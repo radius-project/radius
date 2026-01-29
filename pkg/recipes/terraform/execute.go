@@ -30,6 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
@@ -74,14 +76,14 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	configResult, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
 
 	if options.EnvConfig != nil {
 		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(tf, options)
+		err = e.setEnvironmentVariables(tf, options, configResult.terraformRCPath)
 		if err != nil {
 			return nil, err
 		}
@@ -94,18 +96,20 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Validate that the terraform state file backend source exists.
-	// Currently only Kubernetes secret backend is supported, which is created by Terraform as a part of Terraform apply.
-	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
-	if err != nil {
-		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
-	}
+	if configResult.usesKubernetesBackend {
+		// Validate that the terraform state file backend source exists.
+		// Currently only Kubernetes secret backend is supported, which is created by Terraform as a part of Terraform apply.
+		kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+		if err != nil {
+			return nil, fmt.Errorf("error getting kubernetes client: %w", err)
+		}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
-	} else if !backendExists {
-		return nil, errors.New("expected kubernetes secret for terraform state is not found")
+		backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+configResult.kubernetesBackendSuffix)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
+		} else if !backendExists {
+			return nil, errors.New("expected kubernetes secret for terraform state is not found")
+		}
 	}
 
 	return state, nil
@@ -127,28 +131,37 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	configResult, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return err
 	}
 
-	// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
-	// If the state file source has been deleted or wasn't created due to a failure during apply then
-	// terraform initialization will fail due to missing backend source.
-	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
-	if err != nil {
-		return fmt.Errorf("error getting kubernetes client: %w", err)
+	if options.EnvConfig != nil {
+		// Set environment variables for the Terraform process.
+		if err := e.setEnvironmentVariables(tf, options, configResult.terraformRCPath); err != nil {
+			return err
+		}
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
-	if err != nil {
-		// Continue with the delete flow for all errors other than backend not found.
-		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
-		logger.Info(fmt.Sprintf("Error retrieving Terraform state file backend: %s", err.Error()))
-	} else if !backendExists {
-		// Skip deletion if the backend does not exist. Delete can't be performed without Terraform state file.
-		logger.Info("Skipping deletion of recipe resources: Terraform state file backend does not exist.")
-		return nil
+	if configResult.usesKubernetesBackend {
+		// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
+		// If the state file source has been deleted or wasn't created due to a failure during apply then
+		// terraform initialization will fail due to missing backend source.
+		kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+		if err != nil {
+			return fmt.Errorf("error getting kubernetes client: %w", err)
+		}
+
+		backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+configResult.kubernetesBackendSuffix)
+		if err != nil {
+			// Continue with the delete flow for all errors other than backend not found.
+			// If it is an intermittent error then the delete flow will fail and should be retried from the client.
+			logger.Info(fmt.Sprintf("Error retrieving Terraform state file backend: %s", err.Error()))
+		} else if !backendExists {
+			// Skip deletion if the backend does not exist. Delete can't be performed without Terraform state file.
+			logger.Info("Skipping deletion of recipe resources: Terraform state file backend does not exist.")
+			return nil
+		}
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
@@ -158,12 +171,18 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
-	// Delete the kubernetes secret created for terraform state file.
-	err = kubernetesClient.CoreV1().
-		Secrets(backends.RadiusNamespace).
-		Delete(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix, metav1.DeleteOptions{})
-	if err != nil {
-		return fmt.Errorf("error deleting kubernetes secret for terraform state: %w", err)
+	if configResult.usesKubernetesBackend {
+		// Delete the kubernetes secret created for terraform state file.
+		kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+		if err != nil {
+			return fmt.Errorf("error getting kubernetes client: %w", err)
+		}
+		err = kubernetesClient.CoreV1().
+			Secrets(backends.RadiusNamespace).
+			Delete(ctx, backends.KubernetesBackendNamePrefix+configResult.kubernetesBackendSuffix, metav1.DeleteOptions{})
+		if err != nil {
+			return fmt.Errorf("error deleting kubernetes secret for terraform state: %w", err)
+		}
 	}
 
 	return nil
@@ -194,7 +213,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 // setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
 // Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options) error {
+func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options, terraformRCPath string) error {
 	if options.EnvConfig == nil {
 		return nil
 	}
@@ -227,6 +246,33 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 		}
 	}
 
+	// Apply TerraformSettings.Env if configured
+	if options.EnvConfig.TerraformSettings != nil && len(options.EnvConfig.TerraformSettings.Env) > 0 {
+		envVarUpdate = true
+		for key, value := range options.EnvConfig.TerraformSettings.Env {
+			envVars[key] = value
+		}
+	}
+
+	// Apply TerraformSettings.Logging (TF_LOG, TF_LOG_PATH) if configured
+	if options.EnvConfig.TerraformSettings != nil && options.EnvConfig.TerraformSettings.Logging != nil {
+		logging := options.EnvConfig.TerraformSettings.Logging
+		if logging.Level != "" {
+			envVarUpdate = true
+			envVars["TF_LOG"] = string(logging.Level)
+		}
+		if logging.Path != "" {
+			envVarUpdate = true
+			envVars["TF_LOG_PATH"] = logging.Path
+		}
+	}
+
+	// Apply TerraformSettings.TerraformRC (TF_CLI_CONFIG_FILE) if configured
+	if terraformRCPath != "" {
+		envVarUpdate = true
+		envVars["TF_CLI_CONFIG_FILE"] = terraformRCPath
+	}
+
 	// Set the environment variables for the Terraform process
 	if envVarUpdate {
 		if err := tf.SetEnv(envVars); err != nil {
@@ -251,45 +297,76 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
+type generateConfigResult struct {
+	kubernetesBackendSuffix string
+	usesKubernetesBackend   bool
+	terraformRCPath         string
+}
+
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (generateConfigResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
 	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
 	if err != nil {
-		return "", err
+		return generateConfigResult{}, err
 	}
 
 	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
-		return "", err
+		return generateConfigResult{}, err
 	}
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
 	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
 	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig, options.Secrets); err != nil {
-		return "", err
+		return generateConfigResult{}, err
 	}
 
-	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
-	if err != nil {
-		return "", fmt.Errorf("error getting kubernetes client: %w", err)
-	}
+	// Configure backend: use custom backend from TerraformSettings if specified, otherwise use Kubernetes backend
+	var backendConfig map[string]any
+	result := generateConfigResult{}
 
-	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(kubernetesClient))
-	if err != nil {
-		return "", err
-	}
-
-	// Retrieving the secret_suffix property from backend config to use it to verify secret creation during terraform init.
-	// This is only used for the backend of type kubernetes and should be moved inside an if block when we add more backends.
-	var secretSuffix string
-	if backendDetails, ok := backendConfig[backends.BackendKubernetes]; ok {
-		backendMap := backendDetails.(map[string]any)
-		if secret, ok := backendMap["secret_suffix"]; ok {
-			secretSuffix = secret.(string)
+	if options.EnvConfig != nil && options.EnvConfig.TerraformSettings != nil && options.EnvConfig.TerraformSettings.Backend != nil {
+		// Use custom backend from TerraformSettings
+		customBackend := options.EnvConfig.TerraformSettings.Backend
+		logger.Info(fmt.Sprintf("Using custom backend type: %s", customBackend.Type))
+		backendConfig, err = tfConfig.AddCustomBackend(customBackend.Type, customBackend.Config)
+		if err != nil {
+			return generateConfigResult{}, fmt.Errorf("error adding custom backend: %w", err)
 		}
+	} else {
+		// Use default Kubernetes backend
+		kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+		if err != nil {
+			return generateConfigResult{}, fmt.Errorf("error getting kubernetes client: %w", err)
+		}
+
+		backendConfig, err = tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(kubernetesClient))
+		if err != nil {
+			return generateConfigResult{}, err
+		}
+		result.usesKubernetesBackend = true
+
+		// Retrieving the secret_suffix property from backend config to use it to verify secret creation during terraform init.
+		// This is only used for the backend of type kubernetes.
+		if backendDetails, ok := backendConfig[backends.BackendKubernetes]; ok {
+			backendMap := backendDetails.(map[string]any)
+			if secret, ok := backendMap["secret_suffix"]; ok {
+				result.kubernetesBackendSuffix = secret.(string)
+			}
+		}
+	}
+
+	// Write .terraformrc if TerraformSettings.TerraformRC is configured
+	if options.EnvConfig != nil && options.EnvConfig.TerraformSettings != nil && options.EnvConfig.TerraformSettings.TerraformRC != nil {
+		terraformrcPath, err := e.writeTerraformRC(ctx, workingDir, options.EnvConfig.TerraformSettings.TerraformRC, options.Secrets)
+		if err != nil {
+			return generateConfigResult{}, fmt.Errorf("error writing .terraformrc: %w", err)
+		}
+		logger.Info(fmt.Sprintf("Written .terraformrc to: %s", terraformrcPath))
+		result.terraformRCPath = terraformrcPath
 	}
 
 	// Add recipe context parameter to the generated Terraform config's module parameters.
@@ -300,7 +377,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		// Create the recipe context object to be passed to the recipe deployment
 		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
 		if err != nil {
-			return "", err
+			return generateConfigResult{}, err
 		}
 
 		//update the recipe context with connected resources properties
@@ -309,12 +386,12 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		}
 
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
-			return "", err
+			return generateConfigResult{}, err
 		}
 	}
 	if loadedModule.ResultOutputExists {
 		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
-			return "", err
+			return generateConfigResult{}, err
 		}
 	}
 
@@ -322,10 +399,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	// Ensure that we need to save the configuration after adding providers and recipecontext.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
-		return "", err
+		return generateConfigResult{}, err
 	}
 
-	return secretSuffix, nil
+	return result, nil
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it
@@ -361,6 +438,156 @@ func getStateLockTimeout(timeout string) string {
 		return DefaultStateLockTimeout
 	}
 	return timeout
+}
+
+// writeTerraformRC writes a .terraformrc file in the working directory with provider installation and credentials configuration.
+// Returns the path to the written file.
+func (e *executor) writeTerraformRC(ctx context.Context, workingDir string, tfrc *datamodel.TerraformCliConfiguration, secrets map[string]recipes.SecretData) (string, error) {
+	// Build the terraformrc content
+	var content strings.Builder
+
+	// Add provider_installation block if configured
+	if tfrc.ProviderInstallation != nil {
+		content.WriteString("provider_installation {\n")
+
+		// Add network_mirror block
+		if tfrc.ProviderInstallation.NetworkMirror != nil {
+			nm := tfrc.ProviderInstallation.NetworkMirror
+			content.WriteString("  network_mirror {\n")
+			content.WriteString(fmt.Sprintf("    url = \"%s\"\n", nm.URL))
+
+			if len(nm.Include) > 0 {
+				content.WriteString("    include = [")
+				for i, inc := range nm.Include {
+					if i > 0 {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("\"%s\"", inc))
+				}
+				content.WriteString("]\n")
+			}
+
+			if len(nm.Exclude) > 0 {
+				content.WriteString("    exclude = [")
+				for i, exc := range nm.Exclude {
+					if i > 0 {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("\"%s\"", exc))
+				}
+				content.WriteString("]\n")
+			}
+
+			content.WriteString("  }\n")
+		}
+
+		// Add direct block
+		if tfrc.ProviderInstallation.Direct != nil {
+			d := tfrc.ProviderInstallation.Direct
+			content.WriteString("  direct {\n")
+
+			if len(d.Include) > 0 {
+				content.WriteString("    include = [")
+				for i, inc := range d.Include {
+					if i > 0 {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("\"%s\"", inc))
+				}
+				content.WriteString("]\n")
+			}
+
+			if len(d.Exclude) > 0 {
+				content.WriteString("    exclude = [")
+				for i, exc := range d.Exclude {
+					if i > 0 {
+						content.WriteString(", ")
+					}
+					content.WriteString(fmt.Sprintf("\"%s\"", exc))
+				}
+				content.WriteString("]\n")
+			}
+
+			content.WriteString("  }\n")
+		}
+
+		content.WriteString("}\n\n")
+	}
+
+	// Add credentials blocks if configured
+	if len(tfrc.Credentials) > 0 {
+		for hostname, cred := range tfrc.Credentials {
+			if cred.Token != nil {
+				// Resolve the token from secrets.
+				// If resolution fails, we return an error because the user explicitly configured
+				// these credentials - they are required for registry/host authentication.
+				tokenValue, err := resolveSecretRef(cred.Token, secrets)
+				if err != nil {
+					return "", fmt.Errorf("failed to resolve credential token for hostname %q: %w", hostname, err)
+				}
+
+				// Escape hostname and token values to prevent HCL injection and ensure valid syntax.
+				// This handles special characters like quotes, backslashes, and newlines.
+				content.WriteString(fmt.Sprintf("credentials \"%s\" {\n", escapeHCLString(hostname)))
+				content.WriteString(fmt.Sprintf("  token = \"%s\"\n", escapeHCLString(tokenValue)))
+				content.WriteString("}\n\n")
+			}
+		}
+	}
+
+	// Write the file
+	terraformrcPath := fmt.Sprintf("%s/.terraformrc", workingDir)
+	if err := os.WriteFile(terraformrcPath, []byte(content.String()), 0600); err != nil {
+		return "", fmt.Errorf("error writing .terraformrc: %w", err)
+	}
+
+	return terraformrcPath, nil
+}
+
+// resolveSecretRef resolves a secret reference to its actual value from the secrets map.
+func resolveSecretRef(ref *datamodel.SecretRef, secrets map[string]recipes.SecretData) (string, error) {
+	if ref == nil {
+		return "", errors.New("secret reference is nil")
+	}
+
+	secretData, ok := secrets[ref.SecretID]
+	if !ok {
+		return "", fmt.Errorf("secret not found: %s", ref.SecretID)
+	}
+
+	value, ok := secretData.Data[ref.Key]
+	if !ok {
+		return "", fmt.Errorf("key '%s' not found in secret '%s'", ref.Key, ref.SecretID)
+	}
+
+	return value, nil
+}
+
+// escapeHCLString escapes special characters in a string for safe inclusion in an HCL quoted string.
+// This prevents injection attacks and ensures the .terraformrc file is valid HCL.
+// Escaped characters: backslash, double quote, newline, carriage return, tab.
+func escapeHCLString(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	for _, r := range s {
+		switch r {
+		case '\\':
+			result.WriteString("\\\\")
+		case '"':
+			result.WriteString("\\\"")
+		case '\n':
+			result.WriteString("\\n")
+		case '\r':
+			result.WriteString("\\r")
+		case '\t':
+			result.WriteString("\\t")
+		default:
+			result.WriteRune(r)
+		}
+	}
+
+	return result.String()
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.

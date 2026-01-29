@@ -62,6 +62,10 @@ model TerraformSettingsProperties {
 
   @doc("Logging configuration applied to Terraform executions.")
   logging?: TerraformLoggingConfiguration;
+
+  @doc("List of environment resource IDs that reference this settings resource.")
+  @visibility(Lifecycle.Read)
+  referencedBy?: string[];
 }
 
 @doc("Terraform CLI configuration matching the terraformrc file.")

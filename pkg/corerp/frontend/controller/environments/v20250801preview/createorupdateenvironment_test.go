@@ -472,7 +472,7 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 					Return(nil, &database.ErrNotFound{ID: "nonexistent"})
 			},
 			expectedStatusCode: 400,
-			expectedError:      "Failed to retrieve recipe pack",
+			expectedError:      "Recipe pack not found",
 		},
 	}
 

@@ -46,6 +46,9 @@ type TerraformSettingsProperties_v20250801preview struct {
 
 	// Logging controls Terraform logging behaviour (TF_LOG/TF_LOG_PATH).
 	Logging *TerraformLoggingConfiguration `json:"logging,omitempty"`
+
+	// ReferencedBy is a list of environment IDs that reference this settings resource.
+	ReferencedBy []string `json:"referencedBy,omitempty"`
 }
 
 // TerraformCliConfiguration mirrors the terraformrc provider installation + credentials sections.

@@ -46,6 +46,11 @@ type Configuration struct {
 	Simulated bool
 
 	RecipeConfig datamodel.RecipeConfigProperties
+
+	// TerraformSettings contains settings from Radius.Core/terraformSettings resource.
+	TerraformSettings *datamodel.TerraformSettingsProperties_v20250801preview
+	// BicepSettings contains settings from Radius.Core/bicepSettings resource.
+	BicepSettings *datamodel.BicepSettingsProperties_v20250801preview
 }
 
 // RuntimeConfiguration represents Runtime configuration for the environment.

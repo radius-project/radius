@@ -37,6 +37,9 @@ func (b *BicepSettings_v20250801preview) ResourceTypeName() string {
 type BicepSettingsProperties_v20250801preview struct {
 	// Authentication contains registry authentication entries keyed by hostname.
 	Authentication *BicepAuthenticationConfiguration `json:"authentication,omitempty"`
+
+	// ReferencedBy is a list of environment IDs that reference this settings resource.
+	ReferencedBy []string `json:"referencedBy,omitempty"`
 }
 
 // BicepAuthenticationConfiguration captures registry authentication entries.

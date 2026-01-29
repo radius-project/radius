@@ -278,6 +278,26 @@ func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.Resource
 	return backendConfig, nil
 }
 
+// AddCustomBackend adds a custom backend configuration from TerraformSettings.
+// This allows users to configure their own backend (e.g., S3, AzureRM, GCS) instead of the default Kubernetes backend.
+// Save() must be called to save the generated backend config.
+func (cfg *TerraformConfig) AddCustomBackend(backendType string, backendConfig map[string]string) (map[string]any, error) {
+	if backendType == "" {
+		return nil, errors.New("backend type cannot be empty")
+	}
+
+	customBackendConfig := map[string]any{
+		backendType: backendConfig,
+	}
+
+	if cfg.Terraform == nil {
+		cfg.Terraform = &TerraformDefinition{}
+	}
+	cfg.Terraform.Backend = customBackendConfig
+
+	return customBackendConfig, nil
+}
+
 // Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
 // Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
 // https://developer.hashicorp.com/terraform/language/modules/syntax#accessing-module-output-values

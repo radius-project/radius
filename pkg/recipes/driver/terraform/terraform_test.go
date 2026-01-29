@@ -839,6 +839,15 @@ func Test_FindSecretIDs(t *testing.T) {
 			},
 		},
 		{
+			name:          "Secrets in terraform settings",
+			envConfig:     createTerraformConfigWithTerraformSettingsSecrets(),
+			definition:    definition,
+			expectedError: false,
+			expectedSecretIDs: map[string][]string{
+				"secret-store-settings": {"settings-token"},
+			},
+		},
+		{
 			name:          "GetPrivateGitRepoSecretStoreID returns error",
 			definition:    recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azu  re.com/project/module"},
 			envConfig:     createTerraformConfigWithAuthProviderEnvSecrets(),
@@ -1013,6 +1022,23 @@ func createTerraformConfigWithEnvSecrets() recipes.Configuration {
 				"secret1": {
 					Source: "secret-store-id1",
 					Key:    "secret-key-env2",
+				},
+			},
+		},
+	}
+}
+
+func createTerraformConfigWithTerraformSettingsSecrets() recipes.Configuration {
+	return recipes.Configuration{
+		TerraformSettings: &datamodel.TerraformSettingsProperties_v20250801preview{
+			TerraformRC: &datamodel.TerraformCliConfiguration{
+				Credentials: map[string]*datamodel.TerraformCredentialConfiguration{
+					"registry.terraform.io": {
+						Token: &datamodel.SecretRef{
+							SecretID: "secret-store-settings",
+							Key:      "settings-token",
+						},
+					},
 				},
 			},
 		},
