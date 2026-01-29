@@ -164,6 +164,8 @@ Agent: I'll analyze your codebase.
        • Prod: Premium tier, HA, geo-redundant
        (Sources: /infra/*.tf, team wiki)
        
+       📄 Output: ./radius/discovery.md
+
        Ready to generate your app definition?
 ```
 
@@ -712,25 +714,7 @@ These architectural decisions require team discussion before implementation plan
 
 ---
 
-### OQ-3: Existing IaC and Deployment Scripts
-
-**Question**: Should Radius detect and utilize existing Infrastructure-as-Code (Terraform, Bicep, Helm) or deployment scripts already present in the repository?
-
-**Context**: Many existing applications already have IaC in `/infra`, `/terraform`, or similar directories. Should discovery incorporate this?
-
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Parse and incorporate** | Detect existing IaC, extract resource definitions, and incorporate them into the generated Radius app definition | ✓ Leverages existing work ✓ Preserves customizations. ✗ Very complex to parse arbitrary TF/Bicep ✗ Error-prone ✗ Large scope |
-| **B - Inform only** | Detect existing IaC and report it to the user ("Found existing Terraform in /infra - consider migrating"), but don't auto-incorporate | ✓ Useful context ✓ Low complexity ✓ User decides. ✗ Doesn't reduce manual work |
-| **C - Ignore for v1** | Focus solely on application code analysis; treat existing IaC as out-of-scope for initial release | ✓ Simplest ✓ Faster to ship. ✗ Misses opportunity ✗ May duplicate existing infra |
-
-**Recommendation**: Option B for v1 - inform users about existing IaC so they can make informed decisions. Consider Option A for future versions.
-
-**Impact if unresolved**: Affects scope of discovery phase and user expectations for existing projects.
-
----
-
-### OQ-4: Container Image Strategy
+### OQ-3: Container Image Strategy
 
 **Question**: How should Radius handle container images for detected services when generating the application definition?
 
@@ -748,7 +732,7 @@ These architectural decisions require team discussion before implementation plan
 
 ---
 
-### OQ-5: MCP Server Deployment Model
+### OQ-4: MCP Server Deployment Model
 
 **Question**: How should the MCP server be deployed and accessed by AI agents?
 
@@ -767,7 +751,7 @@ These architectural decisions require team discussion before implementation plan
 
 ---
 
-### OQ-6: Recipe Source Configuration UX
+### OQ-5: Recipe Source Configuration UX
 
 **Question**: What is the configuration format and workflow for setting up recipe sources (especially internal repositories)?
 
@@ -786,7 +770,7 @@ These architectural decisions require team discussion before implementation plan
 
 ---
 
-### OQ-7: Team Practices Detection Scope
+### OQ-6: Team Practices Detection Scope
 
 **Question**: What sources should Radius analyze to detect team infrastructure practices, and how deeply should it parse them?
 
@@ -805,7 +789,7 @@ These architectural decisions require team discussion before implementation plan
 
 ---
 
-### OQ-8: Documentation Source Parsing Strategy
+### OQ-7: Documentation Source Parsing Strategy
 
 **Question**: How should Radius extract infrastructure practices from unstructured documentation (internal wikis, Confluence, Notion)?
 
@@ -839,4 +823,5 @@ These architectural decisions require team discussion before implementation plan
 - Q: Which language should be the primary focus for initial release? → A: Equal priority - all 5 languages (Python, JS/TS, Go, Java, C#) at same priority from start
 - Q: Should the feature be architected as composable skills/tools for AI agent integration? → A: Skills-first architecture - build as composable tools, CLI wraps them, expose via MCP for AI agents
 - Q: What is the relationship between Resource Types and Recipes? → A: **Resource Types are the interface/schema** (the abstraction defining what properties apps consume); **Recipes are the implementation** (the actual IaC code - Terraform/Bicep - that provisions infrastructure). This separation enables portability across environments.
-- Q: Should Radius incorporate team infrastructure practices when generating Resource Types? → A: **Yes** - see OQ-7 and OQ-8 for detailed options on detection scope and documentation parsing.
+- Q: Should Radius incorporate team infrastructure practices when generating Resource Types? → A: **Yes** - see OQ-6 and OQ-7 for detailed options on detection scope and documentation parsing.
+- Q: Should Radius detect and utilize existing IaC and deployment scripts? → A: **Yes, Option A** - Parse and incorporate existing IaC (Terraform, Bicep, Helm) to leverage existing work and preserve team customizations.
