@@ -770,12 +770,12 @@ tests:
           path: kind
           value: Secret
         documentIndex: 0
-      # REQUIREMENT: 256-bit encryption key stored in Opaque secret
+      # REQUIREMENT: Versioned encryption keys stored in Opaque secret
       - equal:
           path: type
           value: Opaque
         documentIndex: 0
-      # Verify data field exists and contains encryption key
+      # Verify data field exists and contains versioned keys
       - isNotNull:
           path: data
         documentIndex: 0
@@ -783,44 +783,50 @@ tests:
           path: data
         documentIndex: 0
       - isNotNull:
-          path: data["encryption.key"]
+          path: data["keys.json"]
         documentIndex: 0
 
   - it: should validate encryption key format and field name
     templates:
       - dynamic-rp/secret.yaml
     asserts:
-      # REQUIREMENT: Field must be named "encryption.key" (not "key", "encryption", etc.)
+      # REQUIREMENT: Field must be named "keys.json" (versioned key format)
       - isNotNull:
-          path: data["encryption.key"]
+          path: data["keys.json"]
         documentIndex: 0
       - isNotEmpty:
-          path: data["encryption.key"]
+          path: data["keys.json"]
         documentIndex: 0
-      # ENCODING CHAIN (for application developers):
-      # 1. randBytes 32 → produces 32 raw bytes (256 bits)
-      # 2. Helm template engine → auto-converts bytes to base64 string (44 chars)
-      # 3. secrets.lookup helper → encodes again (encodeDefault: true) (~60 chars)
-      # 4. Kubernetes Secret data → stored as base64 in manifest (~60 chars)
-      # 5. Kubernetes mounts secret → DECODES automatically → 44-char base64 string in pod
+      # FORMAT: Versioned JSON key store
+      # Structure: {
+      #   "currentVersion": 1,
+      #   "keys": {
+      #     "1": {
+      #       "key": "base64-encoded-32-byte-key",
+      #       "version": 1,
+      #       "createdAt": "2026-01-27T12:00:00Z",
+      #       "expiresAt": "2026-04-27T12:00:00Z"
+      #     }
+      #   }
+      # }
       #
-      # APPLICATION USAGE:
-      # - Read /var/secrets/encryption/encryption.key file
-      # - File contains base64-encoded string (44 chars) - decoded by K8s
-      # - Base64 decode once to get 32 raw bytes (256 bits)
-      # - Use the 32 bytes as the encryption key
+      # ENCODING CHAIN:
+      # 1. Helm generates JSON with base64-encoded keys
+      # 2. secrets.lookup helper returns base64-encoded JSON
+      # 3. Kubernetes Secret data stores base64-encoded JSON
+      # 4. Kubernetes mounts secret → DECODES to JSON in pod
+      # 5. Application reads /var/secrets/encryption/keys.json
+      # 6. Parse JSON, base64-decode individual keys to get 32 raw bytes
       #
-      # Verify valid base64 format
+      # Verify valid base64 format (base64-encoded JSON)
       - matchRegex:
-          path: data["encryption.key"]
+          path: data["keys.json"]
           pattern: '^[A-Za-z0-9+/]+=*$'
         documentIndex: 0
-      # Verify length is approximately 60 chars (58-64 range for base64 of base64 of 32 bytes)
-      - matchRegex:
+      # Ensure no typos or old field names
+      - isNull:
           path: data["encryption.key"]
-          pattern: '^[A-Za-z0-9+/]{58,62}=*$'
         documentIndex: 0
-      # Ensure no typos like "encryption-key" or "encryptionKey"
       - isNull:
           path: data["encryption-key"]
         documentIndex: 0
@@ -829,9 +835,6 @@ tests:
         documentIndex: 0
       - isNull:
           path: data["key"]
-        documentIndex: 0
-      - isNull:
-          path: data["encryption"]
         documentIndex: 0
 
   - it: should create Role with correct permissions for encryption key
@@ -854,10 +857,21 @@ tests:
           path: rules[0].resourceNames
           content: radius-encryption-key
         documentIndex: 1
+      # Need get for reading keys
       - contains:
           path: rules[0].verbs
           content: get
         documentIndex: 1
+      # Need update and patch for automatic key rotation CronJob
+      - contains:
+          path: rules[0].verbs
+          content: update
+        documentIndex: 1
+      - contains:
+          path: rules[0].verbs
+          content: patch
+        documentIndex: 1
+      # Should NOT allow create or delete (secret is created by Helm)
       - notContains:
           path: rules[0].verbs
           content: create
@@ -865,10 +879,6 @@ tests:
       - notContains:
           path: rules[0].verbs
           content: delete
-        documentIndex: 1
-      - notContains:
-          path: rules[0].verbs
-          content: update
         documentIndex: 1
 
   - it: should configure RBAC to reference exact secret name radius-encryption-key
@@ -1186,14 +1196,11 @@ tests:
           content: watch
         documentIndex: 1
 
-  - it: should not grant patch or deletecollection permissions
+  - it: should not grant deletecollection permissions
     templates:
       - dynamic-rp/secret.yaml
     asserts:
-      - notContains:
-          path: rules[0].verbs
-          content: patch
-        documentIndex: 1
+      # patch is needed for key rotation CronJob, but deletecollection should never be granted
       - notContains:
           path: rules[0].verbs
           content: deletecollection
@@ -1306,15 +1313,17 @@ tests:
         template: dynamic-rp/deployment.yaml
 
   # Test that secret data field structure is correct
-  - it: should verify secret has encryption.key data field
+  - it: should verify secret has keys.json data field
     templates:
       - dynamic-rp/secret.yaml
     asserts:
       - isNotNull:
           path: data
         documentIndex: 0
-      # Note: We can't directly test the key name in helm unit tests due to templating
-      # but we verify data exists and is not empty
+      - isNotNull:
+          path: data["keys.json"]
+        documentIndex: 0
+      # Verify the versioned key store format
 
   # Verify no additional unexpected permissions
   - it: should only have one rule in the Role
@@ -1356,35 +1365,35 @@ tests:
   # Test for preserving existing encryption key during upgrades
   # NOTE: helm-unittest cannot mock the lookup function, so this test verifies:
   # 1. The template renders successfully (proving secrets.lookup works)
-  # 2. The output contains a valid encryption key value
+  # 2. The output contains a valid versioned key store value
   # 3. The implementation uses secrets.lookup helper (verified by reading source)
   #
   # MANUAL VERIFICATION for existing key preservation:
   # 1. helm install radius ./deploy/Chart
-  # 2. kubectl get secret radius-encryption-key -o yaml | grep encryption.key
+  # 2. kubectl get secret radius-encryption-key -n radius-system -o jsonpath='{.data.keys\.json}' | base64 -d
   # 3. helm upgrade radius ./deploy/Chart
-  # 4. kubectl get secret radius-encryption-key -o yaml | grep encryption.key
-  # 5. Verify the encryption.key value is IDENTICAL between steps 2 and 4
+  # 4. kubectl get secret radius-encryption-key -n radius-system -o jsonpath='{.data.keys\.json}' | base64 -d
+  # 5. Verify the keys.json value is IDENTICAL between steps 2 and 4
   - it: should generate encryption key that can be preserved across upgrades (fresh install)
     templates:
       - dynamic-rp/secret.yaml
     asserts:
-      # Verify encryption key is generated in fresh install
+      # Verify versioned key store is generated in fresh install
       - isNotNull:
-          path: data["encryption.key"]
+          path: data["keys.json"]
         documentIndex: 0
       - isNotEmpty:
-          path: data["encryption.key"]
+          path: data["keys.json"]
         documentIndex: 0
-      # Verify it's a valid base64 value (double-encoded: ~60 chars)
+      # Verify it's a valid base64 value (base64-encoded JSON)
       - matchRegex:
-          path: data["encryption.key"]
-          pattern: '^[A-Za-z0-9+/]{58,62}=*$'
+          path: data["keys.json"]
+          pattern: '^[A-Za-z0-9+/]+=*$'
         documentIndex: 0
       # The secrets.lookup helper in the template ensures that:
-      # - On fresh install: generates new key using randBytes 32
-      # - On upgrade: reuses existing key from cluster (via lookup)
-      # This behavior is implemented in templates/_helpers.tpl:31-48
+      # - On fresh install: generates new versioned key store with version 1
+      # - On upgrade: reuses existing keys from cluster (via lookup)
+      # This behavior is implemented in templates/_helpers.tpl using secrets.lookup
 
   # Integration test: Verify upgrade scenario preserves existing key
   # This test documents the expected behavior when a secret already exists
@@ -1393,16 +1402,17 @@ tests:
       - dynamic-rp/secret.yaml
     asserts:
       # Verify the template uses secrets.lookup (not direct randBytes)
-      # The helper at _helpers.tpl:31-48 implements the lookup logic
+      # The helper implements the lookup logic to preserve existing keys
       - isNotNull:
-          path: data["encryption.key"]
+          path: data["keys.json"]
         documentIndex: 0
-      # The key must be properly encoded (double base64)
+      # The key store must be properly encoded (base64-encoded JSON)
       - matchRegex:
-          path: data["encryption.key"]
-          pattern: '^[A-Za-z0-9+/]{58,62}=*$'
+          path: data["keys.json"]
+          pattern: '^[A-Za-z0-9+/]+=*$'
         documentIndex: 0
       # BEHAVIOR: secrets.lookup helper checks for existing secret first
-      # - If secret exists in cluster: returns existing value (preserves key)
-      # - If secret missing: generates new key from defaultValue (randBytes 32)
-      # This ensures upgrades never rotate the encryption key accidentally
+      # - If secret exists in cluster: returns existing value (preserves all keys)
+      # - If secret missing: generates new versioned key store (version 1)
+      # This ensures upgrades never accidentally replace the key store
+      # CronJob handles automatic rotation, not Helm upgrades
