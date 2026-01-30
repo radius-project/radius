@@ -2,11 +2,20 @@
 
 **Feature Branch**: `001-auto-app-discovery`  
 **Created**: January 28, 2026  
-**Status**: Draft  
+**Status**: Draft 
 
 ## Vision
 
-We will make it trivial for developers to adopt Radius for their existing applications and new applications. Radius will remove the need to define Resource Types and Recipes up front. Rather, it will create Resource Types based on understanding of the application's codebase (e.g., the existence of a PostgreSQL library), infrastructure best practices they follow like naming conventions, tags, cost practices for dev/test/prod from their internal wiki or any verified source, and create Recipes based on either authoritative sources, such as Azure Verified Modules, or internal sources of Terraform modules or Bicep templates. Radius will use these Resource Types and its understanding of the code repo to model the application and generate a rich application definition.
+Radius will make it trivial for developers to adopt Radius for existing and new applications by removing the need to manually define Resource Types and Recipes.
+
+**How it works:**
+
+1. **Understand the codebase** — Detect infrastructure dependencies (e.g., PostgreSQL, Redis) from library usage in the code.
+2. **Apply team practices** — Detect naming conventions, tags, and cost practices from existing IaC files, config, or internal documentation.
+3. **Match to proven IaC** — Find Recipes from internal Terraform/Bicep repositories or external authoritative sources (Azure Verified Modules)
+4. **Generate the application** — Produce a complete, editable Radius application definition (Bicep) ready to deploy.
+
+**The result**: Developers go from codebase to deployable Radius application with zero manual Resource Type or Recipe authoring.
 
 ## End-to-End User Journey *(mandatory)*
 
@@ -46,8 +55,8 @@ The goal: Go from existing codebase → deployable Radius application with zero 
        |                                   |                                     |
        |                                   |  Search for Recipes...              |
        |                                   |------------------------------------>|
-       |                                   |                    AVM, Terraform,  |
-       |                                   |<------------------- Bicep repos     |
+       |                                   |                 Internal Terraform, |
+       |                                   |<-------------- Bicep repos, AVM     |
        |                                   |                                     |
        |  Recipe Options:                  |                                     |
        |  PostgreSQL -> [1] Azure (AVM)    |                                     |
@@ -406,19 +415,18 @@ As a developer with an existing application, I want Radius to analyze my codebas
 
 ### User Story 2 - Map to Resource Types from Detected Dependencies (Priority: P1)
 
-> **Note**: This user story's implementation depends on the resolution of **OQ-1** (Pre-defined vs Generated Resource Types). If Option A (pre-defined catalog) is chosen, this story becomes "map detected dependencies to existing Resource Types" rather than "generate new Resource Types."
+As a developer, I want Radius to automatically map detected dependencies to Resource Type definitions (from a pre-defined catalog, with fallback generation for unknown types), so that I don't need to manually define or configure them.
 
-As a developer, I want Radius to automatically provide Resource Type definitions for the dependencies it detects in my codebase, so that I don't need to manually define or configure them.
+**Why this priority**: Resource Types are essential for Radius to model and deploy applications. Mapping detected dependencies to a curated catalog (with fallback generation) enables seamless adoption while ensuring quality and consistency.
 
-**Why this priority**: Resource Types are essential for Radius to model and deploy applications. Providing them automatically from detected dependencies directly enables the seamless adoption experience.
-
-**Independent Test**: Can be tested by verifying that after dependency detection, valid Resource Type definitions are available (either from catalog or generated) that can be used with Radius.
+**Independent Test**: Can be tested by verifying that after dependency detection, valid Resource Type definitions are available (from catalog match or generated) that can be used with Radius.
 
 **Acceptance Scenarios**:
 
-1. **Given** detected dependencies from codebase analysis, **When** generation is triggered, **Then** Radius creates valid Resource Type definitions for each detected dependency type.
-2. **Given** a detected PostgreSQL dependency, **When** the Resource Type is generated, **Then** the Resource Type includes appropriate properties (connection string pattern, port, database name).
-3. **Given** an existing Resource Type that matches a detected dependency, **When** generation is triggered, **Then** Radius reuses the existing Resource Type rather than creating a duplicate.
+1. **Given** detected dependencies from codebase analysis, **When** generation is triggered, **Then** Radius maps each dependency to a Resource Type from the pre-defined catalog.
+2. **Given** a detected PostgreSQL dependency, **When** the Resource Type is resolved, **Then** the Resource Type includes appropriate properties (connection string pattern, port, database name).
+3. **Given** a detected dependency that is not in the catalog, **When** generation is triggered, **Then** Radius generates a minimal Resource Type and prompts user to contribute it back to the catalog.
+4. **Given** an existing Resource Type that matches a detected dependency, **When** generation is triggered, **Then** Radius reuses the existing Resource Type rather than creating a duplicate.
 
 ---
 
@@ -516,7 +524,7 @@ As a platform engineer, I want Radius to automatically detect and apply my team'
 - **Team practices conflicts** (e.g., different naming patterns in different IaC files): System should detect the conflict, present options to the user, and allow selection.
 - **Config vs detected practices precedence**: Explicit configuration takes precedence; system warns about discrepancies.
 
-> **Note**: See FR-027 (partial discovery failures), FR-019 (Recipe source unavailability), FR-032/FR-033 (re-running discovery) for handling of other edge cases.
+> **Note**: See FR-10 (partial discovery failures), FR-22 (Recipe source unavailability), FR-20/FR-21 (re-running discovery) for handling of other edge cases.
 
 ---
 
@@ -674,154 +682,52 @@ These are intentional design decisions that constrain implementation:
 - **DC-005**: Interactive mode is the default; non-interactive mode is opt-in via `--accept-defaults`.
 - **DC-006**: Skills-first architecture - all capabilities are implemented as composable skills, with CLI commands as thin wrappers.
 
-## Open Questions for Discussion
+## Open Questions for Discussion and Experimentation
 
-These architectural decisions require team discussion before implementation planning.
+### OQ-1: How should the Application Assembly Layer be designed so that skills and AI agents work together deterministically?
 
-### OQ-1: Pre-defined vs Generated Resource Types
-
-**Question**: Should Radius ship with a pre-defined catalog of Resource Types (aligned to Azure Verified Modules), or should Resource Types be generated dynamically based on detected dependencies?
-
-**Context**: Mark's guidance is that the more deterministic we can make Radius, the better. Currently FR-005 says "generate valid Resource Type definitions based on detected dependencies."
-
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Pre-defined catalog** | Ship Radius with a curated catalog of Resource Types for common infrastructure (PostgreSQL, Redis, Cosmos DB, Service Bus, etc.). Discovery maps detected dependencies to existing types. | ✓ Deterministic ✓ Tested ✓ Consistent across users. ✗ Limited to catalog ✗ Requires Radius releases to add new types |
-| **B - Generated on-the-fly** | Radius generates Resource Type schemas dynamically based on what it discovers in the codebase | ✓ Flexible ✓ Handles unknown types. ✗ Non-deterministic ✗ Schema quality varies ✗ Harder to test |
-| **C - Hybrid approach** | Pre-defined catalog for known types, with fallback generation for unrecognized dependencies | ✓ Best of both worlds. ✗ More implementation complexity ✗ Two code paths to maintain |
-
-**Recommendation**: Option A aligns with determinism guidance. The catalog grows with each Radius release.
-
-**Impact if unresolved**: Affects FR-005, User Story 2, and overall architecture of the generation phase.
+This remains an open area for experimentation. The core challenge is ensuring that when multiple skills are composed (by CLI orchestration or AI agents), the results are reproducible and predictable regardless of the invocation path.
 
 ---
 
-### OQ-2: Resource Type Schema Design
+## Clarifications (Resolved)
 
-**Question**: How should Resource Type schemas be determined? What properties should they expose?
+These clarifications have been discussed and resolved:
 
-**Context**: Resource Types define the contract between infrastructure (Recipes) and applications. The schema determines what connection information is available to apps.
+### Q-1: How should Radius source Resource Types (pre-defined catalog vs dynamic generation) and how should their schemas be determined?
 
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Derived from AVM outputs** | Each Resource Type schema mirrors the outputs of its corresponding Azure Verified Module (connection strings, endpoints, keys, resource IDs) | ✓ Direct mapping to AVM ✓ Full Azure capabilities. ✗ Azure-specific ✗ Not portable across cloud providers |
-| **B - Standardized by category** | All databases share a common schema (connectionString, host, port, database, username, password); all caches share another; all queues share another | ✓ Portable ✓ Predictable ✓ Easy for app developers. ✗ May lose cloud-specific features ✗ Lowest common denominator |
-| **C - Minimal portable + extensions** | Core portable schema for common properties, with optional cloud-specific extensions (e.g., `azure.resourceId`, `aws.arn`) | ✓ Portable by default ✓ Cloud features available when needed. ✗ Schema complexity ✗ Apps must handle optional fields |
+Our approach is to have a predefined catalog of Resource Types maintained in the Resource Types repository. This could be community contributed using verified sources like Azure Verified Modules. For unknown dependencies, we will have fallback generation logic to create the type dynamically and have users confirm and contribute back to the catalog in the Resource Types repository.
 
-**Recommendation**: Option B or C - schemas should reflect what *apps* need (connection info), not what *infrastructure* provides.
+For schema definitions of the type, we will use the predefined catalog as the primary source and match the resource type to follow the infrastructure practices detected in the codebase. For unknown dependencies, we will generate a minimal schema with common connection properties from deterministic sources like AVM and allow users to extend them as needed.
 
-**Impact if unresolved**: Affects all Resource Type definitions, Recipe output contracts, and app portability story.
+### Q-2: How would Radius know the source of truth for team infrastructure practices and IaC configurations?
 
----
+Automatically detect team practices from existing IaC configurations in the repository first. Store them in the `discovery.md` output for user review. If an external IaC source or an external documentation like an Internal Wiki needs to be added, users can add them directly to the `discovery.md` file.
 
-### OQ-3: Container Image Strategy
+### Q-3: How should Radius extract infrastructure practices from unstructured documentation (internal wikis, Confluence, Notion)?
 
-**Question**: How should Radius handle container images for detected services when generating the application definition?
+Use an LLM to parse wiki content and extract infrastructure practices into a structured format. Define a lightweight structured format (Markdown with specific headings/tables) that teams can adopt in their wikis to facilitate parsing. The LLM will look for these structures to extract practices reliably.
 
-**Context**: The generated `app.bicep` needs container image references for each service. The codebase may or may not have Dockerfiles, and images may or may not be pre-built.
+### Q-4: How should Radius access the codebase for analysis?
 
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Dockerfile detection** | If a Dockerfile exists, extract or infer the image name; otherwise, generate a placeholder with TODO comment | ✓ Works with existing Docker workflows ✓ Clear guidance for users. ✗ Doesn't help users without Dockerfiles |
-| **B - Image registry inference** | Attempt to infer image names from common patterns (project name, registry conventions) | ✓ More automated. ✗ Often wrong ✗ Magic behavior |
-| **C - Always placeholder** | Always generate placeholders requiring user to specify image names | ✓ Explicit ✓ No wrong guesses. ✗ More manual work ✗ Can't deploy without editing |
+Radius analyzes codebases from the local filesystem only. The user provides a directory path to the project root. No remote repository cloning or external transmission of code occurs during analysis.
 
-**Recommendation**: Option A for v1 - detect Dockerfiles when present, placeholder otherwise.
+### Q-5: What is the default output location for generated files?
 
-**Impact if unresolved**: Affects FR-026, FR-031 implementation and user experience during generation.
+This is dependent on how Radius is installed in a git repository. By default, output to `./radius/discovery.md` for discovery results and `./radius/app.bicep` for the application definition. 
 
----
+### Q-6: What confidence threshold should be used for including detected dependencies?
 
-### OQ-4: MCP Server Deployment Model
+Dependencies with ≥50% confidence are included by default. The system visually distinguishes three tiers: high (≥80%), medium (50-79%), and low (<50%). Users can filter or exclude low-confidence dependencies during review.
 
-**Question**: How should the MCP server be deployed and accessed by AI agents?
+### Q-7: What should happen when Recipe sources are unavailable or return no matches?
 
-**Context**: AI agents (GitHub Copilot, Claude) need to connect to the MCP server to invoke skills. The connection model affects security, setup complexity, and user experience.
+The system continues with graceful degradation. Dependencies without matching Recipes are marked as "no Recipe found" in the output. Users can proceed with partial results and manually specify Recipes later.
 
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Embedded in rad CLI** | `rad mcp serve` starts server; AI agents connect via stdio or local port | ✓ Simple setup ✓ Inherits user auth context. ✗ Must be running ✗ Per-user instance |
-| **B - VS Code extension** | Ship a VS Code extension that bundles the MCP server | ✓ Seamless for VS Code users ✓ Auto-starts. ✗ VS Code only ✗ Separate distribution |
-| **C - Standalone daemon** | Install MCP server as a system service | ✓ Always available ✓ Shared instance. ✗ More complex setup ✗ Security considerations |
-| **D - Remote/cloud hosted** | Radius project hosts a shared MCP server | ✓ Zero setup. ✗ Requires sending code context ✗ Privacy concerns ✗ Operational burden |
+### Q-8: How should Radius identify deployable services within a codebase?
 
-**Recommendation**: Option A (embedded in CLI) with Option B as future enhancement for VS Code users.
+Radius uses entrypoint detection to identify deployable services. It looks for main files, Dockerfiles, package.json scripts (such as `start` or `serve`), and framework-specific entrypoints (such as `app.listen()` or `@SpringBootApplication`).
 
-**Impact if unresolved**: Affects FR-034, FR-035, FR-036 implementation and distribution strategy.
+### Q-9: Which language should be the primary focus for initial release?
 
----
-
-### OQ-5: Recipe Source Configuration UX
-
-**Question**: What is the configuration format and workflow for setting up recipe sources (especially internal repositories)?
-
-**Context**: Enterprise users need to configure access to private Terraform/Bicep repositories. The configuration UX affects adoption friction.
-
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Config file only** | Users manually edit `~/.rad/config.yaml` with source definitions | ✓ Scriptable ✓ Version-controllable. ✗ Error-prone ✗ Discovery of options is hard |
-| **B - Interactive CLI** | `rad recipe source add` walks through configuration interactively | ✓ Guided experience ✓ Validation. ✗ Not scriptable |
-| **C - Both** | Support both config file and interactive CLI, with CLI writing to config file | ✓ Best of both ✓ Users choose workflow. ✗ Two code paths |
-| **D - Environment variables only** | Configure sources via `RAD_RECIPE_SOURCE_*` environment variables | ✓ CI/CD friendly. ✗ Awkward for local dev ✗ Limited structure |
-
-**Recommendation**: Option C - config file as source of truth, with interactive CLI for guided setup.
-
-**Impact if unresolved**: Affects FR-028, FR-029, FR-030 implementation and enterprise adoption.
-
----
-
-### OQ-6: Team Practices Detection Scope
-
-**Question**: What sources should Radius analyze to detect team infrastructure practices, and how deeply should it parse them?
-
-**Context**: The requirement specifies detecting "infrastructure best practices they follow like naming conventions, tags, cost practices for dev/test/prod from their internal wiki or any source." This requires supporting multiple source types.
-
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Config file only** | Team practices must be explicitly configured in `.radius/team-practices.yaml`; no auto-detection | ✓ Explicit ✓ Deterministic ✓ Simple to implement. ✗ Manual setup required ✗ May not reflect actual practices |
-| **B - IaC detection only** | Scan existing IaC files for naming patterns, tags, sizing values without external sources | ✓ Works offline ✓ No auth needed. ✗ Misses documented practices ✗ Limited to code patterns |
-| **C - IaC + Documentation** | Detect from IaC files AND support configured documentation sources (wikis, ADRs, Notion) | ✓ Comprehensive ✓ Captures documented guidelines. ✗ Requires API integrations ✗ Natural language parsing complexity |
-| **D - Full hybrid** | Config file for explicit, IaC detection for patterns, documentation for guidelines, with precedence rules | ✓ Most complete ✓ Flexible for different teams. ✗ Complex implementation ✗ Many integration points |
-
-**Recommendation**: Option C for v1 - support IaC detection plus pluggable documentation sources. Start with Confluence and Notion APIs, with extensibility for other sources.
-
-**Impact if unresolved**: Affects FR-037, FR-044, FR-045 implementation and the scope of external integrations.
-
----
-
-### OQ-7: Documentation Source Parsing Strategy
-
-**Question**: How should Radius extract infrastructure practices from unstructured documentation (internal wikis, Confluence, Notion)?
-
-**Context**: Teams often document infrastructure guidelines in wikis rather than machine-readable formats. Extracting practices from natural language documentation is challenging.
-
-| Option | Description | Trade-offs |
-|--------|-------------|------------|
-| **A - Structured format required** | Require teams to document practices in a specific format (YAML, JSON, or structured Markdown template) | ✓ Reliable parsing ✓ No ambiguity ✓ Simple to implement. ✗ Requires teams to adopt new format ✗ Existing docs not usable |
-| **B - LLM-assisted extraction** | Use an LLM to parse wiki content and extract infrastructure practices | ✓ Works with existing docs ✓ Handles natural language. ✗ Non-deterministic ✗ Requires LLM access ✗ Cost/latency |
-| **C - Pattern-based extraction** | Use regex/heuristics to find common patterns (tables, headers like "Naming Convention", lists) | ✓ Deterministic ✓ Works offline ✓ No LLM needed. ✗ Fragile ✗ Misses unstructured content |
-| **D - Hybrid** | Pattern-based first, with optional LLM enhancement for ambiguous content | ✓ Best accuracy ✓ Graceful degradation. ✗ Two code paths ✗ Complexity |
-
-**Recommendation**: Option A for v1 - define a lightweight structured format (Markdown with specific headings/tables) that teams can adopt in their wikis. Consider Option D for future versions.
-
-**Impact if unresolved**: Affects FR-044 implementation and determines whether wiki integration is practical for v1.
-
----
-
-## Clarifications
-
-### Session 2026-01-28
-
-- Q: How should Radius access the codebase for analysis? → A: Local filesystem only - user provides a directory path
-- Q: What is the default output location for generated files? → Depends on the model generated from Repo Radius
-- Q: Should the workflow be single command or multi-step? → A: Multi-step (discover, generate, deploy) for transparency
-- Q: Should interactive mode be default? → A: Yes, with `--accept-defaults` for CI/CD
-- Q: What confidence threshold should be used for including detected dependencies? → A: Show all ≥50% confidence, visually distinguish high (≥80%), medium (50-79%), and low (<50%) tiers
-- Q: What should happen when Recipe sources are unavailable or return no matches? → A: Graceful degradation - continue but mark dependencies as "no Recipe found", let user proceed or manually specify
-- Q: How should Radius identify deployable services within a codebase? → A: Entrypoint detection - look for main files, Dockerfiles, package.json scripts, or framework-specific entrypoints
-- Q: Where should recipe profiles (development, production) be defined? → A: Built-in with override - default profiles ship with Radius, users can override via config file
-- Q: Which language should be the primary focus for initial release? → A: Equal priority - all 5 languages (Python, JS/TS, Go, Java, C#) at same priority from start
-- Q: Should the feature be architected as composable skills/tools for AI agent integration? → A: Skills-first architecture - build as composable tools, CLI wraps them, expose via MCP for AI agents
-- Q: What is the relationship between Resource Types and Recipes? → A: **Resource Types are the interface/schema** (the abstraction defining what properties apps consume); **Recipes are the implementation** (the actual IaC code - Terraform/Bicep - that provisions infrastructure). This separation enables portability across environments.
-- Q: Should Radius incorporate team infrastructure practices when generating Resource Types? → A: **Yes** - see OQ-6 and OQ-7 for detailed options on detection scope and documentation parsing.
-- Q: Should Radius detect and utilize existing IaC and deployment scripts? → A: **Yes, Option A** - Parse and incorporate existing IaC (Terraform, Bicep, Helm) to leverage existing work and preserve team customizations.
+All five supported languages have equal priority from the start: Python, JavaScript/TypeScript, Go, Java, and C#. This ensures mixed-language teams can adopt the feature without waiting for their language to be supported.
