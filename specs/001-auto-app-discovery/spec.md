@@ -692,7 +692,7 @@ This remains an open area for experimentation. The core challenge is ensuring th
 
 ## Clarifications (Resolved)
 
-These clarifications have been discussed and resolved:
+These preliminary clarifications have been discussed and documented to guide implementation:
 
 ### Q-1: How should Radius source Resource Types (pre-defined catalog vs dynamic generation) and how should their schemas be determined?
 
