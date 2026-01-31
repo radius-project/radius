@@ -730,4 +730,4 @@ Radius uses entrypoint detection to identify deployable services. It looks for m
 
 ### Q-9: Which language should be the primary focus for initial release?
 
-All five supported languages have equal priority from the start: Python, JavaScript/TypeScript, Go, Java, and C#. This ensures mixed-language teams can adopt the feature without waiting for their language to be supported.
+Use LLMs to read and analyze the codebase, which automatically enables support for all popular programming languages without language-specific analyzers. 
