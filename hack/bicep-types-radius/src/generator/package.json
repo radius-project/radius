@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "description": "The Azure Bicep extension for classic generators in AutoRest.",
   "pnpm": {
-    "onlyBuiltDependencies": ["autorest"]
+    "onlyBuiltDependencies": [
+      "autorest"
+    ]
   },
   "scripts": {
     "build": "tsc -p .",

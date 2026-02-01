@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "pnpm": {
-    "onlyBuiltDependencies": ["autorest"]
+    "onlyBuiltDependencies": [
+      "autorest"
+    ]
   },
   "scripts": {
     "build": "tsc -p .",
