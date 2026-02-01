@@ -180,9 +180,9 @@ If you were trying to run `make generate` and ran into an error, then one of the
 Enter the following commands to install all of the required tools.
 
 ```bash
-cd typespec && npm ci
-npm install -g autorest@3.7.2
-npm install -g oav@4.0.2
+cd typespec && pnpm install
+pnpm add -g autorest@3.7.2
+pnpm add -g oav@4.0.2
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 go install go.uber.org/mock/mockgen@v0.4.0
 ```

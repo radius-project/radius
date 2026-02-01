@@ -2,12 +2,16 @@
   "name": "@autorest/bicep",
   "version": "1.0.0",
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": ["autorest"]
+  },
   "scripts": {
     "build": "tsc -p .",
     "test": "jest",
     "start": "node ./dist/src/main.js",
     "lint": "eslint src --ext ts",
-    "lint:fix": "eslint src --ext ts --fix"
+    "lint:fix": "eslint src --ext ts --fix",
+    "postinstall": "cd node_modules/bicep-types-repo/src/bicep-types && npm install && npm run build && cd ../../../.. && rm -rf node_modules/bicep-types && ln -sf bicep-types-repo/src/bicep-types node_modules/bicep-types"
   },
   "dependencies": {
     "@autorest/codemodel": "^4.20.0",
@@ -30,6 +34,6 @@
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
-    "bicep-types": "file:../../../../bicep-types/src/bicep-types"
+    "bicep-types-repo": "git+https://github.com/Azure/bicep-types.git#556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7"
   }
 }

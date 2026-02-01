@@ -30,7 +30,13 @@ generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
 	@echo "$(ARROW) Detecting tsp..."
-	cd typespec/ && npx$(CMD_EXT) -q -y tsp --help > /dev/null || { echo "run 'npm ci' in typespec directory."; exit 1; }
+	cd typespec/ && npx$(CMD_EXT) -q -y tsp --help > /dev/null || { echo "run 'pnpm install' in typespec directory."; exit 1; }
+	@echo "$(ARROW) OK"
+
+.PHONY: generate-pnpm-installed
+generate-pnpm-installed:
+	@echo "$(ARROW) Detecting pnpm..."
+	@which pnpm > /dev/null || { echo "pnpm is a required dependency. Install via: npm install -g pnpm"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
@@ -52,7 +58,7 @@ generate-node-installed:
 .PHONY: generate-autorest-installed
 generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
-	@which autorest > /dev/null || { echo "run 'npm install -g autorest@3.7.2' to install autorest"; exit 1; }
+	@which autorest > /dev/null || { echo "run 'pnpm add -g autorest@3.7.2' to install autorest"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-controller-gen-installed
@@ -131,15 +137,12 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	go generate -v ./...
 
 .PHONY: generate-bicep-types
-generate-bicep-types: generate-node-installed ## Generate Bicep extensibility types
+generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
-	git submodule update --init --recursive; \
-	npm --prefix bicep-types/src/bicep-types install; \
-	npm --prefix bicep-types/src/bicep-types ci && npm --prefix bicep-types/src/bicep-types run build; \
-	npm --prefix hack/bicep-types-radius/src/autorest.bicep ci && npm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
+	pnpm --prefix hack/bicep-types-radius/src/autorest.bicep install && pnpm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	npm --prefix hack/bicep-types-radius/src/generator ci && npm --prefix hack/bicep-types-radius/src/generator run generate -- --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+	pnpm --prefix hack/bicep-types-radius/src/generator install && pnpm --prefix hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
 
 
 .PHONY: generate-containerinstance-client

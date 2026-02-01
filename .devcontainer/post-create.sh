@@ -3,7 +3,7 @@
 set -e
 
 # Install TypeSpec first to ensure the language server is available when the VS Code extension loads.
-npm install -g @typespec/compiler
+pnpm add -g @typespec/compiler
 
 # Adding workspace as safe directory to avoid permission issues
 git config --global --add safe.directory /workspaces/radius
@@ -18,6 +18,6 @@ go install go.uber.org/mock/mockgen@v0.4.0
 
 # Prerequisites for Code Generation, see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites#code-generation
 cd typespec || exit
-npm ci
-npm install -g autorest@3.7.2
-npm install -g oav@4.0.2
+pnpm install
+pnpm add -g autorest@3.7.2
+pnpm add -g oav@4.0.2

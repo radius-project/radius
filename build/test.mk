@@ -176,7 +176,7 @@ test-helm: ## Runs Helm chart unit tests
 .PHONY: oav-installed
 oav-installed:
 	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
-	@which oav > /dev/null || { echo "run 'npm install -g oav@4.0.2' to install oav"; exit 1; }
+	@which oav > /dev/null || { echo "run 'pnpm add -g oav@4.0.2' to install oav"; exit 1; }
 	@echo "$(ARROW) OK"
 
 # TODO re-enable https://github.com/radius-project/radius/issues/5091

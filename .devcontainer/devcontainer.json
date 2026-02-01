@@ -9,7 +9,9 @@
     //Programming languages
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/guiyomh/features/gotestsum:0.1.1": {},
-    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "pnpmVersion": "10"
+    },
     "ghcr.io/devcontainers/features/python:1": {},
     //Container and K8s
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
