@@ -58,7 +58,7 @@ generate-node-installed:
 .PHONY: generate-autorest-installed
 generate-autorest-installed:
 	@echo "$(ARROW) Detecting autorest..."
-	@which autorest > /dev/null || { echo "run 'pnpm add -g autorest@3.7.2' to install autorest"; exit 1; }
+	@which autorest > /dev/null || { echo "run 'pnpm add -g autorest@3.7.2 --allow-build=autorest' to install autorest"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-controller-gen-installed
@@ -140,9 +140,9 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
-	pnpm --prefix hack/bicep-types-radius/src/autorest.bicep install && pnpm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
+	CI=true pnpm --prefix hack/bicep-types-radius/src/autorest.bicep install && pnpm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	pnpm --prefix hack/bicep-types-radius/src/generator install && pnpm --prefix hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+	CI=true pnpm --prefix hack/bicep-types-radius/src/generator install && pnpm --prefix hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
 
 
 .PHONY: generate-containerinstance-client

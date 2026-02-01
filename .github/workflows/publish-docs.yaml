@@ -100,7 +100,7 @@ jobs:
           popd
 
       - name: Install autorest
-        run: pnpm add -g autorest@3.7.2
+        run: pnpm add -g autorest@3.7.2 --allow-build=autorest
 
       - name: Install oav
         run: pnpm add -g oav@4.0.2

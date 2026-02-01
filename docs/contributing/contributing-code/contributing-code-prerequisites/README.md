@@ -181,7 +181,7 @@ Enter the following commands to install all of the required tools.
 
 ```bash
 cd typespec && pnpm install
-pnpm add -g autorest@3.7.2
+pnpm add -g autorest@3.7.2 --allow-build=autorest
 pnpm add -g oav@4.0.2
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 go install go.uber.org/mock/mockgen@v0.4.0
