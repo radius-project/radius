@@ -107,4 +107,4 @@ rm -rf bicep-types
 
 ## Questions?
 
-If you encounter issues with this migration, please open an issue at https://github.com/radius-project/radius/issues.
+If you encounter issues with this migration, please open an issue at <https://github.com/radius-project/radius/issues>.
