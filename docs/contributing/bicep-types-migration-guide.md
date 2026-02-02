@@ -2,9 +2,74 @@
 
 This guide is for developers who have an existing clone of the Radius repository that includes the `bicep-types` git submodule. After this migration, the submodule is no longer used—bicep-types dependencies are now managed via pnpm.
 
-## One-Time Migration Steps
+## What Changed
 
-If you cloned the repository before this migration, run the following commands to clean up your local copy:
+- **No more submodule**: The `bicep-types` git submodule has been removed
+- **pnpm for JavaScript dependencies**: All JavaScript/TypeScript projects now use pnpm instead of npm
+- **Automatic dependency fetch**: The `bicep-types` package is now fetched as a git dependency and built via a `postinstall` script
+- **Simpler cloning**: New clones no longer require `--recurse-submodules` flag
+
+## Prerequisites
+
+### Remove global TypeSpec compiler
+
+TypeSpec (`@typespec/compiler`) should **not** be installed globally. A global installation can cause version conflicts and unexpected behavior. Typespec should be installed locally in the `typespec` folder via pnpm so that the correct version is used.
+
+To check if you have TypeSpec installed globally:
+
+```bash
+npm list -g @typespec/compiler
+```
+
+If it is installed globally, remove it:
+
+```bash
+npm uninstall -g @typespec/compiler
+```
+
+Then ensure the local installation is available by running:
+
+```bash
+pnpm -C typespec install
+```
+
+You can run `make generate-tsp-installed` to verify that the local TypeSpec installation is working correctly.
+
+## Installing Dependencies
+
+After the migration, install dependencies using pnpm:
+
+```bash
+# Install pnpm if not already installed
+npm install -g pnpm
+
+# Install typespec dependencies
+pnpm -C typespec install
+```
+
+## Verifying the Migration
+
+Run the build to verify everything works:
+
+```bash
+make generate
+```
+
+If you need to regenerate Bicep types: (note: this target is included in `make generate`)
+
+```bash
+make generate-bicep-types
+```
+
+The above commands should complete without errors and without new pending changes in git.
+
+## Switching Between Branches
+
+Git should allow you to switch freely between branches that have the submodule and branches that don't. However, it is possible for git to enter an invalid state in which you cannot switch branches due to errors related to the submodule.
+
+**Git errors related to the submodule are recoverable and you should not need to re-clone the repo.**
+
+When this happens, follow the steps below to resolve it:
 
 ```bash
 # Navigate to your radius repository
@@ -28,48 +93,6 @@ git pull
 git submodule status
 # Should show no submodules
 ```
-
-## Installing Dependencies
-
-After the migration, install dependencies using pnpm:
-
-```bash
-# Install pnpm if not already installed
-npm install -g pnpm
-
-# Install typespec dependencies
-cd typespec
-pnpm install
-cd ..
-
-# Install bicep types generator dependencies (if you need to run code generation)
-cd hack/bicep-types-radius/src/generator
-pnpm install
-cd ../autorest.bicep
-pnpm install
-cd ../../../..
-```
-
-## Verifying the Migration
-
-Run the build to verify everything works:
-
-```bash
-make build
-```
-
-If you need to regenerate Bicep types:
-
-```bash
-make generate-bicep-types
-```
-
-## What Changed
-
-- **No more submodule**: The `bicep-types` git submodule has been removed
-- **pnpm for JavaScript dependencies**: All JavaScript/TypeScript projects now use pnpm instead of npm
-- **Automatic dependency fetch**: The `bicep-types` package is now fetched as a git dependency and built via a `postinstall` script
-- **Simpler cloning**: New clones no longer require `--recurse-submodules` flag
 
 ## Troubleshooting
 
