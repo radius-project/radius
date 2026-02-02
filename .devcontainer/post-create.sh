@@ -10,21 +10,6 @@ echo "==========================================================================
 echo "Setting SHELL environment variable..."
 export SHELL="${SHELL:-/bin/bash}"
 
-# Configure pnpm global bin directory
-echo "Configuring pnpm global bin directory..."
-pnpm setup
-export PNPM_HOME="$HOME/.local/share/pnpm"
-export PATH="$PNPM_HOME:$PATH"
-
-# Configure pnpm store directory inside the container to avoid hard-link issues
-# with mounted workspace filesystem (hard links cannot cross filesystem boundaries)
-echo "Configuring pnpm store directory..."
-pnpm config set store-dir /tmp/.pnpm-store
-
-# Install TypeSpec first to ensure the language server is available when the VS Code extension loads.
-echo "Installing TypeSpec compiler globally..."
-pnpm add -g @typespec/compiler
-
 # Adding workspace as safe directory to avoid permission issues
 echo "Adding workspace as git safe directory..."
 git config --global --add safe.directory /workspaces/radius
@@ -41,12 +26,27 @@ go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 echo "Installing mockgen..."
 go install go.uber.org/mock/mockgen@v0.4.0
 
+# Configure pnpm global bin directory
+echo "Configuring pnpm global bin directory..."
+pnpm setup
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH="$PNPM_HOME:$PATH"
+
+# Configure pnpm store directory inside the container to avoid hard-link issues
+# with mounted workspace filesystem (hard links cannot cross filesystem boundaries)
+echo "Configuring pnpm store directory..."
+pnpm config set store-dir /tmp/.pnpm-store
+
+# Install TypeSpec first to ensure the language server is available when the VS Code extension loads.
+echo "Installing TypeSpec compiler globally..."
+pnpm add -g @typespec/compiler
+
 # Prerequisites for Code Generation, see https://github.com/radius-project/radius/tree/main/docs/contributing/contributing-code/contributing-code-prerequisites#code-generation
 echo "Setting up TypeSpec dependencies..."
 cd typespec || exit
 
 echo "Installing typespec pnpm dependencies..."
-pnpm install --force
+pnpm install
 
 echo "Installing autorest globally..."
 pnpm add -g autorest@3.7.2 --allow-build=autorest
