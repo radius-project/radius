@@ -140,9 +140,9 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
-	CI=true pnpm --prefix hack/bicep-types-radius/src/autorest.bicep install && pnpm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
+	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	CI=true pnpm --prefix hack/bicep-types-radius/src/generator install && pnpm --prefix hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
 
 
 .PHONY: generate-containerinstance-client
