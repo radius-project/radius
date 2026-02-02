@@ -25,169 +25,37 @@ Radius supports two modes of operation:
 
 Users switch between modes using `rad workspace switch <name>`. The `git` workspace is always available as a built-in option.
 
+### Application Lifecycle
+
+The Radius application lifecycle consists of six phases:
+
+| Phase | Command | Description | Scope |
+|-------|---------|-------------|-------|
+| **1. Model** | *(separate project)* | Define the application model in Bicep, describing resources and their dependencies | Out of scope |
+| **2. Plan** | `rad plan` | Generate ready-to-deploy artifacts (Terraform configs, Bicep templates) from the model | **This spec** |
+| **3. Deploy** | `rad deploy` | Execute deployment from a committed Git state, provisioning cloud resources | **This spec** |
+| **4. Detect** | *(automatic)* | Capture deployment results and detect infrastructure state for graph population | **This spec** |
+| **5. Diff** | `rad diff` | Identify differences between planned state and actual cloud resources | **This spec** |
+| **6. Graph** | *(separate project)* | Populate and query the Radius Graph with application topology and resource relationships | Out of scope |
+| **7. Delete** | `rad delete` | Destroy deployed resources and clean up infrastructure | **This spec** |
+
+This specification covers phases 2, 3, 4, 5, and 7. The Model phase (1) and Graph phase (6) are handled by separate projects that integrate with the artifacts and deployment records produced by this specification.
+
 ## Clarifications
 
-### Session 2026-01-29
+### Session 2026-02-02
 
-- Q: How should Resource Types be populated in `.radius/config/types/` during `rad init`? → A: Clone/fetch specific directory via git sparse-checkout from resource-types-contrib repo
-- Q: What should happen if `rad init` cannot reach the resource-types-contrib repository or authentication fails during Resource Types population? → A: Fail initialization with exit code 2 and clear error message instructing user to resolve connectivity/auth and retry
-- Q: What level of detail should be captured for each deployed resource's properties in deployment records? → A: Full properties as returned by cloud provider (complete resource snapshot)
-- Q: What should happen when a deployment fails partway through resource provisioning? → A: Rollback all successfully deployed resources (attempt to delete them) before exiting. Repo Radius must provide atomic and idempotent deployment semantics - either all resources deploy successfully, or none remain.
-- Q: How should Repo Radius handle concurrent deployments to the same environment (e.g., two GitHub Actions workflows triggering simultaneously)? → A: Use deployment tool's native locking (Terraform state locking, ARM deployment locks) - no additional Repo Radius locking layer
-
-### Session 2026-01-30
-
-- Q: How should Kubernetes authentication be configured for deployments? Should separate credential environment variables be introduced, or rely on standard kubeconfig credential chain? → A: Use standard kubeconfig credential chain - no separate K8s credential env vars
-- Q: How should Terraform backend configuration be managed? Should Repo Radius initialize/manage the backend, or delegate backend configuration to users? → A: Backend config is user's responsibility, but .env files should support a TF_BACKEND_CONFIG variable that points to a partial backend configuration file (used with terraform init -backend-config=<file>)
-- Q: What error message format should Repo Radius use for reporting failures? → A: Single static error format with structured fields (error code, message, affected resource, suggested action)
-- Q: How long should deployment records in `.radius/deploy/` be retained? Should there be automatic cleanup of old deployments? → A: Keep all deployment records indefinitely (no automatic cleanup)
-- Q: When a recipe's version changes between `rad app plan` runs (e.g., updating git ref or OCI tag in recipes.yaml), should the system block, allow silently, or allow with a warning? → A: Allow but warn - Recipe versions are already captured in plan output (main.tf references recipeLocation with version, plan.yaml), so no additional tracking needed. The warning provides visibility and the audit trail exists in plan artifacts.
-
-## Open Issues
-
-The following issues require further investigation or design decisions:
-
-### OI-001: Bicep What-If for Kubernetes Deployments
-
-**Context**: For Azure deployments, `az deployment group what-if` provides a preview of changes before deployment. However, when deploying Bicep to Kubernetes via the Bicep Kubernetes extension, there is no equivalent what-if capability.
-
-**Question**: How should `rad app plan` generate plan output for Kubernetes Bicep deployments?
-
-**Options to investigate**:
-1. Skip what-if for Kubernetes Bicep deployments (only validate with `bicep build`)
-2. Generate a diff by comparing the rendered Kubernetes manifests against the current cluster state
-3. Use `kubectl diff` on the generated manifests after Bicep compilation
-4. Document this as a limitation and proceed without what-if output for K8s Bicep
-
-**Impact**: Without what-if output, users won't see a preview of Kubernetes resource changes before deployment, reducing the auditability benefit of the plan phase for K8s Bicep recipes.
-
-**Status**: Unresolved
-
----
-
-## Recommendations for Open Questions
-
-### Q1: What features or behaviors would make Repo Radius particularly well-suited for GitHub Actions?
-
-**Recommendation**: The following features optimize Repo Radius for GitHub Actions:
-
-1. **Exit Codes**: Use semantic exit codes that enable GitHub Actions conditionals:
-   - `0` = Success
-   - `1` = General error
-   - `2` = Validation error (configuration/input problems)
-   - `3` = Authentication/authorization error
-   - `4` = Resource conflict/state error
-   - `5` = Deployment failure
-
-2. **Simple CI Integration**: Commands use exit codes for success/failure. Workflow steps proceed naturally based on exit codes—no parsing required:
-   ```yaml
-   - name: Generate deployment plan
-     run: rad app plan myapp.bicep --environment production
-     # Exit code 0 = success, non-zero = failure
-   
-   - name: Deploy (only runs if plan succeeded)
-     run: rad app deploy --application myapp --environment production -y
-   ```
-
-3. **GitHub Actions Artifacts Integration**: Output file paths and metadata in structured format so workflows can easily upload artifacts:
-   ```yaml
-   - name: Deploy with Radius
-     run: rad app deploy ${{ github.sha }} --application myapp --environment production -y
-   
-   - name: Upload deployment artifacts
-     uses: actions/upload-artifact@v4
-     with:
-       name: radius-deployment
-       path: .radius/deploy/
-   ```
-
-4. **Silent/Quiet Mode**: Support `--quiet` flag that suppresses progress output but preserves structured JSON/YAML output for cleaner workflow logs
-
-5. **Commit SHA Auto-detection**: When running in GitHub Actions, automatically detect `GITHUB_SHA` environment variable for `rad app deploy` so users don't need to manually specify the commit argument
-
-6. **Pre-built GitHub Action**: Provide an official GitHub Action wrapper for easy integration:
-   ```yaml
-   - uses: radius-project/repo-radius-action@v1
-     with:
-       command: 'deploy'
-       environment: 'production'
-   ```
-
-### Q2: What file format should be used to store deployed resource details?
-
-**Recommendation**: **JSON** is the optimal format for the following reasons:
-
-1. **Native Format Preservation**: Deployment details are captured from cloud APIs (Azure ARM, AWS, Kubernetes) which return JSON natively. Using JSON preserves the exact format without conversion.
-2. **Programmatic Access**: JSON is easily parsed by scripts and tools for automation and analysis.
-3. **Widely Supported**: All programming languages and CI/CD tools have excellent JSON parsing libraries.
-4. **Consistency with APIs**: Aligns with the JSON output of `az resource show`, `terraform show -json`, and Kubernetes API responses.
-
-**Structure Example**:
-```json
-// .radius/deploy/deployment-production-abc1234.json
-{
-  "deployment": {
-    "commit": "abc123def456",
-    "timestamp": "2026-01-29T15:30:00Z",
-    "environment": "production"
-  },
-  "resources": [
-    {
-      "id": "/subscriptions/xyz/resourceGroups/myapp-rg/providers/Microsoft.Storage/storageAccounts/myappsa",
-      "type": "Microsoft.Storage/storageAccounts",
-      "name": "myappsa",
-      "properties": {
-        "location": "eastus",
-        "sku": {
-          "name": "Standard_LRS"
-        },
-        "kind": "StorageV2",
-        "accessTier": "Hot",
-        "provisioningState": "Succeeded",
-        "creationTime": "2026-01-29T15:28:00Z"
-      }
-    },
-    {
-      "id": "arn:aws:s3:::my-app-bucket",
-      "type": "AWS::S3::Bucket",
-      "name": "my-app-bucket",
-      "properties": {
-        "region": "us-east-1",
-        "versioning": {
-          "status": "Enabled"
-        },
-        "encryption": {
-          "type": "AES256"
-        },
-        "creationDate": "2026-01-29T15:28:00Z"
-      }
-    }
-  ]
-}
-```
-
-### Q3: Does Radius need a state store for AWS resources to maintain idempotency?
-
-**Recommendation**: **No state store is needed** for the following reasons:
-
-1. **Terraform State Management**: When using Terraform as the deployment tool for AWS, Terraform manages its own state file (`.tfstate`). Repo Radius can rely on Terraform's built-in idempotency mechanisms without introducing a parallel state store.
-
-2. **State Storage Options**: Users can configure Terraform state backends (S3 + DynamoDB, Terraform Cloud) via the `terraformrc` configuration in their `.env` files. Repo Radius doesn't need to manage this—it's part of the existing Terraform ecosystem.
-
-3. **Azure with Bicep**: Azure Resource Manager provides native idempotency, so no additional state store is needed for Azure deployments with Bicep.
-
-**Implementation Guidance**:
-- AWS deployments: Terraform only (Terraform manages state)
-- Azure deployments: Bicep (ARM provides idempotency) OR Terraform (Terraform manages state)
-- Kubernetes deployments: Helm or direct manifest application (Kubernetes provides idempotency)
+- Q: What should happen when a deployment fails partway through resource provisioning? → A: **Stop on failure** - stop immediately, leave successfully deployed resources in place, no automatic rollback. User handles cleanup or retry.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Initialize Repository for Repo Radius (Priority: P1)
+### User Story 1 - Initialize Repository for Radius (Priority: P1)
 
-As a developer, I want to initialize my Git repository for Repo Radius so that I can begin defining my infrastructure and application model in a Git-centric workflow.
+As a developer, I want to initialize my Git repository for Radius so that I can begin defining my infrastructure and application model in a Git-centric workflow.
 
-**Why this priority**: Initialization is the entry point for all Repo Radius functionality. Without this, no other features can be used.
+> **Breaking Change**: This `rad init` implementation **completely replaces** the existing `rad init` functionality. The current `rad init` command initializes/installs a Radius control plane on Kubernetes. The new `rad init` initializes a Git repository as a Radius workspace. Users who need to install a Radius control plane should use `rad install kubernetes` instead.
+
+**Why this priority**: Initialization is the entry point for all Git workspace functionality. Without this, no other features can be used.
 
 **Independent Test**: Can be fully tested by running `rad init` in a Git repository and verifying the directory structure is created, Resource Types are populated, and environment configuration is established.
 
@@ -200,8 +68,8 @@ As a developer, I want to initialize my Git repository for Repo Radius so that I
    - `.radius/config/` (contains Radius configuration files)
    - `.radius/config/types/` (contains Resource Types)
    - `.radius/model/` (contains application model, created by separate project)
-   - `.radius/plan/` (contains deployment artifacts generated by `rad app plan`)
-   - `.radius/deploy/` (contains resource details captured by `rad app deploy`)
+   - `.radius/plan/` (contains deployment artifacts generated by `rad plan`)
+   - `.radius/deploy/` (contains resource details captured by `rad deploy`)
 4. **Given** I run `rad init` in a valid Git repository, **When** initialization completes, **Then** the system populates `.radius/config/types/` with Resource Types from the Radius resource-types-contrib repository using git sparse-checkout to clone/fetch only the specific types directory (avoiding full repository download)
 5. **Given** I run `rad init`, **When** the system cannot reach the resource-types-contrib repository or authentication fails during Resource Types population, **Then** the system displays a clear error message instructing the user to resolve connectivity/authentication issues and retry, and exits with code 2
 6. **Given** existing `.env` files exist in the repository, **When** I run `rad init`, **Then** the system searches for all `.env*` files and validates each contains required configuration
@@ -252,7 +120,7 @@ As a developer, I want to initialize my Git repository for Repo Radius so that I
           git commit -m "Initialize Repo Radius"
        2. Create your application model in .radius/model/
        3. Generate a deployment plan:
-          rad app plan .radius/model/<app>.bicep --environment <env>
+          rad plan .radius/model/<app>.bicep --environment <env>
     
     💡 Run 'rad --help' for more commands and options
     ```
@@ -265,16 +133,16 @@ As a developer, I want to generate ready-to-deploy deployment artifacts from my 
 
 **Why this priority**: Artifact generation populates the Radius Graph with the concrete deployment instructions (Terraform configurations, Bicep templates, etc.) that will be executed during deployment. This bridges the gap between the abstract application model and actual infrastructure provisioning.
 
-**Independent Test**: Can be fully tested by running `rad app plan <app.bicep> --environment <env>` with a valid application model and verifying deployment artifacts are generated in `.radius/plan/<app>/<env>/` and Terraform plan output is captured (if applicable).
+**Independent Test**: Can be fully tested by running `rad plan <app.bicep> --environment <env>` with a valid application model and verifying deployment artifacts are generated in `.radius/plan/<app>/<env>/` and Terraform plan output is captured (if applicable).
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid application model exists in `.radius/model/`, **When** I run `rad app plan .radius/model/myapp.bicep --environment production`, **Then** the system invokes the Radius Deployment Engine to determine the deployment sequence and generates ready-to-deploy deployment artifacts in `.radius/plan/myapp/production/`
+1. **Given** a valid application model exists in `.radius/model/`, **When** I run `rad plan .radius/model/myapp.bicep --environment production`, **Then** the system invokes the Radius Deployment Engine to determine the deployment sequence and generates ready-to-deploy deployment artifacts in `.radius/plan/myapp/production/`
 2. **Given** deployment artifacts are generated, **When** I examine them, **Then** they are derived from the recipe file specified in the `.env` file (or the environment-specific `.env.<ENVIRONMENT_NAME>` file if specified)
 3. **Given** generated deployment artifacts exist, **When** I review their intended use, **Then** the artifacts are not intended to be modified by users but are captured for auditability and to populate the Radius Graph
-4. **Given** the Deployment Engine determines the execution sequence, **When** I run `rad app plan`, **Then** the system:
+4. **Given** the Deployment Engine determines the execution sequence, **When** I run `rad plan`, **Then** the system:
    - Creates the output directory at `.radius/plan/<application>/<environment>/` (e.g., `.radius/plan/myapp/production/`)
-   - Creates sequenced subdirectories named `<sequence>-<resourceName>-<deploymentTool>/` (e.g., `001-network-terraform/`, `002-database-bicep/`)
+   - Creates sequenced subdirectories named `<sequence>-<resourceName>-<tool>/` (e.g., `001-network-terraform/`, `002-database-bicep/`)
    - Generates a `plan.yaml` at `.radius/plan/<application>/<environment>/plan.yaml` containing the ordered list of deployment steps, resource type mappings, and dependencies between steps
 5. **Given** a deployment step uses `recipeKind: terraform`, **When** generating artifacts for that step, **Then** the system:
    - Generates a `terraform.tfvars` file containing all Terraform variable values derived from the application model and environment configuration
@@ -301,14 +169,14 @@ As a developer, I want to generate ready-to-deploy deployment artifacts from my 
      - `AZURE_SUBSCRIPTION_ID` environment variable value (if set)
      - `AZURE_RESOURCE_GROUP` environment variable value (if set)
      - Kubernetes context and namespace (if deploying to Kubernetes)
-7. **Given** a recipe entry has `recipeKind: terraform` and the `recipeLocation` is not pinned to a specific Git commit hash or tag, **When** I run `rad app plan`, **Then** the system displays an error "Recipe '<resourceType>' uses an unpinned Terraform module. Use a Git commit hash or tag for reproducible deployments, or run with `--allow-unpinned-recipes` to override." and exits with code 2
-8. **Given** a recipe entry has `recipeKind: bicep` and the `recipeLocation` uses the `latest` OCI tag, **When** I run `rad app plan <app.bicep> -e <env>`, **Then** the system displays an error "Recipe '<resourceType>' uses the 'latest' OCI tag. Use a specific version tag for reproducible deployments, or run with `--allow-unpinned-recipes to override`." and exits with code 2
-9. **Given** recipes use unpinned versions, **When** I run `rad app plan <app.bicep> -e <env> --allow-unpinned-recipes`, **Then** the system proceeds with a warning "Warning: Using unpinned recipe versions. Deployments may not be reproducible." but does not fail
-10. **Given** a recipe's version has changed since the last `rad app plan` run (e.g., updating git ref or OCI tag in recipes.yaml), **When** I run `rad app plan <app.bicep> -e <env>`, **Then** the system displays a warning listing each recipe whose version changed: "Warning: Recipe version changed for '<resourceType>': <old-version> → <new-version>. Review plan artifacts to verify intended changes." and continues (recipe versions are captured in plan output: main.tf references recipeLocation with version, plan.yaml provides audit trail)
-11. **Given** the specified Bicep file does not exist, **When** I run `rad app plan .radius/model/nonexistent.bicep -e production`, **Then** the system displays an error "Bicep file not found: .radius/model/nonexistent.bicep" and exits with code 2
-12. **Given** the recipe file specified in `.env` does not exist, **When** I run `rad app plan <app.bicep> -e <env>`, **Then** the system displays an error "Recipe file not found at <path>. Please check your .env configuration." and exits with code 2
-13. **Given** I run `rad app plan` without the `--environment` flag, **When** the command is parsed, **Then** the system displays an error "Missing required --environment flag" with usage instructions and exits with code 2
-14. **Given** `rad app plan` completes successfully, **When** the plan is generated, **Then** the system displays a summary and next steps:
+7. **Given** a recipe entry has `recipeKind: terraform` and the `recipeLocation` is not pinned to a specific Git commit hash or tag, **When** I run `rad plan`, **Then** the system displays an error "Recipe '<resourceType>' uses an unpinned Terraform module. Use a Git commit hash or tag for reproducible deployments, or run with `--allow-unpinned-recipes` to override." and exits with code 2
+8. **Given** a recipe entry has `recipeKind: bicep` and the `recipeLocation` uses the `latest` OCI tag, **When** I run `rad plan <app.bicep> -e <env>`, **Then** the system displays an error "Recipe '<resourceType>' uses the 'latest' OCI tag. Use a specific version tag for reproducible deployments, or run with `--allow-unpinned-recipes to override`." and exits with code 2
+9. **Given** recipes use unpinned versions, **When** I run `rad plan <app.bicep> -e <env> --allow-unpinned-recipes`, **Then** the system proceeds with a warning "Warning: Using unpinned recipe versions. Deployments may not be reproducible." but does not fail
+10. **Given** a recipe's version has changed since the last `rad plan` run (e.g., updating git ref or OCI tag in recipes.yaml), **When** I run `rad plan <app.bicep> -e <env>`, **Then** the system displays a warning listing each recipe whose version changed: "Warning: Recipe version changed for '<resourceType>': <old-version> → <new-version>. Review plan artifacts to verify intended changes." and continues (recipe versions are captured in plan output: main.tf references recipeLocation with version, plan.yaml provides audit trail)
+11. **Given** the specified Bicep file does not exist, **When** I run `rad plan .radius/model/nonexistent.bicep -e production`, **Then** the system displays an error "Bicep file not found: .radius/model/nonexistent.bicep" and exits with code 2
+12. **Given** the recipe file specified in `.env` does not exist, **When** I run `rad plan <app.bicep> -e <env>`, **Then** the system displays an error "Recipe file not found at <path>. Please check your .env configuration." and exits with code 2
+13. **Given** I run `rad plan` without the `--environment` flag, **When** the command is parsed, **Then** the system displays an error "Missing required --environment flag" with usage instructions and exits with code 2
+14. **Given** `rad plan` completes successfully, **When** the plan is generated, **Then** the system displays a summary and next steps:
     ```
     ✅ Plan generated successfully
     
@@ -323,24 +191,24 @@ As a developer, I want to generate ready-to-deploy deployment artifacts from my 
        1. Review the generated plan in .radius/plan/myapp/production/
        2. Commit the plan to Git:
           git add .radius/plan/
-          git commit -m "rad app plan: myapp production"
+          git commit -m "rad plan: myapp production"
        3. Deploy with:
-          rad app deploy <commit-hash> --application myapp --environment production
+          rad deploy <commit-hash> --application myapp --environment production
     ```
 
 ---
 
-### User Story 3 - Deploy from Git Commit (Priority: P1)
+### User Story 3 - Deploy from Git (Priority: P1)
 
-As a developer, I want to deploy infrastructure only from a specific Git commit hash or tag so that I have an auditable, reproducible deployment process, and I am prevented from accidentally deploying uncommitted changes.
+As a developer, I want to deploy infrastructure from my Git workspace so that I have an auditable, reproducible deployment process.
 
-**Why this priority**: Deployment is the ultimate goal of the workflow. Requiring Git commits ensures auditability, reproducibility, and prevents accidental deployment of uncommitted or untested changes.
+**Why this priority**: Deployment is the ultimate goal of the workflow. Git-based deployment ensures auditability, reproducibility, and prevents accidental deployment of untested changes.
 
-**Independent Test**: Can be fully tested by committing changes, running `rad app deploy <hash>` or `rad app deploy <tag>`, and verifying resources are deployed and details captured in `.radius/deploy/`.
+**Independent Test**: Can be fully tested by running `rad plan`, committing changes, then running `rad deploy` and verifying resources are deployed and details captured in `.radius/deploy/`.
 
 **Acceptance Scenarios**:
 
-1. **Given** I run `rad app deploy`, **When** the command starts, **Then** the system validates that required environment variables are set for the target platform
+1. **Given** I run `rad deploy`, **When** the command starts, **Then** the system validates that required environment variables are set for the target platform
 2. **Given** I am deploying to AWS, **When** environment validation runs, **Then** the system checks for AWS_ACCOUNT_ID and AWS_REGION and fails with exit code 3 if missing
 3. **Given** I am deploying to Azure, **When** environment validation runs, **Then** the system checks for AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID and fails with exit code 3 if missing
 4. **Given** the environment includes Kubernetes configuration (context and namespace), **When** environment validation runs, **Then** the system validates:
@@ -389,9 +257,12 @@ As a developer, I want to deploy infrastructure only from a specific Git commit 
      export AZURE_SUBSCRIPTION_ID=<your-subscription-id>
    ```
    and exits with code 3
-6. **Given** I run `rad app deploy` without a commit argument and the `GITHUB_SHA` environment variable is not set, **When** the command starts, **Then** the system displays an error: "A commit hash or tag is required. Specify the Git commit to deploy from, or run in GitHub Actions where GITHUB_SHA is set automatically." and exits with code 2
-7. **Given** only a single application and environment exist, **When** I run `rad app deploy abc1234`, **Then** the system auto-selects the default application and environment
-8. **Given** multiple environment files exist (`.env`, `.env.staging`, `.env.production`), **When** I run `rad app deploy abc1234 --application myapp` without `--environment`, **Then** the system displays an error:
+6. **Given** I run `rad deploy` without a commit argument in a Git workspace, **When** the plan directory has uncommitted changes, **Then** the system displays an error: "Cannot deploy with uncommitted changes in .radius/plan/. Commit your plan first, or specify a commit hash to deploy from." and exits with code 2
+6a. **Given** I run `rad deploy` without a commit argument in a Git workspace, **When** the plan directory has no uncommitted changes, **Then** the system deploys from the current committed plan
+6b. **Given** I run `rad deploy abc1234` with a commit argument, **When** the command starts, **Then** the system deploys from that specific commit (skipping uncommitted changes check)
+6c. **Given** I run `rad deploy myapp.bicep` in a Git workspace, **When** the command starts, **Then** the system displays an error: "Bicep files cannot be deployed directly from a Git workspace. Use 'rad plan' first, or switch to a Control Plane workspace." and exits with code 2
+7. **Given** only a single application and environment exist, **When** I run `rad deploy abc1234`, **Then** the system auto-selects the default application and environment
+8. **Given** multiple environment files exist (`.env`, `.env.staging`, `.env.production`), **When** I run `rad deploy abc1234 --application myapp` without `--environment`, **Then** the system displays an error:
    ```
    ❌ Multiple environments detected. Please specify which environment to deploy to:
    
@@ -400,10 +271,10 @@ As a developer, I want to deploy infrastructure only from a specific Git commit 
      • staging     (.env.staging)
      • production  (.env.production)
    
-   Usage: rad app deploy abc1234 --application myapp --environment <name>
+   Usage: rad deploy abc1234 --application myapp --environment <name>
    ```
    and exits with code 2
-9. **Given** I run `rad app deploy abc1234 --application myapp --environment production`, **When** the commit, application, and environment are valid, **Then** the system displays a confirmation prompt:
+9. **Given** I run `rad deploy abc1234 --application myapp --environment production`, **When** the commit, application, and environment are valid, **Then** the system displays a confirmation prompt:
    ```
    📍 You are about to deploy from:
       Commit:  abc1234
@@ -427,9 +298,9 @@ As a developer, I want to deploy infrastructure only from a specific Git commit 
    Continue? [y/N]
    ```
    and proceeds only if the user confirms with 'y' (only the relevant platform fields are shown based on the environment configuration)
-10. **Given** I want to skip the confirmation prompt, **When** I run `rad app deploy abc1234 --application myapp --environment production -y`, **Then** the system proceeds without prompting for confirmation
+10. **Given** I want to skip the confirmation prompt, **When** I run `rad deploy abc1234 --application myapp --environment production -y`, **Then** the system proceeds without prompting for confirmation
 11. **Given** deployment artifacts exist in `.radius/plan/` and are committed to Git, **When** I confirm deployment, **Then** the system checks out that commit (or verifies current HEAD matches), executes the deployment using artifacts from that commit, and orchestrates the application deployment
-12. **Given** I run `rad app deploy v1.2.3`, **When** the tag exists, **Then** the system deploys from that tagged commit (with the same confirmation prompt unless `-y` is specified)
+12. **Given** I run `rad deploy v1.2.3`, **When** the tag exists, **Then** the system deploys from that tagged commit (with the same confirmation prompt unless `-y` is specified)
 13. **Given** deployment is in progress, **When** resources are being deployed, **Then** the system displays real-time progress with animated spinner:
     ```
     🚀 Deploying to production from commit abc1234...
@@ -450,8 +321,8 @@ As a developer, I want to deploy infrastructure only from a specific Git commit 
     
     Elapsed: 1m 23s
     ```
-14. **Given** I have uncommitted changes in `.radius/plan/`, **When** I run `rad app deploy`, **Then** the system detects uncommitted changes via `git status --porcelain` and displays error: "Cannot deploy with uncommitted changes in .radius/plan/. Please commit your changes first." and exits with code 2
-15. **Given** I am running in GitHub Actions (GITHUB_ACTIONS=true), **When** I run `rad app deploy` without specifying a commit argument, **Then** the system automatically uses the `GITHUB_SHA` environment variable as the commit reference and skips confirmation (non-interactive)
+14. **Given** I have uncommitted changes in `.radius/plan/`, **When** I run `rad deploy`, **Then** the system detects uncommitted changes via `git status --porcelain` and displays error: "Cannot deploy with uncommitted changes in .radius/plan/. Please commit your changes first." and exits with code 2
+15. **Given** I am running in GitHub Actions (GITHUB_ACTIONS=true), **When** I run `rad deploy` without specifying a commit argument, **Then** the system automatically uses the `GITHUB_SHA` environment variable as the commit reference and skips confirmation (non-interactive)
 16. **Given** deployment is executed successfully, **When** all resources are deployed, **Then** the system captures structured details about the deployed resources
 17. **Given** resource deployment completes, **When** capturing resource details, **Then** the system records the full resource state by querying the appropriate API for each resource type:
     - **Azure resources**: captured via `az resource show` or ARM API
@@ -474,26 +345,140 @@ As a developer, I want to deploy infrastructure only from a specific Git commit 
          ✓ 003-app-terraform        (4 resources)
     
     📁 Deployment record saved to:
-       .radius/deploy/deployment-production-abc1234.json
+       .radius/deploy/myapp/production/deployment-abc1234.json
     
     🚀 Next steps:
        1. Commit the deployment record:
           git add .radius/deploy/
-          git commit -m "rad app deploy: production @ abc1234"
+          git commit -m "rad deploy: production @ abc1234"
     ```
 20. **Given** a deployment fails during resource provisioning, **When** the failure occurs, **Then** the system stops deployment immediately, leaves successfully deployed resources in place, saves a deployment record with partial success status, and exits with code 5
 21. **Given** a deployment fails, **When** the failure is reported, **Then** the system displays: which step failed and why, which steps completed successfully, and guidance for retry or manual cleanup
-22. **Given** I want quiet mode for cleaner logs, **When** I run `rad app deploy --quiet`, **Then** the system suppresses progress output but still provides final status and error messages
+22. **Given** I want quiet mode for cleaner logs, **When** I run `rad deploy --quiet`, **Then** the system suppresses progress output but still provides final status and error messages
 
 ---
 
-### User Story 4 - Configure Multiple Environments (Priority: P2)
+### User Story 4 - Perform Diffs (Priority: P1)
+
+As a developer, I want to compare infrastructure state across the entire lifecycle—from planning to deployment to live cloud—so that I can understand what changed, when it changed, and detect drift.
+
+**Why this priority**: Universal diff capability provides visibility into the complete infrastructure lifecycle, enabling auditing, troubleshooting, and drift detection from a single command.
+
+**Independent Test**: Can be fully tested by creating multiple plan commits, deploying, then running `rad diff` with various source/target combinations and verifying accurate comparisons.
+
+#### Diff Scenarios
+
+The `rad diff` command compares two git commits. Each commit may contain different artifacts depending on where it falls in the lifecycle:
+
+| Commit State | Contains | Created By |
+|--------------|----------|------------|
+| **Model commit** | `.radius/model/` only | Editing model files followed by `git commit` |
+| **Plan commit** | `.radius/model/` + `.radius/plan/` | `rad plan` followed by `git commit` |
+| **Deployment Record commit** | `.radius/model/` + `.radius/plan/` + `.radius/deploy/` | `rad deploy` followed by `git commit` (or `rad deploy --commit`) |
+
+The comparison type is determined by what artifacts exist at each commit:
+
+| Source Commit | Target Commit | Comparison Type |
+|---------------|---------------|-----------------|
+| Model only | Model only | Shows structural changes to the application model |
+| Model only | Plan | Shows how the model gets translated to a deployment plan |
+| Plan only | Plan only | Shows changes to generated IaC files (Terraform, Bicep) |
+| Plan only | Deployment Record | Shows differences between what was planned and what was deployed |
+| Deployment Record | Plan only | Shows what a new plan would change from the last deployment |
+| Deployment Record | Deployment Record | Shows changes between two deployment states |
+| Deployment Record | Live | Shows drift between deployed state and current cloud resources |
+
+**Examples** (inspired by `git diff`):
+
+```bash
+# Show uncommitted changes to .radius/ directories
+rad diff -a myapp -e production
+
+# Compare HEAD to a previous commit
+rad diff HEAD~1 -a myapp -e production
+
+# Compare two commits (git-style range syntax)
+rad diff abc123...def456 -a myapp -e production
+
+# Compare a deployment commit against live cloud (drift detection)
+rad diff abc123...live -a myapp -e production
+```
+
+#### Acceptance Scenarios
+
+**Uncommitted changes (no args):**
+
+1. **Given** I have uncommitted changes to `.radius/` directories, **When** I run `rad diff -a myapp -e production`, **Then** the system shows the uncommitted changes similar to `git diff`
+2. **Given** I have no uncommitted changes, **When** I run `rad diff -a myapp -e production`, **Then** the system displays "No uncommitted changes to .radius/ directories"
+
+**Model vs Model (two commits):**
+
+3. **Given** I have two commits with only model changes, **When** I run `rad diff abc123...def456 -a myapp -e production`, **Then** the system compares the `.radius/model/` Bicep files and shows structural changes to the application model
+4. **Given** I want to see what changed in my application model, **When** I run `rad diff HEAD~1 -a myapp -e production`, **Then** the system shows the diff between the previous commit and current working tree
+
+**Plan vs Plan (two commits):**
+
+5. **Given** I have two commits with plan artifacts, **When** I run `rad diff abc123...def456 -a myapp -e production`, **Then** the system compares the `.radius/plan/myapp/production/` directories between the commits and shows IaC file differences (Terraform configs, Bicep templates, plan.yaml)
+6. **Given** I want to see what changed in my last plan update, **When** I run `rad diff HEAD~1...HEAD -a myapp -e production`, **Then** the system shows the diff between the previous and current plan artifacts
+
+**Plan vs Deployment:**
+
+7. **Given** I have a plan commit and a subsequent deployment, **When** I run `rad diff <plan-commit>...<deploy-commit> -a myapp -e production`, **Then** the system compares the planned resources with what was actually deployed and reports any discrepancies
+8. **Given** a deployment exactly matches the plan, **When** the diff completes, **Then** the system displays "Deployment matches plan. No discrepancies found."
+
+**Commit vs Live (Drift Detection):**
+
+9. **Given** I have deployed an application and committed the deployment record, **When** I run `rad diff <deploy-commit>...live -a myapp -e production`, **Then** the system compares that deployment record with current cloud state
+10. **Given** cloud resources match the deployment record, **When** the diff completes, **Then** the system displays "No drift detected. Cloud resources match deployment record." and exits with code 0
+11. **Given** a cloud resource has been modified outside of Radius, **When** the diff detects changes, **Then** the system displays:
+   ```
+   ⚠️  Drift detected in 2 resources
+   
+   Comparing: commit abc1234 (deploy) → live cloud
+   
+   Resource: myappsa (Microsoft.Storage/storageAccounts)
+     - accessTier: Hot → Cool (modified)
+     - tags.environment: production → (removed)
+   
+   Resource: my-app-bucket (AWS::S3::Bucket)
+     + versioning.mfaDelete: Enabled (added)
+   
+   To reconcile:
+     rad plan .radius/model/myapp.bicep -e production
+     git add .radius/plan/ && git commit -m "Reconcile drift"
+     rad deploy -a myapp -e production
+   ```
+   and exits with code 1
+12. **Given** a cloud resource has been deleted outside of Radius, **When** the diff detects the missing resource, **Then** the system reports "Resource 'myappsa' exists in deployment record but not found in cloud"
+
+**Plan vs Live:**
+
+13. **Given** I have a plan but haven't deployed yet, **When** I run `rad diff <plan-commit>...live -a myapp -e production`, **Then** the system shows what changes would occur if the plan were deployed (similar to `terraform plan` or `az deployment what-if` output)
+
+**Output and Options:**
+
+14. **Given** I want machine-readable output, **When** I run `rad diff --output json`, **Then** the system outputs structured JSON with all diff details
+15. **Given** I want to check drift for all environments, **When** I run `rad diff HEAD...live --all-environments -a myapp`, **Then** the system checks each deployed environment and reports status for each
+
+#### Deployment Record Commits
+
+> **Design Decision**: After a successful deployment, `rad deploy` automatically stages the deployment record (`git add .radius/deploy/`) but does not commit by default. This respects user autonomy while making it easy to track deployments. Use `--commit` flag for automatic commits (useful in CI/CD).
+
+16. **Given** I complete a successful deployment without `--commit`, **When** the deployment finishes, **Then** the system stages the deployment record and displays: "Deployment record staged. To complete: git commit -m 'Deploy myapp to production (abc1234)'"
+17. **Given** I run `rad deploy --commit -a myapp -e production`, **When** the deployment succeeds, **Then** the system automatically commits the deployment record with message "Deploy myapp to production (abc1234)"
+18. **Given** I run `rad deploy --commit -m "Release v1.2.3" -a myapp -e production`, **When** the deployment succeeds, **Then** the system commits with the custom message "Release v1.2.3"
+19. **Given** I have uncommitted deployment records, **When** I run `rad diff`, **Then** the system displays a warning: "Uncommitted deployment records in .radius/deploy/. Commit these for full diff history."
+20. **Given** I want to compare two deployments, **When** both deployment records are committed, **Then** I can use `rad diff <deploy-commit-1>...<deploy-commit-2>` to see what changed between deployments
+
+---
+
+### User Story 5 - Configure Multiple Environments (Priority: P2)
 
 As a developer, I want to configure multiple deployment environments (dev, staging, production) so that I can deploy the same application model to different cloud accounts, regions, Kubernetes clusters, or with different deployment settings.
 
 **Why this priority**: Multi-environment support enables the dev/staging/production workflow that enterprise teams require.
 
-**Independent Test**: Can be fully tested by creating multiple `.env` files (`.env`, `.env.staging`, `.env.production`) and verifying `rad app plan` and `rad app deploy` respect the selected environment when using `--environment` flag.
+**Independent Test**: Can be fully tested by creating multiple `.env` files (`.env`, `.env.staging`, `.env.production`) and verifying `rad plan` and `rad deploy` respect the selected environment when using `--environment` flag.
 
 **Acceptance Scenarios**:
 
@@ -505,14 +490,14 @@ As a developer, I want to configure multiple deployment environments (dev, stagi
 6. **Given** I have environment-specific recipe files, **When** I create an environment configuration file, **Then** I can specify one or more recipe file paths via `RECIPES` (comma-separated, e.g., `RECIPES=.radius/config/recipes-core.yaml,.radius/config/recipes-prod.yaml`)
 7. **Given** I need custom Terraform settings, **When** I create an environment configuration file, **Then** I can specify Terraform CLI configuration path via `TF_CLI_CONFIG_FILE` (referencing a `terraformrc` file)
 8. **Given** I need custom Terraform backend configuration, **When** I create an environment configuration file, **Then** I can specify a partial backend configuration file path via `TF_BACKEND_CONFIG` (e.g., `TF_BACKEND_CONFIG=.radius/config/backend-production.hcl`), which will be used with `terraform init -backend-config=<file>`
-9. **Given** I have multiple environments configured, **When** I run `rad app plan --environment production`, **Then** the system uses configuration from `.env.production` instead of the default `.env`
-10. **Given** I have multiple environments configured, **When** I run `rad app deploy --environment staging`, **Then** the system uses configuration from `.env.staging`
-11. **Given** I specify an environment that doesn't exist, **When** I run `rad app plan --environment nonexistent`, **Then** the system displays error: "Environment 'nonexistent' not found. Available environments: default, staging, production" and exits with code 2
+9. **Given** I have multiple environments configured, **When** I run `rad plan --environment production`, **Then** the system uses configuration from `.env.production` instead of the default `.env`
+10. **Given** I have multiple environments configured, **When** I run `rad deploy --environment staging`, **Then** the system uses configuration from `.env.staging`
+11. **Given** I specify an environment that doesn't exist, **When** I run `rad plan --environment nonexistent`, **Then** the system displays error: "Environment 'nonexistent' not found. Available environments: default, staging, production" and exits with code 2
 12. **Given** environment files must not contain credentials, **When** I accidentally include credentials in a `.env` file, **Then** `rad init` or other commands should warn: "Warning: .env files should not contain credentials. Use environment variables instead."
 
 ---
 
-### User Story 5 - Install via Package Manager (Priority: P2)
+### User Story 6 - Install via Package Manager (Priority: P2)
 
 As a developer, I want to install Repo Radius using my operating system's native package manager so that installation is simple and follows platform conventions.
 
@@ -535,7 +520,16 @@ As a developer, I want to install Repo Radius using my operating system's native
 
 ---
 
-### User Story 6 - Workspace Management (Priority: P2)
+### User Story 7 - Workspace Management (Priority: P2)
+
+Radius supports two modes of operation:
+
+| Mode                        | Description                                                  | Workspace Type   |
+| --------------------------- | ------------------------------------------------------------ | ---------------- |
+| **Git workspace**           | Decentralized, repository-driven mode. Runs locally without a control plane. State is stored in Git. Optimized for CI/CD and GitOps workflows. | `git` (built-in) |
+| **Control Plane workspace** | Centralized mode with Radius control plane running on Kubernetes. Provides orchestration, observability, and team collaboration features. | `kubernetes`     |
+
+Users switch between modes using `rad workspace switch <name>`. The `git` workspace is always available as a built-in option.
 
 As a developer, I want to switch between Repo Radius (Git-centric) and Control Plane Radius modes using workspace commands so that I can choose the appropriate deployment mode for my needs.
 
@@ -569,26 +563,26 @@ As a developer, I want to switch between Repo Radius (Git-centric) and Control P
 4. **Given** I am on the `git` workspace, **When** I run `rad workspace switch my-radius-control-plane`, **Then** the system switches to the Control Plane workspace and displays "Switched to workspace 'my-radius-control-plane'"
 5. **Given** I am on the `my-radius-control-plane` workspace, **When** I run `rad workspace switch git`, **Then** the system switches back to Git workspace mode and displays "Switched to workspace 'git'"
 6. **Given** I am on the `git` workspace, **When** I run a Control Plane-only command like `rad resource list`, **Then** the system displays an error "The 'rad resource list' command is not available in Git workspace. Switch to a Control Plane workspace with 'rad workspace switch <name>'." and exits with code 2
-7. **Given** I am on the `my-radius-control-plane` workspace, **When** I run `rad deploy`, **Then** the deployment is executed via the Control Plane using the default environment configured in the workspace (note: `rad app deploy` is Git workspace only)
-8. **Given** I am on the `git` workspace, **When** I run `rad app deploy`, **Then** the deployment is executed locally using Git workspace mode
+7. **Given** I am on the `my-radius-control-plane` workspace, **When** I run `rad deploy`, **Then** the deployment is executed via the Control Plane using the default environment configured in the workspace (note: `rad deploy` is Git workspace only)
+8. **Given** I am on the `git` workspace, **When** I run `rad deploy`, **Then** the deployment is executed locally using Git workspace mode
 
 ---
 
-### User Story 7 - Run in GitHub Actions (Priority: P2)
+### User Story 8 - Run in GitHub Actions (Priority: P2)
 
 As a CI/CD engineer, I want to run Repo Radius in a GitHub Actions workflow so that I can automate infrastructure deployment as part of my CI/CD pipeline.
 
 **Why this priority**: CI/CD integration is explicitly called out as the primary optimization target for Repo Radius.
 
-**Independent Test**: Can be fully tested by creating a GitHub Actions workflow that runs `rad app plan` and `rad app deploy` and verifying successful execution.
+**Independent Test**: Can be fully tested by creating a GitHub Actions workflow that runs `rad plan` and `rad deploy` and verifying successful execution.
 
 **Acceptance Scenarios**:
 
 1. **Given** Radius is running in any environment, **When** the system checks for GitHub Actions, **Then** it detects GitHub Actions by checking for `GITHUB_ACTIONS=true` environment variable and uses `GITHUB_SHA` for automatic commit reference
-2. **Given** a GitHub Actions workflow, **When** I invoke `rad app plan`, **Then** the command completes successfully in non-interactive mode without prompting for user input
-3. **Given** a GitHub Actions workflow, **When** I invoke `rad app deploy` without a commit argument, **Then** the system automatically uses `GITHUB_SHA` as the commit reference
-4. **Given** a GitHub Actions workflow, **When** I invoke `rad app deploy`, **Then** the system skips the confirmation prompt (non-interactive) and proceeds directly to deployment
-5. **Given** deployment artifacts were generated in a previous workflow step, **When** I run `rad app deploy` in a subsequent step, **Then** the deployment uses the committed artifacts from the `GITHUB_SHA` commit
+2. **Given** a GitHub Actions workflow, **When** I invoke `rad plan`, **Then** the command completes successfully in non-interactive mode without prompting for user input
+3. **Given** a GitHub Actions workflow, **When** I invoke `rad deploy` without a commit argument, **Then** the system automatically uses `GITHUB_SHA` as the commit reference
+4. **Given** a GitHub Actions workflow, **When** I invoke `rad deploy`, **Then** the system skips the confirmation prompt (non-interactive) and proceeds directly to deployment
+5. **Given** deployment artifacts were generated in a previous workflow step, **When** I run `rad deploy` in a subsequent step, **Then** the deployment uses the committed artifacts from the `GITHUB_SHA` commit
 6. **Given** a deployment fails in GitHub Actions, **When** the workflow exits, **Then** the exit code (2, 3, 4, or 5) is propagated to the workflow step, enabling conditional job handling
 7. **Given** I want to use Git workspace mode in a reusable workflow, **When** I create a GitHub Actions workflow, **Then** I can use a pattern like:
    ```yaml
@@ -619,64 +613,39 @@ As a CI/CD engineer, I want to run Repo Radius in a GitHub Actions workflow so t
            run: aws eks update-kubeconfig --name my-cluster --region us-east-1
          
          - name: Generate deployment plan
-           run: rad app plan --environment production
+           run: rad plan --environment production
          
          - name: Commit plan
            run: |
              git config user.name "github-actions"
              git config user.email "github-actions@github.com"
              git add .radius/plan/
-             git commit -m "rad app plan: production"
+             git commit -m "rad plan: production"
              git push
          
          - name: Deploy
-           run: rad app deploy --environment production -y
+           run: rad deploy --environment production -y
          
          - name: Commit deployment record
            run: |
              git add .radius/deploy/
-             git commit -m "rad app deploy: production @ ${{ github.sha }}"
+             git commit -m "rad deploy: production @ ${{ github.sha }}"
              git push
    ```
 
 ---
 
-### User Story 8 - Deploy via Control Plane Radius (Priority: P2)
+### User Story 9 - Deploy via Control Plane Radius (Priority: P2)
 
-As a developer using Git workspace mode, I want to deploy my application through an existing Control Plane Radius installation so that I can leverage centralized orchestration, observability, and team collaboration features while keeping my application model in Git.
+As a developer, I want to deploy my application through an existing Control Plane Radius installation so that I can leverage centralized orchestration, observability, and team collaboration features.
 
-**Why this priority**: Enables teams with existing Control Plane infrastructure to use Git workspace mode for Git-based application modeling while benefiting from centralized deployment capabilities.
+**Why this priority**: Enables teams with existing Control Plane infrastructure to continue using it.
 
-#### Acceptance Scenarios
-
-1. **Given** I have an application model in my Git repository and a Control Plane workspace configured, **When** I run `rad workspace switch my-radius-control-plane` followed by `rad deploy .radius/model/app.bicep`, **Then** the system deploys via the Control Plane using the environment configured in the workspace
-2. **Given** I am on the `my-radius-control-plane` workspace, **When** I run `rad deploy .radius/model/app.bicep`, **Then** the system:
-   - Reads the application model from `.radius/model/`
-   - Uses the Resource Types already configured on the Control Plane
-   - Uses the Recipe files already registered on the Control Plane
-   - Submits the deployment request to the Control Plane API
-   - Streams deployment progress from the Control Plane
-3. **Given** the application model references a resource type not configured on the Control Plane, **When** I run `rad deploy .radius/model/app.bicep`, **Then** the system displays an error "Resource type 'Radius.Compute/containers' is not configured on the Control Plane. Please contact your platform administrator." and exits with code 2
-4. **Given** the Control Plane deployment completes, **When** I view the results, **Then** the system displays:
-   ```
-   ✅ Deployment completed via Control Plane
-   
-   📋 Summary:
-      • Commit: abc1234
-      • Workspace: my-radius-control-plane
-      • Group: default
-      • Environment: production
-      • Duration: 3m 42s
-      • Resources deployed: 5
-   
-   📁 Deployment record saved to: .radius/deploy/<app>/<env>/deployment-abc1234.json
-   ```
-5. **Given** the Control Plane is unreachable, **When** I run `rad deploy` on a Control Plane workspace, **Then** the system displays an error "Cannot connect to Control Plane. Please verify your kubeconfig context 'my-k8s-context' is valid and the cluster is accessible." and exits with code 3
-6. **Given** I am not authenticated to the Kubernetes cluster, **When** I run `rad deploy` on a Control Plane workspace, **Then** the system displays an error with instructions for authenticating to the cluster
+> **Note**: This user story represents existing `rad deploy` functionality when using a Control Plane workspace. No changes are required—the existing behavior is preserved exactly as-is. The workspace type determines whether deployment uses Git workspace mode (new) or Control Plane mode (existing).
 
 ---
 
-### User Story 9 - Migrate Configuration to Control Plane Radius (Priority: P3)
+### User Story 10 - Migrate Configuration to Control Plane Radius (Priority: P3)
 
 As a platform engineer, I want to migrate my team's Repo Radius configuration to a new Control Plane Radius installation so that I can fully transition to centralized management while preserving existing configuration and deployment history.
 
@@ -758,7 +727,7 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
   - System MUST exit with code 2
   - System SHOULD provide troubleshooting hints (e.g., check proxy settings, verify Git credentials, confirm repository URL is accessible)
 
-- **What happens when `rad app deploy` is run with uncommitted changes in `.radius/plan/`?**
+- **What happens when `rad deploy` is run with uncommitted changes in `.radius/plan/`?**
   - System MUST detect uncommitted changes using `git status --porcelain .radius/plan/`
   - System MUST display error: "Cannot deploy with uncommitted changes in .radius/plan/. Please commit your changes first."
   - System MUST exit with code 2
@@ -792,16 +761,14 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
   - If user declines, system MUST exit gracefully with code 0
 
 - **What happens when deployment fails partway through resource provisioning?**
-  - System MUST implement **atomic deployment semantics**: either all resources deploy successfully, or none remain
-  - System MUST attempt to rollback (delete) all successfully deployed resources before the failure point
-  - System MUST execute rollback operations in reverse dependency order to avoid orphaned resources
-  - System MUST capture the rollback attempt results, including which resources were successfully deleted and which failed to delete
-  - System MUST save a deployment record as JSON with failure status, including both the original deployment error and rollback results
-  - System MUST provide clear error output indicating: (1) which resource failed during deployment and why, (2) which resources were rolled back, (3) any resources that failed to rollback
+  - System MUST implement **stop-on-failure semantics**: stop immediately when a resource fails to provision
+  - System MUST leave successfully deployed resources in place (no automatic rollback)
+  - System MUST save a deployment record as JSON with partial failure status, capturing which resources succeeded and which failed
+  - System MUST provide clear error output indicating: (1) which resource failed and why, (2) which resources were successfully deployed, (3) guidance for retry or manual cleanup
   - System MUST exit with code 5
-  - System MUST be **idempotent**: running the same deployment again after a failed deployment must produce the same result (either success or the same failure)
+  - System MUST be **idempotent**: running the same deployment again after a failed deployment must either succeed completely or fail with the same error
 
-- **What happens when running `rad app plan` or `rad app deploy` without having run `rad init` first?**
+- **What happens when running `rad plan` or `rad deploy` without having run `rad init` first?**
   - System MUST check for existence of `.radius/` directory
   - If not found, system MUST display error: "Repo Radius not initialized. Please run 'rad init' first."
   - System MUST exit with code 2
@@ -862,7 +829,7 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
 - **FR-018**: System MUST display a warning and request confirmation if `.radius/` directory already exists: "Repo Radius is already initialized. Re-running init may overwrite existing configuration. Continue? (y/N)"
 - **FR-019**: System MUST NOT store credentials in `.env` files and SHOULD warn users if credential-like values are detected
 
-#### `rad app plan` Command
+#### `rad plan` Command
 
 - **FR-020**: System MUST generate ready-to-deploy deployment artifacts (Terraform configurations or Bicep templates)
 - **FR-021**: System MUST derive deployment artifacts from the recipe file specified in the `.env` file (or `.env.<ENVIRONMENT_NAME>` if `--environment` flag is used)
@@ -876,7 +843,7 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
 - **FR-029**: System MUST validate that the application model exists in `.radius/model/` before planning and exit with code 2 if missing
 - **FR-030**: System MUST validate that the recipe file specified in `.env` exists and exit with code 2 if not found
 
-#### `rad app deploy` Command
+#### `rad deploy` Command
 
 - **FR-040**: System MUST validate that required environment variables are set for the target platform before deployment:
   - AWS: AWS_ACCOUNT_ID, AWS_REGION
@@ -898,43 +865,67 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
 - **FR-055**: System MUST implement **stop-on-failure semantics**: if resource provisioning fails partway through deployment, system MUST stop execution immediately, leave successfully deployed resources in place (no automatic rollback), capture deployment state, log the specific error with affected resource, and exit with code 5
 - **FR-056**: System MUST be **idempotent**: running the same deployment multiple times must produce the same result, and re-running a failed deployment must either succeed completely or fail with the same error
 - **FR-057**: System MUST provide detailed error output for deployment failures using the structured error format defined in NFR-021, including: error code, human-readable message, affected resource name/ID, suggested remediation action, list of successfully deployed resources, instructions for retry or manual cleanup
+- **FR-057a**: After successful deployment, System MUST auto-stage deployment records using `git add .radius/deploy/`
+- **FR-057b**: System MUST support `--commit` flag to automatically commit deployment records after successful deployment
+- **FR-057c**: When `--commit` is used, System MUST use default message format "Deploy <app> to <env> (<commit>)" unless `--message` is provided
+- **FR-057d**: System MUST support `--message` (`-m`) flag to specify custom commit message (requires `--commit`)
+
+#### `rad diff` Command
+
+- **FR-058**: System MUST support comparing infrastructure state between commits, deployments, and live cloud
+- **FR-058a**: System MUST accept optional `<source>` and `<target>` arguments representing commit hashes, tags, or the keyword `live`
+- **FR-058b**: When no arguments provided, System MUST compare latest deployment record against live cloud state (drift detection)
+- **FR-058c**: When one commit argument provided, System MUST compare that commit's state against live cloud
+- **FR-058d**: When two commit arguments provided, System MUST compare the artifacts at those commits
+- **FR-059**: System MUST query cloud provider APIs to retrieve current resource properties:
+  - Azure resources: via Azure Resource Manager API
+  - AWS resources: via Terraform state or AWS APIs
+  - Kubernetes resources: via Kubernetes API
+- **FR-060**: System MUST report differences as: modified properties, removed properties, and added properties
+- **FR-061**: System MUST support `--output json` flag to produce machine-readable diff reports
+- **FR-062**: System MUST support `--all-environments` flag to check all deployed environments
+- **FR-063**: System MUST exit with code 0 if no differences detected, code 1 if differences detected, code 2 for validation errors, code 3 for authentication errors
+- **FR-064**: System MUST support `--plan-only` flag to compare only plan artifacts (ignoring deployment records)
+- **FR-065**: System MUST warn users when uncommitted deployment records are found in `.radius/deploy/`
+- **FR-066**: When comparing two commits with plan artifacts, System MUST show IaC file differences (Terraform configs, Bicep templates)
+- **FR-067**: When comparing plan vs live cloud, System MUST show what changes would occur if the plan were deployed
 
 #### Configuration Model (Input Files)
 
-- **FR-060**: All configuration MUST be stored in the Git repository
-- **FR-061**: Resource Types MUST be stored as YAML files in `.radius/config/types/` (same format as Radius Resource Types today without modification)
-- **FR-062**: Default Environment configuration MUST be stored in `.env` file in the repository root
-- **FR-063**: Named Environment configurations MUST be stored as `.env.<ENVIRONMENT_NAME>` files (e.g., `.env.production`, `.env.staging`, `.env.dev`)
-- **FR-064**: Environment files MUST support AWS account ID and region configuration via `AWS_ACCOUNT_ID` and `AWS_REGION` variables
-- **FR-065**: Environment files MUST support Azure subscription ID and resource group configuration via `AZURE_SUBSCRIPTION_ID` and `AZURE_RESOURCE_GROUP` variables
-- **FR-066**: Environment files MUST support Kubernetes context name and namespace configuration via `KUBERNETES_CONTEXT` and `KUBERNETES_NAMESPACE` variables
-- **FR-067**: Environment files MUST include `RECIPES` variable (required, comma-separated list of recipe file paths, e.g., `RECIPES=.radius/config/recipes.yaml`)
-- **FR-068**: Environment files MUST support Terraform CLI configuration via `TF_CLI_CONFIG_FILE` variable (referencing a `terraformrc` file path)
-- **FR-068a**: Environment files MUST support Terraform backend configuration via `TF_BACKEND_CONFIG` variable (referencing a partial backend configuration file path, used with `terraform init -backend-config=<file>`)
-- **FR-069**: Environment files MUST NOT contain credentials (secrets MUST be provided via environment variables at runtime)
-- **FR-070**: Recipes MUST be stored as YAML files in the `.radius/config/` directory (default: `recipes.yaml`)
-- **FR-071**: System SHOULD warn users if credential-like patterns (e.g., values starting with "ey", containing "password", "secret", "key") are detected in `.env` files
-- **FR-072**: System MUST validate that `RECIPES` is present in `.env` file and exit with code 2 if missing
+- **FR-070**: All configuration MUST be stored in the Git repository
+- **FR-071**: Resource Types MUST be stored as YAML files in `.radius/config/types/` (same format as Radius Resource Types today without modification)
+- **FR-072**: Default Environment configuration MUST be stored in `.env` file in the repository root
+- **FR-073**: Named Environment configurations MUST be stored as `.env.<ENVIRONMENT_NAME>` files (e.g., `.env.production`, `.env.staging`, `.env.dev`)
+- **FR-074**: Environment files MUST support AWS account ID and region configuration via `AWS_ACCOUNT_ID` and `AWS_REGION` variables
+- **FR-075**: Environment files MUST support Azure subscription ID and resource group configuration via `AZURE_SUBSCRIPTION_ID` and `AZURE_RESOURCE_GROUP` variables
+- **FR-076**: Environment files MUST support Kubernetes context name and namespace configuration via `KUBERNETES_CONTEXT` and `KUBERNETES_NAMESPACE` variables
+- **FR-077**: Environment files MUST include `RECIPES` variable (required, comma-separated list of recipe file paths, e.g., `RECIPES=.radius/config/recipes.yaml`)
+- **FR-078**: Environment files MUST support Terraform CLI configuration via `TF_CLI_CONFIG_FILE` variable (referencing a `terraformrc` file path)
+- **FR-078a**: Environment files MUST support Terraform backend configuration via `TF_BACKEND_CONFIG` variable (referencing a partial backend configuration file path, used with `terraform init -backend-config=<file>`)
+- **FR-079**: Environment files MUST NOT contain credentials (secrets MUST be provided via environment variables at runtime)
+- **FR-080**: Recipes MUST be stored as YAML files in the `.radius/config/` directory (default: `recipes.yaml`)
+- **FR-081**: System SHOULD warn users if credential-like patterns (e.g., values starting with "ey", containing "password", "secret", "key") are detected in `.env` files
+- **FR-082**: System MUST validate that `RECIPES` is present in `.env` file and exit with code 2 if missing
 
 ### Non-Functional Requirements
 
 #### Reliability & Deployment Semantics
 
-- **NFR-001**: System MUST provide **atomic deployment semantics**: deployments either complete fully or leave no resources behind
+- **NFR-001**: System MUST implement **stop-on-failure semantics**: when deployment fails, stop immediately and leave successfully deployed resources in place
 - **NFR-002**: System MUST be **idempotent**: executing the same deployment multiple times produces consistent results (subsequent runs after initial success are no-ops; subsequent runs after failure either succeed or fail with the same error)
-- **NFR-003**: System MUST implement automatic rollback on deployment failure: when any resource fails to provision, all previously provisioned resources in that deployment MUST be deleted in reverse dependency order
-- **NFR-004**: System MUST tolerate rollback failures gracefully: if some resources cannot be deleted during rollback, system MUST capture which resources remain and report them clearly to the user
-- **NFR-005**: System MUST ensure state consistency: deployment records in `.radius/deploy/` MUST accurately reflect the actual state of cloud resources after both successful deployments and failed deployments with rollback
+- **NFR-003**: System MUST NOT implement automatic rollback: users are responsible for cleanup or retry after failures
+- **NFR-004**: System MUST capture partial deployment state: deployment records MUST accurately reflect which resources succeeded and which failed
+- **NFR-005**: System MUST ensure state consistency: deployment records in `.radius/deploy/` MUST accurately reflect the actual state of cloud resources
 
 #### Performance
 
 - **NFR-010**: `rad init` MUST complete in under 2 minutes for typical repository initialization (including Resource Types population via sparse checkout)
-- **NFR-011**: `rad app plan` MUST complete in under 2 minutes for application models with 5-10 resources
+- **NFR-011**: `rad plan` MUST complete in under 2 minutes for application models with 5-10 resources
 - **NFR-012**: System MUST support parallel resource provisioning where dependencies allow (via deployment tool capabilities)
 
 #### Observability
 
-- **NFR-020**: System MUST emit progress indicators for long-running operations (resource provisioning, rollback) unless `--quiet` flag is specified
+- **NFR-020**: System MUST emit progress indicators for long-running operations (resource provisioning) unless `--quiet` flag is specified
 - **NFR-021**: System MUST use a single static error format with structured fields for all failure messages: error code (semantic code matching exit code context), message (human-readable description), affected resource (name/ID of the failed resource), and suggested action (remediation guidance). This format ensures consistency across all error scenarios and enables programmatic parsing in CI/CD workflows
 
 ### Explicit Non-Goals
@@ -989,7 +980,7 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
   RECIPES=.radius/config/recipes-core.yaml,.radius/config/recipes-azure.yaml
   ```
 
-  **Note (GitHub Actions):** In CI/CD, the kubeconfig is typically generated at runtime by cloud CLI commands (`aws eks update-kubeconfig`, `az aks get-credentials`) before `rad app deploy` runs. The `.env` file only stores the context name.
+  **Note (GitHub Actions):** In CI/CD, the kubeconfig is typically generated at runtime by cloud CLI commands (`aws eks update-kubeconfig`, `az aks get-credentials`) before `rad deploy` runs. The `.env` file only stores the context name.
 
 - **Workspace**: A named configuration that determines how `rad` commands execute. Stored in `~/.rad/config.yaml`. Two types:
   - `git` (built-in): Repo Radius mode - executes deployments locally using Git repository as source of truth
@@ -1043,11 +1034,11 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
       recipeLocation: br:radiusacr.azurecr.io/recipes/secrets:1.0.0
   ```
 
-- **Application Model**: The user-defined model describing the application and its resource dependencies. Stored in `.radius/model/`. Produced by a separate project (out of scope for this specification). Consumed by `rad app plan` to generate deployment artifacts.
+- **Application Model**: The user-defined model describing the application and its resource dependencies. Stored in `.radius/model/`. Produced by a separate project (out of scope for this specification). Consumed by `rad plan` to generate deployment artifacts.
 
-- **Deployment Artifact**: A ready-to-deploy configuration or template generated by `rad app plan` that deploys infrastructure using a supported deployment tool (Terraform configurations, Bicep templates, etc.). Stored in `.radius/plan/`. Not intended for user modification—captured for auditability and Radius Graph construction.
+- **Deployment Artifact**: A ready-to-deploy configuration or template generated by `rad plan` that deploys infrastructure using a supported deployment tool (Terraform configurations, Bicep templates, etc.). Stored in `.radius/plan/`. Not intended for user modification—captured for auditability and Radius Graph construction.
 
-- **Deployment Record**: Structured details captured after `rad app deploy` completes. Stored as JSON files in `.radius/deploy/deployment-<environment>-<commit-short>.json`. Contains:
+- **Deployment Record**: Structured details captured after `rad deploy` completes. Stored as JSON files in `.radius/deploy/<app>/<env>/deployment-<commit-short>.json`. Contains:
   - Deployment metadata: commit hash, timestamp, environment name
   - Deployed resources: cloud resource IDs, resource types, **complete resource snapshots with full properties as returned by cloud provider** (e.g., all Azure ARM properties, all AWS resource attributes, all Kubernetes object fields)
   - Deployment status: success, partial failure, or failure
@@ -1060,7 +1051,7 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
 
 ### Assumptions
 
-- The application model in `.radius/model/` is produced by a separate project and is available at `rad app plan` time
+- The application model in `.radius/model/` is produced by a separate project and is available at `rad plan` time
 - Cloud provider credentials are provided via environment variables at runtime and are not managed or stored by Repo Radius:
   - AWS: `AWS_ACCOUNT_ID`, `AWS_REGION` (plus standard AWS SDK environment variables for authentication)
   - Azure: `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
@@ -1081,7 +1072,7 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
 - **Azure Idempotency**: Bicep is supported for Azure deployments; Azure Resource Manager provides native idempotency, so no additional state store is required
 - **Kubernetes Idempotency**: Kubernetes provides native idempotency for declarative manifests
 - GitHub Actions workflows provide `GITHUB_SHA` environment variable automatically
-- Deployment scripts execute in the same environment where `rad app deploy` is invoked (local machine or CI/CD runner)
+- Deployment scripts execute in the same environment where `rad deploy` is invoked (local machine or CI/CD runner)
 - Users are responsible for securing `.env` files (e.g., not committing cloud account IDs to public repositories if sensitive)
 - The repository is the single source of truth—no external databases or control planes are involved
 
@@ -1090,9 +1081,9 @@ As a platform engineer, I want to migrate my team's Repo Radius configuration to
 ### Measurable Outcomes
 
 - **SC-001**: Users can initialize a repository for Repo Radius in under 2 minutes (including interactive prompts for cloud platform and deployment tool selection)
-- **SC-002**: Users can generate deployment artifacts with `rad app plan` in under 2 minutes for a typical application model with 5-10 resources
+- **SC-002**: Users can generate deployment artifacts with `rad plan` in under 2 minutes for a typical application model with 5-10 resources
 - **SC-003**: 90% of GitHub Actions workflows using Repo Radius complete without manual intervention (using `--quiet`, `-y`, and automatic `GITHUB_SHA` detection)
-- **SC-004**: Users can deploy infrastructure with `rad app deploy` and have full resource details automatically captured in JSON format
+- **SC-004**: Users can deploy infrastructure with `rad deploy` and have full resource details automatically captured in JSON format
 - **SC-005**: Users can install Repo Radius via their native package manager (WinGet, Homebrew, apt, dnf) without additional manual configuration steps
 - **SC-006**: Users can configure and deploy to multiple environments (dev, staging, production) using separate `.env` files without code changes
 - **SC-007**: Deployment failures provide actionable error messages with semantic exit codes that enable GitHub Actions workflow error handling
@@ -1165,10 +1156,149 @@ The following features would need to be added to Control Plane Radius to enable 
 
 - **FE-011**: Enable IntelliSense support in VS Code for user-defined custom Resource Types:
   - Currently, only built-in types from `resource-types-contrib` have IntelliSense via the `radius` Bicep extension
-  - Custom Resource Types defined in `.radius/config/types/` are validated at `rad app plan` time but lack editor support
+  - Custom Resource Types defined in `.radius/config/types/` are validated at `rad plan` time but lack editor support
   - This limitation exists because Bicep CLI doesn't support dynamic type registration or runtime extension loading
   - Future enhancement would require either:
     - Bicep CLI changes to support dynamic type loading (upstream dependency)
     - Generating per-repository Bicep extension packages from custom type definitions
     - Language server protocol integration for real-time type discovery
-  - Until resolved, users can validate custom types via `rad app plan` which provides equivalent validation without IDE integration
+  - Until resolved, users can validate custom types via `rad plan` which provides equivalent validation without IDE integration
+
+---
+
+## Appendix A: Design Clarifications
+
+This appendix documents design decisions made during specification development.
+
+### Session 2026-01-29
+
+- Q: How should Resource Types be populated in `.radius/config/types/` during `rad init`? → A: Clone/fetch specific directory via git sparse-checkout from resource-types-contrib repo
+- Q: What should happen if `rad init` cannot reach the resource-types-contrib repository or authentication fails during Resource Types population? → A: Fail initialization with exit code 2 and clear error message instructing user to resolve connectivity/auth and retry
+- Q: What level of detail should be captured for each deployed resource's properties in deployment records? → A: Full properties as returned by cloud provider (complete resource snapshot)
+- Q: What should happen when a deployment fails partway through resource provisioning? → A: Stop on failure, leave successfully deployed resources in place (no automatic rollback). User can retry or manually clean up.
+- Q: How should Repo Radius handle concurrent deployments to the same environment (e.g., two GitHub Actions workflows triggering simultaneously)? → A: Use deployment tool's native locking (Terraform state locking, ARM deployment locks) - no additional Repo Radius locking layer
+
+### Session 2026-01-30
+
+- Q: How should Kubernetes authentication be configured for deployments? Should separate credential environment variables be introduced, or rely on standard kubeconfig credential chain? → A: Use standard kubeconfig credential chain - no separate K8s credential env vars
+- Q: How should Terraform backend configuration be managed? Should Repo Radius initialize/manage the backend, or delegate backend configuration to users? → A: Backend config is user's responsibility, but .env files should support a TF_BACKEND_CONFIG variable that points to a partial backend configuration file (used with terraform init -backend-config=<file>)
+- Q: What error message format should Repo Radius use for reporting failures? → A: Single static error format with structured fields (error code, message, affected resource, suggested action)
+- Q: How long should deployment records in `.radius/deploy/` be retained? Should there be automatic cleanup of old deployments? → A: Keep all deployment records indefinitely (no automatic cleanup)
+- Q: When a recipe's version changes between `rad plan` runs (e.g., updating git ref or OCI tag in recipes.yaml), should the system block, allow silently, or allow with a warning? → A: Allow but warn - Recipe versions are already captured in plan output (main.tf references recipeLocation with version, plan.yaml), so no additional tracking needed. The warning provides visibility and the audit trail exists in plan artifacts.
+
+---
+
+## Appendix B: Open Issues
+
+The following issues require further investigation or design decisions.
+
+### OI-001: Bicep What-If for Kubernetes Deployments
+
+**Context**: For Azure deployments, `az deployment group what-if` provides a preview of changes before deployment. However, when deploying Bicep to Kubernetes via the Bicep Kubernetes extension, there is no equivalent what-if capability.
+
+**Question**: How should `rad plan` generate plan output for Kubernetes Bicep deployments?
+
+**Options to investigate**:
+1. Skip what-if for Kubernetes Bicep deployments (only validate with `bicep build`)
+2. Generate a diff by comparing the rendered Kubernetes manifests against the current cluster state
+3. Use `kubectl diff` on the generated manifests after Bicep compilation
+4. Document this as a limitation and proceed without what-if output for K8s Bicep
+
+**Impact**: Without what-if output, users won't see a preview of Kubernetes resource changes before deployment, reducing the auditability benefit of the plan phase for K8s Bicep recipes.
+
+**Status**: Unresolved
+
+---
+
+## Appendix C: Recommendations for Open Questions
+
+### Q1: What features or behaviors would make Repo Radius particularly well-suited for GitHub Actions?
+
+**Recommendation**: The following features optimize Repo Radius for GitHub Actions:
+
+1. **Exit Codes**: Use semantic exit codes that enable GitHub Actions conditionals:
+   - `0` = Success
+   - `1` = General error
+   - `2` = Validation error (configuration/input problems)
+   - `3` = Authentication/authorization error
+   - `4` = Resource conflict/state error
+   - `5` = Deployment failure
+
+2. **Simple CI Integration**: Commands use exit codes for success/failure. Workflow steps proceed naturally based on exit codes—no parsing required:
+   ```yaml
+   - name: Generate deployment plan
+     run: rad plan myapp.bicep --environment production
+     # Exit code 0 = success, non-zero = failure
+   
+   - name: Deploy (only runs if plan succeeded)
+     run: rad deploy --application myapp --environment production -y
+   ```
+
+3. **GitHub Actions Artifacts Integration**: Output file paths and metadata in structured format so workflows can easily upload artifacts:
+   ```yaml
+   - name: Deploy with Radius
+     run: rad deploy ${{ github.sha }} --application myapp --environment production -y
+   
+   - name: Upload deployment artifacts
+     uses: actions/upload-artifact@v4
+     with:
+       name: radius-deployment
+       path: .radius/deploy/
+   ```
+
+4. **Silent/Quiet Mode**: Support `--quiet` flag that suppresses progress output but preserves structured JSON/YAML output for cleaner workflow logs
+
+5. **Commit SHA Auto-detection**: When running in GitHub Actions, automatically detect `GITHUB_SHA` environment variable for `rad deploy` so users don't need to manually specify the commit argument
+
+6. **Pre-built GitHub Action**: Provide an official GitHub Action wrapper for easy integration:
+   ```yaml
+   - uses: radius-project/repo-radius-action@v1
+     with:
+       command: 'deploy'
+       environment: 'production'
+   ```
+
+### Q2: What file format should be used to store deployed resource details?
+
+**Recommendation**: **JSON** is the optimal format for the following reasons:
+
+1. **Native Format Preservation**: Deployment details are captured from cloud APIs (Azure ARM, AWS, Kubernetes) which return JSON natively. Using JSON preserves the exact format without conversion.
+2. **Programmatic Access**: JSON is easily parsed by scripts and tools for automation and analysis.
+3. **Widely Supported**: All programming languages and CI/CD tools have excellent JSON parsing libraries.
+4. **Consistency with APIs**: Aligns with the JSON output of `az resource show`, `terraform show -json`, and Kubernetes API responses.
+
+**Structure Example**:
+```json
+// .radius/deploy/<app>/<env>/deployment-<commit>.json
+{
+  "deployment": {
+    "commit": "abc123def456",
+    "timestamp": "2026-01-29T15:30:00Z",
+    "environment": "production",
+    "application": "myapp"
+  },
+  "resources": [
+    {
+      "id": "/subscriptions/xyz/resourceGroups/myapp-rg/providers/Microsoft.Storage/storageAccounts/myappsa",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "myappsa",
+      "properties": { ... }
+    }
+  ]
+}
+```
+
+### Q3: Does Radius need a state store for AWS resources to maintain idempotency?
+
+**Recommendation**: **No state store is needed** for the following reasons:
+
+1. **Terraform State Management**: When using Terraform as the deployment tool for AWS, Terraform manages its own state file (`.tfstate`). Repo Radius can rely on Terraform's built-in idempotency mechanisms without introducing a parallel state store.
+
+2. **State Storage Options**: Users can configure Terraform state backends (S3 + DynamoDB, Terraform Cloud) via the `terraformrc` configuration in their `.env` files. Repo Radius doesn't need to manage this—it's part of the existing Terraform ecosystem.
+
+3. **Azure with Bicep**: Azure Resource Manager provides native idempotency, so no additional state store is needed for Azure deployments with Bicep.
+
+**Implementation Guidance**:
+- AWS deployments: Terraform only (Terraform manages state)
+- Azure deployments: Bicep (ARM provides idempotency) OR Terraform (Terraform manages state)
+- Kubernetes deployments: Helm or direct manifest application (Kubernetes provides idempotency)
