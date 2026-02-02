@@ -163,8 +163,12 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
 	if envDatamodel.Properties.Providers != nil {
 		if envDatamodel.Properties.Providers.Azure != nil {
+			scope := "/subscriptions/" + envDatamodel.Properties.Providers.Azure.SubscriptionId
+			if envDatamodel.Properties.Providers.Azure.ResourceGroupName != "" {
+				scope += "/resourceGroups/" + envDatamodel.Properties.Providers.Azure.ResourceGroupName
+			}
 			config.Providers.Azure = datamodel.ProvidersAzure{
-				Scope: envDatamodel.Properties.Providers.Azure.SubscriptionId,
+				Scope: scope,
 			}
 		}
 		if envDatamodel.Properties.Providers.AWS != nil {
