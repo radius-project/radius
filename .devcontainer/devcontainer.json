@@ -10,6 +10,7 @@
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/guiyomh/features/gotestsum:0.1.1": {},
     "ghcr.io/devcontainers/features/node:1": {
+      "version": "24",
       "pnpmVersion": "10"
     },
     "ghcr.io/devcontainers/features/python:1": {},
