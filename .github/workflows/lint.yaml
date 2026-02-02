@@ -77,7 +77,7 @@ jobs:
       - name: Install TypeSpec compiler
         run: |
           pushd typespec
-          pnpm install
+          pnpm install --frozen-lockfile
           popd
 
       - name: Install autorest
