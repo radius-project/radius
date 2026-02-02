@@ -30,7 +30,7 @@ generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
 	@echo "$(ARROW) Detecting tsp..."
-	cd typespec/ && npx$(CMD_EXT) -q -y tsp --help > /dev/null || { echo "run 'pnpm install' in typespec directory."; exit 1; }
+	@pnpm -C typespec exec tsp --help > /dev/null || { echo "run 'pnpm install' in typespec directory."; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-pnpm-installed
