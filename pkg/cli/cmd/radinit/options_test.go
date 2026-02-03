@@ -53,7 +53,7 @@ func Test_enterInitOptions(t *testing.T) {
 				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
 			},
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default",
 			Scope:       "/planes/radius/local/resourceGroups/default",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
@@ -101,7 +101,7 @@ func Test_enterInitOptions(t *testing.T) {
 				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
 			},
-			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
+			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Radius.Core/environments/test-env",
 			Scope:       "/planes/radius/local/resourceGroups/test-env",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
@@ -137,7 +137,7 @@ workspaces:
         kind: kubernetes
         context: cool-beans
       scope: /a/b/c
-      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
+      environment: /a/b/c/providers/Radius.Core/environments/ice-cold
 `
 		v, err := makeConfig(yaml)
 		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true, ConfigHolder: &framework.ConfigHolder{Config: v}}
@@ -160,7 +160,7 @@ workspaces:
 				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
 			},
-			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
+			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Radius.Core/environments/test-env",
 			Scope:       "/planes/radius/local/resourceGroups/test-env",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
@@ -196,13 +196,13 @@ workspaces:
         kind: kubernetes
         context: cool-beans
       scope: /a/b/c
-      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
+      environment: /a/b/c/providers/Radius.Core/environments/ice-cold
     default:
       connection:
         kind: kubernetes
         context: hot-beans
       scope: /d/e/f
-      environment: /a/b/c/providers/Applications.Core/environments/hot-coffee
+      environment: /a/b/c/providers/Radius.Core/environments/hot-coffee
 `
 		v, err := makeConfig(yaml)
 		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true, ConfigHolder: &framework.ConfigHolder{Config: v}}
@@ -225,7 +225,7 @@ workspaces:
 				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
 			},
-			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
+			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Radius.Core/environments/test-env",
 			Scope:       "/planes/radius/local/resourceGroups/test-env",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
