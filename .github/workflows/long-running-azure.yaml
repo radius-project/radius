@@ -113,6 +113,7 @@ jobs:
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
 
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
