@@ -170,8 +170,10 @@ jobs:
         run: |
           # Get PR details from the issue comment event
           PR_NUMBER=${{ github.event.issue.number }}
-          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepository,baseRefOid)
-          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
+          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepositoryOwner,headRepository,baseRefOid)
+          HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
+          HEAD_REPO_NAME=$(echo "$PR_DATA" | jq -r '.headRepository.name')
+          HEAD_REPO="${HEAD_OWNER}/${HEAD_REPO_NAME}"
           HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
           BASE_SHA=$(echo "$PR_DATA" | jq -r '.baseRefOid')
           {
