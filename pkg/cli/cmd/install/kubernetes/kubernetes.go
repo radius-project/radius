@@ -18,18 +18,11 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/to"
-	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -203,103 +196,5 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Deploy the default recipe pack after successful installation.
-	if err := deployRecipePack(ctx, r.KubeContext, r.Output); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-const defaultResourceGroupName = "default"
-
-// deployRecipePack connects to the newly installed Radius and deploys the default recipe pack.
-func deployRecipePack(ctx context.Context, kubeContext string, out output.Interface) error {
-	out.LogInfo("Deploying default recipe pack...")
-
-	ws := &workspaces.Workspace{
-		Connection: map[string]any{
-			"kind":    workspaces.KindKubernetes,
-			"context": kubeContext,
-		},
-		Scope: fmt.Sprintf("/planes/radius/local/resourceGroups/%s", defaultResourceGroupName),
-	}
-
-	connection, err := ws.Connect(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to connect to Radius: %w", err)
-	}
-
-	clientOptions := sdk.NewClientOptions(connection)
-
-	// Create the default resource group.
-	rgClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, clientOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create resource group client: %w", err)
-	}
-
-	_, err = rgClient.CreateOrUpdate(ctx, "local", defaultResourceGroupName, ucpv20231001.ResourceGroupResource{
-		Location: to.Ptr("global"),
-	}, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create resource group %q: %w", defaultResourceGroupName, err)
-	}
-
-	// Create the recipe pack.
-	rpClient, err := corerpv20250801.NewRecipePacksClient(
-		fmt.Sprintf("planes/radius/local/resourceGroups/%s", defaultResourceGroupName),
-		&aztoken.AnonymousCredential{},
-		clientOptions,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create recipe pack client: %w", err)
-	}
-
-	_, err = rpClient.CreateOrUpdate(ctx, "kuberecipepack", newDefaultRecipePackResource(), nil)
-	if err != nil {
-		return fmt.Errorf("failed to deploy recipe pack: %w", err)
-	}
-
-	out.LogInfo("Successfully deployed default recipe pack.")
-	return nil
-}
-
-// newDefaultRecipePackResource builds the default RecipePackResource containing
-// Bicep recipes for the built-in Radius resource types.
-func newDefaultRecipePackResource() corerpv20250801.RecipePackResource {
-	bicepKind := corerpv20250801.RecipeKindBicep
-	plainHTTP := true
-
-	return corerpv20250801.RecipePackResource{
-		Location: to.Ptr("global"),
-		Properties: &corerpv20250801.RecipePackProperties{
-			Recipes: map[string]*corerpv20250801.RecipeDefinition{
-				"Radius.Compute/containers": {
-					RecipeKind:     &bicepKind,
-					RecipeLocation: to.Ptr("localhost:5000/radius-recipes/compute/containers/kubernetes/bicep/kubernetes-containers:latest"),
-					PlainHTTP:      &plainHTTP,
-				},
-				"Radius.Compute/persistentVolumes": {
-					RecipeKind:     &bicepKind,
-					RecipeLocation: to.Ptr("localhost:5000/radius-recipes/compute/persistentvolumes/kubernetes/bicep/kubernetes-volumes:latest"),
-					PlainHTTP:      &plainHTTP,
-				},
-				"Radius.Data/mySqlDatabases": {
-					RecipeKind:     &bicepKind,
-					RecipeLocation: to.Ptr("localhost:5000/radius-recipes/data/mysqldatabases/kubernetes/bicep/kubernetes-mysql:latest"),
-					PlainHTTP:      &plainHTTP,
-				},
-				"Radius.Data/postgreSqlDatabases": {
-					RecipeKind:     &bicepKind,
-					RecipeLocation: to.Ptr("localhost:5000/radius-recipes/data/postgresqldatabases/kubernetes/bicep/kubernetes-postgresql:latest"),
-					PlainHTTP:      &plainHTTP,
-				},
-				"Radius.Security/secrets": {
-					RecipeKind:     &bicepKind,
-					RecipeLocation: to.Ptr("localhost:5000/radius-recipes/security/secrets/kubernetes/bicep/kubernetes-secrets:latest"),
-					PlainHTTP:      &plainHTTP,
-				},
-			},
-		},
-	}
 }
