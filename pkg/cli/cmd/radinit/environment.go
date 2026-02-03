@@ -25,8 +25,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
@@ -34,7 +36,7 @@ import (
 const (
 	selectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
 	selectExistingEnvironmentCreateSentinel = "[create new]"
-	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into"
+	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into. The namespace must exist in the Kubernetes cluster."
 	enterEnvironmentNamePrompt              = "Enter an environment name"
 	defaultEnvironmentName                  = "default"
 	defaultEnvironmentNamespace             = "default"
@@ -53,41 +55,73 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		return clierrors.MessageWithCause(err, "Failed to create a resource group.")
 	}
 
-	providerList := []any{}
-	if r.Options.CloudProviders.Azure != nil {
-		providerList = append(providerList, r.Options.CloudProviders.Azure)
-	}
-	if r.Options.CloudProviders.AWS != nil {
-		providerList = append(providerList, r.Options.CloudProviders.AWS)
-	}
+	// Build providers for the new Radius.Core/environments resource type
+	providers := &corerpv20250801.Providers{}
 
-	providers, err := cmd.CreateEnvProviders(providerList)
-	if err != nil {
-		return err
-	}
-
-	var recipes map[string]map[string]corerp.RecipePropertiesClassification
-	if r.Options.Recipes.DevRecipes {
-		// Note: To use custom registry for recipes, users need to manually configure
-		// their environment after initialization or use custom recipe definitions
-		recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
-		if err != nil {
-			return err
+	if r.Options.Environment.Namespace != "" {
+		providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+			Namespace: to.Ptr(r.Options.Environment.Namespace),
 		}
 	}
 
-	envProperties := corerp.EnvironmentProperties{
-		Compute: &corerp.KubernetesCompute{
-			Namespace: to.Ptr(r.Options.Environment.Namespace),
-		},
-		Providers: &providers,
-		Recipes:   recipes,
+	if r.Options.CloudProviders.Azure != nil {
+		providers.Azure = &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    to.Ptr(r.Options.CloudProviders.Azure.SubscriptionID),
+			ResourceGroupName: to.Ptr(r.Options.CloudProviders.Azure.ResourceGroup),
+		}
 	}
 
-	err = client.CreateOrUpdateEnvironment(ctx, r.Options.Environment.Name, &corerp.EnvironmentResource{
+	if r.Options.CloudProviders.AWS != nil {
+		providers.Aws = &corerpv20250801.ProvidersAws{
+			AccountID: to.Ptr(r.Options.CloudProviders.AWS.AccountID),
+			Region:    to.Ptr(r.Options.CloudProviders.AWS.Region),
+		}
+	}
+
+	envProperties := corerpv20250801.EnvironmentProperties{
+		Providers: providers,
+	}
+
+	// Initialize the Radius.Core client factory if not already set
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
+		}
+		r.RadiusCoreClientFactory = clientFactory
+	}
+
+	// Create singleton recipe packs (one per resource type) and link them to the environment.
+	// Singletons always live in the default resource group scope.
+	// DefaultScopeClientFactory is required in the case  rad init runs from a workspace with non-default settings.
+	if r.DefaultScopeClientFactory == nil {
+		if r.Workspace.Scope == recipepack.DefaultResourceGroupScope {
+			r.DefaultScopeClientFactory = r.RadiusCoreClientFactory
+		} else {
+			defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+			if err != nil {
+				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client for default scope.")
+			}
+			r.DefaultScopeClientFactory = defaultClientFactory
+		}
+	}
+	recipePackIDs, err := recipepack.CreateSingletonRecipePacks(ctx, r.DefaultScopeClientFactory.NewRecipePacksClient())
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create recipe packs.")
+	}
+
+	// Link all recipe packs to the environment
+	recipePackPtrs := make([]*string, len(recipePackIDs))
+	for i, id := range recipePackIDs {
+		recipePackPtrs[i] = to.Ptr(id)
+	}
+	envProperties.RecipePacks = recipePackPtrs
+
+	// Create the Radius.Core/environments resource
+	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
 		Location:   to.Ptr(v1.LocationGlobal),
 		Properties: &envProperties,
-	})
+	}, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create environment.")
 	}

@@ -18,6 +18,7 @@ package test_client_factory
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
@@ -77,6 +78,16 @@ func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 							},
 						},
 					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name:       to.Ptr(recipePackName),
+					Properties: resource.Properties,
 				},
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
@@ -155,6 +166,228 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 			options *v20250801preview.EnvironmentsClientDeleteOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientDeleteResponse], errResp azfake.ErrorResponder) {
 			resp.SetResponse(http.StatusNoContent, v20250801preview.EnvironmentsClientDeleteResponse{}, nil)
+			return
+		},
+	}
+}
+
+// WithEnvironmentServer404OnGet returns an EnvironmentsServer that returns 404 on Get
+// and success on CreateOrUpdate, simulating a new environment creation scenario.
+func WithEnvironmentServer404OnGet() corerpfake.EnvironmentsServer {
+	return corerpfake.EnvironmentsServer{
+		Get: func(
+			ctx context.Context,
+			environmentName string,
+			options *v20250801preview.EnvironmentsClientGetOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("environment not found"))
+			errResp.SetResponseError(404, "Not Found")
+			return
+		},
+		CreateOrUpdate: func(
+			ctx context.Context,
+			environmentName string,
+			resource v20250801preview.EnvironmentResource,
+			options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+				EnvironmentResource: resource,
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+	}
+}
+
+// WithEnvironmentServerNoRecipePacks returns an EnvironmentsServer that returns an existing
+// environment with no recipe packs on Get, and success on CreateOrUpdate.
+func WithEnvironmentServerNoRecipePacks() corerpfake.EnvironmentsServer {
+	return corerpfake.EnvironmentsServer{
+		Get: func(
+			ctx context.Context,
+			environmentName string,
+			options *v20250801preview.EnvironmentsClientGetOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.EnvironmentsClientGetResponse{
+				EnvironmentResource: v20250801preview.EnvironmentResource{
+					Name:     to.Ptr(environmentName),
+					Location: to.Ptr("global"),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+		CreateOrUpdate: func(
+			ctx context.Context,
+			environmentName string,
+			resource v20250801preview.EnvironmentResource,
+			options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+				EnvironmentResource: resource,
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+	}
+}
+
+// WithEnvironmentServerCustomRecipePacks returns a factory function that creates an EnvironmentsServer
+// with the given recipe pack IDs on Get, and success on CreateOrUpdate.
+func WithEnvironmentServerCustomRecipePacks(recipePacks []*string) func() corerpfake.EnvironmentsServer {
+	return func() corerpfake.EnvironmentsServer {
+		return corerpfake.EnvironmentsServer{
+			Get: func(
+				ctx context.Context,
+				environmentName string,
+				options *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					EnvironmentResource: v20250801preview.EnvironmentResource{
+						Name:     to.Ptr(environmentName),
+						Location: to.Ptr("global"),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: recipePacks,
+						},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				ctx context.Context,
+				environmentName string,
+				resource v20250801preview.EnvironmentResource,
+				options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+					EnvironmentResource: resource,
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+}
+
+// WithRecipePackServerCoreTypes returns a RecipePacksServer that maps singleton pack names
+// to their actual core resource types. Non-singleton names get a unique test type.
+func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
+	// Build lookup from singleton definitions. These mirror the core
+	// singleton recipe packs used by the CLI, but are duplicated here to
+	// avoid importing the recipepack package and creating an import cycle in
+	// tests.
+	singletonTypes := map[string]string{
+		"containers":        "Radius.Compute/containers",
+		"persistentvolumes": "Radius.Compute/persistentVolumes",
+		"routes":            "Radius.Compute/routes",
+		"secrets":           "Radius.Security/secrets",
+	}
+
+	return corerpfake.RecipePacksServer{
+		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			resourceType, ok := singletonTypes[recipePackName]
+			if !ok {
+				resourceType = "Test.Resource/" + recipePackName
+			}
+			bicepKind := v20250801preview.RecipeKindBicep
+			result := v20250801preview.RecipePacksClientGetResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name: to.Ptr(recipePackName),
+					Properties: &v20250801preview.RecipePackProperties{
+						Recipes: map[string]*v20250801preview.RecipeDefinition{
+							resourceType: {
+								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+								RecipeKind:     &bicepKind,
+							},
+						},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name:       to.Ptr(recipePackName),
+					Properties: resource.Properties,
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+	}
+}
+
+// WithRecipePackServerUniqueTypes returns a RecipePacksServer where each pack name
+// maps to a unique resource type based on the pack name.
+func WithRecipePackServerUniqueTypes() corerpfake.RecipePacksServer {
+	return corerpfake.RecipePacksServer{
+		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			bicepKind := v20250801preview.RecipeKindBicep
+			result := v20250801preview.RecipePacksClientGetResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name: to.Ptr(recipePackName),
+					Properties: &v20250801preview.RecipePackProperties{
+						Recipes: map[string]*v20250801preview.RecipeDefinition{
+							"Test.Resource/" + recipePackName: {
+								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+								RecipeKind:     &bicepKind,
+							},
+						},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name:       to.Ptr(recipePackName),
+					Properties: resource.Properties,
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+	}
+}
+
+// WithRecipePackServerConflictingTypes returns a RecipePacksServer where every pack
+// returns the same resource type, simulating a conflict scenario.
+func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
+	return corerpfake.RecipePacksServer{
+		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			bicepKind := v20250801preview.RecipeKindBicep
+			result := v20250801preview.RecipePacksClientGetResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name: to.Ptr(recipePackName),
+					Properties: &v20250801preview.RecipePackProperties{
+						Recipes: map[string]*v20250801preview.RecipeDefinition{
+							"Radius.Compute/containers": {
+								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+								RecipeKind:     &bicepKind,
+							},
+						},
+					},
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name:       to.Ptr(recipePackName),
+					Properties: resource.Properties,
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
 	}
