@@ -36,10 +36,24 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  workflow_run:
-    workflows: [Approve Functional Tests]
-    types:
-      - completed
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
+  # pull_request_target is used for dependabot PRs because pull_request events
+  # from dependabot don't have access to secrets. pull_request_target runs in
+  # the context of the base branch and has access to secrets.
+  # SECURITY: Only enable for dependabot[bot] - do not use for other external PRs.
+  pull_request_target:
+    branches:
+      - main
+      - features/*
+      - release/*
+  # issue_comment trigger allows maintainers to run tests on fork PRs by commenting
+  # '/ok-to-test' on the PR. Only org members and owners can trigger this.
+  issue_comment:
+    types: [created]
 
 permissions: {}
 
@@ -91,16 +105,18 @@ jobs:
     timeout-minutes: 5
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'workflow_dispatch'
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/ok-to-test') &&
+       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
     permissions:
       contents: read # Required for listing the commits
       pull-requests: read # Required for fetching PR details
     env:
       DE_IMAGE: ghcr.io/radius-project/deployment-engine
       DE_TAG: latest
-      # Head branch, only populated for workflow_run dispatch.
-      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -115,27 +131,6 @@ jobs:
       - name: Log Event Information
         run: |
           echo "Event Name: ${{ github.event_name }}"
-
-          # Additional logging is temporary for debugging purposes
-          # https://github.com/radius-project/radius/issues/7782
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            echo "Triggered by workflow_run."
-            echo "Ref: ${{ github.ref }}"
-            echo "Head Branch Name: $HEAD_BRANCH"
-            echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
-            echo "Github Repository: ${{ github.repository }}"
-            echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
-            echo "Event Repository Name: ${{ github.event.workflow_run.repository.name }}"
-            echo "Event Repository Full Name: ${{ github.event.workflow_run.repository.full_name }}"
-            echo "Workflow ID: ${{ github.event.workflow_run.workflow_id }}"
-            echo "Workflow Run ID: ${{ github.event.workflow_run.id }}"
-            echo "Workflow Name: ${{ github.event.workflow_run.name }}"
-            echo "Run Number: ${{ github.event.workflow_run.run_number }}"
-            echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-            echo "Status: ${{ github.event.workflow_run.status }}"
-            echo "Created At: ${{ github.event.workflow_run.created_at }}"
-            echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
-          fi
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -152,10 +147,38 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=${{ github.ref }}"
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
             echo "PR_NUMBER=${{ github.event.pull_request.number }}"
             echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Set up checkout target (pull_request_target for dependabot)
+        if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
+        run: |
+          {
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Set up checkout target (issue_comment /ok-to-test)
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get PR details from the issue comment event
+          PR_NUMBER=${{ github.event.issue.number }}
+          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepository,baseRefOid)
+          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
+          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
+          BASE_SHA=$(echo "$PR_DATA" | jq -r '.baseRefOid')
+          {
+            echo "CHECKOUT_REPO=$HEAD_REPO"
+            echo "CHECKOUT_REF=$HEAD_SHA"
+            echo "PR_NUMBER=$PR_NUMBER"
+            echo "BASE_SHA=$BASE_SHA"
           } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
@@ -171,75 +194,6 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-
-      - name: Download PR data artifacts
-        if: github.event_name == 'workflow_run'
-        uses: ./.github/actions/download-pr-data-artifact
-        id: get-pr-number
-
-      - name: Set PR context (workflow_run)
-        if: github.event_name == 'workflow_run'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        env:
-          PR_NUMBER: ${{ steps.get-pr-number.outputs.pr_number }}
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const payload = context.payload.workflow_run;
-            const fs = require('fs');
-            // Use env var to avoid syntax errors from newlines in the output
-            const prNumber = (process.env.PR_NUMBER || '').trim();
-
-            let baseSha = '';
-            let checkoutRepo = payload.head_repository.full_name;
-            let checkoutRef = payload.head_sha;
-
-            // For fork PRs, payload.pull_requests is empty due to GitHub security restrictions.
-            // We need to fetch the PR details using the API to get the base SHA for change detection.
-            if (prNumber) {
-              try {
-                const { data: pr } = await github.rest.pulls.get({
-                  ...context.repo,
-                  pull_number: parseInt(prNumber, 10)
-                });
-
-                baseSha = pr.base?.sha || baseSha;
-
-                // Use PR head info which works for both fork and non-fork PRs
-                if (pr.head && pr.head.repo) {
-                  checkoutRepo = pr.head.repo.full_name;
-                  checkoutRef = pr.head.sha;
-                } else {
-                  console.log(`PR #${prNumber} head repo missing; falling back to workflow_run payload data.`);
-                }
-
-                console.log(`Fetched PR #${prNumber}: base_sha=${baseSha}, head_repo=${checkoutRepo}, head_sha=${checkoutRef}`);
-              } catch (error) {
-                console.log(`Warning: Could not fetch PR #${prNumber}: ${error.message}`);
-                // Fall back to workflow_run payload data
-                if (payload.pull_requests && payload.pull_requests.length > 0) {
-                  baseSha = payload.pull_requests[0].base.sha;
-                }
-              }
-            } else if (payload.pull_requests && payload.pull_requests.length > 0) {
-              // Fallback for cases where PR number artifact is not available
-              baseSha = payload.pull_requests[0].base.sha;
-            }
-
-            if (!baseSha) {
-              console.log(
-                `Warning: BASE_SHA is empty for workflow_run (PR: ${prNumber || 'n/a'}). Change detection may be skipped.`
-              );
-            }
-
-            // Set environment variables
-            fs.appendFileSync(
-              process.env.GITHUB_ENV,
-              `CHECKOUT_REPO=${checkoutRepo}\n` +
-                `CHECKOUT_REF=${checkoutRef}\n` +
-                `PR_NUMBER=${prNumber}\n` +
-                `BASE_SHA=${baseSha}\n`
-            );
 
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
@@ -570,8 +524,12 @@ jobs:
     needs: [setup, build]
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'workflow_dispatch'
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/ok-to-test') &&
+       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
     strategy:
       fail-fast: true
       matrix:
@@ -582,6 +540,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
+      checks: write # Required for publishing test results
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}

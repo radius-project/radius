@@ -55,7 +55,7 @@ func TestRadiusInstallationCheck_Run(t *testing.T) {
 				ContourInstalled: false,
 			},
 			expectSuccess: true,
-			expectMessage: "Radius is installed (version: v0.43.0), Contour is not installed (will be installed during upgrade)",
+			expectMessage: "Radius is installed (version: v0.43.0), Contour is not installed (will be skipped during upgrade)",
 		},
 		{
 			name: "radius not installed",

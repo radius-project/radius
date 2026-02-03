@@ -26,7 +26,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
       }
       'Test.Resources/postgres': {
         recipeKind: 'bicep'
-        recipeLocation: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_postgress_recipe:${version}'
+        // update the sha sum after making changes to the recipe
+        recipeLocation: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_postgress_recipe@sha256:40d079856c2b7cf4df146c0726b31b8bea6a82ef1eb7fa9bc9e00498367f2a4d'
       }
     }
   }
