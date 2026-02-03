@@ -147,6 +147,17 @@ jobs:
           git status --porcelain -unormal -- *.md
 
       # Prepare PR context information based on trigger type
+      # This step captures details about what triggered the workflow and formats them
+      # into a meaningful PR title and body for the auto-generated docs PR.
+      #
+      # Scenarios handled:
+      # 1. Push events from merged PRs (detected by "(#123)" pattern in commit message)
+      #    - Extracts PR number and title from the commit message
+      #    - Creates a link back to the original PR
+      # 2. Push events from direct commits (no PR pattern in message)
+      #    - Includes branch name, commit SHA, author, and commit message
+      # 3. Manual workflow_dispatch events
+      #    - Includes who triggered it and the current branch/commit
       - name: Prepare PR context
         id: pr-context
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
