@@ -1,8 +1,8 @@
-# Quickstart: Repo Radius
+# Quickstart: Git Workspace Mode
 
 **Feature**: 001-repo-radius | **Date**: 2026-02-02
 
-Get started with Repo Radius in 5 minutes.
+Get started with Git workspace mode in 5 minutes.
 
 ## Prerequisites
 
@@ -52,7 +52,7 @@ cd my-existing-repo
 rad init
 ```
 
-This initializes Repo Radius in your existing Git repository by creating the `.radius/` directory structure and populating Resource Types from the community registry.
+This initializes the Git workspace in your existing Git repository by creating the `.radius/` directory structure and populating Resource Types from the community registry.
 
 > **Note**: `rad init` requires an existing Git repository. It does not create a new repository.
 

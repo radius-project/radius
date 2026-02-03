@@ -1,4 +1,4 @@
-# Tasks: Repo Radius
+# Tasks: Git Workspace Mode
 
 **Input**: Design documents from `/specs/001-repo-radius/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli-commands.md
@@ -16,7 +16,7 @@
 ## Path Conventions
 
 Based on plan.md, the source structure is:
-- `pkg/cli/reporadius/` - New Repo Radius core package
+- `pkg/cli/git/` - New Git workspace core package
 - `pkg/cli/cmd/rad/` - CLI command implementations
 - `test/` - Test files (existing Radius test structure)
 
@@ -24,13 +24,13 @@ Based on plan.md, the source structure is:
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Project initialization and basic structure for Repo Radius
+**Purpose**: Project initialization and basic structure for Git workspace
 
-- [ ] T001 Create `pkg/cli/reporadius/` directory structure per plan.md
-- [ ] T002 [P] Add hashicorp/terraform-exec dependency to go.mod
-- [ ] T003 [P] Add joho/godotenv dependency to go.mod
-- [ ] T004 [P] Create exit code constants in pkg/cli/reporadius/exitcodes.go
-- [ ] T005 [P] Create error format struct in pkg/cli/reporadius/errors.go per NFR-021
+- [X] T001 Create `pkg/cli/git/` directory structure per plan.md
+- [X] T002 [P] Add hashicorp/terraform-exec dependency to go.mod
+- [X] T003 [P] Add joho/godotenv dependency to go.mod
+- [X] T004 [P] Create exit code constants in pkg/cli/git/exitcodes.go
+- [X] T005 [P] Create error format struct in pkg/cli/git/errors.go per NFR-021
 
 ---
 
@@ -42,29 +42,29 @@ Based on plan.md, the source structure is:
 
 ### Configuration Loading
 
-- [ ] T006 Implement Environment struct and parsing in pkg/cli/reporadius/config/environment.go
-- [ ] T007 [P] Implement AWSConfig, AzureConfig, KubernetesConfig structs in pkg/cli/reporadius/config/environment.go
-- [ ] T008 Implement LoadEnvironment function using godotenv in pkg/cli/reporadius/config/environment.go
-- [ ] T009 [P] Implement environment validation (required fields, credential detection) in pkg/cli/reporadius/config/environment.go
+- [X] T006 Implement Environment struct and parsing in pkg/cli/git/config/environment.go
+- [X] T007 [P] Implement AWSConfig, AzureConfig, KubernetesConfig structs in pkg/cli/git/config/environment.go
+- [X] T008 Implement LoadEnvironment function using godotenv in pkg/cli/git/config/environment.go
+- [X] T009 [P] Implement environment validation (required fields, credential detection) in pkg/cli/git/config/environment.go
 
 ### Recipe Loading
 
-- [ ] T010 Implement RecipeFile and Recipe structs in pkg/cli/reporadius/config/recipes.go
-- [ ] T011 Implement LoadRecipes function in pkg/cli/reporadius/config/recipes.go
-- [ ] T012 Implement recipe validation (pinned versions, valid locations) in pkg/cli/reporadius/config/recipes.go
+- [X] T010 Implement RecipeFile and Recipe structs in pkg/cli/git/config/recipes.go
+- [X] T011 Implement LoadRecipes function in pkg/cli/git/config/recipes.go
+- [X] T012 Implement recipe validation (pinned versions, valid locations) in pkg/cli/git/config/recipes.go
 
 ### Workspace Management
 
-- [ ] T013 Implement GitWorkspace struct in pkg/cli/workspaces/git.go
-- [ ] T014 Implement GitConnection and workspace interface methods in pkg/cli/workspaces/git.go
-- [ ] T015 Implement IsGitWorkspace detection function in pkg/cli/reporadius/git/state.go
+- [X] T013 Implement GitWorkspace struct in pkg/cli/workspaces/git.go
+- [X] T014 Implement GitConnection and workspace interface methods in pkg/cli/workspaces/git.go
+- [X] T015 Implement IsGitWorkspace detection function in pkg/cli/git/repo/state.go
 - [ ] T016 [P] Update workspace registry to include built-in `git` workspace in pkg/cli/workspaces/workspace.go
 
 ### Git Operations
 
-- [ ] T017 Implement Git repository detection (git rev-parse) in pkg/cli/reporadius/git/state.go
-- [ ] T018 [P] Implement sparse-checkout helper for resource types in pkg/cli/reporadius/git/sparse.go
-- [ ] T019 [P] Implement uncommitted changes detection in pkg/cli/reporadius/git/state.go
+- [X] T017 Implement Git repository detection (git rev-parse) in pkg/cli/git/repo/state.go
+- [X] T018 [P] Implement sparse-checkout helper for resource types in pkg/cli/git/repo/sparse.go
+- [X] T019 [P] Implement uncommitted changes detection in pkg/cli/git/repo/state.go
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -105,22 +105,22 @@ Based on plan.md, the source structure is:
 
 ### Implementation for User Story 2
 
-- [ ] T034 [US2] Create Plan and DeploymentStep structs in pkg/cli/reporadius/plan/types.go
-- [ ] T035 [P] [US2] Create RecipeVersion struct for change detection in pkg/cli/reporadius/plan/types.go
+- [ ] T034 [US2] Create Plan and DeploymentStep structs in pkg/cli/git/plan/types.go
+- [ ] T035 [P] [US2] Create RecipeVersion struct for change detection in pkg/cli/git/plan/types.go
 - [ ] T036 [US2] Create rad plan command skeleton in pkg/cli/cmd/rad/plan.go
 - [ ] T037 [US2] Implement Bicep file parsing to extract Application resource name
 - [ ] T038 [US2] Implement environment auto-selection (single env) vs required flag (multiple envs)
 - [ ] T039 [US2] Implement recipe lookup for each Application Resource type
 - [ ] T040 [US2] Implement recipe version pinning validation (--allow-unpinned-recipes flag)
-- [ ] T041 [US2] Implement Terraform artifact generation (main.tf, terraform.tfvars) in pkg/cli/reporadius/plan/terraform.go
-- [ ] T042 [US2] Implement terraform init execution using terraform-exec in pkg/cli/reporadius/plan/terraform.go
-- [ ] T043 [US2] Implement terraform plan execution and output capture in pkg/cli/reporadius/plan/terraform.go
-- [ ] T044 [US2] Implement terraform-context.log generation in pkg/cli/reporadius/plan/terraform.go
-- [ ] T045 [P] [US2] Implement Bicep artifact generation (.bicep, .bicepparam) in pkg/cli/reporadius/plan/bicep.go
-- [ ] T046 [P] [US2] Implement bicep build validation in pkg/cli/reporadius/plan/bicep.go
-- [ ] T047 [P] [US2] Implement az deployment group what-if execution in pkg/cli/reporadius/plan/bicep.go
-- [ ] T048 [P] [US2] Implement bicep-context.log generation in pkg/cli/reporadius/plan/bicep.go
-- [ ] T049 [US2] Implement plan.yaml manifest generation in pkg/cli/reporadius/plan/manifest.go
+- [ ] T041 [US2] Implement Terraform artifact generation (main.tf, terraform.tfvars) in pkg/cli/git/plan/terraform.go
+- [ ] T042 [US2] Implement terraform init execution using terraform-exec in pkg/cli/git/plan/terraform.go
+- [ ] T043 [US2] Implement terraform plan execution and output capture in pkg/cli/git/plan/terraform.go
+- [ ] T044 [US2] Implement terraform-context.log generation in pkg/cli/git/plan/terraform.go
+- [ ] T045 [P] [US2] Implement Bicep artifact generation (.bicep, .bicepparam) in pkg/cli/git/plan/bicep.go
+- [ ] T046 [P] [US2] Implement bicep build validation in pkg/cli/git/plan/bicep.go
+- [ ] T047 [P] [US2] Implement az deployment group what-if execution in pkg/cli/git/plan/bicep.go
+- [ ] T048 [P] [US2] Implement bicep-context.log generation in pkg/cli/git/plan/bicep.go
+- [ ] T049 [US2] Implement plan.yaml manifest generation in pkg/cli/git/plan/manifest.go
 - [ ] T050 [US2] Implement recipe version change detection and warning
 - [ ] T051 [US2] Implement plan output directory structure (.radius/plan/<app>/<env>/<seq>-<name>-<tool>/)
 - [ ] T052 [US2] Implement success summary output with next steps
@@ -137,8 +137,8 @@ Based on plan.md, the source structure is:
 
 ### Implementation for User Story 3
 
-- [ ] T053 [US3] Create DeploymentRecord and related structs in pkg/cli/reporadius/deploy/types.go
-- [ ] T054 [P] [US3] Create ApplicationResourceResult and CloudResource structs in pkg/cli/reporadius/deploy/types.go
+- [ ] T053 [US3] Create DeploymentRecord and related structs in pkg/cli/git/deploy/types.go
+- [ ] T054 [P] [US3] Create ApplicationResourceResult and CloudResource structs in pkg/cli/git/deploy/types.go
 - [ ] T055 [US3] Create rad deploy command skeleton in pkg/cli/cmd/rad/deploy_git.go
 - [ ] T056 [US3] Implement environment variable validation (AWS_ACCOUNT_ID, AZURE_CLIENT_ID, etc.)
 - [ ] T057 [US3] Implement Kubernetes configuration validation (kubeconfig, context, connectivity)
@@ -147,14 +147,14 @@ Based on plan.md, the source structure is:
 - [ ] T060 [US3] Implement GitHub Actions detection (GITHUB_ACTIONS=true, GITHUB_SHA)
 - [ ] T061 [US3] Implement deployment confirmation prompt with environment details
 - [ ] T062 [US3] Implement -y flag for non-interactive deployment
-- [ ] T063 [US3] Implement Terraform deployment execution using terraform-exec in pkg/cli/reporadius/deploy/executor.go
-- [ ] T064 [US3] Implement Bicep deployment execution (az deployment group create) in pkg/cli/reporadius/deploy/executor.go
+- [ ] T063 [US3] Implement Terraform deployment execution using terraform-exec in pkg/cli/git/deploy/executor.go
+- [ ] T064 [US3] Implement Bicep deployment execution (az deployment group create) in pkg/cli/git/deploy/executor.go
 - [ ] T065 [US3] Implement deployment progress display with spinner
 - [ ] T066 [US3] Implement stop-on-failure semantics (no auto-rollback)
-- [ ] T067 [US3] Implement Azure resource capture (az resource show) in pkg/cli/reporadius/deploy/capture.go
-- [ ] T068 [P] [US3] Implement AWS resource capture from Terraform state in pkg/cli/reporadius/deploy/capture.go
-- [ ] T069 [P] [US3] Implement Kubernetes resource capture via K8s API in pkg/cli/reporadius/deploy/capture.go
-- [ ] T070 [US3] Implement DeploymentRecord JSON generation in pkg/cli/reporadius/deploy/record.go
+- [ ] T067 [US3] Implement Azure resource capture (az resource show) in pkg/cli/git/deploy/capture.go
+- [ ] T068 [P] [US3] Implement AWS resource capture from Terraform state in pkg/cli/git/deploy/capture.go
+- [ ] T069 [P] [US3] Implement Kubernetes resource capture via K8s API in pkg/cli/git/deploy/capture.go
+- [ ] T070 [US3] Implement DeploymentRecord JSON generation in pkg/cli/git/deploy/record.go
 - [ ] T071 [US3] Implement deployment record storage (.radius/deploy/<app>/<env>/deployment-<commit>.json)
 - [ ] T072 [US3] Implement auto-staging of deployment records (git add .radius/deploy/)
 - [ ] T073 [US3] Implement --commit flag for automatic commit after deployment
@@ -183,10 +183,10 @@ Based on plan.md, the source structure is:
 - [ ] T083 [US4] Implement model vs model comparison (Bicep file diff)
 - [ ] T084 [US4] Implement plan vs plan comparison (IaC file diff)
 - [ ] T085 [US4] Implement plan vs deployment comparison
-- [ ] T086 [US4] Implement deployment vs live cloud comparison (drift detection) in pkg/cli/reporadius/diff/differ.go
-- [ ] T087 [US4] Implement Azure resource state query (ARM API) in pkg/cli/reporadius/diff/azure.go
-- [ ] T088 [P] [US4] Implement AWS resource state query (Terraform state) in pkg/cli/reporadius/diff/aws.go
-- [ ] T089 [P] [US4] Implement Kubernetes resource state query in pkg/cli/reporadius/diff/kubernetes.go
+- [ ] T086 [US4] Implement deployment vs live cloud comparison (drift detection) in pkg/cli/git/diff/differ.go
+- [ ] T087 [US4] Implement Azure resource state query (ARM API) in pkg/cli/git/diff/azure.go
+- [ ] T088 [P] [US4] Implement AWS resource state query (Terraform state) in pkg/cli/git/diff/aws.go
+- [ ] T089 [P] [US4] Implement Kubernetes resource state query in pkg/cli/git/diff/kubernetes.go
 - [ ] T090 [US4] Implement diff output formatting (modified/added/removed properties)
 - [ ] T091 [US4] Implement --output json flag for machine-readable output
 - [ ] T092 [US4] Implement --all-environments flag
@@ -238,7 +238,7 @@ Based on plan.md, the source structure is:
 
 ## Phase 9: User Story 8 - Run in GitHub Actions (Priority: P2)
 
-**Goal**: Enable CI/CD engineers to run Repo Radius in GitHub Actions workflows
+**Goal**: Enable CI/CD engineers to run Git workspace in GitHub Actions workflows
 
 **Independent Test**: Create a GitHub Actions workflow that runs `rad plan` and `rad deploy` and verify successful execution
 
@@ -257,7 +257,7 @@ Based on plan.md, the source structure is:
 
 ## Phase 10: User Story 10 - Migrate Configuration to Control Plane (Priority: P3)
 
-**Goal**: Enable platform engineers to migrate Repo Radius configuration to Control Plane Radius
+**Goal**: Enable platform engineers to migrate Git workspace configuration to Control Plane Radius
 
 **Independent Test**: Run `rad migrate --workspace <name>` and verify configuration is migrated to Control Plane
 
@@ -344,8 +344,8 @@ Within User Story 4 (rad diff):
 
 ```bash
 # Launch Terraform and Bicep artifact generation in parallel:
-Task: T041 "Implement Terraform artifact generation in pkg/cli/reporadius/plan/terraform.go"
-Task: T045 "Implement Bicep artifact generation in pkg/cli/reporadius/plan/bicep.go"
+Task: T041 "Implement Terraform artifact generation in pkg/cli/git/plan/terraform.go"
+Task: T045 "Implement Bicep artifact generation in pkg/cli/git/plan/bicep.go"
 
 # Launch context log generation in parallel:
 Task: T044 "Implement terraform-context.log generation"

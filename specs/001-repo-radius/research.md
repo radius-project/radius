@@ -1,4 +1,4 @@
-# Research: Repo Radius
+# Research: Git Workspace Mode
 
 **Feature**: 001-repo-radius | **Date**: 2026-02-02
 
@@ -333,7 +333,7 @@ Resource Type → Application Resource → Cloud Resource → Cloud Provider API
 
 **Implementation Notes**:
 ```go
-// pkg/cli/reporadius/deploy/orchestrator.go
+// pkg/cli/git/deploy/orchestrator.go
 
 // DeploymentState tracks Application Resource deployment (not Cloud Resources)
 // Application Resources are parsed from the Bicep model (.radius/model/app.bicep)
@@ -493,15 +493,15 @@ rm -rf .git  # Remove .git, keep only types files
 
 ## Open Questions Requiring Further Design
 
-### ⚠️ Control Plane Components Reuse in Repo Radius
+### ⚠️ Control Plane Components Reuse in Git Workspace Mode
 
 **Status**: Needs architectural decision
 
-**Context**: Radius has several control plane components that handle different aspects of deployment and resource management. A key architectural question is which of these can/should be reused in Repo Radius vs. re-implemented for local execution.
+**Context**: Radius has several control plane components that handle different aspects of deployment and resource management. A key architectural question is which of these can/should be reused in Git workspace mode vs. re-implemented for local execution.
 
 **Existing Control Plane Components**:
 
-| Component | Location | Purpose | Repo Radius Relevance |
+| Component | Location | Purpose | Git Workspace Relevance |
 |-----------|----------|---------|----------------------|
 | **Recipe Engine** | `pkg/recipes/engine/` | Orchestrates recipe execution, handles prevState for cleanup | ⭐ HIGH - Core to deployment |
 | **Terraform Driver** | `pkg/recipes/driver/terraform/` | Executes Terraform recipes via terraform-exec | ⭐ HIGH - Already uses terraform-exec! |
@@ -567,7 +567,7 @@ rm -rf .git  # Remove .git, keep only types files
 
 **Code Reuse Strategy** (Required for Implementation):
 
-The implementation MUST follow a code reuse strategy that enables shared logic between Repo Radius (local/git mode) and Control Plane Radius (server mode). This is critical for:
+The implementation MUST follow a code reuse strategy that enables shared logic between Git workspace mode (local/git mode) and Control Plane Radius (server mode). This is critical for:
 - Avoiding behavior divergence between modes
 - Reducing maintenance burden
 - Ensuring recipes work consistently
@@ -594,7 +594,7 @@ The implementation MUST follow a code reuse strategy that enables shared logic b
          ┌────────────────────┴────────────────────┐
          ▼                                         ▼
 ┌─────────────────────┐                 ┌─────────────────────┐
-│   Repo Radius       │                 │  Control Plane      │
+│   Git Workspace       │                 │  Control Plane      │
 │   (pkg/cli/...)     │                 │  (pkg/corerp/...)   │
 │                     │                 │                     │
 │ • Local execution   │                 │ • Server execution  │

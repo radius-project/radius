@@ -89,6 +89,9 @@ func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
 		}
 
 		return config, nil
+	case KindGit:
+		config := &GitConnectionConfig{Kind: KindGit}
+		return config, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection kind '%s'", kind)
 	}

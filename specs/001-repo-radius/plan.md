@@ -1,4 +1,4 @@
-# Implementation Plan: Repo Radius
+# Implementation Plan: Git Workspace Mode
 
 **Branch**: `001-repo-radius` | **Date**: 2026-02-02 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/001-repo-radius/spec.md`
@@ -7,7 +7,7 @@
 
 ## Summary
 
-Repo Radius is a Git-centric deployment mode that runs without a centralized control plane. It treats a Git repository as the system of record and is optimized for CI/CD workflows. The implementation uses hashicorp/terraform-exec for Terraform operations, Cobra + Bubble Tea for CLI, and stores all state in the repository's `.radius/` directory.
+Git workspace mode is a decentralized deployment mode that runs without a centralized control plane. It treats a Git repository as the system of record and is optimized for CI/CD workflows. The implementation uses hashicorp/terraform-exec for Terraform operations, Cobra + Bubble Tea for CLI, and stores all state in the repository's `.radius/` directory.
 
 **Key Commands**: `rad init`, `rad plan`, `rad deploy`, `rad diff`, `rad app delete`
 
@@ -68,10 +68,10 @@ pkg/cli/
 │       ├── diff.go          # rad diff command (new)
 │       └── workspace.go     # rad workspace commands (modified)
 │
-├── reporadius/              # NEW: Repo Radius core package
+├── git/                     # NEW: Git workspace core package
 │   ├── config/
 │   │   ├── environment.go   # .env file handling
-│   │   ├── recipepack.go    # Recipe Pack parsing
+│   │   ├── recipes.go       # Recipe file parsing
 │   │   ├── workspace.go     # Workspace configuration
 │   │   └── types.go         # Resource Type loading
 │   │
@@ -89,18 +89,18 @@ pkg/cli/
 │   ├── diff/
 │   │   └── differ.go        # State comparison
 │   │
-│   └── git/
+│   └── repo/
 │       ├── sparse.go        # Sparse checkout for resource types
 │       └── state.go         # Git state detection
 
 tests/
 ├── unit/
-│   └── reporadius/          # Unit tests for each package
+│   └── git/                 # Unit tests for each package
 └── integration/
-    └── reporadius/          # E2E CLI tests
+    └── git/                 # E2E CLI tests
 ```
 
-**Structure Decision**: Follows existing Radius `pkg/cli/` patterns. New `reporadius/` package contains Git workspace-specific logic, separate from control plane code. Enables code sharing with control plane via interfaces.
+**Structure Decision**: Follows existing Radius `pkg/cli/` patterns. New `git/` package contains Git workspace-specific logic, separate from control plane code. Enables code sharing with control plane via interfaces.
 
 ## Complexity Tracking
 
