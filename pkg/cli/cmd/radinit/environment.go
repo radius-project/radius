@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -35,7 +36,7 @@ import (
 const (
 	selectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
 	selectExistingEnvironmentCreateSentinel = "[create new]"
-	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into"
+	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into. The namespace must exist in the Kubernetes cluster."
 	enterEnvironmentNamePrompt              = "Enter an environment name"
 	defaultEnvironmentName                  = "default"
 	defaultEnvironmentNamespace             = "default"
@@ -80,6 +81,21 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 	envProperties := corerpv20250801.EnvironmentProperties{
 		Providers: providers,
 	}
+
+	// Connect to Radius to create the recipe pack
+	connection, err := r.Workspace.Connect(ctx)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to connect to Radius.")
+	}
+
+	// Create the default Kubernetes recipe pack and link it to the environment
+	recipePackID, err := recipepack.CreateDefaultRecipePack(ctx, connection, r.Options.Environment.Name)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
+	}
+
+	// Link the recipe pack to the environment
+	envProperties.RecipePacks = []*string{to.Ptr(recipePackID)}
 
 	// Initialize the Radius.Core client factory
 	clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
