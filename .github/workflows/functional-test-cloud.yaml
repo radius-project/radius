@@ -990,7 +990,7 @@ jobs:
             --yes --verbose
 
   report-test-results:
-    if: always()
+    if: always() && github.repository == 'radius-project/radius'
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04
