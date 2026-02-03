@@ -163,6 +163,7 @@ jobs:
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
         run: |
           # Change to radius directory to extract commit information
+          # Note: ${{ github.sha }} refers to the triggering commit in the radius repository
           cd radius
           
           # Extract commit information
@@ -172,8 +173,9 @@ jobs:
           # Determine the source of this workflow run
           if [[ "${{ github.event_name }}" == "push" ]]; then
             # Triggered by a push to main or release branch
-            # Check if this is a merge commit from a PR (GitHub creates merge commits with specific format)
-            # Format: "Merge pull request #123 from user/branch" or "Title (#123)"
+            # Check if this is a merge commit from a PR
+            # GitHub's squash merge format: "Title (#123)" - PR number at end of message
+            # This pattern specifically targets squash merges, which is the default for this repo
             if [[ "$COMMIT_MESSAGE" =~ \(#([0-9]+)\)$ ]]; then
               # Extract PR number from commit message
               PR_NUMBER="${BASH_REMATCH[1]}"
