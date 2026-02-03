@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -144,43 +145,52 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Success: environment created", func(t *testing.T) {
-		workspace := &workspaces.Workspace{
-			Name:  "test-workspace",
-			Scope: "/planes/radius/local/resourceGroups/test-resource-group",
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-		}
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-resource-group",
+		Connection: map[string]any{
+			"kind":    "kubernetes",
+			"context": "kind-kind",
+		},
+	}
 
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, test_client_factory.WithEnvironmentServerNoError, nil)
+	t.Run("New environment: all singletons created", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			test_client_factory.WithEnvironmentServer404OnGet,
+			test_client_factory.WithRecipePackServerCoreTypes,
+		)
 		require.NoError(t, err)
+
+		// Singleton recipe packs are created in the default scope.
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerCoreTypes,
+		)
+		require.NoError(t, err)
+
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			RadiusCoreClientFactory: factory,
-			Output:                  outputSink,
-			Workspace:               workspace,
-			EnvironmentName:         "testenv",
-			ResourceGroupName:       "test-resource-group",
-		}
-
-		expectedOutput := []any{
-			output.LogOutput{
-				Format: "Creating Radius Core Environment...",
-			},
-			output.LogOutput{
-				Format: "Successfully created environment %q in resource group %q",
-				Params: []interface{}{
-					"testenv",
-					"test-resource-group",
-				},
-			},
+			RadiusCoreClientFactory:   factory,
+			DefaultScopeClientFactory: defaultScopeFactory,
+			Output:                    outputSink,
+			Workspace:                 workspace,
+			EnvironmentName:           "testenv",
+			ResourceGroupName:         "test-resource-group",
 		}
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
-		require.Equal(t, expectedOutput, outputSink.Writes)
+
+		require.Contains(t, outputSink.Writes, output.LogOutput{
+			Format: "Creating Radius Core Environment %q...",
+			Params: []interface{}{"testenv"},
+		})
+		require.Contains(t, outputSink.Writes, output.LogOutput{
+			Format: "Successfully created environment %q in resource group %q with default Kubernetes recipe packs.",
+			Params: []interface{}{"testenv", "test-resource-group"},
+		})
 	})
 }
 

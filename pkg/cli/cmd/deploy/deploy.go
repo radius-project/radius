@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -136,6 +137,9 @@ type Runner struct {
 	RadiusCoreClientFactory *v20250801preview.ClientFactory
 	Deploy                  deploy.Interface
 	Output                  output.Interface
+// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// Singleton recipe packs are always created/queried in the default scope.
+	DefaultScopeClientFactory *v20250801preview.ClientFactory
 
 	ApplicationName          string
 	EnvironmentNameOrID      string
@@ -343,6 +347,15 @@ func (r *Runner) Run(ctx context.Context) error {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
 				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
+	}
+
+	// Before deploying, set up recipe packs for any Radius.Core environments in the
+	// template. This creates missing singleton recipe pack resources and injects their
+	// IDs into the template so that the environment is deployed once with the complete
+	// set of recipe packs.
+	err = r.setupRecipePacks(ctx, template)
+	if err != nil {
+		return err
 	}
 
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{
@@ -648,6 +661,161 @@ func (r *Runner) setupCloudProviders(properties any) {
 			}
 		}
 	}
+}
+
+// setupRecipePacks finds all Radius.Core/environments resources in the template, inspects
+// any recipe packs they reference, validates there are no resource-type conflicts, creates
+// missing singleton recipe pack resources, and injects their IDs into the template so each
+// environment is deployed with the complete set of recipe packs.
+func (r *Runner) setupRecipePacks(ctx context.Context, template map[string]any) error {
+	envResources := findRadiusCoreEnvironmentResources(template)
+	if len(envResources) == 0 {
+		return nil
+	}
+
+	// Initialize client factory so we can inspect packs and create singletons.
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = clientFactory
+	}
+
+	for _, envResource := range envResources {
+		if err := r.setupRecipePacksForEnvironment(ctx, envResource); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// setupRecipePacksForEnvironment sets up recipe packs for a single Radius.Core/environments resource.
+func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource map[string]any) error {
+	// The compiled ARM template has a double-nested properties structure:
+	//   envResource["properties"]["properties"] is where resource-level fields live.
+	// Navigate to the inner (resource) properties map.
+	outerProps, ok := envResource["properties"].(map[string]any)
+	if !ok {
+		outerProps = map[string]any{}
+		envResource["properties"] = outerProps
+	}
+
+	properties, ok := outerProps["properties"].(map[string]any)
+	if !ok {
+		properties = map[string]any{}
+		outerProps["properties"] = properties
+	}
+
+	// Extract existing recipe pack IDs from the template (literal strings only).
+	var existingPacks []string
+	if recipePacks, ok := properties["recipePacks"]; ok {
+		if packsArray, ok := recipePacks.([]any); ok {
+			for _, p := range packsArray {
+				if s, ok := p.(string); ok {
+					existingPacks = append(existingPacks, s)
+				}
+			}
+		}
+	}
+
+	// Build scope → client map.
+	// Packs in other scopes (from the template) get a new factory.
+	clientsByScope := map[string]*v20250801preview.RecipePacksClient{
+		r.Workspace.Scope: r.RadiusCoreClientFactory.NewRecipePacksClient(),
+	}
+	for _, packIDStr := range existingPacks {
+		packID, parseErr := resources.Parse(packIDStr)
+		if parseErr != nil {
+			continue
+		}
+		scope := packID.RootScope()
+		if _, exists := clientsByScope[scope]; !exists {
+			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, scope)
+			if err != nil {
+				return err
+			}
+			clientsByScope[scope] = clientFactory.NewRecipePacksClient()
+		}
+	}
+
+	// Inspect existing packs for resource type coverage and conflicts.
+	coveredTypes, conflicts, err := recipepack.InspectRecipePacks(ctx, clientsByScope, existingPacks)
+	if err != nil {
+		return err
+	}
+	if len(conflicts) > 0 {
+		return recipepack.FormatConflictError(conflicts)
+	}
+
+	if r.DefaultScopeClientFactory == nil {
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return err
+		}
+		r.DefaultScopeClientFactory = defaultFactory
+	}
+
+	// Create missing singleton recipe packs for uncovered core resource types and
+	// append their IDs so the template deploys the environment with full coverage.
+	// Singletons always live in the default scope.
+	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
+	clientsByScope[recipepack.DefaultResourceGroupScope] = recipePackDefaultClient
+	singletonIDs, err := recipepack.EnsureMissingSingletons(ctx, recipePackDefaultClient, coveredTypes)
+	if err != nil {
+		return err
+	}
+
+	// Write the complete list back into the template so the environment resource
+	// is deployed with all recipe packs in a single operation.
+	if len(singletonIDs) > 0 {
+		existingPacks = append(existingPacks, singletonIDs...)
+		packsAny := make([]any, len(existingPacks))
+		for i, p := range existingPacks {
+			packsAny[i] = p
+		}
+		properties["recipePacks"] = packsAny
+	}
+
+	return nil
+}
+
+// findRadiusCoreEnvironmentResources walks the template's resources and returns
+// all Radius.Core/environments resources found (as mutable maps).
+func findRadiusCoreEnvironmentResources(template map[string]any) []map[string]any {
+	if template == nil {
+		return nil
+	}
+
+	resourcesValue, ok := template["resources"]
+	if !ok {
+		return nil
+	}
+
+	resourcesMap, ok := resourcesValue.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	var envResources []map[string]any
+	for _, resourceValue := range resourcesMap {
+		resource, ok := resourceValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		resourceType, ok := resource["type"].(string)
+		if !ok {
+			continue
+		}
+
+		if strings.HasPrefix(strings.ToLower(resourceType), "radius.core/environments") {
+			envResources = append(envResources, resource)
+		}
+	}
+
+	return envResources
 }
 
 // configureProviders configures environment and cloud providers based on the environment and provider type

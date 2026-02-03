@@ -28,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -104,6 +105,10 @@ type Runner struct {
 	Workspace               *workspaces.Workspace
 	Format                  string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
+
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// Singleton recipe packs are always created/queried in the default scope.
+	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
 	EnvironmentName    string
 	clearEnvAzure      bool
@@ -307,9 +312,82 @@ func (r *Runner) Run(ctx context.Context) error {
 				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", recipePack)
 			}
 
-			if !recipePackExists(env.Properties.RecipePacks, ID.String()) {
+			if !recipepack.RecipePackIDExists(env.Properties.RecipePacks, ID.String()) {
 				env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(ID.String()))
 			}
+		}
+	}
+
+	// At this point env.Properties.RecipePacks contains the complete set of recipe packs
+	// the user wants on this environment. For preview, we now:
+	// 1. Detect conflicts where the same resource type is provided by multiple packs
+	// 2. Append singleton packs for any missing core resource types, assuming they already exist.
+	if env.Properties == nil {
+		env.Properties = &corerpv20250801.EnvironmentProperties{}
+	}
+	if env.Properties.RecipePacks == nil {
+		env.Properties.RecipePacks = []*string{}
+	}
+
+	// Convert []*string to []string for the shared utility.
+	packIDs := make([]string, 0, len(env.Properties.RecipePacks))
+	for _, p := range env.Properties.RecipePacks {
+		if p != nil {
+			packIDs = append(packIDs, *p)
+		}
+	}
+
+	// Build scope → client map for inspecting recipe packs.
+	// Packs in the default scope use the existing factory; packs in other
+	// scopes (from user-specified full resource IDs) get a new factory.
+	clientsByScope := map[string]*corerpv20250801.RecipePacksClient{
+		r.Workspace.Scope: r.RadiusCoreClientFactory.NewRecipePacksClient(),
+	}
+	for _, packIDStr := range packIDs {
+		packID, parseErr := resources.Parse(packIDStr)
+		if parseErr != nil {
+			continue
+		}
+		scope := packID.RootScope()
+		if _, exists := clientsByScope[scope]; !exists {
+			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, scope)
+			if err != nil {
+				return err
+			}
+			clientsByScope[scope] = clientFactory.NewRecipePacksClient()
+		}
+	}
+
+	if r.DefaultScopeClientFactory == nil {
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return err
+		}
+		r.DefaultScopeClientFactory = defaultFactory
+	}
+	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
+
+	// Ensure the default scope client is also in the map for inspecting singletons.
+	if _, exists := clientsByScope[recipepack.DefaultResourceGroupScope]; !exists {
+		clientsByScope[recipepack.DefaultResourceGroupScope] = recipePackDefaultClient
+	}
+
+	coveredTypes, conflicts, err := recipepack.InspectRecipePacks(ctx, clientsByScope, packIDs)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
+	}
+
+	if len(conflicts) > 0 {
+		return recipepack.FormatConflictError(conflicts)
+	}
+
+	singletonIDs, err := recipepack.EnsureMissingSingletons(ctx, recipePackDefaultClient, coveredTypes)
+	if err != nil {
+		return err
+	}
+	for _, id := range singletonIDs {
+		if !recipepack.RecipePackIDExists(env.Properties.RecipePacks, id) {
+			env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(id))
 		}
 	}
 
@@ -349,13 +427,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Successfully updated environment %q.", r.EnvironmentName)
 
 	return nil
-}
-
-func recipePackExists(packs []*string, id string) bool {
-	for _, p := range packs {
-		if p != nil && *p == id {
-			return true
-		}
-	}
-	return false
 }
