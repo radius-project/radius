@@ -18,6 +18,8 @@ package testhost
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -30,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/components/testhost"
+	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/server"
 	"github.com/radius-project/radius/pkg/recipes/driver"
@@ -38,6 +41,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/config"
 	ucptesthost "github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // TestHostOptions supports configuring the dynamic-rp test host.
@@ -97,6 +104,9 @@ func Start(t *testing.T, opts ...TestHostOption) (*TestHost, *ucptesthost.TestHo
 	options, err := dynamicrp.NewOptions(context.Background(), config)
 	require.NoError(t, err)
 
+	// Set up a fake Kubernetes client with an encryption key secret for testing
+	setupFakeKubernetesClient(t, options)
+
 	// Prevent the default recipe drivers from being registered.
 	options.Recipes.Drivers = map[string]func(options *dynamicrp.Options) (driver.Driver, error){}
 
@@ -148,4 +158,49 @@ func startUCP(t *testing.T, dynamicRPURL string, ucpPort int) *ucptesthost.TestH
 		// Intitialize UCP with the dynamic-rp URL
 		options.Config.Routing.DefaultDownstreamEndpoint = dynamicRPURL
 	}))
+}
+
+// setupFakeKubernetesClient creates a fake Kubernetes client with an encryption key secret for testing.
+func setupFakeKubernetesClient(t *testing.T, options *dynamicrp.Options) {
+	// Generate a test encryption key
+	key, err := encryption.GenerateKey()
+	require.NoError(t, err)
+
+	// Create the key store JSON structure
+	keyStore := encryption.KeyStore{
+		CurrentVersion: 1,
+		Keys: map[string]encryption.KeyData{
+			"1": {
+				Key:     base64.StdEncoding.EncodeToString(key),
+				Version: 1,
+			},
+		},
+	}
+
+	keyStoreJSON, err := json.Marshal(keyStore)
+	require.NoError(t, err)
+
+	// Create the encryption key secret
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      encryption.DefaultEncryptionKeySecretName,
+			Namespace: encryption.RadiusNamespace,
+		},
+		Data: map[string][]byte{
+			encryption.DefaultEncryptionKeySecretKey: keyStoreJSON,
+		},
+	}
+
+	// Create a fake Kubernetes client with the secret
+	scheme := runtime.NewScheme()
+	err = corev1.AddToScheme(scheme)
+	require.NoError(t, err)
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(secret).
+		Build()
+
+	// Set the runtime client on the Kubernetes provider
+	options.KubernetesProvider.SetRuntimeClient(fakeClient)
 }
