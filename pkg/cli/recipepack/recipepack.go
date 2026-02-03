@@ -28,7 +28,7 @@ import (
 
 const (
 	// DefaultRecipePackName is the name of the default Kubernetes recipe pack.
-	DefaultRecipePackName = "kuberecipepack"
+	DefaultRecipePackName = "local-dev"
 )
 
 // NewDefaultRecipePackResource builds the default RecipePackResource containing
