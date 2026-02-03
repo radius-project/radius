@@ -44,6 +44,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -947,28 +948,10 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Return(nil).
 				Times(1)
 
-			devRecipeClient := NewMockDevRecipeClient(ctrl)
-			if !tc.full {
-				devRecipeClient.EXPECT().
-					GetDevRecipes(context.Background()).
-					Return(tc.recipes, nil).
-					Times(1)
-			}
-
-			testEnvProperties := &corerp.EnvironmentProperties{
-				Compute: &corerp.KubernetesCompute{
-					Namespace: to.Ptr("defaultNamespace"),
-				},
-				Providers: buildProviders(tc.azureProvider, tc.awsProvider),
-				Recipes:   tc.recipes,
-			}
-			appManagementClient.EXPECT().
-				CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
-					Location:   to.Ptr(v1.LocationGlobal),
-					Properties: testEnvProperties,
-				}).
-				Return(nil).
-				Times(1)
+			// Create a RadiusCoreClientFactory for testing
+			rootScope := "/planes/radius/local/resourceGroups/default"
+			radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil)
+			require.NoError(t, err)
 
 			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
 			if tc.azureProvider != nil {
@@ -1068,21 +1051,22 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					ApplicationsManagementClient: appManagementClient,
 					CredentialManagementClient:   credentialManagementClient,
 				},
-				ConfigFileInterface: configFileInterface,
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				HelmInterface:       helmInterface,
-				Output:              outputSink,
-				Prompter:            prompter,
-				DevRecipeClient:     devRecipeClient,
-				Options:             &options,
+				ConfigFileInterface:         configFileInterface,
+				ConfigHolder:                &framework.ConfigHolder{ConfigFilePath: "filePath"},
+				HelmInterface:               helmInterface,
+				Output:                      outputSink,
+				Prompter:                    prompter,
+				RadiusCoreClientFactory:     radiusCoreClientFactory,
+				Options:                     &options,
 				Workspace: &workspaces.Workspace{
-					Name: "default",
+					Name:  "default",
+					Scope: "/planes/radius/local/resourceGroups/default",
 				},
 				Set:     tc.set,
 				SetFile: tc.setFile,
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			if len(tc.expectedOutput) == 0 {
@@ -1092,21 +1076,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 		})
 	}
-}
-
-func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *corerp.Providers {
-	providers := &corerp.Providers{}
-	if azureProvider != nil {
-		providers.Azure = &corerp.ProvidersAzure{
-			Scope: to.Ptr(fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", azureProvider.SubscriptionID, azureProvider.ResourceGroup)),
-		}
-	}
-	if awsProvider != nil {
-		providers.Aws = &corerp.ProvidersAws{
-			Scope: to.Ptr(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountID, awsProvider.Region)),
-		}
-	}
-	return providers
 }
 
 func initGetKubeContextSuccess(kubernestesMock *kubernetes.MockInterface) {

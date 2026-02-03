@@ -232,7 +232,6 @@ func deployRecipePack(ctx context.Context, kubeContext string, out output.Interf
 
 	clientOptions := sdk.NewClientOptions(connection)
 
-	// Create the default resource group.
 	rgClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return fmt.Errorf("failed to create resource group client: %w", err)
@@ -245,12 +244,11 @@ func deployRecipePack(ctx context.Context, kubeContext string, out output.Interf
 		return fmt.Errorf("failed to create resource group %q: %w", defaultResourceGroupName, err)
 	}
 
-	// Create the default recipe pack using the shared package.
 	_, err = recipepack.CreateDefaultRecipePack(ctx, connection, defaultResourceGroupName)
 	if err != nil {
 		return fmt.Errorf("failed to deploy recipe pack: %w", err)
 	}
 
-	out.LogInfo("Successfully deployed default recipe pack.")
+	out.LogInfo("Successfully deployed local-dev recipe pack.")
 	return nil
 }

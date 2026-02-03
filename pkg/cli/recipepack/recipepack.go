@@ -31,6 +31,20 @@ const (
 	DefaultRecipePackName = "local-dev"
 )
 
+// CreateDefaultRecipePackWithClient creates the default Kubernetes recipe pack using a RecipePacksClient.
+// It returns the full resource ID of the created recipe pack.
+func CreateDefaultRecipePackWithClient(ctx context.Context, client *corerpv20250801.RecipePacksClient, resourceGroupName string) (string, error) {
+	resource := NewDefaultRecipePackResource()
+	_, err := client.CreateOrUpdate(ctx, DefaultRecipePackName, resource, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create recipe pack: %w", err)
+	}
+
+	// Return the full resource ID of the created recipe pack
+	recipePackID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/recipePacks/%s", resourceGroupName, DefaultRecipePackName)
+	return recipePackID, nil
+}
+
 // NewDefaultRecipePackResource builds the default RecipePackResource containing
 // Bicep recipes for the built-in Radius resource types.
 func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {

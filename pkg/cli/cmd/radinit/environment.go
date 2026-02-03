@@ -82,14 +82,17 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		Providers: providers,
 	}
 
-	// Connect to Radius to create the recipe pack
-	connection, err := r.Workspace.Connect(ctx)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to connect to Radius.")
+	// Initialize the Radius.Core client factory if not already set
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
+		}
+		r.RadiusCoreClientFactory = clientFactory
 	}
 
 	// Create the default Kubernetes recipe pack and link it to the environment
-	recipePackID, err := recipepack.CreateDefaultRecipePack(ctx, connection, r.Options.Environment.Name)
+	recipePackID, err := recipepack.CreateDefaultRecipePackWithClient(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient(), r.Options.Environment.Name)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
 	}
@@ -97,14 +100,8 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 	// Link the recipe pack to the environment
 	envProperties.RecipePacks = []*string{to.Ptr(recipePackID)}
 
-	// Initialize the Radius.Core client factory
-	clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
-	}
-
 	// Create the Radius.Core/environments resource
-	_, err = clientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
+	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
 		Location:   to.Ptr(v1.LocationGlobal),
 		Properties: &envProperties,
 	}, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
