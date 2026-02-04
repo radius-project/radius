@@ -53,6 +53,10 @@ model BicepSettingsProperties {
 
   @doc("Authentication settings for private registries.")
   authentication?: BicepAuthenticationConfiguration;
+
+  @doc("List of environment resource IDs that reference this settings resource.")
+  @visibility(Lifecycle.Read)
+  referencedBy?: string[];
 }
 
 @doc("Authentication configuration for Bicep registries.")

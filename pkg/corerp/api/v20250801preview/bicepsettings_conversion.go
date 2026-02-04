@@ -47,6 +47,11 @@ func (src *BicepSettingsResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Authentication = toBicepAuthenticationConfigurationDataModel(src.Properties.Authentication)
 	}
 
+	// Convert ReferencedBy
+	if src.Properties.ReferencedBy != nil {
+		converted.Properties.ReferencedBy = to.StringArray(src.Properties.ReferencedBy)
+	}
+
 	return converted, nil
 }
 
@@ -70,6 +75,11 @@ func (dst *BicepSettingsResource) ConvertFrom(src v1.DataModelInterface) error {
 	// Convert Authentication
 	if bs.Properties.Authentication != nil {
 		dst.Properties.Authentication = fromBicepAuthenticationConfigurationDataModel(bs.Properties.Authentication)
+	}
+
+	// Convert ReferencedBy
+	if len(bs.Properties.ReferencedBy) > 0 {
+		dst.Properties.ReferencedBy = to.ArrayofStringPtrs(bs.Properties.ReferencedBy)
 	}
 
 	return nil
