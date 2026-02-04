@@ -36,15 +36,9 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
-  # pull_request_target is used for dependabot PRs because pull_request events
-  # from dependabot don't have access to secrets. pull_request_target runs in
-  # the context of the base branch and has access to secrets.
-  # SECURITY: Only enable for dependabot[bot] - do not use for other external PRs.
+  # pull_request_target runs in the context of the base branch, providing access to secrets.
+  # For external contributors, the approval-gate job requires manual approval before tests run.
+  # SECURITY: We use pull_request_target but do NOT run any code from the PR until after approval.
   pull_request_target:
     branches:
       - main
@@ -95,15 +89,39 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-  setup:
-    name: Setup
+  # Approval gate for external contributors. This job uses GitHub Environment protection
+  # to require manual approval before running tests on PRs from non-members.
+  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
+  # - Dependabot: Tests run immediately
+  # - External contributors: Requires approval via GitHub UI button
+  approval-gate:
+    name: Approval Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    if: github.event_name == 'repository_dispatch' ||
-      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
-      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
-      github.event_name == 'workflow_dispatch'
+    # Only applies to pull_request_target events
+    if: github.event_name == 'pull_request_target'
+    # Use environment with required reviewers for external contributors.
+    # Trusted users (dependabot, org members) get empty environment (no approval needed).
+    # External contributors get 'external-contributor-approval' environment (requires approval).
+    environment: ${{
+      (github.actor == 'dependabot[bot]' ||
+       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+      && '' || 'external-contributor-approval' }}
+    permissions: {}
+    steps:
+      - name: Approved
+        run: echo "Tests approved to run"
+
+  setup:
+    name: Setup
+    needs: [approval-gate]
+    # Run for all events. For PRs, approval-gate ensures external contributors are approved.
+    if: |
+      always() &&
+      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success') &&
+      (github.event_name != 'schedule' || github.repository == 'radius-project/radius')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read # Required for listing the commits
       pull-requests: read # Required for fetching PR details
@@ -124,6 +142,9 @@ jobs:
       - name: Log Event Information
         run: |
           echo "Event Name: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Author Association: ${{ github.event.pull_request.author_association }}"
+
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -136,18 +157,8 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
 
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
-        run: |
-          {
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
-            echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Set up checkout target (pull_request_target for dependabot)
-        if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
+      - name: Set up checkout target (pull_request_target)
+        if: github.event_name == 'pull_request_target'
         run: |
           {
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
@@ -221,6 +232,7 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
+    # Skip if only docs/markdown changed
     if: needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -242,6 +254,7 @@ jobs:
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -476,6 +489,7 @@ jobs:
       contents: read # Required for listing the commits
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -497,11 +511,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [setup, build]
-    if: github.event_name == 'repository_dispatch' ||
-      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
-      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
-      github.event_name == 'workflow_dispatch'
+    # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
       fail-fast: true
       matrix:
@@ -526,6 +536,7 @@ jobs:
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -957,7 +968,8 @@ jobs:
             --yes --verbose
 
   report-test-results:
-    if: always()
+    # Report final test status. Runs after all tests complete (or are skipped).
+    if: always() && github.repository == 'radius-project/radius'
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04
