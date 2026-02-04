@@ -65,7 +65,7 @@ The above commands should complete without errors and without new pending change
 
 ## Switching Between Branches
 
-Git should allow you to switch freely between branches that have the submodule and branches that don't. However, stale submodule artifacts can cause errors like:
+When switching between branches that have the submodule and branches that don't, you may encounter errors like:
 
 ```
 fatal: not a git repository: ../.git/modules/bicep-types
@@ -74,22 +74,22 @@ fatal: could not reset submodule index
 
 **These errors are recoverable—you do not need to re-clone the repository.**
 
-### Prevent Issues Before Switching
+The solution is to use `git checkout --no-recurse-submodules` and clean up stale submodule artifacts before switching.
 
-Before switching between branches, clean up any stale submodule artifacts:
+### Switching Branches (Recommended Procedure)
+
+Use this procedure when switching between branches with different submodule configurations:
 
 ```bash
 # Navigate to your radius repository
 cd /path/to/radius
 
-# Remove the submodule directory (contains a .git file pointing to stale location)
+# Clean up any stale submodule artifacts
 rm -rf bicep-types
-
-# Remove git's cached submodule data
 rm -rf .git/modules/bicep-types
 
-# Now switch branches
-git checkout main
+# Switch branches with --no-recurse-submodules flag
+git checkout --no-recurse-submodules <target-branch>
 ```
 
 ### Recover From a Failed Checkout
@@ -100,20 +100,21 @@ If you already attempted a checkout and it failed, git may be in an inconsistent
 # Navigate to your radius repository
 cd /path/to/radius
 
-# Remove the submodule directory
-rm -rf bicep-types
+# Reset your working tree to the current HEAD
+git reset --hard HEAD
 
-# Remove git's cached submodule data  
+# Remove the submodule directory and git's cached submodule data
+rm -rf bicep-types
 rm -rf .git/modules/bicep-types
 
-# Remove any stale .gitmodules file that appeared
+# Remove any stale .gitmodules file that may have appeared
 rm -f .gitmodules
 
-# Reset your working tree to discard the phantom changes
-git checkout -- .
+# Remove submodule config entry (if it exists)
+git config --local --remove-section submodule.bicep-types 2>/dev/null || true
 
-# Now switch to the target branch
-git checkout main
+# Now switch to the target branch with --no-recurse-submodules
+git checkout --no-recurse-submodules <target-branch>
 git pull
 ```
 
@@ -124,9 +125,6 @@ After switching branches, verify the repository is in a clean state:
 ```bash
 git status
 # Should show "nothing to commit, working tree clean"
-
-git submodule status
-# Should show no output (no submodules)
 ```
 
 ## Troubleshooting
@@ -155,13 +153,7 @@ corepack prepare pnpm@10 --activate
 
 ### Stale submodule references
 
-If git still shows the submodule:
-
-```bash
-git rm --cached bicep-types
-rm -rf .git/modules/bicep-types
-rm -rf bicep-types
-```
+If git still shows the submodule or you encounter submodule-related errors, see [Switching Between Branches](#switching-between-branches) for the complete recovery procedure.
 
 ## Questions?
 
