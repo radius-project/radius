@@ -995,7 +995,12 @@ jobs:
             --yes --verbose
 
   report-test-results:
-    if: always() && github.repository == 'radius-project/radius'
+    # Skip for dependabot pull_request events (secrets not available) - uses pull_request_target instead
+    # Skip for fork PRs (secrets not available)
+    if: |
+      always() &&
+      github.repository == 'radius-project/radius' &&
+      !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04
