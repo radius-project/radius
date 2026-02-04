@@ -100,10 +100,12 @@ jobs:
     timeout-minutes: 5
     # Only applies to pull_request_target events
     if: github.event_name == 'pull_request_target'
-    # Use environment with required reviewers for external contributors
+    # Use environment with required reviewers for external contributors.
+    # Trusted users (dependabot, org members) get empty environment (no approval needed).
+    # External contributors get 'external-contributor-approval' environment (requires approval).
     environment: ${{
-      github.actor == 'dependabot[bot]' ||
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+      (github.actor == 'dependabot[bot]' ||
+       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
       && '' || 'external-contributor-approval' }}
     permissions: {}
     steps:
