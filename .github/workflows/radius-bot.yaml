@@ -11,6 +11,8 @@ permissions: {}
 jobs:
   radius-bot:
     name: Run Radius Bot script
+    # Only run on the main repository - secrets aren't available on forks
+    if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
