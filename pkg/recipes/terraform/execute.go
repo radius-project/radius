@@ -332,7 +332,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		// Use custom backend from TerraformSettings
 		customBackend := options.EnvConfig.TerraformSettings.Backend
 		logger.Info(fmt.Sprintf("Using custom backend type: %s", customBackend.Type))
-		backendConfig, err = tfConfig.AddCustomBackend(customBackend.Type, customBackend.Config)
+		_, err = tfConfig.AddCustomBackend(customBackend.Type, customBackend.Config)
 		if err != nil {
 			return generateConfigResult{}, fmt.Errorf("error adding custom backend: %w", err)
 		}
