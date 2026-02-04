@@ -91,14 +91,18 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	// Create the default Kubernetes recipe pack and link it to the environment
-	recipePackID, err := recipepack.CreateDefaultRecipePackWithClient(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient(), r.Options.Environment.Name)
+	// Create singleton recipe packs (one per resource type) and link them to the environment
+	recipePackIDs, err := recipepack.CreateSingletonRecipePacksWithClient(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient(), r.Options.Environment.Name)
 	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
+		return clierrors.MessageWithCause(err, "Failed to create recipe packs.")
 	}
 
-	// Link the recipe pack to the environment
-	envProperties.RecipePacks = []*string{to.Ptr(recipePackID)}
+	// Link all recipe packs to the environment
+	recipePackPtrs := make([]*string, len(recipePackIDs))
+	for i, id := range recipePackIDs {
+		recipePackPtrs[i] = to.Ptr(id)
+	}
+	envProperties.RecipePacks = recipePackPtrs
 
 	// Create the Radius.Core/environments resource
 	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
