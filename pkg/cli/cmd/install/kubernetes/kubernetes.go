@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
@@ -119,6 +119,8 @@ rad install kubernetes --set global.terraform.loglevel=DEBUG
 	return cmd, runner
 }
 
+const defaultResourceGroupName = "default"
+
 // Runner is the Runner implementation for the `rad install kubernetes` command.
 type Runner struct {
 	Helm   helm.Interface
@@ -211,8 +213,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-const defaultResourceGroupName = "default"
-
 // deployRecipePack connects to the newly installed Radius and deploys the default recipe pack.
 func deployRecipePack(ctx context.Context, kubeContext string, out output.Interface) error {
 	out.LogInfo("Deploying default recipe pack...")
@@ -230,16 +230,14 @@ func deployRecipePack(ctx context.Context, kubeContext string, out output.Interf
 		return fmt.Errorf("failed to connect to Radius: %w", err)
 	}
 
-	clientOptions := sdk.NewClientOptions(connection)
-
-	rgClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, clientOptions)
-	if err != nil {
-		return fmt.Errorf("failed to create resource group client: %w", err)
+	amc := &clients.UCPApplicationsManagementClient{
+		RootScope:     ws.Scope,
+		ClientOptions: sdk.NewClientOptions(connection),
 	}
 
-	_, err = rgClient.CreateOrUpdate(ctx, "local", defaultResourceGroupName, ucpv20231001.ResourceGroupResource{
+	err = amc.CreateOrUpdateResourceGroup(ctx, "local", defaultResourceGroupName, &ucpv20231001.ResourceGroupResource{
 		Location: to.Ptr("global"),
-	}, nil)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create resource group %q: %w", defaultResourceGroupName, err)
 	}
