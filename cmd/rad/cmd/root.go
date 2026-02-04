@@ -504,7 +504,7 @@ func initConfig() {
 	ConfigHolder.DirectoryConfig = dc
 }
 
-// TODO: Deprecate once all the commands are moved to new framework
+// TODO: Deprecate once all the commands are moved to new framework.
 func ConfigFromContext(ctx context.Context) *viper.Viper {
 	holder := ctx.Value(framework.NewContextKey("config")).(*framework.ConfigHolder)
 	if holder == nil {
