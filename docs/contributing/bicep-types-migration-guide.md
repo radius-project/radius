@@ -65,33 +65,68 @@ The above commands should complete without errors and without new pending change
 
 ## Switching Between Branches
 
-Git should allow you to switch freely between branches that have the submodule and branches that don't. However, it is possible for git to enter an invalid state in which you cannot switch branches due to errors related to the submodule.
+Git should allow you to switch freely between branches that have the submodule and branches that don't. However, stale submodule artifacts can cause errors like:
 
-**Git errors related to the submodule are recoverable and you should not need to re-clone the repo.**
+```
+fatal: not a git repository: ../.git/modules/bicep-types
+fatal: could not reset submodule index
+```
 
-When this happens, follow the steps below to resolve it:
+**These errors are recoverable—you do not need to re-clone the repository.**
+
+### Prevent Issues Before Switching
+
+Before switching between branches, clean up any stale submodule artifacts:
 
 ```bash
 # Navigate to your radius repository
 cd /path/to/radius
 
-# Remove the submodule from git's index (if it still exists)
-git rm --cached bicep-types 2>/dev/null || true
+# Remove the submodule directory (contains a .git file pointing to stale location)
+rm -rf bicep-types
+
+# Remove git's cached submodule data
+rm -rf .git/modules/bicep-types
+
+# Now switch branches
+git checkout main
+```
+
+### Recover From a Failed Checkout
+
+If you already attempted a checkout and it failed, git may be in an inconsistent state. You might see many unexpected file changes when running `git status`. To recover:
+
+```bash
+# Navigate to your radius repository
+cd /path/to/radius
 
 # Remove the submodule directory
 rm -rf bicep-types
 
-# Clean up git modules directory
+# Remove git's cached submodule data  
 rm -rf .git/modules/bicep-types
 
-# Update to get latest changes
-git fetch origin
+# Remove any stale .gitmodules file that appeared
+rm -f .gitmodules
+
+# Reset your working tree to discard the phantom changes
+git checkout -- .
+
+# Now switch to the target branch
 git checkout main
 git pull
+```
 
-# Verify the submodule is removed
+### Verify Clean State
+
+After switching branches, verify the repository is in a clean state:
+
+```bash
+git status
+# Should show "nothing to commit, working tree clean"
+
 git submodule status
-# Should show no submodules
+# Should show no output (no submodules)
 ```
 
 ## Troubleshooting
