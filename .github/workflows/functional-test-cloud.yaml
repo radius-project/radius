@@ -36,24 +36,14 @@ on:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
-  # pull_request_target is used for dependabot PRs because pull_request events
-  # from dependabot don't have access to secrets. pull_request_target runs in
-  # the context of the base branch and has access to secrets.
-  # SECURITY: Only enable for dependabot[bot] - do not use for other external PRs.
+  # pull_request_target runs in the context of the base branch, providing access to secrets.
+  # For external contributors, the approval-gate job requires manual approval before tests run.
+  # SECURITY: We use pull_request_target but do NOT run any code from the PR until after approval.
   pull_request_target:
     branches:
       - main
       - features/*
       - release/*
-  # issue_comment trigger allows maintainers to run tests on fork PRs by commenting
-  # '/ok-to-test' on the PR. Only org members and owners can trigger this.
-  issue_comment:
-    types: [created]
 
 permissions: {}
 
@@ -99,18 +89,37 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-  setup:
-    name: Setup
+  # Approval gate for external contributors. This job uses GitHub Environment protection
+  # to require manual approval before running tests on PRs from non-members.
+  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
+  # - Dependabot: Tests run immediately
+  # - External contributors: Requires approval via GitHub UI button
+  approval-gate:
+    name: Approval Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    if: github.event_name == 'repository_dispatch' ||
-      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
-      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/ok-to-test') &&
-       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
+    # Only applies to pull_request_target events
+    if: github.event_name == 'pull_request_target'
+    # Use environment with required reviewers for external contributors
+    environment: ${{
+      github.actor == 'dependabot[bot]' ||
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+      && '' || 'external-contributor-approval' }}
+    permissions: {}
+    steps:
+      - name: Approved
+        run: echo "Tests approved to run"
+
+  setup:
+    name: Setup
+    needs: [approval-gate]
+    # Run for all events. For PRs, approval-gate ensures external contributors are approved.
+    if: |
+      always() &&
+      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success') &&
+      (github.event_name != 'schedule' || github.repository == 'radius-project/radius')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read # Required for listing the commits
       pull-requests: read # Required for fetching PR details
@@ -131,6 +140,9 @@ jobs:
       - name: Log Event Information
         run: |
           echo "Event Name: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Author Association: ${{ github.event.pull_request.author_association }}"
+
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -143,44 +155,14 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
 
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+      - name: Set up checkout target (pull_request_target)
+        if: github.event_name == 'pull_request_target'
         run: |
           {
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
             echo "PR_NUMBER=${{ github.event.pull_request.number }}"
             echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Set up checkout target (pull_request_target for dependabot)
-        if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
-        run: |
-          {
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
-            echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Set up checkout target (issue_comment /ok-to-test)
-        if: github.event_name == 'issue_comment'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Get PR details from the issue comment event
-          PR_NUMBER=${{ github.event.issue.number }}
-          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepositoryOwner,headRepository,baseRefOid)
-          HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
-          HEAD_REPO_NAME=$(echo "$PR_DATA" | jq -r '.headRepository.name')
-          HEAD_REPO="${HEAD_OWNER}/${HEAD_REPO_NAME}"
-          HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
-          BASE_SHA=$(echo "$PR_DATA" | jq -r '.baseRefOid')
-          {
-            echo "CHECKOUT_REPO=$HEAD_REPO"
-            echo "CHECKOUT_REF=$HEAD_SHA"
-            echo "PR_NUMBER=$PR_NUMBER"
-            echo "BASE_SHA=$BASE_SHA"
           } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
@@ -247,11 +229,8 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
-    # Fork PRs require /ok-to-test comment - skip build for fork PRs via pull_request event
-    if: |
-      needs.changes.outputs.only_changed != 'true' &&
-      (github.event_name != 'pull_request' ||
-       github.event.pull_request.head.repo.full_name == github.repository)
+    # Skip if only docs/markdown changed
+    if: needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -527,15 +506,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [setup, build]
-    # Fork PRs require /ok-to-test comment from OWNER/MEMBER to run cloud tests (secrets not available on forks)
-    if: github.event_name == 'repository_dispatch' ||
-      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/ok-to-test') &&
-       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
+    # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
       fail-fast: true
       matrix:
@@ -991,12 +962,8 @@ jobs:
             --yes --verbose
 
   report-test-results:
-    # Skip for dependabot pull_request events (secrets not available) - uses pull_request_target instead
-    # Skip for fork PRs (secrets not available)
-    if: |
-      always() &&
-      github.repository == 'radius-project/radius' &&
-      !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')
+    # Report final test status. Runs after all tests complete (or are skipped).
+    if: always() && github.repository == 'radius-project/radius'
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04
