@@ -170,8 +170,10 @@ jobs:
         run: |
           # Get PR details from the issue comment event
           PR_NUMBER=${{ github.event.issue.number }}
-          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepository,baseRefOid)
-          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.owner.login + "/" + .headRepository.name')
+          PR_DATA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName,headRefOid,headRepositoryOwner,headRepository,baseRefOid)
+          HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
+          HEAD_REPO_NAME=$(echo "$PR_DATA" | jq -r '.headRepository.name')
+          HEAD_REPO="${HEAD_OWNER}/${HEAD_REPO_NAME}"
           HEAD_SHA=$(echo "$PR_DATA" | jq -r '.headRefOid')
           BASE_SHA=$(echo "$PR_DATA" | jq -r '.baseRefOid')
           {
@@ -246,7 +248,11 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
-    if: needs.changes.outputs.only_changed != 'true'
+    # Fork PRs require /ok-to-test comment - skip build for fork PRs via pull_request event
+    if: |
+      needs.changes.outputs.only_changed != 'true' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -267,6 +273,7 @@ jobs:
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -501,6 +508,7 @@ jobs:
       contents: read # Required for listing the commits
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -522,9 +530,10 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [setup, build]
+    # Fork PRs require /ok-to-test comment from OWNER/MEMBER to run cloud tests (secrets not available on forks)
     if: github.event_name == 'repository_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]') ||
+      (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
@@ -554,6 +563,7 @@ jobs:
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -985,7 +995,12 @@ jobs:
             --yes --verbose
 
   report-test-results:
-    if: always()
+    # Skip for dependabot pull_request events (secrets not available) - uses pull_request_target instead
+    # Skip for fork PRs (secrets not available)
+    if: |
+      always() &&
+      github.repository == 'radius-project/radius' &&
+      !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04
