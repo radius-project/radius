@@ -248,7 +248,11 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
-    if: needs.changes.outputs.only_changed != 'true'
+    # Fork PRs require /ok-to-test comment - skip build for fork PRs via pull_request event
+    if: |
+      needs.changes.outputs.only_changed != 'true' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
