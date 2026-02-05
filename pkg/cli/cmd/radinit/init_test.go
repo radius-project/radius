@@ -1002,7 +1002,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			helmInterface := helm.NewMockInterface(ctrl)
-			
+
 			// Verify that Set and SetFile values are passed to Helm
 			expectedClusterOptions := helm.CLIClusterOptions{
 				Radius: helm.ChartOptions{
@@ -1010,7 +1010,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					SetFileArgs: tc.setFile,
 				},
 			}
-			
+
 			helmInterface.EXPECT().
 				InstallRadius(context.Background(), gomock.Any(), "kind-kind").
 				DoAndReturn(func(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
@@ -1051,13 +1051,13 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					ApplicationsManagementClient: appManagementClient,
 					CredentialManagementClient:   credentialManagementClient,
 				},
-				ConfigFileInterface:         configFileInterface,
-				ConfigHolder:                &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				HelmInterface:               helmInterface,
-				Output:                      outputSink,
-				Prompter:                    prompter,
-				RadiusCoreClientFactory:     radiusCoreClientFactory,
-				Options:                     &options,
+				ConfigFileInterface:     configFileInterface,
+				ConfigHolder:            &framework.ConfigHolder{ConfigFilePath: "filePath"},
+				HelmInterface:           helmInterface,
+				Output:                  outputSink,
+				Prompter:                prompter,
+				RadiusCoreClientFactory: radiusCoreClientFactory,
+				Options:                 &options,
 				Workspace: &workspaces.Workspace{
 					Name:  "default",
 					Scope: "/planes/radius/local/resourceGroups/default",

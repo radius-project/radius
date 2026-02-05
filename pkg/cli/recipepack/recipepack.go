@@ -21,9 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 )
 
@@ -179,32 +177,3 @@ func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 	}
 }
 
-// CreateRecipePack creates a recipe pack in the specified resource group.
-// It returns the full resource ID of the created recipe pack.
-func CreateRecipePack(ctx context.Context, connection sdk.Connection, resourceGroupName string, recipePackName string, resource corerpv20250801.RecipePackResource) (string, error) {
-	clientOptions := sdk.NewClientOptions(connection)
-
-	rpClient, err := corerpv20250801.NewRecipePacksClient(
-		fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName),
-		&aztoken.AnonymousCredential{},
-		clientOptions,
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to create recipe pack client: %w", err)
-	}
-
-	_, err = rpClient.CreateOrUpdate(ctx, recipePackName, resource, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create recipe pack: %w", err)
-	}
-
-	// Return the full resource ID of the created recipe pack
-	recipePackID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/recipePacks/%s", resourceGroupName, recipePackName)
-	return recipePackID, nil
-}
-
-// CreateDefaultRecipePack creates the default Kubernetes recipe pack in the specified resource group.
-// It returns the full resource ID of the created recipe pack.
-func CreateDefaultRecipePack(ctx context.Context, connection sdk.Connection, resourceGroupName string) (string, error) {
-	return CreateRecipePack(ctx, connection, resourceGroupName, DefaultRecipePackName, NewDefaultRecipePackResource())
-}
