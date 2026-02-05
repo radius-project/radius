@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel"
+	//nolint:staticcheck // SA1019: Zipkin exporter is deprecated but still functional. Will migrate to OTLP in future.
 	"go.opentelemetry.io/otel/exporters/zipkin"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
