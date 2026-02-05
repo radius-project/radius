@@ -77,6 +77,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
 
 	// Set up DeploymentTemplateReconciler.
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentTemplateReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
@@ -88,6 +89,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	require.NoError(t, err)
 
 	// Set up DeploymentResourceReconciler.
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
