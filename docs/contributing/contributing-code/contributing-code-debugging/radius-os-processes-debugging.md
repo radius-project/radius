@@ -102,8 +102,8 @@ echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 
 ```bash
 # Install Go 1.25+
-wget https://go.dev/dl/go1.25.6.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.25.6.linux-amd64.tar.gz
+wget https://go.dev/dl/go1.25.7.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.25.7.linux-amd64.tar.gz
 echo 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 
 # Other tools

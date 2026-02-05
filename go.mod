@@ -1,6 +1,6 @@
 module github.com/radius-project/radius
 
-go 1.25.6
+go 1.25.7
 
 // Replace digest lib to master to gather access to BLAKE3.
 // xref: https://github.com/opencontainers/go-digest/pull/66
