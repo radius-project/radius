@@ -81,6 +81,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	mockRadiusClient := NewMockRadiusClient()
 	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
 
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
