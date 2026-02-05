@@ -158,7 +158,7 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Checkout radius-project/recipes@main
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -167,7 +167,7 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Checkout radius-project/dashboard@main
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -176,7 +176,7 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: dashboard
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Checkout radius-project/bicep-types-aws@main
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -185,7 +185,7 @@ jobs:
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: bicep-types-aws
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Set up GitHub credentials
         run: |
