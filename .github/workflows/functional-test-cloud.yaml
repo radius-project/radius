@@ -92,21 +92,21 @@ jobs:
   # Approval gate for external contributors. This job uses GitHub Environment protection
   # to require manual approval before running tests on PRs from non-members.
   # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
-  # - Dependabot: Tests run immediately
+  # - Dependabot: Tests run immediately (job skipped)
+  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately (job skipped)
   # - External contributors: Requires approval via GitHub UI button
   approval-gate:
     name: Approval Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # Only applies to pull_request_target events
-    if: github.event_name == 'pull_request_target'
-    # Use environment with required reviewers for external contributors.
-    # Trusted users (dependabot, org members) get empty environment (no approval needed).
-    # External contributors get 'external-contributor-approval' environment (requires approval).
-    environment: ${{
-      (github.actor == 'dependabot[bot]' ||
-       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
-      && '' || 'external-contributor-approval' }}
+    # Only run for pull_request_target from external contributors.
+    # Skip this job entirely for trusted users (dependabot, org members).
+    if: |
+      github.event_name == 'pull_request_target' &&
+      github.actor != 'dependabot[bot]' &&
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    # External contributors must be approved via this environment.
+    environment: external-contributor-approval
     permissions: {}
     steps:
       - name: Approved
@@ -116,9 +116,10 @@ jobs:
     name: Setup
     needs: [approval-gate]
     # Run for all events. For PRs, approval-gate ensures external contributors are approved.
+    # Use always() because approval-gate is skipped for trusted users.
     if: |
       always() &&
-      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success') &&
+      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
       (github.event_name != 'schedule' || github.repository == 'radius-project/radius')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
