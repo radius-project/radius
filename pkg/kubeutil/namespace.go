@@ -41,6 +41,10 @@ func PatchNamespace(ctx context.Context, client runtime_client.Client, namespace
 		},
 	}
 
+	// Using runtime_client.Apply patch type for server-side apply with namespace resources.
+	// The new client.Client.Apply() API requires ApplyConfiguration types which are
+	// not straightforward to generate for dynamic/unstructured resources.
+	//nolint:staticcheck // SA1019: runtime_client.Apply will be replaced when ApplyConfiguration support is available
 	err := client.Patch(ctx, ns, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return fmt.Errorf("error applying namespace: %w", err)
