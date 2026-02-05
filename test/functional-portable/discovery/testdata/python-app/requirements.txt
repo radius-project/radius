@@ -1,0 +1,5 @@
+# Sample Python app with PostgreSQL and Redis for discovery testing
+psycopg2-binary==2.9.9
+redis==5.0.1
+flask==3.0.0
+python-dotenv==1.0.0

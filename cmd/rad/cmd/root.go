@@ -31,7 +31,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	app_scaffold "github.com/radius-project/radius/pkg/cli/cmd/app"
 	app_delete "github.com/radius-project/radius/pkg/cli/cmd/app/delete"
+	app_discover "github.com/radius-project/radius/pkg/cli/cmd/app/discover"
+	app_generate "github.com/radius-project/radius/pkg/cli/cmd/app/generate"
 	app_graph "github.com/radius-project/radius/pkg/cli/cmd/app/graph"
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
@@ -57,6 +60,7 @@ import (
 	group "github.com/radius-project/radius/pkg/cli/cmd/group"
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/cmd/mcp"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	recipe_list "github.com/radius-project/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/radius-project/radius/pkg/cli/cmd/recipe/register"
@@ -412,6 +416,15 @@ func initSubCommands() {
 	appGraphCmd, _ := app_graph.NewCommand(framework)
 	applicationCmd.AddCommand(appGraphCmd)
 
+	appDiscoverCmd, _ := app_discover.NewCommand(framework)
+	applicationCmd.AddCommand(appDiscoverCmd)
+
+	appGenerateCmd, _ := app_generate.NewCommand(framework)
+	applicationCmd.AddCommand(appGenerateCmd)
+
+	appScaffoldCmd, _ := app_scaffold.NewScaffoldCommand(framework)
+	applicationCmd.AddCommand(appScaffoldCmd)
+
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	previewEnvSwitchCmd, _ := env_switch_preview.NewCommand(framework)
 	wirePreviewSubcommand(envSwitchCmd, previewEnvSwitchCmd)
@@ -452,6 +465,12 @@ func initSubCommands() {
 
 	versionCmd, _ := version.NewCommand(framework)
 	RootCmd.AddCommand(versionCmd)
+
+	mcpCmd := mcp.NewCommand()
+	RootCmd.AddCommand(mcpCmd)
+
+	mcpServeCmd, _ := mcp.NewServeCommand(framework)
+	mcpCmd.AddCommand(mcpServeCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

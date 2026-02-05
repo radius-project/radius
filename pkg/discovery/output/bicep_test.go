@@ -1,0 +1,367 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package output
+
+import (
+	"bytes"
+	"strings"
+	"testing"
+
+	"github.com/radius-project/radius/pkg/discovery/dtypes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewBicepGenerator(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+	require.NotNil(t, gen)
+}
+
+func TestBicepGenerator_Generate_Basic(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+
+	result := &dtypes.DiscoveryResult{
+		ProjectPath: "/test/myapp",
+		Services:    []dtypes.Service{},
+		Dependencies: []dtypes.DetectedDependency{},
+		ResourceTypes: []dtypes.ResourceTypeMapping{},
+	}
+
+	opts := BicepGenerateOptions{
+		ApplicationName: "testapp",
+		Environment:     "default",
+		IncludeComments: true,
+	}
+
+	var buf bytes.Buffer
+	err = gen.Generate(result, opts, &buf)
+	require.NoError(t, err)
+
+	content := buf.String()
+	assert.Contains(t, content, "extension radius")
+	assert.Contains(t, content, "param environment string")
+	assert.Contains(t, content, "param applicationName string = 'testapp'")
+	assert.Contains(t, content, "Applications.Core/applications")
+}
+
+func TestBicepGenerator_Generate_WithServices(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+
+	result := &dtypes.DiscoveryResult{
+		ProjectPath: "/test/myapp",
+		Services: []dtypes.Service{
+			{
+				Name:         "api-service",
+				Language:     dtypes.LanguageJavaScript,
+				ExposedPorts: []int{3000, 8080},
+			},
+			{
+				Name:         "worker",
+				Language:     dtypes.LanguagePython,
+				ExposedPorts: []int{},
+			},
+		},
+		Dependencies: []dtypes.DetectedDependency{},
+		ResourceTypes: []dtypes.ResourceTypeMapping{},
+	}
+
+	opts := BicepGenerateOptions{
+		ApplicationName: "myapp",
+		IncludeComments: true,
+	}
+
+	var buf bytes.Buffer
+	err = gen.Generate(result, opts, &buf)
+	require.NoError(t, err)
+
+	content := buf.String()
+
+	// Check container resources are generated
+	assert.Contains(t, content, "resource api_service 'Applications.Core/containers")
+	assert.Contains(t, content, "name: 'api-service'")
+	assert.Contains(t, content, "resource worker 'Applications.Core/containers")
+	assert.Contains(t, content, "name: 'worker'")
+
+	// Check port exposure
+	assert.Contains(t, content, "containerPort: 3000")
+	assert.Contains(t, content, "containerPort: 8080")
+}
+
+func TestBicepGenerator_Generate_WithDependencies(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+
+	result := &dtypes.DiscoveryResult{
+		ProjectPath: "/test/myapp",
+		Services: []dtypes.Service{
+			{
+				Name:          "api",
+				Language:      dtypes.LanguageJavaScript,
+				ExposedPorts:  []int{3000},
+				DependencyIDs: []string{"postgres_db"},
+			},
+		},
+		Dependencies: []dtypes.DetectedDependency{
+			{
+				ID:      "postgres_db",
+				Type:    dtypes.DependencyPostgreSQL,
+				Library: "pg",
+			},
+		},
+		ResourceTypes: []dtypes.ResourceTypeMapping{
+			{
+				DependencyID: "postgres_db",
+				ResourceType: dtypes.ResourceType{
+					Name:       "Applications.Datastores/sqlDatabases",
+					APIVersion: "2023-10-01-preview",
+				},
+				Confidence: 0.9,
+			},
+		},
+	}
+
+	opts := BicepGenerateOptions{
+		ApplicationName: "myapp",
+		IncludeComments: true,
+	}
+
+	var buf bytes.Buffer
+	err = gen.Generate(result, opts, &buf)
+	require.NoError(t, err)
+
+	content := buf.String()
+
+	// Check infrastructure resource is generated
+	assert.Contains(t, content, "resource postgres_db 'Applications.Datastores/sqlDatabases")
+
+	// Check connection in container
+	assert.Contains(t, content, "connections:")
+	assert.Contains(t, content, "postgres_db:")
+}
+
+func TestBicepGenerator_Generate_NoComments(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+
+	result := &dtypes.DiscoveryResult{
+		ProjectPath: "/test/myapp",
+		Services: []dtypes.Service{
+			{
+				Name:         "api",
+				Language:     dtypes.LanguageJavaScript,
+				ExposedPorts: []int{3000},
+			},
+		},
+		Dependencies: []dtypes.DetectedDependency{},
+		ResourceTypes: []dtypes.ResourceTypeMapping{},
+	}
+
+	opts := BicepGenerateOptions{
+		ApplicationName: "myapp",
+		IncludeComments: false,
+	}
+
+	var buf bytes.Buffer
+	err = gen.Generate(result, opts, &buf)
+	require.NoError(t, err)
+
+	content := buf.String()
+
+	// Should not contain comment header
+	assert.NotContains(t, content, "Generated by 'rad app generate'")
+	assert.NotContains(t, content, "// Container:")
+}
+
+func TestBicepGenerator_DefaultAppName(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+
+	result := &dtypes.DiscoveryResult{
+		ProjectPath: "/path/to/my-awesome-app",
+		Services:    []dtypes.Service{},
+		Dependencies: []dtypes.DetectedDependency{},
+		ResourceTypes: []dtypes.ResourceTypeMapping{},
+	}
+
+	opts := BicepGenerateOptions{
+		ApplicationName: "", // Should default to directory name
+	}
+
+	var buf bytes.Buffer
+	err = gen.Generate(result, opts, &buf)
+	require.NoError(t, err)
+
+	content := buf.String()
+	assert.Contains(t, content, "param applicationName string = 'my-awesome-app'")
+}
+
+func TestSafeBicepName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"simple", "simple"},
+		{"with-dashes", "with_dashes"},
+		{"with.dots", "with_dots"},
+		{"with spaces", "with_spaces"},
+		{"mixed-name.test thing", "mixed_name_test_thing"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := safeBicepName(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestResourceBicepName(t *testing.T) {
+	tests := []struct {
+		dep      dtypes.DetectedDependency
+		expected string
+	}{
+		{
+			dep:      dtypes.DetectedDependency{Type: dtypes.DependencyPostgreSQL},
+			expected: "postgresql",
+		},
+		{
+			dep:      dtypes.DetectedDependency{Type: dtypes.DependencyRedis},
+			expected: "redis",
+		},
+		{
+			dep:      dtypes.DetectedDependency{Type: dtypes.DependencyRabbitMQ},
+			expected: "rabbitmq",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.dep.Type), func(t *testing.T) {
+			result := resourceBicepName(tt.dep)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFindDependency(t *testing.T) {
+	deps := []dtypes.DetectedDependency{
+		{ID: "dep1", Type: dtypes.DependencyPostgreSQL},
+		{ID: "dep2", Type: dtypes.DependencyRedis},
+		{ID: "dep3", Type: dtypes.DependencyMongoDB},
+	}
+
+	t.Run("found", func(t *testing.T) {
+		result := findDependency(deps, "dep2")
+		require.NotNil(t, result)
+		assert.Equal(t, dtypes.DependencyRedis, result.Type)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		result := findDependency(deps, "dep99")
+		assert.Nil(t, result)
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		result := findDependency([]dtypes.DetectedDependency{}, "dep1")
+		assert.Nil(t, result)
+	})
+}
+
+func TestBicepGenerator_Generate_ComplexApp(t *testing.T) {
+	gen, err := NewBicepGenerator()
+	require.NoError(t, err)
+
+	result := &dtypes.DiscoveryResult{
+		ProjectPath: "/test/ecommerce",
+		Services: []dtypes.Service{
+			{
+				Name:          "web-frontend",
+				Language:      dtypes.LanguageJavaScript,
+				ExposedPorts:  []int{3000},
+				DependencyIDs: []string{"api-gateway"},
+			},
+			{
+				Name:          "api-gateway",
+				Language:      dtypes.LanguageGo,
+				ExposedPorts:  []int{8080},
+				DependencyIDs: []string{"user-service", "product-service"},
+			},
+			{
+				Name:          "user-service",
+				Language:      dtypes.LanguageGo,
+				ExposedPorts:  []int{8081},
+				DependencyIDs: []string{"postgres_users"},
+			},
+			{
+				Name:          "product-service",
+				Language:      dtypes.LanguageJava,
+				ExposedPorts:  []int{8082},
+				DependencyIDs: []string{"postgres_products", "redis_cache"},
+			},
+		},
+		Dependencies: []dtypes.DetectedDependency{
+			{ID: "postgres_users", Type: dtypes.DependencyPostgreSQL, Library: "pg"},
+			{ID: "postgres_products", Type: dtypes.DependencyPostgreSQL, Library: "pg"},
+			{ID: "redis_cache", Type: dtypes.DependencyRedis, Library: "redis"},
+		},
+		ResourceTypes: []dtypes.ResourceTypeMapping{
+			{
+				DependencyID: "postgres_users",
+				ResourceType: dtypes.ResourceType{Name: "Applications.Datastores/sqlDatabases", APIVersion: "2023-10-01-preview"},
+				Confidence:   0.95,
+			},
+			{
+				DependencyID: "postgres_products",
+				ResourceType: dtypes.ResourceType{Name: "Applications.Datastores/sqlDatabases", APIVersion: "2023-10-01-preview"},
+				Confidence:   0.95,
+			},
+			{
+				DependencyID: "redis_cache",
+				ResourceType: dtypes.ResourceType{Name: "Applications.Datastores/redisCaches", APIVersion: "2023-10-01-preview"},
+				Confidence:   0.90,
+			},
+		},
+	}
+
+	opts := BicepGenerateOptions{
+		ApplicationName: "ecommerce",
+		Environment:     "production",
+		IncludeComments: true,
+	}
+
+	var buf bytes.Buffer
+	err = gen.Generate(result, opts, &buf)
+	require.NoError(t, err)
+
+	content := buf.String()
+
+	// Verify all services are generated
+	assert.Contains(t, content, "web_frontend")
+	assert.Contains(t, content, "api_gateway")
+	assert.Contains(t, content, "user_service")
+	assert.Contains(t, content, "product_service")
+
+	// Verify all resources are generated
+	assert.Contains(t, content, "postgres_users")
+	assert.Contains(t, content, "postgres_products")
+	assert.Contains(t, content, "redis_cache")
+
+	// Verify connections are defined
+	assert.True(t, strings.Count(content, "connections:") >= 3)
+}

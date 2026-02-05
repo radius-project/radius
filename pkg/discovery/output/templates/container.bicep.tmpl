@@ -1,0 +1,49 @@
+{{- /*
+  Container resource template for Radius containers.
+  This template generates container resources for discovered services.
+  
+  Variables:
+    .Service - The service definition
+    .Dependencies - List of detected dependencies
+    .IncludeComments - Whether to include comments
+*/ -}}
+{{- if .IncludeComments }}
+// Container: {{ .Service.Name }}
+{{- if .Service.DependencyIDs }}
+// Connections automatically inject environment variables for connected resources
+{{- end }}
+{{- if .Service.EntryPoints }}
+// Entry points:
+{{- range .Service.EntryPoints }}
+//   - {{ .FilePath }} ({{ .Type }})
+{{- end }}
+{{- end }}
+{{- end }}
+resource {{ safeName .Service.Name }} 'Applications.Core/containers@2023-10-01-preview' = {
+  name: '{{ .Service.Name }}'
+  properties: {
+    application: app.id
+    container: {
+      image: '{{ .Service.Name }}:latest' // TODO: Update with actual container image
+{{- if .Service.ExposedPorts }}
+      ports: {
+{{- range $i, $port := .Service.ExposedPorts }}
+        port{{ $port }}: {
+          containerPort: {{ $port }}
+          protocol: 'TCP'
+        }
+{{- end }}
+      }
+{{- end }}
+    }
+{{- if .Service.DependencyIDs }}
+    connections: {
+{{- range $i, $depID := .Service.DependencyIDs }}
+      {{ safeName $depID }}: {
+        source: {{ safeName $depID }}.id
+      }
+{{- end }}
+    }
+{{- end }}
+  }
+}

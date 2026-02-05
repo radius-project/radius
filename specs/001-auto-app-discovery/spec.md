@@ -11,8 +11,8 @@ Radius will make it trivial for developers to adopt Radius for existing and new 
 **How it works:**
 
 1. **Understand the codebase** — Detect infrastructure dependencies (e.g., PostgreSQL, Redis) from library usage in the code.
-2. **Apply team practices** — Detect naming conventions, tags, and cost practices from existing IaC files, config, or internal documentation.
-3. **Match to proven IaC** — Find Recipes from internal Terraform/Bicep repositories or external authoritative sources (Azure Verified Modules)
+2. **Match to proven IaC** — Find Recipes from internal Terraform/Bicep repositories or external authoritative sources (Azure Verified Modules)
+3. **Apply team practices** — Detect naming conventions, tags, and cost practices from existing IaC files, config, or internal documentation.
 4. **Generate the application** — Produce a complete, editable Radius application definition (Bicep) ready to deploy.
 
 **The result**: Developers go from codebase to deployable Radius application with zero manual Resource Type or Recipe authoring.
