@@ -25,59 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_NewDefaultRecipePackResource(t *testing.T) {
-	resource := NewDefaultRecipePackResource()
-
-	// Verify location
-	require.NotNil(t, resource.Location)
-	require.Equal(t, "global", *resource.Location)
-
-	// Verify properties exist
-	require.NotNil(t, resource.Properties)
-	require.NotNil(t, resource.Properties.Recipes)
-
-	// Verify expected recipes exist
-	expectedRecipeTypes := []string{
-		"Radius.Compute/containers",
-		"Radius.Compute/persistentVolumes",
-		"Radius.Data/mySqlDatabases",
-		"Radius.Data/postgreSqlDatabases",
-		"Radius.Security/secrets",
-	}
-
-	for _, recipeType := range expectedRecipeTypes {
-		recipe, exists := resource.Properties.Recipes[recipeType]
-		require.True(t, exists, "Expected recipe type %s to exist", recipeType)
-		require.NotNil(t, recipe, "Recipe for %s should not be nil", recipeType)
-		require.NotNil(t, recipe.RecipeKind, "RecipeKind for %s should not be nil", recipeType)
-		require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.RecipeKind, "RecipeKind for %s should be Bicep", recipeType)
-		require.NotNil(t, recipe.RecipeLocation, "RecipeLocation for %s should not be nil", recipeType)
-		require.NotNil(t, recipe.PlainHTTP, "PlainHTTP for %s should not be nil", recipeType)
-		require.True(t, *recipe.PlainHTTP, "PlainHTTP for %s should be true", recipeType)
-	}
-
-	// Verify the correct number of recipes
-	require.Len(t, resource.Properties.Recipes, len(expectedRecipeTypes))
-}
-
-func Test_CreateDefaultRecipePackWithClient(t *testing.T) {
-	t.Run("Success: creates recipe pack", func(t *testing.T) {
-		rootScope := "/planes/radius/local/resourceGroups/test-rg"
-		resourceGroupName := "test-rg"
-
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil)
-		require.NoError(t, err)
-
-		recipePackClient := factory.NewRecipePacksClient()
-
-		recipePackID, err := CreateDefaultRecipePackWithClient(context.Background(), recipePackClient, resourceGroupName)
-		require.NoError(t, err)
-
-		expectedID := "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/recipePacks/local-dev"
-		require.Equal(t, expectedID, recipePackID)
-	})
-}
-
 func Test_DefaultRecipePackName(t *testing.T) {
 	require.Equal(t, "local-dev", DefaultRecipePackName)
 }
@@ -86,15 +33,14 @@ func Test_GetSingletonRecipePackDefinitions(t *testing.T) {
 	definitions := GetSingletonRecipePackDefinitions()
 
 	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 5)
+	require.Len(t, definitions, 4)
 
 	// Verify expected resource types and names
 	expectedDefinitions := map[string]string{
-		"containers":         "Radius.Compute/containers",
-		"persistentvolumes":  "Radius.Compute/persistentVolumes",
-		"mysqldatabases":     "Radius.Data/mySqlDatabases",
-		"postgresqldatabases": "Radius.Data/postgreSqlDatabases",
-		"secrets":            "Radius.Security/secrets",
+		"containers":        "Radius.Compute/containers",
+		"persistentvolumes": "Radius.Compute/persistentVolumes",
+		"routes":            "Radius.Compute/routes",
+		"secrets":           "Radius.Security/secrets",
 	}
 
 	for _, def := range definitions {
@@ -107,7 +53,7 @@ func Test_GetSingletonRecipePackDefinitions(t *testing.T) {
 
 func Test_NewSingletonRecipePackResource(t *testing.T) {
 	resourceType := "Radius.Compute/containers"
-	recipeLocation := "localhost:5000/test-recipe:latest"
+	recipeLocation := "ghcr.io/radius-project/kube-recipes/containers@latest"
 
 	resource := NewSingletonRecipePackResource(resourceType, recipeLocation)
 
@@ -129,8 +75,6 @@ func Test_NewSingletonRecipePackResource(t *testing.T) {
 	require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.RecipeKind)
 	require.NotNil(t, recipe.RecipeLocation)
 	require.Equal(t, recipeLocation, *recipe.RecipeLocation)
-	require.NotNil(t, recipe.PlainHTTP)
-	require.True(t, *recipe.PlainHTTP)
 }
 
 func Test_CreateSingletonRecipePacksWithClient(t *testing.T) {
@@ -155,22 +99,5 @@ func Test_CreateSingletonRecipePacksWithClient(t *testing.T) {
 			expectedID := "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/recipePacks/" + def.Name
 			require.Equal(t, expectedID, recipePackIDs[i])
 		}
-	})
-}
-
-func Test_GetRecipePackNameForResourceType(t *testing.T) {
-	t.Run("finds existing resource type", func(t *testing.T) {
-		name := GetRecipePackNameForResourceType("Radius.Compute/containers")
-		require.Equal(t, "containers", name)
-	})
-
-	t.Run("finds resource type case-insensitive", func(t *testing.T) {
-		name := GetRecipePackNameForResourceType("radius.compute/CONTAINERS")
-		require.Equal(t, "containers", name)
-	})
-
-	t.Run("returns empty for unknown resource type", func(t *testing.T) {
-		name := GetRecipePackNameForResourceType("Unknown/resourceType")
-		require.Empty(t, name)
 	})
 }
