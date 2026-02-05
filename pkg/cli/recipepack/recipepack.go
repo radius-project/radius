@@ -83,9 +83,9 @@ func NewSingletonRecipePackResource(resourceType, recipeLocation string) corerpv
 	}
 }
 
-// CreateSingletonRecipePacksWithClient creates singleton recipe packs (one per resource type) using a RecipePacksClient.
+// CreateSingletonRecipePacks creates singleton recipe packs (one per resource type) using a RecipePacksClient.
 // It returns the list of full resource IDs of the created recipe packs.
-func CreateSingletonRecipePacksWithClient(ctx context.Context, client *corerpv20250801.RecipePacksClient, resourceGroupName string) ([]string, error) {
+func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.RecipePacksClient, resourceGroupName string) ([]string, error) {
 	definitions := GetSingletonRecipePackDefinitions()
 	recipePackIDs := make([]string, 0, len(definitions))
 

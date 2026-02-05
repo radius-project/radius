@@ -87,7 +87,7 @@ func Test_CreateSingletonRecipePacksWithClient(t *testing.T) {
 
 		recipePackClient := factory.NewRecipePacksClient()
 
-		recipePackIDs, err := CreateSingletonRecipePacksWithClient(context.Background(), recipePackClient, resourceGroupName)
+		recipePackIDs, err := CreateSingletonRecipePacks(context.Background(), recipePackClient, resourceGroupName)
 		require.NoError(t, err)
 
 		// Verify the correct number of recipe packs were created

@@ -93,7 +93,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 
 	// Create singleton recipe packs (one per resource type) and link them to the environment
 	// We make singleton recipe packs so that its easier for users to override recipes for specific resource types if they want to.
-	recipePackIDs, err := recipepack.CreateSingletonRecipePacksWithClient(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient(), r.Options.Environment.Name)
+	recipePackIDs, err := recipepack.CreateSingletonRecipePacks(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient(), r.Options.Environment.Name)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create recipe packs.")
 	}
