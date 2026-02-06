@@ -28,15 +28,27 @@ endif
 generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
-generate-tsp-installed:
+generate-tsp-installed: generate-pnpm-installed
 	@echo "$(ARROW) Detecting tsp..."
-	@pnpm -C typespec exec tsp --help > /dev/null || { echo "Typespec not installed. Run 'pnpm install -C typespec' from the workspace root folder."; exit 1; }
+	@pnpm -C typespec exec tsp --help > /dev/null 2>&1 || { \
+		echo "$(ARROW) TypeSpec not found. Installing TypeSpec dependencies..."; \
+		pnpm -C typespec install --frozen-lockfile; \
+	}
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-pnpm-installed
-generate-pnpm-installed:
+generate-pnpm-installed: generate-node-installed
 	@echo "$(ARROW) Detecting pnpm..."
-	@which pnpm > /dev/null || { echo "pnpm is a required dependency. Install via: npm install -g pnpm"; exit 1; }
+	@which pnpm > /dev/null 2>&1 || { \
+		echo "$(ARROW) pnpm not found. Installing pnpm..."; \
+		npm install -g pnpm; \
+	}
+	@echo "$(ARROW) OK"
+
+.PHONY: tsp-format-check
+tsp-format-check: generate-tsp-installed ## Checks TypeSpec format
+	@echo "$(ARROW) Checking TypeSpec format..."
+	pnpm -C typespec exec tsp format --check "**/*.tsp"
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
@@ -56,9 +68,12 @@ generate-node-installed:
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-autorest-installed
-generate-autorest-installed:
+generate-autorest-installed: generate-pnpm-installed
 	@echo "$(ARROW) Detecting autorest..."
-	@which autorest > /dev/null || { echo "run 'pnpm add -g autorest@3.7.2 --allow-build=autorest' to install autorest"; exit 1; }
+	@which autorest > /dev/null 2>&1 || { \
+		echo "$(ARROW) autorest not found. Installing autorest..."; \
+		pnpm add -g autorest@3.7.2 --allow-build=autorest; \
+	}
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-controller-gen-installed
