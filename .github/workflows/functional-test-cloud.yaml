@@ -98,15 +98,14 @@ jobs:
     name: Approval Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # Only applies to pull_request_target events
-    if: github.event_name == 'pull_request_target'
-    # Use environment with required reviewers for external contributors.
-    # Trusted users (dependabot, org members) get empty environment (no approval needed).
-    # External contributors get 'external-contributor-approval' environment (requires approval).
-    environment: ${{
-      (github.actor == 'dependabot[bot]' ||
-       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
-      && '' || 'external-contributor-approval' }}
+    # Only run for external contributors on pull_request_target events.
+    # Trusted users (dependabot, org members) skip this job entirely.
+    # External contributors require approval via 'external-contributor-approval' environment.
+    if: |
+      github.event_name == 'pull_request_target' &&
+      github.actor != 'dependabot[bot]' &&
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    environment: external-contributor-approval
     permissions: {}
     steps:
       - name: Approved
@@ -115,10 +114,11 @@ jobs:
   setup:
     name: Setup
     needs: [approval-gate]
-    # Run for all events. For PRs, approval-gate ensures external contributors are approved.
+    # Run for all events. For PRs, approval-gate either succeeds (external contributors approved)
+    # or is skipped (trusted users like org members and dependabot).
     if: |
       always() &&
-      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success') &&
+      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
       (github.event_name != 'schedule' || github.repository == 'radius-project/radius')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -176,7 +176,7 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -262,14 +262,14 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -323,7 +323,7 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -563,14 +563,14 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
 
       - name: Checkout Samples repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -627,7 +627,7 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -687,7 +687,7 @@ jobs:
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
