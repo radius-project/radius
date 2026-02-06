@@ -510,6 +510,41 @@ func TestGetSensitiveFieldPaths(t *testing.T) {
 	})
 }
 
+func TestGetSchema(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("nil client returns nil", func(t *testing.T) {
+		result, err := GetSchema(ctx, nil, "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test", "Foo.Bar/myResources", "2024-01-01")
+		require.NoError(t, err)
+		require.Nil(t, result)
+	})
+
+	t.Run("returns schema from UCP", func(t *testing.T) {
+		expectedSchema := map[string]any{
+			"properties": map[string]any{
+				"password": map[string]any{
+					"type":                    "string",
+					annotationRadiusSensitive: true,
+				},
+			},
+		}
+
+		clientFactory, err := testUCPClientFactory(expectedSchema)
+		require.NoError(t, err)
+
+		result, err := GetSchema(
+			ctx,
+			clientFactory,
+			"/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test",
+			"Foo.Bar/myResources",
+			"2024-01-01",
+		)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedSchema, result)
+	})
+}
+
 // testUCPClientFactory creates a mock UCP client factory that returns the given schema.
 func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactory, error) {
 	apiVersionsServer := fake.APIVersionsServer{

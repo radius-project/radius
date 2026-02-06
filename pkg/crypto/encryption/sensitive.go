@@ -37,6 +37,9 @@ var (
 
 	// ErrFieldDecryptionFailed is returned when decryption of a field fails.
 	ErrFieldDecryptionFailed = errors.New("field decryption failed")
+
+	// ErrFieldRedactionFailed is returned when redaction of a field fails.
+	ErrFieldRedactionFailed = errors.New("field redaction failed")
 )
 
 // SensitiveDataHandler provides methods for encrypting and decrypting sensitive fields
@@ -160,6 +163,23 @@ func (h *SensitiveDataHandler) DecryptSensitiveFieldsWithSchema(ctx context.Cont
 	return nil
 }
 
+// RedactSensitiveFields nullifies all sensitive fields in the data based on the provided field paths.
+// The data is modified in place. Field paths support dot notation and [*] for arrays/maps.
+//
+// Fields that are not found are skipped - this allows optional sensitive fields to be absent.
+func (h *SensitiveDataHandler) RedactSensitiveFields(data map[string]any, sensitiveFieldPaths []string) error {
+	for _, path := range sensitiveFieldPaths {
+		if err := h.redactFieldAtPath(data, path); err != nil {
+			// Skip fields that are not found - they may not exist in this resource instance
+			if errors.Is(err, ErrFieldNotFound) {
+				continue
+			}
+			return fmt.Errorf("%w: path %q: %v", ErrFieldRedactionFailed, path, err)
+		}
+	}
+	return nil
+}
+
 // getEncryptorForDecryption returns the appropriate encryptor for decrypting data.
 // If a keyProvider is available and the data contains a version, it fetches the versioned key.
 // Otherwise, it falls back to the default encryptor.
@@ -202,6 +222,14 @@ func (h *SensitiveDataHandler) encryptFieldAtPath(data map[string]any, path stri
 func (h *SensitiveDataHandler) decryptFieldAtPath(ctx context.Context, data map[string]any, path string, fieldSchema map[string]any, associatedData []byte) error {
 	processor := func(value any) (any, error) {
 		return h.decryptValue(ctx, value, fieldSchema, associatedData)
+	}
+	return h.processFieldAtPath(data, path, processor)
+}
+
+// redactFieldAtPath replaces the value at the given field path with nil.
+func (h *SensitiveDataHandler) redactFieldAtPath(data map[string]any, path string) error {
+	processor := func(any) (any, error) {
+		return nil, nil
 	}
 	return h.processFieldAtPath(data, path, processor)
 }

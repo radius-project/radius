@@ -38,6 +38,20 @@ import (
 //   - []string: Paths to sensitive fields, or empty slice if none found
 //   - error: Any error encountered while fetching the schema
 func GetSensitiveFieldPaths(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resourceID string, resourceType string, apiVersion string) ([]string, error) {
+	schema, err := GetSchema(ctx, ucpClient, resourceID, resourceType, apiVersion)
+	if err != nil {
+		return nil, err
+	}
+	if schema == nil {
+		return nil, nil
+	}
+
+	return ExtractSensitiveFieldPaths(schema, ""), nil
+}
+
+// GetSchema fetches the OpenAPI schema for a resource type and api version.
+// Returns nil if the schema is not found or the client is nil.
+func GetSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resourceID string, resourceType string, apiVersion string) (map[string]any, error) {
 	if ucpClient == nil {
 		return nil, nil
 	}
@@ -59,13 +73,7 @@ func GetSensitiveFieldPaths(ctx context.Context, ucpClient *v20231001preview.Cli
 		return nil, err
 	}
 
-	schema := apiVersionResource.APIVersionResource.Properties.Schema
-	if schema == nil {
-		return nil, nil
-	}
-
-	// Extract paths to fields with x-radius-sensitive annotation
-	return ExtractSensitiveFieldPaths(schema, ""), nil
+	return apiVersionResource.APIVersionResource.Properties.Schema, nil
 }
 
 // ExtractSensitiveFieldPaths recursively walks the schema and returns paths to fields marked with x-radius-sensitive.

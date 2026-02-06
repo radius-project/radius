@@ -138,7 +138,7 @@ func TestPrepareResourceFilter(t *testing.T) {
 
 	t.Run("continues on schema fetch error", func(t *testing.T) {
 		// Create a client that will fail to fetch the schema
-		clientFactory, err := testUCPClientFactoryWithError()
+		clientFactory, err := testUpdateFilterUCPClientFactoryWithError()
 		require.NoError(t, err)
 
 		factory := &UpdateFilterFactory{
@@ -193,8 +193,8 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 	})
 }
 
-// testUCPClientFactoryWithError creates a mock UCP client factory that returns an error.
-func testUCPClientFactoryWithError() (*v20231001preview.ClientFactory, error) {
+// testUpdateFilterUCPClientFactoryWithError creates a mock UCP client factory that returns an error.
+func testUpdateFilterUCPClientFactoryWithError() (*v20231001preview.ClientFactory, error) {
 	apiVersionsServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (azfake.Responder[v20231001preview.APIVersionsClientGetResponse], azfake.ErrorResponder) {
 			resp := azfake.Responder[v20231001preview.APIVersionsClientGetResponse]{}

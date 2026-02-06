@@ -22,7 +22,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
-	"github.com/radius-project/radius/pkg/dynamicrp/schema"
+	"github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
