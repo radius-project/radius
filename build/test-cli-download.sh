@@ -23,33 +23,41 @@ OS=${1:-"linux"}
 ARCH=${2:-"amd64"}
 FILE=${3:-"rad"}
 EXT=${4:-""}
+RAD_VERSION=${5:-""}
 
 echo "Starting CLI download test for $OS/$ARCH"
 
-# Get latest version from GitHub releases API
-echo "Fetching latest release version from GitHub API..."
-radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
+# Use provided version or get latest version from GitHub releases API
+if [ -n "$RAD_VERSION" ]; then
+    echo "Using provided RAD_VERSION: $RAD_VERSION"
+else
+    echo "Fetching latest release version from GitHub API..."
+    radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
 
-# Make API call
-api_response=$(curl -s "$radReleaseUrl")
-curl_exit_code=$?
+    # Make API call
+    api_response=$(curl -s "$radReleaseUrl")
+    curl_exit_code=$?
 
-if [ $curl_exit_code -ne 0 ]; then
-    echo "GitHub API call failed with exit code: $curl_exit_code"
-    exit 1
+    if [ $curl_exit_code -ne 0 ]; then
+        echo "GitHub API call failed with exit code: $curl_exit_code"
+        exit 1
+    fi
+
+    echo "GitHub API call successful"
+
+    # Extract version from API response using jq
+    # Select the first release that is not an RC (release candidate)
+    RAD_VERSION=$(echo "$api_response" | jq -r '[.[] | select(.tag_name | test("rc") | not)] | .[0].tag_name // empty') || true
+
+    if [ -z "$RAD_VERSION" ]; then
+        echo "Failed to extract RAD_VERSION from API response"
+        echo "API Response (first 50 lines):"
+        echo "$api_response" | head -n 50
+        exit 1
+    fi
+
+    echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
 fi
-
-echo "GitHub API call successful"
-
-# Extract version from API response using grep, awk, and sed
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
-
-if [ -z "$RAD_VERSION" ]; then
-    echo "Failed to extract RAD_VERSION from API response"
-    exit 1
-fi
-
-echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
 
 # Download the CLI binary from GitHub releases
 filename="${FILE}_${OS}_${ARCH}${EXT}"
