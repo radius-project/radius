@@ -17,12 +17,15 @@ limitations under the License.
 package resourceproviders
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,22 +109,79 @@ func Test_ResourceProvider_RegisterManifests(t *testing.T) {
 
 	createRadiusPlane(server)
 
-	require.Eventuallyf(t, func() bool {
-		// Responses should contain the resource provider and resource type in the manifest
-		response := server.MakeRequest(http.MethodGet, manifestResourceProviderCollectionURL, nil)
-		response.EqualsFixture(200, manifestResourceProviderListResponseFixture)
+	// Use EventuallyWithTf so that assertion failures inside the callback are collected
+	// on a CollectT instead of the real *testing.T. This allows retries to work correctly;
+	// EqualsFixture uses require (t.FailNow) which would permanently fail the test on the
+	// first unsuccessful attempt if called with the real t.
+	require.EventuallyWithTf(t, func(collect *assert.CollectT) {
+		fixtures := []struct {
+			method  string
+			url     string
+			fixture string
+		}{
+			{http.MethodGet, manifestResourceProviderCollectionURL, manifestResourceProviderListResponseFixture},
+			{http.MethodGet, manifestResourceProviderURL, manifestResourceProviderResponseFixture},
+			{http.MethodGet, manifestResourceTypeCollectionURL, manifestResourceTypeListResponseFixture},
+			{http.MethodGet, manifestResourceTypeURL, manifestResourceTypeResponseFixture},
+		}
 
-		response = server.MakeRequest(http.MethodGet, manifestResourceProviderURL, nil)
-		response.EqualsFixture(200, manifestResourceProviderResponseFixture)
+		for _, f := range fixtures {
+			response := server.MakeRequest(f.method, f.url, nil)
 
-		response = server.MakeRequest(http.MethodGet, manifestResourceTypeCollectionURL, nil)
-		response.EqualsFixture(200, manifestResourceTypeListResponseFixture)
+			expected, err := os.ReadFile(f.fixture)
+			if !assert.NoError(collect, err, "reading fixture %s failed", f.fixture) {
+				return
+			}
 
-		response = server.MakeRequest(http.MethodGet, manifestResourceTypeURL, nil)
-		response.EqualsFixture(200, manifestResourceTypeResponseFixture)
+			var expectedBody map[string]any
+			if !assert.NoError(collect, json.Unmarshal(expected, &expectedBody), "unmarshalling expected response failed") {
+				return
+			}
 
-		deleteManifestResourceProvider(server)
+			var actualBody map[string]any
+			if !assert.NoError(collect, json.Unmarshal(response.Body.Bytes(), &actualBody), "unmarshalling actual response failed") {
+				return
+			}
 
-		return true
+			// Remove systemData for comparison consistency, matching the behavior
+			// of TestResponse.removeSystemData.
+			removeSystemData(actualBody)
+
+			if !assert.EqualValues(collect, expectedBody, actualBody, "response body did not match expected for %s", f.url) {
+				return
+			}
+
+			if !assert.Equal(collect, 200, response.Raw.StatusCode, "status code did not match expected for %s", f.url) {
+				return
+			}
+		}
 	}, registerManifestWaitDuration, registerManifestWaitInterval, "manifest registration did not complete in time")
+
+	// Clean up after successful registration.
+	deleteManifestResourceProvider(server)
+}
+
+// removeSystemData removes the systemData property from the response body recursively.
+// This matches the behavior of TestResponse.removeSystemData in the testhost package.
+func removeSystemData(body map[string]any) {
+	if _, ok := body["systemData"]; ok {
+		delete(body, "systemData")
+		return
+	}
+
+	value, ok := body["value"]
+	if !ok {
+		return
+	}
+
+	valueSlice, ok := value.([]any)
+	if !ok {
+		return
+	}
+
+	for _, v := range valueSlice {
+		if vMap, ok := v.(map[string]any); ok {
+			removeSystemData(vMap)
+		}
+	}
 }
