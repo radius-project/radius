@@ -50,7 +50,7 @@ jobs:
           persist-credentials: false
 
       - name: Test CLI download
-        run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }}
+        run: make test-cli-download CLI_DOWNLOAD_OS=${{ matrix.os }} CLI_DOWNLOAD_ARCH=${{ matrix.arch }} CLI_DOWNLOAD_FILE=${{ matrix.file }} CLI_DOWNLOAD_EXT=${{ matrix.ext }}
 
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
