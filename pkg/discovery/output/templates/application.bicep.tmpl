@@ -1,0 +1,11 @@
+{{- /*
+  Application resource template for Radius applications.
+  This template generates the main application resource definition.
+*/ -}}
+
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
+  name: applicationName
+  properties: {
+    environment: environment
+  }
+}

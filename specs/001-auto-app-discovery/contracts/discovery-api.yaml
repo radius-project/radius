@@ -1,0 +1,705 @@
+openapi: 3.0.3
+info:
+  title: Radius Discovery API
+  description: Programmatic API for discovering application dependencies and generating Radius configurations
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /discover/dependencies:
+    post:
+      operationId: discoverDependencies
+      summary: Discover infrastructure dependencies in source code
+      description: Analyzes source code to detect infrastructure dependencies (databases, caches, message queues)
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoverDependenciesRequest'
+      responses:
+        '200':
+          description: Dependencies discovered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverDependenciesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /discover/services:
+    post:
+      operationId: discoverServices
+      summary: Discover deployable services in codebase
+      description: Identifies deployable services by detecting entry points, Dockerfiles, and application structures
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoverServicesRequest'
+      responses:
+        '200':
+          description: Services discovered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverServicesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /discover/practices:
+    post:
+      operationId: discoverTeamPractices
+      summary: Extract team practices from existing IaC
+      description: Parses existing Terraform, Bicep, or ARM templates to extract naming conventions, tags, and configuration patterns
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoverPracticesRequest'
+      responses:
+        '200':
+          description: Practices extracted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverPracticesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /generate/resource-types:
+    post:
+      operationId: generateResourceTypes
+      summary: Map dependencies to Resource Types
+      description: Maps detected dependencies to appropriate Radius Resource Types from the catalog
+      tags:
+        - Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateResourceTypesRequest'
+      responses:
+        '200':
+          description: Resource Types generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResourceTypesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /discover/recipes:
+    post:
+      operationId: discoverRecipes
+      summary: Find matching recipes for dependencies
+      description: Searches configured recipe sources for recipes that can provision detected dependencies
+      tags:
+        - Discovery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoverRecipesRequest'
+      responses:
+        '200':
+          description: Recipes discovered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverRecipesResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /generate/app-definition:
+    post:
+      operationId: generateAppDefinition
+      summary: Generate Radius application definition
+      description: Generates a complete app.bicep file from discovery results
+      tags:
+        - Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateAppDefinitionRequest'
+      responses:
+        '200':
+          description: Application definition generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateAppDefinitionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /validate/app-definition:
+    post:
+      operationId: validateAppDefinition
+      summary: Validate generated application definition
+      description: Validates a generated app.bicep file for correctness
+      tags:
+        - Validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateAppDefinitionRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateAppDefinitionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    # Request schemas
+    DiscoverDependenciesRequest:
+      type: object
+      required:
+        - projectPath
+      properties:
+        projectPath:
+          type: string
+          description: Path to the project root directory
+        languages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Language'
+          description: Languages to analyze (auto-detected if not specified)
+        minConfidence:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Minimum confidence threshold for results
+
+    DiscoverServicesRequest:
+      type: object
+      required:
+        - projectPath
+      properties:
+        projectPath:
+          type: string
+          description: Path to the project root directory
+        includeTests:
+          type: boolean
+          default: false
+          description: Whether to include test services
+
+    DiscoverPracticesRequest:
+      type: object
+      required:
+        - projectPath
+      properties:
+        projectPath:
+          type: string
+          description: Path to the project root directory
+        iacTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IaCType'
+          description: IaC types to parse (auto-detected if not specified)
+
+    GenerateResourceTypesRequest:
+      type: object
+      required:
+        - dependencies
+      properties:
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedDependency'
+        catalogPath:
+          type: string
+          description: Path to custom Resource Type catalog
+
+    DiscoverRecipesRequest:
+      type: object
+      required:
+        - dependencies
+      properties:
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedDependency'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeSource'
+          description: Recipe sources to search
+
+    GenerateAppDefinitionRequest:
+      type: object
+      required:
+        - discoveryResult
+      properties:
+        discoveryResult:
+          $ref: '#/components/schemas/DiscoveryResult'
+        outputFormat:
+          type: string
+          enum: [bicep, json]
+          default: bicep
+        includeComments:
+          type: boolean
+          default: true
+
+    ValidateAppDefinitionRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Bicep content to validate
+        format:
+          type: string
+          enum: [bicep, json]
+          default: bicep
+
+    # Response schemas
+    DiscoverDependenciesResponse:
+      type: object
+      required:
+        - dependencies
+      properties:
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedDependency'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+
+    DiscoverServicesResponse:
+      type: object
+      required:
+        - services
+      properties:
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+
+    DiscoverPracticesResponse:
+      type: object
+      required:
+        - practices
+      properties:
+        practices:
+          $ref: '#/components/schemas/TeamPractices'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+
+    GenerateResourceTypesResponse:
+      type: object
+      required:
+        - mappings
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceTypeMapping'
+        unmapped:
+          type: array
+          items:
+            type: string
+          description: Dependency IDs that could not be mapped
+
+    DiscoverRecipesResponse:
+      type: object
+      required:
+        - matches
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeMatch'
+
+    GenerateAppDefinitionResponse:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Generated Bicep or JSON content
+        outputPath:
+          type: string
+          description: Suggested output path
+
+    ValidateAppDefinitionResponse:
+      type: object
+      required:
+        - valid
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    # Data models
+    DiscoveryResult:
+      type: object
+      properties:
+        projectPath:
+          type: string
+        analyzedAt:
+          type: string
+          format: date-time
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedDependency'
+        practices:
+          $ref: '#/components/schemas/TeamPractices'
+        resourceTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceTypeMapping'
+        recipes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeMatch'
+
+    Service:
+      type: object
+      required:
+        - name
+        - path
+        - language
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        language:
+          $ref: '#/components/schemas/Language'
+        framework:
+          type: string
+        dockerfile:
+          type: string
+        exposedPorts:
+          type: array
+          items:
+            type: integer
+        entryPoint:
+          $ref: '#/components/schemas/EntryPoint'
+        dependencyIds:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+          format: float
+
+    EntryPoint:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [dockerfile, main, script]
+        file:
+          type: string
+        command:
+          type: string
+
+    DetectedDependency:
+      type: object
+      required:
+        - id
+        - type
+        - name
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/DependencyType'
+        name:
+          type: string
+        library:
+          type: string
+        version:
+          type: string
+        confidence:
+          type: number
+          format: float
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+        connectionEnv:
+          type: string
+        defaultPort:
+          type: integer
+        usedBy:
+          type: array
+          items:
+            type: string
+
+    Evidence:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [package-manifest, import, connection-string, env-variable]
+        file:
+          type: string
+        line:
+          type: integer
+        snippet:
+          type: string
+
+    TeamPractices:
+      type: object
+      properties:
+        namingConvention:
+          $ref: '#/components/schemas/NamingPattern'
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+        environment:
+          type: string
+        region:
+          type: string
+        encryptionEnabled:
+          type: boolean
+        privateNetworking:
+          type: boolean
+        defaultTier:
+          type: string
+        extractedFrom:
+          type: array
+          items:
+            $ref: '#/components/schemas/PracticeSource'
+
+    NamingPattern:
+      type: object
+      properties:
+        pattern:
+          type: string
+        examples:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+          format: float
+
+    PracticeSource:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/IaCType'
+        filePath:
+          type: string
+
+    ResourceTypeMapping:
+      type: object
+      properties:
+        dependencyId:
+          type: string
+        resourceType:
+          $ref: '#/components/schemas/ResourceType'
+        matchSource:
+          type: string
+          enum: [catalog, inferred, user-defined]
+        confidence:
+          type: number
+          format: float
+
+    ResourceType:
+      type: object
+      properties:
+        name:
+          type: string
+        apiVersion:
+          type: string
+        properties:
+          type: object
+        schema:
+          type: string
+
+    RecipeMatch:
+      type: object
+      properties:
+        dependencyId:
+          type: string
+        recipe:
+          $ref: '#/components/schemas/Recipe'
+        score:
+          type: number
+          format: float
+        matchReasons:
+          type: array
+          items:
+            type: string
+
+    Recipe:
+      type: object
+      properties:
+        name:
+          type: string
+        sourceType:
+          type: string
+          enum: [avm, terraform-registry, git, local]
+        sourceLocation:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        provider:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeParameter'
+
+    RecipeParameter:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        required:
+          type: boolean
+        default:
+          type: object
+
+    RecipeSource:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [avm, terraform-registry, git, local]
+        location:
+          type: string
+        credentials:
+          type: string
+          description: Secret reference for authenticated sources
+
+    Warning:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [info, warning, error]
+        code:
+          type: string
+        message:
+          type: string
+        file:
+          type: string
+        line:
+          type: integer
+
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        line:
+          type: integer
+        column:
+          type: integer
+
+    # Enums
+    Language:
+      type: string
+      enum: [python, javascript, typescript, go, java, csharp]
+
+    DependencyType:
+      type: string
+      enum: [postgresql, mysql, mongodb, redis, rabbitmq, kafka, azure-blob, s3, unknown]
+
+    IaCType:
+      type: string
+      enum: [terraform, bicep, arm, kubernetes, env-file]

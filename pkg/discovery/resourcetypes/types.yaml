@@ -1,0 +1,97 @@
+# Resource Type Catalog
+# Maps detected dependency types to Radius Resource Types
+#
+# Uses Radius.* namespace from resource-types-contrib:
+# https://github.com/radius-project/resource-types-contrib
+#
+# Version: 2.0.0
+
+version: "2.0.0"
+
+resourceTypes:
+  # ============================================================================
+  # Database Resource Types (Radius.Data namespace)
+  # ============================================================================
+
+  - dependencyType: postgresql
+    resourceTypeName: Radius.Data/postgreSqlDatabases
+    apiVersion: "2025-08-01-preview"
+    description: PostgreSQL database using resource-types-contrib
+    defaultProperties:
+      database: postgres
+      user: postgres
+      size: S
+    schemaUrl: https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/resources/Radius.Data/postgreSqlDatabases/types.json
+
+  - dependencyType: mysql
+    resourceTypeName: Radius.Data/mySqlDatabases
+    apiVersion: "2025-08-01-preview"
+    description: MySQL database using resource-types-contrib
+    defaultProperties:
+      database: mysql
+      username: root
+      version: "8.4"
+    schemaUrl: https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/resources/Radius.Data/mySqlDatabases/types.json
+
+  - dependencyType: mongodb
+    resourceTypeName: Radius.Data/mongoDatabases
+    apiVersion: "2025-08-01-preview"
+    description: MongoDB database using resource-types-contrib
+    defaultProperties:
+      database: ""
+    schemaUrl: https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/resources/Radius.Data/mongoDatabases/types.json
+
+  # ============================================================================
+  # Cache Resource Types (Radius.Data namespace)
+  # ============================================================================
+
+  - dependencyType: redis
+    resourceTypeName: Radius.Data/redisCaches
+    apiVersion: "2025-08-01-preview"
+    description: Redis cache using resource-types-contrib
+    defaultProperties:
+      host: ""
+      port: 6379
+      capacity: M
+    schemaUrl: https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/resources/Radius.Data/redisCaches/types.json
+
+  # ============================================================================
+  # Messaging Resource Types (Radius.Messaging namespace)
+  # ============================================================================
+
+  - dependencyType: rabbitmq
+    resourceTypeName: Radius.Messaging/rabbitMQQueues
+    apiVersion: "2025-08-01-preview"
+    description: RabbitMQ queue using resource-types-contrib
+    defaultProperties:
+      queue: ""
+    schemaUrl: https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/resources/Radius.Messaging/rabbitMQQueues/types.json
+
+  - dependencyType: kafka
+    resourceTypeName: Radius.Messaging/kafkaQueues
+    apiVersion: "2025-08-01-preview"
+    description: Kafka queue using resource-types-contrib
+    defaultProperties:
+      topic: ""
+      brokers: []
+    schemaUrl: https://raw.githubusercontent.com/radius-project/resource-types-contrib/main/resources/Radius.Messaging/kafkaQueues/types.json
+
+  # ============================================================================
+  # Storage Resource Types (Radius.Storage namespace - proposed)
+  # ============================================================================
+
+  - dependencyType: azure-blob
+    resourceTypeName: Radius.Storage/azureBlobStorages
+    apiVersion: "2025-08-01-preview"
+    description: Azure Blob Storage using Radius storage resource type
+    defaultProperties:
+      containerName: ""
+    schemaUrl: ""
+
+  - dependencyType: s3
+    resourceTypeName: Radius.Storage/s3Buckets
+    apiVersion: "2025-08-01-preview"
+    description: AWS S3 bucket using Radius S3 resource type
+    defaultProperties:
+      bucketName: ""
+    schemaUrl: ""
