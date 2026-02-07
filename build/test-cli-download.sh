@@ -23,33 +23,18 @@ OS=${1:-"linux"}
 ARCH=${2:-"amd64"}
 FILE=${3:-"rad"}
 EXT=${4:-""}
+RAD_VERSION=${5:-""}
 
 echo "Starting CLI download test for $OS/$ARCH"
 
-# Get latest version from GitHub releases API
-echo "Fetching latest release version from GitHub API..."
-radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
-
-# Make API call
-api_response=$(curl -s "$radReleaseUrl")
-curl_exit_code=$?
-
-if [ $curl_exit_code -ne 0 ]; then
-    echo "GitHub API call failed with exit code: $curl_exit_code"
-    exit 1
-fi
-
-echo "GitHub API call successful"
-
-# Extract version from API response using grep, awk, and sed
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
-
+# RAD_VERSION is required - it should be passed from the workflow
 if [ -z "$RAD_VERSION" ]; then
-    echo "Failed to extract RAD_VERSION from API response"
+    echo "Error: RAD_VERSION is required but not provided."
+    echo "Usage: $0 <OS> <ARCH> <FILE> <EXT> <RAD_VERSION>"
     exit 1
 fi
 
-echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
+echo "Using RAD_VERSION: $RAD_VERSION"
 
 # Download the CLI binary from GitHub releases
 filename="${FILE}_${OS}_${ARCH}${EXT}"

@@ -15,7 +15,47 @@ on:
 permissions: {}
 
 jobs:
+  get-version:
+    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      rad_version: ${{ steps.get-version.outputs.rad_version }}
+    steps:
+      - name: Get latest release version
+        id: get-version
+        run: |
+          echo "Fetching latest release version from GitHub API..."
+          radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
+
+          api_response=$(curl -s "$radReleaseUrl")
+          curl_exit_code=$?
+
+          if [ $curl_exit_code -ne 0 ]; then
+              echo "GitHub API call failed with exit code: $curl_exit_code"
+              exit 1
+          fi
+
+          echo "GitHub API call successful"
+
+          # Extract version from API response using jq
+          # Select the first release that is not an RC (release candidate)
+          RAD_VERSION=$(echo "$api_response" | jq -r '[.[] | select(.tag_name | test("rc") | not)] | .[0].tag_name // empty') || true
+
+          if [ -z "$RAD_VERSION" ]; then
+              echo "Failed to extract RAD_VERSION from API response"
+              echo "API Response (first 50 lines):"
+              echo "$api_response" | head -n 50
+              exit 1
+          fi
+
+          echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
+          echo "rad_version=$RAD_VERSION" >> "$GITHUB_OUTPUT"
+
   download:
+    needs: get-version
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -50,7 +90,7 @@ jobs:
           persist-credentials: false
 
       - name: Test CLI download
-        run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }}
+        run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }} RAD_VERSION=${{ needs.get-version.outputs.rad_version }}
 
       - name: Create GitHub issue on failure
         if: ${{ failure() }}

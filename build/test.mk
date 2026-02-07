@@ -19,14 +19,16 @@
 CLI_DOWNLOAD_TEST_SCRIPT := ./build/test-cli-download.sh
 
 # Default values for CLI download test
-CLI_DOWNLOAD_OS ?= linux
-CLI_DOWNLOAD_ARCH ?= amd64
-CLI_DOWNLOAD_FILE ?= rad
-CLI_DOWNLOAD_EXT ?=
+# Support both short and full variable names for flexibility
+CLI_DOWNLOAD_OS ?= $(or $(OS),linux)
+CLI_DOWNLOAD_ARCH ?= $(or $(ARCH),amd64)
+CLI_DOWNLOAD_FILE ?= $(or $(FILE),rad)
+CLI_DOWNLOAD_EXT ?= $(EXT)
+CLI_DOWNLOAD_RAD_VERSION ?= $(RAD_VERSION)
 
 .PHONY: test-cli-download
-test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [CLI_DOWNLOAD_OS=linux] [CLI_DOWNLOAD_ARCH=amd64] [CLI_DOWNLOAD_FILE=rad] [CLI_DOWNLOAD_EXT=]
-	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) $(CLI_DOWNLOAD_OS) $(CLI_DOWNLOAD_ARCH) $(CLI_DOWNLOAD_FILE) $(CLI_DOWNLOAD_EXT)
+test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [OS=linux] [ARCH=amd64] [FILE=rad] [EXT=] [RAD_VERSION=<version>]
+	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) $(CLI_DOWNLOAD_OS) $(CLI_DOWNLOAD_ARCH) $(CLI_DOWNLOAD_FILE) "$(CLI_DOWNLOAD_EXT)" "$(CLI_DOWNLOAD_RAD_VERSION)"
 
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h
