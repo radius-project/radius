@@ -28,9 +28,27 @@ endif
 generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
-generate-tsp-installed:
+generate-tsp-installed: generate-pnpm-installed
 	@echo "$(ARROW) Detecting tsp..."
-	cd typespec/ && npx$(CMD_EXT) -q -y tsp --help > /dev/null || { echo "run 'npm ci' in typespec directory."; exit 1; }
+	@pnpm -C typespec exec tsp --help > /dev/null 2>&1 || { \
+		echo "$(ARROW) TypeSpec not found. Installing TypeSpec dependencies..."; \
+		pnpm -C typespec install --frozen-lockfile; \
+	}
+	@echo "$(ARROW) OK"
+
+.PHONY: generate-pnpm-installed
+generate-pnpm-installed: generate-node-installed
+	@echo "$(ARROW) Detecting pnpm..."
+	@which pnpm > /dev/null 2>&1 || { \
+		echo "$(ARROW) pnpm not found. Installing pnpm..."; \
+		npm install -g pnpm; \
+	}
+	@echo "$(ARROW) OK"
+
+.PHONY: tsp-format-check
+tsp-format-check: generate-tsp-installed ## Checks TypeSpec format
+	@echo "$(ARROW) Checking TypeSpec format..."
+	pnpm -C typespec exec tsp format --check "**/*.tsp"
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
@@ -50,9 +68,12 @@ generate-node-installed:
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-autorest-installed
-generate-autorest-installed:
+generate-autorest-installed: generate-pnpm-installed
 	@echo "$(ARROW) Detecting autorest..."
-	@which autorest > /dev/null || { echo "run 'npm install -g autorest@3.7.2' to install autorest"; exit 1; }
+	@which autorest > /dev/null 2>&1 || { \
+		echo "$(ARROW) autorest not found. Installing autorest..."; \
+		pnpm add -g autorest@3.7.2 --allow-build=autorest; \
+	}
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-controller-gen-installed
@@ -131,15 +152,12 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	go generate -v ./...
 
 .PHONY: generate-bicep-types
-generate-bicep-types: generate-node-installed ## Generate Bicep extensibility types
+generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
-	git submodule update --init --recursive; \
-	npm --prefix bicep-types/src/bicep-types install; \
-	npm --prefix bicep-types/src/bicep-types ci && npm --prefix bicep-types/src/bicep-types run build; \
-	npm --prefix hack/bicep-types-radius/src/autorest.bicep ci && npm --prefix hack/bicep-types-radius/src/autorest.bicep run build; \
+	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	npm --prefix hack/bicep-types-radius/src/generator ci && npm --prefix hack/bicep-types-radius/src/generator run generate -- --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
 
 
 .PHONY: generate-containerinstance-client
