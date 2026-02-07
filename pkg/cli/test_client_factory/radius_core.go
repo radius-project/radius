@@ -82,6 +82,16 @@ func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
+		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name:       to.Ptr(recipePackName),
+					Properties: resource.Properties,
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
 	}
 }
 
