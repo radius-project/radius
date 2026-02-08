@@ -15,29 +15,14 @@ updates:
           - "*"
 
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /test/magpiego
+      - /test/testrp
     schedule:
       interval: weekly
     groups:
       go-dependencies:
-        patterns:
-          - "*"
-
-  - package-ecosystem: gomod
-    directory: /test/magpiego
-    schedule:
-      interval: weekly
-    groups:
-      magpie-go-dependencies:
-        patterns:
-          - "*"
-
-  - package-ecosystem: gomod
-    directory: /test/testrp
-    schedule:
-      interval: weekly
-    groups:
-      testrp-go-dependencies:
         patterns:
           - "*"
 

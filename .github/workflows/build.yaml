@@ -80,6 +80,7 @@ jobs:
     permissions:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
+      issues: read # Required for EnricoMi/publish-unit-test-result-action
       checks: write # Required for EnricoMi/publish-unit-test-result-action
       pull-requests: write # Required for EnricoMi/publish-unit-test-result-action
     env:
