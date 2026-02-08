@@ -173,20 +173,11 @@ test-helm: ## Runs Helm chart unit tests
 	@echo "$(ARROW) Running Helm unit tests..."
 	cd deploy/Chart && helm unittest .
 
-.PHONY: oav-installed
-oav-installed: generate-pnpm-installed
-	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
-	@which oav > /dev/null 2>&1 || { \
-		echo "$(ARROW) oav not found. Installing oav..."; \
-		pnpm add -g oav@4.0.2; \
-	}
-	@echo "$(ARROW) OK"
-
 # TODO re-enable https://github.com/radius-project/radius/issues/5091
 .PHONY: test-ucp-spec-examples 
-test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
+test-ucp-spec-examples: generate-tsp-installed ## Validates UCP examples conform to UCP OpenAPI Spec
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
-	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
+	# pnpm -C typespec exec oav validate-example ../swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 
 .PHONY: test-deploy-lrt-cluster
 test-deploy-aks-cluster: ## Deploys an AKS cluster to Azure for the long-running tests. Optional parameters: [TEST_AKS_AZURE_LOCATION=<location>] [TEST_AKS_RG=<resource group name>]

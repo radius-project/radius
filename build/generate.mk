@@ -40,8 +40,8 @@ generate-tsp-installed: generate-pnpm-installed
 generate-pnpm-installed: generate-node-installed
 	@echo "$(ARROW) Detecting pnpm..."
 	@which pnpm > /dev/null 2>&1 || { \
-		echo "$(ARROW) pnpm not found. Installing pnpm..."; \
-		npm install -g pnpm; \
+		echo "$(ARROW) pnpm not found. Enabling pnpm via corepack..."; \
+		corepack enable pnpm; \
 	}
 	@echo "$(ARROW) OK"
 
@@ -65,15 +65,6 @@ generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 generate-node-installed:
 	@echo "$(ARROW) Detecting node..."
 	@which node > /dev/null || { echo "node is a required dependency"; exit 1; }
-	@echo "$(ARROW) OK"
-
-.PHONY: generate-autorest-installed
-generate-autorest-installed: generate-pnpm-installed
-	@echo "$(ARROW) Detecting autorest..."
-	@which autorest > /dev/null 2>&1 || { \
-		echo "$(ARROW) autorest not found. Installing autorest..."; \
-		pnpm add -g autorest@3.7.2 --allow-build=autorest; \
-	}
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-controller-gen-installed
@@ -101,44 +92,44 @@ generate-cleanup: ## Deletes all generated code.
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-genericcliclient
-generate-genericcliclient: generate-node-installed generate-autorest-installed
+generate-genericcliclient: generate-tsp-installed
 	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
-	autorest pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod && go fmt ./pkg/cli/clients_new/generated/...
+	pnpm -C typespec exec autorest ../pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod && go fmt ./pkg/cli/clients_new/generated/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client
-generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
+generate-rad-corerp-client: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20231001preview'"
-	autorest pkg/corerp/api/README.md --tag=core-2023-10-01-preview && rm pkg/corerp/api/v20231001preview/go.mod && go fmt ./pkg/corerp/api/v20231001preview/...
+	pnpm -C typespec exec autorest ../pkg/corerp/api/README.md --tag=core-2023-10-01-preview && rm pkg/corerp/api/v20231001preview/go.mod && go fmt ./pkg/corerp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client-2025-08-01-preview
-generate-rad-corerp-client-2025-08-01-preview: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (Autorest).
+generate-rad-corerp-client-2025-08-01-preview: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (Autorest).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20250801preview'"
-	autorest pkg/corerp/api/README.md --tag=core-2025-08-01-preview && rm pkg/corerp/api/v20250801preview/go.mod && go fmt ./pkg/corerp/api/v20250801preview/...
+	pnpm -C typespec exec autorest ../pkg/corerp/api/README.md --tag=core-2025-08-01-preview && rm pkg/corerp/api/v20250801preview/go.mod && go fmt ./pkg/corerp/api/v20250801preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-datastoresrp-client
-generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
+generate-rad-datastoresrp-client: generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
 	@echo "$(ARROW) Generating 'pkg/datastoresrp/api/v20231001preview'"
-	autorest pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview && rm pkg/datastoresrp/api/v20231001preview/go.mod && go fmt ./pkg/datastoresrp/api/v20231001preview/...
+	pnpm -C typespec exec autorest ../pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview && rm pkg/datastoresrp/api/v20231001preview/go.mod && go fmt ./pkg/datastoresrp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-messagingrp-client
-generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
+generate-rad-messagingrp-client: generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
 	@echo "$(ARROW) Generating 'pkg/messagingrp/api/v20231001preview'"
-	autorest pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview && rm pkg/messagingrp/api/v20231001preview/go.mod && go fmt ./pkg/messagingrp/api/v20231001preview/...
+	pnpm -C typespec exec autorest ../pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview && rm pkg/messagingrp/api/v20231001preview/go.mod && go fmt ./pkg/messagingrp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-daprrp-client
-generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
+generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
 	@echo "$(ARROW) Generating 'pkg/daprrp/api/v20231001preview'"
-	autorest pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview && rm pkg/daprrp/api/v20231001preview/go.mod && go fmt ./pkg/daprrp/api/v20231001preview/...
+	pnpm -C typespec exec autorest ../pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview && rm pkg/daprrp/api/v20231001preview/go.mod && go fmt ./pkg/daprrp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
-	autorest pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview && rm pkg/ucp/api/v20231001preview/go.mod && go fmt ./pkg/ucp/api/v20231001preview/...
+generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
+	pnpm -C typespec exec autorest ../pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview && rm pkg/ucp/api/v20231001preview/go.mod && go fmt ./pkg/ucp/api/v20231001preview/...
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:
@@ -161,9 +152,9 @@ generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generat
 
 
 .PHONY: generate-containerinstance-client
-generate-containerinstance-client: generate-node-installed generate-autorest-installed  ## Generates the Container Instances SDK (Autorest).
-	autorest \
-		pkg/sdk/aci-specification/containerinstance/resource-manager/readme.md \
+generate-containerinstance-client: generate-tsp-installed  ## Generates the Container Instances SDK (Autorest).
+	pnpm -C typespec exec autorest \
+		../pkg/sdk/aci-specification/containerinstance/resource-manager/readme.md \
 		--go \
 		--tag=package-preview-2024-11
 

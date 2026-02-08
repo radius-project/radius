@@ -180,9 +180,9 @@ If you were trying to run `make generate` and ran into an error, then one of the
 Enter the following commands to install all of the required tools.
 
 ```bash
-cd typespec && pnpm install
-pnpm add -g autorest@3.7.2 --allow-build=autorest
-pnpm add -g oav@4.0.2
+pnpm -C typespec install
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 go install go.uber.org/mock/mockgen@v0.4.0
 ```
+
+> **Note:** `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.

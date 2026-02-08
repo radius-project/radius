@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "packageManager": "pnpm@10.29.1",
+  "devDependencies": {
+    "prettier": "3.3.3"
+  }
+}
