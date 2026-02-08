@@ -18,12 +18,14 @@
 
 .PHONY: format-check
 format-check: generate-pnpm-installed ## Checks the formatting of JSON files.
+	@pnpm install --frozen-lockfile
 	@echo "$(ARROW) Checking for formatting issues using prettier..."
 	@echo ""
 	@pnpm exec prettier --check "*/**/*.{ts,js,mjs,json}"
 
 .PHONY: format-write
 format-write: generate-pnpm-installed ## Updates the formatting of JSON files.
+	@pnpm install --frozen-lockfile
 	@echo "$(ARROW) Reformatting files using prettier..."
 	@echo ""
 	@pnpm exec prettier --write "*/**/*.{ts,js,mjs,json}"
