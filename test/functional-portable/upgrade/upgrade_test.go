@@ -47,6 +47,15 @@ const (
 	cleanupPollInterval      = 3 * time.Second
 	jobPollInterval          = 1 * time.Second
 	jobPollAttempts          = 15
+
+	// cleanupTimeout is the maximum time to wait for Radius pods to terminate
+	// after uninstalling the Helm release.
+	cleanupTimeout = 2 * time.Minute
+
+	// radiusPodSelector selects only pods belonging to the Radius Helm release.
+	// Contour is deployed as a separate Helm release in the same namespace and
+	// must be excluded from cleanup checks — its pods will remain running.
+	radiusPodSelector = "app.kubernetes.io/part-of=radius"
 )
 
 // Test_PreflightContainer runs all preflight container upgrade tests as sequential
@@ -217,9 +226,14 @@ func waitForControlPlane(t *testing.T, ctx context.Context) rp.RPTestOptions {
 	return options
 }
 
-// cleanupAndWait uninstalls Radius and waits for all pods in the namespace to be fully
-// terminated before returning. This prevents aggregated API service conflicts when the
-// next helm install runs before the previous resources are fully cleaned up.
+// cleanupAndWait uninstalls the Radius Helm release and waits for all Radius pods in
+// the namespace to be fully terminated before returning. This prevents aggregated API
+// service conflicts when the next helm install runs before previous resources are
+// fully cleaned up.
+//
+// Only Radius-owned pods (labeled app.kubernetes.io/part-of=radius) are monitored.
+// Contour is deployed as a separate Helm release in the same namespace and its pods
+// are expected to remain running.
 func cleanupAndWait(t *testing.T, ctx context.Context) {
 	t.Helper()
 
@@ -227,9 +241,9 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 	_ = exec.CommandContext(ctx, "helm", "uninstall", "radius",
 		"--namespace", radiusNamespace, "--ignore-not-found", "--wait").Run()
 
-	// Wait for all pods in the namespace to terminate. The Kubernetes aggregated API
-	// service needs time to deregister after pods are gone, so we must wait for a
-	// fully clean namespace before starting a new install.
+	// Wait for Radius pods to terminate. The Kubernetes aggregated API service needs
+	// time to deregister after pods are gone, so we must wait for Radius pods to be
+	// fully removed before starting a new install.
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
 	if err != nil {
@@ -246,16 +260,18 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 	}
 
 	require.Eventually(t, func() bool {
-		pods, err := k8sClient.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{})
+		pods, err := k8sClient.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{
+			LabelSelector: radiusPodSelector,
+		})
 		if err != nil {
-			return true // Namespace may not exist, which is fine
+			return true
 		}
 		if len(pods.Items) == 0 {
 			return true
 		}
-		t.Logf("Waiting for %d pod(s) in %s to terminate...", len(pods.Items), radiusNamespace)
+		t.Logf("Waiting for %d Radius pod(s) in %s to terminate...", len(pods.Items), radiusNamespace)
 		return false
-	}, 2*time.Minute, cleanupPollInterval, "Namespace %s did not become empty within timeout", radiusNamespace)
+	}, cleanupTimeout, cleanupPollInterval, "Radius pods in %s did not terminate within timeout", radiusNamespace)
 
 	// Brief wait for Kubernetes aggregated API service deregistration
 	time.Sleep(3 * time.Second)
