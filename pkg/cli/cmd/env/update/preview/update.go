@@ -319,6 +319,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	// the user wants on this environment. For preview, we now:
 	// 1. Detect conflicts where the same resource type is provided by multiple packs
 	// 2. Append singleton packs for any missing core resource types, assuming they already exist.
+	//
+	// Recipe packs can live in different scopes (resource groups). We must inspect
+	// all referenced packs, creating a client per scope as needed.
 	if env.Properties == nil {
 		env.Properties = &corerpv20250801.EnvironmentProperties{}
 	}
@@ -326,33 +329,55 @@ func (r *Runner) Run(ctx context.Context) error {
 		env.Properties.RecipePacks = []*string{}
 	}
 
-	var localPackNames []string
+	// typeToPacks tracks all packs that provide a given resource type across all
+	// scopes. coveredTypes records a single pack per resource type so we can
+	// determine which core types already have coverage.
+	typeToPacks := make(map[string][]string)
+	coveredTypes := make(map[string]string)
+
 	for _, packIDPtr := range env.Properties.RecipePacks {
 		if packIDPtr == nil {
 			continue
 		}
+
 		id, err := resources.Parse(*packIDPtr)
 		if err != nil {
 			return clierrors.Message("Recipe pack reference %q is invalid.", *packIDPtr)
 		}
 
-		if id.RootScope() == r.Workspace.Scope {
-			localPackNames = append(localPackNames, id.Name())
+		scope := id.RootScope()
+		var clientFactory *corerpv20250801.ClientFactory
+		if scope == r.Workspace.Scope {
+			clientFactory = r.RadiusCoreClientFactory
+		} else {
+			clientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, scope)
+			if err != nil {
+				return err
+			}
+		}
+
+		recipePackClient := clientFactory.NewRecipePacksClient()
+		resp, err := recipePackClient.Get(ctx, id.Name(), nil)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
+		}
+
+		if resp.Properties != nil && resp.Properties.Recipes != nil {
+			for resourceType := range resp.Properties.Recipes {
+				typeToPacks[resourceType] = append(typeToPacks[resourceType], id.Name())
+				if _, exists := coveredTypes[resourceType]; !exists {
+					coveredTypes[resourceType] = id.Name()
+				}
+			}
 		}
 	}
 
-	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
-
-	// Collect resource type coverage from local packs.
-	coveredTypes, err := recipepack.CollectResourceTypesFromRecipePacks(ctx, recipePackClient, localPackNames)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
-	}
-
-	// Detect conflicts (same resource type in multiple packs).
-	conflicts, err := recipepack.DetectResourceTypeConflicts(ctx, recipePackClient, localPackNames)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
+	// Detect conflicts (same resource type in multiple packs, regardless of scope).
+	conflicts := make(map[string][]string)
+	for resourceType, packs := range typeToPacks {
+		if len(packs) > 1 {
+			conflicts[resourceType] = packs
+		}
 	}
 	if len(conflicts) > 0 {
 		return r.formatConflictError(conflicts)
