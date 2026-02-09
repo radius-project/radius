@@ -105,7 +105,7 @@ func testPreflightEnabled(t *testing.T) {
 		require.Equal(t, int32(60), *job.Spec.TTLSecondsAfterFinished)
 		t.Log("Job configuration verified")
 	} else {
-		t.Log("Preflight job not found - upgrade likely failed before hooks triggered (acceptable in test environment)")
+		t.Fatal("Preflight job not found - upgrade likely failed before hooks triggered")
 	}
 
 	helmUninstall(t, ctx)
@@ -264,7 +264,8 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 			LabelSelector: radiusPodSelector,
 		})
 		if err != nil {
-			return true
+			t.Logf("Warning: failed to list pods: %v", err)
+			return false
 		}
 		if len(pods.Items) == 0 {
 			return true
@@ -286,7 +287,11 @@ func findPreflightJob(t *testing.T, ctx context.Context, options rp.RPTestOption
 			t.Log("Preflight job was created by Helm pre-upgrade hook")
 			return job
 		}
-		time.Sleep(jobPollInterval)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(jobPollInterval):
+		}
 	}
 	return nil
 }
