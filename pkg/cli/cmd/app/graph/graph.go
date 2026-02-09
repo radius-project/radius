@@ -39,6 +39,7 @@ rad app graph my-application`,
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
+	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }
@@ -50,6 +51,7 @@ type Runner struct {
 	Output            output.Interface
 
 	ApplicationName string
+	Format          string
 	Workspace       *workspaces.Workspace
 }
 
@@ -93,6 +95,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+	r.Format = format
+
 	return nil
 }
 
@@ -107,9 +115,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if r.Format == output.FormatJson {
+		return r.Output.WriteFormatted(r.Format, applicationGraphResponse, output.FormatterOptions{})
+	}
+
 	graph := applicationGraphResponse.Resources
-	display := display(graph, r.ApplicationName)
-	r.Output.LogInfo(display)
+	d := display(graph, r.ApplicationName)
+	r.Output.LogInfo(d)
 
 	return nil
 }
