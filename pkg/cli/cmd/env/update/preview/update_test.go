@@ -114,8 +114,10 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format: "table",
 					Obj: environmentForDisplay{
-						Name:        "test-env",
-						RecipePacks: 3,
+						Name: "test-env",
+						// 1 existing pack from the environment, 2 user-specified
+						// packs, plus 4 singleton packs for core resource types.
+						RecipePacks: 7,
 						Providers:   3,
 					},
 					Options: environmentFormat(),
@@ -133,7 +135,7 @@ func Test_Run(t *testing.T) {
 			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 				workspace.Scope,
 				tc.serverFactory,
-				nil,
+				test_client_factory.WithRecipePackServerUniqueTypes,
 			)
 			require.NoError(t, err)
 

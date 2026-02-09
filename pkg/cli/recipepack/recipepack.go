@@ -103,3 +103,99 @@ func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.Rec
 
 	return recipePackIDs, nil
 }
+
+// GetCoreResourceTypes returns the set of core resource types that require recipe packs.
+func GetCoreResourceTypes() map[string]bool {
+	defs := GetSingletonRecipePackDefinitions()
+	types := make(map[string]bool, len(defs))
+	for _, def := range defs {
+		types[def.ResourceType] = true
+	}
+	return types
+}
+
+// IsSingletonRecipePackName checks if the given name matches a known singleton recipe pack name.
+func IsSingletonRecipePackName(name string) bool {
+	for _, def := range GetSingletonRecipePackDefinitions() {
+		if def.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// CollectResourceTypesFromRecipePacks queries the recipe packs client for each pack name
+// and collects all resource types from their recipes. Returns a map of resource type to pack name.
+func CollectResourceTypesFromRecipePacks(ctx context.Context, client *corerpv20250801.RecipePacksClient, packNames []string) (map[string]string, error) {
+	coveredTypes := make(map[string]string)
+	for _, name := range packNames {
+		resp, err := client.Get(ctx, name, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get recipe pack %q: %w", name, err)
+		}
+		if resp.Properties != nil && resp.Properties.Recipes != nil {
+			for resourceType := range resp.Properties.Recipes {
+				coveredTypes[resourceType] = name
+			}
+		}
+	}
+	return coveredTypes, nil
+}
+
+// DetectResourceTypeConflicts checks if any resource type appears in multiple recipe packs.
+// Returns a map of resource type to list of pack names that contain it.
+func DetectResourceTypeConflicts(ctx context.Context, client *corerpv20250801.RecipePacksClient, packNames []string) (map[string][]string, error) {
+	typeToPackNames := make(map[string][]string)
+	for _, name := range packNames {
+		resp, err := client.Get(ctx, name, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get recipe pack %q: %w", name, err)
+		}
+		if resp.Properties != nil && resp.Properties.Recipes != nil {
+			for resourceType := range resp.Properties.Recipes {
+				typeToPackNames[resourceType] = append(typeToPackNames[resourceType], name)
+			}
+		}
+	}
+	conflicts := make(map[string][]string)
+	for resourceType, packs := range typeToPackNames {
+		if len(packs) > 1 {
+			conflicts[resourceType] = packs
+		}
+	}
+	return conflicts, nil
+}
+
+// GetMissingSingletonDefinitions returns singleton definitions for core resource types
+// that are not already covered by the existing recipe packs.
+func GetMissingSingletonDefinitions(coveredTypes map[string]string) []SingletonRecipePackDefinition {
+	var missing []SingletonRecipePackDefinition
+	for _, def := range GetSingletonRecipePackDefinitions() {
+		if _, covered := coveredTypes[def.ResourceType]; !covered {
+			missing = append(missing, def)
+		}
+	}
+	return missing
+}
+
+// CreateMissingSingletonRecipePacks creates singleton recipe packs for core resource types
+// that are not already covered by existing recipe packs. Returns the IDs of created packs.
+func CreateMissingSingletonRecipePacks(ctx context.Context, client *corerpv20250801.RecipePacksClient, resourceGroupName string, coveredTypes map[string]string) ([]string, error) {
+	missing := GetMissingSingletonDefinitions(coveredTypes)
+	if len(missing) == 0 {
+		return nil, nil
+	}
+
+	createdIDs := make([]string, 0, len(missing))
+	for _, def := range missing {
+		resource := NewSingletonRecipePackResource(def.ResourceType, def.RecipeLocation)
+		_, err := client.CreateOrUpdate(ctx, def.Name, resource, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create recipe pack %q for resource type %q: %w", def.Name, def.ResourceType, err)
+		}
+		recipePackID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/recipePacks/%s", resourceGroupName, def.Name)
+		createdIDs = append(createdIDs, recipePackID)
+	}
+
+	return createdIDs, nil
+}

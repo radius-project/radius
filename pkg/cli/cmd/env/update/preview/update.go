@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -313,6 +315,59 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	// At this point env.Properties.RecipePacks contains the complete set of recipe packs
+	// the user wants on this environment. For preview, we now:
+	// 1. Detect conflicts where the same resource type is provided by multiple packs
+	// 2. Append singleton packs for any missing core resource types, assuming they already exist.
+	if env.Properties == nil {
+		env.Properties = &corerpv20250801.EnvironmentProperties{}
+	}
+	if env.Properties.RecipePacks == nil {
+		env.Properties.RecipePacks = []*string{}
+	}
+
+	var localPackNames []string
+	for _, packIDPtr := range env.Properties.RecipePacks {
+		if packIDPtr == nil {
+			continue
+		}
+		id, err := resources.Parse(*packIDPtr)
+		if err != nil {
+			return clierrors.Message("Recipe pack reference %q is invalid.", *packIDPtr)
+		}
+
+		if id.RootScope() == r.Workspace.Scope {
+			localPackNames = append(localPackNames, id.Name())
+		}
+	}
+
+	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
+
+	// Collect resource type coverage from local packs.
+	coveredTypes, err := recipepack.CollectResourceTypesFromRecipePacks(ctx, recipePackClient, localPackNames)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
+	}
+
+	// Detect conflicts (same resource type in multiple packs).
+	conflicts, err := recipepack.DetectResourceTypeConflicts(ctx, recipePackClient, localPackNames)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
+	}
+	if len(conflicts) > 0 {
+		return r.formatConflictError(conflicts)
+	}
+
+	// Append singleton packs for any missing core resource types. We assume the
+	// singleton packs already exist in the current workspace scope.
+	missingDefs := recipepack.GetMissingSingletonDefinitions(coveredTypes)
+	for _, def := range missingDefs {
+		singletonID := fmt.Sprintf("%s/providers/Radius.Core/recipePacks/%s", r.Workspace.Scope, def.Name)
+		if !recipePackExists(env.Properties.RecipePacks, singletonID) {
+			env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(singletonID))
+		}
+	}
+
 	r.Output.LogInfo("Updating Environment...")
 	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, env, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
@@ -358,4 +413,15 @@ func recipePackExists(packs []*string, id string) bool {
 		}
 	}
 	return false
+}
+
+// formatConflictError creates a user-friendly error message when resource types
+// conflict across recipe packs.
+func (r *Runner) formatConflictError(conflicts map[string][]string) error {
+	msg := "Recipe pack conflict detected. The following resource types are provided by multiple recipe packs:\n"
+	for resourceType, packs := range conflicts {
+		msg += fmt.Sprintf("  - %s: provided by packs %v\n", resourceType, packs)
+	}
+	msg += "\nPlease resolve these conflicts by removing or replacing conflicting recipe packs, then run 'rad env update' again."
+	return clierrors.Message("%s", msg)
 }
