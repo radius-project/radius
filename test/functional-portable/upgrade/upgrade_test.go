@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -51,6 +51,14 @@ const (
 	// cleanupTimeout is the maximum time to wait for Radius pods to terminate
 	// after uninstalling the Helm release.
 	cleanupTimeout = 2 * time.Minute
+
+	// cleanupFallbackWait is the fallback sleep duration when unable to create
+	// a Kubernetes client for cleanup polling.
+	cleanupFallbackWait = 10 * time.Second
+
+	// apiServiceDeregistrationWait is the time to wait for Kubernetes aggregated
+	// API service deregistration after Radius pods are terminated.
+	apiServiceDeregistrationWait = 3 * time.Second
 
 	// radiusPodSelector selects only pods belonging to the Radius Helm release.
 	// Contour is deployed as a separate Helm release in the same namespace and
@@ -139,10 +147,13 @@ func testPreflightDisabled(t *testing.T) {
 	// Brief wait to allow any unexpected job creation to surface
 	time.Sleep(5 * time.Second)
 	_, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
-	if err != nil && strings.Contains(err.Error(), "not found") {
+	switch {
+	case apierrors.IsNotFound(err):
 		t.Log("Preflight job correctly not created when disabled")
-	} else {
-		t.Errorf("Expected preflight job to not exist when disabled, but found it or got unexpected error: %v", err)
+	case err == nil:
+		t.Error("Expected preflight job to not exist when disabled, but it was found")
+	default:
+		t.Errorf("Unexpected error checking for preflight job: %v", err)
 	}
 
 	helmUninstall(t, ctx)
@@ -248,14 +259,14 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 		clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
 	if err != nil {
 		t.Logf("Warning: could not create k8s client for cleanup wait: %v", err)
-		time.Sleep(10 * time.Second)
+		time.Sleep(cleanupFallbackWait)
 		return
 	}
 
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		t.Logf("Warning: could not create k8s client for cleanup wait: %v", err)
-		time.Sleep(10 * time.Second)
+		time.Sleep(cleanupFallbackWait)
 		return
 	}
 
@@ -274,8 +285,8 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 		return false
 	}, cleanupTimeout, cleanupPollInterval, "Radius pods in %s did not terminate within timeout", radiusNamespace)
 
-	// Brief wait for Kubernetes aggregated API service deregistration
-	time.Sleep(3 * time.Second)
+	// Wait for Kubernetes aggregated API service deregistration
+	time.Sleep(apiServiceDeregistrationWait)
 }
 
 // findPreflightJob polls for the pre-upgrade job, returning it if found within the timeout.
