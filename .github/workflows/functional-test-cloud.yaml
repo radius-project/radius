@@ -220,6 +220,7 @@ jobs:
   changes:
     name: Changes
     needs: setup
+    if: needs.setup.result == 'success'
     uses: ./.github/workflows/__changes.yml
     with:
       ref: ${{ needs.setup.outputs.CHECKOUT_REF }}
@@ -511,6 +512,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [setup, build]
+    if: needs.setup.result == 'success' && needs.build.result == 'success'
     # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
       fail-fast: true
