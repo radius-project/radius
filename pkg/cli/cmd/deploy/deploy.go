@@ -137,7 +137,7 @@ type Runner struct {
 	RadiusCoreClientFactory *v20250801preview.ClientFactory
 	Deploy                  deploy.Interface
 	Output                  output.Interface
-// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
 	// Singleton recipe packs are always created/queried in the default scope.
 	DefaultScopeClientFactory *v20250801preview.ClientFactory
 

@@ -24,8 +24,8 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
