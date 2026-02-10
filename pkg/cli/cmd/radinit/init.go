@@ -141,6 +141,11 @@ type Runner struct {
 	// If nil, it will be initialized during Run.
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// Singleton recipe packs are always created/queried in the default scope. This can be set
+	// in tests to avoid real network connections.
+	DefaultScopeClientFactory *corerpv20250801.ClientFactory
+
 	// Format is the output format.
 	Format string
 

@@ -91,9 +91,16 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	// Create singleton recipe packs (one per resource type) and link them to the environment
-	// We make singleton recipe packs so that its easier for users to override recipes for specific resource types if they want to.
-	recipePackIDs, err := recipepack.CreateSingletonRecipePacks(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient(), r.Options.Environment.Name)
+	// Create singleton recipe packs (one per resource type) and link them to the environment.
+	// Singletons always live in the default resource group scope, regardless of the workspace scope.
+	if r.DefaultScopeClientFactory == nil {
+		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client for default scope.")
+		}
+		r.DefaultScopeClientFactory = defaultClientFactory
+	}
+	recipePackIDs, err := recipepack.CreateSingletonRecipePacks(ctx, r.DefaultScopeClientFactory.NewRecipePacksClient())
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create recipe packs.")
 	}

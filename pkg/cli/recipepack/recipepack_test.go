@@ -79,24 +79,22 @@ func Test_NewSingletonRecipePackResource(t *testing.T) {
 
 func Test_CreateSingletonRecipePacksWithClient(t *testing.T) {
 	t.Run("Success: creates all singleton recipe packs", func(t *testing.T) {
-		rootScope := "/planes/radius/local/resourceGroups/test-rg"
-		resourceGroupName := "test-rg"
-
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil)
+		// Singleton recipe packs always live in the default resource group scope.
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(DefaultResourceGroupScope, nil, nil)
 		require.NoError(t, err)
 
 		recipePackClient := factory.NewRecipePacksClient()
 
-		recipePackIDs, err := CreateSingletonRecipePacks(context.Background(), recipePackClient, resourceGroupName)
+		recipePackIDs, err := CreateSingletonRecipePacks(context.Background(), recipePackClient)
 		require.NoError(t, err)
 
 		// Verify the correct number of recipe packs were created
 		definitions := GetSingletonRecipePackDefinitions()
 		require.Len(t, recipePackIDs, len(definitions))
 
-		// Verify the IDs are in the expected format
+		// Verify the IDs are in the expected format (always default scope)
 		for i, def := range definitions {
-			expectedID := "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/recipePacks/" + def.Name
+			expectedID := DefaultResourceGroupScope + "/providers/Radius.Core/recipePacks/" + def.Name
 			require.Equal(t, expectedID, recipePackIDs[i])
 		}
 	})

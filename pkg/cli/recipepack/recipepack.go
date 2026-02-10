@@ -27,6 +27,12 @@ import (
 const (
 	// DefaultRecipePackName is the name of the default Kubernetes recipe pack.
 	DefaultRecipePackName = "local-dev"
+
+	// DefaultResourceGroupName is the name of the default resource group where singleton recipe packs are stored.
+	DefaultResourceGroupName = "default"
+
+	// DefaultResourceGroupScope is the full scope for the default resource group.
+	DefaultResourceGroupScope = "/planes/radius/local/resourceGroups/default"
 )
 
 // SingletonRecipePackDefinition defines a singleton recipe pack for a single resource type.
@@ -84,8 +90,9 @@ func NewSingletonRecipePackResource(resourceType, recipeLocation string) corerpv
 }
 
 // CreateSingletonRecipePacks creates singleton recipe packs (one per resource type) using a RecipePacksClient.
+// The client must be scoped to the default resource group. Recipe pack IDs always reference the default scope.
 // It returns the list of full resource IDs of the created recipe packs.
-func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.RecipePacksClient, resourceGroupName string) ([]string, error) {
+func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.RecipePacksClient) ([]string, error) {
 	definitions := GetSingletonRecipePackDefinitions()
 	recipePackIDs := make([]string, 0, len(definitions))
 
@@ -96,8 +103,8 @@ func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.Rec
 			return nil, fmt.Errorf("failed to create recipe pack %q for resource type %q: %w", def.Name, def.ResourceType, err)
 		}
 
-		// Return the full resource ID of the created recipe pack
-		recipePackID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/recipePacks/%s", resourceGroupName, def.Name)
+		// Return the full resource ID of the created recipe pack (always in default scope)
+		recipePackID := DefaultResourceGroupScope + "/providers/Radius.Core/recipePacks/" + def.Name
 		recipePackIDs = append(recipePackIDs, recipePackID)
 	}
 
