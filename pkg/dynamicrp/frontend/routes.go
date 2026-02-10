@@ -25,12 +25,19 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
+	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/validator"
 )
 
+func (s *Service) registerRoutes(
+	r *chi.Mux,
+	controllerOptions controller.Options,
+	ucpClient *v20231001preview.ClientFactory,
+	handler *encryption.SensitiveDataHandler,
+) error {
 func (s *Service) registerRoutes(
 	r *chi.Mux,
 	controllerOptions controller.Options,
@@ -48,6 +55,20 @@ func (s *Service) registerRoutes(
 
 	if !strings.HasSuffix(pathBase, "/") {
 		pathBase = pathBase + "/"
+	}
+
+	// Create encryption filter for sensitive fields
+	encryptionFilter := makeEncryptionFilter(ucpClient, handler)
+
+	// Resource options with encryption filter applied to PUT operations
+	resourceOptions := controller.ResourceOptions[datamodel.DynamicResource]{
+		RequestConverter:  converter.DynamicResourceDataModelFromVersioned,
+		ResponseConverter: converter.DynamicResourceDataModelToVersioned,
+		UpdateFilters: []controller.UpdateFilter[datamodel.DynamicResource]{
+			encryptionFilter,
+		},
+		AsyncOperationRetryAfter: time.Second * 5,
+		AsyncOperationTimeout:    time.Hour * 24,
 	}
 
 	// Create encryption filter for sensitive fields
