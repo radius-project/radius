@@ -20,6 +20,10 @@ import (
 	"context"
 	"testing"
 
+	"go.uber.org/mock/gomock"
+
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
@@ -133,6 +137,13 @@ func Test_Run(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+			mockAppClient.EXPECT().
+				CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+				Return(nil).
+				Times(1)
+
 			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 				workspace.Scope,
 				tc.serverFactory,
@@ -156,6 +167,7 @@ func Test_Run(t *testing.T) {
 				EnvironmentName:           tc.envName,
 				RadiusCoreClientFactory:   factory,
 				DefaultScopeClientFactory: defaultScopeFactory,
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 				recipePacks:               []string{"rp1", "rp2"},
 				providers: &v20250801preview.Providers{
 					Azure: &v20250801preview.ProvidersAzure{
