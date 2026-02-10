@@ -3,16 +3,13 @@ resource computeRecipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'computeRecipePack'
   properties: {
     recipes: {
-      'Radius.Compute/containers': {
+      'Radius.Networking/gateways': {
         recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
-        parameters: {
-          allowPlatformOptions: true
-        }
+        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/networking/gateways/kubernetes?ref=v0.48'
       }
-      'Radius.Security/secrets': {
+      'Radius.Messaging/queues': {
         recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
+        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/messaging/queues/kubernetes?ref=v0.48'
       }
       'Radius.Storage/volumes': {
         recipeKind: 'terraform'
