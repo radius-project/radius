@@ -24,6 +24,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
@@ -155,6 +156,13 @@ func Test_Run(t *testing.T) {
 	}
 
 	t.Run("New environment: all singletons created", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			workspace.Scope,
 			test_client_factory.WithEnvironmentServer404OnGet,
@@ -174,6 +182,7 @@ func Test_Run(t *testing.T) {
 		runner := &Runner{
 			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    outputSink,
 			Workspace:                 workspace,
 			EnvironmentName:           "testenv",

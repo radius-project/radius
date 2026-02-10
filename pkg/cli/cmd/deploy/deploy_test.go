@@ -978,6 +978,13 @@ func Test_setupRecipePacks(t *testing.T) {
 	scope := "/planes/radius/local/resourceGroups/test-group"
 
 	t.Run("injects missing singleton recipe packs into template", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			scope,
 			nil,
@@ -999,6 +1006,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    &output.MockOutput{},
 		}
 
@@ -1029,6 +1037,13 @@ func Test_setupRecipePacks(t *testing.T) {
 	})
 
 	t.Run("preserves existing packs and adds missing singletons", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			scope,
 			nil,
@@ -1050,6 +1065,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    &output.MockOutput{},
 		}
 
@@ -1166,6 +1182,13 @@ func Test_setupRecipePacks(t *testing.T) {
 	})
 
 	t.Run("handles multiple Radius.Core environments", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(2)
+
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			scope,
 			nil,
@@ -1186,6 +1209,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    &output.MockOutput{},
 		}
 
