@@ -220,7 +220,7 @@ jobs:
   changes:
     name: Changes
     needs: setup
-    if: needs.setup.result == 'success'
+    if: always() && needs.setup.result == 'success'
     uses: ./.github/workflows/__changes.yml
     with:
       ref: ${{ needs.setup.outputs.CHECKOUT_REF }}
@@ -234,7 +234,7 @@ jobs:
     name: Build Radius for test
     needs: [setup, changes]
     # Skip if only docs/markdown changed
-    if: needs.changes.outputs.only_changed != 'true'
+    if: always() && needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -483,7 +483,7 @@ jobs:
   skip-tests:
     name: Skip Functional Tests
     needs: [setup, changes]
-    if: needs.changes.outputs.only_changed == 'true'
+    if: always() && needs.changes.outputs.only_changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -512,7 +512,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [setup, build]
-    if: needs.setup.result == 'success' && needs.build.result == 'success'
+    if: always() && needs.setup.result == 'success' && needs.build.result == 'success'
     # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
       fail-fast: true
