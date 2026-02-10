@@ -52,7 +52,7 @@ Review the analyzed changes and provide constructive, actionable feedback:
 #### PR Title Review
 
 - Examine the PR title to ensure it clearly and concisely describes the changes in the PR
-- If the PR title is vague, overly broad, or does not accurately reflect the changes, suggest an improved title that clearly and concisely describes the PR
+- If the PR title is not descriptive, vague, overly broad, or does not accurately reflect the changes, suggest an improved title that clearly and concisely describes the PR
 
 #### General Code Quality Criteria
 
