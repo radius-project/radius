@@ -91,6 +91,11 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
+	// Ensure the default resource group exists before creating recipe packs in it.
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, client.CreateOrUpdateResourceGroup); err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create default resource group for recipe packs.")
+	}
+
 	// Create singleton recipe packs (one per resource type) and link them to the environment.
 	// Singletons always live in the default resource group scope.
 	// DefaultScopeClientFactory is required in the case  rad init runs from a workspace with non-default settings.
