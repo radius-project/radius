@@ -21,9 +21,11 @@ import (
 	"fmt"
 	"strings"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 const (
@@ -38,6 +40,19 @@ const (
 	// Singleton recipe packs that Radius provides by default always live in this scope.
 	DefaultResourceGroupScope = "/planes/radius/local/resourceGroups/" + DefaultResourceGroupName
 )
+
+// ResourceGroupCreator is a function that creates or updates a Radius resource group.
+// This is typically satisfied by ApplicationsManagementClient.CreateOrUpdateResourceGroup.
+type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGroupName string, resource *ucpv20231001.ResourceGroupResource) error
+
+// EnsureDefaultResourceGroup creates the default resource group if it does not already exist.
+// This must be called before creating singleton recipe packs, because recipe packs are
+// stored in the default resource group and the PUT will fail with 404 if the group is missing.
+func EnsureDefaultResourceGroup(ctx context.Context, createOrUpdate ResourceGroupCreator) error {
+	return createOrUpdate(ctx, "local", DefaultResourceGroupName, &ucpv20231001.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
+}
 
 // SingletonRecipePackDefinition defines a singleton recipe pack for a single resource type.
 type SingletonRecipePackDefinition struct {
