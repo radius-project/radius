@@ -77,8 +77,11 @@ func (c *ListResourcesWithRedaction) Run(ctx context.Context, w http.ResponseWri
 			return nil, err
 		}
 
-		// Redact sensitive fields before adding to the response
-		if resource.Properties != nil {
+		// Redact sensitive fields before adding to the response.
+		// Fast path: if provisioningState is Succeeded, the backend has already redacted
+		// sensitive fields. Skip redaction for these items.
+		provisioningState := resource.ProvisioningState()
+		if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
 			// Fetch sensitive field paths once for this resource type
 			if !sensitiveFieldPathsFetched {
 				sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(

@@ -111,22 +111,136 @@ func TestRedactField_MultipleFields(t *testing.T) {
 	require.Nil(t, properties["data"])
 }
 
-func TestRedactField_NestedFieldNotSupported(t *testing.T) {
-	// Test that nested paths (with dots) are not currently supported
-	// The redactField function currently only handles top-level fields
+func TestRedactField_NestedDotPath(t *testing.T) {
+	// Test redacting a nested field via dot-separated path
 	properties := map[string]any{
 		"config": map[string]any{
 			"password": "secret",
+			"host":     "localhost",
 		},
 	}
 
-	// Nested path - should not redact since we only support top-level
 	redactField(properties, "config.password")
 
-	// Config should still contain the password (nested redaction not supported)
 	config, ok := properties["config"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "secret", config["password"])
+	require.Nil(t, config["password"])
+	require.Equal(t, "localhost", config["host"])
+}
+
+func TestRedactField_DeeplyNestedDotPath(t *testing.T) {
+	// Test redacting a deeply nested field
+	properties := map[string]any{
+		"level1": map[string]any{
+			"level2": map[string]any{
+				"secret": "top-secret",
+				"other":  "keep-this",
+			},
+		},
+	}
+
+	redactField(properties, "level1.level2.secret")
+
+	level1 := properties["level1"].(map[string]any)
+	level2 := level1["level2"].(map[string]any)
+	require.Nil(t, level2["secret"])
+	require.Equal(t, "keep-this", level2["other"])
+}
+
+func TestRedactField_ArrayWildcard(t *testing.T) {
+	// Test redacting fields within array elements using [*]
+	properties := map[string]any{
+		"secrets": []any{
+			map[string]any{"name": "secret1", "value": "s1"},
+			map[string]any{"name": "secret2", "value": "s2"},
+		},
+	}
+
+	redactField(properties, "secrets[*].value")
+
+	secrets := properties["secrets"].([]any)
+	s0 := secrets[0].(map[string]any)
+	s1 := secrets[1].(map[string]any)
+	require.Nil(t, s0["value"])
+	require.Nil(t, s1["value"])
+	require.Equal(t, "secret1", s0["name"])
+	require.Equal(t, "secret2", s1["name"])
+}
+
+func TestRedactField_MapWildcard(t *testing.T) {
+	// Test redacting all values of a map using [*]
+	properties := map[string]any{
+		"config": map[string]any{
+			"key1": "value1",
+			"key2": "value2",
+		},
+	}
+
+	redactField(properties, "config[*]")
+
+	config := properties["config"].(map[string]any)
+	require.Nil(t, config["key1"])
+	require.Nil(t, config["key2"])
+}
+
+func TestRedactField_MapWildcardWithNestedField(t *testing.T) {
+	// Test redacting a nested field within map values using [*]
+	properties := map[string]any{
+		"backends": map[string]any{
+			"kv":    map[string]any{"url": "http://vault", "token": "secret-token"},
+			"azure": map[string]any{"url": "http://azure", "token": "azure-token"},
+		},
+	}
+
+	redactField(properties, "backends[*].token")
+
+	backends := properties["backends"].(map[string]any)
+	kv := backends["kv"].(map[string]any)
+	azure := backends["azure"].(map[string]any)
+	require.Nil(t, kv["token"])
+	require.Nil(t, azure["token"])
+	require.Equal(t, "http://vault", kv["url"])
+	require.Equal(t, "http://azure", azure["url"])
+}
+
+func TestRedactField_NestedPathFieldNotFound(t *testing.T) {
+	// Test that a non-existent nested path doesn't cause errors
+	properties := map[string]any{
+		"config": map[string]any{
+			"host": "localhost",
+		},
+	}
+
+	// Should not panic - field doesn't exist at this nested path
+	redactField(properties, "config.nonexistent")
+
+	config := properties["config"].(map[string]any)
+	require.Equal(t, "localhost", config["host"])
+}
+
+func TestRedactField_EmptyPath(t *testing.T) {
+	// Test that empty path doesn't cause errors
+	properties := map[string]any{
+		"data": "value",
+	}
+
+	redactField(properties, "")
+
+	require.Equal(t, "value", properties["data"])
+}
+
+func TestRedactField_ArrayWildcardAllElements(t *testing.T) {
+	// Test redacting all elements in an array using [*] as the final segment
+	properties := map[string]any{
+		"tokens": []any{"token1", "token2", "token3"},
+	}
+
+	redactField(properties, "tokens[*]")
+
+	tokens := properties["tokens"].([]any)
+	for _, token := range tokens {
+		require.Nil(t, token)
+	}
 }
 
 func TestRedactField_FieldWithNilValue(t *testing.T) {
@@ -181,6 +295,57 @@ func TestRedactField_FieldWithDifferentTypes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			redactField(tc.properties, tc.fieldName)
 			require.Nil(t, tc.properties[tc.fieldName])
+		})
+	}
+}
+
+func TestParseRedactPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected []redactPathSegment
+	}{
+		{
+			name:     "simple field",
+			path:     "data",
+			expected: []redactPathSegment{{name: "data"}},
+		},
+		{
+			name:     "nested dot path",
+			path:     "credentials.password",
+			expected: []redactPathSegment{{name: "credentials"}, {name: "password"}},
+		},
+		{
+			name:     "array wildcard",
+			path:     "secrets[*].value",
+			expected: []redactPathSegment{{name: "secrets"}, {wildcard: true}, {name: "value"}},
+		},
+		{
+			name:     "map wildcard",
+			path:     "config[*]",
+			expected: []redactPathSegment{{name: "config"}, {wildcard: true}},
+		},
+		{
+			name:     "deeply nested",
+			path:     "a.b.c.d",
+			expected: []redactPathSegment{{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}},
+		},
+		{
+			name:     "wildcard with nested field",
+			path:     "backends[*].token",
+			expected: []redactPathSegment{{name: "backends"}, {wildcard: true}, {name: "token"}},
+		},
+		{
+			name:     "empty path",
+			path:     "",
+			expected: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := parseRedactPath(tc.path)
+			require.Equal(t, tc.expected, result)
 		})
 	}
 }

@@ -179,7 +179,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
 		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties)
 		if err != nil {
-			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger)
+			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
 	}
 
@@ -225,7 +225,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 }
 
 // handleRecipeError handles recipe execution errors: logs, updates status, persists, and returns the appropriate result.
-func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger) (ctrl.Result, error) {
+// When redactionCompleted is true, all failure paths return NewFailedResult to prevent retries that would fail
+// because sensitive data has already been nullified from the database.
+func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger, redactionCompleted bool) (ctrl.Result, error) {
 	var recipeErr *recipes.RecipeError
 	if errors.As(err, &recipeErr) {
 		logger.Error(recipeErr, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeErr.ErrorDetails.Target))
@@ -240,10 +242,19 @@ func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, er
 		// Save portable resource with updated deployment status to track errors during deletion.
 		err = c.DatabaseClient().Save(ctx, update, database.WithETag(etag))
 		if err != nil {
+			if redactionCompleted {
+				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+			}
 			return ctrl.Result{}, err
 		}
 
 		return ctrl.NewFailedResult(recipeErr.ErrorDetails), nil
+	}
+
+	// For non-RecipeError: if sensitive data was redacted, prevent retry since
+	// the data is gone from the database and retry would fail.
+	if redactionCompleted {
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 	}
 
 	return ctrl.Result{}, err

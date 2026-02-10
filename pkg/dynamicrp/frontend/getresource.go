@@ -19,6 +19,7 @@ package frontend
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -48,6 +49,12 @@ func NewGetResourceWithRedaction(
 }
 
 // Run returns the requested resource with sensitive fields redacted.
+//
+// Design consideration (GET Operation Update): When provisioningState is "Succeeded",
+// the backend has already redacted sensitive data from the database, so we skip the
+// schema fetch and redaction (fast path). For all other states (e.g., "Updating",
+// "Accepted", "Failed"), the resource may still contain encrypted data, so we fetch
+// the schema and redact sensitive fields to prevent exposure.
 func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -60,8 +67,10 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	// Redact sensitive fields before returning the response
-	if resource.Properties != nil {
+	// Fast path: if provisioningState is Succeeded, the backend has already redacted
+	// sensitive fields. Skip the schema fetch for better performance.
+	provisioningState := resource.ProvisioningState()
+	if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
 		resourceID := serviceCtx.ResourceID.String()
 		resourceType := serviceCtx.ResourceID.Type()
 		apiVersion := serviceCtx.APIVersion
@@ -83,6 +92,7 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 				redactField(resource.Properties, path)
 			}
 			logger.V(ucplog.LevelDebug).Info("Redacted sensitive fields in GET response",
+				"provisioningState", provisioningState,
 				"count", len(sensitiveFieldPaths), "resourceType", resourceType)
 		}
 	}
@@ -91,18 +101,116 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 }
 
 // redactField sets the field at the given path to nil.
-// Supports simple field names like "data" or nested paths like "config.password".
+// Supports:
+//   - Simple field names: "data"
+//   - Nested dot-separated paths: "credentials.password"
+//   - Array wildcards: "secrets[*].value"
+//   - Map wildcards: "config[*]"
 func redactField(properties map[string]any, path string) {
-	if properties == nil {
+	if properties == nil || path == "" {
 		return
 	}
 
-	// For simple paths (no dots), just set to nil
-	if _, exists := properties[path]; exists {
-		properties[path] = nil
+	segments := parseRedactPath(path)
+	if len(segments) == 0 {
 		return
 	}
 
-	// For nested paths, we would need to traverse - but for now we only support top-level
-	// The "data" field is top-level in Radius.Security/secrets
+	redactAtSegments(properties, segments)
+}
+
+// redactPathSegment represents a component of a field path for redaction.
+type redactPathSegment struct {
+	name     string // field name (empty for wildcard)
+	wildcard bool   // true for [*] segments
+}
+
+// parseRedactPath parses a field path like "credentials.password" or "secrets[*].value"
+// into path segments for traversal.
+func parseRedactPath(path string) []redactPathSegment {
+	var segments []redactPathSegment
+	var current strings.Builder
+
+	for i := 0; i < len(path); i++ {
+		switch path[i] {
+		case '.':
+			if current.Len() > 0 {
+				segments = append(segments, redactPathSegment{name: current.String()})
+				current.Reset()
+			}
+		case '[':
+			if current.Len() > 0 {
+				segments = append(segments, redactPathSegment{name: current.String()})
+				current.Reset()
+			}
+			end := strings.Index(path[i:], "]")
+			if end == -1 {
+				return nil // invalid path - unterminated bracket
+			}
+			content := path[i+1 : i+end]
+			if content == "*" {
+				segments = append(segments, redactPathSegment{wildcard: true})
+			}
+			i += end // skip past ']'
+		default:
+			current.WriteByte(path[i])
+		}
+	}
+
+	if current.Len() > 0 {
+		segments = append(segments, redactPathSegment{name: current.String()})
+	}
+
+	return segments
+}
+
+// redactAtSegments traverses the data following the path segments and sets the final value to nil.
+func redactAtSegments(current any, segments []redactPathSegment) {
+	if len(segments) == 0 {
+		return
+	}
+
+	segment := segments[0]
+	remaining := segments[1:]
+
+	if segment.wildcard {
+		// Handle [*] - iterate over array or map
+		switch v := current.(type) {
+		case []any:
+			for i := range v {
+				if len(remaining) == 0 {
+					v[i] = nil
+				} else {
+					redactAtSegments(v[i], remaining)
+				}
+			}
+		case map[string]any:
+			for key := range v {
+				if len(remaining) == 0 {
+					v[key] = nil
+				} else {
+					redactAtSegments(v[key], remaining)
+				}
+			}
+		}
+		return
+	}
+
+	// Handle field name
+	dataMap, ok := current.(map[string]any)
+	if !ok {
+		return
+	}
+
+	value, exists := dataMap[segment.name]
+	if !exists {
+		return
+	}
+
+	if len(remaining) == 0 {
+		dataMap[segment.name] = nil
+		return
+	}
+
+	redactAtSegments(value, remaining)
 }
