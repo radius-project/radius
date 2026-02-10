@@ -38,7 +38,7 @@ By default we will assume your Docker registry is your OS username, and assume y
 
 These commands assume you are already logged-in to the registry you are using. If you get errors related to authentication, double-check that you are logged-in.
 
-Here's an example command that will push and push images to a specified registry:
+Here's an example command that will build and push images to a specified registry:
 
 ```sh
 DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
