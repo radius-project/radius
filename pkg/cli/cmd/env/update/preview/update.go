@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
@@ -105,6 +106,7 @@ type Runner struct {
 	Workspace               *workspaces.Workspace
 	Format                  string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
+	ConnectionFactory       connections.Factory
 
 	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
 	// Singleton recipe packs are always created/queried in the default scope.
@@ -122,8 +124,9 @@ type Runner struct {
 // NewRunner creates a new instance of the `rad env update` preview runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder: factory.GetConfigHolder(),
-		Output:       factory.GetOutput(),
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
@@ -365,6 +368,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		r.DefaultScopeClientFactory = defaultFactory
 	}
+
+	// Ensure the default resource group exists before creating recipe packs in it.
+	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
+		return err
+	}
+
 	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
 
 	// Ensure the default scope client is also in the map for inspecting singletons.
