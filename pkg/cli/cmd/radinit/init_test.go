@@ -946,7 +946,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			appManagementClient.EXPECT().
 				CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
 				Return(nil).
-				Times(1)
+				Times(2)
 
 			// Create a RadiusCoreClientFactory for testing
 			rootScope := "/planes/radius/local/resourceGroups/default"
