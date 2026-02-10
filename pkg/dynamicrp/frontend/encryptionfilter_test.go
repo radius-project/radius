@@ -41,7 +41,7 @@ const (
 )
 
 func TestMakeEncryptionFilter_NilHandler(t *testing.T) {
-	// When handler is nil, filter should pass through without error
+	// When handler is nil, filter should return an error response
 	filter := makeEncryptionFilter(nil, nil)
 
 	ctx := createTestContext()
@@ -53,7 +53,7 @@ func TestMakeEncryptionFilter_NilHandler(t *testing.T) {
 
 	response, err := filter(ctx, resource, nil, nil)
 	require.NoError(t, err)
-	require.Nil(t, response)
+	require.NotNil(t, response, "expected error response when encryption handler is nil")
 
 	// Password should remain unchanged (not encrypted)
 	require.Equal(t, "secret123", resource.Properties["password"])

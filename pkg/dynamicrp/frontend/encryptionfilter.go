@@ -59,17 +59,23 @@ func encryptSensitiveFields(
 	ucpClient *v20231001preview.ClientFactory,
 	handler *encryption.SensitiveDataHandler,
 ) (rest.Response, error) {
-	// No-op if handler is nil (encryption not configured)
-	if handler == nil {
-		return nil, nil
-	}
-
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resourceID := serviceCtx.ResourceID.String()
 	resourceType := serviceCtx.ResourceID.Type()
 	apiVersion := serviceCtx.APIVersion
+
+	// If encryption handler is not configured, return an error.
+	if handler == nil {
+		logger.Error(nil, "Encryption handler not configured", "resourceType", resourceType, "resourceID", resourceID)
+		return rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    v1.CodeInternal,
+				Message: "Encryption handler is not configured but is required for sensitive field protection",
+			},
+		}), nil
+	}
 
 	// Fetch sensitive field paths from schema
 	sensitiveFieldPaths, err := schema.GetSensitiveFieldPaths(
