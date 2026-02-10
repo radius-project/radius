@@ -156,6 +156,15 @@ func (r *Runner) Run(ctx context.Context) error {
 func (r *Runner) runCreate(ctx context.Context) error {
 	r.Output.LogInfo("Creating Radius Core Environment %q...", r.EnvironmentName)
 
+	// Ensure the default resource group exists before creating recipe packs in it.
+	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
+		return err
+	}
+
 	// Create all singleton recipe packs for core resource types in the default resource group.
 	// Singletons always live in the default scope regardless of the current workspace scope.
 	if r.DefaultScopeClientFactory == nil {

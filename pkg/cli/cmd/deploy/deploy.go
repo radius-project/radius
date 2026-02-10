@@ -757,6 +757,15 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 		r.DefaultScopeClientFactory = defaultFactory
 	}
 
+	// Ensure the default resource group exists before creating recipe packs in it.
+	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
+		return err
+	}
+
 	// Create missing singleton recipe packs for uncovered core resource types and
 	// append their IDs so the template deploys the environment with full coverage.
 	// Singletons always live in the default scope.
