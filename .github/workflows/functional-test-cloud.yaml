@@ -32,10 +32,18 @@ on:
   # Dispatch on external events
   repository_dispatch:
     types: [deployment-engine.run-functional-tests]
-  workflow_run:
-    workflows: [Approve Functional Tests]
-    types:
-      - completed
+    # Expected client_payload:
+    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
+    #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
+  # pull_request_target runs in the context of the base branch, providing access to secrets.
+  # For external contributors, the approval-gate job requires manual approval before tests run.
+  # SECURITY: We use pull_request_target but do NOT run any code from the PR until after approval.
+  pull_request_target:
+    branches:
+      - main
+      - features/*
+      - release/*
 
 permissions: {}
 
@@ -44,7 +52,7 @@ env:
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUM_VER: 1.13.0
   # Helm version
-  HELM_VER: v3.12.0
+  HELM_VER: v3.19.4
   # KinD cluster version
   KIND_VER: v0.29.0
   # Kubectl version
@@ -81,22 +89,45 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-  setup:
-    name: Setup
+  # Approval gate for external contributors. This job uses GitHub Environment protection
+  # to require manual approval before running tests on PRs from non-members.
+  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
+  # - Dependabot: Tests run immediately
+  # - External contributors: Requires approval via GitHub UI button
+  approval-gate:
+    name: Approval Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    if: github.event_name == 'repository_dispatch' ||
-      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'workflow_dispatch'
+    # Only run for external contributors on pull_request_target events.
+    # Trusted users (dependabot, org members) skip this job entirely.
+    # External contributors require approval via 'external-contributor-approval' environment.
+    if: |
+      github.event_name == 'pull_request_target' &&
+      github.actor != 'dependabot[bot]' &&
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    environment: external-contributor-approval
+    permissions: {}
+    steps:
+      - name: Approved
+        run: echo "Tests approved to run"
+
+  setup:
+    name: Setup
+    needs: [approval-gate]
+    # Run for all events. For PRs, approval-gate either succeeds (external contributors approved)
+    # or is skipped (trusted users like org members and dependabot).
+    if: |
+      always() &&
+      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
+      (github.event_name != 'schedule' || github.repository == 'radius-project/radius')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read # Required for listing the commits
       pull-requests: read # Required for fetching PR details
     env:
       DE_IMAGE: ghcr.io/radius-project/deployment-engine
       DE_TAG: latest
-      # Head branch, only populated for workflow_run dispatch.
-      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -111,27 +142,9 @@ jobs:
       - name: Log Event Information
         run: |
           echo "Event Name: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Author Association: ${{ github.event.pull_request.author_association }}"
 
-          # Additional logging is temporary for debugging purposes
-          # https://github.com/radius-project/radius/issues/7782
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            echo "Triggered by workflow_run."
-            echo "Ref: ${{ github.ref }}"
-            echo "Head Branch Name: $HEAD_BRANCH"
-            echo "SHA Value: ${{ github.event.workflow_run.head_sha }}"
-            echo "Github Repository: ${{ github.repository }}"
-            echo "Event Repository ID: ${{ github.event.workflow_run.repository.id }}"
-            echo "Event Repository Name: ${{ github.event.workflow_run.repository.name }}"
-            echo "Event Repository Full Name: ${{ github.event.workflow_run.repository.full_name }}"
-            echo "Workflow ID: ${{ github.event.workflow_run.workflow_id }}"
-            echo "Workflow Run ID: ${{ github.event.workflow_run.id }}"
-            echo "Workflow Name: ${{ github.event.workflow_run.name }}"
-            echo "Run Number: ${{ github.event.workflow_run.run_number }}"
-            echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-            echo "Status: ${{ github.event.workflow_run.status }}"
-            echo "Created At: ${{ github.event.workflow_run.created_at }}"
-            echo "Updated At: ${{ github.event.workflow_run.updated_at }}"
-          fi
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -144,12 +157,12 @@ jobs:
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
 
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+      - name: Set up checkout target (pull_request_target)
+        if: github.event_name == 'pull_request_target'
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=${{ github.ref }}"
+            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
             echo "PR_NUMBER=${{ github.event.pull_request.number }}"
             echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
           } >> "${GITHUB_ENV}"
@@ -163,89 +176,20 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
           persist-credentials: false
-
-      - name: Download PR data artifacts
-        if: github.event_name == 'workflow_run'
-        uses: ./.github/actions/download-pr-data-artifact
-        id: get-pr-number
-
-      - name: Set PR context (workflow_run)
-        if: github.event_name == 'workflow_run'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        env:
-          PR_NUMBER: ${{ steps.get-pr-number.outputs.pr_number }}
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const payload = context.payload.workflow_run;
-            const fs = require('fs');
-            // Use env var to avoid syntax errors from newlines in the output
-            const prNumber = (process.env.PR_NUMBER || '').trim();
-
-            let baseSha = '';
-            let checkoutRepo = payload.head_repository.full_name;
-            let checkoutRef = payload.head_sha;
-
-            // For fork PRs, payload.pull_requests is empty due to GitHub security restrictions.
-            // We need to fetch the PR details using the API to get the base SHA for change detection.
-            if (prNumber) {
-              try {
-                const { data: pr } = await github.rest.pulls.get({
-                  ...context.repo,
-                  pull_number: parseInt(prNumber, 10)
-                });
-
-                baseSha = pr.base?.sha || baseSha;
-
-                // Use PR head info which works for both fork and non-fork PRs
-                if (pr.head && pr.head.repo) {
-                  checkoutRepo = pr.head.repo.full_name;
-                  checkoutRef = pr.head.sha;
-                } else {
-                  console.log(`PR #${prNumber} head repo missing; falling back to workflow_run payload data.`);
-                }
-
-                console.log(`Fetched PR #${prNumber}: base_sha=${baseSha}, head_repo=${checkoutRepo}, head_sha=${checkoutRef}`);
-              } catch (error) {
-                console.log(`Warning: Could not fetch PR #${prNumber}: ${error.message}`);
-                // Fall back to workflow_run payload data
-                if (payload.pull_requests && payload.pull_requests.length > 0) {
-                  baseSha = payload.pull_requests[0].base.sha;
-                }
-              }
-            } else if (payload.pull_requests && payload.pull_requests.length > 0) {
-              // Fallback for cases where PR number artifact is not available
-              baseSha = payload.pull_requests[0].base.sha;
-            }
-
-            if (!baseSha) {
-              console.log(
-                `Warning: BASE_SHA is empty for workflow_run (PR: ${prNumber || 'n/a'}). Change detection may be skipped.`
-              );
-            }
-
-            // Set environment variables
-            fs.appendFileSync(
-              process.env.GITHUB_ENV,
-              `CHECKOUT_REPO=${checkoutRepo}\n` +
-                `CHECKOUT_REF=${checkoutRef}\n` +
-                `PR_NUMBER=${prNumber}\n` +
-                `BASE_SHA=${baseSha}\n`
-            );
 
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
         shell: bash
         env:
-          IMAGE_NAME: ${{ github.event.client_payload.image_name }}
+          DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
           TAG: ${{ github.event.client_payload.tag }}
         run: |
           {
-            echo "DE_IMAGE=${IMAGE_NAME}"
+            echo "DE_IMAGE=${DEST_IMAGE}"
             echo "DE_TAG=${TAG}"
           } >> "$GITHUB_ENV"
 
@@ -288,6 +232,7 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
+    # Skip if only docs/markdown changed
     if: needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -309,6 +254,7 @@ jobs:
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -317,28 +263,15 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           submodules: recursive
           persist-credentials: false
 
-      - name: Copy Deployment Engine image to GHCR
-        if: github.event_name == 'repository_dispatch'
-        uses: ./.github/actions/copy-deployment-engine-image
-        env:
-          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
-        with:
-          tag: ${{ env.DE_TAG }}
-          src_image: ${{ env.DE_IMAGE }}
-          dest_image: ghcr.io/radius-project/deployment-engine
-
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -346,7 +279,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -393,7 +326,7 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -458,7 +391,7 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
 
@@ -556,6 +489,7 @@ jobs:
       contents: read # Required for listing the commits
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -577,10 +511,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [setup, build]
-    if: github.event_name == 'repository_dispatch' ||
-      (github.event_name == 'schedule' && github.repository == 'radius-project/radius') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'workflow_dispatch'
+    # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
       fail-fast: true
       matrix:
@@ -591,6 +522,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
+      checks: write # Required for publishing test results
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -604,6 +536,7 @@ jobs:
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
+        if: github.repository == 'radius-project/radius'
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -628,7 +561,7 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -636,7 +569,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout Samples repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -645,7 +578,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -693,7 +626,7 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -753,7 +686,7 @@ jobs:
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -1035,7 +968,8 @@ jobs:
             --yes --verbose
 
   report-test-results:
-    if: always()
+    # Report final test status. Runs after all tests complete (or are skipped).
+    if: always() && github.repository == 'radius-project/radius'
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04

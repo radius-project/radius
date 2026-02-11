@@ -32,6 +32,10 @@ on:
   # Dispatch on external events
   repository_dispatch:
     types: [deployment-engine.run-functional-tests]
+    # Expected client_payload:
+    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
+    #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
   pull_request:
     branches:
       - main
@@ -42,7 +46,7 @@ permissions: {}
 
 env:
   # Helm version
-  HELM_VER: v3.15.3
+  HELM_VER: v3.19.4
   # KinD cluster version
   KIND_VER: v0.29.0
   # Kubectl version
@@ -115,33 +119,13 @@ jobs:
         if: github.event_name == 'repository_dispatch'
         shell: bash
         env:
-          IMAGE_NAME: ${{ github.event.client_payload.image_name }}
+          DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
           TAG: ${{ github.event.client_payload.tag }}
         run: |
           {
-            echo "DE_IMAGE=${IMAGE_NAME}"
+            echo "DE_IMAGE=${DEST_IMAGE}"
             echo "DE_TAG=${TAG}"
           } >> "$GITHUB_ENV"
-
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-          persist-credentials: false
-
-      - name: Copy Deployment Engine image to GHCR
-        if: github.event_name == 'repository_dispatch'
-        uses: ./.github/actions/copy-deployment-engine-image
-        env:
-          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
-        with:
-          tag: ${{ env.DE_TAG }}
-          src_image: ${{ env.DE_IMAGE }}
-          dest_image: ghcr.io/radius-project/deployment-engine
 
       - name: Generate ID for release
         id: gen-id
@@ -219,13 +203,13 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -234,14 +218,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
 

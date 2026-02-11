@@ -57,7 +57,7 @@ If you would like to test that your schema changes are compilable in a Bicep tem
 
 1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep.
 
-Note: Alternatively, if you already have the Radius CLI installed, you can choose to use the Bicep binary that is installed as part of Radius. The Bicep binary gets downloaded to `./.rad/bin/rad-bicep`. You can use this file path instead.
+Note: Alternatively, if you already have the Radius CLI installed, you can choose to use the Bicep binary that is installed as part of Radius. The Bicep binary gets downloaded to `./.rad/bin/bicep`. You can use this file path instead.
 
 ## Step 2: Create a file directory  
 

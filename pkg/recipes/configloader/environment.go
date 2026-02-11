@@ -163,13 +163,17 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
 	if envDatamodel.Properties.Providers != nil {
 		if envDatamodel.Properties.Providers.Azure != nil {
+			scope := "/subscriptions/" + envDatamodel.Properties.Providers.Azure.SubscriptionId
+			if envDatamodel.Properties.Providers.Azure.ResourceGroupName != "" {
+				scope += "/resourceGroups/" + envDatamodel.Properties.Providers.Azure.ResourceGroupName
+			}
 			config.Providers.Azure = datamodel.ProvidersAzure{
-				Scope: envDatamodel.Properties.Providers.Azure.SubscriptionId,
+				Scope: scope,
 			}
 		}
 		if envDatamodel.Properties.Providers.AWS != nil {
 			config.Providers.AWS = datamodel.ProvidersAWS{
-				Scope: envDatamodel.Properties.Providers.AWS.Scope,
+				Scope: "/planes/aws/aws/accounts/" + envDatamodel.Properties.Providers.AWS.AccountID + "/regions/" + envDatamodel.Properties.Providers.AWS.Region,
 			}
 		}
 	}
@@ -287,6 +291,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 			ResourceType: resource.Type(),
 			Parameters:   parameters,
 			TemplatePath: recipeDefinition.RecipeLocation,
+			PlainHTTP:    recipeDefinition.PlainHTTP,
 		}
 		return definition, nil
 	}
@@ -315,10 +320,15 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 		// Convert recipes map
 		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
 			if strings.EqualFold(recipePackResourceType, resourceType) {
+				var plainHTTP bool
+				if definition.PlainHTTP != nil {
+					plainHTTP = *definition.PlainHTTP
+				}
 				return &recipes.RecipeDefinition{
 					RecipeKind:     string(*definition.RecipeKind),
 					RecipeLocation: string(*definition.RecipeLocation),
 					Parameters:     definition.Parameters,
+					PlainHTTP:      plainHTTP,
 				}, nil
 			}
 		}

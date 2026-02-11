@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"golang.org/x/exp/maps"
 	"golang.org/x/sync/errgroup"
 
@@ -1236,7 +1236,7 @@ func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, re
 			clientOptions.APIVersion = apiVersion[0]
 		}
 		// Generated client doesn't like the leading '/' in the scope.
-		return generated.NewGenericResourcesClient(strings.TrimPrefix(scope, resources.SegmentSeparator), resourceType, &aztoken.AnonymousCredential{}, &clientOptions)
+		return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
 	}
 
 	return amc.genericResourceClientFactory(scope, resourceType)
@@ -1352,7 +1352,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentID s
 
 func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context, response **http.Response) context.Context {
 	if amc.capture == nil {
-		return runtime.WithCaptureResponse(ctx, response)
+		return policy.WithCaptureResponse(ctx, response)
 	}
 
 	return amc.capture(ctx, response)

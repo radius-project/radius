@@ -48,13 +48,13 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@7ccaf8e700ce99eb3f0f6cef7f5930a0b3c827cd # v4.49.2
+        uses: mikefarah/yq@2be0094729a1006f61e8339ce9934bfb3cbb549f # v4.52.2
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -145,47 +145,47 @@ jobs:
       contents: read # Required for actions/checkout
       id-token: write # Required for azure/login (copy-deployment-engine-image)
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: radius-project/radius
           ref: main
           persist-credentials: false
 
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: radius-project/radius
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: radius-project/recipes
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: radius-project/dashboard
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: dashboard
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Checkout radius-project/bicep-types-aws@main
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: radius-project/bicep-types-aws
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: bicep-types-aws
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Set up GitHub credentials
         run: |
@@ -194,7 +194,7 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@7ccaf8e700ce99eb3f0f6cef7f5930a0b3c827cd # v4.49.2
+        uses: mikefarah/yq@2be0094729a1006f61e8339ce9934bfb3cbb549f # v4.52.2
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'

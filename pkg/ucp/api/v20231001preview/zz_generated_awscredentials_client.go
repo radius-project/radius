@@ -24,7 +24,7 @@ type AwsCredentialsClient struct {
 
 // NewAwsCredentialsClient creates a new instance of AwsCredentialsClient with the specified values.
 //   - credential - used to authorize requests. Usually a credential from azidentity.
-//   - options - pass nil to accept the default values.
+//   - options - Contains optional client configuration. Pass nil to accept the default values.
 func NewAwsCredentialsClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*AwsCredentialsClient, error) {
 	cl, err := arm.NewClient(moduleName, moduleVersion, credential, options)
 	if err != nil {

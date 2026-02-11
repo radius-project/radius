@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -78,7 +78,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		t.Logf("deleting environment: %s", resource.Name)
 
 		var respFromCtx *http.Response
-		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+		ctxWithResp := policy.WithCaptureResponse(ctx, &respFromCtx)
 
 		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
 		if err != nil {
@@ -107,7 +107,7 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
 	if resource.Type == EnvironmentsResource {
 		var respFromCtx *http.Response
-		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+		ctxWithResp := policy.WithCaptureResponse(ctx, &respFromCtx)
 
 		_, err := client.DeleteEnvironment(ctxWithResp, resource.Name)
 		if err != nil {

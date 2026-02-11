@@ -32,10 +32,15 @@ References:
 {{- $value := "" -}}
 {{- $namespace := .namespace | toString -}}
 {{- $secretData := (lookup "v1" "Secret" $namespace .secret).data -}}
+{{- $encode := .encodeDefault | default true -}}
 {{- if and $secretData (hasKey $secretData .key) -}}
   {{- $value = index $secretData .key -}}
 {{- else if .defaultValue -}}
-  {{- $value = .defaultValue | toString | b64enc -}}
+  {{- if $encode -}}
+    {{- $value = .defaultValue | toString | b64enc -}}
+  {{- else -}}
+    {{- $value = .defaultValue | toString -}}
+  {{- end -}}
 {{- end -}}
 {{- if $value -}}
 {{- printf "%s" $value -}}

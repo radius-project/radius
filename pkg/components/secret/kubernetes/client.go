@@ -50,7 +50,7 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 		return &secret.ErrInvalid{Message: "invalid argument. 'value' is required"}
 	}
 
-	if !kubernetes.IsValidObjectName(name) {
+	if valid, _ := kubernetes.IsValidObjectName(name); !valid {
 		return &secret.ErrInvalid{Message: "invalid name: " + name}
 	}
 
@@ -88,7 +88,7 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 		return &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
 	}
 
-	if !kubernetes.IsValidObjectName(name) {
+	if valid, _ := kubernetes.IsValidObjectName(name); !valid {
 		return &secret.ErrInvalid{Message: "invalid name: " + name}
 	}
 
@@ -115,7 +115,7 @@ func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {
 		return nil, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
 	}
 
-	if !kubernetes.IsValidObjectName(name) {
+	if valid, _ := kubernetes.IsValidObjectName(name); !valid {
 		return nil, &secret.ErrInvalid{Message: "invalid name: " + name}
 	}
 

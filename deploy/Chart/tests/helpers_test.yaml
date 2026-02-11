@@ -5,6 +5,8 @@ templates:
   - ucp/deployment.yaml
   - rp/deployment.yaml
   - dynamic-rp/deployment.yaml
+  - dynamic-rp/secret.yaml
+  - dynamic-rp/serviceaccount.yaml
   - de/deployment.yaml
   - dashboard/deployment.yaml
   - database/statefulset.yaml
@@ -739,3 +741,678 @@ tests:
       - isNull:
           path: spec.template.spec.initContainers
         template: de/deployment.yaml
+
+  # Tests for encryption key secret functionality
+  - it: should create encryption key secret with correct metadata and structure
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # REQUIREMENT: Secret name must be exactly "radius-encryption-key"
+      - equal:
+          path: metadata.name
+          value: radius-encryption-key
+        documentIndex: 0
+      - matchRegex:
+          path: metadata.name
+          pattern: "^radius-encryption-key$"
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+        documentIndex: 0
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/name: dynamic-rp
+            app.kubernetes.io/part-of: radius
+        documentIndex: 0
+      - equal:
+          path: kind
+          value: Secret
+        documentIndex: 0
+      # REQUIREMENT: Versioned encryption keys stored in Opaque secret
+      - equal:
+          path: type
+          value: Opaque
+        documentIndex: 0
+      # Verify data field exists and contains versioned keys
+      - isNotNull:
+          path: data
+        documentIndex: 0
+      - isNotEmpty:
+          path: data
+        documentIndex: 0
+      - isNotNull:
+          path: data["keys.json"]
+        documentIndex: 0
+
+  - it: should validate encryption key format and field name
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # REQUIREMENT: Field must be named "keys.json" (versioned key format)
+      - isNotNull:
+          path: data["keys.json"]
+        documentIndex: 0
+      - isNotEmpty:
+          path: data["keys.json"]
+        documentIndex: 0
+      # FORMAT: Versioned JSON key store
+      # Structure: {
+      #   "currentVersion": 1,
+      #   "keys": {
+      #     "1": {
+      #       "key": "base64-encoded-32-byte-key",
+      #       "version": 1,
+      #       "createdAt": "2026-01-27T12:00:00Z",
+      #       "expiresAt": "2026-04-27T12:00:00Z"
+      #     }
+      #   }
+      # }
+      #
+      # ENCODING CHAIN:
+      # 1. Helm generates JSON with base64-encoded keys
+      # 2. secrets.lookup helper returns base64-encoded JSON
+      # 3. Kubernetes Secret data stores base64-encoded JSON
+      # 4. Kubernetes mounts secret → DECODES to JSON in pod
+      # 5. Application reads /var/secrets/encryption/keys.json
+      # 6. Parse JSON, base64-decode individual keys to get 32 raw bytes
+      #
+      # Verify valid base64 format (base64-encoded JSON)
+      - matchRegex:
+          path: data["keys.json"]
+          pattern: '^[A-Za-z0-9+/]+=*$'
+        documentIndex: 0
+      # Ensure no typos or old field names
+      - isNull:
+          path: data["encryption.key"]
+        documentIndex: 0
+      - isNull:
+          path: data["encryption-key"]
+        documentIndex: 0
+      - isNull:
+          path: data["encryptionKey"]
+        documentIndex: 0
+      - isNull:
+          path: data["key"]
+        documentIndex: 0
+
+  - it: should create Role with correct permissions for encryption key
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: radius-encryption-key-role
+        documentIndex: 1
+      - equal:
+          path: kind
+          value: Role
+        documentIndex: 1
+      - contains:
+          path: rules[0].resources
+          content: secrets
+        documentIndex: 1
+      - contains:
+          path: rules[0].resourceNames
+          content: radius-encryption-key
+        documentIndex: 1
+      # Need get for reading keys
+      - contains:
+          path: rules[0].verbs
+          content: get
+        documentIndex: 1
+      # Need update and patch for automatic key rotation CronJob
+      - contains:
+          path: rules[0].verbs
+          content: update
+        documentIndex: 1
+      - contains:
+          path: rules[0].verbs
+          content: patch
+        documentIndex: 1
+      # Should NOT allow create or delete (secret is created by Helm)
+      - notContains:
+          path: rules[0].verbs
+          content: create
+        documentIndex: 1
+      - notContains:
+          path: rules[0].verbs
+          content: delete
+        documentIndex: 1
+
+  - it: should configure RBAC to reference exact secret name radius-encryption-key
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # REQUIREMENT: Role must grant access to exactly "radius-encryption-key"
+      - equal:
+          path: rules[0].resourceNames[0]
+          value: radius-encryption-key
+        documentIndex: 1
+      - matchRegex:
+          path: rules[0].resourceNames[0]
+          pattern: "^radius-encryption-key$"
+        documentIndex: 1
+      # Verify only ONE resourceName is specified (no wildcards or additional secrets)
+      - lengthEqual:
+          path: rules[0].resourceNames
+          count: 1
+        documentIndex: 1
+
+  - it: should create RoleBinding with correct service accounts
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: radius-encryption-key-rolebinding
+        documentIndex: 2
+      - equal:
+          path: kind
+          value: RoleBinding
+        documentIndex: 2
+      - equal:
+          path: roleRef.name
+          value: radius-encryption-key-role
+        documentIndex: 2
+      - equal:
+          path: roleRef.kind
+          value: Role
+        documentIndex: 2
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: dynamic-rp
+            namespace: NAMESPACE
+        documentIndex: 2
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: ucp
+            namespace: NAMESPACE
+        documentIndex: 2
+      # LEAST-PRIVILEGE: Only dynamic-rp and ucp should have access
+      - lengthEqual:
+          path: subjects
+          count: 2
+        documentIndex: 2
+
+  - it: should add encryption secret volume to dynamic-rp deployment
+    set:
+      dynamicrp.image: dynamic-rp
+    templates:
+      - dynamic-rp/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+            secret:
+              secretName: radius-encryption-key
+              defaultMode: 256  # 0400 in octal = 256 in decimal (read-only for owner)
+
+  - it: should reference exact secret name radius-encryption-key in deployment volume
+    set:
+      dynamicrp.image: dynamic-rp
+    templates:
+      - dynamic-rp/deployment.yaml
+    asserts:
+      # REQUIREMENT: Deployment must reference exactly "radius-encryption-key"
+      # Find the encryption-secret volume and verify its secretName
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+            secret:
+              secretName: radius-encryption-key
+              defaultMode: 256
+      # Additional verification using matchRegex if the volume structure is found
+      - isNotNull:
+          path: spec.template.spec.volumes
+
+  - it: should mount encryption secret at correct path in dynamic-rp
+    set:
+      dynamicrp.image: dynamic-rp
+    templates:
+      - dynamic-rp/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: encryption-secret
+            mountPath: /var/secrets/encryption
+            readOnly: true
+
+  - it: should mount encryption secret in ucp deployment
+    set:
+      ucp.image: ucpd
+    templates:
+      - ucp/deployment.yaml
+    asserts:
+      # Verify volume is defined with strict permissions (0400 octal = 256 decimal)
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+            secret:
+              secretName: radius-encryption-key
+              defaultMode: 256
+      # REQUIREMENT: Controllers must be able to load key at startup
+      # Verify the volume is actually mounted at correct path with read-only access
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: encryption-secret
+            mountPath: /var/secrets/encryption
+            readOnly: true
+
+  - it: should only grant access to dynamic-rp and ucp service accounts (least-privilege)
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: dynamic-rp
+            namespace: NAMESPACE
+        documentIndex: 2
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: ucp
+            namespace: NAMESPACE
+        documentIndex: 2
+      - notContains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: applications-rp
+        documentIndex: 2
+      - notContains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: controller
+        documentIndex: 2
+      # Verify exactly 2 subjects (dynamic-rp and ucp only)
+      - lengthEqual:
+          path: subjects
+          count: 2
+        documentIndex: 2
+
+  # Edge Case Tests: Encryption Key Secret
+  - it: should scope all resources to custom namespace correctly
+    release:
+      namespace: custom-radius-namespace
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # All three resources should be in the custom namespace
+      - equal:
+          path: metadata.namespace
+          value: custom-radius-namespace
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: custom-radius-namespace
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: custom-radius-namespace
+        documentIndex: 2
+      # RoleBinding subject should also reference the custom namespace
+      - equal:
+          path: subjects[0].namespace
+          value: custom-radius-namespace
+        documentIndex: 2
+
+  - it: should create exactly 3 resources (Secret, Role, RoleBinding) in secret.yaml
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: kind
+          value: Secret
+        documentIndex: 0
+      - equal:
+          path: kind
+          value: Role
+        documentIndex: 1
+      - equal:
+          path: kind
+          value: RoleBinding
+        documentIndex: 2
+
+  - it: should ensure RBAC role has no wildcard permissions
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - notContains:
+          path: rules[0].verbs
+          content: "*"
+        documentIndex: 1
+      - notContains:
+          path: rules[0].resources
+          content: "*"
+        documentIndex: 1
+      - isNull:
+          path: rules[0].resourceNames[1]
+        documentIndex: 1
+
+  - it: should ensure Role apiGroups is correctly set for core resources
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - contains:
+          path: rules[0].apiGroups
+          content: ""
+        documentIndex: 1
+      - lengthEqual:
+          path: rules[0].apiGroups
+          count: 1
+        documentIndex: 1
+
+  - it: should ensure RoleBinding references correct apiGroup for rbac
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - equal:
+          path: roleRef.apiGroup
+          value: rbac.authorization.k8s.io
+        documentIndex: 2
+
+  - it: should mount encryption secret as readOnly volume in dynamic-rp deployment
+    set:
+      dynamicrp.image: dynamic-rp
+    templates:
+      - dynamic-rp/deployment.yaml
+    asserts:
+      # Verify volume exists with strict permissions (0400 = read-only for owner)
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+            secret:
+              secretName: radius-encryption-key
+              defaultMode: 256
+      # Verify mount is always readOnly at correct path
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: encryption-secret
+            mountPath: /var/secrets/encryption
+            readOnly: true
+
+  - it: should apply correct labels to all encryption resources
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # Secret labels
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: dynamic-rp
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        documentIndex: 0
+      # Role labels
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: dynamic-rp
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        documentIndex: 1
+      # RoleBinding labels
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: dynamic-rp
+        documentIndex: 2
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        documentIndex: 2
+
+  # Negative Tests: What should NOT be present
+  - it: should not grant list or watch permissions on encryption secret
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - notContains:
+          path: rules[0].verbs
+          content: list
+        documentIndex: 1
+      - notContains:
+          path: rules[0].verbs
+          content: watch
+        documentIndex: 1
+
+  - it: should not grant deletecollection permissions
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # patch is needed for key rotation CronJob, but deletecollection should never be granted
+      - notContains:
+          path: rules[0].verbs
+          content: deletecollection
+        documentIndex: 1
+
+  - it: should not mount encryption secret in applications-rp deployment
+    set:
+      rp.image: applications-rp
+    templates:
+      - rp/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+
+  - it: should not mount encryption secret in controller deployment
+    set:
+      controller.image: controller
+      bicep.image: bicep
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+
+  - it: should not mount encryption secret in deployment-engine
+    set:
+      de.image: deployment-engine
+    templates:
+      - de/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: encryption-secret
+
+  # Test ServiceAccount reference consistency
+  - it: should reference correct service account in RoleBinding subjects
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+        documentIndex: 2
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: dynamic-rp
+            namespace: NAMESPACE
+        documentIndex: 2
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: ucp
+            namespace: NAMESPACE
+        documentIndex: 2
+
+  # Test dynamic-rp serviceAccount exists and matches RBAC
+  - it: should verify dynamic-rp service account exists for RBAC binding
+    templates:
+      - dynamic-rp/serviceaccount.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: dynamic-rp
+      - equal:
+          path: kind
+          value: ServiceAccount
+
+  - it: should use dynamic-rp serviceAccount in deployment spec
+    set:
+      dynamicrp.image: dynamic-rp
+    templates:
+      - dynamic-rp/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: dynamic-rp
+
+  # Integration test: RBAC, ServiceAccount, and Deployment alignment
+  - it: should align serviceAccount across RBAC, ServiceAccount, and Deployment
+    set:
+      dynamicrp.image: dynamic-rp
+    templates:
+      - dynamic-rp/secret.yaml
+      - dynamic-rp/serviceaccount.yaml
+      - dynamic-rp/deployment.yaml
+    asserts:
+      # RoleBinding references dynamic-rp
+      - equal:
+          path: subjects[0].name
+          value: dynamic-rp
+        template: dynamic-rp/secret.yaml
+        documentIndex: 2
+      # ServiceAccount is named dynamic-rp
+      - equal:
+          path: metadata.name
+          value: dynamic-rp
+        template: dynamic-rp/serviceaccount.yaml
+      # Deployment uses dynamic-rp
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: dynamic-rp
+        template: dynamic-rp/deployment.yaml
+
+  # Test that secret data field structure is correct
+  - it: should verify secret has keys.json data field
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - isNotNull:
+          path: data
+        documentIndex: 0
+      - isNotNull:
+          path: data["keys.json"]
+        documentIndex: 0
+      # Verify the versioned key store format
+
+  # Verify no additional unexpected permissions
+  - it: should only have one rule in the Role
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - lengthEqual:
+          path: rules
+          count: 1
+        documentIndex: 1
+
+  # Test RBAC doesn't include ClusterRole or ClusterRoleBinding
+  - it: should use Role not ClusterRole (namespace-scoped)
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - equal:
+          path: kind
+          value: Role
+        documentIndex: 1
+      - notEqual:
+          path: kind
+          value: ClusterRole
+        documentIndex: 1
+
+  - it: should use RoleBinding not ClusterRoleBinding (namespace-scoped)
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      - equal:
+          path: kind
+          value: RoleBinding
+        documentIndex: 2
+      - notEqual:
+          path: kind
+          value: ClusterRoleBinding
+        documentIndex: 2
+
+  # Test for preserving existing encryption key during upgrades
+  # NOTE: helm-unittest cannot mock the lookup function, so this test verifies:
+  # 1. The template renders successfully (proving secrets.lookup works)
+  # 2. The output contains a valid versioned key store value
+  # 3. The implementation uses secrets.lookup helper (verified by reading source)
+  #
+  # MANUAL VERIFICATION for existing key preservation:
+  # 1. helm install radius ./deploy/Chart
+  # 2. kubectl get secret radius-encryption-key -n radius-system -o jsonpath='{.data.keys\.json}' | base64 -d
+  # 3. helm upgrade radius ./deploy/Chart
+  # 4. kubectl get secret radius-encryption-key -n radius-system -o jsonpath='{.data.keys\.json}' | base64 -d
+  # 5. Verify the keys.json value is IDENTICAL between steps 2 and 4
+  - it: should generate encryption key that can be preserved across upgrades (fresh install)
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # Verify versioned key store is generated in fresh install
+      - isNotNull:
+          path: data["keys.json"]
+        documentIndex: 0
+      - isNotEmpty:
+          path: data["keys.json"]
+        documentIndex: 0
+      # Verify it's a valid base64 value (base64-encoded JSON)
+      - matchRegex:
+          path: data["keys.json"]
+          pattern: '^[A-Za-z0-9+/]+=*$'
+        documentIndex: 0
+      # The secrets.lookup helper in the template ensures that:
+      # - On fresh install: generates new versioned key store with version 1
+      # - On upgrade: reuses existing keys from cluster (via lookup)
+      # This behavior is implemented in templates/_helpers.tpl using secrets.lookup
+
+  # Integration test: Verify upgrade scenario preserves existing key
+  # This test documents the expected behavior when a secret already exists
+  - it: should use secrets.lookup helper that preserves existing keys on upgrade
+    templates:
+      - dynamic-rp/secret.yaml
+    asserts:
+      # Verify the template uses secrets.lookup (not direct randBytes)
+      # The helper implements the lookup logic to preserve existing keys
+      - isNotNull:
+          path: data["keys.json"]
+        documentIndex: 0
+      # The key store must be properly encoded (base64-encoded JSON)
+      - matchRegex:
+          path: data["keys.json"]
+          pattern: '^[A-Za-z0-9+/]+=*$'
+        documentIndex: 0
+      # BEHAVIOR: secrets.lookup helper checks for existing secret first
+      # - If secret exists in cluster: returns existing value (preserves all keys)
+      # - If secret missing: generates new versioned key store (version 1)
+      # This ensures upgrades never accidentally replace the key store
+      # CronJob handles automatic rotation, not Helm upgrades

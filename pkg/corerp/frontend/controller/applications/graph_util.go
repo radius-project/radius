@@ -139,7 +139,7 @@ func listAllResourcesByType(ctx context.Context, rootScope string, resourceType 
 	clientOptionsWithAPIVersion := *clientOptions
 	clientOptionsWithAPIVersion.APIVersion = apiVersion
 
-	client, err := generated.NewGenericResourcesClient(rootScope, resourceType, &aztoken.AnonymousCredential{}, &clientOptionsWithAPIVersion)
+	client, err := generated.NewGenericResourcesClient(resourceType, rootScope, &aztoken.AnonymousCredential{}, &clientOptionsWithAPIVersion)
 	if err != nil {
 		return []generated.GenericResource{}, err
 	}

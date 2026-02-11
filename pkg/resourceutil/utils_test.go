@@ -33,6 +33,9 @@ const (
 
 type PropertiesTestResource struct {
 	v1.BaseResource
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
 	Properties map[string]any `json:"properties"`
 }
 
@@ -46,6 +49,11 @@ func (p *PropertiesTestResource) ApplyDeploymentOutput(deploymentOutput rpv1.Dep
 
 func (p *PropertiesTestResource) OutputResources() []rpv1.OutputResource {
 	return nil
+}
+
+type InvalidResourceForAll struct {
+	Properties map[string]any `json:"properties"`
+	BadField   func()         `json:"badField"` // Functions cannot be marshaled
 }
 
 func TestGetPropertiesFromResource(t *testing.T) {
@@ -304,4 +312,241 @@ func TestGetConnectionNameandSourceIDs_InvalidJSONMarshaling(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), errMarshalResource)
+}
+
+func TestMarshalAndUnmarshalResource(t *testing.T) {
+	t.Run("Valid marshal and unmarshal to same struct type", func(t *testing.T) {
+		source := &PropertiesTestResource{
+			ID:   TestResourceID,
+			Name: "test-resource",
+			Type: "MyResources.Test/testResources",
+			Properties: map[string]any{
+				"host": "localhost",
+				"port": 5432,
+			},
+		}
+
+		result, err := GetAllPropertiesFromResource(source)
+		require.NoError(t, err)
+		require.Equal(t, TestResourceID, result.ID)
+		require.Equal(t, "test-resource", result.Name)
+		require.Equal(t, "MyResources.Test/testResources", result.Type)
+		require.Equal(t, "localhost", result.Properties["host"])
+		require.Equal(t, float64(5432), result.Properties["port"]) // JSON numbers are float64
+	})
+
+	t.Run("Unmarshal properties through GetPropertiesFromResource", func(t *testing.T) {
+		source := &PropertiesTestResource{
+			ID:   TestResourceID,
+			Name: "test-resource",
+			Type: "MyResources.Test/testResources",
+			Properties: map[string]any{
+				"key":     "value",
+				"number":  123,
+				"boolean": true,
+				"nested": map[string]any{
+					"inner": "value",
+				},
+			},
+		}
+
+		properties, err := GetPropertiesFromResource(source)
+		require.NoError(t, err)
+		require.Equal(t, "value", properties["key"])
+		require.Equal(t, float64(123), properties["number"]) // JSON numbers are float64
+		require.Equal(t, true, properties["boolean"])
+		require.IsType(t, map[string]any{}, properties["nested"])
+		nested := properties["nested"].(map[string]any)
+		require.Equal(t, "value", nested["inner"])
+	})
+
+	t.Run("Marshal error through GetPropertiesFromResource", func(t *testing.T) {
+		source := &InvalidResourceForAll{
+			Properties: map[string]any{"key": "value"},
+			BadField:   func() {}, // Functions cannot be marshaled
+		}
+
+		_, err := GetPropertiesFromResource(source)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), errMarshalResource)
+	})
+
+	t.Run("Unmarshal error through GetAllPropertiesFromResource", func(t *testing.T) {
+		source := &InvalidResourceForAll{
+			Properties: map[string]any{"key": "value"},
+			BadField:   func() {}, // Functions cannot be marshaled
+		}
+
+		_, err := GetAllPropertiesFromResource(source)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), errMarshalResource)
+	})
+
+	t.Run("Test data type preservation", func(t *testing.T) {
+		source := &PropertiesTestResource{
+			ID:   TestResourceID,
+			Name: "test-resource",
+			Type: "MyResources.Test/testResources",
+			Properties: map[string]any{
+				"string":  "value",
+				"int":     42,
+				"float":   3.14,
+				"bool":    true,
+				"null":    nil,
+				"array":   []string{"item1", "item2"},
+				"object": map[string]any{
+					"nested": "value",
+				},
+			},
+		}
+
+		result, err := GetAllPropertiesFromResource(source)
+		require.NoError(t, err)
+
+		// Check that data types are preserved correctly through JSON marshal/unmarshal
+		require.Equal(t, "value", result.Properties["string"])
+		require.Equal(t, float64(42), result.Properties["int"]) // JSON converts all numbers to float64
+		require.Equal(t, 3.14, result.Properties["float"])
+		require.Equal(t, true, result.Properties["bool"])
+		require.Nil(t, result.Properties["null"])
+		
+		// Arrays become []any after JSON processing
+		array := result.Properties["array"].([]any)
+		require.Equal(t, "item1", array[0])
+		require.Equal(t, "item2", array[1])
+		
+		// Objects remain as map[string]any
+		object := result.Properties["object"].(map[string]any)
+		require.Equal(t, "value", object["nested"])
+	})
+}
+
+func TestGetAllPropertiesFromResource(t *testing.T) {
+	tests := []struct {
+		name        string
+		resource    any
+		expected    *ResourceMetadata
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid resource with properties",
+			resource: &PropertiesTestResource{
+				ID:   TestResourceID,
+				Name: "tr",
+				Type: "MyResources.Test/testResources",
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"host":        "localhost",
+					"port":        float64(5432),
+				},
+			},
+			expected: &ResourceMetadata{
+				ID:   TestResourceID,
+				Name: "tr",
+				Type: "MyResources.Test/testResources",
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"host":        "localhost",
+					"port":        float64(5432),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Resource with empty properties",
+			resource: &PropertiesTestResource{
+				ID:         TestResourceID,
+				Name:       "tr",
+				Type:       "MyResources.Test/testResources",
+				Properties: nil,
+			},
+			expected: &ResourceMetadata{
+				ID:         TestResourceID,
+				Name:       "tr",
+				Type:       "MyResources.Test/testResources",
+				Properties: map[string]any{},
+			},
+			expectError: false,
+		},
+		{
+			name: "Resource with missing fields",
+			resource: &PropertiesTestResource{
+				Properties: map[string]any{
+					"host": "localhost",
+				},
+			},
+			expected: &ResourceMetadata{
+				ID:         "",
+				Name:       "",
+				Type:       "",
+				Properties: map[string]any{
+					"host": "localhost",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Resource with complex nested properties",
+			resource: &PropertiesTestResource{
+				ID:   TestResourceID,
+				Name: "tr",
+				Type: "MyResources.Test/testResources",
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"config": map[string]any{
+						"nested": "value",
+						"array":  []string{"item1", "item2"},
+					},
+					"enabled": true,
+				},
+			},
+			expected: &ResourceMetadata{
+				ID:   TestResourceID,
+				Name: "tr",
+				Type: "MyResources.Test/testResources",
+				Properties: map[string]any{
+					"Application": TestApplicationID,
+					"Environment": TestEnvironmentID,
+					"config": map[string]any{
+						"nested": "value",
+						"array":  []any{"item1", "item2"}, // JSON unmarshaling converts to []any
+					},
+					"enabled": true,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Resource with unmarshalable data",
+			resource: &InvalidResourceForAll{
+				Properties: map[string]any{
+					"host": "localhost",
+				},
+				BadField: func() {}, // This will cause JSON marshaling to fail
+			},
+			expected:    nil,
+			expectError: true,
+			errorMsg:    errMarshalResource,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := GetAllPropertiesFromResource(tt.resource)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, result)
+				require.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
 }
