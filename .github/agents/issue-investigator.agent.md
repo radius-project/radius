@@ -1,6 +1,6 @@
 ---
 name: issue-investigator
-description: Review and analyze an issues and provide focused and detailed technical context to help developers understand, evaluate, and create a plan to resolve the issue efficiently.
+description: Review and analyze issues to provide focused, detailed technical context that helps developers understand and evaluate each issue efficiently.
 tools: ["read", "search", "edit", "web", "shell"]
 ---
 
