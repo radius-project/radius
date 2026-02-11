@@ -323,3 +323,26 @@ func RecipePackIDExists(packs []*string, id string) bool {
 	}
 	return false
 }
+
+// ExtractRecipePackIDs extracts recipe pack IDs from an ARM template's
+// properties["recipePacks"] value, which is typed as []any after JSON
+// deserialization. Only literal string elements are returned.
+func ExtractRecipePackIDs(properties map[string]any) []string {
+	var ids []string
+	recipePacks, ok := properties["recipePacks"]
+	if !ok {
+		return ids
+	}
+
+	packsArray, ok := recipePacks.([]any)
+	if !ok {
+		return ids
+	}
+
+	for _, p := range packsArray {
+		if s, ok := p.(string); ok {
+			ids = append(ids, s)
+		}
+	}
+	return ids
+}

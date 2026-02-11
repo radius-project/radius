@@ -341,32 +341,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Build scope → client map for inspecting recipe packs.
-	// Packs in the default scope use the existing factory; packs in other
-	// scopes (from user-specified full resource IDs) get a new factory.
-	clientsByScope := map[string]*corerpv20250801.RecipePacksClient{
-		r.Workspace.Scope: r.RadiusCoreClientFactory.NewRecipePacksClient(),
-	}
-	for _, packIDStr := range packIDs {
-		packID, parseErr := resources.Parse(packIDStr)
-		if parseErr != nil {
-			continue
-		}
-		scope := packID.RootScope()
-		if _, exists := clientsByScope[scope]; !exists {
-			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, scope)
-			if err != nil {
-				return err
-			}
-			clientsByScope[scope] = clientFactory.NewRecipePacksClient()
-		}
-	}
-
+	// Covers workspace scope, default scope, and every additional scope
+	// referenced by the user's recipe pack IDs.
 	if r.DefaultScopeClientFactory == nil {
 		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
 		if err != nil {
 			return err
 		}
 		r.DefaultScopeClientFactory = defaultFactory
+	}
+
+	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
+
+	clientsByScope := map[string]*corerpv20250801.RecipePacksClient{
+		r.Workspace.Scope:                    r.RadiusCoreClientFactory.NewRecipePacksClient(),
+		recipepack.DefaultResourceGroupScope: recipePackDefaultClient,
+	}
+	if err := cmd.PopulateRecipePackClients(ctx, r.Workspace, clientsByScope, packIDs); err != nil {
+		return err
 	}
 
 	// Ensure the default resource group exists before creating recipe packs in it.
@@ -376,13 +368,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
 		return err
-	}
-
-	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
-
-	// Ensure the default scope client is also in the map for inspecting singletons.
-	if _, exists := clientsByScope[recipepack.DefaultResourceGroupScope]; !exists {
-		clientsByScope[recipepack.DefaultResourceGroupScope] = recipePackDefaultClient
 	}
 
 	coveredTypes, conflicts, err := recipepack.InspectRecipePacks(ctx, clientsByScope, packIDs)
