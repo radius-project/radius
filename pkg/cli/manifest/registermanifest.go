@@ -34,7 +34,13 @@ import (
 
 const (
 	initialBackoff = 2 * time.Second
-	maxRetries     = 5
+	// maxRetries is the maximum number of retry attempts for 409 Conflict errors.
+	// With exponential backoff starting at 2s, this allows approximately 8 minutes
+	// of retry time (2s + 4s + 8s + 16s + 32s + 64s + 128s + 256s + 512s ≈ 1022s).
+	// This is necessary to handle async operations that may take several minutes
+	// to complete, especially during UCP initialization when multiple resources
+	// are being created sequentially. See: https://github.com/radius-project/radius/issues/11017
+	maxRetries = 10
 )
 
 // RegisterFile registers a manifest file
