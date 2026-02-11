@@ -25,8 +25,8 @@ pnpm config set store-dir /tmp/.pnpm-store
 
 # Install the binary form of golangci-lint, as recommended
 # https://golangci-lint.run/welcome/install/#local-installation
-echo "Installing golangci-lint v2.8.0..."
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.8.0
+echo "Installing golangci-lint v2.9.0..."
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.9.0
 
 # Other go tools
 echo "Installing controller-gen..."
