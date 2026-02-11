@@ -340,9 +340,19 @@ func ExtractRecipePackIDs(properties map[string]any) []string {
 	}
 
 	for _, p := range packsArray {
-		if s, ok := p.(string); ok {
-			ids = append(ids, s)
+		s, ok := p.(string)
+		if !ok {
+			continue
 		}
+
+		// Skip ARM template expressions like "[reference('mypack').id]".
+		// These are runtime references to other resources in the template
+		// and cannot be parsed as resource IDs.
+		if strings.HasPrefix(s, "[") {
+			continue
+		}
+
+		ids = append(ids, s)
 	}
 	return ids
 }

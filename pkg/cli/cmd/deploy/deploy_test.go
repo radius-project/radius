@@ -1255,6 +1255,91 @@ func Test_setupRecipePacks(t *testing.T) {
 			require.Len(t, packs, 4, "expected 4 singleton recipe packs on %s", key)
 		}
 	})
+
+	t.Run("skips singletons for types covered by template-defined recipe packs via ARM expression", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			scope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			RadiusCoreClientFactory:   factory,
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		// Simulates a compiled bicep template where:
+		//   - A recipe pack "mypack" covers Radius.Compute/containers and Radius.Security/secrets
+		//   - The environment references it via "[reference('mypack').id]" (ARM expression)
+		template := map[string]any{
+			"resources": map[string]any{
+				"mypack": map[string]any{
+					"type": "Radius.Core/recipePacks@2025-08-01-preview",
+					"properties": map[string]any{
+						"name": "mypack",
+						"properties": map[string]any{
+							"recipes": map[string]any{
+								"Radius.Compute/containers": map[string]any{
+									"recipeKind":     "bicep",
+									"recipeLocation": "ghcr.io/example/containers:latest",
+								},
+								"Radius.Security/secrets": map[string]any{
+									"recipeKind":     "bicep",
+									"recipeLocation": "ghcr.io/example/secrets:latest",
+								},
+							},
+						},
+					},
+				},
+				"env": map[string]any{
+					"type": "Radius.Core/environments@2025-08-01-preview",
+					"properties": map[string]any{
+						"name": "myenv",
+						"properties": map[string]any{
+							"recipePacks": []any{
+								"[reference('mypack').id]",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err = runner.setupRecipePacks(context.Background(), template)
+		require.NoError(t, err)
+
+		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
+		outerProps := envRes["properties"].(map[string]any)
+		innerProps := outerProps["properties"].(map[string]any)
+		packs := innerProps["recipePacks"].([]any)
+
+		// The expression reference stays, plus 2 singletons for the 2 types
+		// NOT covered by mypack (persistentVolumes and routes).
+		require.Len(t, packs, 3, "1 ARM expression + 2 uncovered singletons")
+
+		// Verify the ARM expression reference is preserved at position 0.
+		require.Equal(t, "[reference('mypack').id]", packs[0])
+	})
 }
 
 func Test_injectAutomaticParameters(t *testing.T) {
