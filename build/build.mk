@@ -66,12 +66,7 @@ export CGO_ENABLED=0
 ##@ Build
 
 .PHONY: build
-build: check-bicep-types-submodule build-packages build-binaries build-bicep ## Builds all packages and binaries.
-
-.PHONY: check-bicep-types-submodule
-check-bicep-types-submodule: ## Checks if bicep-types submodule exists and is at the correct version.
-	@git submodule status bicep-types | grep -q '^-' && { echo "$(ARROW) Error: The bicep-types submodule is not initialized."; echo "$(ARROW) Please run: git submodule update --init --recursive"; exit 1; } || true
-	@git submodule status bicep-types | grep -q '^+' && { echo "$(ARROW) Warning: The bicep-types submodule is not at the expected commit."; echo "$(ARROW) Please run: git submodule update --init --recursive"; exit 1; } || true
+build: build-packages build-binaries build-bicep ## Builds all packages and binaries.
 
 .PHONY: build-packages
 build-packages: ## Builds all go packages.
