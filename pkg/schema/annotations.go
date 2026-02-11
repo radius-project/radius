@@ -103,7 +103,7 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 		}
 
 		// Check if this field has the x-radius-sensitive annotation
-		// If sensitive, add the path and skip nested properties since the entire field is sensitive
+		// If sensitive, treat the whole field as sensitive and skip nested properties.
 		if isSensitive, ok := fieldSchemaMap[annotationRadiusSensitive].(bool); ok && isSensitive {
 			paths = append(paths, fullPath)
 			continue

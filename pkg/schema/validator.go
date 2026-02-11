@@ -490,6 +490,24 @@ func ConvertToOpenAPISchema(schemaData any) (*openapi3.Schema, error) {
 	return &schema, nil
 }
 
+func deepCopyMap(source map[string]any) (map[string]any, error) {
+	if source == nil {
+		return map[string]any{}, nil
+	}
+
+	bytes, err := json.Marshal(source)
+	if err != nil {
+		return nil, err
+	}
+
+	var copy map[string]any
+	if err = json.Unmarshal(bytes, &copy); err != nil {
+		return nil, err
+	}
+
+	return copy, nil
+}
+
 // validateSchemaWithOpenAPI validates schema data by creating a minimal OpenAPI document
 // and using the library's built-in validation which includes format validation
 func (v *Validator) validateSchemaWithOpenAPI(schema *openapi3.Schema) error {
@@ -888,6 +906,17 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	propertiesData, ok := resourceData["properties"]
 	if !ok {
 		return fmt.Errorf("resource data missing 'properties' field")
+	}
+
+	if schemaMap, ok := schemaData.(map[string]any); ok {
+		if propertiesMap, ok := propertiesData.(map[string]any); ok {
+			propertiesCopy, err := deepCopyMap(propertiesMap)
+			if err != nil {
+				return fmt.Errorf("failed to copy properties: %w", err)
+			}
+			sanitizeSensitiveEncryptedValues(propertiesCopy, schemaMap)
+			propertiesData = propertiesCopy
+		}
 	}
 
 	if err := schemaRef.Value.VisitJSON(propertiesData); err != nil {

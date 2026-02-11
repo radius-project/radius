@@ -73,7 +73,7 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 	if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
 		resourceID := serviceCtx.ResourceID.String()
 		resourceType := serviceCtx.ResourceID.Type()
-		apiVersion := serviceCtx.APIVersion
+		apiVersion := getResourceAPIVersion(serviceCtx.APIVersion, resource)
 
 		sensitiveFieldPaths, err := schema.GetSensitiveFieldPaths(
 			ctx,
@@ -82,6 +82,19 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 			resourceType,
 			apiVersion,
 		)
+		if err != nil {
+			fallbackAPIVersion := getResourceAPIVersion("", resource)
+			if fallbackAPIVersion != "" && fallbackAPIVersion != apiVersion {
+				sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(
+					ctx,
+					c.ucpClient,
+					resourceID,
+					resourceType,
+					fallbackAPIVersion,
+				)
+				apiVersion = fallbackAPIVersion
+			}
+		}
 		if err != nil {
 			logger.Error(err, "Failed to fetch sensitive field paths for GET redaction",
 				"resourceType", resourceType, "apiVersion", apiVersion)
@@ -98,6 +111,22 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	return c.ConstructSyncResponse(ctx, req.Method, etag, resource)
+}
+
+func getResourceAPIVersion(requestAPIVersion string, resource *datamodel.DynamicResource) string {
+	if requestAPIVersion != "" {
+		return requestAPIVersion
+	}
+
+	if resource == nil {
+		return ""
+	}
+
+	metadata := resource.InternalMetadata
+	if metadata.UpdatedAPIVersion != "" {
+		return metadata.UpdatedAPIVersion
+	}
+	return metadata.CreatedAPIVersion
 }
 
 // redactField sets the field at the given path to nil.

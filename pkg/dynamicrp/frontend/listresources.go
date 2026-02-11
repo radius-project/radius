@@ -84,16 +84,30 @@ func (c *ListResourcesWithRedaction) Run(ctx context.Context, w http.ResponseWri
 		if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
 			// Fetch sensitive field paths once for this resource type
 			if !sensitiveFieldPathsFetched {
+				apiVersion := getResourceAPIVersion(serviceCtx.APIVersion, resource)
 				sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(
 					ctx,
 					c.ucpClient,
 					resource.ID,
 					serviceCtx.ResourceID.Type(),
-					serviceCtx.APIVersion,
+					apiVersion,
 				)
 				if err != nil {
+					fallbackAPIVersion := getResourceAPIVersion("", resource)
+					if fallbackAPIVersion != "" && fallbackAPIVersion != apiVersion {
+						sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(
+							ctx,
+							c.ucpClient,
+							resource.ID,
+							serviceCtx.ResourceID.Type(),
+							fallbackAPIVersion,
+						)
+						apiVersion = fallbackAPIVersion
+					}
+				}
+				if err != nil {
 					logger.Error(err, "Failed to fetch sensitive field paths for LIST redaction",
-						"resourceType", serviceCtx.ResourceID.Type(), "apiVersion", serviceCtx.APIVersion)
+						"resourceType", serviceCtx.ResourceID.Type(), "apiVersion", apiVersion)
 					// Continue without redaction on error
 				}
 				sensitiveFieldPathsFetched = true

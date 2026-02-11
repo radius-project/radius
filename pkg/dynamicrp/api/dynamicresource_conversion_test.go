@@ -48,7 +48,7 @@ func Test_DynamicResource_ConvertVersionedToDataModel(t *testing.T) {
 						},
 					},
 					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
+						UpdatedAPIVersion: "2025-08-01-preview",
 					},
 				},
 				Properties: map[string]any{
@@ -65,6 +65,7 @@ func Test_DynamicResource_ConvertVersionedToDataModel(t *testing.T) {
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
+			r.SetAPIVersion("2025-08-01-preview")
 			dm, err := r.ConvertTo()
 
 			if tt.err != nil {
