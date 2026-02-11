@@ -3,6 +3,7 @@
 name: CodeQL Advanced
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -128,7 +129,7 @@ jobs:
 
       - name: Perform GoSec Analysis
         if: matrix.language == 'custom-gosec'
-        uses: securego/gosec@1b7e1e94bc2077fc1adccfc1358399fad2958d5a
+        uses: securego/gosec@398ad549bbf1a51dc978fd966169f660c59774de # v2.23.0
         with:
           args: -no-fail -fmt sarif -out gosec-results.sarif ./...
         continue-on-error: true
