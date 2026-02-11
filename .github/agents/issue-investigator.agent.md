@@ -35,7 +35,7 @@ Find and document relevant resources:
   - Test files that cover this functionality
 - **Documentation:**
   - API documentation for the affected endpoints
-  - Architecture decisions records (ADRs) related to this area
+  - Architecture decision records (ADRs) related to this area
   - README sections or wiki pages
   - Related issues or pull requests (both open and closed)
 - **External resources:**
