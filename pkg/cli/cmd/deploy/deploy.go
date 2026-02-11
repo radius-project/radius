@@ -709,35 +709,25 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 	}
 
 	// Extract existing recipe pack IDs from the template (literal strings only).
-	var existingPacks []string
-	if recipePacks, ok := properties["recipePacks"]; ok {
-		if packsArray, ok := recipePacks.([]any); ok {
-			for _, p := range packsArray {
-				if s, ok := p.(string); ok {
-					existingPacks = append(existingPacks, s)
-				}
-			}
+	existingPacks := recipepack.ExtractRecipePackIDs(properties)
+
+	// Ensure the default-scope client factory is initialised.
+	if r.DefaultScopeClientFactory == nil {
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return err
 		}
+		r.DefaultScopeClientFactory = defaultFactory
 	}
 
-	// Build scope → client map.
-	// Packs in other scopes (from the template) get a new factory.
+	// Build scope → client map covering workspace scope, default scope, and
+	// every additional scope referenced by the template's recipe pack IDs.
 	clientsByScope := map[string]*v20250801preview.RecipePacksClient{
-		r.Workspace.Scope: r.RadiusCoreClientFactory.NewRecipePacksClient(),
+		r.Workspace.Scope:                    r.RadiusCoreClientFactory.NewRecipePacksClient(),
+		recipepack.DefaultResourceGroupScope: r.DefaultScopeClientFactory.NewRecipePacksClient(),
 	}
-	for _, packIDStr := range existingPacks {
-		packID, parseErr := resources.Parse(packIDStr)
-		if parseErr != nil {
-			continue
-		}
-		scope := packID.RootScope()
-		if _, exists := clientsByScope[scope]; !exists {
-			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, scope)
-			if err != nil {
-				return err
-			}
-			clientsByScope[scope] = clientFactory.NewRecipePacksClient()
-		}
+	if err := cmd.PopulateRecipePackClients(ctx, r.Workspace, clientsByScope, existingPacks); err != nil {
+		return err
 	}
 
 	// Inspect existing packs for resource type coverage and conflicts.
@@ -747,14 +737,6 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 	}
 	if len(conflicts) > 0 {
 		return recipepack.FormatConflictError(conflicts)
-	}
-
-	if r.DefaultScopeClientFactory == nil {
-		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
-		if err != nil {
-			return err
-		}
-		r.DefaultScopeClientFactory = defaultFactory
 	}
 
 	// Ensure the default resource group exists before creating recipe packs in it.
@@ -769,8 +751,7 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 	// Create missing singleton recipe packs for uncovered core resource types and
 	// append their IDs so the template deploys the environment with full coverage.
 	// Singletons always live in the default scope.
-	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
-	clientsByScope[recipepack.DefaultResourceGroupScope] = recipePackDefaultClient
+	recipePackDefaultClient := clientsByScope[recipepack.DefaultResourceGroupScope]
 	singletonIDs, err := recipepack.EnsureMissingSingletons(ctx, recipePackDefaultClient, coveredTypes)
 	if err != nil {
 		return err
@@ -780,11 +761,11 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 	// is deployed with all recipe packs in a single operation.
 	if len(singletonIDs) > 0 {
 		existingPacks = append(existingPacks, singletonIDs...)
-		packsAny := make([]any, len(existingPacks))
+		allPacks := make([]any, len(existingPacks))
 		for i, p := range existingPacks {
-			packsAny[i] = p
+			allPacks[i] = p
 		}
-		properties["recipePacks"] = packsAny
+		properties["recipePacks"] = allPacks
 	}
 
 	return nil
