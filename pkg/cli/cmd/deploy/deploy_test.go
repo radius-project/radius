@@ -1107,12 +1107,20 @@ func Test_setupRecipePacks(t *testing.T) {
 		)
 		require.NoError(t, err)
 
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
 		runner := &Runner{
 			Workspace: &workspaces.Workspace{
 				Scope: scope,
 			},
-			RadiusCoreClientFactory: factory,
-			Output:                  &output.MockOutput{},
+			RadiusCoreClientFactory:   factory,
+			DefaultScopeClientFactory: defaultScopeFactory,
+			Output:                    &output.MockOutput{},
 		}
 
 		// Template with two packs that both provide Radius.Compute/containers.

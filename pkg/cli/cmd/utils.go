@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // CreateEnvProviders forms the provider scope from the given
@@ -134,4 +135,31 @@ func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspace
 	}
 
 	return clientFactory, nil
+}
+
+// PopulateRecipePackClients adds a RecipePacksClient to clientsByScope for
+// every scope referenced by packIDs that is not already in the map.
+// Callers seed the map with workspace-scope and default-scope clients before
+// calling this function.
+func PopulateRecipePackClients(
+	ctx context.Context,
+	workspace *workspaces.Workspace,
+	clientsByScope map[string]*v20250801preview.RecipePacksClient,
+	packIDs []string,
+) error {
+	for _, packIDStr := range packIDs {
+		// This is the bicep reference for id, and cannot be invalid.
+		packID, _ := resources.Parse(packIDStr)
+		scope := packID.RootScope()
+		if _, exists := clientsByScope[scope]; exists {
+			continue
+		}
+		factory, err := InitializeRadiusCoreClientFactory(ctx, workspace, scope)
+		if err != nil {
+			return err
+		}
+		clientsByScope[scope] = factory.NewRecipePacksClient()
+	}
+
+	return nil
 }
