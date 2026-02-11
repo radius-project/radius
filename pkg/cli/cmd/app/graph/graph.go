@@ -116,13 +116,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	if r.Format == output.FormatJson {
+	switch r.Format {
+	case output.FormatJson:
 		return r.Output.WriteFormatted(r.Format, applicationGraphResponse, output.FormatterOptions{})
+	default:
+		graph := applicationGraphResponse.Resources
+		d := display(graph, r.ApplicationName)
+		r.Output.LogInfo(d)
+
+		return nil
 	}
-
-	graph := applicationGraphResponse.Resources
-	d := display(graph, r.ApplicationName)
-	r.Output.LogInfo(d)
-
-	return nil
 }
