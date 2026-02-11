@@ -49,7 +49,6 @@ jobs:
         with:
           repository: radius-project/radius
           path: radius
-          submodules: recursive
           persist-credentials: false
 
       - name: Setup Python
@@ -88,18 +87,6 @@ jobs:
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: radius/.node-version
-
-      - name: Install TypeSpec compiler
-        run: |
-          pushd radius/typespec
-          npm ci
-          popd
-
-      - name: Install autorest
-        run: npm install -g autorest@3.7.2
-
-      - name: Install oav
-        run: npm install -g oav@4.0.2
 
       - name: Install mockgen
         run: |

@@ -16,16 +16,16 @@
 
 ##@ Formatting (of JSON files)
 
-PRETTIER_VERSION := 3.3.3
-
 .PHONY: format-check
-format-check: ## Checks the formatting of JSON files.
+format-check: generate-pnpm-installed ## Checks the formatting of JSON files.
+	@pnpm install --frozen-lockfile
 	@echo "$(ARROW) Checking for formatting issues using prettier..."
 	@echo ""
-	@npx --yes prettier@$(PRETTIER_VERSION) --check "*/**/*.{ts,js,mjs,json}"
+	@pnpm exec prettier --check "*/**/*.{ts,js,mjs,json}"
 
 .PHONY: format-write
-format-write: ## Updates the formatting of JSON files.
+format-write: generate-pnpm-installed ## Updates the formatting of JSON files.
+	@pnpm install --frozen-lockfile
 	@echo "$(ARROW) Reformatting files using prettier..."
 	@echo ""
-	@npx --yes prettier@$(PRETTIER_VERSION) --write "*/**/*.{ts,js,mjs,json}"
+	@pnpm exec prettier --write "*/**/*.{ts,js,mjs,json}"
