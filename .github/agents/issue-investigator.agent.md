@@ -126,7 +126,7 @@ Suggested investigation steps: [Next steps for assigned developer]
 
 ## Guidelines:
 - Do not try to solve the issue
-- Do not create a plan to solve hthe issue
+- Do not create a plan to solve the issue
 - Do not change any code or product documentation
 - Do not provide summaries or overviews of Radius as a whole, its functionality or architecture.
 - Do not provide summaries or overviews of the purpse, structure, or content of the current repo.
