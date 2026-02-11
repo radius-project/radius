@@ -673,7 +673,7 @@ func (r *Runner) setupRecipePacks(ctx context.Context, template map[string]any) 
 		return nil
 	}
 
-	// Initialize client factory so we can inspect packs and create singletons.
+	// Initialize client factory so we can inspect packs.
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
 		if err != nil {
@@ -682,8 +682,17 @@ func (r *Runner) setupRecipePacks(ctx context.Context, template map[string]any) 
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
+	// Initialize the default scope client factory so we can access core type singleton packs
+	if r.DefaultScopeClientFactory == nil {
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return err
+		}
+		r.DefaultScopeClientFactory = defaultFactory
+	}
+
 	for _, envResource := range envResources {
-		if err := r.setupRecipePacksForEnvironment(ctx, envResource); err != nil {
+		if err := r.setupRecipePacksForEnvironment(ctx, template, envResource); err != nil {
 			return err
 		}
 	}
@@ -692,7 +701,7 @@ func (r *Runner) setupRecipePacks(ctx context.Context, template map[string]any) 
 }
 
 // setupRecipePacksForEnvironment sets up recipe packs for a single Radius.Core/environments resource.
-func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource map[string]any) error {
+func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, template map[string]any, envResource map[string]any) error {
 	// The compiled ARM template has a double-nested properties structure:
 	//   envResource["properties"]["properties"] is where resource-level fields live.
 	// Navigate to the inner (resource) properties map.
@@ -711,15 +720,6 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 	// Extract existing recipe pack IDs from the template (literal strings only).
 	existingPacks := recipepack.ExtractRecipePackIDs(properties)
 
-	// Ensure the default-scope client factory is initialised.
-	if r.DefaultScopeClientFactory == nil {
-		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
-		if err != nil {
-			return err
-		}
-		r.DefaultScopeClientFactory = defaultFactory
-	}
-
 	// Build scope → client map covering workspace scope, default scope, and
 	// every additional scope referenced by the template's recipe pack IDs.
 	clientsByScope := map[string]*v20250801preview.RecipePacksClient{
@@ -730,13 +730,24 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 		return err
 	}
 
-	// Inspect existing packs for resource type coverage and conflicts.
+	// Inspect existing packs (literal IDs) for resource type coverage and conflicts.
 	coveredTypes, conflicts, err := recipepack.InspectRecipePacks(ctx, clientsByScope, existingPacks)
 	if err != nil {
 		return err
 	}
 	if len(conflicts) > 0 {
 		return recipepack.FormatConflictError(conflicts)
+	}
+
+	// Also check for recipe packs defined in the same template and referenced
+	// via ARM expressions (e.g. "[reference('hotrp2').id]" from bicep's
+	// `hotrp2.id`). These packs don't exist on the server yet, so we read
+	// their covered resource types directly from the template.
+	templateCoveredTypes := extractCoveredTypesFromTemplate(template, envResource)
+	for resourceType, packName := range templateCoveredTypes {
+		if _, exists := coveredTypes[resourceType]; !exists {
+			coveredTypes[resourceType] = packName
+		}
 	}
 
 	// Ensure the default resource group exists before creating recipe packs in it.
@@ -757,15 +768,14 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 		return err
 	}
 
-	// Write the complete list back into the template so the environment resource
-	// is deployed with all recipe packs in a single operation.
+	// Append singleton IDs to the existing recipePacks array in the template,
+	// preserving all original entries (both literal IDs and ARM expressions).
 	if len(singletonIDs) > 0 {
-		existingPacks = append(existingPacks, singletonIDs...)
-		allPacks := make([]any, len(existingPacks))
-		for i, p := range existingPacks {
-			allPacks[i] = p
+		originalPacks, _ := properties["recipePacks"].([]any)
+		for _, id := range singletonIDs {
+			originalPacks = append(originalPacks, id)
 		}
-		properties["recipePacks"] = allPacks
+		properties["recipePacks"] = originalPacks
 	}
 
 	return nil
@@ -806,6 +816,151 @@ func findRadiusCoreEnvironmentResources(template map[string]any) []map[string]an
 	}
 
 	return envResources
+}
+
+// extractCoveredTypesFromTemplate returns resource types covered by recipe pack
+// resources that are defined in the same ARM template and referenced by the
+// given environment resource via ARM expression references.
+//
+// When bicep compiles `mypack.id`, the recipePacks array contains an ARM
+// expression like "[reference('mypack').id]". This function extracts the
+// symbolic name from such expressions, looks up the corresponding
+// Radius.Core/recipePacks resource in the template, and reads its recipes to
+// determine which resource types are covered.
+func extractCoveredTypesFromTemplate(template map[string]any, envResource map[string]any) map[string]string {
+	coveredTypes := map[string]string{}
+
+	resourcesMap, ok := template["resources"].(map[string]any)
+	if !ok {
+		return coveredTypes
+	}
+
+	// Build a set of recipe pack symbolic names that the environment references
+	// via ARM expressions in its recipePacks array.
+	referencedPacks := findReferencedRecipePackNames(envResource)
+	if len(referencedPacks) == 0 {
+		return coveredTypes
+	}
+
+	// For each referenced symbolic name, look up the resource in the template
+	// and extract covered resource types from its recipes.
+	for symbolicName := range referencedPacks {
+		resourceValue, ok := resourcesMap[symbolicName]
+		if !ok {
+			continue
+		}
+
+		resource, ok := resourceValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		resourceType, _ := resource["type"].(string)
+		if !strings.HasPrefix(strings.ToLower(resourceType), "radius.core/recipepacks") {
+			continue
+		}
+
+		// Navigate to the recipes map: properties.properties.recipes
+		// (double-nested properties in ARM template format).
+		outerProps, _ := resource["properties"].(map[string]any)
+		if outerProps == nil {
+			continue
+		}
+
+		innerProps, _ := outerProps["properties"].(map[string]any)
+		if innerProps == nil {
+			// Some templates may have a flat properties structure.
+			innerProps = outerProps
+		}
+
+		recipes, _ := innerProps["recipes"].(map[string]any)
+		if recipes == nil {
+			continue
+		}
+
+		// The pack's name is in properties.name or innerProps.name.
+		packName, _ := outerProps["name"].(string)
+		if packName == "" {
+			packName = symbolicName
+		}
+
+		for resourceTypeName := range recipes {
+			if _, exists := coveredTypes[resourceTypeName]; !exists {
+				coveredTypes[resourceTypeName] = packName
+			}
+		}
+	}
+
+	return coveredTypes
+}
+
+// findReferencedRecipePackNames extracts symbolic resource names from ARM
+// expression references in the environment's recipePacks array.
+//
+// Bicep compiles `mypack.id` to "[reference('mypack').id]". This function
+// parses those expressions and returns the set of symbolic names found.
+func findReferencedRecipePackNames(envResource map[string]any) map[string]bool {
+	names := map[string]bool{}
+
+	outerProps, _ := envResource["properties"].(map[string]any)
+	if outerProps == nil {
+		return names
+	}
+
+	innerProps, _ := outerProps["properties"].(map[string]any)
+	if innerProps == nil {
+		return names
+	}
+
+	packsArray, _ := innerProps["recipePacks"].([]any)
+
+	for _, entry := range packsArray {
+		s, ok := entry.(string)
+		if !ok {
+			continue
+		}
+
+		// ARM expressions are enclosed in [...].
+		if !strings.HasPrefix(s, "[") || !strings.HasSuffix(s, "]") {
+			continue
+		}
+
+		// Extract symbolic name from patterns like:
+		//   [reference('mypack').id]
+		//   [resourceId('Radius.Core/recipePacks', 'name')]
+		name := extractSymbolicNameFromExpression(s)
+		if name != "" {
+			names[name] = true
+		}
+	}
+
+	return names
+}
+
+// extractSymbolicNameFromExpression parses an ARM template expression and
+// returns the symbolic resource name if present.
+//
+// Supported patterns:
+//   - "[reference('symbolicName').id]" → "symbolicName"
+//   - "[reference('symbolicName', ...).id]" → "symbolicName"
+func extractSymbolicNameFromExpression(expr string) string {
+	// Strip the surrounding [ and ]
+	inner := expr[1 : len(expr)-1]
+
+	// Look for reference('name') pattern.
+	const prefix = "reference('"
+	idx := strings.Index(inner, prefix)
+	if idx < 0 {
+		return ""
+	}
+
+	rest := inner[idx+len(prefix):]
+	endQuote := strings.Index(rest, "'")
+	if endQuote < 0 {
+		return ""
+	}
+
+	return rest[:endQuote]
 }
 
 // configureProviders configures environment and cloud providers based on the environment and provider type
