@@ -2,12 +2,6 @@
   "name": "@autorest/bicep",
   "version": "0.0.0",
   "description": "The Azure Bicep extension for classic generators in AutoRest.",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "autorest",
-      "unrs-resolver"
-    ]
-  },
   "scripts": {
     "build": "tsc -p .",
     "generate": "ts-node src/cmd/generate.ts",

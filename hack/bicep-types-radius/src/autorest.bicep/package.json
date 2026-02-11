@@ -2,12 +2,6 @@
   "name": "@autorest/bicep",
   "version": "1.0.0",
   "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "autorest",
-      "unrs-resolver"
-    ]
-  },
   "scripts": {
     "build": "tsc -p .",
     "test": "jest",

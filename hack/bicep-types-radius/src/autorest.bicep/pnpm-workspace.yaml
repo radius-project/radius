@@ -1,0 +1,3 @@
+onlyBuiltDependencies:
+  - autorest
+  - unrs-resolver
