@@ -39,10 +39,8 @@ generate-tsp-installed: generate-pnpm-installed
 .PHONY: generate-pnpm-installed
 generate-pnpm-installed: generate-node-installed
 	@echo "$(ARROW) Detecting pnpm..."
-	@which pnpm > /dev/null 2>&1 || { \
-		echo "$(ARROW) pnpm not found. Enabling pnpm via corepack..."; \
-		corepack enable pnpm; \
-	}
+	@corepack enable pnpm
+	@corepack install
 	@echo "$(ARROW) OK"
 
 .PHONY: tsp-format-check
