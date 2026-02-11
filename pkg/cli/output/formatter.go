@@ -54,7 +54,7 @@ func NewFormatter(format string) (Formatter, error) {
 	case FormatTable:
 		return &TableFormatter{}, nil
 	default:
-		return nil, fmt.Errorf("unsupported format %s", format)
+		return nil, fmt.Errorf("unsupported format %q, supported formats are: %s", format, strings.Join(SupportedFormats(), ", "))
 	}
 }
 
