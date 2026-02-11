@@ -269,3 +269,55 @@ func Test_RecipePackIDExists(t *testing.T) {
 	require.False(t, RecipePackIDExists(packs, "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/secrets"))
 	require.False(t, RecipePackIDExists(nil, "anything"))
 }
+
+func Test_ExtractRecipePackIDs(t *testing.T) {
+	t.Run("nil properties returns nil", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(nil)
+		require.Nil(t, ids)
+	})
+
+	t.Run("missing recipePacks key returns nil", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{"other": "value"})
+		require.Nil(t, ids)
+	})
+
+	t.Run("recipePacks is not an array returns nil", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{"recipePacks": "not-an-array"})
+		require.Nil(t, ids)
+	})
+
+	t.Run("empty array returns nil", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{"recipePacks": []any{}})
+		require.Nil(t, ids)
+	})
+
+	t.Run("skips non-string elements", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{
+			"recipePacks": []any{42, true, nil},
+		})
+		require.Nil(t, ids)
+	})
+
+	t.Run("extracts string elements", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{
+			"recipePacks": []any{
+				"/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack1",
+				"/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack2",
+			},
+		})
+		require.Len(t, ids, 2)
+		require.Equal(t, "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack1", ids[0])
+		require.Equal(t, "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack2", ids[1])
+	})
+
+	t.Run("mixed types extracts only strings", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{
+			"recipePacks": []any{
+				"/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack1",
+				42,
+				"/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack2",
+			},
+		})
+		require.Len(t, ids, 2)
+	})
+}
