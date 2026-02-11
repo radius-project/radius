@@ -320,4 +320,16 @@ func Test_ExtractRecipePackIDs(t *testing.T) {
 		})
 		require.Len(t, ids, 2)
 	})
+
+	t.Run("skips ARM template expressions", func(t *testing.T) {
+		ids := ExtractRecipePackIDs(map[string]any{
+			"recipePacks": []any{
+				"/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack1",
+				"[reference('mypack').id]",
+				"[resourceId('Radius.Core/recipePacks', 'pack2')]",
+			},
+		})
+		require.Len(t, ids, 1)
+		require.Equal(t, "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack1", ids[0])
+	})
 }
