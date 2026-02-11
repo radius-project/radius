@@ -38,7 +38,7 @@ generate-tsp-installed: generate-pnpm-installed
 
 .PHONY: generate-pnpm-installed
 generate-pnpm-installed: generate-node-installed
-	@echo "$(ARROW) Detecting pnpm..."
+	@echo "$(ARROW) Setting up pnpm via corepack..."
 	@corepack enable pnpm
 	@corepack install
 	@echo "$(ARROW) OK"
