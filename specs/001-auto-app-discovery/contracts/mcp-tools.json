@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Radius Discovery MCP Tools",
+  "description": "MCP Tool definitions for AI agent integration with Radius Discovery",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "discover_dependencies",
+      "description": "Analyze source code to detect infrastructure dependencies like databases, caches, and message queues. Returns a list of detected dependencies with confidence scores and evidence.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectPath": {
+            "type": "string",
+            "description": "Path to the project root directory to analyze"
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["python", "javascript", "typescript", "go", "java", "csharp"]
+            },
+            "description": "Programming languages to analyze. Auto-detected if not specified."
+          },
+          "minConfidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "default": 0.7,
+            "description": "Minimum confidence threshold (0.0-1.0) for including results"
+          }
+        },
+        "required": ["projectPath"]
+      }
+    },
+    {
+      "name": "discover_services",
+      "description": "Identify deployable services in a codebase by detecting entry points, Dockerfiles, and application structures. Returns service definitions with detected ports and dependencies.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectPath": {
+            "type": "string",
+            "description": "Path to the project root directory"
+          },
+          "includeTests": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to include test services in detection"
+          }
+        },
+        "required": ["projectPath"]
+      }
+    },
+    {
+      "name": "discover_team_practices",
+      "description": "Extract team conventions and practices from existing Infrastructure as Code (Terraform, Bicep, ARM templates). Returns naming patterns, common tags, security settings, and sizing preferences.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectPath": {
+            "type": "string",
+            "description": "Path to the project root directory containing IaC files"
+          },
+          "iacTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["terraform", "bicep", "arm", "kubernetes", "env-file"]
+            },
+            "description": "Types of IaC to parse. Auto-detected if not specified."
+          }
+        },
+        "required": ["projectPath"]
+      }
+    },
+    {
+      "name": "generate_resource_types",
+      "description": "Map detected dependencies to appropriate Radius Resource Types. Uses a curated catalog to match dependencies to resource type definitions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string" },
+                "name": { "type": "string" },
+                "confidence": { "type": "number" }
+              },
+              "required": ["id", "type", "name"]
+            },
+            "description": "Dependencies to map (output from discover_dependencies)"
+          },
+          "catalogPath": {
+            "type": "string",
+            "description": "Optional path to custom Resource Type catalog"
+          }
+        },
+        "required": ["dependencies"]
+      }
+    },
+    {
+      "name": "discover_recipes",
+      "description": "Search configured recipe sources for recipes that can provision detected dependencies. Searches Azure Verified Modules, Terraform Registry, and internal repositories.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "type": { "type": "string" },
+                "name": { "type": "string" }
+              },
+              "required": ["id", "type", "name"]
+            },
+            "description": "Dependencies to find recipes for"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["avm", "terraform-registry", "git", "local"]
+                },
+                "location": { "type": "string" }
+              },
+              "required": ["type", "location"]
+            },
+            "description": "Recipe sources to search. Uses default sources if not specified."
+          }
+        },
+        "required": ["dependencies"]
+      }
+    },
+    {
+      "name": "generate_app_definition",
+      "description": "Generate a complete Radius application definition (app.bicep) from discovery results. Combines services, dependencies, resource types, and recipes into deployable Bicep.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "discoveryResult": {
+            "type": "object",
+            "description": "Complete discovery result containing services, dependencies, practices, resource types, and recipes",
+            "properties": {
+              "projectPath": { "type": "string" },
+              "services": { "type": "array" },
+              "dependencies": { "type": "array" },
+              "practices": { "type": "object" },
+              "resourceTypes": { "type": "array" },
+              "recipes": { "type": "array" }
+            },
+            "required": ["services", "dependencies"]
+          },
+          "outputFormat": {
+            "type": "string",
+            "enum": ["bicep", "json"],
+            "default": "bicep",
+            "description": "Output format for the generated definition"
+          },
+          "includeComments": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to include explanatory comments in output"
+          }
+        },
+        "required": ["discoveryResult"]
+      }
+    },
+    {
+      "name": "validate_app_definition",
+      "description": "Validate a generated Radius application definition for syntax correctness and completeness. Returns validation errors and warnings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Bicep or JSON content to validate"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["bicep", "json"],
+            "default": "bicep",
+            "description": "Format of the content"
+          }
+        },
+        "required": ["content"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "discovery://result/{projectPath}",
+      "name": "Discovery Result",
+      "description": "Cached discovery result for a project path",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "catalog://resource-types",
+      "name": "Resource Type Catalog",
+      "description": "Built-in catalog of Resource Type definitions",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "catalog://recipes",
+      "name": "Recipe Catalog",
+      "description": "Index of available recipes from configured sources",
+      "mimeType": "application/json"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "analyze_codebase",
+      "description": "Comprehensive codebase analysis prompt that runs all discovery skills",
+      "arguments": [
+        {
+          "name": "projectPath",
+          "description": "Path to the project to analyze",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "generate_radius_app",
+      "description": "End-to-end prompt to discover and generate a Radius application",
+      "arguments": [
+        {
+          "name": "projectPath",
+          "description": "Path to the project",
+          "required": true
+        },
+        {
+          "name": "targetEnvironment",
+          "description": "Target deployment environment (dev, staging, production)",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

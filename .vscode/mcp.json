@@ -7,6 +7,10 @@
     "terraform": {
       "command": "docker",
       "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.3"]
+    },
+    "radius": {
+      "command": "/Users/reshmaabdulrahim/Documents/GitHub/radius-project/radius/rad",
+      "args": ["mcp", "serve"]
     }
   }
 }

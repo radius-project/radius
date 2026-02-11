@@ -1,0 +1,555 @@
+# Infrastructure Library Catalog
+# Maps package/library names to infrastructure dependency types
+#
+# Version: 1.0.0
+# Based on research.md analysis of popular infrastructure libraries
+
+version: "1.0.0"
+
+libraries:
+  # ============================================================================
+  # PostgreSQL Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: pg
+    language: javascript
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+    connectionEnvVar: DATABASE_URL
+
+  - library: pg-promise
+    language: javascript
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+    connectionEnvVar: DATABASE_URL
+
+  - library: postgres
+    language: javascript
+    dependencyType: postgresql
+    confidence: 0.90
+    defaultPort: 5432
+    aliases:
+      - postgres.js
+
+  - library: "@prisma/client"
+    language: javascript
+    dependencyType: postgresql
+    confidence: 0.70
+    defaultPort: 5432
+
+  # Python
+  - library: psycopg2
+    language: python
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+    connectionEnvVar: DATABASE_URL
+    aliases:
+      - psycopg2-binary
+
+  - library: asyncpg
+    language: python
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+
+  - library: sqlalchemy
+    language: python
+    dependencyType: postgresql
+    confidence: 0.60
+    defaultPort: 5432
+
+  # Go
+  - library: github.com/lib/pq
+    language: go
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+    connectionEnvVar: DATABASE_URL
+
+  - library: github.com/jackc/pgx
+    language: go
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+    aliases:
+      - github.com/jackc/pgx/v4
+      - github.com/jackc/pgx/v5
+
+  # Java
+  - library: org.postgresql:postgresql
+    language: java
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+
+  - library: io.r2dbc:r2dbc-postgresql
+    language: java
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+
+  # C#
+  - library: Npgsql
+    language: csharp
+    dependencyType: postgresql
+    confidence: 0.95
+    defaultPort: 5432
+
+  # ============================================================================
+  # MySQL Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: mysql2
+    language: javascript
+    dependencyType: mysql
+    confidence: 0.95
+    defaultPort: 3306
+    connectionEnvVar: MYSQL_URL
+
+  - library: mysql
+    language: javascript
+    dependencyType: mysql
+    confidence: 0.95
+    defaultPort: 3306
+
+  # Python
+  - library: mysqlclient
+    language: python
+    dependencyType: mysql
+    confidence: 0.95
+    defaultPort: 3306
+    aliases:
+      - mysql-connector-python
+      - PyMySQL
+
+  # Go
+  - library: github.com/go-sql-driver/mysql
+    language: go
+    dependencyType: mysql
+    confidence: 0.95
+    defaultPort: 3306
+
+  # Java
+  - library: mysql:mysql-connector-java
+    language: java
+    dependencyType: mysql
+    confidence: 0.95
+    defaultPort: 3306
+    aliases:
+      - com.mysql:mysql-connector-j
+
+  # C#
+  - library: MySql.Data
+    language: csharp
+    dependencyType: mysql
+    confidence: 0.95
+    defaultPort: 3306
+    aliases:
+      - MySqlConnector
+
+  # ============================================================================
+  # MongoDB Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: mongodb
+    language: javascript
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+    connectionEnvVar: MONGODB_URI
+
+  - library: mongoose
+    language: javascript
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+
+  # Python
+  - library: pymongo
+    language: python
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+    connectionEnvVar: MONGODB_URI
+
+  - library: motor
+    language: python
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+
+  # Go
+  - library: go.mongodb.org/mongo-driver
+    language: go
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+    aliases:
+      - go.mongodb.org/mongo-driver/mongo
+
+  # Java
+  - library: org.mongodb:mongodb-driver-sync
+    language: java
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+    aliases:
+      - org.mongodb:mongo-java-driver
+
+  # C#
+  - library: MongoDB.Driver
+    language: csharp
+    dependencyType: mongodb
+    confidence: 0.95
+    defaultPort: 27017
+
+  # ============================================================================
+  # Redis Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: redis
+    language: javascript
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+    connectionEnvVar: REDIS_URL
+
+  - library: ioredis
+    language: javascript
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+
+  # Python
+  - library: redis
+    language: python
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+    connectionEnvVar: REDIS_URL
+    aliases:
+      - redis-py
+
+  - library: aioredis
+    language: python
+    dependencyType: redis
+    confidence: 0.90
+    defaultPort: 6379
+
+  # Go
+  - library: github.com/redis/go-redis/v9
+    language: go
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+    aliases:
+      - github.com/go-redis/redis
+      - github.com/go-redis/redis/v8
+      - github.com/go-redis/redis/v9
+
+  - library: github.com/gomodule/redigo
+    language: go
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+
+  # Java
+  - library: io.lettuce:lettuce-core
+    language: java
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+
+  - library: redis.clients:jedis
+    language: java
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+
+  # C#
+  - library: StackExchange.Redis
+    language: csharp
+    dependencyType: redis
+    confidence: 0.95
+    defaultPort: 6379
+
+  # ============================================================================
+  # RabbitMQ Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: amqplib
+    language: javascript
+    dependencyType: rabbitmq
+    confidence: 0.95
+    defaultPort: 5672
+    connectionEnvVar: RABBITMQ_URL
+
+  # Python
+  - library: pika
+    language: python
+    dependencyType: rabbitmq
+    confidence: 0.95
+    defaultPort: 5672
+    connectionEnvVar: RABBITMQ_URL
+
+  - library: aio-pika
+    language: python
+    dependencyType: rabbitmq
+    confidence: 0.95
+    defaultPort: 5672
+
+  # Go
+  - library: github.com/rabbitmq/amqp091-go
+    language: go
+    dependencyType: rabbitmq
+    confidence: 0.95
+    defaultPort: 5672
+    aliases:
+      - github.com/streadway/amqp
+
+  # Java
+  - library: com.rabbitmq:amqp-client
+    language: java
+    dependencyType: rabbitmq
+    confidence: 0.95
+    defaultPort: 5672
+
+  # C#
+  - library: RabbitMQ.Client
+    language: csharp
+    dependencyType: rabbitmq
+    confidence: 0.95
+    defaultPort: 5672
+
+  # ============================================================================
+  # Kafka Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: kafkajs
+    language: javascript
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+    connectionEnvVar: KAFKA_BROKERS
+
+  - library: node-rdkafka
+    language: javascript
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+
+  # Python
+  - library: kafka-python
+    language: python
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+    connectionEnvVar: KAFKA_BROKERS
+    aliases:
+      - kafka-python-ng
+
+  - library: confluent-kafka
+    language: python
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+
+  # Go
+  - library: github.com/segmentio/kafka-go
+    language: go
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+
+  - library: github.com/confluentinc/confluent-kafka-go
+    language: go
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+    aliases:
+      - github.com/confluentinc/confluent-kafka-go/v2
+
+  # Java
+  - library: org.apache.kafka:kafka-clients
+    language: java
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+
+  # C#
+  - library: Confluent.Kafka
+    language: csharp
+    dependencyType: kafka
+    confidence: 0.95
+    defaultPort: 9092
+
+  # ============================================================================
+  # Azure Blob Storage Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: "@azure/storage-blob"
+    language: javascript
+    dependencyType: azure-blob
+    confidence: 0.95
+    connectionEnvVar: AZURE_STORAGE_CONNECTION_STRING
+
+  # Python
+  - library: azure-storage-blob
+    language: python
+    dependencyType: azure-blob
+    confidence: 0.95
+    connectionEnvVar: AZURE_STORAGE_CONNECTION_STRING
+
+  # Go
+  - library: github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
+    language: go
+    dependencyType: azure-blob
+    confidence: 0.95
+
+  # Java
+  - library: com.azure:azure-storage-blob
+    language: java
+    dependencyType: azure-blob
+    confidence: 0.95
+
+  # C#
+  - library: Azure.Storage.Blobs
+    language: csharp
+    dependencyType: azure-blob
+    confidence: 0.95
+
+  # ============================================================================
+  # Azure Cosmos DB Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: "@azure/cosmos"
+    language: javascript
+    dependencyType: cosmosdb
+    confidence: 0.95
+    connectionEnvVar: AZURE_COSMOS_CONNECTION_STRING
+
+  # Python
+  - library: azure-cosmos
+    language: python
+    dependencyType: cosmosdb
+    confidence: 0.95
+    connectionEnvVar: AZURE_COSMOS_CONNECTION_STRING
+
+  # Go
+  - library: github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos
+    language: go
+    dependencyType: cosmosdb
+    confidence: 0.95
+
+  # Java
+  - library: com.azure:azure-cosmos
+    language: java
+    dependencyType: cosmosdb
+    confidence: 0.95
+
+  # C#
+  - library: Microsoft.Azure.Cosmos
+    language: csharp
+    dependencyType: cosmosdb
+    confidence: 0.95
+
+  # ============================================================================
+  # Azure Key Vault Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: "@azure/keyvault-secrets"
+    language: javascript
+    dependencyType: azure-keyvault
+    confidence: 0.95
+    connectionEnvVar: AZURE_KEYVAULT_URL
+    aliases:
+      - "@azure/keyvault-keys"
+      - "@azure/keyvault-certificates"
+
+  # Python
+  - library: azure-keyvault-secrets
+    language: python
+    dependencyType: azure-keyvault
+    confidence: 0.95
+    connectionEnvVar: AZURE_KEYVAULT_URL
+    aliases:
+      - azure-keyvault-keys
+      - azure-keyvault-certificates
+
+  # Go
+  - library: github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets
+    language: go
+    dependencyType: azure-keyvault
+    confidence: 0.95
+
+  # Java
+  - library: com.azure:azure-security-keyvault-secrets
+    language: java
+    dependencyType: azure-keyvault
+    confidence: 0.95
+    aliases:
+      - com.azure:azure-security-keyvault-keys
+
+  # C#
+  - library: Azure.Security.KeyVault.Secrets
+    language: csharp
+    dependencyType: azure-keyvault
+    confidence: 0.95
+    aliases:
+      - Azure.Security.KeyVault.Keys
+
+  # ============================================================================
+  # AWS S3 Libraries
+  # ============================================================================
+
+  # JavaScript/TypeScript
+  - library: "@aws-sdk/client-s3"
+    language: javascript
+    dependencyType: s3
+    confidence: 0.95
+    connectionEnvVar: AWS_S3_BUCKET
+
+  - library: aws-sdk
+    language: javascript
+    dependencyType: s3
+    confidence: 0.70
+
+  # Python
+  - library: boto3
+    language: python
+    dependencyType: s3
+    confidence: 0.70
+
+  # Go
+  - library: github.com/aws/aws-sdk-go-v2/service/s3
+    language: go
+    dependencyType: s3
+    confidence: 0.95
+    aliases:
+      - github.com/aws/aws-sdk-go/service/s3
+
+  # Java
+  - library: software.amazon.awssdk:s3
+    language: java
+    dependencyType: s3
+    confidence: 0.95
+    aliases:
+      - com.amazonaws:aws-java-sdk-s3
+
+  # C#
+  - library: AWSSDK.S3
+    language: csharp
+    dependencyType: s3
+    confidence: 0.95

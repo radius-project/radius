@@ -1,0 +1,33 @@
+{{- /*
+  Infrastructure resource template for Radius resources.
+  This template generates resource definitions for detected dependencies.
+  
+  Variables:
+    .DependencyID - The unique dependency identifier
+    .Dependency - The detected dependency details
+    .ResourceType - The mapped Radius resource type
+    .IncludeComments - Whether to include comments
+    .Recipe - Optional recipe configuration
+*/ -}}
+{{- if .IncludeComments }}
+// {{ .Dependency.Type }} resource
+// Detected from: {{ .Dependency.Library }}
+{{- if .Dependency.Evidence }}
+// Evidence:
+{{- range .Dependency.Evidence }}
+//   - {{ .FilePath }}:{{ .Line }} ({{ .Type }})
+{{- end }}
+{{- end }}
+{{- end }}
+resource {{ safeName .DependencyID }} '{{ .ResourceType.ResourceType.Name }}@{{ .ResourceType.ResourceType.APIVersion }}' = {
+  name: '{{ safeName .DependencyID }}'
+  properties: {
+    application: app.id
+    environment: environment
+{{- if .Recipe }}
+    recipe: {
+      name: '{{ .Recipe.Name }}'
+    }
+{{- end }}
+  }
+}
