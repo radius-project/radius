@@ -593,6 +593,8 @@ jobs:
           chmod +x ./bin/rad
           # Verify it is the expected binary
           file ./bin/rad | grep -q "ELF" || { echo "Downloaded rad binary is not a valid ELF executable"; exit 1; }
+           # Verify it is the expected rad CLI binary by running a harmless command
+          ./bin/rad version >/dev/null 2>&1 || { echo "Downloaded rad binary is not a working rad CLI executable"; exit 1; }
 
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
