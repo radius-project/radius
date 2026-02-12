@@ -180,21 +180,25 @@ jobs:
         if: needs.changes.outputs.only_changed == 'true'
         run: exit 0
 
-  # Returns success if all matrix jobs in test are successful - otherwise, it returns a failure.
+  # Returns success if all matrix jobs in build-and-push-cli are successful - otherwise, it returns a failure.
   # Use this as a PR status check for GitHub Policy Service instead of individual matrix entry checks.
-  # check-build-and-push-cli:
-  #   if: always()
-  #   name: Check Build and Push CLI Results
-  #   needs: [build-and-push-cli]
-  #   runs-on: ubuntu-24.04
-  #   steps:
-  #     - name: OK
-  #       if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped'}}
-  #       run: exit 0
+  build-check:
+    if: always()
+    name: Build Check
+    needs: [build-and-push-cli]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check build matrix results
+        if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
+        run: |
+          echo "::error::Build and push CLI jobs failed or were cancelled"
+          exit 1
 
-  #     - name: Failure
-  #       if: ${{ needs.build-and-push-cli.result == 'failure' || needs.build-and-push-cli.result == 'cancelled' }}
-  #       run: exit 1
+      - name: Build matrix succeeded
+        if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped' }}
+        run: |
+          echo "All build matrix jobs completed successfully"
+          exit 0
 
   build-and-push-images:
     name: Build and publish container images
@@ -475,3 +479,53 @@ jobs:
             --verify-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+
+  # Comprehensive build summary that checks all critical build jobs.
+  # Use this as the required status check in PR branch protection rules.
+  build-summary:
+    if: always()
+    name: Build Summary
+    needs: [build-check, build-and-push-images, build-and-push-bicep-types]
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Check all build jobs
+        run: |
+          results=(
+            "build-check:${BUILD_CHECK_RESULT}"
+            "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}"
+            "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}"
+          )
+
+          echo "## Build Results Summary" >> "${GITHUB_STEP_SUMMARY}"
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "| Job | Status |" >> "${GITHUB_STEP_SUMMARY}"
+          echo "|-----|--------|" >> "${GITHUB_STEP_SUMMARY}"
+
+          failed=0
+          for result in "${results[@]}"; do
+            job="${result%%:*}"
+            status="${result##*:}"
+
+            if [ "$status" = "success" ] || [ "$status" = "skipped" ]; then
+              echo "| $job | ✅ $status |" >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo "| $job | ❌ $status |" >> "${GITHUB_STEP_SUMMARY}"
+              failed=1
+            fi
+          done
+
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ $failed -eq 1 ]; then
+            echo "::error::One or more build jobs failed or were cancelled"
+            echo "**Result: ❌ BUILD FAILED**" >> "${GITHUB_STEP_SUMMARY}"
+            exit 1
+          else
+            echo "**Result: ✅ ALL BUILDS PASSED**" >> "${GITHUB_STEP_SUMMARY}"
+            echo "All build jobs completed successfully"
+          fi
+        env:
+          BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
+          BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
+          BUILD_AND_PUSH_BICEP_TYPES_RESULT: ${{ needs.build-and-push-bicep-types.result }}
