@@ -3,7 +3,6 @@
 name: Unit Tests
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
@@ -13,6 +12,9 @@ on:
       - main
       - features/*
       - release/*
+  # This workflow can run on forks for testing.
+  # Uncomment the line below and push to your fork's main branch: (git push <remote fork> HEAD:main)
+  # workflow_dispatch: 
 
 permissions: {}
 
