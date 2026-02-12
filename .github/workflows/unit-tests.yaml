@@ -19,7 +19,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: unit-tests-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  group: unit-tests-${{ github.ref }}
   cancel-in-progress: true
 
 env:
