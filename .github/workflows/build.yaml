@@ -487,8 +487,7 @@ jobs:
     name: Build Summary
     needs: [build-check, build-and-push-images, build-and-push-bicep-types]
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
+    permissions: {}
     steps:
       - name: Check all build jobs
         run: |
