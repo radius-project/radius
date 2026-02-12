@@ -84,7 +84,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 			return nil, err
 		}
 
-		return getConfigurationV20250801(envV20250801)
+		return getConfigurationV20250801(ctx, envV20250801, e.ArmClientOptions)
 	}
 
 }
@@ -145,7 +145,7 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	return &config, nil
 }
 
-func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource) (*recipes.Configuration, error) {
+func getConfigurationV20250801(ctx context.Context, environment *v20250801preview.EnvironmentResource, armOptions *arm.ClientOptions) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
@@ -187,6 +187,32 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 
 	if envDatamodel.Properties.Simulated {
 		config.Simulated = true
+	}
+
+	// Fetch TerraformSettings if referenced
+	if envDatamodel.Properties.TerraformSettings != "" {
+		tfSettings, err := FetchTerraformSettings(ctx, envDatamodel.Properties.TerraformSettings, armOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch terraformSettings: %w", err)
+		}
+		tfSettingsDatamodel, err := tfSettings.ConvertTo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert terraformSettings: %w", err)
+		}
+		config.TerraformSettings = &tfSettingsDatamodel.(*datamodel.TerraformSettings_v20250801preview).Properties
+	}
+
+	// Fetch BicepSettings if referenced
+	if envDatamodel.Properties.BicepSettings != "" {
+		bicepSettings, err := FetchBicepSettings(ctx, envDatamodel.Properties.BicepSettings, armOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch bicepSettings: %w", err)
+		}
+		bicepSettingsDatamodel, err := bicepSettings.ConvertTo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert bicepSettings: %w", err)
+		}
+		config.BicepSettings = &bicepSettingsDatamodel.(*datamodel.BicepSettings_v20250801preview).Properties
 	}
 
 	return &config, nil

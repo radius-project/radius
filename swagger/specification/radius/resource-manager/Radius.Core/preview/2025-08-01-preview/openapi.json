@@ -377,7 +377,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}": {
+    "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingName}": {
       "get": {
         "operationId": "BicepSettings_Get",
         "tags": [
@@ -392,7 +392,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepSettingsName",
+            "name": "bicepSettingName",
             "in": "path",
             "description": "Bicep settings resource name.",
             "required": true,
@@ -430,7 +430,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepSettingsName",
+            "name": "bicepSettingName",
             "in": "path",
             "description": "Bicep settings resource name.",
             "required": true,
@@ -483,7 +483,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepSettingsName",
+            "name": "bicepSettingName",
             "in": "path",
             "description": "Bicep settings resource name.",
             "required": true,
@@ -530,7 +530,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepSettingsName",
+            "name": "bicepSettingName",
             "in": "path",
             "description": "Bicep settings resource name.",
             "required": true,
@@ -1044,7 +1044,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}": {
+    "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingName}": {
       "get": {
         "operationId": "TerraformSettings_Get",
         "tags": [
@@ -1059,7 +1059,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformSettingsName",
+            "name": "terraformSettingName",
             "in": "path",
             "description": "Terraform settings resource name.",
             "required": true,
@@ -1097,7 +1097,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformSettingsName",
+            "name": "terraformSettingName",
             "in": "path",
             "description": "Terraform settings resource name.",
             "required": true,
@@ -1150,7 +1150,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformSettingsName",
+            "name": "terraformSettingName",
             "in": "path",
             "description": "Terraform settings resource name.",
             "required": true,
@@ -1197,7 +1197,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformSettingsName",
+            "name": "terraformSettingName",
             "in": "path",
             "description": "Terraform settings resource name.",
             "required": true,
@@ -1563,6 +1563,14 @@
         "authentication": {
           "$ref": "#/definitions/BicepAuthenticationConfiguration",
           "description": "Authentication settings for private registries."
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "List of environment resource IDs that reference this settings resource.",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
         }
       }
     },
@@ -2387,6 +2395,14 @@
         "logging": {
           "$ref": "#/definitions/TerraformLoggingConfiguration",
           "description": "Logging configuration applied to Terraform executions."
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "List of environment resource IDs that reference this settings resource.",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
         }
       }
     },

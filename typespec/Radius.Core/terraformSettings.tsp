@@ -39,7 +39,7 @@ namespace Radius.Core;
 model TerraformSettingsResource
   is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {
   @doc("Terraform settings resource name.")
-  @key("terraformSettingsName")
+  @key("terraformSettingName")
   @path
   @segment("terraformSettings")
   name: ResourceNameString;
@@ -62,6 +62,10 @@ model TerraformSettingsProperties {
 
   @doc("Logging configuration applied to Terraform executions.")
   logging?: TerraformLoggingConfiguration;
+
+  @doc("List of environment resource IDs that reference this settings resource.")
+  @visibility(Lifecycle.Read)
+  referencedBy?: string[];
 }
 
 @doc("Terraform CLI configuration matching the terraformrc file.")

@@ -39,7 +39,7 @@ namespace Radius.Core;
 model BicepSettingsResource
   is TrackedResourceRequired<BicepSettingsProperties, "bicepSettings"> {
   @doc("Bicep settings resource name.")
-  @key("bicepSettingsName")
+  @key("bicepSettingName")
   @path
   @segment("bicepSettings")
   name: ResourceNameString;
@@ -53,6 +53,10 @@ model BicepSettingsProperties {
 
   @doc("Authentication settings for private registries.")
   authentication?: BicepAuthenticationConfiguration;
+
+  @doc("List of environment resource IDs that reference this settings resource.")
+  @visibility(Lifecycle.Read)
+  referencedBy?: string[];
 }
 
 @doc("Authentication configuration for Bicep registries.")
