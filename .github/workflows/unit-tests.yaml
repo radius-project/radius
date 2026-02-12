@@ -3,10 +3,12 @@
 name: Unit Tests
 
 on:
-  workflow_run:
-    workflows: [Build and Test]
-    types:
-      - completed
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - release/*
+  pull_request:
     branches:
       - main
       - features/*
@@ -14,13 +16,16 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: unit-tests-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 env:
   GOTESTSUMVERSION: 1.13.0
 
 jobs:
   unit-tests:
     name: Run Unit Tests
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -30,7 +35,7 @@ jobs:
       - name: Checkout Radius repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Setup Go
@@ -57,15 +62,18 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
+          # This secret is unavailable for fork PRs; Codecov falls back to tokenless upload.
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
           files: ./dist/unit_test/ut_coverage.out
           fail_ci_if_error: false
           verbose: true
 
+      # Process test results and publish annotations. Skipped on fork PRs because
+      # the pull_request trigger does not grant checks: write to forks.
       - name: Process Unit Test Results
         uses: ./.github/actions/process-test-results
-        if: always()
+        if: always() && github.repository == 'radius-project/radius'
         with:
           test_group_name: Unit Tests
           artifact_name: unit_test_results
