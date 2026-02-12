@@ -45,17 +45,17 @@ func NewBicepSettingsClient(rootScope string, credential azcore.TokenCredential,
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - bicepSettingsName - Bicep settings resource name.
+//   - bicepSettingName - Bicep settings resource name.
 //   - resource - Resource create parameters.
 //   - options - BicepSettingsClientCreateOrUpdateOptions contains the optional parameters for the BicepSettingsClient.CreateOrUpdate
 //     method.
-func (client *BicepSettingsClient) CreateOrUpdate(ctx context.Context, bicepSettingsName string, resource BicepSettingsResource, options *BicepSettingsClientCreateOrUpdateOptions) (BicepSettingsClientCreateOrUpdateResponse, error) {
+func (client *BicepSettingsClient) CreateOrUpdate(ctx context.Context, bicepSettingName string, resource BicepSettingsResource, options *BicepSettingsClientCreateOrUpdateOptions) (BicepSettingsClientCreateOrUpdateResponse, error) {
 	var err error
 	const operationName = "BicepSettingsClient.CreateOrUpdate"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.createOrUpdateCreateRequest(ctx, bicepSettingsName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, bicepSettingName, resource, options)
 	if err != nil {
 		return BicepSettingsClientCreateOrUpdateResponse{}, err
 	}
@@ -72,13 +72,13 @@ func (client *BicepSettingsClient) CreateOrUpdate(ctx context.Context, bicepSett
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *BicepSettingsClient) createOrUpdateCreateRequest(ctx context.Context, bicepSettingsName string, resource BicepSettingsResource, _ *BicepSettingsClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}"
+func (client *BicepSettingsClient) createOrUpdateCreateRequest(ctx context.Context, bicepSettingName string, resource BicepSettingsResource, _ *BicepSettingsClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if bicepSettingsName == "" {
-		return nil, errors.New("parameter bicepSettingsName cannot be empty")
+	if bicepSettingName == "" {
+		return nil, errors.New("parameter bicepSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingsName}", url.PathEscape(bicepSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingName}", url.PathEscape(bicepSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -106,15 +106,15 @@ func (client *BicepSettingsClient) createOrUpdateHandleResponse(resp *http.Respo
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - bicepSettingsName - Bicep settings resource name.
+//   - bicepSettingName - Bicep settings resource name.
 //   - options - BicepSettingsClientDeleteOptions contains the optional parameters for the BicepSettingsClient.Delete method.
-func (client *BicepSettingsClient) Delete(ctx context.Context, bicepSettingsName string, options *BicepSettingsClientDeleteOptions) (BicepSettingsClientDeleteResponse, error) {
+func (client *BicepSettingsClient) Delete(ctx context.Context, bicepSettingName string, options *BicepSettingsClientDeleteOptions) (BicepSettingsClientDeleteResponse, error) {
 	var err error
 	const operationName = "BicepSettingsClient.Delete"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.deleteCreateRequest(ctx, bicepSettingsName, options)
+	req, err := client.deleteCreateRequest(ctx, bicepSettingName, options)
 	if err != nil {
 		return BicepSettingsClientDeleteResponse{}, err
 	}
@@ -130,13 +130,13 @@ func (client *BicepSettingsClient) Delete(ctx context.Context, bicepSettingsName
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *BicepSettingsClient) deleteCreateRequest(ctx context.Context, bicepSettingsName string, _ *BicepSettingsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}"
+func (client *BicepSettingsClient) deleteCreateRequest(ctx context.Context, bicepSettingName string, _ *BicepSettingsClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if bicepSettingsName == "" {
-		return nil, errors.New("parameter bicepSettingsName cannot be empty")
+	if bicepSettingName == "" {
+		return nil, errors.New("parameter bicepSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingsName}", url.PathEscape(bicepSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingName}", url.PathEscape(bicepSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -152,15 +152,15 @@ func (client *BicepSettingsClient) deleteCreateRequest(ctx context.Context, bice
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - bicepSettingsName - Bicep settings resource name.
+//   - bicepSettingName - Bicep settings resource name.
 //   - options - BicepSettingsClientGetOptions contains the optional parameters for the BicepSettingsClient.Get method.
-func (client *BicepSettingsClient) Get(ctx context.Context, bicepSettingsName string, options *BicepSettingsClientGetOptions) (BicepSettingsClientGetResponse, error) {
+func (client *BicepSettingsClient) Get(ctx context.Context, bicepSettingName string, options *BicepSettingsClientGetOptions) (BicepSettingsClientGetResponse, error) {
 	var err error
 	const operationName = "BicepSettingsClient.Get"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.getCreateRequest(ctx, bicepSettingsName, options)
+	req, err := client.getCreateRequest(ctx, bicepSettingName, options)
 	if err != nil {
 		return BicepSettingsClientGetResponse{}, err
 	}
@@ -177,13 +177,13 @@ func (client *BicepSettingsClient) Get(ctx context.Context, bicepSettingsName st
 }
 
 // getCreateRequest creates the Get request.
-func (client *BicepSettingsClient) getCreateRequest(ctx context.Context, bicepSettingsName string, _ *BicepSettingsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}"
+func (client *BicepSettingsClient) getCreateRequest(ctx context.Context, bicepSettingName string, _ *BicepSettingsClientGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if bicepSettingsName == "" {
-		return nil, errors.New("parameter bicepSettingsName cannot be empty")
+	if bicepSettingName == "" {
+		return nil, errors.New("parameter bicepSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingsName}", url.PathEscape(bicepSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingName}", url.PathEscape(bicepSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -260,16 +260,16 @@ func (client *BicepSettingsClient) listByScopeHandleResponse(resp *http.Response
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - bicepSettingsName - Bicep settings resource name.
+//   - bicepSettingName - Bicep settings resource name.
 //   - properties - The resource properties to be updated.
 //   - options - BicepSettingsClientUpdateOptions contains the optional parameters for the BicepSettingsClient.Update method.
-func (client *BicepSettingsClient) Update(ctx context.Context, bicepSettingsName string, properties BicepSettingsResourceUpdate, options *BicepSettingsClientUpdateOptions) (BicepSettingsClientUpdateResponse, error) {
+func (client *BicepSettingsClient) Update(ctx context.Context, bicepSettingName string, properties BicepSettingsResourceUpdate, options *BicepSettingsClientUpdateOptions) (BicepSettingsClientUpdateResponse, error) {
 	var err error
 	const operationName = "BicepSettingsClient.Update"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.updateCreateRequest(ctx, bicepSettingsName, properties, options)
+	req, err := client.updateCreateRequest(ctx, bicepSettingName, properties, options)
 	if err != nil {
 		return BicepSettingsClientUpdateResponse{}, err
 	}
@@ -286,13 +286,13 @@ func (client *BicepSettingsClient) Update(ctx context.Context, bicepSettingsName
 }
 
 // updateCreateRequest creates the Update request.
-func (client *BicepSettingsClient) updateCreateRequest(ctx context.Context, bicepSettingsName string, properties BicepSettingsResourceUpdate, _ *BicepSettingsClientUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}"
+func (client *BicepSettingsClient) updateCreateRequest(ctx context.Context, bicepSettingName string, properties BicepSettingsResourceUpdate, _ *BicepSettingsClientUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if bicepSettingsName == "" {
-		return nil, errors.New("parameter bicepSettingsName cannot be empty")
+	if bicepSettingName == "" {
+		return nil, errors.New("parameter bicepSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingsName}", url.PathEscape(bicepSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{bicepSettingName}", url.PathEscape(bicepSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err

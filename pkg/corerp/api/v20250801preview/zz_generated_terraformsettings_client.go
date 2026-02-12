@@ -45,17 +45,17 @@ func NewTerraformSettingsClient(rootScope string, credential azcore.TokenCredent
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - terraformSettingsName - Terraform settings resource name.
+//   - terraformSettingName - Terraform settings resource name.
 //   - resource - Resource create parameters.
 //   - options - TerraformSettingsClientCreateOrUpdateOptions contains the optional parameters for the TerraformSettingsClient.CreateOrUpdate
 //     method.
-func (client *TerraformSettingsClient) CreateOrUpdate(ctx context.Context, terraformSettingsName string, resource TerraformSettingsResource, options *TerraformSettingsClientCreateOrUpdateOptions) (TerraformSettingsClientCreateOrUpdateResponse, error) {
+func (client *TerraformSettingsClient) CreateOrUpdate(ctx context.Context, terraformSettingName string, resource TerraformSettingsResource, options *TerraformSettingsClientCreateOrUpdateOptions) (TerraformSettingsClientCreateOrUpdateResponse, error) {
 	var err error
 	const operationName = "TerraformSettingsClient.CreateOrUpdate"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.createOrUpdateCreateRequest(ctx, terraformSettingsName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, terraformSettingName, resource, options)
 	if err != nil {
 		return TerraformSettingsClientCreateOrUpdateResponse{}, err
 	}
@@ -72,13 +72,13 @@ func (client *TerraformSettingsClient) CreateOrUpdate(ctx context.Context, terra
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *TerraformSettingsClient) createOrUpdateCreateRequest(ctx context.Context, terraformSettingsName string, resource TerraformSettingsResource, _ *TerraformSettingsClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}"
+func (client *TerraformSettingsClient) createOrUpdateCreateRequest(ctx context.Context, terraformSettingName string, resource TerraformSettingsResource, _ *TerraformSettingsClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if terraformSettingsName == "" {
-		return nil, errors.New("parameter terraformSettingsName cannot be empty")
+	if terraformSettingName == "" {
+		return nil, errors.New("parameter terraformSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingsName}", url.PathEscape(terraformSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingName}", url.PathEscape(terraformSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -106,16 +106,16 @@ func (client *TerraformSettingsClient) createOrUpdateHandleResponse(resp *http.R
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - terraformSettingsName - Terraform settings resource name.
+//   - terraformSettingName - Terraform settings resource name.
 //   - options - TerraformSettingsClientDeleteOptions contains the optional parameters for the TerraformSettingsClient.Delete
 //     method.
-func (client *TerraformSettingsClient) Delete(ctx context.Context, terraformSettingsName string, options *TerraformSettingsClientDeleteOptions) (TerraformSettingsClientDeleteResponse, error) {
+func (client *TerraformSettingsClient) Delete(ctx context.Context, terraformSettingName string, options *TerraformSettingsClientDeleteOptions) (TerraformSettingsClientDeleteResponse, error) {
 	var err error
 	const operationName = "TerraformSettingsClient.Delete"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.deleteCreateRequest(ctx, terraformSettingsName, options)
+	req, err := client.deleteCreateRequest(ctx, terraformSettingName, options)
 	if err != nil {
 		return TerraformSettingsClientDeleteResponse{}, err
 	}
@@ -131,13 +131,13 @@ func (client *TerraformSettingsClient) Delete(ctx context.Context, terraformSett
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *TerraformSettingsClient) deleteCreateRequest(ctx context.Context, terraformSettingsName string, _ *TerraformSettingsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}"
+func (client *TerraformSettingsClient) deleteCreateRequest(ctx context.Context, terraformSettingName string, _ *TerraformSettingsClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if terraformSettingsName == "" {
-		return nil, errors.New("parameter terraformSettingsName cannot be empty")
+	if terraformSettingName == "" {
+		return nil, errors.New("parameter terraformSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingsName}", url.PathEscape(terraformSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingName}", url.PathEscape(terraformSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -153,15 +153,15 @@ func (client *TerraformSettingsClient) deleteCreateRequest(ctx context.Context, 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - terraformSettingsName - Terraform settings resource name.
+//   - terraformSettingName - Terraform settings resource name.
 //   - options - TerraformSettingsClientGetOptions contains the optional parameters for the TerraformSettingsClient.Get method.
-func (client *TerraformSettingsClient) Get(ctx context.Context, terraformSettingsName string, options *TerraformSettingsClientGetOptions) (TerraformSettingsClientGetResponse, error) {
+func (client *TerraformSettingsClient) Get(ctx context.Context, terraformSettingName string, options *TerraformSettingsClientGetOptions) (TerraformSettingsClientGetResponse, error) {
 	var err error
 	const operationName = "TerraformSettingsClient.Get"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.getCreateRequest(ctx, terraformSettingsName, options)
+	req, err := client.getCreateRequest(ctx, terraformSettingName, options)
 	if err != nil {
 		return TerraformSettingsClientGetResponse{}, err
 	}
@@ -178,13 +178,13 @@ func (client *TerraformSettingsClient) Get(ctx context.Context, terraformSetting
 }
 
 // getCreateRequest creates the Get request.
-func (client *TerraformSettingsClient) getCreateRequest(ctx context.Context, terraformSettingsName string, _ *TerraformSettingsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}"
+func (client *TerraformSettingsClient) getCreateRequest(ctx context.Context, terraformSettingName string, _ *TerraformSettingsClientGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if terraformSettingsName == "" {
-		return nil, errors.New("parameter terraformSettingsName cannot be empty")
+	if terraformSettingName == "" {
+		return nil, errors.New("parameter terraformSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingsName}", url.PathEscape(terraformSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingName}", url.PathEscape(terraformSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -261,17 +261,17 @@ func (client *TerraformSettingsClient) listByScopeHandleResponse(resp *http.Resp
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2025-08-01-preview
-//   - terraformSettingsName - Terraform settings resource name.
+//   - terraformSettingName - Terraform settings resource name.
 //   - properties - The resource properties to be updated.
 //   - options - TerraformSettingsClientUpdateOptions contains the optional parameters for the TerraformSettingsClient.Update
 //     method.
-func (client *TerraformSettingsClient) Update(ctx context.Context, terraformSettingsName string, properties TerraformSettingsResourceUpdate, options *TerraformSettingsClientUpdateOptions) (TerraformSettingsClientUpdateResponse, error) {
+func (client *TerraformSettingsClient) Update(ctx context.Context, terraformSettingName string, properties TerraformSettingsResourceUpdate, options *TerraformSettingsClientUpdateOptions) (TerraformSettingsClientUpdateResponse, error) {
 	var err error
 	const operationName = "TerraformSettingsClient.Update"
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, operationName)
 	ctx, endSpan := runtime.StartSpan(ctx, operationName, client.internal.Tracer(), nil)
 	defer func() { endSpan(err) }()
-	req, err := client.updateCreateRequest(ctx, terraformSettingsName, properties, options)
+	req, err := client.updateCreateRequest(ctx, terraformSettingName, properties, options)
 	if err != nil {
 		return TerraformSettingsClientUpdateResponse{}, err
 	}
@@ -288,13 +288,13 @@ func (client *TerraformSettingsClient) Update(ctx context.Context, terraformSett
 }
 
 // updateCreateRequest creates the Update request.
-func (client *TerraformSettingsClient) updateCreateRequest(ctx context.Context, terraformSettingsName string, properties TerraformSettingsResourceUpdate, _ *TerraformSettingsClientUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}"
+func (client *TerraformSettingsClient) updateCreateRequest(ctx context.Context, terraformSettingName string, properties TerraformSettingsResourceUpdate, _ *TerraformSettingsClientUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if terraformSettingsName == "" {
-		return nil, errors.New("parameter terraformSettingsName cannot be empty")
+	if terraformSettingName == "" {
+		return nil, errors.New("parameter terraformSettingName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingsName}", url.PathEscape(terraformSettingsName))
+	urlPath = strings.ReplaceAll(urlPath, "{terraformSettingName}", url.PathEscape(terraformSettingName))
 	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err

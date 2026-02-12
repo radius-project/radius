@@ -22,15 +22,15 @@ import (
 type TerraformSettingsServer struct {
 	// CreateOrUpdate is the fake for method TerraformSettingsClient.CreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
-	CreateOrUpdate func(ctx context.Context, terraformSettingsName string, resource v20250801preview.TerraformSettingsResource, options *v20250801preview.TerraformSettingsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
+	CreateOrUpdate func(ctx context.Context, terraformSettingName string, resource v20250801preview.TerraformSettingsResource, options *v20250801preview.TerraformSettingsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
 
 	// Delete is the fake for method TerraformSettingsClient.Delete
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusNoContent
-	Delete func(ctx context.Context, terraformSettingsName string, options *v20250801preview.TerraformSettingsClientDeleteOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientDeleteResponse], errResp azfake.ErrorResponder)
+	Delete func(ctx context.Context, terraformSettingName string, options *v20250801preview.TerraformSettingsClientDeleteOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientDeleteResponse], errResp azfake.ErrorResponder)
 
 	// Get is the fake for method TerraformSettingsClient.Get
 	// HTTP status codes to indicate success: http.StatusOK
-	Get func(ctx context.Context, terraformSettingsName string, options *v20250801preview.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder)
+	Get func(ctx context.Context, terraformSettingName string, options *v20250801preview.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder)
 
 	// NewListByScopePager is the fake for method TerraformSettingsClient.NewListByScopePager
 	// HTTP status codes to indicate success: http.StatusOK
@@ -38,7 +38,7 @@ type TerraformSettingsServer struct {
 
 	// Update is the fake for method TerraformSettingsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
-	Update func(ctx context.Context, terraformSettingsName string, properties v20250801preview.TerraformSettingsResourceUpdate, options *v20250801preview.TerraformSettingsClientUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientUpdateResponse], errResp azfake.ErrorResponder)
+	Update func(ctx context.Context, terraformSettingName string, properties v20250801preview.TerraformSettingsResourceUpdate, options *v20250801preview.TerraformSettingsClientUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientUpdateResponse], errResp azfake.ErrorResponder)
 }
 
 // NewTerraformSettingsServerTransport creates a new instance of TerraformSettingsServerTransport with the provided implementation.
@@ -114,7 +114,7 @@ func (t *TerraformSettingsServerTransport) dispatchCreateOrUpdate(req *http.Requ
 	if t.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -124,11 +124,11 @@ func (t *TerraformSettingsServerTransport) dispatchCreateOrUpdate(req *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
+	terraformSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.CreateOrUpdate(req.Context(), terraformSettingsNameParam, body, nil)
+	respr, errRespr := t.srv.CreateOrUpdate(req.Context(), terraformSettingNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -147,17 +147,17 @@ func (t *TerraformSettingsServerTransport) dispatchDelete(req *http.Request) (*h
 	if t.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
+	terraformSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.Delete(req.Context(), terraformSettingsNameParam, nil)
+	respr, errRespr := t.srv.Delete(req.Context(), terraformSettingNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -176,17 +176,17 @@ func (t *TerraformSettingsServerTransport) dispatchGet(req *http.Request) (*http
 	if t.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
+	terraformSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.Get(req.Context(), terraformSettingsNameParam, nil)
+	respr, errRespr := t.srv.Get(req.Context(), terraformSettingNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -238,7 +238,7 @@ func (t *TerraformSettingsServerTransport) dispatchUpdate(req *http.Request) (*h
 	if t.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -248,11 +248,11 @@ func (t *TerraformSettingsServerTransport) dispatchUpdate(req *http.Request) (*h
 	if err != nil {
 		return nil, err
 	}
-	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
+	terraformSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.Update(req.Context(), terraformSettingsNameParam, body, nil)
+	respr, errRespr := t.srv.Update(req.Context(), terraformSettingNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}

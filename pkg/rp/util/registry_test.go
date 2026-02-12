@@ -48,6 +48,39 @@ func Test_GetRegistrySecrets(t *testing.T) {
 	}{
 		{
 			definition: recipes.Configuration{
+				BicepSettings: &datamodel.BicepSettingsProperties_v20250801preview{
+					Authentication: &datamodel.BicepAuthenticationConfiguration{
+						Registries: map[string]*datamodel.BicepRegistryAuthentication{
+							"test.azurecr.io": {
+								Basic: &datamodel.BicepBasicAuthentication{
+									Password: &datamodel.SecretRef{SecretID: "settingsSecret", Key: "password"},
+								},
+							},
+						},
+					},
+				},
+				RecipeConfig: datamodel.RecipeConfigProperties{},
+			},
+			templatePath: "test.azurecr.io/test-private-registry:latest",
+			secrets: map[string]recipes.SecretData{
+				"settingsSecret": {
+					Type: "basicAuthentication",
+					Data: map[string]string{
+						"username": "test-username",
+						"password": "test-password",
+					},
+				},
+			},
+			exp: recipes.SecretData{
+				Type: "basicAuthentication",
+				Data: map[string]string{
+					"username": "test-username",
+					"password": "test-password",
+				},
+			},
+		},
+		{
+			definition: recipes.Configuration{
 				RecipeConfig: datamodel.RecipeConfigProperties{
 					Bicep: datamodel.BicepConfigProperties{
 						Authentication: map[string]datamodel.RegistrySecretConfig{

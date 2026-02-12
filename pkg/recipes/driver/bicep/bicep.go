@@ -19,6 +19,7 @@ package bicep
 import (
 	"context"
 	"fmt"
+	"net/url"
 	reflect "reflect"
 	"strconv"
 	"time"
@@ -94,16 +95,47 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, err
 	}
 
-	registryClient := d.RegistryClient
-	// Get ORAS authentication client if secrets are found for the registry.
-	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
-		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
-		if err != nil {
-			return nil, err
-		}
-
-		registryClient = authClient
+	registryClient, err := d.resolveRegistryClient(ctx, opts.BaseOptions, secrets)
+	if err != nil {
+		return nil, err
 	}
+
+	// var newRegistryClient authclient.AuthClient
+	// // Get ORAS authentication client if secrets are found for the registry.
+	// if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
+	// 	// TODO: Remove legacy secret-based registry auth once we completely transition to Radius.Core resources.
+	// 	newRegistryClient, err = authclient.GetNewRegistryAuthClient(secrets)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	// if opts.Configuration.BicepSettings.Authentication != nil && opts.Configuration.BicepSettings.Authentication.Registries != nil {
+	// 	parsedURL, err := url.Parse("https://" + opts.Definition.TemplatePath)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if authType, ok := opts.Configuration.BicepSettings.Authentication.Registries[parsedURL.Host]; ok {
+	// 		if authType.Basic != nil {
+	// 			newRegistryClient = authclient.NewBasicAuthentication(authType.Basic.Username, opts.Secrets[authType.Basic.Password.SecretID].Data[authType.Basic.Password.Key])
+	// 		} else if authType.AzureWorkloadIdentity != nil {
+	// 			newRegistryClient = authclient.NewAzureWorkloadIdentity(authType.AzureWorkloadIdentity.ClientID, authType.AzureWorkloadIdentity.TenantID)
+
+	// 		} else if authType.AwsIrsa != nil {
+	// 			newRegistryClient = authclient.NewAwsIRSA(authType.AwsIrsa.RoleArn)
+	// 		}
+
+	// 	}
+	// }
+
+	// if newRegistryClient != nil {
+	// 	authClient, err := getRegistryAuthClient(ctx, newRegistryClient, opts.Definition.TemplatePath)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	registryClient = authClient
+	// }
 
 	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
@@ -281,16 +313,26 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 		return nil, err
 	}
 
-	registryClient := d.RegistryClient
-	// Get ORAS authentication client if secrets are found for the registry.
-	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
-		authClient, err := getRegistryAuthClient(ctx, secrets, opts.Definition.TemplatePath)
-		if err != nil {
-			return nil, err
-		}
-
-		registryClient = authClient
+	registryClient, err := d.resolveRegistryClient(ctx, opts, secrets)
+	if err != nil {
+		return nil, err
 	}
+
+	// registryClient := d.RegistryClient
+	// // Get ORAS authentication client if secrets are found for the registry.
+	// if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
+	// 	newRegistryClient, err := authclient.GetNewRegistryAuthClient(secrets)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	authClient, err := getRegistryAuthClient(ctx, newRegistryClient, opts.Definition.TemplatePath)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	registryClient = authClient
+	// }
 
 	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
@@ -504,11 +546,48 @@ func addSecretStoreKeys(secretStoreIDResourceKeys map[string][]string, secretSto
 	secretStoreIDResourceKeys[secretStoreID] = append([]string(nil), filteredKeys...)
 }
 
-func getRegistryAuthClient(ctx context.Context, secrets recipes.SecretData, templatePath string) (remote.Client, error) {
-	newRegistryClient, err := authclient.GetNewRegistryAuthClient(secrets)
-	if err != nil {
-		return nil, err
+func getRegistryAuthClient(ctx context.Context, newRegistryClient authclient.AuthClient, templatePath string) (remote.Client, error) {
+	return newRegistryClient.GetAuthClient(ctx, templatePath)
+}
+
+func (d *bicepDriver) resolveRegistryClient(ctx context.Context, opts driver.BaseOptions, secrets recipes.SecretData) (remote.Client, error) {
+	// Prefer legacy secret-based auth when provided (to be removed after migration).
+	if !reflect.DeepEqual(secrets, recipes.SecretData{}) {
+		newRegistryClient, err := authclient.GetNewRegistryAuthClient(secrets)
+		if err != nil {
+			return nil, err
+		}
+		return getRegistryAuthClient(ctx, newRegistryClient, opts.Definition.TemplatePath)
 	}
 
-	return newRegistryClient.GetAuthClient(ctx, templatePath)
+	var newRegistryClient authclient.AuthClient
+	auth := opts.Configuration.BicepSettings.Authentication
+	if auth != nil && auth.Registries != nil {
+		parsedURL, err := url.Parse("https://" + opts.Definition.TemplatePath)
+		if err != nil {
+			return nil, err
+		}
+		if authType, ok := auth.Registries[parsedURL.Host]; ok {
+			switch {
+			case authType.Basic != nil:
+				newRegistryClient = authclient.NewBasicAuthentication(
+					authType.Basic.Username,
+					opts.Secrets[authType.Basic.Password.SecretID].Data[authType.Basic.Password.Key],
+				)
+			case authType.AzureWorkloadIdentity != nil:
+				newRegistryClient = authclient.NewAzureWorkloadIdentity(
+					authType.AzureWorkloadIdentity.ClientID,
+					authType.AzureWorkloadIdentity.TenantID,
+				)
+			case authType.AwsIrsa != nil:
+				newRegistryClient = authclient.NewAwsIRSA(authType.AwsIrsa.RoleArn)
+			}
+		}
+	}
+
+	if newRegistryClient == nil {
+		return d.RegistryClient, nil
+	}
+
+	return getRegistryAuthClient(ctx, newRegistryClient, opts.Definition.TemplatePath)
 }

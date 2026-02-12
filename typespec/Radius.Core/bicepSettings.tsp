@@ -39,7 +39,7 @@ namespace Radius.Core;
 model BicepSettingsResource
   is TrackedResourceRequired<BicepSettingsProperties, "bicepSettings"> {
   @doc("Bicep settings resource name.")
-  @key("bicepSettingsName")
+  @key("bicepSettingName")
   @path
   @segment("bicepSettings")
   name: ResourceNameString;

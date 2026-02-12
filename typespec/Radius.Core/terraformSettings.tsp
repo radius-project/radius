@@ -39,7 +39,7 @@ namespace Radius.Core;
 model TerraformSettingsResource
   is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {
   @doc("Terraform settings resource name.")
-  @key("terraformSettingsName")
+  @key("terraformSettingName")
   @path
   @segment("terraformSettings")
   name: ResourceNameString;

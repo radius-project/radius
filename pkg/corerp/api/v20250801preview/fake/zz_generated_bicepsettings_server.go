@@ -22,15 +22,15 @@ import (
 type BicepSettingsServer struct {
 	// CreateOrUpdate is the fake for method BicepSettingsClient.CreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
-	CreateOrUpdate func(ctx context.Context, bicepSettingsName string, resource v20250801preview.BicepSettingsResource, options *v20250801preview.BicepSettingsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
+	CreateOrUpdate func(ctx context.Context, bicepSettingName string, resource v20250801preview.BicepSettingsResource, options *v20250801preview.BicepSettingsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
 
 	// Delete is the fake for method BicepSettingsClient.Delete
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusNoContent
-	Delete func(ctx context.Context, bicepSettingsName string, options *v20250801preview.BicepSettingsClientDeleteOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientDeleteResponse], errResp azfake.ErrorResponder)
+	Delete func(ctx context.Context, bicepSettingName string, options *v20250801preview.BicepSettingsClientDeleteOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientDeleteResponse], errResp azfake.ErrorResponder)
 
 	// Get is the fake for method BicepSettingsClient.Get
 	// HTTP status codes to indicate success: http.StatusOK
-	Get func(ctx context.Context, bicepSettingsName string, options *v20250801preview.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder)
+	Get func(ctx context.Context, bicepSettingName string, options *v20250801preview.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder)
 
 	// NewListByScopePager is the fake for method BicepSettingsClient.NewListByScopePager
 	// HTTP status codes to indicate success: http.StatusOK
@@ -38,7 +38,7 @@ type BicepSettingsServer struct {
 
 	// Update is the fake for method BicepSettingsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
-	Update func(ctx context.Context, bicepSettingsName string, properties v20250801preview.BicepSettingsResourceUpdate, options *v20250801preview.BicepSettingsClientUpdateOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientUpdateResponse], errResp azfake.ErrorResponder)
+	Update func(ctx context.Context, bicepSettingName string, properties v20250801preview.BicepSettingsResourceUpdate, options *v20250801preview.BicepSettingsClientUpdateOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientUpdateResponse], errResp azfake.ErrorResponder)
 }
 
 // NewBicepSettingsServerTransport creates a new instance of BicepSettingsServerTransport with the provided implementation.
@@ -114,7 +114,7 @@ func (b *BicepSettingsServerTransport) dispatchCreateOrUpdate(req *http.Request)
 	if b.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -124,11 +124,11 @@ func (b *BicepSettingsServerTransport) dispatchCreateOrUpdate(req *http.Request)
 	if err != nil {
 		return nil, err
 	}
-	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
+	bicepSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.CreateOrUpdate(req.Context(), bicepSettingsNameParam, body, nil)
+	respr, errRespr := b.srv.CreateOrUpdate(req.Context(), bicepSettingNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -147,17 +147,17 @@ func (b *BicepSettingsServerTransport) dispatchDelete(req *http.Request) (*http.
 	if b.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
+	bicepSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.Delete(req.Context(), bicepSettingsNameParam, nil)
+	respr, errRespr := b.srv.Delete(req.Context(), bicepSettingNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -176,17 +176,17 @@ func (b *BicepSettingsServerTransport) dispatchGet(req *http.Request) (*http.Res
 	if b.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
+	bicepSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.Get(req.Context(), bicepSettingsNameParam, nil)
+	respr, errRespr := b.srv.Get(req.Context(), bicepSettingNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -238,7 +238,7 @@ func (b *BicepSettingsServerTransport) dispatchUpdate(req *http.Request) (*http.
 	if b.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -248,11 +248,11 @@ func (b *BicepSettingsServerTransport) dispatchUpdate(req *http.Request) (*http.
 	if err != nil {
 		return nil, err
 	}
-	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
+	bicepSettingNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.Update(req.Context(), bicepSettingsNameParam, body, nil)
+	respr, errRespr := b.srv.Update(req.Context(), bicepSettingNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
