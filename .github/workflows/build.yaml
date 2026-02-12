@@ -187,8 +187,6 @@ jobs:
     name: Build Check
     needs: [build-and-push-cli]
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
     steps:
       - name: Check build matrix results
         if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
