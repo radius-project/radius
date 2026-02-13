@@ -178,7 +178,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          submodules: recursive
           persist-credentials: false
 
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
@@ -268,7 +267,6 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-          submodules: recursive
           persist-credentials: false
 
       - name: Checkout
@@ -276,7 +274,6 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-          submodules: recursive
           persist-credentials: false
 
       - name: Setup Go
@@ -567,7 +564,6 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
-          submodules: recursive
           persist-credentials: false
 
       - name: Checkout Samples repository

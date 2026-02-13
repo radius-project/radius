@@ -55,7 +55,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          submodules: recursive
           persist-credentials: false
 
       - name: Setup Go
@@ -69,18 +68,6 @@ jobs:
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version-file: .node-version
-
-      - name: Install TypeSpec compiler
-        run: |
-          pushd typespec
-          npm ci
-          popd
-
-      - name: Install autorest
-        run: npm install -g autorest@3.7.2
-
-      - name: Install oav
-        run: npm install -g oav@4.0.2
 
       - name: Install mockgen
         run: go install go.uber.org/mock/mockgen@v0.4.0
@@ -103,15 +90,12 @@ jobs:
           cd ${{ env.HELM_CHARTS_DIR }} && helm unittest .
 
       - name: Run TypeSpec format check
-        run: |
-          pushd typespec
-          npx tsp format --check "**/*.tsp"
-          popd
+        run: make tsp-format-check
 
       - name: Run linter
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: v2.8.0
+          version: v2.9.0
           args: --timeout=10m
           skip-cache: true
           install-mode: binary

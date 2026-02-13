@@ -49,6 +49,11 @@ Review the analyzed changes and provide constructive, actionable feedback:
 - **Format**: Keep comments concise and focused on changes that need to be made
 - **Structure**: Organize feedback by file with specific line references
 
+#### PR Title Review
+
+- Examine the PR title to ensure it clearly and concisely describes the changes in the PR
+- If the PR title is not descriptive, vague, overly broad, or does not accurately reflect the changes, suggest an improved title that clearly and concisely describes the PR
+
 #### General Code Quality Criteria
 
 As a world-class programming expert and good teammate, evaluate:

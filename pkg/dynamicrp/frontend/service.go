@@ -24,8 +24,12 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/go-chi/chi/v5"
@@ -60,6 +64,21 @@ func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to get database client: %w", err)
 	}
 
+	// Create UCP client for schema fetching
+	ucpClient, err := v20231001preview.NewClientFactory(
+		&aztoken.AnonymousCredential{},
+		sdk.NewClientOptions(s.options.UCP),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create UCP client: %w", err)
+	}
+
+	// Create sensitive data handler for encrypting sensitive fields
+	sensitiveDataHandler, err := s.createSensitiveDataHandler(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sensitive data handler: %w", err)
+	}
+
 	controllerOptions := controller.Options{
 		Address:        s.options.Config.Server.Address(),
 		PathBase:       s.options.Config.Server.PathBase,
@@ -70,7 +89,7 @@ func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 		ResourceType: "",  // Set dynamically
 	}
 
-	err = s.registerRoutes(r, controllerOptions)
+	err = s.registerRoutes(r, controllerOptions, ucpClient, sensitiveDataHandler)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register routes: %w", err)
 	}
@@ -130,4 +149,25 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
+}
+
+// createSensitiveDataHandler creates a SensitiveDataHandler for encrypting sensitive fields.
+// It loads the encryption key from a Kubernetes secret.
+func (s *Service) createSensitiveDataHandler(ctx context.Context) (*encryption.SensitiveDataHandler, error) {
+	// Get Kubernetes runtime client from provider
+	kubeClient, err := s.options.KubernetesProvider.RuntimeClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Kubernetes client: %w", err)
+	}
+
+	// Create key provider that loads encryption keys from Kubernetes secret
+	keyProvider := encryption.NewKubernetesKeyProvider(kubeClient, nil)
+
+	// Create handler with versioned key support
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(ctx, keyProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sensitive data handler from key provider: %w", err)
+	}
+
+	return handler, nil
 }

@@ -3,6 +3,7 @@
 name: CodeQL Advanced
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -40,7 +41,7 @@ jobs:
 
       - name: Filter
         id: filter
-        uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891 # v47.0.1
+        uses: tj-actions/changed-files@8cba46e29c11878d930bca7870bb54394d3e8b21 # v47.0.2
         with:
           json: true
           escape_json: false
@@ -92,7 +93,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-          submodules: recursive
 
       - name: Setup Go
         if: matrix.language == 'go'
@@ -129,7 +129,7 @@ jobs:
 
       - name: Perform GoSec Analysis
         if: matrix.language == 'custom-gosec'
-        uses: securego/gosec@a631af86ec6d2557e40dac102293f15209794a75
+        uses: securego/gosec@398ad549bbf1a51dc978fd966169f660c59774de # v2.23.0
         with:
           args: -no-fail -fmt sarif -out gosec-results.sarif ./...
         continue-on-error: true
