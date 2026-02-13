@@ -122,7 +122,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		workspace.Name = ws.Name
 	}
 
-	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
+	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", options.Environment.Name, options.Environment.Name)
 	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
 	return &options, workspace, nil
 }
