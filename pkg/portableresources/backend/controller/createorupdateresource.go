@@ -90,7 +90,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		resourceType := resource.GetBaseResource().Type
 		schema, schemaErr := schemautil.GetSchema(ctx, c.UcpClient(), req.ResourceID, resourceType, apiVersion)
 		if schemaErr != nil {
-			logger.Error(schemaErr, "Failed to fetch schema for sensitive field detection", "resourceID", req.ResourceID)
+			return ctrl.Result{}, fmt.Errorf("failed to fetch schema for sensitive field detection: %w", schemaErr)
 		} else if schema != nil {
 			sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(schema, "")
 			if len(sensitiveFieldPaths) > 0 {
@@ -329,11 +329,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 }
 
 func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {
-	metadata := resource.GetBaseResource().InternalMetadata
-	if metadata.UpdatedAPIVersion != "" {
-		return metadata.UpdatedAPIVersion
-	}
-	return metadata.CreatedAPIVersion
+	return resource.GetBaseResource().InternalMetadata.UpdatedAPIVersion
 }
 
 func deepCopyProperties(source map[string]any) (map[string]any, error) {

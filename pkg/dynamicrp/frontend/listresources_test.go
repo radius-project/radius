@@ -17,6 +17,7 @@ limitations under the License.
 package frontend
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -322,16 +323,18 @@ func TestListResourcesWithRedaction_SchemaFetchError(t *testing.T) {
 	ctx := rpctest.NewARMRequestContext(req)
 	w := httptest.NewRecorder()
 
-	// Should succeed even though schema fetch fails (continues without redaction)
+	// Should fail-safe: return error instead of exposing potentially sensitive data
 	resp, err := c.Run(ctx, w, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	paginatedResp, ok := resp.(*rest.OKResponse)
-	require.True(t, ok)
-	paginatedList, ok := paginatedResp.Body.(*v1.PaginatedList)
-	require.True(t, ok)
-	require.Len(t, paginatedList.Value, 1)
+	_ = resp.Apply(ctx, w, req)
+	require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+
+	var body v1.ErrorResponse
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
+	require.Equal(t, v1.CodeInternal, body.Error.Code)
+	require.Contains(t, body.Error.Message, "Failed to fetch schema for security validation")
 }
 
 func TestListResourcesWithRedaction_DatabaseQueryError(t *testing.T) {

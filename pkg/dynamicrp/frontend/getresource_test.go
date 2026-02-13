@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/stretchr/testify/require"
@@ -161,7 +162,7 @@ func TestGetResourceWithRedaction_SucceededSkipsRedaction(t *testing.T) {
 	require.Equal(t, "secret123", properties["password"])
 }
 
-func TestGetResourceWithRedaction_SchemaFetchErrorContinues(t *testing.T) {
+func TestGetResourceWithRedaction_SchemaFetchErrorReturnsError(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -192,13 +193,13 @@ func TestGetResourceWithRedaction_SchemaFetchErrorContinues(t *testing.T) {
 	require.NotNil(t, resp)
 
 	_ = resp.Apply(ctx, w, req)
-	require.Equal(t, http.StatusOK, w.Result().StatusCode)
+	// Expect fail-safe behavior: return error instead of exposing potentially sensitive data
+	require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
-	var body map[string]any
+	var body v1.ErrorResponse
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	properties, ok := body["properties"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, "secret123", properties["password"])
+	require.Equal(t, v1.CodeInternal, body.Error.Code)
+	require.Contains(t, body.Error.Message, "Failed to fetch schema for security validation")
 }
 
 func testGetUCPClientFactoryWithSensitiveFields() (*v20231001preview.ClientFactory, error) {
@@ -249,29 +250,7 @@ func createGetFakeUCPClientFactory(schema map[string]any) (*v20231001preview.Cli
 			Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
 		},
 	})
-}/*
-Copyright 2023 The Radius Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package frontend
-
-import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
+}
 
 func TestRedactField_SimpleField(t *testing.T) {
 	// Test redacting a simple top-level field
@@ -281,7 +260,7 @@ func TestRedactField_SimpleField(t *testing.T) {
 		"data":     map[string]any{"key": "value"},
 	}
 
-	redactField(properties, "password")
+	schema.RedactFields(properties, []string{"password"})
 
 	require.Equal(t, "test-resource", properties["name"])
 	require.Nil(t, properties["password"])
@@ -304,7 +283,7 @@ func TestRedactField_DataField(t *testing.T) {
 		},
 	}
 
-	redactField(properties, "data")
+	schema.RedactFields(properties, []string{"data"})
 
 	require.NotNil(t, properties["environment"])
 	require.NotNil(t, properties["application"])
@@ -319,7 +298,7 @@ func TestRedactField_NonExistentField(t *testing.T) {
 	}
 
 	// Should not panic or error
-	redactField(properties, "nonexistent")
+	schema.RedactFields(properties, []string{"nonexistent"})
 
 	// Original fields should remain unchanged
 	require.Equal(t, "test-resource", properties["name"])
@@ -331,14 +310,14 @@ func TestRedactField_NilProperties(t *testing.T) {
 	var properties map[string]any
 
 	// Should not panic
-	redactField(properties, "anyfield")
+	schema.RedactFields(properties, []string{"anyfield"})
 }
 
 func TestRedactField_EmptyProperties(t *testing.T) {
 	// Test redacting from empty properties
 	properties := map[string]any{}
 
-	redactField(properties, "password")
+	schema.RedactFields(properties, []string{"password"})
 
 	require.Empty(t, properties)
 }
@@ -352,9 +331,9 @@ func TestRedactField_MultipleFields(t *testing.T) {
 		"data":     "sensitive-data",
 	}
 
-	redactField(properties, "password")
-	redactField(properties, "apiKey")
-	redactField(properties, "data")
+	schema.RedactFields(properties, []string{"password"})
+	schema.RedactFields(properties, []string{"apiKey"})
+	schema.RedactFields(properties, []string{"data"})
 
 	require.Equal(t, "test", properties["name"])
 	require.Nil(t, properties["password"])
@@ -371,7 +350,7 @@ func TestRedactField_NestedDotPath(t *testing.T) {
 		},
 	}
 
-	redactField(properties, "config.password")
+	schema.RedactFields(properties, []string{"config.password"})
 
 	config, ok := properties["config"].(map[string]any)
 	require.True(t, ok)
@@ -390,7 +369,7 @@ func TestRedactField_DeeplyNestedDotPath(t *testing.T) {
 		},
 	}
 
-	redactField(properties, "level1.level2.secret")
+	schema.RedactFields(properties, []string{"level1.level2.secret"})
 
 	level1 := properties["level1"].(map[string]any)
 	level2 := level1["level2"].(map[string]any)
@@ -407,7 +386,7 @@ func TestRedactField_ArrayWildcard(t *testing.T) {
 		},
 	}
 
-	redactField(properties, "secrets[*].value")
+	schema.RedactFields(properties, []string{"secrets[*].value"})
 
 	secrets := properties["secrets"].([]any)
 	s0 := secrets[0].(map[string]any)
@@ -427,7 +406,7 @@ func TestRedactField_MapWildcard(t *testing.T) {
 		},
 	}
 
-	redactField(properties, "config[*]")
+	schema.RedactFields(properties, []string{"config[*]"})
 
 	config := properties["config"].(map[string]any)
 	require.Nil(t, config["key1"])
@@ -443,7 +422,7 @@ func TestRedactField_MapWildcardWithNestedField(t *testing.T) {
 		},
 	}
 
-	redactField(properties, "backends[*].token")
+	schema.RedactFields(properties, []string{"backends[*].token"})
 
 	backends := properties["backends"].(map[string]any)
 	kv := backends["kv"].(map[string]any)
@@ -463,7 +442,7 @@ func TestRedactField_NestedPathFieldNotFound(t *testing.T) {
 	}
 
 	// Should not panic - field doesn't exist at this nested path
-	redactField(properties, "config.nonexistent")
+	schema.RedactFields(properties, []string{"config.nonexistent"})
 
 	config := properties["config"].(map[string]any)
 	require.Equal(t, "localhost", config["host"])
@@ -475,7 +454,7 @@ func TestRedactField_EmptyPath(t *testing.T) {
 		"data": "value",
 	}
 
-	redactField(properties, "")
+	schema.RedactFields(properties, []string{""})
 
 	require.Equal(t, "value", properties["data"])
 }
@@ -486,7 +465,7 @@ func TestRedactField_ArrayWildcardAllElements(t *testing.T) {
 		"tokens": []any{"token1", "token2", "token3"},
 	}
 
-	redactField(properties, "tokens[*]")
+	schema.RedactFields(properties, []string{"tokens[*]"})
 
 	tokens := properties["tokens"].([]any)
 	for _, token := range tokens {
@@ -501,7 +480,7 @@ func TestRedactField_FieldWithNilValue(t *testing.T) {
 		"password": nil,
 	}
 
-	redactField(properties, "password")
+	schema.RedactFields(properties, []string{"password"})
 
 	require.Equal(t, "test", properties["name"])
 	require.Nil(t, properties["password"])
@@ -544,7 +523,7 @@ func TestRedactField_FieldWithDifferentTypes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			redactField(tc.properties, tc.fieldName)
+			schema.RedactFields(tc.properties, []string{tc.fieldName})
 			require.Nil(t, tc.properties[tc.fieldName])
 		})
 	}
@@ -554,37 +533,37 @@ func TestParseRedactPath(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
-		expected []redactPathSegment
+		expected []schema.FieldPathSegment
 	}{
 		{
 			name:     "simple field",
 			path:     "data",
-			expected: []redactPathSegment{{name: "data"}},
+			expected: []schema.FieldPathSegment{{Type: schema.SegmentTypeField, Value: "data"}},
 		},
 		{
 			name:     "nested dot path",
 			path:     "credentials.password",
-			expected: []redactPathSegment{{name: "credentials"}, {name: "password"}},
+			expected: []schema.FieldPathSegment{{Type: schema.SegmentTypeField, Value: "credentials"}, {Type: schema.SegmentTypeField, Value: "password"}},
 		},
 		{
 			name:     "array wildcard",
 			path:     "secrets[*].value",
-			expected: []redactPathSegment{{name: "secrets"}, {wildcard: true}, {name: "value"}},
+			expected: []schema.FieldPathSegment{{Type: schema.SegmentTypeField, Value: "secrets"}, {Type: schema.SegmentTypeWildcard}, {Type: schema.SegmentTypeField, Value: "value"}},
 		},
 		{
 			name:     "map wildcard",
 			path:     "config[*]",
-			expected: []redactPathSegment{{name: "config"}, {wildcard: true}},
+			expected: []schema.FieldPathSegment{{Type: schema.SegmentTypeField, Value: "config"}, {Type: schema.SegmentTypeWildcard}},
 		},
 		{
 			name:     "deeply nested",
 			path:     "a.b.c.d",
-			expected: []redactPathSegment{{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}},
+			expected: []schema.FieldPathSegment{{Type: schema.SegmentTypeField, Value: "a"}, {Type: schema.SegmentTypeField, Value: "b"}, {Type: schema.SegmentTypeField, Value: "c"}, {Type: schema.SegmentTypeField, Value: "d"}},
 		},
 		{
 			name:     "wildcard with nested field",
 			path:     "backends[*].token",
-			expected: []redactPathSegment{{name: "backends"}, {wildcard: true}, {name: "token"}},
+			expected: []schema.FieldPathSegment{{Type: schema.SegmentTypeField, Value: "backends"}, {Type: schema.SegmentTypeWildcard}, {Type: schema.SegmentTypeField, Value: "token"}},
 		},
 		{
 			name:     "empty path",
@@ -595,7 +574,7 @@ func TestParseRedactPath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := parseRedactPath(tc.path)
+			result := schema.ParseFieldPath(tc.path)
 			require.Equal(t, tc.expected, result)
 		})
 	}

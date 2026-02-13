@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,68 +33,68 @@ func TestParseFieldPath(t *testing.T) {
 	tests := []struct {
 		name     string
 		path     string
-		expected []pathSegment
+		expected []schema.FieldPathSegment
 	}{
 		{
 			name: "simple-field",
 			path: "password",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "password"},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "password"},
 			},
 		},
 		{
 			name: "nested-field",
 			path: "credentials.password",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "credentials"},
-				{segmentType: segmentTypeField, value: "password"},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "credentials"},
+				{Type: schema.SegmentTypeField, Value: "password"},
 			},
 		},
 		{
 			name: "deeply-nested-field",
 			path: "config.database.connection.password",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "config"},
-				{segmentType: segmentTypeField, value: "database"},
-				{segmentType: segmentTypeField, value: "connection"},
-				{segmentType: segmentTypeField, value: "password"},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "config"},
+				{Type: schema.SegmentTypeField, Value: "database"},
+				{Type: schema.SegmentTypeField, Value: "connection"},
+				{Type: schema.SegmentTypeField, Value: "password"},
 			},
 		},
 		{
 			name: "array-wildcard",
 			path: "secrets[*].value",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "secrets"},
-				{segmentType: segmentTypeWildcard},
-				{segmentType: segmentTypeField, value: "value"},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "secrets"},
+				{Type: schema.SegmentTypeWildcard},
+				{Type: schema.SegmentTypeField, Value: "value"},
 			},
 		},
 		{
 			name: "map-wildcard",
 			path: "config[*]",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "config"},
-				{segmentType: segmentTypeWildcard},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "config"},
+				{Type: schema.SegmentTypeWildcard},
 			},
 		},
 		{
 			name: "specific-index",
 			path: "items[0].name",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "items"},
-				{segmentType: segmentTypeIndex, value: "0"},
-				{segmentType: segmentTypeField, value: "name"},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "items"},
+				{Type: schema.SegmentTypeIndex, Value: "0"},
+				{Type: schema.SegmentTypeField, Value: "name"},
 			},
 		},
 		{
 			name: "multiple-wildcards",
 			path: "data[*].secrets[*].value",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "data"},
-				{segmentType: segmentTypeWildcard},
-				{segmentType: segmentTypeField, value: "secrets"},
-				{segmentType: segmentTypeWildcard},
-				{segmentType: segmentTypeField, value: "value"},
+			expected: []schema.FieldPathSegment{
+				{Type: schema.SegmentTypeField, Value: "data"},
+				{Type: schema.SegmentTypeWildcard},
+				{Type: schema.SegmentTypeField, Value: "secrets"},
+				{Type: schema.SegmentTypeWildcard},
+				{Type: schema.SegmentTypeField, Value: "value"},
 			},
 		},
 		{
@@ -110,7 +111,7 @@ func TestParseFieldPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseFieldPath(tt.path)
+			result := schema.ParseFieldPath(tt.path)
 			require.Equal(t, tt.expected, result)
 		})
 	}

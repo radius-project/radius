@@ -66,9 +66,9 @@ func (c *ListResourcesWithRedaction) Run(ctx context.Context, w http.ResponseWri
 		return nil, err
 	}
 
-	// Cache sensitive field paths for this resource type (same for all items)
-	var sensitiveFieldPaths []string
-	var sensitiveFieldPathsFetched bool
+	// Cache sensitive field paths per API version
+	// Different resources in the list may have been created with different API versions
+	sensitiveFieldPathsCache := make(map[string][]string)
 
 	items := []any{}
 	for _, item := range result.Items {
@@ -82,9 +82,13 @@ func (c *ListResourcesWithRedaction) Run(ctx context.Context, w http.ResponseWri
 		// sensitive fields. Skip redaction for these items.
 		provisioningState := resource.ProvisioningState()
 		if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
-			// Fetch sensitive field paths once for this resource type
-			if !sensitiveFieldPathsFetched {
-				apiVersion := getResourceAPIVersion(serviceCtx.APIVersion, resource)
+			// Use the API version the resource was last updated with to ensure
+			// encryption and redaction use the same schema
+			apiVersion := resource.InternalMetadata.UpdatedAPIVersion
+
+			// Check cache first to avoid redundant schema fetches for same API version
+			sensitiveFieldPaths, cached := sensitiveFieldPathsCache[apiVersion]
+			if !cached {
 				sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(
 					ctx,
 					c.ucpClient,
@@ -93,30 +97,22 @@ func (c *ListResourcesWithRedaction) Run(ctx context.Context, w http.ResponseWri
 					apiVersion,
 				)
 				if err != nil {
-					fallbackAPIVersion := getResourceAPIVersion("", resource)
-					if fallbackAPIVersion != "" && fallbackAPIVersion != apiVersion {
-						sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(
-							ctx,
-							c.ucpClient,
-							resource.ID,
-							serviceCtx.ResourceID.Type(),
-							fallbackAPIVersion,
-						)
-						apiVersion = fallbackAPIVersion
-					}
-				}
-				if err != nil {
 					logger.Error(err, "Failed to fetch sensitive field paths for LIST redaction",
 						"resourceType", serviceCtx.ResourceID.Type(), "apiVersion", apiVersion)
-					// Continue without redaction on error
+					// Fail-safe: return error to prevent potential exposure of sensitive data
+					// This is consistent with the write path (encryption filter)
+					return rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+						Error: &v1.ErrorDetails{
+							Code:    v1.CodeInternal,
+							Message: "Failed to fetch schema for security validation",
+						},
+					}), nil
 				}
-				sensitiveFieldPathsFetched = true
+				sensitiveFieldPathsCache[apiVersion] = sensitiveFieldPaths
 			}
 
 			if len(sensitiveFieldPaths) > 0 {
-				for _, path := range sensitiveFieldPaths {
-					redactField(resource.Properties, path)
-				}
+				schema.RedactFields(resource.Properties, sensitiveFieldPaths)
 			}
 		}
 
@@ -127,9 +123,16 @@ func (c *ListResourcesWithRedaction) Run(ctx context.Context, w http.ResponseWri
 		items = append(items, versioned)
 	}
 
-	if len(sensitiveFieldPaths) > 0 {
+	// Log redaction summary if any schemas were fetched
+	if len(sensitiveFieldPathsCache) > 0 {
+		totalSensitiveFields := 0
+		for _, paths := range sensitiveFieldPathsCache {
+			totalSensitiveFields += len(paths)
+		}
 		logger.V(ucplog.LevelDebug).Info("Redacted sensitive fields in LIST response",
-			"count", len(sensitiveFieldPaths), "resourceType", serviceCtx.ResourceID.Type(),
+			"totalSensitiveFields", totalSensitiveFields,
+			"apiVersions", len(sensitiveFieldPathsCache),
+			"resourceType", serviceCtx.ResourceID.Type(),
 			"itemCount", len(items))
 	}
 

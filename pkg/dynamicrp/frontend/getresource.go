@@ -19,7 +19,6 @@ package frontend
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -73,7 +72,10 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 	if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
 		resourceID := serviceCtx.ResourceID.String()
 		resourceType := serviceCtx.ResourceID.Type()
-		apiVersion := getResourceAPIVersion(serviceCtx.APIVersion, resource)
+
+		// Use the API version the resource was last updated with to ensure
+		// encryption and redaction use the same schema
+		apiVersion := resource.InternalMetadata.UpdatedAPIVersion
 
 		sensitiveFieldPaths, err := schema.GetSensitiveFieldPaths(
 			ctx,
@@ -83,27 +85,20 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 			apiVersion,
 		)
 		if err != nil {
-			fallbackAPIVersion := getResourceAPIVersion("", resource)
-			if fallbackAPIVersion != "" && fallbackAPIVersion != apiVersion {
-				sensitiveFieldPaths, err = schema.GetSensitiveFieldPaths(
-					ctx,
-					c.ucpClient,
-					resourceID,
-					resourceType,
-					fallbackAPIVersion,
-				)
-				apiVersion = fallbackAPIVersion
-			}
-		}
-		if err != nil {
 			logger.Error(err, "Failed to fetch sensitive field paths for GET redaction",
 				"resourceType", resourceType, "apiVersion", apiVersion)
-			// Continue without redaction on error - don't fail the GET
-		} else if len(sensitiveFieldPaths) > 0 {
-			// Redact sensitive fields by setting them to nil
-			for _, path := range sensitiveFieldPaths {
-				redactField(resource.Properties, path)
-			}
+			// Fail-safe: return error to prevent potential exposure of sensitive data
+			// This is consistent with the write path (encryption filter)
+			return rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+				Error: &v1.ErrorDetails{
+					Code:    v1.CodeInternal,
+					Message: "Failed to fetch schema for security validation",
+				},
+			}), nil
+		}
+
+		if len(sensitiveFieldPaths) > 0 {
+			schema.RedactFields(resource.Properties, sensitiveFieldPaths)
 			logger.V(ucplog.LevelDebug).Info("Redacted sensitive fields in GET response",
 				"provisioningState", provisioningState,
 				"count", len(sensitiveFieldPaths), "resourceType", resourceType)
@@ -111,135 +106,4 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	return c.ConstructSyncResponse(ctx, req.Method, etag, resource)
-}
-
-func getResourceAPIVersion(requestAPIVersion string, resource *datamodel.DynamicResource) string {
-	if requestAPIVersion != "" {
-		return requestAPIVersion
-	}
-
-	if resource == nil {
-		return ""
-	}
-
-	metadata := resource.InternalMetadata
-	if metadata.UpdatedAPIVersion != "" {
-		return metadata.UpdatedAPIVersion
-	}
-	return metadata.CreatedAPIVersion
-}
-
-// redactField sets the field at the given path to nil.
-// Supports:
-//   - Simple field names: "data"
-//   - Nested dot-separated paths: "credentials.password"
-//   - Array wildcards: "secrets[*].value"
-//   - Map wildcards: "config[*]"
-func redactField(properties map[string]any, path string) {
-	if properties == nil || path == "" {
-		return
-	}
-
-	segments := parseRedactPath(path)
-	if len(segments) == 0 {
-		return
-	}
-
-	redactAtSegments(properties, segments)
-}
-
-// redactPathSegment represents a component of a field path for redaction.
-type redactPathSegment struct {
-	name     string // field name (empty for wildcard)
-	wildcard bool   // true for [*] segments
-}
-
-// parseRedactPath parses a field path like "credentials.password" or "secrets[*].value"
-// into path segments for traversal.
-func parseRedactPath(path string) []redactPathSegment {
-	var segments []redactPathSegment
-	var current strings.Builder
-
-	for i := 0; i < len(path); i++ {
-		switch path[i] {
-		case '.':
-			if current.Len() > 0 {
-				segments = append(segments, redactPathSegment{name: current.String()})
-				current.Reset()
-			}
-		case '[':
-			if current.Len() > 0 {
-				segments = append(segments, redactPathSegment{name: current.String()})
-				current.Reset()
-			}
-			end := strings.Index(path[i:], "]")
-			if end == -1 {
-				return nil // invalid path - unterminated bracket
-			}
-			content := path[i+1 : i+end]
-			if content == "*" {
-				segments = append(segments, redactPathSegment{wildcard: true})
-			}
-			i += end // skip past ']'
-		default:
-			current.WriteByte(path[i])
-		}
-	}
-
-	if current.Len() > 0 {
-		segments = append(segments, redactPathSegment{name: current.String()})
-	}
-
-	return segments
-}
-
-// redactAtSegments traverses the data following the path segments and sets the final value to nil.
-func redactAtSegments(current any, segments []redactPathSegment) {
-	if len(segments) == 0 {
-		return
-	}
-
-	segment := segments[0]
-	remaining := segments[1:]
-
-	if segment.wildcard {
-		// Handle [*] - iterate over array or map
-		switch v := current.(type) {
-		case []any:
-			for i := range v {
-				if len(remaining) == 0 {
-					v[i] = nil
-				} else {
-					redactAtSegments(v[i], remaining)
-				}
-			}
-		case map[string]any:
-			for key := range v {
-				if len(remaining) == 0 {
-					v[key] = nil
-				} else {
-					redactAtSegments(v[key], remaining)
-				}
-			}
-		}
-		return
-	}
-
-	// Handle field name
-	dataMap, ok := current.(map[string]any)
-	if !ok {
-		return
-	}
-
-	value, exists := dataMap[segment.name]
-	if !exists {
-		return
-	}
-
-	if len(remaining) == 0 {
-		dataMap[segment.name] = nil
-		return
-	}
-
-	redactAtSegments(value, remaining)
 }

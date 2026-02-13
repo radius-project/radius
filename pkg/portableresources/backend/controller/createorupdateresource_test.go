@@ -37,9 +37,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -504,10 +504,10 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 
 	secretValue := "top-secret"
 	properties := map[string]any{
-		"application": TestApplicationID,
-		"environment": TestEnvironmentID,
+		"application":       TestApplicationID,
+		"environment":       TestEnvironmentID,
 		"provisioningState": "Accepted",
-		"secret": secretValue,
+		"secret":            secretValue,
 		"recipe": map[string]any{
 			"name": "test-recipe",
 			"parameters": map[string]any{
@@ -523,14 +523,12 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	require.NoError(t, err)
 
 	data := map[string]any{
-		"name":     "tr",
-		"type":     TestResourceType,
-		"id":       TestResourceID,
-		"location": v1.LocationGlobal,
-		"internalMetadata": map[string]any{
-			"updatedApiVersion": "2024-01-01",
-		},
-		"properties": properties,
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
+		"properties":        properties,
 	}
 
 	msc.EXPECT().
@@ -541,8 +539,8 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	ucpClient, err := testUCPClientFactory(map[string]any{
 		"properties": map[string]any{
 			"secret": map[string]any{
-				"type":                    "string",
-				"x-radius-sensitive":      true,
+				"type":               "string",
+				"x-radius-sensitive": true,
 			},
 		},
 	})
@@ -636,13 +634,11 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 	cfg := configloader.NewMockConfigurationLoader(mctrl)
 
 	data := map[string]any{
-		"name":     "tr",
-		"type":     TestResourceType,
-		"id":       TestResourceID,
-		"location": v1.LocationGlobal,
-		"internalMetadata": map[string]any{
-			"updatedApiVersion": "2024-01-01",
-		},
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
 		"properties": map[string]any{
 			"application":       TestApplicationID,
 			"environment":       TestEnvironmentID,
@@ -665,8 +661,8 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 	ucpClient, err := testUCPClientFactory(map[string]any{
 		"properties": map[string]any{
 			"secret": map[string]any{
-				"type":                    "string",
-				"x-radius-sensitive":      true,
+				"type":               "string",
+				"x-radius-sensitive": true,
 			},
 		},
 	})
@@ -708,24 +704,22 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 
 func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactory, error) {
 	apiVersionsServer := fake.APIVersionsServer{
-		Get: func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (azfake.Responder[v20231001preview.APIVersionsClientGetResponse], azfake.ErrorResponder) {
-			resp := azfake.Responder[v20231001preview.APIVersionsClientGetResponse]{}
-			resp.SetResponse(http.StatusOK, v20231001preview.APIVersionsClientGetResponse{
+		Get: func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
+			response := v20231001preview.APIVersionsClientGetResponse{
 				APIVersionResource: v20231001preview.APIVersionResource{
 					Properties: &v20231001preview.APIVersionProperties{
 						Schema: schema,
 					},
 				},
-			}, nil)
-			return resp, azfake.ErrorResponder{}
+			}
+			resp.SetResponse(http.StatusOK, response, nil)
+			return
 		},
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				APIVersionsServer: apiVersionsServer,
-			}),
+			Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
 		},
 	})
 }
@@ -758,13 +752,11 @@ func TestCreateOrUpdateResource_Run_SensitiveNilKubeClient(t *testing.T) {
 	cfg := configloader.NewMockConfigurationLoader(mctrl)
 
 	data := map[string]any{
-		"name":     "tr",
-		"type":     TestResourceType,
-		"id":       TestResourceID,
-		"location": v1.LocationGlobal,
-		"internalMetadata": map[string]any{
-			"updatedApiVersion": "2024-01-01",
-		},
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
 		"properties": map[string]any{
 			"application":       TestApplicationID,
 			"environment":       TestEnvironmentID,
@@ -858,14 +850,12 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 	require.NoError(t, err)
 
 	data := map[string]any{
-		"name":     "tr",
-		"type":     TestResourceType,
-		"id":       TestResourceID,
-		"location": v1.LocationGlobal,
-		"internalMetadata": map[string]any{
-			"updatedApiVersion": "2024-01-01",
-		},
-		"properties": properties,
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
+		"properties":        properties,
 	}
 
 	msc.EXPECT().
@@ -981,14 +971,12 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	require.NoError(t, err)
 
 	data := map[string]any{
-		"name":     "tr",
-		"type":     TestResourceType,
-		"id":       TestResourceID,
-		"location": v1.LocationGlobal,
-		"internalMetadata": map[string]any{
-			"updatedApiVersion": "2024-01-01",
-		},
-		"properties": properties,
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
+		"properties":        properties,
 	}
 
 	msc.EXPECT().
@@ -1104,4 +1092,3 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, res)
 }
-
