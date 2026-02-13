@@ -44,6 +44,8 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 					"allowPlatformOptions": false,
 				},
 			},
+			TerraformSettings: to.Ptr("/planes/radius/local/providers/Radius.Core/terraformSettings/org-default"),
+			BicepSettings:     to.Ptr("/planes/radius/local/providers/Radius.Core/bicepSettings/org-default"),
 			Providers: &Providers{
 				Azure: &ProvidersAzure{
 					SubscriptionID:    to.Ptr("00000000-0000-0000-0000-000000000000"),
@@ -71,6 +73,8 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, map[string]string{"env": "test"}, env.Tags)
 	require.Equal(t, []string{"/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"}, env.Properties.RecipePacks)
 	require.Equal(t, false, env.Properties.Simulated)
+	require.Equal(t, "/planes/radius/local/providers/Radius.Core/terraformSettings/org-default", env.Properties.TerraformSettings)
+	require.Equal(t, "/planes/radius/local/providers/Radius.Core/bicepSettings/org-default", env.Properties.BicepSettings)
 	require.NotNil(t, env.Properties.Providers)
 	require.NotNil(t, env.Properties.Providers.Azure)
 	require.Equal(t, "00000000-0000-0000-0000-000000000000", env.Properties.Providers.Azure.SubscriptionId)
@@ -107,6 +111,8 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 					"allowPlatformOptions": true,
 				},
 			},
+			TerraformSettings: "/planes/radius/local/providers/Radius.Core/terraformSettings/org-default",
+			BicepSettings:     "/planes/radius/local/providers/Radius.Core/bicepSettings/org-default",
 			Providers: &datamodel.Providers_v20250801preview{
 				Kubernetes: &datamodel.ProvidersKubernetes_v20250801preview{
 					Namespace: "default",
@@ -133,4 +139,6 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 	containerParams, ok := versionedResource.Properties.RecipeParameters["Radius.Compute/containers"]
 	require.True(t, ok)
 	require.Equal(t, true, containerParams["allowPlatformOptions"])
+	require.Equal(t, to.Ptr("/planes/radius/local/providers/Radius.Core/terraformSettings/org-default"), versionedResource.Properties.TerraformSettings)
+	require.Equal(t, to.Ptr("/planes/radius/local/providers/Radius.Core/bicepSettings/org-default"), versionedResource.Properties.BicepSettings)
 }
