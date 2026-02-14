@@ -92,6 +92,7 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 		DatabaseClient: c.DatabaseClient(),
 		ResourceType:   *resourceTypeDetails.Name,
 		UcpClient:      c.ucp,
+		KubeClient:     c.KubeClient(),
 	}
 
 	switch operationType.Method {

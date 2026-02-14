@@ -18,6 +18,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
@@ -91,8 +92,14 @@ func (w *Service) Run(ctx context.Context) error {
 }
 
 func (w *Service) registerControllers() error {
+	kubeClient, err := w.options.KubernetesProvider.RuntimeClient()
+	if err != nil {
+		return fmt.Errorf("failed to get Kubernetes runtime client: %w", err)
+	}
+
 	options := ctrl.Options{
 		DatabaseClient: w.Service.DatabaseClient,
+		KubeClient:     kubeClient,
 	}
 
 	ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(w.options.UCP))
