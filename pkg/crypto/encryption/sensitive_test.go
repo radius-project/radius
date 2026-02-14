@@ -152,13 +152,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	require.Equal(t, "admin", data["username"])
 }
 
-func TestSensitiveDataHandler_RedactSensitiveFields(t *testing.T) {
-	key, err := GenerateKey()
-	require.NoError(t, err)
-
-	handler, err := NewSensitiveDataHandlerFromKey(key)
-	require.NoError(t, err)
-
+func TestRedactFields_NestedPaths(t *testing.T) {
 	data := map[string]any{
 		"username": "admin",
 		"credentials": map[string]any{
@@ -167,8 +161,7 @@ func TestSensitiveDataHandler_RedactSensitiveFields(t *testing.T) {
 		},
 	}
 
-	err = handler.RedactSensitiveFields(data, []string{"credentials.password", "credentials.token"})
-	require.NoError(t, err)
+	schema.RedactFields(data, []string{"credentials.password", "credentials.token"})
 
 	creds := data["credentials"].(map[string]any)
 	require.Nil(t, creds["password"])
@@ -1028,7 +1021,6 @@ func TestSensitiveDataHandler_DecryptWithMissingKeyVersion(t *testing.T) {
 	require.Contains(t, err.Error(), "key version not found")
 }
 
-
 func TestSensitiveDataHandler_DecryptWithADMismatch(t *testing.T) {
 	key, err := GenerateKey()
 	require.NoError(t, err)
@@ -1109,8 +1101,7 @@ func TestSensitiveDataHandler_FullDecryptRedactWorkflow(t *testing.T) {
 	// If this were derived from recipeProperties (decrypted), a partial redaction
 	// failure would persist plaintext to the database.
 	redactedProperties := deepCopyMap(dbProperties)
-	err = handler.RedactSensitiveFields(redactedProperties, sensitivePaths)
-	require.NoError(t, err)
+	schema.RedactFields(redactedProperties, sensitivePaths)
 
 	// Step 5: Verify all invariants
 	// — Redacted copy: sensitive fields are nil, non-sensitive fields are preserved
@@ -1130,13 +1121,7 @@ func TestSensitiveDataHandler_FullDecryptRedactWorkflow(t *testing.T) {
 	require.Equal(t, "nested-password", recipeProperties["nested"].(map[string]any)["password"])
 }
 
-func TestSensitiveDataHandler_Redact_AlreadyNilField(t *testing.T) {
-	key, err := GenerateKey()
-	require.NoError(t, err)
-
-	handler, err := NewSensitiveDataHandlerFromKey(key)
-	require.NoError(t, err)
-
+func TestRedactFields_AlreadyNilField(t *testing.T) {
 	// Field exists in the map but is already nil — e.g. previously redacted or
 	// an optional sensitive field the user did not provide.
 	data := map[string]any{
@@ -1145,14 +1130,12 @@ func TestSensitiveDataHandler_Redact_AlreadyNilField(t *testing.T) {
 	}
 
 	// Redacting an already-nil field must succeed silently
-	err = handler.RedactSensitiveFields(data, []string{"secret"})
-	require.NoError(t, err)
+	schema.RedactFields(data, []string{"secret"})
 	require.Nil(t, data["secret"])
 	require.Equal(t, "admin", data["username"])
 
 	// Verify idempotence: redacting again is still a no-op
-	err = handler.RedactSensitiveFields(data, []string{"secret"})
-	require.NoError(t, err)
+	schema.RedactFields(data, []string{"secret"})
 	require.Nil(t, data["secret"])
 }
 

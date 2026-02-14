@@ -124,20 +124,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 				}
 
-				// Security: derive the redacted copy from the original encrypted
-				// properties, NOT from the decrypted recipeProperties. If
-				// RedactSensitiveFields fails to nil a field (partial failure),
-				// the persisted value remains encrypted ciphertext, never
-				// plaintext. recipeProperties (decrypted) is kept exclusively
-				// for in-memory recipe execution.
+				// Derive the redacted copy from the original encrypted properties,
+				// NOT from the decrypted recipeProperties. recipeProperties
+				// (decrypted) is kept exclusively for in-memory recipe execution.
 				redactedProperties, err := deepCopyProperties(properties)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
-				if err = handler.RedactSensitiveFields(redactedProperties, sensitiveFieldPaths); err != nil {
-					logger.Error(err, "Failed to redact sensitive fields", "resourceID", req.ResourceID)
-					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
-				}
+				schemautil.RedactFields(redactedProperties, sensitiveFieldPaths)
 
 				if err = applyPropertiesToResource(resource, redactedProperties); err != nil {
 					logger.Error(err, "Failed to apply redacted properties", "resourceID", req.ResourceID)

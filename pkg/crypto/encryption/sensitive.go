@@ -38,9 +38,6 @@ var (
 
 	// ErrFieldDecryptionFailed is returned when decryption of a field fails.
 	ErrFieldDecryptionFailed = errors.New("field decryption failed")
-
-	// ErrFieldRedactionFailed is returned when redaction of a field fails.
-	ErrFieldRedactionFailed = errors.New("field redaction failed")
 )
 
 // SensitiveDataHandler provides methods for encrypting and decrypting sensitive fields
@@ -161,15 +158,6 @@ func (h *SensitiveDataHandler) DecryptSensitiveFieldsWithSchema(ctx context.Cont
 			return fmt.Errorf("%w: path %q: %v", ErrFieldDecryptionFailed, path, err)
 		}
 	}
-	return nil
-}
-
-// RedactSensitiveFields nullifies all sensitive fields in the data based on the provided field paths.
-// The data is modified in place. Field paths support dot notation and [*] for arrays/maps.
-//
-// Fields that are not found are skipped - this allows optional sensitive fields to be absent.
-func (h *SensitiveDataHandler) RedactSensitiveFields(data map[string]any, sensitiveFieldPaths []string) error {
-	schema.RedactFields(data, sensitiveFieldPaths)
 	return nil
 }
 
