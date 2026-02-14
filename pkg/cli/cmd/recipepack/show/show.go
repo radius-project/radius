@@ -102,7 +102,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.RecipePackName = recipePackName
 
-	format, err := cli.RequireOutput(cmd)
+	format, err := cli.RequireOutputAllowPlainText(cmd)
 	if err != nil {
 		return err
 	}
