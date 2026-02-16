@@ -110,6 +110,91 @@ func normalizePlatformOptionsAnyWithPath(schema *openapi3.Schema, path string) {
 	}
 }
 
+// normalizeSensitiveFieldTypes normalizes the type constraint on sensitive string fields
+// so that the OpenAPI validator accepts both the original plaintext string and the encrypted object form.
+// Only string types need this adjustment — object types remain objects after encryption and pass validation.
+func normalizeSensitiveFieldTypes(schema *openapi3.Schema) {
+	if schema == nil {
+		return
+	}
+
+	for _, propRef := range schema.Properties {
+		if propRef == nil || propRef.Value == nil {
+			continue
+		}
+
+		if normalizeSensitiveStringType(propRef) {
+			continue
+		}
+
+		// Recurse into nested objects
+		normalizeSensitiveFieldTypes(propRef.Value)
+	}
+
+	// Handle array items — check the items schema's own annotation first.
+	if schema.Items != nil && schema.Items.Value != nil {
+		if !normalizeSensitiveStringType(schema.Items) {
+			normalizeSensitiveFieldTypes(schema.Items.Value)
+		}
+	}
+
+	// Handle additionalProperties (maps) — check its own annotation first.
+	if schema.AdditionalProperties.Schema != nil && schema.AdditionalProperties.Schema.Value != nil {
+		if !normalizeSensitiveStringType(schema.AdditionalProperties.Schema) {
+			normalizeSensitiveFieldTypes(schema.AdditionalProperties.Schema.Value)
+		}
+	}
+}
+
+// normalizeSensitiveStringType checks whether a SchemaRef points to a string with a sensitive
+// annotation. If so, it expands the type constraint so it accepts either the original string
+// schema or object (the encrypted form). Returns true if the schema was normalized, false otherwise.
+func normalizeSensitiveStringType(ref *openapi3.SchemaRef) bool {
+	if ref == nil || ref.Value == nil {
+		return false
+	}
+
+	prop := ref.Value
+	if prop.Extensions == nil {
+		return false
+	}
+
+	val, ok := prop.Extensions[annotationRadiusSensitive].(bool)
+	if !ok || !val {
+		return false
+	}
+
+	if prop.Type == nil || !prop.Type.Is("string") {
+		return false
+	}
+
+	// Copy the original so we don't create a self-referencing cycle.
+	originalString := *prop
+
+	// Remove the sensitive annotation from the copy to avoid re-processing.
+	// Other vendor extensions are preserved.
+	if len(originalString.Extensions) > 0 {
+		extCopy := make(map[string]any, len(originalString.Extensions))
+		for k, v := range originalString.Extensions {
+			extCopy[k] = v
+		}
+		delete(extCopy, annotationRadiusSensitive)
+		originalString.Extensions = extCopy
+	}
+
+	ref.Value = &openapi3.Schema{
+		AnyOf: openapi3.SchemaRefs{
+			{Value: &originalString},
+			{Value: &openapi3.Schema{
+				Type:     &openapi3.Types{"object"},
+				MinProps: 1, // reject empty objects — encrypted data always has fields
+			}},
+		},
+	}
+
+	return true
+}
+
 // isUnconstrainedSchema returns true if a schema has no type restrictions and accepts any value.
 func isUnconstrainedSchema(schema *openapi3.Schema) bool {
 	if schema == nil {
@@ -773,6 +858,9 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	// Apply the same Radius-specific normalization used during schema registration so
 	// runtime validation can accept platformOptions.additionalProperties type:any.
 	normalizePlatformOptionsAny(openAPISchema)
+
+	// Normalize type constraints on sensitive string fields.
+	normalizeSensitiveFieldTypes(openAPISchema)
 
 	// Create a minimal OpenAPI document with the schema
 	doc := &openapi3.T{
