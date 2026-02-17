@@ -667,6 +667,27 @@ jobs:
           printf '%s' "${AZURE_OIDC_ISSUER_PRIVATE_KEY}" | base64 -d > sa.key
           openssl pkey -pubin -in sa.pub -noout >/dev/null
           openssl pkey -in sa.key -check -noout >/dev/null
+
+          # Validate the provided signing keys are aligned with the live issuer JWKS.
+          ISSUER_NO_SLASH="${AZURE_OIDC_ISSUER%/}"
+          DISCOVERY_URL="${ISSUER_NO_SLASH}/.well-known/openid-configuration"
+          LIVE_DISCOVERY_JSON="$(curl -fsSL "${DISCOVERY_URL}")"
+          LIVE_ISSUER="$(echo "${LIVE_DISCOVERY_JSON}" | jq -er '.issuer')"
+          LIVE_JWKS_URL="$(echo "${LIVE_DISCOVERY_JSON}" | jq -er '.jwks_uri')"
+          if [[ "${LIVE_ISSUER}" != "${AZURE_OIDC_ISSUER}" ]]; then
+            echo "OIDC issuer mismatch. Secret AZURE_OIDC_ISSUER='${AZURE_OIDC_ISSUER}', discovery issuer='${LIVE_ISSUER}'."
+            exit 1
+          fi
+
+          SECRET_KID="$(python3 -c "import hashlib,pathlib; print(hashlib.sha256(pathlib.Path('sa.pub').read_text().strip().encode()).hexdigest()[:32])")"
+          KID_MATCH="$(curl -fsSL "${LIVE_JWKS_URL}" | jq -er --arg kid "${SECRET_KID}" 'any(.keys[]?; .kid == $kid)')"
+          if [[ "${KID_MATCH}" != "true" ]]; then
+            echo "OIDC signing key mismatch for issuer '${AZURE_OIDC_ISSUER}'."
+            echo "Key from FUNCTEST_AZURE_OIDC_JSON is not present in ${LIVE_JWKS_URL}."
+            echo "Update FUNCTEST_AZURE_OIDC_JSON from Terraform output and rerun."
+            exit 1
+          fi
+
           cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
@@ -818,6 +839,35 @@ jobs:
           append: true
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+
+      - name: Validate Azure workload identity token exchange
+        run: |
+          set -euo pipefail
+
+          FED_TOKEN_FILE="$(kubectl exec -n radius-system deploy/bicep-de -- printenv AZURE_FEDERATED_TOKEN_FILE)"
+          if [[ -z "${FED_TOKEN_FILE}" ]]; then
+            echo "AZURE_FEDERATED_TOKEN_FILE is not set in bicep-de pod. Workload identity mutation may have failed."
+            kubectl -n radius-system get pod -l app.kubernetes.io/name=bicep-de -o jsonpath='{.items[0].metadata.labels}'
+            echo
+            exit 1
+          fi
+
+          FED_TOKEN="$(kubectl exec -n radius-system deploy/bicep-de -- cat "${FED_TOKEN_FILE}")"
+          CLAIMS="$(python3 -c "import base64, json, sys; p=sys.stdin.read().strip().split('.')[1]; p += '=' * (-len(p) % 4); print(base64.urlsafe_b64decode(p.encode()).decode())" <<< "${FED_TOKEN}")"
+          ISSUER="$(echo "${CLAIMS}" | jq -r '.iss')"
+          SUBJECT="$(echo "${CLAIMS}" | jq -r '.sub')"
+          AUDIENCE="$(echo "${CLAIMS}" | jq -r '.aud')"
+          echo "Workload token issuer: ${ISSUER}"
+          echo "Workload token subject: ${SUBJECT}"
+          echo "Workload token audience: ${AUDIENCE}"
+
+          az account get-access-token \
+            --service-principal \
+            --username "${{ secrets.AZURE_SP_TESTS_APPID }}" \
+            --tenant "${{ secrets.AZURE_SP_TESTS_TENANTID }}" \
+            --federated-token "${FED_TOKEN}" \
+            --resource https://management.azure.com/ \
+            -o none
 
       - name: Publish Terraform test recipes
         run: |
