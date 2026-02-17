@@ -29,94 +29,6 @@ const (
 	testResourceID = "/planes/radius/local/resourceGroups/test/providers/Test.Resource/testResources/myResource"
 )
 
-func TestParseFieldPath(t *testing.T) {
-	tests := []struct {
-		name     string
-		path     string
-		expected []schema.FieldPathSegment
-	}{
-		{
-			name: "simple-field",
-			path: "password",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "password"},
-			},
-		},
-		{
-			name: "nested-field",
-			path: "credentials.password",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "credentials"},
-				{Type: schema.SegmentTypeField, Value: "password"},
-			},
-		},
-		{
-			name: "deeply-nested-field",
-			path: "config.database.connection.password",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "config"},
-				{Type: schema.SegmentTypeField, Value: "database"},
-				{Type: schema.SegmentTypeField, Value: "connection"},
-				{Type: schema.SegmentTypeField, Value: "password"},
-			},
-		},
-		{
-			name: "array-wildcard",
-			path: "secrets[*].value",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "secrets"},
-				{Type: schema.SegmentTypeWildcard},
-				{Type: schema.SegmentTypeField, Value: "value"},
-			},
-		},
-		{
-			name: "map-wildcard",
-			path: "config[*]",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "config"},
-				{Type: schema.SegmentTypeWildcard},
-			},
-		},
-		{
-			name: "specific-index",
-			path: "items[0].name",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "items"},
-				{Type: schema.SegmentTypeIndex, Value: "0"},
-				{Type: schema.SegmentTypeField, Value: "name"},
-			},
-		},
-		{
-			name: "multiple-wildcards",
-			path: "data[*].secrets[*].value",
-			expected: []schema.FieldPathSegment{
-				{Type: schema.SegmentTypeField, Value: "data"},
-				{Type: schema.SegmentTypeWildcard},
-				{Type: schema.SegmentTypeField, Value: "secrets"},
-				{Type: schema.SegmentTypeWildcard},
-				{Type: schema.SegmentTypeField, Value: "value"},
-			},
-		},
-		{
-			name:     "unterminated-bracket",
-			path:     "secrets[*",
-			expected: nil,
-		},
-		{
-			name:     "unterminated-bracket-with-index",
-			path:     "items[0",
-			expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := schema.ParseFieldPath(tt.path)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	key, err := GenerateKey()
 	require.NoError(t, err)
@@ -149,23 +61,6 @@ func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 
 	// Verify password is decrypted
 	require.Equal(t, "super-secret-password", data["password"])
-	require.Equal(t, "admin", data["username"])
-}
-
-func TestRedactFields_NestedPaths(t *testing.T) {
-	data := map[string]any{
-		"username": "admin",
-		"credentials": map[string]any{
-			"password": "nested-secret",
-			"token":    "token-123",
-		},
-	}
-
-	schema.RedactFields(data, []string{"credentials.password", "credentials.token"})
-
-	creds := data["credentials"].(map[string]any)
-	require.Nil(t, creds["password"])
-	require.Nil(t, creds["token"])
 	require.Equal(t, "admin", data["username"])
 }
 
@@ -1121,22 +1016,86 @@ func TestSensitiveDataHandler_FullDecryptRedactWorkflow(t *testing.T) {
 	require.Equal(t, "nested-password", recipeProperties["nested"].(map[string]any)["password"])
 }
 
-func TestRedactFields_AlreadyNilField(t *testing.T) {
-	// Field exists in the map but is already nil — e.g. previously redacted or
-	// an optional sensitive field the user did not provide.
+func TestSensitiveDataHandler_DecryptNonEncryptedMap(t *testing.T) {
+	// When a "sensitive" field contains a plain map (not our encrypted format),
+	// decryptValue should pass it through unchanged instead of returning an error.
+	// This handles the case where data was written without encryption enabled.
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
 	data := map[string]any{
-		"secret":   nil,
-		"username": "admin",
+		"config": map[string]any{
+			"host": "localhost",
+			"port": 5432,
+		},
 	}
 
-	// Redacting an already-nil field must succeed silently
-	schema.RedactFields(data, []string{"secret"})
-	require.Nil(t, data["secret"])
-	require.Equal(t, "admin", data["username"])
+	// Attempt to decrypt a map that was never encrypted — should pass through
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"config"}, testResourceID)
+	require.NoError(t, err)
 
-	// Verify idempotence: redacting again is still a no-op
-	schema.RedactFields(data, []string{"secret"})
-	require.Nil(t, data["secret"])
+	config := data["config"].(map[string]any)
+	require.Equal(t, "localhost", config["host"])
+	require.Equal(t, 5432, config["port"])
+}
+
+func TestSensitiveDataHandler_EncryptDecrypt_BareIntegerField(t *testing.T) {
+	// The encryptValue default case marshals non-string/non-map/non-slice types to JSON.
+	// Verify that a bare integer field round-trips correctly.
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"name":       "test-resource",
+		"secretPort": 5432,
+	}
+
+	// Encrypt the bare integer
+	err = handler.EncryptSensitiveFields(data, []string{"secretPort"}, testResourceID)
+	require.NoError(t, err)
+
+	// Should be encrypted to a map
+	_, isEncrypted := data["secretPort"].(map[string]any)
+	require.True(t, isEncrypted, "secretPort should be encrypted")
+
+	// Name should be unchanged
+	require.Equal(t, "test-resource", data["name"])
+
+	// Decrypt — without schema, JSON unmarshals integers as float64
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secretPort"}, testResourceID)
+	require.NoError(t, err)
+
+	// Standard JSON behavior: integers become float64 without schema
+	require.Equal(t, float64(5432), data["secretPort"])
+}
+
+func TestSensitiveDataHandler_EncryptDecrypt_BareBooleanField(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"secretFlag": true,
+	}
+
+	err = handler.EncryptSensitiveFields(data, []string{"secretFlag"}, testResourceID)
+	require.NoError(t, err)
+
+	_, isEncrypted := data["secretFlag"].(map[string]any)
+	require.True(t, isEncrypted, "secretFlag should be encrypted")
+
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secretFlag"}, testResourceID)
+	require.NoError(t, err)
+
+	require.Equal(t, true, data["secretFlag"])
 }
 
 // Helper function to deep copy a map for testing
