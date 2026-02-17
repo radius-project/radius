@@ -359,10 +359,10 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 }
 
 // RequireOutputAllowPlainText reads the output format flag and validates it against
-// all recognized formats including plain-text. Use this for commands that support
+// plain-text and json formats. Use this for commands that support
 // the plain-text output format.
 func RequireOutputAllowPlainText(cmd *cobra.Command) (string, error) {
-	return requireOutputFromFormats(cmd, output.AllFormats())
+	return requireOutputFromFormats(cmd, []string{output.FormatPlainText, output.FormatJson})
 }
 
 func requireOutputFromFormats(cmd *cobra.Command, formats []string) (string, error) {

@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -165,6 +167,133 @@ func Test_ReadResourceTypeNameArgs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ReadResourceTypeNameArgs(nil, tt.args)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// newCmdWithOutputFlag creates a cobra command with a string flag named "output" set to the given value.
+func newCmdWithOutputFlag(value string) *cobra.Command {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().StringP("output", "o", "", "output format")
+	err := cmd.Flags().Set("output", value)
+	if err != nil {
+		panic(err)
+	}
+	return cmd
+}
+
+func Test_RequireOutput(t *testing.T) {
+	tests := []struct {
+		name      string
+		format    string
+		want      string
+		wantErr   bool
+		errSubstr string
+	}{
+		{
+			name:   "json is accepted",
+			format: "json",
+			want:   "json",
+		},
+		{
+			name:   "table is accepted",
+			format: "table",
+			want:   "table",
+		},
+		{
+			name:   "empty defaults to table",
+			format: "",
+			want:   output.DefaultFormat,
+		},
+		{
+			name:      "plain-text is rejected",
+			format:    "plain-text",
+			wantErr:   true,
+			errSubstr: `unsupported output format "plain-text", supported formats are: json, table`,
+		},
+		{
+			name:      "text is rejected",
+			format:    "text",
+			wantErr:   true,
+			errSubstr: `unsupported output format "text", supported formats are: json, table`,
+		},
+		{
+			name:      "unknown format is rejected",
+			format:    "xml",
+			wantErr:   true,
+			errSubstr: `unsupported output format "xml", supported formats are: json, table`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := newCmdWithOutputFlag(tt.format)
+			got, err := RequireOutput(cmd)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errSubstr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func Test_RequireOutputAllowPlainText(t *testing.T) {
+	tests := []struct {
+		name      string
+		format    string
+		want      string
+		wantErr   bool
+		errSubstr string
+	}{
+		{
+			name:   "json is accepted",
+			format: "json",
+			want:   "json",
+		},
+		{
+			name:   "plain-text is accepted",
+			format: "plain-text",
+			want:   "plain-text",
+		},
+		{
+			name:   "empty defaults to table",
+			format: "",
+			want:   output.DefaultFormat,
+		},
+		{
+			name:      "table is rejected",
+			format:    "table",
+			wantErr:   true,
+			errSubstr: `unsupported output format "table", supported formats are: plain-text, json`,
+		},
+		{
+			name:      "text is rejected",
+			format:    "text",
+			wantErr:   true,
+			errSubstr: `unsupported output format "text", supported formats are: plain-text, json`,
+		},
+		{
+			name:      "unknown format is rejected",
+			format:    "xml",
+			wantErr:   true,
+			errSubstr: `unsupported output format "xml", supported formats are: plain-text, json`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := newCmdWithOutputFlag(tt.format)
+			got, err := RequireOutputAllowPlainText(cmd)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errSubstr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
