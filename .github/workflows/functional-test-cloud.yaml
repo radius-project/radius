@@ -838,7 +838,7 @@ jobs:
               "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION"
             },
             "cloud": {
-              "credentialPrecedence": ["Environment"]
+              "credentialPrecedence": ["AzureCLI", "Environment"]
             }
           }
           EOF
@@ -849,6 +849,8 @@ jobs:
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
       - name: Run functional tests
         run: |
+          set -euo pipefail
+
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
@@ -857,12 +859,14 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Populate the following test environment variables from JSON secret.
-          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_MSSQL_RESOURCE_ID
-          # AZURE_MSSQL_USERNAME
-          # AZURE_MSSQL_PASSWORD
-          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # Parse and validate preprovisioned Azure resources payload.
+          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
+          if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
+            echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
+            echo "Expected key: AZURE_COSMOS_MONGODB_ACCOUNT_ID"
+            exit 1
+          fi
+          export AZURE_COSMOS_MONGODB_ACCOUNT_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_COSMOS_MONGODB_ACCOUNT_ID')"
 
           make test-functional-${{ matrix.name }}
         env:
