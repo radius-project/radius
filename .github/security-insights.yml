@@ -1,0 +1,259 @@
+header:
+  schema-version: 2.0.0
+  last-updated: '2026-02-20'
+  last-reviewed: '2026-02-20'
+  url: https://github.com/radius-project/radius
+  comment: >-
+    This file contains all possible information for both project and repository,
+    though it is not required to include all of this information every time. Nor
+    is it required to include both a project and repository section if the
+    project section is intended to be inherited by repositories via
+    header.project-si-source
+project:
+  name: Radius
+  homepage: https://radapp.io
+  funding: ''
+  roadmap: https://aka.ms/radius-roadmap
+  steward:
+    uri: ''
+    comment: ''
+  administrators:
+    - name: Sylvain Niles
+      affiliation: Microsoft
+      email: ''
+      social: https://github.com/sylvainsf
+      primary: false
+    - name: Karishma Chawla
+      affiliation: Microsoft
+      email: ''
+      social: https://github.com/kachawla
+      primary: false
+    - name: Brooke Hamilton
+      affiliation: Microsoft
+      email: ''
+      social: https://github.com/brooke-hamilton
+      primary: false
+  documentation:
+    quickstart-guide: https://docs.radapp.io/quick-start/
+    detailed-guide: https://radapp.io/
+    code-of-conduct: https://github.com/radius-project/community/blob/main/CODE-OF-CONDUCT.md
+    release-process: https://github.com/radius-project/community
+    support-policy: https://github.com/radius-project/radius/blob/main/SUPPORT.md
+    signature-verification: ''
+  repositories:
+    - name: Radius
+      url: https://github.com/radius-project/radius
+      comment: >-
+        Radius is the main Radius repository. It contains all of Radius code and
+        documentation. In addition, we have the below repositories
+    - name: Docs
+      url: https://github.com/radius-project/docs
+      comment: This repository contains the Radius documentation source for Radius.
+    - name: Samples
+      url: https://github.com/radius-project/samples
+      comment: >-
+        This repository contains the source code for quickstarts, reference
+        apps, and tutorials for Radius.
+    - name: Recipes
+      url: https://github.com/radius-project/recipes
+      comment: >-
+        This repo contains commonly used Recipe templates for Radius
+        Environments.
+    - name: Website
+      url: https://github.com/radius-project/website
+      comment: This repository contains the source code for the Radius website.
+    - name: AWS Bicep Types
+      url: https://github.com/radius-project/bicep-types-aws
+      comment: >-
+        This repository contains the tooling for Bicep support for AWS resource
+        types.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    bug-bounty-program: ''
+    contact:
+      name: Radius Team
+      email: security@radapp.dev
+      primary: true
+    security-policy: https://github.com/radius-project/radius/blob/main/SECURITY.md
+    in-scope:
+      - ''
+    out-of-scope:
+      - ''
+    pgp-key: ''
+    comment: ''
+repository:
+  url: https://github.com/radius-project/radius
+  status: active
+  bug-fixes-only: true
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  no-third-party-packages: true
+  core-team:
+    - name: Sylvain Niles
+      affiliation: Microsoft
+      email: ''
+      social: https://github.com/sylvainsf
+      primary: false
+    - name: Karishma Chawla
+      affiliation: Microsoft
+      email: ''
+      social: https://github.com/kachawla
+      primary: false
+    - name: Brooke Hamilton
+      affiliation: Microsoft
+      email: ''
+      social: https://github.com/brooke-hamilton
+      primary: false
+  documentation:
+    contributing-guide: https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md
+    review-policy: >-
+      https://github.com/radius-project/radius/blob/7e12716cdb2396ce9e1db73583d6bae23eb42d77/docs/contributing/contributing-code/contributing-code-reviewing/README.md
+    security-policy: https://github.com/radius-project/radius/blob/main/SECURITY.md
+    governance: >-
+      https://github.com/radius-project/community/blob/main/community-membership.md
+    dependency-management-policy: https://github.com/radius-project/radius/blob/main/THIRD-PARTY-NOTICES.txt
+  release:
+    changelog: https://github.com/radius-project/radius/releases
+    automated-pipeline: false
+    attestations:
+      - name: Release 0.54
+        predicate-uri: https://github.com/radius-project/radius/actions/runs/20080596572
+        location: https://github.com/radius-project/radius/releases/tag/v0.54.0
+        comment: Build workflow for Release 0.54
+    distribution-points:
+      - uri: https://github.com/radius-project/radius/releases
+        comment: Radius Releases
+      - uri: https://github.com/orgs/radius-project/packages?repo_name=radius
+        comment: GitHub packages
+    license:
+      url: >-
+        https://github.com/radius-project/radius/blob/7e12716cdb2396ce9e1db73583d6bae23eb42d77/LICENSE
+      expression: Apache-2.0
+  security:
+    assessments:
+      self:
+        evidence: https://github.com/radius-project/design-notes/tree/main/architecture
+        date: ''
+        comment: >-
+          https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-controller-component-threat-model.md
+
+          https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-applications-rp-component-threat-model.md
+
+          https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-dashboard-component-threat-model.md
+
+          https://github.com/radius-project/design-notes/blob/main/architecture/2024-11-ucp-component-threat-model.md
+      third-party:
+        - evidence: ''
+          date: ''
+          comment: ''
+    champions:
+      - name: Radius Team
+        email: security@radapp.dev
+        primary: true
+    tools:
+      - name: Scorecard
+        type: Supply Chain Security
+        version: ''
+        rulesets:
+          - default
+        results:
+          adhoc:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          ci:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          release:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+        integration:
+          adhoc: false
+          ci: true
+          release: false
+        comment: ''
+      - name: CodeQL
+        type: SAST
+        version: '2'
+        rulesets:
+          - default
+        results:
+          adhoc:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          ci:
+            name: CodeQL GitHub workflow
+            predicate-uri: ''
+            location: >-
+              https://github.com/radius-project/radius/blob/7e12716cdb2396ce9e1db73583d6bae23eb42d77/.github/workflows/codeql.md?plain=1#L3
+            comment: GitHub workflow to run CodeQL
+          release:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+        integration:
+          adhoc: false
+          ci: true
+          release: false
+        comment: ''
+      - name: GoSec
+        type: SAST
+        version: ''
+        rulesets:
+          - default
+        results:
+          adhoc:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          ci:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          release:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+        integration:
+          adhoc: false
+          ci: true
+          release: false
+        comment: ''
+      - name: Dependency Review
+        type: ''
+        version: ''
+        rulesets:
+          - default
+        results:
+          adhoc:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          ci:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+          release:
+            name: ''
+            predicate-uri: ''
+            location: ''
+            comment: ''
+        integration:
+          adhoc: false
+          ci: true
+          release: false
+        comment: ''
