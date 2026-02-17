@@ -2639,3 +2639,697 @@ func TestValidator_ValidateSchema_WithSensitiveAnnotation(t *testing.T) {
 		require.Contains(t, err.Error(), fmt.Sprintf("%s annotation is only supported on string and object types, got 'integer'", annotationRadiusSensitive))
 	})
 }
+
+// requireSensitiveAnyOf asserts that a schema was normalized to an AnyOf[string, non-empty object]
+// and returns the string branch for further inspection.
+func requireSensitiveAnyOf(t *testing.T, s *openapi3.Schema) *openapi3.Schema {
+	t.Helper()
+	require.Nil(t, s.Type, "normalized schema should have no top-level type")
+	require.Len(t, s.AnyOf, 2, "normalized schema should have two AnyOf branches")
+	require.True(t, s.AnyOf[0].Value.Type.Is("string"), "first AnyOf branch should be string")
+	require.True(t, s.AnyOf[1].Value.Type.Is("object"), "second AnyOf branch should be object")
+	require.Equal(t, uint64(1), s.AnyOf[1].Value.MinProps, "object branch should require at least one property")
+	return s.AnyOf[0].Value
+}
+
+func TestNormalizeSensitiveFieldTypes(t *testing.T) {
+	t.Run("nil schema", func(t *testing.T) {
+		// Should not panic
+		normalizeSensitiveFieldTypes(nil)
+	})
+
+	t.Run("sensitive string field is normalized to AnyOf", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"password": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+				"name": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// Sensitive string field should be normalized to AnyOf[string, object]
+		requireSensitiveAnyOf(t, schema.Properties["password"].Value)
+		// Non-sensitive field should retain its type
+		require.NotNil(t, schema.Properties["name"].Value.Type)
+		require.True(t, schema.Properties["name"].Value.Type.Is("string"))
+	})
+
+	t.Run("sensitive object field retains type", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"credentials": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// Sensitive object field should retain its type (objects stay objects after encryption)
+		require.NotNil(t, schema.Properties["credentials"].Value.Type)
+		require.True(t, schema.Properties["credentials"].Value.Type.Is("object"))
+	})
+
+	t.Run("nested sensitive string field is normalized to AnyOf", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"auth": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						Properties: openapi3.Schemas{
+							"username": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+								},
+							},
+							"secret": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+									Extensions: map[string]any{
+										annotationRadiusSensitive: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// Nested sensitive string should be normalized
+		requireSensitiveAnyOf(t, schema.Properties["auth"].Value.Properties["secret"].Value)
+		// Non-sensitive sibling should retain type
+		require.NotNil(t, schema.Properties["auth"].Value.Properties["username"].Value.Type)
+	})
+
+	t.Run("sensitive string property inside array items", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"secrets": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"array"},
+						Items: &openapi3.SchemaRef{
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"object"},
+								Properties: openapi3.Schemas{
+									"value": {
+										Value: &openapi3.Schema{
+											Type: &openapi3.Types{"string"},
+											Extensions: map[string]any{
+												annotationRadiusSensitive: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// Sensitive string inside array items should be normalized
+		requireSensitiveAnyOf(t, schema.Properties["secrets"].Value.Items.Value.Properties["value"].Value)
+	})
+
+	t.Run("sensitive string directly on array items schema", func(t *testing.T) {
+		// e.g. an array of sensitive strings: items itself is marked sensitive
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"tokens": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"array"},
+						Items: &openapi3.SchemaRef{
+							Value: &openapi3.Schema{
+								Type: &openapi3.Types{"string"},
+								Extensions: map[string]any{
+									annotationRadiusSensitive: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// The items schema itself should be normalized
+		requireSensitiveAnyOf(t, schema.Properties["tokens"].Value.Items.Value)
+	})
+
+	t.Run("sensitive string property inside additionalProperties", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"config": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"object"},
+									Properties: openapi3.Schemas{
+										"token": {
+											Value: &openapi3.Schema{
+												Type: &openapi3.Types{"string"},
+												Extensions: map[string]any{
+													annotationRadiusSensitive: true,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// Sensitive string inside additionalProperties should be normalized
+		requireSensitiveAnyOf(t, schema.Properties["config"].Value.AdditionalProperties.Schema.Value.Properties["token"].Value)
+	})
+
+	t.Run("sensitive string directly on additionalProperties schema", func(t *testing.T) {
+		// e.g. a map where all values are sensitive strings
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"secretMap": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+						AdditionalProperties: openapi3.AdditionalProperties{
+							Schema: &openapi3.SchemaRef{
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+									Extensions: map[string]any{
+										annotationRadiusSensitive: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// The additionalProperties schema itself should be normalized
+		requireSensitiveAnyOf(t, schema.Properties["secretMap"].Value.AdditionalProperties.Schema.Value)
+	})
+
+	t.Run("non-sensitive fields are not modified", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"name": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"count": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		require.True(t, schema.Properties["name"].Value.Type.Is("string"))
+		require.True(t, schema.Properties["count"].Value.Type.Is("integer"))
+	})
+
+	t.Run("x-radius-sensitive false does not normalize type", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"token": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: false,
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// x-radius-sensitive: false should not affect the type
+		require.NotNil(t, schema.Properties["token"].Value.Type)
+		require.True(t, schema.Properties["token"].Value.Type.Is("string"))
+	})
+
+	t.Run("sensitive string with additional constraints preserves them on string branch", func(t *testing.T) {
+		maxLen := uint64(128)
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"apiKey": {
+					Value: &openapi3.Schema{
+						Type:      &openapi3.Types{"string"},
+						MinLength: 8,
+						MaxLength: &maxLen,
+						Pattern:   "^[A-Za-z0-9]+$",
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		// The string branch of the AnyOf should preserve the original constraints
+		// so that plaintext values are still validated.
+		stringBranch := requireSensitiveAnyOf(t, schema.Properties["apiKey"].Value)
+		require.Equal(t, uint64(8), stringBranch.MinLength)
+		require.Equal(t, &maxLen, stringBranch.MaxLength)
+		require.Equal(t, "^[A-Za-z0-9]+$", stringBranch.Pattern)
+	})
+
+	t.Run("preserves other vendor extensions on string branch", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"secret": {
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+							"x-custom-metadata":      "some-value",
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		stringBranch := requireSensitiveAnyOf(t, schema.Properties["secret"].Value)
+		// x-radius-sensitive should be removed from the string branch
+		_, hasSensitive := stringBranch.Extensions[annotationRadiusSensitive]
+		require.False(t, hasSensitive, "x-radius-sensitive should be removed from string branch")
+		// Other vendor extensions should be preserved
+		require.Equal(t, "some-value", stringBranch.Extensions["x-custom-metadata"])
+	})
+
+	t.Run("nullable sensitive string preserves nullable on string branch", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"token": {
+					Value: &openapi3.Schema{
+						Type:     &openapi3.Types{"string"},
+						Nullable: true,
+						Extensions: map[string]any{
+							annotationRadiusSensitive: true,
+						},
+					},
+				},
+			},
+		}
+
+		normalizeSensitiveFieldTypes(schema)
+
+		stringBranch := requireSensitiveAnyOf(t, schema.Properties["token"].Value)
+		require.True(t, stringBranch.Nullable, "nullable flag should be preserved on string branch")
+	})
+}
+
+func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("encrypted sensitive string field passes validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		// After encryption, the string field becomes an object
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"name": "my-resource",
+				"password": map[string]any{
+					"encrypted": "base64-ciphertext",
+					"nonce":     "base64-nonce",
+					"ad":        "base64-hash",
+					"version":   1,
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("unencrypted sensitive string field still passes validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		// Before encryption, the value is still a plain string
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"password": "plaintext-password",
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("encrypted nested sensitive string field passes validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"auth": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"username": map[string]any{
+							"type": "string",
+						},
+						"secret": map[string]any{
+							"type": "string",
+							"x-radius-sensitive": true,
+						},
+					},
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"auth": map[string]any{
+					"username": "admin",
+					"secret": map[string]any{
+						"encrypted": "base64-ciphertext",
+						"nonce":     "base64-nonce",
+						"ad":        "base64-hash",
+						"version":   1,
+					},
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("sensitive object field still passes validation when encrypted", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"type": "object",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		// Sensitive object stays as an object after encryption but contents change
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"encrypted": "base64-ciphertext",
+					"nonce":     "base64-nonce",
+					"ad":        "base64-hash",
+					"version":   1,
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("encrypted sensitive string with constraints passes validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"apiKey": map[string]any{
+					"type":      "string",
+					"minLength": 8,
+					"maxLength": 128,
+					"pattern":   "^[A-Za-z0-9]+$",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		// After encryption, the value is an object that would not satisfy
+		// minLength/maxLength/pattern — but normalization makes those inert.
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"apiKey": map[string]any{
+					"encrypted": "base64-ciphertext",
+					"nonce":     "base64-nonce",
+					"ad":        "base64-hash",
+					"version":   1,
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("non-sensitive field with wrong type still fails validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"type": "string",
+				},
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"name":     12345, // Wrong type - should still fail
+				"password": map[string]any{"encrypted": "data", "nonce": "data"},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+	})
+
+	t.Run("sensitive string field rejects integer value", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"password": 12345, // Neither string nor object
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+	})
+
+	t.Run("sensitive string field rejects boolean value", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"password": true, // Neither string nor object
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+	})
+
+	t.Run("sensitive string field rejects array value", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"password": []any{"not", "valid"}, // Neither string nor object
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+	})
+
+	t.Run("sensitive string directly on items schema accepts encrypted values", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"tokens": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "string",
+						"x-radius-sensitive": true,
+					},
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"tokens": []any{
+					map[string]any{"encrypted": "data1", "nonce": "nonce1"},
+					map[string]any{"encrypted": "data2", "nonce": "nonce2"},
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("sensitive string directly on additionalProperties schema accepts encrypted values", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"secretMap": map[string]any{
+					"type": "object",
+					"additionalProperties": map[string]any{
+						"type": "string",
+						"x-radius-sensitive": true,
+					},
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"secretMap": map[string]any{
+					"key1": map[string]any{"encrypted": "data1", "nonce": "nonce1"},
+					"key2": map[string]any{"encrypted": "data2", "nonce": "nonce2"},
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("sensitive string field rejects empty object", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"password": map[string]any{
+					"type": "string",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"password": map[string]any{}, // Empty object — not valid encrypted data
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+	})
+
+	t.Run("nullable sensitive string accepts null after normalization", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"token": map[string]any{
+					"type":               "string",
+					"nullable":           true,
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"token": nil,
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+}

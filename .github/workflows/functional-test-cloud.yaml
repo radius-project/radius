@@ -586,7 +586,17 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
-          path: bin
+          path: ${{ runner.temp }}/rad-cli-artifact
+
+      - name: Copy rad CLI to bin
+        run: |
+          mkdir -p ./bin
+          cp "${{ runner.temp }}/rad-cli-artifact/rad" ./bin/rad
+          chmod +x ./bin/rad
+          # Verify it is the expected binary
+          file ./bin/rad | grep -q "ELF" || { echo "Downloaded rad binary is not a valid ELF executable"; exit 1; }
+           # Verify it is the expected rad CLI binary by running a harmless command
+          ./bin/rad version >/dev/null 2>&1 || { echo "Downloaded rad binary is not a working rad CLI executable"; exit 1; }
 
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
@@ -692,7 +702,6 @@ jobs:
 
       - name: Download Bicep
         run: |
-          chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
