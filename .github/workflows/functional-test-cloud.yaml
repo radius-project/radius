@@ -642,21 +642,31 @@ jobs:
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
         run: |
+          set -euo pipefail
+
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
           chmod +x ./kind
 
-          # Populate the following environment variables for Azure workload identity from secrets.
-          # AZURE_OIDC_ISSUER_PUBLIC_KEY
-          # AZURE_OIDC_ISSUER_PRIVATE_KEY
-          # AZURE_OIDC_ISSUER
-          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # Parse and validate Azure workload identity values from secret JSON.
+          OIDC_JSON='${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}'
+          if ! echo "${OIDC_JSON}" | jq -e . >/dev/null; then
+            echo "FUNCTEST_AZURE_OIDC_JSON is not valid JSON."
+            echo "Expected keys: AZURE_OIDC_ISSUER, AZURE_OIDC_ISSUER_PUBLIC_KEY, AZURE_OIDC_ISSUER_PRIVATE_KEY"
+            exit 1
+          fi
+
+          AZURE_OIDC_ISSUER="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER')"
+          AZURE_OIDC_ISSUER_PUBLIC_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PUBLIC_KEY')"
+          AZURE_OIDC_ISSUER_PRIVATE_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PRIVATE_KEY')"
 
           AUTHKEY=$(echo -n "${{ github.actor }}:${{ github.token }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
-          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
-          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+          printf '%s' "${AZURE_OIDC_ISSUER_PUBLIC_KEY}" | base64 -d > sa.pub
+          printf '%s' "${AZURE_OIDC_ISSUER_PRIVATE_KEY}" | base64 -d > sa.key
+          openssl pkey -pubin -in sa.pub -noout >/dev/null
+          openssl pkey -in sa.key -check -noout >/dev/null
           cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
