@@ -246,6 +246,7 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+          SKIP_AWS_RECIPES: "true"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Install gotestsum (test reporting tool)

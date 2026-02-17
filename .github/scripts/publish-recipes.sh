@@ -63,6 +63,12 @@ for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
         continue
     fi
 
+    # Optionally skip AWS recipes when workflows disable AWS tests/providers.
+    if [[ "${SKIP_AWS_RECIPES:-false}" == "true" && "$FILENAME" =~ [Aa][Ww][Ss] ]]; then
+        echo "Skipping $RECIPE (AWS recipe skipped: SKIP_AWS_RECIPES=true)"
+        continue
+    fi
+
     echo "Publishing $RECIPE to $PUBLISH_REF"
     echo "- $PUBLISH_REF" >>$GITHUB_STEP_SUMMARY
     rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
