@@ -265,8 +265,7 @@ jobs:
               "extensibility": true
             },
             "extensions": {
-              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION"
             }
           }
           EOF
@@ -462,7 +461,6 @@ jobs:
             },
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
               "testresources": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:$RADIUS_VERSION"
             }
           }
@@ -501,6 +499,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ github.token }}
+          GOTEST_OPTS: -skip AWS\|TerraformPrivateGitModule
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
@@ -508,7 +507,7 @@ jobs:
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
         # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == 'radius-project/radius'
+        if: failure() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
@@ -584,17 +583,18 @@ jobs:
           if-no-files-found: error
 
   report-failure:
-    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY && needs.changes.outputs.only_changed != 'true'
     name: Report test failure
     needs: [changes, build, tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      issues: write
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

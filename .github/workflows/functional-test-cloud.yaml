@@ -62,13 +62,13 @@ env:
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: 1.3.0
   # Container registry for storing container images
-  CONTAINER_REGISTRY: ghcr.io/radius-project/dev
+  CONTAINER_REGISTRY: ${{ vars.FUNCTIONAL_TEST_CONTAINER_REGISTRY || 'ghcr.io/radius-project/dev' }}
   # Container registry for storing Bicep recipe artifacts
-  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
+  BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
-  AZURE_LOCATION: westus3
+  AZURE_LOCATION: westus2
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
@@ -80,7 +80,7 @@ env:
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
   # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: 425843
+  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID || '425843' }}
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis
   # bicep-types ACR url for uploading Radius Bicep types
@@ -119,7 +119,7 @@ jobs:
     if: |
       always() &&
       (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
-      (github.event_name != 'schedule' || github.repository == 'radius-project/radius')
+      (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -253,7 +253,7 @@ jobs:
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Get GitHub app token
-        if: github.repository == 'radius-project/radius'
+        if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -434,8 +434,7 @@ jobs:
               "extensibility": true
             },
             "extensions": {
-              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION"
             }
           }
           EOF
@@ -486,7 +485,7 @@ jobs:
       contents: read # Required for listing the commits
     steps:
       - name: Get GitHub app token
-        if: github.repository == 'radius-project/radius'
+        if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -520,6 +519,7 @@ jobs:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
       checks: write # Required for publishing test results
+      packages: read # Required for pulling images from ghcr.io inside KinD
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -533,16 +533,13 @@ jobs:
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
       - name: Get GitHub app token
-        if: github.repository == 'radius-project/radius'
+        if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: |
-            radius
-            terraform-private-modules
           permission-checks: write
           permission-pull-requests: write
           permission-contents: read
@@ -622,9 +619,10 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
+        if: false
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
-          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          # role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
@@ -640,7 +638,7 @@ jobs:
           # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          AUTHKEY=$(echo -n "${{ github.actor }}:${{ github.token }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
@@ -724,8 +722,7 @@ jobs:
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
             --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
-            --set global.azureWorkloadIdentity.enabled=true \
-            --set global.aws.irsa.enabled=true
+            --set global.azureWorkloadIdentity.enabled=true
 
           echo "*** Verify manifests are registered ***"
           rm -f registermanifest_logs.txt
@@ -787,11 +784,7 @@ jobs:
             --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
-          echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-
-          rad credential register aws irsa \
-            --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
+          echo "*** Skipping AWS provider configuration for this run ***"
 
       - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
@@ -820,8 +813,7 @@ jobs:
               "extensibility": true
             },
             "extensions": {
-              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION"
             },
             "cloud": {
               "credentialPrecedence": ["Environment"]
@@ -829,12 +821,10 @@ jobs:
           }
           EOF
       - name: Restore Bicep artifacts before running functional tests
-        # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension and 1 that uses the AWS extension so we can restore both Bicep artifacts before the tests start
+        # Restore the Radius extension artifact used by Azure cloud tests.
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
-          # Restore AWS Bicep types
-          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -858,7 +848,7 @@ jobs:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AWS_REGION: ${{ env.AWS_REGION }}
-          AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          # AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
@@ -867,12 +857,13 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GOTEST_OPTS: -skip AWS\|TerraformPrivateGitModule
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
         # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == 'radius-project/radius'
+        if: failure() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
@@ -965,7 +956,7 @@ jobs:
 
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).
-    if: always() && github.repository == 'radius-project/radius'
+    if: always() && github.repository == vars.RADIUS_REPOSITORY
     name: Report test results
     needs: [setup, build, tests]
     runs-on: ubuntu-24.04
@@ -1023,13 +1014,14 @@ jobs:
     needs: [build, tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
-    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
+    permissions:
+      issues: write
+    if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

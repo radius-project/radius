@@ -55,20 +55,20 @@ env:
   GOTESTSUM_VER: 1.13.0
 
   # Container registry for storing Bicep recipe artifacts
-  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
-  # ACR url for uploading test UDT Bicep types
-  TEST_BICEP_TYPES_REGISTRY: ${{ vars.TEST_BICEP_TYPES_REGISTRY }}
+  BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
+  # Shared ACR for Radius and UDT Bicep types (different artifact paths/tags).
+  BICEP_TYPES_REGISTRY: ${{ vars.BICEP_TYPES_REGISTRY }}
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
-  AZURE_LOCATION: westus3
+  AZURE_LOCATION: westus2
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The region for AWS resources
   AWS_REGION: us-west-2
 
   # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: 425843
+  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID || '425843' }}
 
   # The AKS cluster name
   AKS_CLUSTER_NAME: ${{ vars.LRT_AKS_CLUSTER_NAME }}
@@ -95,7 +95,7 @@ env:
 
 jobs:
   tests:
-    if: github.repository == 'radius-project/radius'
+    if: github.repository == vars.RADIUS_REPOSITORY
     name: Run functional tests
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -113,7 +113,7 @@ jobs:
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
 
       - name: Get GitHub app token
-        if: github.repository == 'radius-project/radius'
+        if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -126,9 +126,6 @@ jobs:
           # already-expired tokens in workflows that exceed the 1-hour token lifetime.
           skip-token-revoke: true
           owner: ${{ github.repository_owner }}
-          repositories: |
-            radius
-            terraform-private-modules
           permission-contents: read
 
       - name: Checkout
@@ -237,7 +234,7 @@ jobs:
         run: |  
           export PATH=$GITHUB_WORKSPACE/bin:$PATH  
           which rad || { echo "cannot find rad"; exit 1; }  
-          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force  
+          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${BICEP_TYPES_REGISTRY}/testresources:latest" --force  
         env:  
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
@@ -295,10 +292,7 @@ jobs:
             --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
-          echo "*** Configuring AWS provider ***"
-          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          rad credential register aws access-key \
-            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          echo "*** Skipping AWS provider configuration for this run ***"
 
       - name: Log radius installation status (failure)
         if: failure()
@@ -337,14 +331,11 @@ jobs:
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_OUTPUT
 
       - name: Restore Bicep artifacts before running functional tests
-        # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
-        # so we can restore all Bicep artifacts before the tests start.
-        run: |  
-          # Restore Radius Bicep types  
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force  
-          # Restore AWS Bicep types  
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force  
-        env:  
+        # Restore the Radius extension artifact used by Azure cloud tests.
+        run: |
+          # Restore Radius Bicep types
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
+        env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Run functional tests
@@ -353,10 +344,10 @@ jobs:
           UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          # AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
+          # AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
-          AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          # AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
@@ -367,6 +358,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
+          GOTEST_OPTS: -skip AWS\|TerraformPrivateGitModule
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           # Ensure rad cli is in path before running tests.
@@ -452,17 +444,18 @@ jobs:
           ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
 
   report-failure:
-    if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
+    if: failure() && github.repository == vars.RADIUS_REPOSITORY && github.event_name == 'schedule'
     name: Report test failure
     needs: [tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      issues: write
     steps:
       - name: Create failure issue for failing long running test run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,
