@@ -65,7 +65,12 @@ export default async ({ github, core }) => {
       return;
     }
 
+    const runUrl =
+      run.html_url ||
+      `https://github.com/${remoteOwner}/${remoteRepo}/actions/runs/${run.id}`;
+
     core.info(`Monitoring remote run id: ${run.id}`);
+    core.info(`Remote workflow run URL: ${runUrl}`);
 
     for (
       let elapsed = 0;
@@ -80,14 +85,11 @@ export default async ({ github, core }) => {
 
       const status = runResponse.data.status;
       const conclusion = runResponse.data.conclusion || "";
-      const htmlUrl = runResponse.data.html_url;
 
       if (status === "completed") {
         core.setOutput("run_id", String(run.id));
-        core.setOutput("run_url", htmlUrl);
+        core.setOutput("run_url", runUrl);
         core.setOutput("conclusion", conclusion);
-
-        core.info(`Remote workflow run URL: ${htmlUrl}`);
 
         if (conclusion === "success") {
           core.info("Remote workflow completed successfully");
@@ -120,7 +122,7 @@ export default async ({ github, core }) => {
           .join("\n");
 
         core.setFailed(
-          `Remote workflow failed with conclusion: ${conclusion}\nRemote workflow run: ${htmlUrl}${failedJobText ? `\nFailed jobs/steps:\n${failedJobText}` : ""}`,
+          `Remote workflow failed with conclusion: ${conclusion}\nRemote workflow run: ${runUrl}${failedJobText ? `\nFailed jobs/steps:\n${failedJobText}` : ""}`,
         );
         return;
       }
@@ -129,12 +131,9 @@ export default async ({ github, core }) => {
     }
 
     core.setOutput("run_id", String(run.id));
-    core.setOutput(
-      "run_url",
-      `https://github.com/${remoteOwner}/${remoteRepo}/actions/runs/${run.id}`,
-    );
+    core.setOutput("run_url", runUrl);
     core.setFailed(
-      `Timed out waiting for remote workflow completion: https://github.com/${remoteOwner}/${remoteRepo}/actions/runs/${run.id}`,
+      `Timed out waiting for remote workflow completion: ${runUrl}`,
     );
   } catch (error) {
     core.setFailed(error instanceof Error ? error.message : String(error));
