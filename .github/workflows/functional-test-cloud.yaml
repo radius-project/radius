@@ -679,11 +679,12 @@ jobs:
             exit 1
           fi
 
-          SECRET_KID="$(python3 -c "import hashlib,pathlib; print(hashlib.sha256(pathlib.Path('sa.pub').read_text().strip().encode()).hexdigest()[:32])")"
-          KID_MATCH="$(curl -fsSL "${LIVE_JWKS_URL}" | jq -er --arg kid "${SECRET_KID}" 'any(.keys[]?; .kid == $kid)')"
+          SECRET_KID="$(openssl pkey -pubin -in sa.pub -outform DER | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
+          KID_MATCH="$(curl -fsSL "${LIVE_JWKS_URL}" | jq -r --arg kid "${SECRET_KID}" 'any(.keys[]?; .kid == $kid)')"
           if [[ "${KID_MATCH}" != "true" ]]; then
             echo "OIDC signing key mismatch for issuer '${AZURE_OIDC_ISSUER}'."
             echo "Key from FUNCTEST_AZURE_OIDC_JSON is not present in ${LIVE_JWKS_URL}."
+            echo "Expected kid: ${SECRET_KID}"
             echo "Update FUNCTEST_AZURE_OIDC_JSON from Terraform output and rerun."
             exit 1
           fi
@@ -853,13 +854,23 @@ jobs:
           fi
 
           FED_TOKEN="$(kubectl exec -n radius-system deploy/bicep-de -- cat "${FED_TOKEN_FILE}")"
-          CLAIMS="$(python3 -c "import base64, json, sys; p=sys.stdin.read().strip().split('.')[1]; p += '=' * (-len(p) % 4); print(base64.urlsafe_b64decode(p.encode()).decode())" <<< "${FED_TOKEN}")"
+          TOKEN_HEADER="$(python3 -c "import base64, sys; h=sys.stdin.read().strip().split('.')[0]; h += '=' * (-len(h) % 4); print(base64.urlsafe_b64decode(h.encode()).decode())" <<< "${FED_TOKEN}")"
+          TOKEN_KID="$(echo "${TOKEN_HEADER}" | jq -r '.kid')"
+          CLAIMS="$(python3 -c "import base64, sys; p=sys.stdin.read().strip().split('.')[1]; p += '=' * (-len(p) % 4); print(base64.urlsafe_b64decode(p.encode()).decode())" <<< "${FED_TOKEN}")"
           ISSUER="$(echo "${CLAIMS}" | jq -r '.iss')"
           SUBJECT="$(echo "${CLAIMS}" | jq -r '.sub')"
           AUDIENCE="$(echo "${CLAIMS}" | jq -r '.aud')"
+          JWKS_URL="$(curl -fsSL "${ISSUER%/}/.well-known/openid-configuration" | jq -r '.jwks_uri')"
+          KID_FOUND_IN_JWKS="$(curl -fsSL "${JWKS_URL}" | jq -r --arg kid "${TOKEN_KID}" 'any(.keys[]?; .kid == $kid)')"
           echo "Workload token issuer: ${ISSUER}"
           echo "Workload token subject: ${SUBJECT}"
           echo "Workload token audience: ${AUDIENCE}"
+          echo "Workload token kid: ${TOKEN_KID}"
+          echo "OIDC JWKS URL: ${JWKS_URL}"
+          if [[ "${KID_FOUND_IN_JWKS}" != "true" ]]; then
+            echo "JWT kid ${TOKEN_KID} not found in JWKS for issuer ${ISSUER}."
+            exit 1
+          fi
 
           az login \
             --service-principal \
