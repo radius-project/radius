@@ -404,87 +404,28 @@ jobs:
           client-payload: '{"source_repository":"${{ github.repository }}","source_ref":"${{ github.ref }}","source_sha":"${{ github.sha }}","rel_channel":"${{ env.REL_CHANNEL }}"}'
 
       - name: Monitor remote workflow
+        id: monitor-remote-workflow
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ steps.get-token.outputs.token }}
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await script({context, github, core})
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-bicep-types.yml
+          INPUT_DISPATCH_STARTED_AT: ${{ steps.dispatch-start.outputs.started_at }}
+          INPUT_MAX_WAIT_SECONDS: "900"
+          INPUT_POLL_INTERVAL_SECONDS: "10"
+
+      - name: Show failed logs
+        if: failure() && steps.monitor-remote-workflow.outputs.run_id != ''
         shell: bash
         env:
           GH_TOKEN: ${{ steps.get-token.outputs.token }}
-          REMOTE_REPO: azure-octo/radius-publisher
-          REMOTE_WORKFLOW_FILE: publish-bicep-types.yml
-          DISPATCH_STARTED_AT: ${{ steps.dispatch-start.outputs.started_at }}
         run: |
-          set -euo pipefail
-
-          echo "Waiting for remote workflow run in ${REMOTE_REPO}..."
-
-          max_wait_seconds=900
-          poll_interval=10
-          elapsed=0
-          run_id=""
-
-          while [ "$elapsed" -lt "$max_wait_seconds" ]; do
-            runs_json=$(gh api "repos/${REMOTE_REPO}/actions/workflows/${REMOTE_WORKFLOW_FILE}/runs" -f event=repository_dispatch -f per_page=20)
-
-            run_id=$(echo "$runs_json" | jq -r --arg started "$DISPATCH_STARTED_AT" '
-              .workflow_runs
-              | map(select(.created_at >= $started))
-              | sort_by(.created_at)
-              | last
-              | .id // empty')
-
-            if [ -n "$run_id" ]; then
-              break
-            fi
-
-            sleep "$poll_interval"
-            elapsed=$((elapsed + poll_interval))
-          done
-
-          if [ -z "$run_id" ]; then
-            echo "::error::Timed out waiting for remote workflow run to start"
-            echo "::error::Remote workflows: https://github.com/${REMOTE_REPO}/actions/workflows/${REMOTE_WORKFLOW_FILE}"
-            exit 1
-          fi
-
-          echo "Monitoring remote run id: ${run_id}"
-
-          elapsed=0
-          while [ "$elapsed" -lt "$max_wait_seconds" ]; do
-            run_json=$(gh api "repos/${REMOTE_REPO}/actions/runs/${run_id}")
-            status=$(echo "$run_json" | jq -r '.status')
-            conclusion=$(echo "$run_json" | jq -r '.conclusion // ""')
-            html_url=$(echo "$run_json" | jq -r '.html_url')
-
-            if [ "$status" = "completed" ]; then
-              echo "Remote workflow run URL: ${html_url}"
-
-              if [ "$conclusion" = "success" ]; then
-                echo "Remote workflow completed successfully"
-                exit 0
-              fi
-
-              echo "::error::Remote workflow failed with conclusion: ${conclusion}"
-              echo "::error::Remote workflow run: ${html_url}"
-              echo "Failed jobs/steps:"
-
-              gh api "repos/${REMOTE_REPO}/actions/runs/${run_id}/jobs" -f per_page=100 | jq -r '
-                .jobs[]
-                | select(.conclusion != "success")
-                | "- Job: \(.name) [\(.conclusion)]\n"
-                  + ((.steps // [])
-                  | map(select(.conclusion == "failure") | "  - Step: \(.name)")
-                  | join("\n"))'
-
-              echo "Failed step logs:"
-              gh run view "$run_id" --repo "$REMOTE_REPO" --log-failed || true
-              exit 1
-            fi
-
-            sleep "$poll_interval"
-            elapsed=$((elapsed + poll_interval))
-          done
-
-          echo "::error::Timed out waiting for remote workflow completion"
-          echo "::error::Remote workflow run: https://github.com/${REMOTE_REPO}/actions/runs/${run_id}"
-          exit 1
+          gh run view "${{ steps.monitor-remote-workflow.outputs.run_id }}" --repo azure-octo/radius-publisher --log-failed || true
 
   publish-release:
     name: Publish GitHub Release
