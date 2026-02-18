@@ -353,7 +353,7 @@ jobs:
           helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
 
   build-and-push-bicep-types:
-    name: Dispatch Radius bicep types publish
+    name: Dispatch Bicep Types publish
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [changes]
@@ -375,12 +375,6 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
 
-      - name: Capture dispatch start time
-        id: dispatch-start
-        shell: bash
-        run: |
-          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-
       - name: Get App Token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get-token
@@ -394,6 +388,12 @@ jobs:
           repositories: |
             radius-publisher
 
+      - name: Capture dispatch start time
+        id: dispatch-start
+        shell: bash
+        run: |
+          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Repository Dispatch
         id: repository-dispatch
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
@@ -401,7 +401,13 @@ jobs:
           token: ${{ steps.get-token.outputs.token }}
           repository: azure-octo/radius-publisher
           event-type: bicep-types
-          client-payload: '{"source_repository":"${{ github.repository }}","source_ref":"${{ github.ref }}","source_sha":"${{ github.sha }}","rel_channel":"${{ env.REL_CHANNEL }}"}'
+          client-payload: |-
+            {
+              "source_repository": "${{ github.repository }}",
+              "source_ref": "${{ github.ref }}",
+              "source_sha": "${{ github.sha }}",
+              "rel_channel": "${{ env.REL_CHANNEL }}"
+            }
 
       - name: Monitor remote workflow
         id: monitor-remote-workflow
@@ -416,8 +422,8 @@ jobs:
           INPUT_REPO: radius-publisher
           INPUT_WORKFLOW_FILE: publish-bicep-types.yml
           INPUT_DISPATCH_STARTED_AT: ${{ steps.dispatch-start.outputs.started_at }}
-          INPUT_MAX_WAIT_SECONDS: "900"
-          INPUT_POLL_INTERVAL_SECONDS: "10"
+          INPUT_MAX_WAIT_SECONDS: "600"
+          INPUT_POLL_INTERVAL_SECONDS: "15"
 
       - name: Show failed logs
         if: failure() && steps.monitor-remote-workflow.outputs.run_id != ''
