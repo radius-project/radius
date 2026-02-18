@@ -238,6 +238,20 @@ jobs:
         env:  
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Point dynamicrp testresources extension to test ACR
+        run: |
+          set -euo pipefail
+
+          BICEP_CONFIG_FILE="./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
+          TMP_FILE="$(mktemp)"
+          jq --arg testresources "br:${BICEP_TYPES_REGISTRY}/testresources:latest" \
+            '.extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
+            "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
+          mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
+          cat "${BICEP_CONFIG_FILE}"
+        env:
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+
       - name: Publish Bicep Test Recipes
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -362,6 +376,11 @@ jobs:
             exit 1
           fi
 
+          # Isolate this validation login from the job-wide Azure CLI auth context used by tests.
+          export AZURE_CONFIG_DIR
+          AZURE_CONFIG_DIR="$(mktemp -d)"
+          trap 'rm -rf "${AZURE_CONFIG_DIR}"' EXIT
+
           az login \
             --service-principal \
             --username "${{ secrets.AZURE_SP_TESTS_APPID }}" \
@@ -371,6 +390,13 @@ jobs:
             -o none
           az account set --subscription "${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}"
           az account get-access-token --resource https://management.azure.com/ -o none
+
+      - name: Refresh Azure login before functional tests
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Restore Bicep artifacts before running functional tests
         # Restore the Radius extension artifact used by Azure cloud tests.
