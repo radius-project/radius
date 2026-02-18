@@ -331,6 +331,47 @@ jobs:
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_OUTPUT
 
+      - name: Validate Azure workload identity token exchange
+        run: |
+          set -euo pipefail
+
+          FED_TOKEN_FILE="$(kubectl exec -n radius-system deploy/bicep-de -- printenv AZURE_FEDERATED_TOKEN_FILE)"
+          if [[ -z "${FED_TOKEN_FILE}" ]]; then
+            echo "AZURE_FEDERATED_TOKEN_FILE is not set in bicep-de pod. Workload identity mutation may have failed."
+            kubectl -n radius-system get pod -l app.kubernetes.io/name=bicep-de -o jsonpath='{.items[0].metadata.labels}'
+            echo
+            exit 1
+          fi
+
+          FED_TOKEN="$(kubectl exec -n radius-system deploy/bicep-de -- cat "${FED_TOKEN_FILE}")"
+          TOKEN_HEADER="$(python3 -c "import base64, sys; h=sys.stdin.read().strip().split('.')[0]; h += '=' * (-len(h) % 4); print(base64.urlsafe_b64decode(h.encode()).decode())" <<< "${FED_TOKEN}")"
+          TOKEN_KID="$(echo "${TOKEN_HEADER}" | jq -r '.kid')"
+          CLAIMS="$(python3 -c "import base64, sys; p=sys.stdin.read().strip().split('.')[1]; p += '=' * (-len(p) % 4); print(base64.urlsafe_b64decode(p.encode()).decode())" <<< "${FED_TOKEN}")"
+          ISSUER="$(echo "${CLAIMS}" | jq -r '.iss')"
+          SUBJECT="$(echo "${CLAIMS}" | jq -r '.sub')"
+          AUDIENCE="$(echo "${CLAIMS}" | jq -r '.aud')"
+          JWKS_URL="$(curl -fsSL "${ISSUER%/}/.well-known/openid-configuration" | jq -r '.jwks_uri')"
+          KID_FOUND_IN_JWKS="$(curl -fsSL "${JWKS_URL}" | jq -r --arg kid "${TOKEN_KID}" 'any(.keys[]?; .kid == $kid)')"
+          echo "Workload token issuer: ${ISSUER}"
+          echo "Workload token subject: ${SUBJECT}"
+          echo "Workload token audience: ${AUDIENCE}"
+          echo "Workload token kid: ${TOKEN_KID}"
+          echo "OIDC JWKS URL: ${JWKS_URL}"
+          if [[ "${KID_FOUND_IN_JWKS}" != "true" ]]; then
+            echo "JWT kid ${TOKEN_KID} not found in JWKS for issuer ${ISSUER}."
+            exit 1
+          fi
+
+          az login \
+            --service-principal \
+            --username "${{ secrets.AZURE_SP_TESTS_APPID }}" \
+            --tenant "${{ secrets.AZURE_SP_TESTS_TENANTID }}" \
+            --federated-token "${FED_TOKEN}" \
+            --allow-no-subscriptions \
+            -o none
+          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}"
+          az account get-access-token --resource https://management.azure.com/ -o none
+
       - name: Restore Bicep artifacts before running functional tests
         # Restore the Radius extension artifact used by Azure cloud tests.
         run: |
@@ -367,12 +408,12 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Populate the following test environment variables from JSON secret.
-          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_MSSQL_RESOURCE_ID
-          # AZURE_MSSQL_USERNAME
-          # AZURE_MSSQL_PASSWORD
-          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
+          if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
+            echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
+            exit 1
+          fi
+          export AZURE_COSMOS_MONGODB_ACCOUNT_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_COSMOS_MONGODB_ACCOUNT_ID')"
 
           make test-functional-all
 
