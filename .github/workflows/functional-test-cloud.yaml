@@ -861,13 +861,15 @@ jobs:
           echo "Workload token subject: ${SUBJECT}"
           echo "Workload token audience: ${AUDIENCE}"
 
-          az account get-access-token \
+          az login \
             --service-principal \
             --username "${{ secrets.AZURE_SP_TESTS_APPID }}" \
             --tenant "${{ secrets.AZURE_SP_TESTS_TENANTID }}" \
             --federated-token "${FED_TOKEN}" \
-            --resource https://management.azure.com/ \
+            --allow-no-subscriptions \
             -o none
+          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}"
+          az account get-access-token --resource https://management.azure.com/ -o none
 
       - name: Publish Terraform test recipes
         run: |
