@@ -453,7 +453,6 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-          SKIP_AWS_RECIPES: "true"
 
       - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: success() && env.PR_NUMBER != ''
@@ -632,62 +631,30 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        if: false
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
-          # role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
         run: |
-          set -euo pipefail
-
           curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
           chmod +x ./kind
 
-          # Parse and validate Azure workload identity values from secret JSON.
-          OIDC_JSON='${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}'
-          if ! echo "${OIDC_JSON}" | jq -e . >/dev/null; then
-            echo "FUNCTEST_AZURE_OIDC_JSON is not valid JSON."
-            echo "Expected keys: AZURE_OIDC_ISSUER, AZURE_OIDC_ISSUER_PUBLIC_KEY, AZURE_OIDC_ISSUER_PRIVATE_KEY"
-            exit 1
-          fi
-
-          AZURE_OIDC_ISSUER="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER')"
-          AZURE_OIDC_ISSUER_PUBLIC_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PUBLIC_KEY')"
-          AZURE_OIDC_ISSUER_PRIVATE_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PRIVATE_KEY')"
+          # Populate the following environment variables for Azure workload identity from secrets.
+          # AZURE_OIDC_ISSUER_PUBLIC_KEY
+          # AZURE_OIDC_ISSUER_PRIVATE_KEY
+          # AZURE_OIDC_ISSUER
+          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
           AUTHKEY=$(echo -n "${{ github.actor }}:${{ github.token }}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
-          printf '%s' "${AZURE_OIDC_ISSUER_PUBLIC_KEY}" | base64 -d > sa.pub
-          printf '%s' "${AZURE_OIDC_ISSUER_PRIVATE_KEY}" | base64 -d > sa.key
-          openssl pkey -pubin -in sa.pub -noout >/dev/null
-          openssl pkey -in sa.key -check -noout >/dev/null
-
-          # Validate the provided signing keys are aligned with the live issuer JWKS.
-          ISSUER_NO_SLASH="${AZURE_OIDC_ISSUER%/}"
-          DISCOVERY_URL="${ISSUER_NO_SLASH}/.well-known/openid-configuration"
-          LIVE_DISCOVERY_JSON="$(curl -fsSL "${DISCOVERY_URL}")"
-          LIVE_ISSUER="$(echo "${LIVE_DISCOVERY_JSON}" | jq -er '.issuer')"
-          LIVE_JWKS_URL="$(echo "${LIVE_DISCOVERY_JSON}" | jq -er '.jwks_uri')"
-          if [[ "${LIVE_ISSUER}" != "${AZURE_OIDC_ISSUER}" ]]; then
-            echo "OIDC issuer mismatch. Secret AZURE_OIDC_ISSUER='${AZURE_OIDC_ISSUER}', discovery issuer='${LIVE_ISSUER}'."
-            exit 1
-          fi
-
-          SECRET_KID="$(openssl pkey -pubin -in sa.pub -outform DER | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
-          KID_MATCH="$(curl -fsSL "${LIVE_JWKS_URL}" | jq -r --arg kid "${SECRET_KID}" 'any(.keys[]?; .kid == $kid)')"
-          if [[ "${KID_MATCH}" != "true" ]]; then
-            echo "OIDC signing key mismatch for issuer '${AZURE_OIDC_ISSUER}'."
-            echo "Key from FUNCTEST_AZURE_OIDC_JSON is not present in ${LIVE_JWKS_URL}."
-            echo "Expected kid: ${SECRET_KID}"
-            echo "Update FUNCTEST_AZURE_OIDC_JSON from Terraform output and rerun."
-            exit 1
-          fi
+          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
 
           cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
@@ -766,7 +733,8 @@ jobs:
             --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
             --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
             --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
-            --set global.azureWorkloadIdentity.enabled=true
+            --set global.azureWorkloadIdentity.enabled=true \
+            --set global.aws.irsa.enabled=true
 
           echo "*** Verify manifests are registered ***"
           rm -f registermanifest_logs.txt
@@ -828,7 +796,11 @@ jobs:
             --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
             --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
-          echo "*** Skipping AWS provider configuration for this run ***"
+          echo "*** Configuring AWS provider ***"
+          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+
+          rad credential register aws irsa \
+            --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
 
       - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
         if: failure() && env.PR_NUMBER != ''
@@ -840,47 +812,6 @@ jobs:
           append: true
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-
-      - name: Validate Azure workload identity token exchange
-        run: |
-          set -euo pipefail
-
-          FED_TOKEN_FILE="$(kubectl exec -n radius-system deploy/bicep-de -- printenv AZURE_FEDERATED_TOKEN_FILE)"
-          if [[ -z "${FED_TOKEN_FILE}" ]]; then
-            echo "AZURE_FEDERATED_TOKEN_FILE is not set in bicep-de pod. Workload identity mutation may have failed."
-            kubectl -n radius-system get pod -l app.kubernetes.io/name=bicep-de -o jsonpath='{.items[0].metadata.labels}'
-            echo
-            exit 1
-          fi
-
-          FED_TOKEN="$(kubectl exec -n radius-system deploy/bicep-de -- cat "${FED_TOKEN_FILE}")"
-          TOKEN_HEADER="$(python3 -c "import base64, sys; h=sys.stdin.read().strip().split('.')[0]; h += '=' * (-len(h) % 4); print(base64.urlsafe_b64decode(h.encode()).decode())" <<< "${FED_TOKEN}")"
-          TOKEN_KID="$(echo "${TOKEN_HEADER}" | jq -r '.kid')"
-          CLAIMS="$(python3 -c "import base64, sys; p=sys.stdin.read().strip().split('.')[1]; p += '=' * (-len(p) % 4); print(base64.urlsafe_b64decode(p.encode()).decode())" <<< "${FED_TOKEN}")"
-          ISSUER="$(echo "${CLAIMS}" | jq -r '.iss')"
-          SUBJECT="$(echo "${CLAIMS}" | jq -r '.sub')"
-          AUDIENCE="$(echo "${CLAIMS}" | jq -r '.aud')"
-          JWKS_URL="$(curl -fsSL "${ISSUER%/}/.well-known/openid-configuration" | jq -r '.jwks_uri')"
-          KID_FOUND_IN_JWKS="$(curl -fsSL "${JWKS_URL}" | jq -r --arg kid "${TOKEN_KID}" 'any(.keys[]?; .kid == $kid)')"
-          echo "Workload token issuer: ${ISSUER}"
-          echo "Workload token subject: ${SUBJECT}"
-          echo "Workload token audience: ${AUDIENCE}"
-          echo "Workload token kid: ${TOKEN_KID}"
-          echo "OIDC JWKS URL: ${JWKS_URL}"
-          if [[ "${KID_FOUND_IN_JWKS}" != "true" ]]; then
-            echo "JWT kid ${TOKEN_KID} not found in JWKS for issuer ${ISSUER}."
-            exit 1
-          fi
-
-          az login \
-            --service-principal \
-            --username "${{ secrets.AZURE_SP_TESTS_APPID }}" \
-            --tenant "${{ secrets.AZURE_SP_TESTS_TENANTID }}" \
-            --federated-token "${FED_TOKEN}" \
-            --allow-no-subscriptions \
-            -o none
-          az account set --subscription "${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}"
-          az account get-access-token --resource https://management.azure.com/ -o none
 
       - name: Publish Terraform test recipes
         run: |
@@ -898,22 +829,23 @@ jobs:
               "extensibility": true
             },
             "extensions": {
-              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION"
+              "radius": "br:${{ env.BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
             },
             "cloud": {
-              "credentialPrecedence": ["AzureCLI", "Environment"]
+              "credentialPrecedence": ["Environment"]
             }
           }
           EOF
       - name: Restore Bicep artifacts before running functional tests
-        # Restore the Radius extension artifact used by Azure cloud tests.
+        # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension and 1 that uses the AWS extension so we can restore both Bicep artifacts before the tests start
         run: |
           # Restore Radius Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
+          # Restore AWS Bicep types
+          bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
         run: |
-          set -euo pipefail
-
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           # Make directory to capture functional test results
@@ -922,14 +854,12 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          # Parse and validate preprovisioned Azure resources payload.
-          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
-          if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
-            echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
-            echo "Expected key: AZURE_COSMOS_MONGODB_ACCOUNT_ID"
-            exit 1
-          fi
-          export AZURE_COSMOS_MONGODB_ACCOUNT_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_COSMOS_MONGODB_ACCOUNT_ID')"
+          # Populate the following test environment variables from JSON secret.
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
           make test-functional-${{ matrix.name }}
         env:
@@ -937,7 +867,7 @@ jobs:
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AWS_REGION: ${{ env.AWS_REGION }}
-          # AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
@@ -946,7 +876,6 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          GOTEST_OPTS: -skip AWS\|TerraformPrivateGitModule
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
 
       - name: Process Functional Test Results
