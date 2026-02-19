@@ -206,10 +206,9 @@ func Test_RequireOutput(t *testing.T) {
 			want:   output.DefaultFormat,
 		},
 		{
-			name:      "plain-text is rejected",
-			format:    "plain-text",
-			wantErr:   true,
-			errSubstr: `unsupported output format "plain-text", supported formats are: json, table`,
+			name:   "plain-text is normalized to table",
+			format: "plain-text",
+			want:   "table",
 		},
 		{
 			name:      "text is rejected",
@@ -240,60 +239,4 @@ func Test_RequireOutput(t *testing.T) {
 	}
 }
 
-func Test_RequireOutputAllowPlainText(t *testing.T) {
-	tests := []struct {
-		name      string
-		format    string
-		want      string
-		wantErr   bool
-		errSubstr string
-	}{
-		{
-			name:   "json is accepted",
-			format: "json",
-			want:   "json",
-		},
-		{
-			name:   "plain-text is accepted",
-			format: "plain-text",
-			want:   "plain-text",
-		},
-		{
-			name:   "empty defaults to table",
-			format: "",
-			want:   output.DefaultFormat,
-		},
-		{
-			name:      "table is rejected",
-			format:    "table",
-			wantErr:   true,
-			errSubstr: `unsupported output format "table", supported formats are: plain-text, json`,
-		},
-		{
-			name:      "text is rejected",
-			format:    "text",
-			wantErr:   true,
-			errSubstr: `unsupported output format "text", supported formats are: plain-text, json`,
-		},
-		{
-			name:      "unknown format is rejected",
-			format:    "xml",
-			wantErr:   true,
-			errSubstr: `unsupported output format "xml", supported formats are: plain-text, json`,
-		},
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := newCmdWithOutputFlag(tt.format)
-			got, err := RequireOutputAllowPlainText(cmd)
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.errSubstr)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.want, got)
-			}
-		})
-	}
-}

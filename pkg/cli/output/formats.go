@@ -30,3 +30,13 @@ func SupportedFormats() []string {
 		FormatTable,
 	}
 }
+
+// NormalizeFormat maps deprecated format aliases to their canonical form.
+// Currently maps "plain-text" → "table" for backwards compatibility.
+// Returns the input unchanged if it is not an alias.
+func NormalizeFormat(format string) string {
+	if format == FormatPlainText {
+		return FormatTable
+	}
+	return format
+}
