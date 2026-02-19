@@ -136,9 +136,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad env create` command.
 //
 // Run implements create-or-update semantics. If the environment does not exist, it creates
-// a new one with all singleton recipe packs for core resource types. If the environment
-// already exists, it checks the existing recipe packs and fills in any missing singletons
-// for core resource types, detecting conflicts along the way.
+// a new one with the default recipe pack for core resource types. If the environment
+// already exists, it creates the default recipe pack if missing and links it.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
@@ -152,7 +151,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 }
 
-// runCreate creates a new environment with all singleton recipe packs for core resource types.
+// runCreate creates a new environment with the default recipe pack for core resource types.
 func (r *Runner) runCreate(ctx context.Context) error {
 	r.Output.LogInfo("Creating Radius Core Environment %q...", r.EnvironmentName)
 
@@ -165,8 +164,8 @@ func (r *Runner) runCreate(ctx context.Context) error {
 		return err
 	}
 
-	// Create all singleton recipe packs for core resource types in the default resource group.
-	// Singletons always live in the default scope regardless of the current workspace scope.
+	// Create the default recipe pack in the default resource group.
+	// The default pack lives in the default scope regardless of the current workspace scope.
 	if r.DefaultScopeClientFactory == nil {
 		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
 		if err != nil {
@@ -174,22 +173,17 @@ func (r *Runner) runCreate(ctx context.Context) error {
 		}
 		r.DefaultScopeClientFactory = defaultClientFactory
 	}
-	recipePackClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
-	recipePackIDs, err := recipepack.CreateSingletonRecipePacks(ctx, recipePackClient)
+
+	defaultPack := recipepack.NewDefaultRecipePackResource()
+	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
 	if err != nil {
 		return err
-	}
-
-	// Link all recipe packs to the environment
-	recipePackPtrs := make([]*string, len(recipePackIDs))
-	for i, id := range recipePackIDs {
-		recipePackPtrs[i] = to.Ptr(id)
 	}
 
 	resource := &corerpv20250801.EnvironmentResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Properties: &corerpv20250801.EnvironmentProperties{
-			RecipePacks: recipePackPtrs,
+			RecipePacks: []*string{to.Ptr(recipepack.DefaultRecipePackID())},
 		},
 	}
 
