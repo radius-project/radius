@@ -238,5 +238,3 @@ func Test_RequireOutput(t *testing.T) {
 		})
 	}
 }
-
-
