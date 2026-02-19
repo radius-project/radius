@@ -155,7 +155,7 @@ func Test_Run(t *testing.T) {
 		},
 	}
 
-	t.Run("New environment: all singletons created", func(t *testing.T) {
+	t.Run("creates environment with default recipe pack", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
 		mockAppClient.EXPECT().
@@ -166,15 +166,15 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			workspace.Scope,
 			test_client_factory.WithEnvironmentServer404OnGet,
-			test_client_factory.WithRecipePackServerCoreTypes,
+			nil,
 		)
 		require.NoError(t, err)
 
-		// Singleton recipe packs are created in the default scope.
+		// Default recipe pack is created in the default scope.
 		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			recipepack.DefaultResourceGroupScope,
 			nil,
-			test_client_factory.WithRecipePackServerCoreTypes,
+			nil,
 		)
 		require.NoError(t, err)
 
