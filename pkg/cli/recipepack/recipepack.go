@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	// DefaultRecipePackName is the name of the default Kubernetes recipe pack.
-	DefaultRecipePackName = "local-dev"
+	// DefaultRecipePackResourceName is the name of the default recipe pack
+	// resource that contains recipes for all core resource types.
+	DefaultRecipePackResourceName = "default"
 
 	// DefaultResourceGroupName is the name of the default resource group where
 	// singleton recipe packs are created and looked up.
@@ -44,6 +45,32 @@ const (
 // ResourceGroupCreator is a function that creates or updates a Radius resource group.
 // This is typically satisfied by ApplicationsManagementClient.CreateOrUpdateResourceGroup.
 type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGroupName string, resource *ucpv20231001.ResourceGroupResource) error
+
+// NewDefaultRecipePackResource creates a RecipePackResource containing recipes
+// for all core resource types. This is the default recipe pack that gets injected into
+// environments that have no recipe packs configured.
+func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
+	bicepKind := corerpv20250801.RecipeKindBicep
+	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
+	for _, def := range GetDefaultRecipePackDefinition() {
+		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
+			RecipeKind:     &bicepKind,
+			RecipeLocation: to.Ptr(def.RecipeLocation),
+		}
+	}
+	return corerpv20250801.RecipePackResource{
+		Location: to.Ptr("global"),
+		Properties: &corerpv20250801.RecipePackProperties{
+			Recipes: recipes,
+		},
+	}
+}
+
+// DefaultRecipePackID returns the full resource ID of the default recipe pack
+// in the default resource group scope.
+func DefaultRecipePackID() string {
+	return fmt.Sprintf("%s/providers/Radius.Core/recipePacks/%s", DefaultResourceGroupScope, DefaultRecipePackResourceName)
+}
 
 // EnsureDefaultResourceGroup creates the default resource group if it does not already exist.
 // This must be called before creating singleton recipe packs, because recipe packs are
@@ -64,10 +91,10 @@ type SingletonRecipePackDefinition struct {
 	RecipeLocation string
 }
 
-// GetSingletonRecipePackDefinitions returns the list of singleton recipe pack definitions.
+// GetDefaultRecipePackDefinition returns the list of singleton recipe pack definitions.
 // Each definition represents a single recipe pack containing one recipe for one resource type.
 // This list is currently hardcoded, but will be made dynamic in the future.
-func GetSingletonRecipePackDefinitions() []SingletonRecipePackDefinition {
+func GetDefaultRecipePackDefinition() []SingletonRecipePackDefinition {
 	return []SingletonRecipePackDefinition{
 		{
 			Name:           "containers",
@@ -113,7 +140,7 @@ func NewSingletonRecipePackResource(resourceType, recipeLocation string) corerpv
 // The client must be scoped to the default resource group (DefaultResourceGroupScope).
 // It returns the list of full resource IDs of the created recipe packs, always in the default scope.
 func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.RecipePacksClient) ([]string, error) {
-	definitions := GetSingletonRecipePackDefinitions()
+	definitions := GetDefaultRecipePackDefinition()
 	recipePackIDs := make([]string, 0, len(definitions))
 
 	for _, def := range definitions {
@@ -133,7 +160,7 @@ func CreateSingletonRecipePacks(ctx context.Context, client *corerpv20250801.Rec
 
 // GetCoreResourceTypes returns the set of core resource types that require recipe packs.
 func GetCoreResourceTypes() map[string]bool {
-	defs := GetSingletonRecipePackDefinitions()
+	defs := GetDefaultRecipePackDefinition()
 	types := make(map[string]bool, len(defs))
 	for _, def := range defs {
 		types[def.ResourceType] = true
@@ -143,7 +170,7 @@ func GetCoreResourceTypes() map[string]bool {
 
 // IsSingletonRecipePackName checks if the given name matches a known singleton recipe pack name.
 func IsSingletonRecipePackName(name string) bool {
-	for _, def := range GetSingletonRecipePackDefinitions() {
+	for _, def := range GetDefaultRecipePackDefinition() {
 		if def.Name == name {
 			return true
 		}
@@ -197,7 +224,7 @@ func IsSingletonRecipePackName(name string) bool {
 // that are not already covered by the existing recipe packs.
 func GetMissingSingletonDefinitions(coveredTypes map[string]string) []SingletonRecipePackDefinition {
 	var missing []SingletonRecipePackDefinition
-	for _, def := range GetSingletonRecipePackDefinitions() {
+	for _, def := range GetDefaultRecipePackDefinition() {
 		if _, covered := coveredTypes[def.ResourceType]; !covered {
 			missing = append(missing, def)
 		}

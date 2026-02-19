@@ -26,12 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_DefaultRecipePackName(t *testing.T) {
-	require.Equal(t, "local-dev", DefaultRecipePackName)
-}
-
-func Test_GetSingletonRecipePackDefinitions(t *testing.T) {
-	definitions := GetSingletonRecipePackDefinitions()
+func Test_GetDefaultRecipePackDefinition(t *testing.T) {
+	definitions := GetDefaultRecipePackDefinition()
 
 	// Verify we have the expected number of definitions
 	require.Len(t, definitions, 4)
@@ -52,11 +48,8 @@ func Test_GetSingletonRecipePackDefinitions(t *testing.T) {
 	}
 }
 
-func Test_NewSingletonRecipePackResource(t *testing.T) {
-	resourceType := "Radius.Compute/containers"
-	recipeLocation := "ghcr.io/radius-project/kube-recipes/containers@latest"
-
-	resource := NewSingletonRecipePackResource(resourceType, recipeLocation)
+func Test_NewDefaultRecipePackResource(t *testing.T) {
+	resource := NewDefaultRecipePackResource()
 
 	// Verify location
 	require.NotNil(t, resource.Location)
@@ -66,16 +59,18 @@ func Test_NewSingletonRecipePackResource(t *testing.T) {
 	require.NotNil(t, resource.Properties)
 	require.NotNil(t, resource.Properties.Recipes)
 
-	// Verify the resource contains exactly one recipe
-	require.Len(t, resource.Properties.Recipes, 1)
+	// Verify the resource contains recipes for all core types.
+	definitions := GetDefaultRecipePackDefinition()
+	require.Len(t, resource.Properties.Recipes, len(definitions))
 
-	// Verify the recipe
-	recipe, exists := resource.Properties.Recipes[resourceType]
-	require.True(t, exists, "Expected recipe for resource type %s to exist", resourceType)
-	require.NotNil(t, recipe.RecipeKind)
-	require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.RecipeKind)
-	require.NotNil(t, recipe.RecipeLocation)
-	require.Equal(t, recipeLocation, *recipe.RecipeLocation)
+	for _, def := range definitions {
+		recipe, exists := resource.Properties.Recipes[def.ResourceType]
+		require.True(t, exists, "Expected recipe for resource type %s to exist", def.ResourceType)
+		require.NotNil(t, recipe.RecipeKind)
+		require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.RecipeKind)
+		require.NotNil(t, recipe.RecipeLocation)
+		require.Equal(t, def.RecipeLocation, *recipe.RecipeLocation)
+	}
 }
 
 func Test_CreateSingletonRecipePacksWithClient(t *testing.T) {
@@ -90,7 +85,7 @@ func Test_CreateSingletonRecipePacksWithClient(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify the correct number of recipe packs were created
-		definitions := GetSingletonRecipePackDefinitions()
+		definitions := GetDefaultRecipePackDefinition()
 		require.Len(t, recipePackIDs, len(definitions))
 
 		// Verify the IDs are in the default scope
@@ -203,7 +198,7 @@ func Test_EnsureMissingSingletons(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, ids, 4)
 
-		for _, def := range GetSingletonRecipePackDefinitions() {
+		for _, def := range GetDefaultRecipePackDefinition() {
 			expected := DefaultResourceGroupScope + "/providers/Radius.Core/recipePacks/" + def.Name
 			require.Contains(t, ids, expected)
 		}
