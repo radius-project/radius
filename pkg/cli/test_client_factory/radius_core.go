@@ -358,6 +358,29 @@ func WithRecipePackServerUniqueTypes() corerpfake.RecipePacksServer {
 	}
 }
 
+// WithRecipePackServer404OnGet returns a RecipePacksServer that returns 404 on Get
+// and success on CreateOrUpdate, simulating a scenario where recipe packs don't exist
+// yet and need to be created.
+func WithRecipePackServer404OnGet() corerpfake.RecipePacksServer {
+	return corerpfake.RecipePacksServer{
+		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("recipe pack not found"))
+			errResp.SetResponseError(404, "Not Found")
+			return
+		},
+		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
+				RecipePackResource: v20250801preview.RecipePackResource{
+					Name:       to.Ptr(recipePackName),
+					Properties: resource.Properties,
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+	}
+}
+
 // WithRecipePackServerConflictingTypes returns a RecipePacksServer where every pack
 // returns the same resource type, simulating a conflict scenario.
 func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
