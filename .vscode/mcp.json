@@ -12,7 +12,7 @@
     "gopls": {
       "type": "stdio",
       "command": "gopls",
-      "args": ["serve", "-mcp.listen=localhost:8092"]
+      "args": ["mcp"]
     }
   }
 }
