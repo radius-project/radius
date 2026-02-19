@@ -406,7 +406,8 @@ jobs:
               "source_repository": "${{ github.repository }}",
               "source_ref": "${{ github.ref }}",
               "source_sha": "${{ github.sha }}",
-              "rel_channel": "${{ env.REL_CHANNEL }}"
+              "rel_channel": "${{ env.REL_CHANNEL }}",
+              "registry_target": "radius"
             }
 
       - name: Monitor remote workflow
