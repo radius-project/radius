@@ -977,7 +977,7 @@ func Test_Run(t *testing.T) {
 func Test_setupRecipePacks(t *testing.T) {
 	scope := "/planes/radius/local/resourceGroups/test-group"
 
-	t.Run("injects missing singleton recipe packs into template", func(t *testing.T) {
+	t.Run("injects default recipe pack into template", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
 		mockAppClient.EXPECT().
@@ -985,14 +985,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			scope,
-			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
-		)
-		require.NoError(t, err)
-
-		// Singleton recipe packs are created in the default scope.
+		// Default scope factory — GET succeeds (pack already exists).
 		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			recipepack.DefaultResourceGroupScope,
 			nil,
@@ -1004,14 +997,12 @@ func Test_setupRecipePacks(t *testing.T) {
 			Workspace: &workspaces.Workspace{
 				Scope: scope,
 			},
-			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
 			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    &output.MockOutput{},
 		}
 
 		// Template with a Radius.Core/environments resource and no recipe packs.
-		// ARM templates use double-nested properties: properties.properties.
 		template := map[string]any{
 			"resources": map[string]any{
 				"env": map[string]any{
@@ -1027,52 +1018,28 @@ func Test_setupRecipePacks(t *testing.T) {
 		err = runner.setupRecipePacks(context.Background(), template)
 		require.NoError(t, err)
 
-		// Verify that recipe packs were injected into the inner resource properties.
+		// Verify that the default recipe pack was injected.
 		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
 		outerProps := envRes["properties"].(map[string]any)
 		innerProps := outerProps["properties"].(map[string]any)
 		packs, ok := innerProps["recipePacks"].([]any)
 		require.True(t, ok)
-		require.Len(t, packs, 4, "should have all 4 singleton recipe packs")
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
 	})
 
-	t.Run("preserves existing packs and adds missing singletons", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
-		mockAppClient.EXPECT().
-			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
-			Return(nil).
-			Times(1)
-
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			scope,
-			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
-		)
-		require.NoError(t, err)
-
-		// Singleton recipe packs are created in the default scope.
-		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			recipepack.DefaultResourceGroupScope,
-			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
-		)
-		require.NoError(t, err)
-
+	t.Run("skips when environment has existing packs", func(t *testing.T) {
 		runner := &Runner{
 			Workspace: &workspaces.Workspace{
 				Scope: scope,
 			},
-			RadiusCoreClientFactory:   factory,
-			DefaultScopeClientFactory: defaultScopeFactory,
-			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
-			Output:                    &output.MockOutput{},
+			Output: &output.MockOutput{},
 		}
 
 		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
 
 		// Template with a Radius.Core/environments resource that already has one pack.
-		// ARM templates use double-nested properties: properties.properties.
+		// Since packs are already set, no changes should be made.
 		template := map[string]any{
 			"resources": map[string]any{
 				"env": map[string]any{
@@ -1087,65 +1054,16 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePacks(context.Background(), template)
+		err := runner.setupRecipePacks(context.Background(), template)
 		require.NoError(t, err)
 
 		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
 		outerProps := envRes["properties"].(map[string]any)
 		innerProps := outerProps["properties"].(map[string]any)
 		packs := innerProps["recipePacks"].([]any)
-		// 1 existing + 4 singletons
-		require.Len(t, packs, 5)
+		// Only the original pack — no singletons added
+		require.Len(t, packs, 1)
 		require.Equal(t, existingPackID, packs[0])
-	})
-
-	t.Run("detects recipe pack conflicts", func(t *testing.T) {
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			scope,
-			nil,
-			test_client_factory.WithRecipePackServerConflictingTypes,
-		)
-		require.NoError(t, err)
-
-		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			recipepack.DefaultResourceGroupScope,
-			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
-		)
-		require.NoError(t, err)
-
-		runner := &Runner{
-			Workspace: &workspaces.Workspace{
-				Scope: scope,
-			},
-			RadiusCoreClientFactory:   factory,
-			DefaultScopeClientFactory: defaultScopeFactory,
-			Output:                    &output.MockOutput{},
-		}
-
-		// Template with two packs that both provide Radius.Compute/containers.
-		// ARM templates use double-nested properties: properties.properties.
-		template := map[string]any{
-			"resources": map[string]any{
-				"env": map[string]any{
-					"type": "Radius.Core/environments@2025-08-01-preview",
-					"properties": map[string]any{
-						"name": "myenv",
-						"properties": map[string]any{
-							"recipePacks": []any{
-								scope + "/providers/Radius.Core/recipePacks/pack1",
-								scope + "/providers/Radius.Core/recipePacks/pack2",
-							},
-						},
-					},
-				},
-			},
-		}
-
-		err = runner.setupRecipePacks(context.Background(), template)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "Recipe pack conflict detected")
-		require.Contains(t, err.Error(), "Radius.Compute/containers")
 	})
 
 	t.Run("no-op when template has no environment resource", func(t *testing.T) {
@@ -1189,20 +1107,14 @@ func Test_setupRecipePacks(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("handles multiple Radius.Core environments", func(t *testing.T) {
+	t.Run("injects packs only for environment without packs in mixed template", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		// Only one env needs packs, so only one EnsureDefaultResourceGroup call.
 		mockAppClient.EXPECT().
 			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
 			Return(nil).
-			Times(2)
-
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			scope,
-			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
-		)
-		require.NoError(t, err)
+			Times(1)
 
 		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			recipepack.DefaultResourceGroupScope,
@@ -1215,27 +1127,29 @@ func Test_setupRecipePacks(t *testing.T) {
 			Workspace: &workspaces.Workspace{
 				Scope: scope,
 			},
-			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
 			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    &output.MockOutput{},
 		}
 
-		// Template with two Radius.Core/environments resources, neither has packs.
-		// ARM templates use double-nested properties: properties.properties.
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Two environments: envWithPacks already has a pack, envWithout has none.
 		template := map[string]any{
 			"resources": map[string]any{
-				"envDev": map[string]any{
+				"envWithPacks": map[string]any{
 					"type": "Radius.Core/environments@2025-08-01-preview",
 					"properties": map[string]any{
-						"name":       "envDev",
-						"properties": map[string]any{},
+						"name": "envWithPacks",
+						"properties": map[string]any{
+							"recipePacks": []any{existingPackID},
+						},
 					},
 				},
-				"envProd": map[string]any{
+				"envWithout": map[string]any{
 					"type": "Radius.Core/environments@2025-08-01-preview",
 					"properties": map[string]any{
-						"name":       "envProd",
+						"name":       "envWithout",
 						"properties": map[string]any{},
 					},
 				},
@@ -1245,18 +1159,25 @@ func Test_setupRecipePacks(t *testing.T) {
 		err = runner.setupRecipePacks(context.Background(), template)
 		require.NoError(t, err)
 
-		// Both environments should have received singleton recipe packs in the inner properties.
-		for _, key := range []string{"envDev", "envProd"} {
-			envRes := template["resources"].(map[string]any)[key].(map[string]any)
-			outerProps := envRes["properties"].(map[string]any)
-			innerProps := outerProps["properties"].(map[string]any)
-			packs, ok := innerProps["recipePacks"].([]any)
-			require.True(t, ok, "expected recipePacks on %s", key)
-			require.Len(t, packs, 4, "expected 4 singleton recipe packs on %s", key)
-		}
+		// envWithPacks should be untouched — still just 1 pack.
+		envWithPacks := template["resources"].(map[string]any)["envWithPacks"].(map[string]any)
+		wpOuterProps := envWithPacks["properties"].(map[string]any)
+		wpInnerProps := wpOuterProps["properties"].(map[string]any)
+		wpPacks := wpInnerProps["recipePacks"].([]any)
+		require.Len(t, wpPacks, 1, "envWithPacks should keep its original pack only")
+		require.Equal(t, existingPackID, wpPacks[0])
+
+		// envWithout should have received the default pack.
+		envWithout := template["resources"].(map[string]any)["envWithout"].(map[string]any)
+		woOuterProps := envWithout["properties"].(map[string]any)
+		woInnerProps := woOuterProps["properties"].(map[string]any)
+		woPacks, ok := woInnerProps["recipePacks"].([]any)
+		require.True(t, ok, "expected recipePacks on envWithout")
+		require.Len(t, woPacks, 1, "envWithout should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), woPacks[0])
 	})
 
-	t.Run("skips singletons for types covered by template-defined recipe packs via ARM expression", func(t *testing.T) {
+	t.Run("creates default pack when not found in default scope", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
 		mockAppClient.EXPECT().
@@ -1264,17 +1185,12 @@ func Test_setupRecipePacks(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			scope,
-			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
-		)
-		require.NoError(t, err)
-
+		// Default scope factory returns 404 on GET (packs don't exist yet)
+		// but succeeds on CreateOrUpdate.
 		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			recipepack.DefaultResourceGroupScope,
 			nil,
-			test_client_factory.WithRecipePackServerUniqueTypes,
+			test_client_factory.WithRecipePackServer404OnGet,
 		)
 		require.NoError(t, err)
 
@@ -1282,44 +1198,19 @@ func Test_setupRecipePacks(t *testing.T) {
 			Workspace: &workspaces.Workspace{
 				Scope: scope,
 			},
-			RadiusCoreClientFactory:   factory,
 			DefaultScopeClientFactory: defaultScopeFactory,
 			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
 			Output:                    &output.MockOutput{},
 		}
 
-		// Simulates a compiled bicep template where:
-		//   - A recipe pack "mypack" covers Radius.Compute/containers and Radius.Security/secrets
-		//   - The environment references it via "[reference('mypack').id]" (ARM expression)
+		// Template with a Radius.Core/environments resource and no recipe packs.
 		template := map[string]any{
 			"resources": map[string]any{
-				"mypack": map[string]any{
-					"type": "Radius.Core/recipePacks@2025-08-01-preview",
-					"properties": map[string]any{
-						"name": "mypack",
-						"properties": map[string]any{
-							"recipes": map[string]any{
-								"Radius.Compute/containers": map[string]any{
-									"recipeKind":     "bicep",
-									"recipeLocation": "ghcr.io/example/containers:latest",
-								},
-								"Radius.Security/secrets": map[string]any{
-									"recipeKind":     "bicep",
-									"recipeLocation": "ghcr.io/example/secrets:latest",
-								},
-							},
-						},
-					},
-				},
 				"env": map[string]any{
 					"type": "Radius.Core/environments@2025-08-01-preview",
 					"properties": map[string]any{
-						"name": "myenv",
-						"properties": map[string]any{
-							"recipePacks": []any{
-								"[reference('mypack').id]",
-							},
-						},
+						"name":       "myenv",
+						"properties": map[string]any{},
 					},
 				},
 			},
@@ -1331,14 +1222,10 @@ func Test_setupRecipePacks(t *testing.T) {
 		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
 		outerProps := envRes["properties"].(map[string]any)
 		innerProps := outerProps["properties"].(map[string]any)
-		packs := innerProps["recipePacks"].([]any)
-
-		// The expression reference stays, plus 2 singletons for the 2 types
-		// NOT covered by mypack (persistentVolumes and routes).
-		require.Len(t, packs, 3, "1 ARM expression + 2 uncovered singletons")
-
-		// Verify the ARM expression reference is preserved at position 0.
-		require.Equal(t, "[reference('mypack').id]", packs[0])
+		packs, ok := innerProps["recipePacks"].([]any)
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
 	})
 }
 
