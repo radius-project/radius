@@ -26,10 +26,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -106,11 +104,6 @@ type Runner struct {
 	Workspace               *workspaces.Workspace
 	Format                  string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
-	ConnectionFactory       connections.Factory
-
-	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
-	// Singleton recipe packs are always created/queried in the default scope.
-	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
 	EnvironmentName    string
 	clearEnvAzure      bool
@@ -124,9 +117,8 @@ type Runner struct {
 // NewRunner creates a new instance of the `rad env update` preview runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
-		ConnectionFactory: factory.GetConnectionFactory(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
@@ -315,77 +307,9 @@ func (r *Runner) Run(ctx context.Context) error {
 				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", recipePack)
 			}
 
-			if !recipepack.RecipePackIDExists(env.Properties.RecipePacks, ID.String()) {
+			if !recipePackExists(env.Properties.RecipePacks, ID.String()) {
 				env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(ID.String()))
 			}
-		}
-	}
-
-	// At this point env.Properties.RecipePacks contains the complete set of recipe packs
-	// the user wants on this environment. For preview, we now:
-	// 1. Detect conflicts where the same resource type is provided by multiple packs
-	// 2. Append singleton packs for any missing core resource types, assuming they already exist.
-	if env.Properties == nil {
-		env.Properties = &corerpv20250801.EnvironmentProperties{}
-	}
-	if env.Properties.RecipePacks == nil {
-		env.Properties.RecipePacks = []*string{}
-	}
-
-	// Convert []*string to []string for the shared utility.
-	packIDs := make([]string, 0, len(env.Properties.RecipePacks))
-	for _, p := range env.Properties.RecipePacks {
-		if p != nil {
-			packIDs = append(packIDs, *p)
-		}
-	}
-
-	// Build scope → client map for inspecting recipe packs.
-	// Covers workspace scope, default scope, and every additional scope
-	// referenced by the user's recipe pack IDs.
-	if r.DefaultScopeClientFactory == nil {
-		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
-		if err != nil {
-			return err
-		}
-		r.DefaultScopeClientFactory = defaultFactory
-	}
-
-	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
-
-	clientsByScope := map[string]*corerpv20250801.RecipePacksClient{
-		r.Workspace.Scope:                    r.RadiusCoreClientFactory.NewRecipePacksClient(),
-		recipepack.DefaultResourceGroupScope: recipePackDefaultClient,
-	}
-	if err := cmd.PopulateRecipePackClients(ctx, r.Workspace, clientsByScope, packIDs); err != nil {
-		return err
-	}
-
-	// Ensure the default resource group exists before creating recipe packs in it.
-	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
-	}
-	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
-		return err
-	}
-
-	coveredTypes, conflicts, err := recipepack.InspectRecipePacks(ctx, clientsByScope, packIDs)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to inspect recipe packs for environment %q.", r.EnvironmentName)
-	}
-
-	if len(conflicts) > 0 {
-		return recipepack.FormatConflictError(conflicts)
-	}
-
-	singletonIDs, err := recipepack.EnsureMissingSingletons(ctx, recipePackDefaultClient, coveredTypes)
-	if err != nil {
-		return err
-	}
-	for _, id := range singletonIDs {
-		if !recipepack.RecipePackIDExists(env.Properties.RecipePacks, id) {
-			env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(id))
 		}
 	}
 
@@ -425,4 +349,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Successfully updated environment %q.", r.EnvironmentName)
 
 	return nil
+}
+
+func recipePackExists(packs []*string, id string) bool {
+	for _, p := range packs {
+		if p != nil && *p == id {
+			return true
+		}
+	}
+	return false
 }

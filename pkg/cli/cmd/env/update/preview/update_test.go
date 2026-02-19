@@ -20,13 +20,8 @@ import (
 	"context"
 	"testing"
 
-	"go.uber.org/mock/gomock"
-
-	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -119,10 +114,8 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format: "table",
 					Obj: environmentForDisplay{
-						Name: "test-env",
-						// 1 existing pack from the environment, 2 user-specified
-						// packs, plus 4 singleton packs for core resource types.
-						RecipePacks: 7,
+						Name:        "test-env",
+						RecipePacks: 3,
 						Providers:   3,
 					},
 					Options: environmentFormat(),
@@ -137,38 +130,21 @@ func Test_Run(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
-			mockAppClient.EXPECT().
-				CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
-				Return(nil).
-				Times(1)
-
 			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 				workspace.Scope,
 				tc.serverFactory,
-				test_client_factory.WithRecipePackServerUniqueTypes,
-			)
-			require.NoError(t, err)
-
-			// Singleton recipe packs are created in the default scope.
-			defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-				recipepack.DefaultResourceGroupScope,
 				nil,
-				test_client_factory.WithRecipePackServerUniqueTypes,
 			)
 			require.NoError(t, err)
 
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				ConfigHolder:              &framework.ConfigHolder{},
-				Output:                    outputSink,
-				Workspace:                 workspace,
-				EnvironmentName:           tc.envName,
-				RadiusCoreClientFactory:   factory,
-				DefaultScopeClientFactory: defaultScopeFactory,
-				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
-				recipePacks:               []string{"rp1", "rp2"},
+				ConfigHolder:            &framework.ConfigHolder{},
+				Output:                  outputSink,
+				Workspace:               workspace,
+				EnvironmentName:         tc.envName,
+				RadiusCoreClientFactory: factory,
+				recipePacks:             []string{"rp1", "rp2"},
 				providers: &v20250801preview.Providers{
 					Azure: &v20250801preview.ProvidersAzure{
 						SubscriptionID:    to.Ptr("00000000-0000-0000-0000-000000000000"),
