@@ -96,9 +96,9 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		return clierrors.MessageWithCause(err, "Failed to create default resource group for recipe packs.")
 	}
 
-	// Create singleton recipe packs (one per resource type) and link them to the environment.
-	// Singletons always live in the default resource group scope.
-	// DefaultScopeClientFactory is required in the case  rad init runs from a workspace with non-default settings.
+	// Create the default recipe pack and link it to the environment.
+	// The default pack lives in the default resource group scope.
+	// DefaultScopeClientFactory is required in the case rad init runs from a workspace with non-default settings.
 	if r.DefaultScopeClientFactory == nil {
 		if r.Workspace.Scope == recipepack.DefaultResourceGroupScope {
 			r.DefaultScopeClientFactory = r.RadiusCoreClientFactory
@@ -110,17 +110,15 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 			r.DefaultScopeClientFactory = defaultClientFactory
 		}
 	}
-	recipePackIDs, err := recipepack.CreateSingletonRecipePacks(ctx, r.DefaultScopeClientFactory.NewRecipePacksClient())
+
+	defaultPack := recipepack.NewDefaultRecipePackResource()
+	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
 	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to create recipe packs.")
+		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
 	}
 
-	// Link all recipe packs to the environment
-	recipePackPtrs := make([]*string, len(recipePackIDs))
-	for i, id := range recipePackIDs {
-		recipePackPtrs[i] = to.Ptr(id)
-	}
-	envProperties.RecipePacks = recipePackPtrs
+	// Link the default recipe pack to the environment.
+	envProperties.RecipePacks = []*string{to.Ptr(recipepack.DefaultRecipePackID())}
 
 	// Create the Radius.Core/environments resource
 	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
