@@ -6,7 +6,7 @@
     },
     "terraform": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.3"]
+      "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.4.0"]
     },
     "gopls": {
       "command": "gopls",
