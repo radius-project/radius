@@ -26,10 +26,19 @@ env:
   GOTESTSUMVERSION: 1.13.0
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
     permissions:
       contents: read
       checks: write
