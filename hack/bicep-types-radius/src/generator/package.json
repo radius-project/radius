@@ -32,20 +32,20 @@
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.10",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.3.0",
     "@types/yargs": "^17.0.33",
-    "@typescript-eslint/eslint-plugin": "^8.55.0",
-    "@typescript-eslint/parser": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
     "async": "^3.2.6",
     "autorest": "^3.7.1",
     "bicep-types-repo": "git+https://github.com/Azure/bicep-types.git#556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7",
     "colors": "^1.4.0",
-    "eslint": "^10.0.0",
+    "eslint": "^10.0.1",
     "eslint-plugin-header": "^3.1.1",
     "js-yaml": "^4.1.1",
     "lodash": "^4.17.23",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
-    "yargs": "^17.7.2"
+    "yargs": "^18.0.0"
   }
 }
