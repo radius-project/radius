@@ -37,7 +37,7 @@ The following instruction files are available:
 
 ## Skills
 
-The skills are available for specific Radius tasks under the `.github/skills/` directory.
+These skills are available for specific Radius tasks under the `.github/skills/` directory.
 
 - **[Architecture Documentation](skills/architecture-documenter/SKILL.md)** - Document and diagram application architecture
 
