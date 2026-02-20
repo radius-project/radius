@@ -145,7 +145,7 @@ Architecture design documents are available in the `design-notes/architecture/` 
 
 Always structure output as:
 
-```markdown
+````markdown
 ## [Title — what is being documented]
 
 [1-2 sentence summary]
@@ -165,4 +165,4 @@ Always structure output as:
 ### Notable Details
 
 [Any non-obvious aspects worth calling out]
-```
+````
