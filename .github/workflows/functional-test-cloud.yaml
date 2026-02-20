@@ -861,7 +861,7 @@ jobs:
             },
             "extensions": {
               "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/aws:latest"
+              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
             },
             "cloud": {
               "credentialPrecedence": ["Environment"]
