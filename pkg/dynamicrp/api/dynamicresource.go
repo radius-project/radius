@@ -35,4 +35,14 @@ type DynamicResource struct {
 	Properties map[string]any `json:"properties,omitempty"`
 	// SystemData stores the system data of the resource.
 	SystemData map[string]any `json:"systemData,omitempty"`
+
+	// apiVersion stores the API version for this resource (not serialized).
+	// This is set by the converter and used during ConvertTo for proper schema lookups.
+	apiVersion string
+}
+
+// SetAPIVersion sets the API version for this resource.
+// This is used by the converter to pass the actual API version from the request.
+func (d *DynamicResource) SetAPIVersion(version string) {
+	d.apiVersion = version
 }
