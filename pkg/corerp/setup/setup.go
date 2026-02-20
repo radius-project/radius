@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
+	bicep_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/bicepsettings"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
 	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments/v20250801preview"
@@ -33,6 +34,7 @@ import (
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
 	rp_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/recipepacks"
 	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
+	tf_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/terraformsettings"
 	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 	ext_processor "github.com/radius-project/radius/pkg/corerp/processors/extenders"
 	pr_ctrl "github.com/radius-project/radius/pkg/portableresources/backend/controller"
@@ -292,6 +294,30 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 			UpdateFilters: []apictrl.UpdateFilter[datamodel.Application_v20250801preview]{
 				rp_frontend.PrepareRadiusResource[*datamodel.Application_v20250801preview],
 			},
+		},
+	})
+
+	_ = ns.AddResource("terraformSettings", &builder.ResourceOption[*datamodel.TerraformSettings_v20250801preview, datamodel.TerraformSettings_v20250801preview]{
+		RequestConverter:  converter.TerraformSettingsDataModelFromVersioned,
+		ResponseConverter: converter.TerraformSettingsDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.TerraformSettings_v20250801preview]{
+			APIController: tf_ctrl.NewCreateOrUpdateTerraformSettings,
+		},
+		Patch: builder.Operation[datamodel.TerraformSettings_v20250801preview]{
+			APIController: tf_ctrl.NewCreateOrUpdateTerraformSettings,
+		},
+	})
+
+	_ = ns.AddResource("bicepSettings", &builder.ResourceOption[*datamodel.BicepSettings_v20250801preview, datamodel.BicepSettings_v20250801preview]{
+		RequestConverter:  converter.BicepSettingsDataModelFromVersioned,
+		ResponseConverter: converter.BicepSettingsDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.BicepSettings_v20250801preview]{
+			APIController: bicep_ctrl.NewCreateOrUpdateBicepSettings,
+		},
+		Patch: builder.Operation[datamodel.BicepSettings_v20250801preview]{
+			APIController: bicep_ctrl.NewCreateOrUpdateBicepSettings,
 		},
 	})
 

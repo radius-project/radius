@@ -39,6 +39,35 @@ type ApplicationsClientUpdateResponse struct {
 	ApplicationResource
 }
 
+// BicepSettingsClientCreateOrUpdateResponse contains the response from method BicepSettingsClient.CreateOrUpdate.
+type BicepSettingsClientCreateOrUpdateResponse struct {
+	// Bicep settings resource.
+	BicepSettingsResource
+}
+
+// BicepSettingsClientDeleteResponse contains the response from method BicepSettingsClient.Delete.
+type BicepSettingsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// BicepSettingsClientGetResponse contains the response from method BicepSettingsClient.Get.
+type BicepSettingsClientGetResponse struct {
+	// Bicep settings resource.
+	BicepSettingsResource
+}
+
+// BicepSettingsClientListByScopeResponse contains the response from method BicepSettingsClient.NewListByScopePager.
+type BicepSettingsClientListByScopeResponse struct {
+	// The response of a BicepSettingsResource list operation.
+	BicepSettingsResourceListResult
+}
+
+// BicepSettingsClientUpdateResponse contains the response from method BicepSettingsClient.Update.
+type BicepSettingsClientUpdateResponse struct {
+	// Bicep settings resource.
+	BicepSettingsResource
+}
+
 // EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
 type EnvironmentsClientCreateOrUpdateResponse struct {
 	// The environment resource
@@ -101,4 +130,33 @@ type RecipePacksClientListByScopeResponse struct {
 type RecipePacksClientUpdateResponse struct {
 	// The recipe pack resource
 	RecipePackResource
+}
+
+// TerraformSettingsClientCreateOrUpdateResponse contains the response from method TerraformSettingsClient.CreateOrUpdate.
+type TerraformSettingsClientCreateOrUpdateResponse struct {
+	// Terraform settings resource.
+	TerraformSettingsResource
+}
+
+// TerraformSettingsClientDeleteResponse contains the response from method TerraformSettingsClient.Delete.
+type TerraformSettingsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// TerraformSettingsClientGetResponse contains the response from method TerraformSettingsClient.Get.
+type TerraformSettingsClientGetResponse struct {
+	// Terraform settings resource.
+	TerraformSettingsResource
+}
+
+// TerraformSettingsClientListByScopeResponse contains the response from method TerraformSettingsClient.NewListByScopePager.
+type TerraformSettingsClientListByScopeResponse struct {
+	// The response of a TerraformSettingsResource list operation.
+	TerraformSettingsResourceListResult
+}
+
+// TerraformSettingsClientUpdateResponse contains the response from method TerraformSettingsClient.Update.
+type TerraformSettingsClientUpdateResponse struct {
+	// Terraform settings resource.
+	TerraformSettingsResource
 }
