@@ -1,5 +1,5 @@
 ---
-name: arch-documenter
+name: architecture-documenter
 description: 'Document application architectures with Mermaid diagrams. Use for: generating architecture overviews, component diagrams, sequence diagrams from code, explaining complex Go codebases, answering architecture questions, suggesting architectural improvements, producing entity-relationship diagrams, and distilling code into human-readable descriptions.'
 argument-hint: 'Describe what part of the architecture to document or ask an architecture question'
 ---
