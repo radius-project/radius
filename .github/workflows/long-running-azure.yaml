@@ -249,8 +249,10 @@ jobs:
 
           BICEP_CONFIG_FILE="./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
           TMP_FILE="$(mktemp)"
-          jq --arg testresources "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" \
-            '.extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
+          jq --arg radius "br:${BICEP_TYPES_REGISTRY}/radius:latest" \
+            --arg aws "br:${BICEP_TYPES_REGISTRY}/aws:latest" \
+            --arg testresources "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" \
+            '.extensions.radius = $radius | .extensions.aws = $aws | .extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
             "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
           mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
         env:

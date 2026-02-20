@@ -75,7 +75,7 @@ env:
   LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
-  # bicep-types ACR url for uploading Radius Bicep types
+  # bicep-types ACR url for pulling public AWS Bicep types
   BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
   # Git HTTP server URL
   GIT_HTTP_SERVER_URL: http://localhost:30080
