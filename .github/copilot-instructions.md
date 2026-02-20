@@ -35,6 +35,12 @@ The following instruction files are available:
 - **[Make](instructions/make.instructions.md)** - Best practices for GNU Make Makefiles
 - **[Shell Scripts](instructions/shell.instructions.md)** - Guidelines for Bash/Shell script development
 
+## Skills
+
+The skills are available for specific Radius tasks under the `.github/skills/` directory.
+
+- **[Architecture Documentation](skills/architecture-documenter/SKILL.md)** - Document and diagram application architecture
+
 ## How to Use
 
 When working on files that match the patterns defined in instruction files (e.g., `*.sh`, `.github/workflows/*.yml`), Copilot will automatically apply the relevant guidelines from the corresponding instruction file.
