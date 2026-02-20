@@ -108,7 +108,7 @@ repository:
   documentation:
     contributing-guide: https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md
     review-policy: >-
-      https://github.com/radius-project/radius/blob/7e12716cdb2396ce9e1db73583d6bae23eb42d77/docs/contributing/contributing-code/contributing-code-reviewing/README.md
+      https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-reviewing/README.md
     security-policy: https://github.com/radius-project/radius/blob/main/SECURITY.md
     governance: >-
       https://github.com/radius-project/community/blob/main/community-membership.md
