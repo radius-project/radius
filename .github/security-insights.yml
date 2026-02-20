@@ -193,7 +193,7 @@ repository:
             name: CodeQL GitHub workflow
             predicate-uri: ''
             location: >-
-              https://github.com/radius-project/radius/blob/7e12716cdb2396ce9e1db73583d6bae23eb42d77/.github/workflows/codeql.md?plain=1#L3
+              https://github.com/radius-project/radius/blob/main/.github/workflows/codeql.yml
             comment: GitHub workflow to run CodeQL
           release:
             name: ''
