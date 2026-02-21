@@ -386,6 +386,8 @@ jobs:
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
+          set -euo pipefail
+
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
 
@@ -396,7 +398,17 @@ jobs:
           # AZURE_MSSQL_RESOURCE_ID
           # AZURE_MSSQL_USERNAME
           # AZURE_MSSQL_PASSWORD
-          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
+          if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
+            echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
+            echo "Expected keys: AZURE_COSMOS_MONGODB_ACCOUNT_ID, AZURE_MSSQL_RESOURCE_ID, AZURE_MSSQL_USERNAME, AZURE_MSSQL_PASSWORD"
+            exit 1
+          fi
+
+          export AZURE_COSMOS_MONGODB_ACCOUNT_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_COSMOS_MONGODB_ACCOUNT_ID')"
+          export AZURE_MSSQL_RESOURCE_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_RESOURCE_ID')"
+          export AZURE_MSSQL_USERNAME="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_USERNAME')"
+          export AZURE_MSSQL_PASSWORD="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_PASSWORD')"
 
           make test-functional-all
 
