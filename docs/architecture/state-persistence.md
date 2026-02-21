@@ -12,7 +12,6 @@ graph TD
         UCP["UCP<br/>cmd/ucpd"]
         CoreRP["Applications RP<br/>cmd/applications-rp"]
         DynRP["Dynamic RP<br/>cmd/dynamic-rp"]
-        Controller["Controller<br/>cmd/controller"]
     end
 
     subgraph "Provider Layer"
@@ -51,7 +50,7 @@ graph TD
     CoreRP --> QueueProvider
     DynRP --> DBProvider
     DynRP --> SecretProvider
-    Controller --> DBProvider
+    DynRP --> QueueProvider
 
     DBProvider -->|"GetClient()"| DBClient
     SecretProvider -->|"GetClient()"| SecretClient
