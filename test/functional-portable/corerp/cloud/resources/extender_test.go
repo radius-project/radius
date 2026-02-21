@@ -30,6 +30,8 @@ import (
 )
 
 func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
+	t.Skip("temporarily skipping AWS tests while OIDC issuer validation is being updated")
+
 	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set

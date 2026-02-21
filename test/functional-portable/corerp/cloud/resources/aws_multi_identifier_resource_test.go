@@ -28,6 +28,8 @@ import (
 )
 
 func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
+	t.Skip("temporarily skipping AWS tests while OIDC issuer validation is being updated")
+
 	template := "testdata/aws-multi-identifier.bicep"
 	filterName := "ms" + uuid.New().String()
 	logGroupName := "ms" + uuid.New().String()
