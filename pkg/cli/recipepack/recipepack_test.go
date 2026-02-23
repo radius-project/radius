@@ -17,9 +17,11 @@ limitations under the License.
 package recipepack
 
 import (
+	"strings"
 	"testing"
 
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,6 +44,17 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		require.True(t, exists, "Unexpected definition name: %s", def.Name)
 		require.Equal(t, expectedResourceType, def.ResourceType, "Resource type mismatch for %s", def.Name)
 		require.NotEmpty(t, def.RecipeLocation, "RecipeLocation should not be empty for %s", def.Name)
+	}
+}
+
+func Test_GetDefaultRecipePackDefinition_UsesLatestTagForEdgeChannel(t *testing.T) {
+	// The test binary is built without ldflags, so channel defaults to "edge".
+	require.True(t, version.IsEdgeChannel(), "default should be on edge channel")
+
+	definitions := GetDefaultRecipePackDefinition()
+	for _, def := range definitions {
+		require.True(t, strings.HasSuffix(def.RecipeLocation, ":latest"),
+			"Expected :latest tag for edge channel, got %s", def.RecipeLocation)
 	}
 }
 
