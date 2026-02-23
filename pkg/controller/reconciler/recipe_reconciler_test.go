@@ -324,11 +324,13 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	// Recipe will update after operation completes
 	_ = waitForRecipeStateReady(t, client, name)
 
-	// The old secret should be deleted
-	old := corev1.Secret{}
-	err = client.Get(ctx, name, &old)
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
+	// The old secret should be (eventually) deleted - the client reads from
+	// the informer cache so the deletion may not be visible immediately.
+	require.Eventuallyf(t, func() bool {
+		old := corev1.Secret{}
+		err := client.Get(ctx, name, &old)
+		return apierrors.IsNotFound(err)
+	}, recipeTestWaitDuration, recipeTestWaitInterval, "old secret should be deleted")
 
 	secret = corev1.Secret{}
 	err = client.Get(ctx, types.NamespacedName{Namespace: name.Namespace, Name: "new-secret-name"}, &secret)
@@ -346,7 +348,11 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	// Now deleting of the deployment object can complete.
 	waitForRecipeDeleted(t, client, name)
 
-	err = client.Get(ctx, name, &secret)
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
+	// The secret should be (eventually) deleted - the client reads from
+	// the informer cache so the deletion may not be visible immediately.
+	require.Eventuallyf(t, func() bool {
+		s := corev1.Secret{}
+		err := client.Get(ctx, name, &s)
+		return apierrors.IsNotFound(err)
+	}, recipeTestWaitDuration, recipeTestWaitInterval, "secret should be deleted")
 }
