@@ -350,10 +350,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Before deploying, set up recipe packs for any Radius.Core environments in the
-	// template. This creates missing recipe pack resources and injects their
-	// IDs into the template so that the environment is deployed once with the complete
-	// set of recipe packs.
-	err = r.setupRecipePacks(ctx, template)
+	// template. This creates default recipe pack resource if not found and injects its
+	// ID into the template.
+	err = r.setupRecipePack(ctx, template)
 	if err != nil {
 		return err
 	}
@@ -663,19 +662,19 @@ func (r *Runner) setupCloudProviders(properties any) {
 	}
 }
 
-// setupRecipePacks finds all Radius.Core/environments resources in the template and
-// ensures they have recipe packs configured. If an environment resource has no recipe
-// packs set, it fetches or creates default recipe packs from the default scope and
-// injects their IDs into the template. If the environment already has any recipe pack
-// IDs set (literal or ARM expression references), no changes are made.
-func (r *Runner) setupRecipePacks(ctx context.Context, template map[string]any) error {
+// setupRecipePack ensures recipe pack(s) for all Radius.Core/environments resources in the template.
+// If a Radius.Core environment resource has no recipe
+// packs set by the user, Radius creates(if needed) and fetches the default recipe pack from the default scope and
+// injects its ID into the template. If the environment already has any recipe pack
+// IDs set (literal or Bicep expression references), no changes are made.
+func (r *Runner) setupRecipePack(ctx context.Context, template map[string]any) error {
 	envResources := findRadiusCoreEnvironmentResources(template)
 	if len(envResources) == 0 {
 		return nil
 	}
 
 	for _, envResource := range envResources {
-		if err := r.setupRecipePacksForEnvironment(ctx, envResource); err != nil {
+		if err := r.setupRecipePackForEnvironment(ctx, envResource); err != nil {
 			return err
 		}
 	}
@@ -683,11 +682,11 @@ func (r *Runner) setupRecipePacks(ctx context.Context, template map[string]any) 
 	return nil
 }
 
-// setupRecipePacksForEnvironment sets up recipe packs for a single Radius.Core/environments resource.
+// setupRecipePackForEnvironment sets up recipe packs for a single Radius.Core/environments resource.
 // If the environment already has any recipe packs set (literal IDs or ARM expression references),
 // no changes are made. Otherwise, it fetches or creates the default recipe pack from
 // the default scope and injects their IDs into the template.
-func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource map[string]any) error {
+func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource map[string]any) error {
 	// The compiled ARM template has a double-nested properties structure:
 	//   envResource["properties"]["properties"] is where resource-level fields live.
 	// Navigate to the inner (resource) properties map.
@@ -704,7 +703,7 @@ func (r *Runner) setupRecipePacksForEnvironment(ctx context.Context, envResource
 	}
 
 	// If the environment already has any recipe packs configured (literal IDs or
-	// ARM expression references), leave it as-is — the user is managing packs explicitly.
+	// Bicep expression references), leave it as-is — the user is managing packs explicitly.
 	if hasAnyRecipePacks(properties) {
 		return nil
 	}
