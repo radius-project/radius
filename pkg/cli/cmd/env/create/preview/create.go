@@ -135,9 +135,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env create` command.
 //
-// Run implements create-or-update semantics. If the environment does not exist, it creates
-// a new one with the default recipe pack for core resource types. If the environment
-// already exists, it creates the default recipe pack if missing and links it.
+// Run creates a new Radius.Core environment with the default recipe pack
+// for core resource types linked to it.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
@@ -147,12 +146,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	return r.runCreate(ctx)
-
-}
-
-// runCreate creates a new environment with the default recipe pack for core resource types.
-func (r *Runner) runCreate(ctx context.Context) error {
 	r.Output.LogInfo("Creating Radius Core Environment %q...", r.EnvironmentName)
 
 	// Ensure the default resource group exists before creating recipe packs in it.
