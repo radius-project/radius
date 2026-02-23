@@ -24,6 +24,7 @@ import (
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 const (
@@ -95,35 +96,34 @@ type SingletonRecipePackDefinition struct {
 	RecipeLocation string
 }
 
-// GetDefaultRecipePackDefinition returns the list of singleton recipe pack definitions.
-// Each definition represents a single recipe pack containing one recipe for one resource type.
-// This list is currently hardcoded, but will be made dynamic in the future.
+// GetDefaultRecipePackDefinition returns the list of default recipe pack definitions.
+// Each definition represents a recipe for one core resource type.
+// The OCI tag is set to the current Radius version channel (e.g., "0.40" or "edge").
 func GetDefaultRecipePackDefinition() []SingletonRecipePackDefinition {
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
 	return []SingletonRecipePackDefinition{
 		{
 			Name:           "containers",
 			ResourceType:   "Radius.Compute/containers",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:latest",
+			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:" + tag,
 		},
 		{
 			Name:           "persistentvolumes",
 			ResourceType:   "Radius.Compute/persistentVolumes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:latest",
+			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
 		},
 		{
 			Name:           "routes",
 			ResourceType:   "Radius.Compute/routes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:latest",
+			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
 		},
 		{
 			Name:           "secrets",
 			ResourceType:   "Radius.Security/secrets",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:latest",
+			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
 	}
 }
-
-
-
-
-
