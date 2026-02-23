@@ -67,13 +67,17 @@ project:
       comment: >-
         This repository contains the tooling for Bicep support for AWS resource
         types.
+    - name: Radius Resource Types and Recipes Contributions
+      url: https://github.com/radius-project/resource-types-contrib
+      comment: >-
+        This repository contains the Resource Type definitions and Recipes for deploying those Resource Types via Radius.
   vulnerability-reporting:
     reports-accepted: true
     bug-bounty-available: false
     bug-bounty-program: ''
     contact:
       name: Radius Team
-      email: security@radapp.dev
+      email: radiuscoreteam@service.microsoft.com
       primary: true
     security-policy: https://github.com/radius-project/radius/blob/main/SECURITY.md
     in-scope:
@@ -90,6 +94,11 @@ repository:
   accepts-automated-change-request: true
   no-third-party-packages: true
   core-team:
+    - name: Radius Core Team
+      affiliation: Microsoft
+      email: radiuscoreteam@service.microsoft.com
+      social: ''
+      primary: true
     - name: Sylvain Niles
       affiliation: Microsoft
       email: ''
@@ -149,7 +158,7 @@ repository:
           comment: ''
     champions:
       - name: Radius Team
-        email: security@radapp.dev
+        email: radiuscoreteam@service.microsoft.com
         primary: true
     tools:
       - name: Scorecard
