@@ -68,13 +68,13 @@ env:
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
-  AZURE_LOCATION: westus2
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
-  AWS_REGION: us-west-2
+  AWS_REGION: ${{ vars.AWS_REGION }}
   # The current GitHub action link
   ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
   # Server where terraform test modules are deployed

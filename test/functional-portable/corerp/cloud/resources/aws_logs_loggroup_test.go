@@ -27,8 +27,6 @@ import (
 )
 
 func Test_AWS_LogsLogGroup(t *testing.T) {
-	t.Skip("temporarily skipping AWS tests while OIDC issuer validation is being updated")
-
 	template := "testdata/aws-logs-loggroup.bicep"
 	name := "radiusfunctionaltest-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()
@@ -65,8 +63,6 @@ func Test_AWS_LogsLogGroup(t *testing.T) {
 }
 
 func Test_AWS_LogsLogGroup_Existing(t *testing.T) {
-	t.Skip("temporarily skipping AWS tests while OIDC issuer validation is being updated")
-
 	template := "testdata/aws-logs-loggroup.bicep"
 	templateExisting := "testdata/aws-logs-loggroup-existing.bicep"
 	name := "radiusfunctionaltest-" + uuid.New().String()

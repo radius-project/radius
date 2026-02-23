@@ -45,8 +45,6 @@ var (
 )
 
 func Test_AWS_DeleteResource(t *testing.T) {
-	t.Skip("temporarily skipping AWS tests while OIDC issuer validation is being updated")
-
 	ctx := context.Background()
 
 	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
@@ -108,8 +106,6 @@ func Test_AWS_DeleteResource(t *testing.T) {
 }
 
 func Test_AWS_ListResources(t *testing.T) {
-	t.Skip("temporarily skipping AWS tests while OIDC issuer validation is being updated")
-
 	ctx := context.Background()
 
 	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
