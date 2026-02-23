@@ -944,7 +944,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePacks(context.Background(), template)
+		err = runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 
 		// Verify that the default recipe pack was injected.
@@ -983,7 +983,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err := runner.setupRecipePacks(context.Background(), template)
+		err := runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 
 		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
@@ -1011,7 +1011,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err := runner.setupRecipePacks(context.Background(), template)
+		err := runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 	})
 
@@ -1032,7 +1032,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		}
 
 		// Should be a no-op since we only handle Radius.Core environments
-		err := runner.setupRecipePacks(context.Background(), template)
+		err := runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 	})
 
@@ -1085,7 +1085,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePacks(context.Background(), template)
+		err = runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 
 		// envWithPacks should be untouched — still just 1 pack.
@@ -1145,7 +1145,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePacks(context.Background(), template)
+		err = runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 
 		envRes := template["resources"].(map[string]any)["env"].(map[string]any)

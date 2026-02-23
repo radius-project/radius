@@ -75,6 +75,12 @@ func DefaultRecipePackID() string {
 // EnsureDefaultResourceGroup creates the default resource group if it does not already exist.
 // This must be called before creating singleton recipe packs, because recipe packs are
 // stored in the default resource group and the PUT will fail with 404 if the group is missing.
+// The group might be missing in a sequence such as below:
+// 1. rad install
+// 2. rad workspace create kubernetes
+// 3. rad group create prod
+// 4. rad group switch prod
+// 5. .rad deploy <template contains the environment>
 func EnsureDefaultResourceGroup(ctx context.Context, createOrUpdate ResourceGroupCreator) error {
 	return createOrUpdate(ctx, "local", DefaultResourceGroupName, &ucpv20231001.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
