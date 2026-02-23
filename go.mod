@@ -24,12 +24,12 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.41.1
-	github.com/aws/aws-sdk-go-v2/config v1.32.7
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
+	github.com/aws/aws-sdk-go-v2/config v1.32.9
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.9
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.29.9
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.71.5
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.287.0
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.55.1
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.290.0
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.55.2
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6
 	github.com/aws/smithy-go v1.24.0
 	github.com/charmbracelet/bubbles v1.0.0
@@ -44,7 +44,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.25.0
 	github.com/fluxcd/pkg/http/fetch v0.22.0
 	github.com/fluxcd/pkg/tar v0.17.0
-	github.com/fluxcd/source-controller/api v1.7.4
+	github.com/fluxcd/source-controller/api v1.8.0
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-git/go-git/v5 v5.16.5
@@ -68,9 +68,9 @@ require (
 	github.com/gosuri/uilive v0.0.4
 	github.com/hashicorp/go-getter v1.8.4
 	github.com/hashicorp/go-retryablehttp v0.7.8
-	github.com/hashicorp/hc-install v0.9.2
+	github.com/hashicorp/hc-install v0.9.3
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20250828155816-225c06ed5fd9
-	github.com/hashicorp/terraform-exec v0.24.0
+	github.com/hashicorp/terraform-exec v0.25.0
 	github.com/hashicorp/terraform-json v0.27.2
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/mattn/go-isatty v0.0.20
@@ -139,7 +139,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ProtonMail/go-crypto v1.1.6 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
@@ -156,8 +156,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.95.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.14 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymanbagabas/go-udiff v0.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -310,7 +310,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/zclconf/go-cty v1.16.4 // indirect
+	github.com/zclconf/go-cty v1.17.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	github.com/zeebo/errs v1.4.0 // indirect
 	go.mongodb.org/mongo-driver v1.17.9 // indirect
@@ -320,7 +320,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/mod v0.32.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
