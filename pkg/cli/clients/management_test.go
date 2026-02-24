@@ -1159,21 +1159,6 @@ func Test_Environment(t *testing.T) {
 		},
 	}
 
-	t.Run("ListEnvironments", func(t *testing.T) {
-		mock := NewMockenvironmentResourceClient(gomock.NewController(t))
-		client := createClient(mock)
-
-		mock.EXPECT().
-			NewListByScopePager(gomock.Any()).
-			Return(pager(listPages))
-
-		expectedResourceList := []corerp.EnvironmentResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
-
-		resources, err := client.ListEnvironments(context.Background())
-		require.NoError(t, err)
-		require.Equal(t, expectedResourceList, resources)
-	})
-
 	t.Run("ListEnvironmentsAll", func(t *testing.T) {
 		mock := NewMockenvironmentResourceClient(gomock.NewController(t))
 		client := createClient(mock)

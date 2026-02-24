@@ -196,9 +196,6 @@ type ApplicationsManagementClient interface {
 	// DeleteApplication deletes an application and all of its resources by its name (or id).
 	DeleteApplication(ctx context.Context, applicationNameOrID string) (bool, error)
 
-	// ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
-	ListEnvironments(ctx context.Context) ([]corerp.EnvironmentResource, error)
-
 	// ListEnvironmentsAll lists all environments across resource groups.
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 

@@ -48,7 +48,6 @@ import (
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
 	env_switch_preview "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch/preview"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
-	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/radius-project/radius/pkg/cli/cmd/env/show"
 	env_show_preview "github.com/radius-project/radius/pkg/cli/cmd/env/show/preview"
@@ -356,8 +355,6 @@ func initSubCommands() {
 	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
-	previewListCmd, _ := env_list_preview.NewCommand(framework)
-	wirePreviewSubcommand(envListCmd, previewListCmd)
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)

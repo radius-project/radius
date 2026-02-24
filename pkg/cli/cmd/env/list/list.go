@@ -19,34 +19,29 @@ package list
 import (
 	"context"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/spf13/cobra"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env list` command.
-//
-
-// NewCommand creates a new Cobra command and a Runner to list environments using the current or specified workspace,
-// with optional flags for resource group and output.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List environments",
-		Long:  `List environments using the current, or specified workspace.`,
-		Args:  cobra.NoArgs,
-		Example: `
-# List environments
-rad env list
-`,
-		RunE: framework.RunCommand(runner),
+		Use:     "list",
+		Short:   "List environments",
+		Long:    `List environments using the current, or specified workspace.`,
+		Args:    cobra.NoArgs,
+		RunE:    framework.RunCommand(runner),
+		Example: `rad env list`,
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
@@ -58,28 +53,22 @@ rad env list
 
 // Runner is the runner implementation for the `rad env list` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
-
-	Format string
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	Format                  string
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
-// NewRunner creates a new instance of the `rad env list` runner.
+// NewRunner creates a new instance of the list runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
-// Validate runs validation for the `rad env list` command.
-//
-
-// Validate checks the workspace, scope, and output format of the command and sets them in the Runner struct,
-// returning an error if any of these checks fail.
+// Validate runs validation for the list command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -87,7 +76,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// Allow '--group' to override scope
 	scope, err := cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
@@ -98,26 +86,31 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	r.Format = format
 
 	return nil
 }
 
-// Run runs the `rad env list` command.
-//
-
-// Run creates an ApplicationsManagementClient using the provided context and workspace, then lists the environments in the
-// resource group and writes the formatted output to the Output. If any of these steps fail, an error is returned.
+// Run executes the list command logic.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = factory
 	}
 
-	environments, err := client.ListEnvironments(ctx)
-	if err != nil {
-		return err
+	client := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+	pager := client.NewListByScopePager(&corerpv20250801.EnvironmentsClientListByScopeOptions{})
+
+	var environments []*corerpv20250801.EnvironmentResource
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+		environments = append(environments, page.Value...)
 	}
 
 	return r.Output.WriteFormatted(r.Format, environments, objectformats.GetResourceTableFormat())

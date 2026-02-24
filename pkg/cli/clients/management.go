@@ -461,29 +461,6 @@ func (amc *UCPApplicationsManagementClient) ListRecipePacks(ctx context.Context)
 	return result, nil
 }
 
-// ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
-func (amc *UCPApplicationsManagementClient) ListEnvironments(ctx context.Context) ([]corerpv20231001.EnvironmentResource, error) {
-	client, err := amc.createEnvironmentClient(amc.RootScope)
-	if err != nil {
-		return []corerpv20231001.EnvironmentResource{}, err
-	}
-
-	environments := []corerpv20231001.EnvironmentResource{}
-	pager := client.NewListByScopePager(&corerpv20231001.EnvironmentsClientListByScopeOptions{})
-	for pager.More() {
-		page, err := pager.NextPage(ctx)
-		if err != nil {
-			return []corerpv20231001.EnvironmentResource{}, err
-		}
-
-		for _, environment := range page.EnvironmentResourceListResult.Value {
-			environments = append(environments, *environment)
-		}
-	}
-
-	return environments, nil
-}
-
 // ListEnvironmentsAll queries the scope for all environment resources and returns a slice of environment resources or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]corerpv20231001.EnvironmentResource, error) {
 	scope, err := resources.ParseScope(amc.RootScope)
