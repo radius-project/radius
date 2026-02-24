@@ -105,7 +105,7 @@ install_radius() {
     echo "Installing Radius..."
     if ! rad install kubernetes \
         --set global.azureWorkloadIdentity.enabled=true \
-        --set database.enabled=true; then
+        --set database.enabled=false; then
         echo ""
         echo "============================================================================"
         echo "ERROR: Radius installation failed"
