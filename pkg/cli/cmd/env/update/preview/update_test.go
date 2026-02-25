@@ -115,7 +115,7 @@ func Test_Run(t *testing.T) {
 					Format: "table",
 					Obj: environmentForDisplay{
 						Name:        "test-env",
-						RecipePacks: 3,
+						RecipePacks: 2,
 						Providers:   3,
 					},
 					Options: environmentFormat(),
