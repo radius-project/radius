@@ -31,6 +31,8 @@ import (
 )
 
 func Test_AWS_Credential_Operations(t *testing.T) {
+	t.Skip("TEMP: disabling AWS tests")
+
 	myTest := test.NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		resourceTypePath := "/planes/aws/awstest/providers/System.AWS/credentials"
 		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)

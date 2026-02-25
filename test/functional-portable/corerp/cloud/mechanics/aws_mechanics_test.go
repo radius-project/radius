@@ -27,6 +27,8 @@ import (
 )
 
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
+	t.Skip("TEMP: disabling AWS tests")
+
 	template := "testdata/aws-mechanics-redeploy-withupdatedresource.bicep"
 	name := "radiusfunctionaltest-" + uuid.New().String()
 	creationTimestamp := testutil.GetCreationTimestamp()

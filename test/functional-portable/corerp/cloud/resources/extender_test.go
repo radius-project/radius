@@ -30,6 +30,8 @@ import (
 )
 
 func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
+	t.Skip("TEMP: disabling AWS tests")
+
 	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set

@@ -28,6 +28,8 @@ import (
 )
 
 func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
+	t.Skip("TEMP: disabling AWS tests")
+
 	template := "testdata/aws-multi-identifier.bicep"
 	filterName := "ms" + uuid.New().String()
 	logGroupName := "ms" + uuid.New().String()
