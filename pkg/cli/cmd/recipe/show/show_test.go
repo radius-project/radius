@@ -18,6 +18,7 @@ package show
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -93,6 +94,19 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
+// setupTestClient creates a mock client with default behavior for common calls
+func setupTestClient(ctrl *gomock.Controller) *clients.MockApplicationsManagementClient {
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	
+	// Default behavior: GetEnvironment returns "not found" error (most common case)
+	appManagementClient.EXPECT().
+		GetEnvironment(gomock.Any(), gomock.Any()).
+		Return(v20231001preview.EnvironmentResource{}, fmt.Errorf("not found")).
+		AnyTimes()
+	
+	return appManagementClient
+}
+
 func Test_Run(t *testing.T) {
 	t.Run("Show bicep recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -132,7 +146,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
@@ -209,7 +223,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
@@ -246,7 +260,7 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expected, outputSink.Writes)
 	})
 
-	t.Run("Show terraformn recipe details - Success", func(t *testing.T) {
+	t.Run("Show terraform recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		envRecipe := v20231001preview.RecipeGetMetadataResponse{
 			TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
@@ -286,7 +300,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient := setupTestClient(ctrl)
 		appManagementClient.EXPECT().
 			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(envRecipe, nil).Times(1)
@@ -300,6 +314,184 @@ func Test_Run(t *testing.T) {
 			Format:            "table",
 			RecipeName:        "cosmosDB",
 			ResourceType:      datastoresrp.MongoDatabasesResourceType,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipe,
+				Options: common.RecipeFormat(),
+			},
+			output.LogOutput{
+				Format: "",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipeParams,
+				Options: common.RecipeParametersFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Show recipe details with environment parameter values - Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		envRecipe := v20231001preview.RecipeGetMetadataResponse{
+			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+			TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/openai:v1"),
+			Parameters: map[string]any{
+				"location": map[string]any{
+					"type":         "string",
+					"defaultValue": "null",
+				},
+				"resource_group_name": map[string]any{
+					"type":         "string", 
+					"defaultValue": "null",
+				},
+			},
+		}
+		recipe := types.EnvironmentRecipe{
+			Name:         "default",
+			ResourceType: "Radius.Resources/openAI",
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/openai:v1",
+		}
+
+		// Environment has configured parameter values
+		envResource := v20231001preview.EnvironmentResource{
+			Properties: &v20231001preview.EnvironmentProperties{
+				Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
+					"Radius.Resources/openAI": {
+						"default": &v20231001preview.BicepRecipeProperties{
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/openai:v1"),
+							Parameters: map[string]any{
+								"location":            "eastus",
+								"resource_group_name": "my-rg",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Expected parameters should show environment values, not template defaults
+		recipeParams := []types.RecipeParameter{
+			{
+				Name:         "resource_group_name",
+				Type:         "string",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "my-rg", // Environment value overrides template default
+			},
+			{
+				Name:         "location",
+				Type:         "string",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "eastus", // Environment value overrides template default
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(envRecipe, nil).Times(1)
+
+		appManagementClient.EXPECT().
+			GetEnvironment(gomock.Any(), gomock.Any()).
+			Return(envResource, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			Format:            "table",
+			RecipeName:        "default",
+			ResourceType:      "Radius.Resources/openAI",
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipe,
+				Options: common.RecipeFormat(),
+			},
+			output.LogOutput{
+				Format: "",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipeParams,
+				Options: common.RecipeParametersFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Show recipe details when GetEnvironment fails - Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		envRecipe := v20231001preview.RecipeGetMetadataResponse{
+			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+			TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/openai:v1"),
+			Parameters: map[string]any{
+				"location": map[string]any{
+					"type":         "string",
+					"defaultValue": "westus",
+				},
+				"resource_group_name": map[string]any{
+					"type":         "string", 
+					"defaultValue": "null",
+				},
+			},
+		}
+		recipe := types.EnvironmentRecipe{
+			Name:         "default",
+			ResourceType: "Radius.Resources/openAI",
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/openai:v1",
+		}
+
+		// Expected parameters should show template defaults since environment call fails
+		recipeParams := []types.RecipeParameter{
+			{
+				Name:         "resource_group_name",
+				Type:         "string",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "null", // Template default since environment fails
+			},
+			{
+				Name:         "location",
+				Type:         "string",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "westus", // Template default since environment fails
+			},
+		}
+
+		appManagementClient := setupTestClient(ctrl)
+		appManagementClient.EXPECT().
+			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(envRecipe, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			Format:            "table",
+			RecipeName:        "default",
+			ResourceType:      "Radius.Resources/openAI",
 		}
 
 		err := runner.Run(context.Background())
