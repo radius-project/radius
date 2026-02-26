@@ -105,7 +105,7 @@ install_radius() {
     echo "Installing Radius..."
     if ! rad install kubernetes \
         --set global.azureWorkloadIdentity.enabled=true \
-        --set database.enabled=true; then
+        --set database.enabled=false; then
         echo ""
         echo "============================================================================"
         echo "ERROR: Radius installation failed"
@@ -182,7 +182,14 @@ main() {
         echo "Version mismatch detected. Attempting upgrade from ${cp_version} to ${cli_version}..."
         # There are scenarios when an upgrade may not be possible, and we are relying on the rad upgrade command to
         # detect and report an error, which will cause the workflow to fail. Manual intervention may be required in such cases.
-        if ! rad upgrade kubernetes; then
+        # NOTE: Helm upgrades do not automatically reuse values from the previous release.
+        # We must re-apply critical chart values or they will reset to chart defaults.
+        # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
+        # - database.enabled defaults to false and is required for this workflow's control plane setup.
+        # https://github.com/radius-project/radius/issues/11218
+        if ! rad upgrade kubernetes \
+            --set global.azureWorkloadIdentity.enabled=true \
+            --set database.enabled=true; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius upgrade failed"
