@@ -44,6 +44,8 @@ func DynamicResourceDataModelFromVersioned(content []byte, version string) (*dat
 	if err := json.Unmarshal(content, vm); err != nil {
 		return nil, err
 	}
+	// Set the API version on the versioned model so ConvertTo can use it
+	vm.SetAPIVersion(version)
 	dm, err := vm.ConvertTo()
 	if err != nil {
 		return nil, err
