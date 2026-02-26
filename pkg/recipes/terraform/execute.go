@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -395,6 +396,11 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 			return nil, fmt.Errorf("terraform binary file not found: %w", err)
 		}
 	}
+
+	// Suppress stdout during tf.Show to prevent Terraform state (which may
+	// contain sensitive values) from being written to the Radius logs.
+	tf.SetStdout(io.Discard)
+	defer tf.SetStdout(&tfLogWrapper{logger: logger})
 
 	return tf.Show(ctx)
 }
