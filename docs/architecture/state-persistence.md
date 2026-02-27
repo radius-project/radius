@@ -67,6 +67,17 @@ graph TD
     QueueClient -.->|implements| InMemQ
 ```
 
+## Terminology: "Client"
+
+Throughout this document, the term **client** refers to a **data-access
+abstraction** — not an HTTP or network client. Each subsystem defines a `Client`
+interface (e.g. `database.Client`, `secret.Client`, `queue.Client`) that Radius
+services use to read and write state. The interface sits above the storage
+engine so that business logic is decoupled from the underlying backend
+(PostgreSQL, Kubernetes API server, in-memory store, etc.). When you see
+"client" in the sections below, think "storage client" — the component that
+talks to the data store on behalf of Radius.
+
 ## Interfaces
 
 ### `database.Client`
@@ -228,7 +239,7 @@ Radius runs on Kubernetes.
 **Configuration:**
 
 ```yaml
-database:
+databaseProvider:
   provider: apiserver
   apiserver:
     context: ""          # Kubernetes context (optional, for testing)
@@ -257,7 +268,7 @@ and JSON resource data.
 **Configuration:**
 
 ```yaml
-database:
+databaseProvider:
   provider: postgresql
   postgresql:
     url: "postgres://user:password@host:5432/radius"
@@ -578,14 +589,53 @@ func TestDynamoDBClient(t *testing.T) {
 
 ### Step 7: Configure and use
 
-Set the provider in your Radius configuration YAML:
+Each Radius control-plane service (UCP, Applications RP, Dynamic RP, etc.)
+reads its provider settings from a YAML configuration file at startup. How that
+file is delivered depends on the environment:
+
+- **Production (Kubernetes / Helm)** — The Helm chart generates a
+  `ConfigMap` per service (e.g.
+  `deploy/Chart/templates/ucp/configmaps.yaml`) containing the config
+  YAML. The `Deployment` mounts the ConfigMap and passes
+  `--config-file=/etc/config/<service>-config.yaml` to the container.
+- **Local development** — Config files live under `build/configs/`
+  (e.g. `build/configs/ucp.yaml`, `build/configs/applications-rp.yaml`)
+  and are referenced directly when running services outside of
+  Kubernetes.
+
+To wire in the new implementation, add a `databaseProvider` section to the
+service configuration files. For example, to configure UCP to use the
+hypothetical DynamoDB backend:
 
 ```yaml
-database:
+databaseProvider:
   provider: dynamodb
   dynamodb:
     region: us-west-2
     tableName: radius-resources
+```
+
+For reference, here are the real configurations used by existing backends:
+
+**APIServer (default Helm chart for UCP)** —
+`deploy/Chart/templates/ucp/configmaps.yaml`:
+
+```yaml
+databaseProvider:
+  provider: "apiserver"
+  apiserver:
+    context: ""
+    namespace: "radius-system"
+```
+
+**PostgreSQL (local development for UCP)** —
+`build/configs/ucp.yaml`:
+
+```yaml
+databaseProvider:
+  provider: "postgresql"
+  postgresql:
+    url: "postgresql://ucp:radius_pass@localhost:5432/ucp?sslmode=disable"
 ```
 
 No other code changes are needed. The `DatabaseProvider` will read the
