@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/filesystem"
@@ -115,11 +116,11 @@ func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
 func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 	t.Parallel()
 
-	// For chart validation tests, we'll check if real chart exists using default filesystem
+	// For chart validation tests, we'll check if real chart exists using the OS filesystem
 	// since this is just for the skip check
-	defaultFS := filesystem.NewMemMapFileSystem()
+	osFS := filesystem.NewOSFS()
 	realChartPath := DefaultChartPath
-	if _, err := defaultFS.Stat(realChartPath); errors.Is(err, fs.ErrNotExist) {
+	if _, err := osFS.Stat(realChartPath); errors.Is(err, fs.ErrNotExist) {
 		t.Skipf("Radius chart not found at %s, skipping chart validation tests", realChartPath)
 	}
 
@@ -157,9 +158,10 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 		},
 		{
 			name: "valid set-file with chart",
-			setupFiles: func(t *testing.T, fs filesystem.FileSystem) []string {
-				tmpFile := "/tmp/config.yaml"
-				err := fs.WriteFile(tmpFile, []byte("custom-config-content"), 0644)
+			setupFiles: func(t *testing.T, _ filesystem.FileSystem) []string {
+				tmpDir := t.TempDir()
+				tmpFile := tmpDir + "/config.yaml"
+				err := os.WriteFile(tmpFile, []byte("custom-config-content"), 0644)
 				require.NoError(t, err)
 				return []string{fmt.Sprintf("global.rootCA.cert=%s", tmpFile)}
 			},
@@ -196,20 +198,14 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// For chart validation, we need to use the real filesystem
-			// since the chart is on disk
-			memFS := filesystem.NewMemMapFileSystem()
-
-			// Setup files if needed
+			// Setup files if needed (writes real temp files to disk)
 			setFileParams := tt.setFileParams
 			if tt.setupFiles != nil {
-				setFileParams = tt.setupFiles(t, memFS)
+				setFileParams = tt.setupFiles(t, nil)
 			}
 
-			// Use the real chart path
+			// Use the real chart path and OS filesystem for chart loading
 			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, realChartPath, nil)
-			// Use memFS for file parameters but default FS will be used for chart loading
-			check.fs = memFS
 
 			pass, msg, err := check.Run(context.Background())
 
