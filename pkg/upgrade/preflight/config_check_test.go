@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/filesystem"
@@ -160,7 +161,7 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 			name: "valid set-file with chart",
 			setupFiles: func(t *testing.T, _ filesystem.FileSystem) []string {
 				tmpDir := t.TempDir()
-				tmpFile := tmpDir + "/config.yaml"
+				tmpFile := filepath.Join(tmpDir, "config.yaml")
 				err := os.WriteFile(tmpFile, []byte("custom-config-content"), 0644)
 				require.NoError(t, err)
 				return []string{fmt.Sprintf("global.rootCA.cert=%s", tmpFile)}
