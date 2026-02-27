@@ -2687,13 +2687,25 @@ func TestNormalizeSensitiveFieldTypes(t *testing.T) {
 		require.True(t, schema.Properties["name"].Value.Type.Is("string"))
 	})
 
-	t.Run("sensitive object field retains type", func(t *testing.T) {
+	t.Run("sensitive object field is normalized to AnyOf and preserves original schema", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},
 			Properties: openapi3.Schemas{
 				"credentials": {
 					Value: &openapi3.Schema{
 						Type: &openapi3.Types{"object"},
+						Properties: openapi3.Schemas{
+							"username": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+								},
+							},
+							"password": {
+								Value: &openapi3.Schema{
+									Type: &openapi3.Types{"string"},
+								},
+							},
+						},
 						Extensions: map[string]any{
 							annotationRadiusSensitive: true,
 						},
@@ -2704,9 +2716,23 @@ func TestNormalizeSensitiveFieldTypes(t *testing.T) {
 
 		normalizeSensitiveFieldTypes(schema)
 
-		// Sensitive object field should retain its type (objects stay objects after encryption)
-		require.NotNil(t, schema.Properties["credentials"].Value.Type)
-		require.True(t, schema.Properties["credentials"].Value.Type.Is("object"))
+		cred := schema.Properties["credentials"].Value
+		require.NotNil(t, cred.AnyOf)
+		require.Len(t, cred.AnyOf, 2)
+
+		// First branch: original object schema with properties preserved
+		original := cred.AnyOf[0].Value
+		require.True(t, original.Type.Is("object"))
+		require.Contains(t, original.Properties, "username")
+		require.Contains(t, original.Properties, "password")
+
+		// Second branch: unconstrained object (encrypted envelope)
+		require.True(t, cred.AnyOf[1].Value.Type.Is("object"))
+		require.Equal(t, uint64(1), cred.AnyOf[1].Value.MinProps)
+
+		// Sensitive annotation should be removed from original branch
+		_, hasSensitive := original.Extensions[annotationRadiusSensitive]
+		require.False(t, hasSensitive, "x-radius-sensitive should be removed from original branch")
 	})
 
 	t.Run("nested sensitive string field is normalized to AnyOf", func(t *testing.T) {
@@ -2951,7 +2977,7 @@ func TestNormalizeSensitiveFieldTypes(t *testing.T) {
 						Type: &openapi3.Types{"string"},
 						Extensions: map[string]any{
 							annotationRadiusSensitive: true,
-							"x-custom-metadata":      "some-value",
+							"x-custom-metadata":       "some-value",
 						},
 					},
 				},
@@ -3002,7 +3028,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 					"type": "string",
 				},
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3030,7 +3056,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3058,7 +3084,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 							"type": "string",
 						},
 						"secret": map[string]any{
-							"type": "string",
+							"type":               "string",
 							"x-radius-sensitive": true,
 						},
 					},
@@ -3089,7 +3115,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"credentials": map[string]any{
-					"type": "object",
+					"type":               "object",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3116,10 +3142,10 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"apiKey": map[string]any{
-					"type":      "string",
-					"minLength": 8,
-					"maxLength": 128,
-					"pattern":   "^[A-Za-z0-9]+$",
+					"type":               "string",
+					"minLength":          8,
+					"maxLength":          128,
+					"pattern":            "^[A-Za-z0-9]+$",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3150,7 +3176,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 					"type": "string",
 				},
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3173,7 +3199,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3195,7 +3221,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3217,7 +3243,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},
@@ -3234,6 +3260,88 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 		require.Contains(t, err.Error(), "resource data validation failed")
 	})
 
+	t.Run("encrypted sensitive object with properties passes validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"username": map[string]any{"type": "string"},
+						"password": map[string]any{"type": "string"},
+					},
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		// After encryption, the object properties are replaced by the encrypted envelope
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"encrypted": "base64-ciphertext",
+					"nonce":     "base64-nonce",
+					"ad":        "base64-hash",
+					"version":   1,
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("unencrypted sensitive object with properties still passes validation", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"username": map[string]any{"type": "string"},
+						"password": map[string]any{"type": "string"},
+					},
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		// Before encryption, the value matches the original schema
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"username": "admin",
+					"password": "secret",
+				},
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.NoError(t, err)
+	})
+
+	t.Run("sensitive object field rejects non-object value", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"credentials": map[string]any{
+					"type":               "object",
+					"x-radius-sensitive": true,
+				},
+			},
+		}
+
+		resourceData := map[string]any{
+			"properties": map[string]any{
+				"credentials": "not-an-object", // String value for an object field
+			},
+		}
+
+		err := ValidateResourceAgainstSchema(ctx, resourceData, schema)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource data validation failed")
+	})
+
 	t.Run("sensitive string directly on items schema accepts encrypted values", func(t *testing.T) {
 		schema := map[string]any{
 			"type": "object",
@@ -3241,7 +3349,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 				"tokens": map[string]any{
 					"type": "array",
 					"items": map[string]any{
-						"type": "string",
+						"type":               "string",
 						"x-radius-sensitive": true,
 					},
 				},
@@ -3268,7 +3376,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 				"secretMap": map[string]any{
 					"type": "object",
 					"additionalProperties": map[string]any{
-						"type": "string",
+						"type":               "string",
 						"x-radius-sensitive": true,
 					},
 				},
@@ -3293,7 +3401,7 @@ func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
 			"type": "object",
 			"properties": map[string]any{
 				"password": map[string]any{
-					"type": "string",
+					"type":               "string",
 					"x-radius-sensitive": true,
 				},
 			},

@@ -74,7 +74,7 @@ func (s *Service) registerRoutes(
 				func(opts controller.Options) (controller.Controller, error) {
 					optsCopy := resourceOptions
 					optsCopy.ListRecursiveQuery = true
-					return defaultoperation.NewListResources(opts, optsCopy)
+					return NewListResourcesWithRedaction(opts, optsCopy, ucpClient)
 				}))
 
 			// Async operation status/results
@@ -88,11 +88,11 @@ func (s *Service) registerRoutes(
 		r.Route("/{rg:resource[gG]roups}/{resourceGroupName}/providers/{providerNamespace}/{resourceType}", func(r chi.Router) {
 			r.Get("/", dynamicOperationHandler(v1.OperationList, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {
-					return defaultoperation.NewListResources(opts, resourceOptions)
+					return NewListResourcesWithRedaction(opts, resourceOptions, ucpClient)
 				}))
 			r.Get("/{resourceName}", dynamicOperationHandler(v1.OperationGet, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {
-					return defaultoperation.NewGetResource(opts, resourceOptions)
+					return NewGetResourceWithRedaction(opts, resourceOptions, ucpClient)
 				}))
 			r.Put("/{resourceName}", dynamicOperationHandler(v1.OperationPut, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {

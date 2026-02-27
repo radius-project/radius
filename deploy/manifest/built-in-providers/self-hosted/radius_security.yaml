@@ -100,6 +100,7 @@ types:
             data:
               type: object
               description: '(Required) Map of secret data. For example: `data: { username: { value: user1 } password: { value: pass }}`'
+              x-radius-sensitive: true
               additionalProperties:
                 type: object
                 properties:
