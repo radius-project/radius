@@ -5,8 +5,20 @@
 # Files in the root directory
 **/go.mod @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 **/go.sum @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+
 # Devcontainer files
-.devcontainer/devcontainer.json @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+.devcontainer/**    @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+
+# Allows on-call members to respond to changes in .github
+.github/workflows/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+.github/workflows/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+.github/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+.github/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+
+# GitHub configs
+.github/*.yml   @radius-project/maintainers-docs @radius-project/approvers-docs @radius-project/on-call
+.github/*.yaml  @radius-project/maintainers-docs @radius-project/approvers-docs @radius-project/on-call
+
 # Dockerfile
 test/*/Dockerfile          @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 deploy/images/*/Dockerfile @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
