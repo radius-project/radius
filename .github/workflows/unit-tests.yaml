@@ -62,13 +62,20 @@ jobs:
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
 
+      - name: Run make test-validate-cli (CLI integration tests)
+        env:
+          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/cli_results.xml
+          GOTEST_OPTS: -race -coverprofile ./dist/unit_test/cli_coverage.out
+        run: |
+          make test-validate-cli
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           # This secret is unavailable for fork PRs; Codecov falls back to tokenless upload.
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
-          files: ./dist/unit_test/ut_coverage.out
+          files: ./dist/unit_test/ut_coverage.out,./dist/unit_test/cli_coverage.out
           fail_ci_if_error: false
           verbose: true
 
