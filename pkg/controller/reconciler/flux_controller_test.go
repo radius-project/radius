@@ -431,7 +431,7 @@ func makeGitRepository(namespacedName types.NamespacedName, url string) sourcev1
 
 func waitForGitRepositoryToExistWithGeneration(ctx context.Context, k8sClient k8sclient.Client, key k8sclient.ObjectKey, obj k8sclient.Object, generation int64) error {
 	timeout := 10 * time.Second
-	interval := 1 * time.Second
+	interval := 200 * time.Millisecond
 	deadlineCtx, deadlineCancel := context.WithTimeout(ctx, timeout)
 	defer deadlineCancel()
 
@@ -462,7 +462,7 @@ func waitForGitRepositoryToExistWithGeneration(ctx context.Context, k8sClient k8
 
 func waitForDeploymentTemplateToExistWithGeneration(ctx context.Context, k8sClient k8sclient.Client, key types.NamespacedName, obj k8sclient.Object, generation int64) error {
 	timeout := 10 * time.Second
-	interval := 1 * time.Second
+	interval := 200 * time.Millisecond
 	deadlineCtx, deadlineCancel := context.WithTimeout(ctx, timeout)
 	defer deadlineCancel()
 
