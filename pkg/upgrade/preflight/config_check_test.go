@@ -202,7 +202,7 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 			// Setup files if needed (writes real temp files to disk)
 			setFileParams := tt.setFileParams
 			if tt.setupFiles != nil {
-				setFileParams = tt.setupFiles(t, nil)
+				setFileParams = tt.setupFiles(t, osFS)
 			}
 
 			// Use the real chart path and OS filesystem for chart loading
