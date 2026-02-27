@@ -69,7 +69,7 @@ type executor struct {
 func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
+	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, TerraformPath: options.TerraformPath, LogLevel: options.LogLevel})
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
+	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, TerraformPath: options.TerraformPath, LogLevel: options.LogLevel})
 	// Note: We use a global shared binary approach, so we should NOT call i.Remove()
 	// as it would remove the shared global binary that other operations might be using.
 	// The global binary will persist across operations to eliminate race conditions.
@@ -173,7 +173,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
 	// Install Terraform
 	i := install.NewInstaller()
-	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, LogLevel: options.LogLevel})
+	tf, err := Install(ctx, i, InstallOptions{RootDir: options.RootDir, TerraformPath: options.TerraformPath, LogLevel: options.LogLevel})
 	if err != nil {
 		return nil, err
 	}

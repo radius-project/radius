@@ -103,6 +103,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
 		RootDir:          requestDirPath,
+		TerraformPath:    d.options.Path,
 		EnvConfig:        &opts.Configuration,
 		ResourceRecipe:   &opts.Recipe,
 		EnvRecipe:        &opts.Definition,
@@ -157,6 +158,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 
 	err = d.terraformExecutor.Delete(ctx, terraform.Options{
 		RootDir:          requestDirPath,
+		TerraformPath:    d.options.Path,
 		EnvConfig:        &opts.Configuration,
 		ResourceRecipe:   &opts.Recipe,
 		EnvRecipe:        &opts.Definition,
@@ -286,6 +288,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 
 	recipeData, err := d.terraformExecutor.GetRecipeMetadata(ctx, terraform.Options{
 		RootDir:        requestDirPath,
+		TerraformPath:  d.options.Path,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
 		LogLevel:       d.options.LogLevel,
