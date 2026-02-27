@@ -12,12 +12,10 @@
 # Allows on-call members to respond to changes in .github
 .github/workflows/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 .github/workflows/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-.github/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-.github/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 
 # GitHub configs
-.github/*.yml   @radius-project/maintainers-docs @radius-project/approvers-docs @radius-project/on-call
-.github/*.yaml  @radius-project/maintainers-docs @radius-project/approvers-docs @radius-project/on-call
+.github/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+.github/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
 
 # Dockerfile
 test/*/Dockerfile          @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
