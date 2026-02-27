@@ -45,6 +45,13 @@ func (d *DynamicResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, fmt.Errorf("failed to unmarshal properties: %w", err)
 	}
 
+	// Use the API version from the versioned model if available.
+	// This is set by the converter and allows proper schema lookups for decryption/redaction.
+	apiVersion := d.apiVersion
+	if apiVersion == "" {
+		apiVersion = Version
+	}
+
 	dm := &datamodel.DynamicResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -55,7 +62,7 @@ func (d *DynamicResource) ConvertTo() (v1.DataModelInterface, error) {
 				Tags:     to.StringMap(d.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion: apiVersion,
 			},
 		},
 		Properties: properties,
