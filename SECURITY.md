@@ -8,7 +8,7 @@ If you believe you have found a security vulnerability in any Radius repository,
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them to the [security@radapp.dev](mailto:security@radapp.dev).
+Instead, please report them to the [radiuscoreteam@service.microsoft.com](mailto:radiuscoreteam@service.microsoft.com).
 
 You should receive a response within 24 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
 
