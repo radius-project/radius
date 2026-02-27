@@ -110,9 +110,15 @@ func normalizePlatformOptionsAnyWithPath(schema *openapi3.Schema, path string) {
 	}
 }
 
-// normalizeSensitiveFieldTypes normalizes the type constraint on sensitive string fields
-// so that the OpenAPI validator accepts both the original plaintext string and the encrypted object form.
-// Only string types need this adjustment — object types remain objects after encryption and pass validation.
+// normalizeSensitiveFieldTypes normalizes the type constraints on sensitive fields
+// so that the OpenAPI validator accepts both the original plaintext value and the encrypted form.
+//
+// For string fields: the encrypted form is an object with encrypted/nonce/version keys,
+// so the schema is widened to accept either the original string or an object.
+//
+// For object fields: the encrypted form is still an object but with entirely different keys
+// (encrypted/nonce/version instead of the original properties/additionalProperties), so the
+// schema is widened to accept either the original object or an unconstrained object.
 func normalizeSensitiveFieldTypes(schema *openapi3.Schema) {
 	if schema == nil {
 		return
@@ -123,7 +129,7 @@ func normalizeSensitiveFieldTypes(schema *openapi3.Schema) {
 			continue
 		}
 
-		if normalizeSensitiveStringType(propRef) {
+		if normalizeSensitiveType(propRef) {
 			continue
 		}
 
@@ -133,23 +139,28 @@ func normalizeSensitiveFieldTypes(schema *openapi3.Schema) {
 
 	// Handle array items — check the items schema's own annotation first.
 	if schema.Items != nil && schema.Items.Value != nil {
-		if !normalizeSensitiveStringType(schema.Items) {
+		if !normalizeSensitiveType(schema.Items) {
 			normalizeSensitiveFieldTypes(schema.Items.Value)
 		}
 	}
 
 	// Handle additionalProperties (maps) — check its own annotation first.
 	if schema.AdditionalProperties.Schema != nil && schema.AdditionalProperties.Schema.Value != nil {
-		if !normalizeSensitiveStringType(schema.AdditionalProperties.Schema) {
+		if !normalizeSensitiveType(schema.AdditionalProperties.Schema) {
 			normalizeSensitiveFieldTypes(schema.AdditionalProperties.Schema.Value)
 		}
 	}
 }
 
-// normalizeSensitiveStringType checks whether a SchemaRef points to a string with a sensitive
-// annotation. If so, it expands the type constraint so it accepts either the original string
-// schema or object (the encrypted form). Returns true if the schema was normalized, false otherwise.
-func normalizeSensitiveStringType(ref *openapi3.SchemaRef) bool {
+// normalizeSensitiveType checks whether a SchemaRef has a sensitive annotation and expands
+// the type constraint so the OpenAPI validator accepts both the original value and the encrypted form.
+//
+// For string fields: widens to accept either the original string or an object (the encrypted envelope).
+// For object fields: widens to accept either the original object schema or an unconstrained object
+// (since the encrypted envelope replaces all properties/additionalProperties with encrypted/nonce/version).
+//
+// Returns true if the schema was normalized, false otherwise.
+func normalizeSensitiveType(ref *openapi3.SchemaRef) bool {
 	if ref == nil || ref.Value == nil {
 		return false
 	}
@@ -164,31 +175,37 @@ func normalizeSensitiveStringType(ref *openapi3.SchemaRef) bool {
 		return false
 	}
 
-	if prop.Type == nil || !prop.Type.Is("string") {
+	isString := prop.Type != nil && prop.Type.Is("string")
+	isObject := prop.Type != nil && prop.Type.Is("object")
+
+	if !isString && !isObject {
 		return false
 	}
 
 	// Copy the original so we don't create a self-referencing cycle.
-	originalString := *prop
+	original := *prop
 
 	// Remove the sensitive annotation from the copy to avoid re-processing.
 	// Other vendor extensions are preserved.
-	if len(originalString.Extensions) > 0 {
-		extCopy := make(map[string]any, len(originalString.Extensions))
-		for k, v := range originalString.Extensions {
+	if len(original.Extensions) > 0 {
+		extCopy := make(map[string]any, len(original.Extensions))
+		for k, v := range original.Extensions {
 			extCopy[k] = v
 		}
 		delete(extCopy, annotationRadiusSensitive)
-		originalString.Extensions = extCopy
+		original.Extensions = extCopy
+	}
+
+	// The encrypted envelope is always an object with encrypted/nonce/version keys.
+	encryptedForm := &openapi3.Schema{
+		Type:     &openapi3.Types{"object"},
+		MinProps: 1, // reject empty objects — encrypted data always has fields
 	}
 
 	ref.Value = &openapi3.Schema{
 		AnyOf: openapi3.SchemaRefs{
-			{Value: &originalString},
-			{Value: &openapi3.Schema{
-				Type:     &openapi3.Types{"object"},
-				MinProps: 1, // reject empty objects — encrypted data always has fields
-			}},
+			{Value: &original},
+			{Value: encryptedForm},
 		},
 	}
 
