@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -970,6 +971,261 @@ func Test_Run(t *testing.T) {
 		}
 		require.True(t, foundWarning, "Expected to find deprecation warning in output")
 		require.True(t, foundResourceType, "Expected to find deprecated resource type in output")
+	})
+}
+
+func Test_setupRecipePacks(t *testing.T) {
+	scope := "/planes/radius/local/resourceGroups/test-group"
+
+	t.Run("injects default recipe pack into template", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory — GET succeeds (pack already exists).
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		// Template with a Radius.Core/environments resource and no recipe packs.
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": map[string]any{
+					"type": "Radius.Core/environments@2025-08-01-preview",
+					"properties": map[string]any{
+						"name":       "myenv",
+						"properties": map[string]any{},
+					},
+				},
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		// Verify that the default recipe pack was injected.
+		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
+		outerProps := envRes["properties"].(map[string]any)
+		innerProps := outerProps["properties"].(map[string]any)
+		packs, ok := innerProps["recipePacks"].([]any)
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
+	})
+
+	t.Run("skips when environment has existing packs", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Template with a Radius.Core/environments resource that already has one pack.
+		// Since packs are already set, no changes should be made.
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": map[string]any{
+					"type": "Radius.Core/environments@2025-08-01-preview",
+					"properties": map[string]any{
+						"name": "myenv",
+						"properties": map[string]any{
+							"recipePacks": []any{existingPackID},
+						},
+					},
+				},
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
+		outerProps := envRes["properties"].(map[string]any)
+		innerProps := outerProps["properties"].(map[string]any)
+		packs := innerProps["recipePacks"].([]any)
+		// Only the original pack — no singletons added
+		require.Len(t, packs, 1)
+		require.Equal(t, existingPackID, packs[0])
+	})
+
+	t.Run("no-op when template has no environment resource", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"app": map[string]any{
+					"type": "Radius.Core/applications@2025-08-01-preview",
+				},
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+	})
+
+	t.Run("no-op for Applications.Core environment", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": map[string]any{
+					"type": "Applications.Core/environments@2023-10-01-preview",
+				},
+			},
+		}
+
+		// Should be a no-op since we only handle Radius.Core environments
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+	})
+
+	t.Run("injects packs only for environment without packs in mixed template", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		// Only one env needs packs, so only one EnsureDefaultResourceGroup call.
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Two environments: envWithPacks already has a pack, envWithout has none.
+		template := map[string]any{
+			"resources": map[string]any{
+				"envWithPacks": map[string]any{
+					"type": "Radius.Core/environments@2025-08-01-preview",
+					"properties": map[string]any{
+						"name": "envWithPacks",
+						"properties": map[string]any{
+							"recipePacks": []any{existingPackID},
+						},
+					},
+				},
+				"envWithout": map[string]any{
+					"type": "Radius.Core/environments@2025-08-01-preview",
+					"properties": map[string]any{
+						"name":       "envWithout",
+						"properties": map[string]any{},
+					},
+				},
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		// envWithPacks should be untouched — still just 1 pack.
+		envWithPacks := template["resources"].(map[string]any)["envWithPacks"].(map[string]any)
+		wpOuterProps := envWithPacks["properties"].(map[string]any)
+		wpInnerProps := wpOuterProps["properties"].(map[string]any)
+		wpPacks := wpInnerProps["recipePacks"].([]any)
+		require.Len(t, wpPacks, 1, "envWithPacks should keep its original pack only")
+		require.Equal(t, existingPackID, wpPacks[0])
+
+		// envWithout should have received the default pack.
+		envWithout := template["resources"].(map[string]any)["envWithout"].(map[string]any)
+		woOuterProps := envWithout["properties"].(map[string]any)
+		woInnerProps := woOuterProps["properties"].(map[string]any)
+		woPacks, ok := woInnerProps["recipePacks"].([]any)
+		require.True(t, ok, "expected recipePacks on envWithout")
+		require.Len(t, woPacks, 1, "envWithout should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), woPacks[0])
+	})
+
+	t.Run("creates default pack when not found in default scope", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory returns 404 on GET (packs don't exist yet)
+		// but succeeds on CreateOrUpdate.
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		// Template with a Radius.Core/environments resource and no recipe packs.
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": map[string]any{
+					"type": "Radius.Core/environments@2025-08-01-preview",
+					"properties": map[string]any{
+						"name":       "myenv",
+						"properties": map[string]any{},
+					},
+				},
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
+		outerProps := envRes["properties"].(map[string]any)
+		innerProps := outerProps["properties"].(map[string]any)
+		packs, ok := innerProps["recipePacks"].([]any)
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
 	})
 }
 
