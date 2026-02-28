@@ -56,7 +56,7 @@ endif
 
 .PHONY: test
 test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -73,7 +73,7 @@ test-get-envtools:
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} $(GOTEST_OPTS)
 
 .PHONY: test-functional-all
 test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-corerp test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples test-functional-dynamicrp-noncloud ## Runs all functional tests
