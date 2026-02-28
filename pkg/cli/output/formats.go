@@ -31,12 +31,12 @@ func SupportedFormats() []string {
 	}
 }
 
-// AllFormats returns all recognized output format strings, including formats
-// that are only available for specific commands (e.g., plain-text).
-func AllFormats() []string {
-	return []string{
-		FormatJson,
-		FormatTable,
-		FormatPlainText,
+// NormalizeFormat maps deprecated format aliases to their canonical form.
+// Currently maps "plain-text" → "table" for backwards compatibility.
+// Returns the input unchanged if it is not an alias.
+func NormalizeFormat(format string) string {
+	if format == FormatPlainText {
+		return FormatTable
 	}
+	return format
 }

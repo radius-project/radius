@@ -51,10 +51,10 @@ func NewFormatter(format string) (Formatter, error) {
 	switch normalized {
 	case FormatJson:
 		return &JSONFormatter{}, nil
-	case FormatTable:
+	case FormatTable, FormatPlainText:
 		return &TableFormatter{}, nil
 	default:
-		return nil, fmt.Errorf("unsupported format %s", format)
+		return nil, fmt.Errorf("unsupported format %q, supported formats are: %s", format, strings.Join(SupportedFormats(), ", "))
 	}
 }
 

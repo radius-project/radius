@@ -3,7 +3,9 @@ package version
 import (
 	"context"
 
+	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -79,6 +81,7 @@ rad version --cli`,
 		RunE: framework.RunCommand(runner),
 	}
 
+	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("cli", false, "Use this flag to only show the rad CLI version")
 	return cmd, runner
 }
@@ -102,12 +105,9 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate validates the command arguments
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	format, err := cmd.Flags().GetString("output")
+	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
-	}
-	if format == "" {
-		format = "table"
 	}
 	r.Format = format
 
