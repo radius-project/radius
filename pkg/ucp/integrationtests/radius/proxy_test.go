@@ -275,7 +275,8 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		err := json.Unmarshal(response.Body.Bytes(), resource)
 		require.NoError(t, err)
 		require.Equal(t, message, *resource.Properties.Message)
-		require.Equal(t, string(v1.ProvisioningStateAccepted), *resource.Properties.ProvisioningState)
+		// Updating or Accepted are valid states, so test for not being Terminal.
+		require.False(t, v1.ProvisioningState(*resource.Properties.ProvisioningState).IsTerminal())
 	})
 
 	t.Run("Complete PUT", func(t *testing.T) {
