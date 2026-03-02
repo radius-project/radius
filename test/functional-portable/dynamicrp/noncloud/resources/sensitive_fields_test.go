@@ -38,7 +38,7 @@ import (
 //
 // 1. Resource Type Registration:
 //   - Registers a user-defined resource type "Test.Resources/sensitiveResource" (recipe-capable)
-//   - The schema includes sensitive fields (password, apiKey, credentials.secret) and non-sensitive fields (username, credentials.host)
+//   - The schema includes sensitive fields (password, apiKey, credentials.secret), a sensitive object (connectionConfig), and non-sensitive fields (username, credentials.host)
 //
 // 2. Resource Deployment (Create):
 //   - Deploys a Bicep template that creates a sensitiveResource instance with plaintext sensitive values
@@ -125,6 +125,10 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 				require.Nil(t, credentials["secret"],
 					"nested sensitive field 'credentials.secret' should be null after redaction")
 
+				// Sensitive object: entire connectionConfig should be null after redaction.
+				require.Nil(t, resource.Properties["connectionConfig"],
+					"sensitive object 'connectionConfig' should be null after redaction")
+
 				// --- LIST verification ---
 				resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
 				require.NoError(t, err)
@@ -153,6 +157,9 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 						require.Nil(t, listCredentials["secret"],
 							"LIST: nested sensitive field 'credentials.secret' should be null after redaction")
 
+						require.Nil(t, res.Properties["connectionConfig"],
+							"LIST: sensitive object 'connectionConfig' should be null after redaction")
+
 						break
 					}
 				}
@@ -172,6 +179,10 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 					"K8s Secret should contain the decrypted apiKey")
 				require.Equal(t, "nested-secret-value", string(k8sSecret.Data["secret"]),
 					"K8s Secret should contain the decrypted nested secret")
+				require.Equal(t, "https://api.example.com", string(k8sSecret.Data["connectionConfigUrl"]),
+					"K8s Secret should contain the decrypted connectionConfig url")
+				require.Equal(t, "conn-token-abc123", string(k8sSecret.Data["connectionConfigToken"]),
+					"K8s Secret should contain the decrypted connectionConfig token")
 			},
 		},
 		{
@@ -219,6 +230,10 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 				require.Nil(t, credentials["secret"],
 					"nested secret should be null after redaction on update")
 
+				// Sensitive object should be null after redaction on update.
+				require.Nil(t, resource.Properties["connectionConfig"],
+					"sensitive object 'connectionConfig' should be null after redaction on update")
+
 				// --- LIST verification after update ---
 				resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
 				require.NoError(t, err)
@@ -242,6 +257,9 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 						require.Nil(t, listCredentials["secret"],
 							"LIST after update: nested sensitive field 'credentials.secret' should be null after redaction")
 
+						require.Nil(t, res.Properties["connectionConfig"],
+							"LIST after update: sensitive object 'connectionConfig' should be null after redaction")
+
 						break
 					}
 				}
@@ -261,6 +279,10 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 					"K8s Secret should contain the updated decrypted apiKey")
 				require.Equal(t, "updated-nested-secret", string(k8sSecret.Data["secret"]),
 					"K8s Secret should contain the updated decrypted nested secret")
+				require.Equal(t, "https://api.example.com/v2", string(k8sSecret.Data["connectionConfigUrl"]),
+					"K8s Secret should contain the updated decrypted connectionConfig url")
+				require.Equal(t, "conn-token-updated-xyz", string(k8sSecret.Data["connectionConfigToken"]),
+					"K8s Secret should contain the updated decrypted connectionConfig token")
 			},
 		},
 	})

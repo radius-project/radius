@@ -17,6 +17,8 @@ resource sensitiveSecret 'core/Secret@v1' = {
     password: context.resource.properties.password
     apiKey: context.resource.properties.apiKey
     secret: context.resource.properties.credentials.secret
+    connectionConfigUrl: context.resource.properties.connectionConfig.url
+    connectionConfigToken: context.resource.properties.connectionConfig.token
   }
 }
 

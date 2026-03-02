@@ -49,5 +49,9 @@ resource sensitiveRes 'Test.Resources/sensitiveResource@2023-10-01-preview' = {
       host: 'db.example.com'
       secret: 'updated-nested-secret'
     }
+    connectionConfig: {
+      url: 'https://api.example.com/v2'
+      token: 'conn-token-updated-xyz'
+    }
   }
 }

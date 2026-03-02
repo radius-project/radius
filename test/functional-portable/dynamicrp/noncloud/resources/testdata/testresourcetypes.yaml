@@ -219,6 +219,17 @@ types:
                   type: string
                   description: Sensitive nested secret.
                   x-radius-sensitive: true
+            connectionConfig:
+              type: object
+              description: A sensitive object containing non-sensitive fields. The entire object should be redacted.
+              x-radius-sensitive: true
+              properties:
+                url:
+                  type: string
+                  description: Connection URL.
+                token:
+                  type: string
+                  description: Access token.
             secretName:
               type: string
               description: The name of the Kubernetes secret created by the recipe.
