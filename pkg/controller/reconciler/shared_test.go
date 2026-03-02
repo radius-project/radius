@@ -39,7 +39,7 @@ import (
 
 const (
 	recipeTestWaitDuration            = time.Second * 10
-	recipeTestWaitInterval            = time.Second * 1
+	recipeTestWaitInterval            = time.Millisecond * 200
 	recipeTestControllerDelayInterval = time.Millisecond * 100
 )
 
