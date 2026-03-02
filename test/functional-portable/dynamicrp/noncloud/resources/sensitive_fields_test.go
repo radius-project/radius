@@ -24,12 +24,14 @@ import (
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
 // Test_DynamicRP_SensitiveFieldEncryption tests that fields marked with x-radius-sensitive annotation
-// in a resource type schema are encrypted on PUT and not returned as plaintext on GET/LIST.
+// in a resource type schema are encrypted on PUT, redacted (nullified) by the backend after recipe
+// execution, and returned as null on GET/LIST.
 //
 // The test consists of three main steps:
 //
@@ -40,12 +42,12 @@ import (
 // 2. Resource Deployment (Create):
 //   - Deploys a Bicep template that creates a sensitiveResource instance with plaintext sensitive values
 //   - Verifies via GET that non-sensitive fields are returned as plaintext
-//   - Verifies via GET that sensitive fields are NOT returned as plaintext (encrypted on PUT)
-//   - Verifies via LIST that the same encryption behavior applies
+//   - Verifies via GET that sensitive fields are null (redacted by backend)
+//   - Verifies via LIST that the same redaction behavior applies
 //
 // 3. Resource Update:
 //   - Deploys an updated Bicep template with different sensitive values
-//   - Verifies that neither the old nor new plaintext values are exposed
+//   - Verifies that sensitive fields are null after redaction
 func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 	createTemplate := "testdata/sensitive-resource.bicep"
 	updateTemplate := "testdata/sensitive-resource-update.bicep"
@@ -73,8 +75,8 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			},
 		},
 		{
-			// Step 2: Deploy the resource with sensitive fields and verify encryption on GET and LIST.
-			Executor: step.NewDeployExecutor(createTemplate),
+			// Step 2: Deploy the resource with sensitive fields and verify redaction on GET and LIST.
+			Executor: step.NewDeployExecutor(createTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -104,43 +106,20 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 				require.Equal(t, "admin", resource.Properties["username"],
 					"non-sensitive field 'username' should remain as plaintext")
 
-				// Sensitive top-level fields MUST NOT be returned as plaintext.
-				password := resource.Properties["password"]
-				require.NotEqual(t, "super-secret-password", password,
-					"sensitive field 'password' must not be returned as plaintext")
+				// Sensitive top-level fields MUST be null after backend redaction.
+				require.Nil(t, resource.Properties["password"],
+					"sensitive field 'password' should be null after redaction")
+				require.Nil(t, resource.Properties["apiKey"],
+					"sensitive field 'apiKey' should be null after redaction")
 
-				apiKey := resource.Properties["apiKey"]
-				require.NotEqual(t, "ak_1234567890abcdef", apiKey,
-					"sensitive field 'apiKey' must not be returned as plaintext")
-
-				// Verify password is in encrypted format (map with "encrypted", "nonce" keys).
-				// This confirms the encryption filter ran on PUT.
-				passwordMap, isMap := password.(map[string]any)
-				if isMap {
-					require.Contains(t, passwordMap, "encrypted",
-						"encrypted password should contain 'encrypted' key")
-					require.Contains(t, passwordMap, "nonce",
-						"encrypted password should contain 'nonce' key")
-					t.Log("password is in encrypted map format (pre-redaction behavior)")
-				}
-
-				// TODO: Uncomment when GET/LIST redaction is implemented.
-				// require.Nil(t, password, "sensitive field 'password' should be null after redaction")
-				// require.Nil(t, apiKey, "sensitive field 'apiKey' should be null after redaction")
-
-				// Nested fields: non-sensitive nested field should be intact, sensitive nested field should be encrypted.
+				// Nested fields: non-sensitive nested field should be intact, sensitive nested field should be null.
 				credentials, ok := resource.Properties["credentials"].(map[string]any)
 				require.True(t, ok, "credentials should be a map")
 
 				require.Equal(t, "db.example.com", credentials["host"],
 					"non-sensitive nested field 'credentials.host' should remain as plaintext")
-
-				secret := credentials["secret"]
-				require.NotEqual(t, "nested-secret-value", secret,
-					"nested sensitive field 'credentials.secret' must not be returned as plaintext")
-
-				// TODO: Uncomment when GET/LIST redaction is implemented.
-				// require.Nil(t, secret, "nested sensitive field 'credentials.secret' should be null after redaction")
+				require.Nil(t, credentials["secret"],
+					"nested sensitive field 'credentials.secret' should be null after redaction")
 
 				// --- LIST verification ---
 				resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
@@ -156,18 +135,19 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 						require.Equal(t, "admin", res.Properties["username"],
 							"LIST: non-sensitive field 'username' should remain as plaintext")
 
-						// Sensitive field in LIST response MUST NOT be plaintext.
-						listPassword := res.Properties["password"]
-						require.NotEqual(t, "super-secret-password", listPassword,
-							"LIST: sensitive field 'password' must not be returned as plaintext")
+						// Sensitive fields in LIST response MUST be null after redaction.
+						require.Nil(t, res.Properties["password"],
+							"LIST: sensitive field 'password' should be null after redaction")
+						require.Nil(t, res.Properties["apiKey"],
+							"LIST: sensitive field 'apiKey' should be null after redaction")
 
-						listApiKey := res.Properties["apiKey"]
-						require.NotEqual(t, "ak_1234567890abcdef", listApiKey,
-							"LIST: sensitive field 'apiKey' must not be returned as plaintext")
-
-						// TODO: Uncomment when GET/LIST redaction is implemented.
-						// require.Nil(t, listPassword, "LIST: sensitive field 'password' should be null after redaction")
-						// require.Nil(t, listApiKey, "LIST: sensitive field 'apiKey' should be null after redaction")
+						// Nested sensitive field in LIST response.
+						listCredentials, ok := res.Properties["credentials"].(map[string]any)
+						require.True(t, ok, "LIST: credentials should be a map")
+						require.Equal(t, "db.example.com", listCredentials["host"],
+							"LIST: non-sensitive nested field 'credentials.host' should remain as plaintext")
+						require.Nil(t, listCredentials["secret"],
+							"LIST: nested sensitive field 'credentials.secret' should be null after redaction")
 
 						break
 					}
@@ -176,8 +156,8 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			},
 		},
 		{
-			// Step 3: Update the resource with new sensitive values and verify encryption still applies.
-			Executor: step.NewDeployExecutor(updateTemplate),
+			// Step 3: Update the resource with new sensitive values and verify redaction still applies.
+			Executor: step.NewDeployExecutor(updateTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -205,18 +185,11 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 				require.Equal(t, "admin", resource.Properties["username"],
 					"non-sensitive field 'username' should remain as plaintext after update")
 
-				// Updated sensitive fields must not be the old or new plaintext.
-				password := resource.Properties["password"]
-				require.NotEqual(t, "super-secret-password", password,
-					"password must not be the OLD plaintext after update")
-				require.NotEqual(t, "updated-secret-password", password,
-					"password must not be the NEW plaintext after update")
-
-				apiKey := resource.Properties["apiKey"]
-				require.NotEqual(t, "ak_1234567890abcdef", apiKey,
-					"apiKey must not be the OLD plaintext after update")
-				require.NotEqual(t, "ak_updated_key_xyz", apiKey,
-					"apiKey must not be the NEW plaintext after update")
+				// Sensitive fields must be null after redaction (both old and new values redacted).
+				require.Nil(t, resource.Properties["password"],
+					"password should be null after redaction on update")
+				require.Nil(t, resource.Properties["apiKey"],
+					"apiKey should be null after redaction on update")
 
 				// Nested fields after update.
 				credentials, ok := resource.Properties["credentials"].(map[string]any)
@@ -224,17 +197,36 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 
 				require.Equal(t, "db.example.com", credentials["host"],
 					"non-sensitive nested field should be intact after update")
+				require.Nil(t, credentials["secret"],
+					"nested secret should be null after redaction on update")
 
-				secret := credentials["secret"]
-				require.NotEqual(t, "nested-secret-value", secret,
-					"nested secret must not be the OLD plaintext after update")
-				require.NotEqual(t, "updated-nested-secret", secret,
-					"nested secret must not be the NEW plaintext after update")
+				// --- LIST verification after update ---
+				resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
+				require.NoError(t, err)
 
-				// TODO: Uncomment when GET/LIST redaction is implemented.
-				// require.Nil(t, password, "password should be null after redaction")
-				// require.Nil(t, apiKey, "apiKey should be null after redaction")
-				// require.Nil(t, secret, "nested secret should be null after redaction")
+				found := false
+				for _, res := range resources {
+					if res.Name != nil && *res.Name == resourceName {
+						found = true
+
+						require.Equal(t, "admin", res.Properties["username"],
+							"LIST after update: non-sensitive field 'username' should remain as plaintext")
+						require.Nil(t, res.Properties["password"],
+							"LIST after update: sensitive field 'password' should be null after redaction")
+						require.Nil(t, res.Properties["apiKey"],
+							"LIST after update: sensitive field 'apiKey' should be null after redaction")
+
+						listCredentials, ok := res.Properties["credentials"].(map[string]any)
+						require.True(t, ok, "LIST after update: credentials should be a map")
+						require.Equal(t, "db.example.com", listCredentials["host"],
+							"LIST after update: non-sensitive nested field 'credentials.host' should remain as plaintext")
+						require.Nil(t, listCredentials["secret"],
+							"LIST after update: nested sensitive field 'credentials.secret' should be null after redaction")
+
+						break
+					}
+				}
+				require.True(t, found, "resource %s not found in LIST response after update", resourceName)
 			},
 		},
 	})

@@ -1,6 +1,10 @@
 extension testresources
 extension radius
 
+param registry string
+
+param version string
+
 @description('Specifies the location for resources.')
 param location string = 'global'
 
@@ -12,6 +16,17 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       kind: 'kubernetes'
       resourceId: 'self'
       namespace: 'udt-sensitive-env'
+    }
+    recipes: {
+      'Test.Resources/sensitiveResource': {
+        default: {
+          templateKind: 'bicep'
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+          parameters: {
+            port: 8080
+          }
+        }
+      }
     }
   }
 }
