@@ -21,10 +21,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Test.Resources/sensitiveResource': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
-          parameters: {
-            port: 8080
-          }
+          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_sensitive_recipe:${version}'
         }
       }
     }

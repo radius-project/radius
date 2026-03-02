@@ -219,6 +219,10 @@ types:
                   type: string
                   description: Sensitive nested secret.
                   x-radius-sensitive: true
+            secretName:
+              type: string
+              description: The name of the Kubernetes secret created by the recipe.
+              readOnly: true
           required:
             - application
             - environment

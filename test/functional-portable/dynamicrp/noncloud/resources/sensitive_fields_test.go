@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Test_DynamicRP_SensitiveFieldEncryption tests that fields marked with x-radius-sensitive annotation
@@ -36,18 +37,21 @@ import (
 // The test consists of three main steps:
 //
 // 1. Resource Type Registration:
-//   - Registers a user-defined resource type "Test.Resources/sensitiveResource" with ManualResourceProvisioning
+//   - Registers a user-defined resource type "Test.Resources/sensitiveResource" (recipe-capable)
 //   - The schema includes sensitive fields (password, apiKey, credentials.secret) and non-sensitive fields (username, credentials.host)
 //
 // 2. Resource Deployment (Create):
 //   - Deploys a Bicep template that creates a sensitiveResource instance with plaintext sensitive values
+//   - A recipe creates a K8s Secret containing the decrypted sensitive values, proving decryption worked
 //   - Verifies via GET that non-sensitive fields are returned as plaintext
 //   - Verifies via GET that sensitive fields are null (redacted by backend)
 //   - Verifies via LIST that the same redaction behavior applies
+//   - Verifies the K8s Secret contains the expected plaintext values
 //
 // 3. Resource Update:
 //   - Deploys an updated Bicep template with different sensitive values
 //   - Verifies that sensitive fields are null after redaction
+//   - Verifies the K8s Secret contains the updated plaintext values
 func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 	createTemplate := "testdata/sensitive-resource.bicep"
 	updateTemplate := "testdata/sensitive-resource-update.bicep"
@@ -153,6 +157,21 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 					}
 				}
 				require.True(t, found, "resource %s not found in LIST response", resourceName)
+
+				// --- K8s Secret verification: prove decrypted values were passed to recipe ---
+				secretName, ok := resource.Properties["secretName"].(string)
+				require.True(t, ok, "recipe output 'secretName' should be a string")
+				require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty")
+
+				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets("udt-sensitive-env-udt-sensitive-app").Get(ctx, secretName, metav1.GetOptions{})
+				require.NoError(t, err, "should be able to read the K8s Secret created by the recipe")
+
+				require.Equal(t, "super-secret-password", string(k8sSecret.Data["password"]),
+					"K8s Secret should contain the decrypted password")
+				require.Equal(t, "ak_1234567890abcdef", string(k8sSecret.Data["apiKey"]),
+					"K8s Secret should contain the decrypted apiKey")
+				require.Equal(t, "nested-secret-value", string(k8sSecret.Data["secret"]),
+					"K8s Secret should contain the decrypted nested secret")
 			},
 		},
 		{
@@ -227,6 +246,21 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 					}
 				}
 				require.True(t, found, "resource %s not found in LIST response after update", resourceName)
+
+				// --- K8s Secret verification: prove updated decrypted values were passed to recipe ---
+				secretName, ok := resource.Properties["secretName"].(string)
+				require.True(t, ok, "recipe output 'secretName' should be a string after update")
+				require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty after update")
+
+				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets("udt-sensitive-env-udt-sensitive-app").Get(ctx, secretName, metav1.GetOptions{})
+				require.NoError(t, err, "should be able to read the K8s Secret after update")
+
+				require.Equal(t, "updated-secret-password", string(k8sSecret.Data["password"]),
+					"K8s Secret should contain the updated decrypted password")
+				require.Equal(t, "ak_updated_key_xyz", string(k8sSecret.Data["apiKey"]),
+					"K8s Secret should contain the updated decrypted apiKey")
+				require.Equal(t, "updated-nested-secret", string(k8sSecret.Data["secret"]),
+					"K8s Secret should contain the updated decrypted nested secret")
 			},
 		},
 	})
