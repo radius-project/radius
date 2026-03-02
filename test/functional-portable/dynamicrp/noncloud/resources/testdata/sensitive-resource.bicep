@@ -8,6 +8,17 @@ param version string
 @description('Specifies the location for resources.')
 param location string = 'global'
 
+@secure()
+param password string
+@secure()
+param apiKey string
+@secure()
+param credentialSecret string
+@secure()
+param connectionConfigUrl string
+@secure()
+param connectionConfigToken string
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'udt-sensitive-env'
   location: location
@@ -43,15 +54,15 @@ resource sensitiveRes 'Test.Resources/sensitiveResource@2023-10-01-preview' = {
     application: app.id
     environment: env.id
     username: 'admin'
-    password: 'super-secret-password'
-    apiKey: 'ak_1234567890abcdef'
+    password: password
+    apiKey: apiKey
     credentials: {
       host: 'db.example.com'
-      secret: 'nested-secret-value'
+      secret: credentialSecret
     }
     connectionConfig: {
-      url: 'https://api.example.com'
-      token: 'conn-token-abc123'
+      url: connectionConfigUrl
+      token: connectionConfigToken
     }
   }
 }

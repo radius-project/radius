@@ -53,12 +53,27 @@ import (
 //   - Verifies that sensitive fields are null after redaction
 //   - Verifies the K8s Secret contains the updated plaintext values
 func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
-	createTemplate := "testdata/sensitive-resource.bicep"
-	updateTemplate := "testdata/sensitive-resource-update.bicep"
+	template := "testdata/sensitive-resource.bicep"
 	appName := "udt-sensitive-app"
+	appNamespace := "udt-sensitive-env-udt-sensitive-app"
 	resourceTypeName := "Test.Resources/sensitiveResource"
 	resourceName := "udt-sensitive-instance"
 	filepath := "testdata/testresourcetypes.yaml"
+
+	// Create step values
+	createPassword := "super-secret-password"
+	createAPIKey := "ak_1234567890abcdef"
+	createCredentialSecret := "nested-secret-value"
+	createConnectionConfigURL := "https://api.example.com"
+	createConnectionConfigToken := "conn-token-abc123"
+
+	// Update step values
+	updatePassword := "updated-secret-password"
+	updateAPIKey := "ak_updated_key_xyz"
+	updateCredentialSecret := "updated-nested-secret"
+	updateConnectionConfigURL := "https://api.example.com/v2"
+	updateConnectionConfigToken := "conn-token-updated-xyz"
+
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
@@ -80,7 +95,10 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 		},
 		{
 			// Step 2: Deploy the resource with sensitive fields and verify redaction on GET and LIST.
-			Executor: step.NewDeployExecutor(createTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(),
+				"password="+createPassword, "apiKey="+createAPIKey,
+				"credentialSecret="+createCredentialSecret,
+				"connectionConfigUrl="+createConnectionConfigURL, "connectionConfigToken="+createConnectionConfigToken),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -170,24 +188,27 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 				require.True(t, ok, "recipe output 'secretName' should be a string")
 				require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty")
 
-				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets("udt-sensitive-env-udt-sensitive-app").Get(ctx, secretName, metav1.GetOptions{})
+				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
 				require.NoError(t, err, "should be able to read the K8s Secret created by the recipe")
 
-				require.Equal(t, "super-secret-password", string(k8sSecret.Data["password"]),
+				require.Equal(t, createPassword, string(k8sSecret.Data["password"]),
 					"K8s Secret should contain the decrypted password")
-				require.Equal(t, "ak_1234567890abcdef", string(k8sSecret.Data["apiKey"]),
+				require.Equal(t, createAPIKey, string(k8sSecret.Data["apiKey"]),
 					"K8s Secret should contain the decrypted apiKey")
-				require.Equal(t, "nested-secret-value", string(k8sSecret.Data["secret"]),
+				require.Equal(t, createCredentialSecret, string(k8sSecret.Data["secret"]),
 					"K8s Secret should contain the decrypted nested secret")
-				require.Equal(t, "https://api.example.com", string(k8sSecret.Data["connectionConfigUrl"]),
+				require.Equal(t, createConnectionConfigURL, string(k8sSecret.Data["connectionConfigUrl"]),
 					"K8s Secret should contain the decrypted connectionConfig url")
-				require.Equal(t, "conn-token-abc123", string(k8sSecret.Data["connectionConfigToken"]),
+				require.Equal(t, createConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
 					"K8s Secret should contain the decrypted connectionConfig token")
 			},
 		},
 		{
 			// Step 3: Update the resource with new sensitive values and verify redaction still applies.
-			Executor: step.NewDeployExecutor(updateTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(),
+				"password="+updatePassword, "apiKey="+updateAPIKey,
+				"credentialSecret="+updateCredentialSecret,
+				"connectionConfigUrl="+updateConnectionConfigURL, "connectionConfigToken="+updateConnectionConfigToken),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -270,18 +291,18 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 				require.True(t, ok, "recipe output 'secretName' should be a string after update")
 				require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty after update")
 
-				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets("udt-sensitive-env-udt-sensitive-app").Get(ctx, secretName, metav1.GetOptions{})
+				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
 				require.NoError(t, err, "should be able to read the K8s Secret after update")
 
-				require.Equal(t, "updated-secret-password", string(k8sSecret.Data["password"]),
+				require.Equal(t, updatePassword, string(k8sSecret.Data["password"]),
 					"K8s Secret should contain the updated decrypted password")
-				require.Equal(t, "ak_updated_key_xyz", string(k8sSecret.Data["apiKey"]),
+				require.Equal(t, updateAPIKey, string(k8sSecret.Data["apiKey"]),
 					"K8s Secret should contain the updated decrypted apiKey")
-				require.Equal(t, "updated-nested-secret", string(k8sSecret.Data["secret"]),
+				require.Equal(t, updateCredentialSecret, string(k8sSecret.Data["secret"]),
 					"K8s Secret should contain the updated decrypted nested secret")
-				require.Equal(t, "https://api.example.com/v2", string(k8sSecret.Data["connectionConfigUrl"]),
+				require.Equal(t, updateConnectionConfigURL, string(k8sSecret.Data["connectionConfigUrl"]),
 					"K8s Secret should contain the updated decrypted connectionConfig url")
-				require.Equal(t, "conn-token-updated-xyz", string(k8sSecret.Data["connectionConfigToken"]),
+				require.Equal(t, updateConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
 					"K8s Secret should contain the updated decrypted connectionConfig token")
 			},
 		},
