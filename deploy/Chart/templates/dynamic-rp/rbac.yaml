@@ -73,7 +73,7 @@ rules:
   - list
   - watch
 
-# Dapr resources for Terraform Recipes.
+# Dapr resources for Recipes deployment.
 - apiGroups:
   - dapr.io
   resources:
