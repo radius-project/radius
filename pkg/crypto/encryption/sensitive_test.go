@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,94 +28,6 @@ const (
 	// testResourceID is a sample resource ID used for testing associated data
 	testResourceID = "/planes/radius/local/resourceGroups/test/providers/Test.Resource/testResources/myResource"
 )
-
-func TestParseFieldPath(t *testing.T) {
-	tests := []struct {
-		name     string
-		path     string
-		expected []pathSegment
-	}{
-		{
-			name: "simple-field",
-			path: "password",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "password"},
-			},
-		},
-		{
-			name: "nested-field",
-			path: "credentials.password",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "credentials"},
-				{segmentType: segmentTypeField, value: "password"},
-			},
-		},
-		{
-			name: "deeply-nested-field",
-			path: "config.database.connection.password",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "config"},
-				{segmentType: segmentTypeField, value: "database"},
-				{segmentType: segmentTypeField, value: "connection"},
-				{segmentType: segmentTypeField, value: "password"},
-			},
-		},
-		{
-			name: "array-wildcard",
-			path: "secrets[*].value",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "secrets"},
-				{segmentType: segmentTypeWildcard},
-				{segmentType: segmentTypeField, value: "value"},
-			},
-		},
-		{
-			name: "map-wildcard",
-			path: "config[*]",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "config"},
-				{segmentType: segmentTypeWildcard},
-			},
-		},
-		{
-			name: "specific-index",
-			path: "items[0].name",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "items"},
-				{segmentType: segmentTypeIndex, value: "0"},
-				{segmentType: segmentTypeField, value: "name"},
-			},
-		},
-		{
-			name: "multiple-wildcards",
-			path: "data[*].secrets[*].value",
-			expected: []pathSegment{
-				{segmentType: segmentTypeField, value: "data"},
-				{segmentType: segmentTypeWildcard},
-				{segmentType: segmentTypeField, value: "secrets"},
-				{segmentType: segmentTypeWildcard},
-				{segmentType: segmentTypeField, value: "value"},
-			},
-		},
-		{
-			name:     "unterminated-bracket",
-			path:     "secrets[*",
-			expected: nil,
-		},
-		{
-			name:     "unterminated-bracket-with-index",
-			path:     "items[0",
-			expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseFieldPath(tt.path)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
 
 func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	key, err := GenerateKey()
@@ -1001,6 +914,188 @@ func TestSensitiveDataHandler_DecryptWithMissingKeyVersion(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrFieldDecryptionFailed)
 	require.Contains(t, err.Error(), "key version not found")
+}
+
+func TestSensitiveDataHandler_DecryptWithADMismatch(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	originalResourceID := "/planes/radius/local/resourceGroups/test/providers/Test.Resource/testResources/original"
+	attackerResourceID := "/planes/radius/local/resourceGroups/test/providers/Test.Resource/testResources/attacker"
+
+	data := map[string]any{
+		"secret": "cross-resource-attack-value",
+	}
+
+	// Encrypt with the original resource ID as associated data
+	err = handler.EncryptSensitiveFields(data, []string{"secret"}, originalResourceID)
+	require.NoError(t, err)
+
+	// Verify the field is encrypted
+	_, isEncrypted := data["secret"].(map[string]any)
+	require.True(t, isEncrypted, "secret should be encrypted")
+
+	// Attempt to decrypt with a DIFFERENT resource ID — the AD hash will not match
+	// and ChaCha20-Poly1305 authentication will reject the ciphertext.
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secret"}, attackerResourceID)
+	require.Error(t, err, "decryption must fail when resource ID does not match")
+	require.ErrorIs(t, err, ErrFieldDecryptionFailed)
+
+	// Verify the encrypted data was NOT mutated by the failed decryption attempt
+	_, stillEncrypted := data["secret"].(map[string]any)
+	require.True(t, stillEncrypted, "encrypted data must remain intact after failed decryption")
+}
+
+func TestSensitiveDataHandler_FullDecryptRedactWorkflow(t *testing.T) {
+	// Validates the security-critical backend data flow:
+	//   1. Encrypt fields (simulates frontend write to DB)
+	//   2. Deep copy for recipe properties
+	//   3. Decrypt the recipe copy (in-memory only)
+	//   4. Derive redacted copy from the ORIGINAL encrypted data — never from decrypted
+	//   5. Verify: redacted copy has nil, recipe copy has plaintext,
+	//      original encrypted data is untouched
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	// Simulate DB state: resource with two sensitive fields at different nesting levels
+	dbProperties := map[string]any{
+		"name":   "my-resource",
+		"secret": "top-secret-value",
+		"nested": map[string]any{
+			"password": "nested-password",
+			"host":     "localhost",
+		},
+	}
+
+	sensitivePaths := []string{"secret", "nested.password"}
+
+	// Step 1: Encrypt (simulates frontend)
+	err = handler.EncryptSensitiveFields(dbProperties, sensitivePaths, testResourceID)
+	require.NoError(t, err)
+
+	// Step 2: Deep copy for recipe (simulates controller deep copy before decryption)
+	recipeProperties := deepCopyMap(dbProperties)
+
+	// Step 3: Decrypt the recipe copy — in-memory only
+	err = handler.DecryptSensitiveFields(context.Background(), recipeProperties, sensitivePaths, testResourceID)
+	require.NoError(t, err)
+
+	// Verify recipe properties have the decrypted plaintext values
+	require.Equal(t, "top-secret-value", recipeProperties["secret"])
+	require.Equal(t, "nested-password", recipeProperties["nested"].(map[string]any)["password"])
+	// Non-sensitive field preserved
+	require.Equal(t, "localhost", recipeProperties["nested"].(map[string]any)["host"])
+
+	// Step 4: Derive redacted copy from the ORIGINAL dbProperties (security-critical).
+	// If this were derived from recipeProperties (decrypted), a partial redaction
+	// failure would persist plaintext to the database.
+	redactedProperties := deepCopyMap(dbProperties)
+	schema.RedactFields(redactedProperties, sensitivePaths)
+
+	// Step 5: Verify all invariants
+	// — Redacted copy: sensitive fields are nil, non-sensitive fields are preserved
+	require.Nil(t, redactedProperties["secret"], "redacted secret must be nil")
+	require.Nil(t, redactedProperties["nested"].(map[string]any)["password"], "redacted nested.password must be nil")
+	require.Equal(t, "my-resource", redactedProperties["name"])
+	require.Equal(t, "localhost", redactedProperties["nested"].(map[string]any)["host"])
+
+	// — Original dbProperties: still contain encrypted ciphertext, not modified
+	_, secretStillEncrypted := dbProperties["secret"].(map[string]any)
+	require.True(t, secretStillEncrypted, "original dbProperties must still hold encrypted secret")
+	_, passwordStillEncrypted := dbProperties["nested"].(map[string]any)["password"].(map[string]any)
+	require.True(t, passwordStillEncrypted, "original dbProperties must still hold encrypted nested.password")
+
+	// — Recipe properties: decrypted values are untouched by the redaction of the separate copy
+	require.Equal(t, "top-secret-value", recipeProperties["secret"])
+	require.Equal(t, "nested-password", recipeProperties["nested"].(map[string]any)["password"])
+}
+
+func TestSensitiveDataHandler_DecryptNonEncryptedMap(t *testing.T) {
+	// When a "sensitive" field contains a plain map (not our encrypted format),
+	// decryptValue should pass it through unchanged instead of returning an error.
+	// This handles the case where data was written without encryption enabled.
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"config": map[string]any{
+			"host": "localhost",
+			"port": 5432,
+		},
+	}
+
+	// Attempt to decrypt a map that was never encrypted — should pass through
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"config"}, testResourceID)
+	require.NoError(t, err)
+
+	config := data["config"].(map[string]any)
+	require.Equal(t, "localhost", config["host"])
+	require.Equal(t, 5432, config["port"])
+}
+
+func TestSensitiveDataHandler_EncryptDecrypt_BareIntegerField(t *testing.T) {
+	// The encryptValue default case marshals non-string/non-map/non-slice types to JSON.
+	// Verify that a bare integer field round-trips correctly.
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"name":       "test-resource",
+		"secretPort": 5432,
+	}
+
+	// Encrypt the bare integer
+	err = handler.EncryptSensitiveFields(data, []string{"secretPort"}, testResourceID)
+	require.NoError(t, err)
+
+	// Should be encrypted to a map
+	_, isEncrypted := data["secretPort"].(map[string]any)
+	require.True(t, isEncrypted, "secretPort should be encrypted")
+
+	// Name should be unchanged
+	require.Equal(t, "test-resource", data["name"])
+
+	// Decrypt — without schema, JSON unmarshals integers as float64
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secretPort"}, testResourceID)
+	require.NoError(t, err)
+
+	// Standard JSON behavior: integers become float64 without schema
+	require.Equal(t, float64(5432), data["secretPort"])
+}
+
+func TestSensitiveDataHandler_EncryptDecrypt_BareBooleanField(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"secretFlag": true,
+	}
+
+	err = handler.EncryptSensitiveFields(data, []string{"secretFlag"}, testResourceID)
+	require.NoError(t, err)
+
+	_, isEncrypted := data["secretFlag"].(map[string]any)
+	require.True(t, isEncrypted, "secretFlag should be encrypted")
+
+	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secretFlag"}, testResourceID)
+	require.NoError(t, err)
+
+	require.Equal(t, true, data["secretFlag"])
 }
 
 // Helper function to deep copy a map for testing

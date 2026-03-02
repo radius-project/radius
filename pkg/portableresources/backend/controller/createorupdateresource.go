@@ -18,12 +18,15 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -32,6 +35,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	schemautil "github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -76,6 +80,80 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	currentETag := storedResource.ETag
+	var recipeProperties map[string]any
+	redactionCompleted := false
+
+	// Attempt to decrypt and redact sensitive fields before recipe execution.
+	apiVersion := getResourceAPIVersion(resource)
+	if apiVersion != "" {
+		resourceType := resource.GetBaseResource().Type
+		schema, schemaErr := schemautil.GetSchema(ctx, c.UcpClient(), req.ResourceID, resourceType, apiVersion)
+		if schemaErr != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to fetch schema for sensitive field detection: %w", schemaErr)
+		} else if schema != nil {
+			sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(schema, "")
+			if len(sensitiveFieldPaths) > 0 {
+				logger.Info("Sensitive fields detected for resource", "resourceID", req.ResourceID, "paths", sensitiveFieldPaths)
+
+				properties, err := resourceutil.GetPropertiesFromResource(resource)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				recipeProperties, err = deepCopyProperties(properties)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				if c.KubeClient() == nil {
+					err = fmt.Errorf("kubernetes client not configured for sensitive data decryption")
+					logger.Error(err, "Failed to initialize encryption key provider", "resourceID", req.ResourceID)
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+
+				keyProvider := encryption.NewKubernetesKeyProvider(c.KubeClient(), nil)
+				handler, err := encryption.NewSensitiveDataHandlerFromProvider(ctx, keyProvider)
+				if err != nil {
+					logger.Error(err, "Failed to initialize sensitive data handler", "resourceID", req.ResourceID)
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+
+				if err = handler.DecryptSensitiveFieldsWithSchema(ctx, recipeProperties, sensitiveFieldPaths, req.ResourceID, schema); err != nil {
+					logger.Error(err, "Failed to decrypt sensitive fields", "resourceID", req.ResourceID)
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+
+				// Derive the redacted copy from the original encrypted properties,
+				// NOT from the decrypted recipeProperties. recipeProperties
+				// (decrypted) is kept exclusively for in-memory recipe execution.
+				redactedProperties, err := deepCopyProperties(properties)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				schemautil.RedactFields(redactedProperties, sensitiveFieldPaths)
+
+				if err = applyPropertiesToResource(resource, redactedProperties); err != nil {
+					logger.Error(err, "Failed to apply redacted properties", "resourceID", req.ResourceID)
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+
+				update := &database.Object{
+					Metadata: database.Metadata{ID: req.ResourceID},
+					Data:     resource,
+				}
+				if err = c.DatabaseClient().Save(ctx, update, database.WithETag(currentETag)); err != nil {
+					logger.Error(err, "Failed to persist redacted resource", "resourceID", req.ResourceID)
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+				currentETag = update.ETag
+				redactionCompleted = true
+			}
+		}
+	} else {
+		logger.Info("Skipping sensitive field detection due to missing apiVersion", "resourceID", req.ResourceID)
+	}
+
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(resource)
 
@@ -83,6 +161,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	metadata := recipes.ResourceMetadata{EnvironmentID: resource.ResourceMetadata().EnvironmentID(), ApplicationID: resource.ResourceMetadata().ApplicationID(), ResourceID: resource.GetBaseResource().ID}
 	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
 	if err != nil {
+		if redactionCompleted {
+			return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -90,9 +171,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	var recipeOutput *recipes.RecipeOutput
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
-		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated)
+		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties)
 		if err != nil {
-			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, storedResource.ETag, logger)
+			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
 	}
 
@@ -102,6 +183,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		// Now we're ready to process the resource. This will handle the updates to any user-visible state.
 		err = c.processor.Process(ctx, resource, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: config.Runtime, UcpClient: c.BaseController.UcpClient()})
 		if err != nil {
+			if redactionCompleted {
+				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+			}
 			return ctrl.Result{}, err
 		}
 	}
@@ -123,8 +207,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		},
 		Data: recipeDataModel.(rpv1.RadiusResourceModel),
 	}
-	err = c.DatabaseClient().Save(ctx, update, database.WithETag(storedResource.ETag))
+	err = c.DatabaseClient().Save(ctx, update, database.WithETag(currentETag))
 	if err != nil {
+		if redactionCompleted {
+			return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -132,7 +219,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 }
 
 // handleRecipeError handles recipe execution errors: logs, updates status, persists, and returns the appropriate result.
-func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger) (ctrl.Result, error) {
+// When redactionCompleted is true, all failure paths return NewFailedResult to prevent retries that would fail
+// because sensitive data has already been nullified from the database.
+func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger, redactionCompleted bool) (ctrl.Result, error) {
 	var recipeErr *recipes.RecipeError
 	if errors.As(err, &recipeErr) {
 		logger.Error(recipeErr, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeErr.ErrorDetails.Target))
@@ -147,10 +236,19 @@ func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, er
 		// Save portable resource with updated deployment status to track errors during deletion.
 		err = c.DatabaseClient().Save(ctx, update, database.WithETag(etag))
 		if err != nil {
+			if redactionCompleted {
+				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+			}
 			return ctrl.Result{}, err
 		}
 
 		return ctrl.NewFailedResult(recipeErr.ErrorDetails), nil
+	}
+
+	// For non-RecipeError: if sensitive data was redacted, prevent retry since
+	// the data is gone from the database and retry would fail.
+	if redactionCompleted {
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 	}
 
 	return ctrl.Result{}, err
@@ -164,13 +262,17 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(resource P) []string 
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any) (*recipes.RecipeOutput, error) {
 	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
 
-	resourceProperties, err := resourceutil.GetPropertiesFromResource(resource)
-	if err != nil {
-		return nil, err
+	resourceProperties := recipeProperties
+	if resourceProperties == nil {
+		var err error
+		resourceProperties, err = resourceutil.GetPropertiesFromResource(resource)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	connectionsAndSourceIDs, err := resourceutil.GetConnectionNameandSourceIDs(resource)
@@ -218,6 +320,41 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		PreviousState: prevState,
 		Simulated:     simulated,
 	})
+}
+
+func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {
+	return resource.GetBaseResource().InternalMetadata.UpdatedAPIVersion
+}
+
+func deepCopyProperties(source map[string]any) (map[string]any, error) {
+	if source == nil {
+		return map[string]any{}, nil
+	}
+
+	bytes, err := json.Marshal(source)
+	if err != nil {
+		return nil, err
+	}
+
+	var copy map[string]any
+	if err = json.Unmarshal(bytes, &copy); err != nil {
+		return nil, err
+	}
+
+	return copy, nil
+}
+
+func applyPropertiesToResource[P rpv1.RadiusResourceModel](resource P, properties map[string]any) error {
+	payload := map[string]any{
+		"properties": properties,
+	}
+
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(bytes, resource)
 }
 
 // setRecipeStatus sets the recipe status for the given resource model.
