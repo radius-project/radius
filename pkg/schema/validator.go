@@ -110,6 +110,108 @@ func normalizePlatformOptionsAnyWithPath(schema *openapi3.Schema, path string) {
 	}
 }
 
+// normalizeSensitiveFieldTypes normalizes the type constraints on sensitive fields
+// so that the OpenAPI validator accepts both the original plaintext value and the encrypted form.
+//
+// For string fields: the encrypted form is an object with encrypted/nonce/version keys,
+// so the schema is widened to accept either the original string or an object.
+//
+// For object fields: the encrypted form is still an object but with entirely different keys
+// (encrypted/nonce/version instead of the original properties/additionalProperties), so the
+// schema is widened to accept either the original object or an unconstrained object.
+func normalizeSensitiveFieldTypes(schema *openapi3.Schema) {
+	if schema == nil {
+		return
+	}
+
+	for _, propRef := range schema.Properties {
+		if propRef == nil || propRef.Value == nil {
+			continue
+		}
+
+		if normalizeSensitiveType(propRef) {
+			continue
+		}
+
+		// Recurse into nested objects
+		normalizeSensitiveFieldTypes(propRef.Value)
+	}
+
+	// Handle array items — check the items schema's own annotation first.
+	if schema.Items != nil && schema.Items.Value != nil {
+		if !normalizeSensitiveType(schema.Items) {
+			normalizeSensitiveFieldTypes(schema.Items.Value)
+		}
+	}
+
+	// Handle additionalProperties (maps) — check its own annotation first.
+	if schema.AdditionalProperties.Schema != nil && schema.AdditionalProperties.Schema.Value != nil {
+		if !normalizeSensitiveType(schema.AdditionalProperties.Schema) {
+			normalizeSensitiveFieldTypes(schema.AdditionalProperties.Schema.Value)
+		}
+	}
+}
+
+// normalizeSensitiveType checks whether a SchemaRef has a sensitive annotation and expands
+// the type constraint so the OpenAPI validator accepts both the original value and the encrypted form.
+//
+// For string fields: widens to accept either the original string or an object (the encrypted envelope).
+// For object fields: widens to accept either the original object schema or an unconstrained object
+// (since the encrypted envelope replaces all properties/additionalProperties with encrypted/nonce/version).
+//
+// Returns true if the schema was normalized, false otherwise.
+func normalizeSensitiveType(ref *openapi3.SchemaRef) bool {
+	if ref == nil || ref.Value == nil {
+		return false
+	}
+
+	prop := ref.Value
+	if prop.Extensions == nil {
+		return false
+	}
+
+	val, ok := prop.Extensions[annotationRadiusSensitive].(bool)
+	if !ok || !val {
+		return false
+	}
+
+	isString := prop.Type != nil && prop.Type.Is("string")
+	isObject := prop.Type != nil && prop.Type.Is("object")
+
+	if !isString && !isObject {
+		return false
+	}
+
+	// Copy the original so we don't create a self-referencing cycle.
+	original := *prop
+
+	// Remove the sensitive annotation from the copy to avoid re-processing.
+	// Other vendor extensions are preserved.
+	if len(original.Extensions) > 0 {
+		extCopy := make(map[string]any, len(original.Extensions))
+		for k, v := range original.Extensions {
+			extCopy[k] = v
+		}
+		delete(extCopy, annotationRadiusSensitive)
+		original.Extensions = extCopy
+	}
+
+	// The encrypted envelope is always an object with encrypted/nonce/version keys.
+	encryptedForm := &openapi3.Schema{
+		Type:     &openapi3.Types{"object"},
+		MinProps: 1, // reject empty objects — encrypted data always has fields
+	}
+
+	ref.Value = &openapi3.Schema{
+		AnyOf: openapi3.SchemaRefs{
+			{Value: &original},
+			{Value: encryptedForm},
+		},
+	}
+
+	return true
+}
+
 // isUnconstrainedSchema returns true if a schema has no type restrictions and accepts any value.
 func isUnconstrainedSchema(schema *openapi3.Schema) bool {
 	if schema == nil {
@@ -773,6 +875,9 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	// Apply the same Radius-specific normalization used during schema registration so
 	// runtime validation can accept platformOptions.additionalProperties type:any.
 	normalizePlatformOptionsAny(openAPISchema)
+
+	// Normalize type constraints on sensitive string fields.
+	normalizeSensitiveFieldTypes(openAPISchema)
 
 	// Create a minimal OpenAPI document with the schema
 	doc := &openapi3.T{

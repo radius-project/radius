@@ -45,9 +45,15 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:          "list workspaces with format",
-			Input:         []string{"-o", "yaml"},
+			Name:          "list workspaces with json format",
+			Input:         []string{"-o", "json"},
 			ExpectedValid: true,
+			ConfigHolder:  framework.ConfigHolder{Config: config},
+		},
+		{
+			Name:          "list workspaces with unsupported format",
+			Input:         []string{"-o", "yaml"},
+			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{

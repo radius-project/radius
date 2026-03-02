@@ -30,3 +30,13 @@ func SupportedFormats() []string {
 		FormatTable,
 	}
 }
+
+// AllFormats returns all recognized output format strings, including formats
+// that are only available for specific commands (e.g., plain-text).
+func AllFormats() []string {
+	return []string{
+		FormatJson,
+		FormatTable,
+		FormatPlainText,
+	}
+}
