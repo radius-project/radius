@@ -63,6 +63,33 @@ rules:
   - update
   - watch
 
+# Terraform kubernetes provider needs to look up GVKs among available CRDs.
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+
+# Dapr resources for Terraform Recipes.
+- apiGroups:
+  - dapr.io
+  resources:
+  - components
+  - subscriptions
+  - configurations
+  - resiliencies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
 # Integration with DE's API.
 - apiGroups:
   - apps
