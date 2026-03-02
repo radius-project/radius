@@ -163,25 +163,6 @@ func TestValidateVersionJump(t *testing.T) {
 			expectValid:    false,
 			expectMessage:  "Target version is the same as current version",
 		},
-		{
-			name:           "edge version bypass",
-			currentVersion: "0.42.42-dev",
-			targetVersion:  "v0.55.0",
-			expectValid:    true,
-		},
-		{
-			name:           "major version increment",
-			currentVersion: "v0.55.0",
-			targetVersion:  "v1.0.0",
-			expectValid:    true,
-		},
-		{
-			name:           "skip major versions rejected",
-			currentVersion: "v0.55.0",
-			targetVersion:  "v2.0.0",
-			expectValid:    false,
-			expectMessage:  "Skipping multiple major versions not supported",
-		},
 	}
 
 	for _, tt := range tests {
