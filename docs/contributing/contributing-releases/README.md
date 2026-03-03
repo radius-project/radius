@@ -138,7 +138,7 @@ git push origin vX.Y.Z-rc1
 
 1. In the `bicep-types-aws` repository, there should be a run of the `Update extensibility provider types` job that was triggered by the `vX.Y.Z-rc<N>` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully.
 
-1. Verify that an RC release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
+1. Verify that an RC release was created on GitHub Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
 
@@ -219,7 +219,7 @@ git push origin vX.Y.Z
 
 1. You may need to wait around ~20 minutes for the release assets to be published.
 
-1. Verify that a release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
+1. Verify that a release was created on GitHub Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
 1. In the project-radius/docs repository, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow. Use the workflow from the edge branch and add the Radius version number (X.Y.Z) that is being released.
 
@@ -267,7 +267,7 @@ Let's say we have a bug in a release that needs to be patched for an already-cre
 
 1. You may need to wait around ~20 minutes for the release assets to be published.
 
-1. Verify that a release was created on Github Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
+1. Verify that a release was created on GitHub Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius release version number being released.
 
