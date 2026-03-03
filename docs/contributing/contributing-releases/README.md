@@ -50,7 +50,7 @@ When starting the release process, we first kick it off by creating an RC releas
 
 Follow the steps below to create an RC release.
 
-1. Run the following commands in a local clone of the [Deployment Engine Repo](https://github.com/azure-octo/deployment-engine), replacing `v.X.Y.Z-rc1` with the rc release version:
+1. Run the following commands in a local clone of the [Deployment Engine Repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z-rc1` with the rc release version:
 
 ```bash
 git checkout main
@@ -165,7 +165,7 @@ Once an RC release has been created and validated, we can proceed to creating th
 
 Follow the steps below to create a final release.
 
-1. Run the following commands in a local clone of the [Deployment Engine Repo](https://github.com/azure-octo/deployment-engine), replacing `v.X.Y.Z` with the release version:
+1. Run the following commands in a local clone of the [Deployment Engine Repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z` with the release version:
 
 ```bash
 git checkout main
