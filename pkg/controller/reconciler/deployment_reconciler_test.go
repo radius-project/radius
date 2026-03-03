@@ -17,6 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -42,7 +44,7 @@ import (
 
 const (
 	deploymentTestWaitDuration            = time.Second * 10
-	deploymentTestWaitInterval            = time.Second * 1
+	deploymentTestWaitInterval            = time.Millisecond * 200
 	deploymentTestControllerDelayInterval = time.Millisecond * 100
 )
 
@@ -85,8 +87,10 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	require.NoError(t, err)
 
 	go func() {
-		err := mgr.Start(ctx)
-		require.NoError(t, err)
+		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
+		}
 	}()
 
 	return radius, mgr.GetClient()

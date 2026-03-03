@@ -31,17 +31,15 @@ updates:
     schedule:
       interval: weekly
 
-  - package-ecosystem: gitsubmodule
-    directory: /
-    schedule:
-      interval: weekly
-
   - package-ecosystem: npm
-    directory: /typespec
+    directories:
+      - /
+      - /typespec
+      - /hack/bicep-types-radius/src/autorest.bicep
+      - /hack/bicep-types-radius/src/generator
     schedule:
       interval: weekly
     groups:
-      typespec:
-        applies-to: version-updates
+      npm-dependencies:
         patterns:
           - "*"

@@ -56,7 +56,7 @@ endif
 
 .PHONY: test
 test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) -v ./pkg/... $(GOTEST_OPTS)
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -73,7 +73,7 @@ test-get-envtools:
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} $(GOTEST_OPTS)
 
 .PHONY: test-functional-all
 test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-corerp test-functional-cli test-functional-msgrp test-functional-daprrp test-functional-datastoresrp test-functional-samples test-functional-dynamicrp-noncloud ## Runs all functional tests
@@ -173,17 +173,11 @@ test-helm: ## Runs Helm chart unit tests
 	@echo "$(ARROW) Running Helm unit tests..."
 	cd deploy/Chart && helm unittest .
 
-.PHONY: oav-installed
-oav-installed:
-	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
-	@which oav > /dev/null || { echo "run 'npm install -g oav@4.0.2' to install oav"; exit 1; }
-	@echo "$(ARROW) OK"
-
 # TODO re-enable https://github.com/radius-project/radius/issues/5091
 .PHONY: test-ucp-spec-examples 
-test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
+test-ucp-spec-examples: generate-tsp-installed ## Validates UCP examples conform to UCP OpenAPI Spec
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
-	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
+	# pnpm -C typespec exec oav validate-example ../swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 
 .PHONY: test-deploy-lrt-cluster
 test-deploy-aks-cluster: ## Deploys an AKS cluster to Azure for the long-running tests. Optional parameters: [TEST_AKS_AZURE_LOCATION=<location>] [TEST_AKS_RG=<resource group name>]

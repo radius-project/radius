@@ -5,8 +5,14 @@
       "url": "https://api.githubcopilot.com/mcp/"
     },
     "terraform": {
+      "type": "stdio",
       "command": "docker",
-      "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.3"]
+      "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.4.0"]
+    },
+    "gopls": {
+      "type": "stdio",
+      "command": "gopls",
+      "args": ["mcp"]
     }
   }
 }
