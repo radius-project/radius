@@ -42,6 +42,15 @@ name: Long-running test on Azure
 on:
   # Enable manual trigger for testing.
   workflow_dispatch:
+    inputs:
+      branch:
+        description: |
+          Branch or tag to run tests from. When set, the workflow checks out
+          this ref directly instead of installing the official CLI release and
+          cloning the release tag. Use 'edge' to build and test from main.
+        required: false
+        default: ''
+        type: string
   schedule:
     # Run once per day at 3:00 AM PDT (10:00 AM UTC)
     - cron: 0 10 * * *
@@ -133,9 +142,28 @@ jobs:
             terraform-private-modules
           permission-contents: read
 
+      - name: Resolve branch input
+        id: resolve-branch
+        run: |
+          BRANCH_INPUT="${{ inputs.branch }}"
+          if [[ "${BRANCH_INPUT}" == "edge" ]]; then
+            echo "Resolved 'edge' to 'main' branch"
+            echo "ref=main" >> "${GITHUB_OUTPUT}"
+            echo "is-custom=true" >> "${GITHUB_OUTPUT}"
+          elif [[ -n "${BRANCH_INPUT}" ]]; then
+            echo "Using custom branch: ${BRANCH_INPUT}"
+            echo "ref=${BRANCH_INPUT}" >> "${GITHUB_OUTPUT}"
+            echo "is-custom=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "No custom branch specified, using default workflow ref"
+            echo "ref=" >> "${GITHUB_OUTPUT}"
+            echo "is-custom=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: ${{ steps.resolve-branch.outputs.ref || github.ref }}
           persist-credentials: false
 
       - name: Checkout samples repo
@@ -146,6 +174,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Radius CLI from official release
+        if: ${{ steps.resolve-branch.outputs.is-custom != 'true' }}
         run: |
           # Install the latest Radius CLI, including release candidates if available.
           # The INCLUDE_RC environment variable tells the installer to consider RC versions.
@@ -154,7 +183,8 @@ jobs:
           cp /usr/local/bin/rad ./bin/rad
           chmod +x ./bin/rad
 
-      - name: Verify CLI installation
+      - name: Verify CLI installation (official release)
+        if: ${{ steps.resolve-branch.outputs.is-custom != 'true' }}
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "Error: rad CLI not found in PATH"; exit 1; }
@@ -162,17 +192,41 @@ jobs:
           echo "Radius CLI installed successfully"
 
       - name: Checkout release codebase
+        if: ${{ steps.resolve-branch.outputs.is-custom != 'true' }}
         id: checkout-release-codebase
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/checkout-release-codebase.sh
 
+      - name: Set release dir for custom branch
+        if: ${{ steps.resolve-branch.outputs.is-custom == 'true' }}
+        id: set-custom-release-dir
+        run: |
+          echo "release-dir=." >> "${GITHUB_OUTPUT}"
+
       - name: Setup Go
         uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
-          go-version-file: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.mod
-          cache-dependency-path: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.sum
+          go-version-file: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}/go.mod
+          cache-dependency-path: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}/go.sum
           cache: true
+
+      - name: Build Radius CLI from source (custom branch)
+        if: ${{ steps.resolve-branch.outputs.is-custom == 'true' }}
+        run: |
+          echo "Building rad CLI from branch: ${{ steps.resolve-branch.outputs.ref }}"
+          make build-rad-linux-amd64
+          mkdir -p ./bin
+          cp ./dist/linux_amd64/release/rad ./bin/rad
+          chmod +x ./bin/rad
+
+      - name: Verify CLI installation (custom branch)
+        if: ${{ steps.resolve-branch.outputs.is-custom == 'true' }}
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "Error: rad CLI not found in PATH"; exit 1; }
+          rad version
+          echo "Radius CLI built and installed successfully from branch: ${{ steps.resolve-branch.outputs.ref }}"
 
       - name: Login to Azure
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
@@ -241,7 +295,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }  
           rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force  
         env:  
-          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}
 
       - name: Point dynamicrp testresources extension to test ACR
         run: |
@@ -256,7 +310,7 @@ jobs:
             "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
           mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
         env:
-          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}
 
       - name: Publish Bicep Test Recipes
         run: |
@@ -266,7 +320,7 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
-        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}
 
       - name: Install gotestsum (test reporting tool)
         run: |
@@ -346,7 +400,7 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
-        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}
 
       - name: Get OIDC Issuer from AKS cluster
         id: get-oidc-issuer
@@ -362,7 +416,7 @@ jobs:
           # Restore AWS Bicep types
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
         env:
-          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}
 
       - name: Run functional tests
         env:
@@ -384,7 +438,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
-        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir || steps.set-custom-release-dir.outputs.release-dir }}
         run: |
           set -euo pipefail
 
