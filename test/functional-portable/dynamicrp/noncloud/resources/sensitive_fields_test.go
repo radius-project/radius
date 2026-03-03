@@ -119,88 +119,8 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				// --- GET verification ---
-				resource, err := ct.Options.ManagementClient.GetResource(ctx, resourceTypeName, resourceName)
-				require.NoError(t, err)
-				require.NotNil(t, resource.Properties)
-
-				// Non-sensitive fields MUST be returned as plaintext.
-				require.Equal(t, "admin", resource.Properties["username"],
-					"non-sensitive field 'username' should remain as plaintext")
-
-				// Sensitive top-level fields MUST be null after backend redaction.
-				require.Nil(t, resource.Properties["password"],
-					"sensitive field 'password' should be null after redaction")
-				require.Nil(t, resource.Properties["apiKey"],
-					"sensitive field 'apiKey' should be null after redaction")
-
-				// Nested fields: non-sensitive nested field should be intact, sensitive nested field should be null.
-				credentials, ok := resource.Properties["credentials"].(map[string]any)
-				require.True(t, ok, "credentials should be a map")
-
-				require.Equal(t, "db.example.com", credentials["host"],
-					"non-sensitive nested field 'credentials.host' should remain as plaintext")
-				require.Nil(t, credentials["secret"],
-					"nested sensitive field 'credentials.secret' should be null after redaction")
-
-				// Sensitive object: entire connectionConfig should be null after redaction.
-				require.Nil(t, resource.Properties["connectionConfig"],
-					"sensitive object 'connectionConfig' should be null after redaction")
-
-				// --- LIST verification ---
-				resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
-				require.NoError(t, err)
-				require.GreaterOrEqual(t, len(resources), 1, "should find at least one sensitiveResource")
-
-				found := false
-				for _, res := range resources {
-					if res.Name != nil && *res.Name == resourceName {
-						found = true
-
-						// Non-sensitive field in LIST response.
-						require.Equal(t, "admin", res.Properties["username"],
-							"LIST: non-sensitive field 'username' should remain as plaintext")
-
-						// Sensitive fields in LIST response MUST be null after redaction.
-						require.Nil(t, res.Properties["password"],
-							"LIST: sensitive field 'password' should be null after redaction")
-						require.Nil(t, res.Properties["apiKey"],
-							"LIST: sensitive field 'apiKey' should be null after redaction")
-
-						// Nested sensitive field in LIST response.
-						listCredentials, ok := res.Properties["credentials"].(map[string]any)
-						require.True(t, ok, "LIST: credentials should be a map")
-						require.Equal(t, "db.example.com", listCredentials["host"],
-							"LIST: non-sensitive nested field 'credentials.host' should remain as plaintext")
-						require.Nil(t, listCredentials["secret"],
-							"LIST: nested sensitive field 'credentials.secret' should be null after redaction")
-
-						require.Nil(t, res.Properties["connectionConfig"],
-							"LIST: sensitive object 'connectionConfig' should be null after redaction")
-
-						break
-					}
-				}
-				require.True(t, found, "resource %s not found in LIST response", resourceName)
-
-				// --- K8s Secret verification: prove decrypted values were passed to recipe ---
-				secretName, ok := resource.Properties["secretName"].(string)
-				require.True(t, ok, "recipe output 'secretName' should be a string")
-				require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty")
-
-				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
-				require.NoError(t, err, "should be able to read the K8s Secret created by the recipe")
-
-				require.Equal(t, createPassword, string(k8sSecret.Data["password"]),
-					"K8s Secret should contain the decrypted password")
-				require.Equal(t, createAPIKey, string(k8sSecret.Data["apiKey"]),
-					"K8s Secret should contain the decrypted apiKey")
-				require.Equal(t, createCredentialSecret, string(k8sSecret.Data["secret"]),
-					"K8s Secret should contain the decrypted nested secret")
-				require.Equal(t, createConnectionConfigURL, string(k8sSecret.Data["connectionConfigUrl"]),
-					"K8s Secret should contain the decrypted connectionConfig url")
-				require.Equal(t, createConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
-					"K8s Secret should contain the decrypted connectionConfig token")
+				verifySensitiveFieldRedaction(ctx, t, ct, resourceTypeName, resourceName, appNamespace,
+					createPassword, createAPIKey, createCredentialSecret, createConnectionConfigURL, createConnectionConfigToken)
 			},
 		},
 		{
@@ -228,85 +148,101 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				resource, err := ct.Options.ManagementClient.GetResource(ctx, resourceTypeName, resourceName)
-				require.NoError(t, err)
-				require.NotNil(t, resource.Properties)
-
-				// Non-sensitive field unchanged after update.
-				require.Equal(t, "admin", resource.Properties["username"],
-					"non-sensitive field 'username' should remain as plaintext after update")
-
-				// Sensitive fields must be null after redaction (both old and new values redacted).
-				require.Nil(t, resource.Properties["password"],
-					"password should be null after redaction on update")
-				require.Nil(t, resource.Properties["apiKey"],
-					"apiKey should be null after redaction on update")
-
-				// Nested fields after update.
-				credentials, ok := resource.Properties["credentials"].(map[string]any)
-				require.True(t, ok, "credentials should be a map")
-
-				require.Equal(t, "db.example.com", credentials["host"],
-					"non-sensitive nested field should be intact after update")
-				require.Nil(t, credentials["secret"],
-					"nested secret should be null after redaction on update")
-
-				// Sensitive object should be null after redaction on update.
-				require.Nil(t, resource.Properties["connectionConfig"],
-					"sensitive object 'connectionConfig' should be null after redaction on update")
-
-				// --- LIST verification after update ---
-				resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
-				require.NoError(t, err)
-
-				found := false
-				for _, res := range resources {
-					if res.Name != nil && *res.Name == resourceName {
-						found = true
-
-						require.Equal(t, "admin", res.Properties["username"],
-							"LIST after update: non-sensitive field 'username' should remain as plaintext")
-						require.Nil(t, res.Properties["password"],
-							"LIST after update: sensitive field 'password' should be null after redaction")
-						require.Nil(t, res.Properties["apiKey"],
-							"LIST after update: sensitive field 'apiKey' should be null after redaction")
-
-						listCredentials, ok := res.Properties["credentials"].(map[string]any)
-						require.True(t, ok, "LIST after update: credentials should be a map")
-						require.Equal(t, "db.example.com", listCredentials["host"],
-							"LIST after update: non-sensitive nested field 'credentials.host' should remain as plaintext")
-						require.Nil(t, listCredentials["secret"],
-							"LIST after update: nested sensitive field 'credentials.secret' should be null after redaction")
-
-						require.Nil(t, res.Properties["connectionConfig"],
-							"LIST after update: sensitive object 'connectionConfig' should be null after redaction")
-
-						break
-					}
-				}
-				require.True(t, found, "resource %s not found in LIST response after update", resourceName)
-
-				// --- K8s Secret verification: prove updated decrypted values were passed to recipe ---
-				secretName, ok := resource.Properties["secretName"].(string)
-				require.True(t, ok, "recipe output 'secretName' should be a string after update")
-				require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty after update")
-
-				k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
-				require.NoError(t, err, "should be able to read the K8s Secret after update")
-
-				require.Equal(t, updatePassword, string(k8sSecret.Data["password"]),
-					"K8s Secret should contain the updated decrypted password")
-				require.Equal(t, updateAPIKey, string(k8sSecret.Data["apiKey"]),
-					"K8s Secret should contain the updated decrypted apiKey")
-				require.Equal(t, updateCredentialSecret, string(k8sSecret.Data["secret"]),
-					"K8s Secret should contain the updated decrypted nested secret")
-				require.Equal(t, updateConnectionConfigURL, string(k8sSecret.Data["connectionConfigUrl"]),
-					"K8s Secret should contain the updated decrypted connectionConfig url")
-				require.Equal(t, updateConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
-					"K8s Secret should contain the updated decrypted connectionConfig token")
+				verifySensitiveFieldRedaction(ctx, t, ct, resourceTypeName, resourceName, appNamespace,
+					updatePassword, updateAPIKey, updateCredentialSecret, updateConnectionConfigURL, updateConnectionConfigToken)
 			},
 		},
 	})
 
 	test.Test(t)
+}
+
+// verifySensitiveFieldRedaction verifies that sensitive fields are redacted on GET and LIST,
+// non-sensitive fields are returned as plaintext, and the K8s Secret contains the expected decrypted values.
+func verifySensitiveFieldRedaction(
+	ctx context.Context,
+	t *testing.T,
+	ct rp.RPTest,
+	resourceTypeName, resourceName, appNamespace string,
+	expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigURL, expectedConnectionConfigToken string,
+) {
+	t.Helper()
+
+	// --- GET verification ---
+	resource, err := ct.Options.ManagementClient.GetResource(ctx, resourceTypeName, resourceName)
+	require.NoError(t, err)
+	require.NotNil(t, resource.Properties)
+
+	// Non-sensitive fields MUST be returned as plaintext.
+	require.Equal(t, "admin", resource.Properties["username"],
+		"non-sensitive field 'username' should remain as plaintext")
+
+	// Sensitive top-level fields MUST be null after backend redaction.
+	require.Nil(t, resource.Properties["password"],
+		"sensitive field 'password' should be null after redaction")
+	require.Nil(t, resource.Properties["apiKey"],
+		"sensitive field 'apiKey' should be null after redaction")
+
+	// Nested fields: non-sensitive nested field should be intact, sensitive nested field should be null.
+	credentials, ok := resource.Properties["credentials"].(map[string]any)
+	require.True(t, ok, "credentials should be a map")
+	require.Equal(t, "db.example.com", credentials["host"],
+		"non-sensitive nested field 'credentials.host' should remain as plaintext")
+	require.Nil(t, credentials["secret"],
+		"nested sensitive field 'credentials.secret' should be null after redaction")
+
+	// Sensitive object: entire connectionConfig should be null after redaction.
+	require.Nil(t, resource.Properties["connectionConfig"],
+		"sensitive object 'connectionConfig' should be null after redaction")
+
+	// --- LIST verification ---
+	resources, err := ct.Options.ManagementClient.ListResourcesOfType(ctx, resourceTypeName)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(resources), 1, "should find at least one sensitiveResource")
+
+	found := false
+	for _, res := range resources {
+		if res.Name != nil && *res.Name == resourceName {
+			found = true
+
+			require.Equal(t, "admin", res.Properties["username"],
+				"LIST: non-sensitive field 'username' should remain as plaintext")
+			require.Nil(t, res.Properties["password"],
+				"LIST: sensitive field 'password' should be null after redaction")
+			require.Nil(t, res.Properties["apiKey"],
+				"LIST: sensitive field 'apiKey' should be null after redaction")
+
+			listCredentials, ok := res.Properties["credentials"].(map[string]any)
+			require.True(t, ok, "LIST: credentials should be a map")
+			require.Equal(t, "db.example.com", listCredentials["host"],
+				"LIST: non-sensitive nested field 'credentials.host' should remain as plaintext")
+			require.Nil(t, listCredentials["secret"],
+				"LIST: nested sensitive field 'credentials.secret' should be null after redaction")
+
+			require.Nil(t, res.Properties["connectionConfig"],
+				"LIST: sensitive object 'connectionConfig' should be null after redaction")
+
+			break
+		}
+	}
+	require.True(t, found, "resource %s not found in LIST response", resourceName)
+
+	// --- K8s Secret verification: prove decrypted values were passed to recipe ---
+	secretName, ok := resource.Properties["secretName"].(string)
+	require.True(t, ok, "recipe output 'secretName' should be a string")
+	require.NotEmpty(t, secretName, "recipe output 'secretName' should not be empty")
+
+	k8sSecret, err := ct.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
+	require.NoError(t, err, "should be able to read the K8s Secret created by the recipe")
+
+	require.Equal(t, expectedPassword, string(k8sSecret.Data["password"]),
+		"K8s Secret should contain the decrypted password")
+	require.Equal(t, expectedAPIKey, string(k8sSecret.Data["apiKey"]),
+		"K8s Secret should contain the decrypted apiKey")
+	require.Equal(t, expectedCredentialSecret, string(k8sSecret.Data["secret"]),
+		"K8s Secret should contain the decrypted nested secret")
+	require.Equal(t, expectedConnectionConfigURL, string(k8sSecret.Data["connectionConfigUrl"]),
+		"K8s Secret should contain the decrypted connectionConfig url")
+	require.Equal(t, expectedConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
+		"K8s Secret should contain the decrypted connectionConfig token")
 }
