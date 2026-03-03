@@ -41,6 +41,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 This command upgrades the Radius control plane in the cluster associated with the active workspace.
 To upgrade Radius in a different cluster, switch to the appropriate workspace first using 'rad workspace switch'.
 
+The upgrade process preserves your existing Helm chart values (such as Azure Workload Identity settings,
+database configuration, and custom container registries). The upgrade merges these existing values with
+any new values specified via --set or --set-file flags, allowing you to override specific settings
+without losing your configuration.
+
 The upgrade process includes preflight checks to ensure the cluster is ready for upgrade.
 Preflight checks include:
 - Kubernetes connectivity and permissions
@@ -52,6 +57,7 @@ Preflight checks include:
 Radius is installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/.
 `,
 		Example: `# Upgrade Radius in the cluster of the active workspace
+# Existing values (e.g., from initial install) are automatically preserved
 rad upgrade kubernetes
 
 # Check which workspace is active
@@ -61,8 +67,17 @@ rad workspace show
 rad workspace switch myworkspace
 rad upgrade kubernetes
 
-# Upgrade Radius with custom configuration
+# Upgrade Radius and override a specific value
+# All other existing values from the previous installation are preserved
 rad upgrade kubernetes --set key=value
+
+# Example: If you installed with Azure Workload Identity enabled:
+# rad install kubernetes --set global.azureWorkloadIdentity.enabled=true
+# Then upgrade without repeating the flag - the setting is preserved:
+rad upgrade kubernetes
+
+# You can still override specific values during upgrade:
+rad upgrade kubernetes --set global.imageTag=0.48
 
 # Upgrade Radius with a custom container registry
 # Images will be pulled as: myregistry.azurecr.io/controller, myregistry.azurecr.io/ucpd, etc.

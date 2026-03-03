@@ -17,11 +17,19 @@ limitations under the License.
 package helm
 
 import (
+	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	helm "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
+	kubefake "helm.sh/helm/v3/pkg/kube/fake"
+	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func TestHelmClientImpl_RunHelmHistory(t *testing.T) {
@@ -104,4 +112,117 @@ func TestHelmClient_MockCompatibility(t *testing.T) {
 	// Test RunHelmRollback method signature
 	var rollbackFunc func(*helm.Configuration, string, int, bool) error = client.RunHelmRollback
 	require.NotNil(t, rollbackFunc)
+}
+
+// TestHelmClient_UpgradeReusesValues verifies that RunHelmUpgrade preserves existing values
+// by using ReuseValues=true. This test validates the fix for issue #11218 where upgrades
+// were resetting values to chart defaults.
+func TestHelmClient_UpgradeReusesValues(t *testing.T) {
+	t.Run("upgrade preserves existing values and merges new values", func(t *testing.T) {
+		// This is an integration test that validates the actual behavior of RunHelmUpgrade
+		// with ReuseValues=true by simulating an upgrade with Helm's in-memory storage.
+		
+		// Test data representing values from previous install/upgrade
+		existingValues := map[string]interface{}{
+			"global": map[string]interface{}{
+				"azureWorkloadIdentity": map[string]interface{}{
+					"enabled": true,
+				},
+				"imageRegistry": "myregistry.azurecr.io",
+			},
+			"database": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		
+		// New values being applied in this upgrade
+		newValues := map[string]interface{}{
+			"global": map[string]interface{}{
+				"imageTag": "0.48.0",
+			},
+		}
+		
+		// Expected merged result: existing values preserved + new values applied
+		expectedValues := map[string]interface{}{
+			"global": map[string]interface{}{
+				"azureWorkloadIdentity": map[string]interface{}{
+					"enabled": true,
+				},
+				"imageRegistry": "myregistry.azurecr.io",
+				"imageTag":      "0.48.0",
+			},
+			"database": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+		
+		// Create an in-memory Helm configuration for testing (similar to Helm's own tests)
+		registryClient, err := registry.NewClient()
+		require.NoError(t, err, "Failed to create registry client")
+		
+		cfg := &helm.Configuration{
+			Releases:       storage.Init(driver.NewMemory()),
+			KubeClient:     &kubefake.PrintingKubeClient{Out: io.Discard},
+			Capabilities:   chartutil.DefaultCapabilities,
+			RegistryClient: registryClient,
+			Log:            func(format string, v ...interface{}) {},
+		}
+		
+		// Create and store an initial release with existing values
+		initialRelease := &release.Release{
+			Name:      "test-release",
+			Namespace: "test-namespace",
+			Version:   1,
+			Config:    existingValues,
+			Chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					Name:    "test-chart",
+					Version: "1.0.0",
+				},
+			},
+			Info: &release.Info{
+				Status: release.StatusDeployed,
+			},
+		}
+		err = cfg.Releases.Create(initialRelease)
+		require.NoError(t, err, "Failed to create initial release")
+		
+		// Create a chart with new values
+		upgradeChart := &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:    "test-chart",
+				Version: "1.1.0",
+			},
+			Values: newValues,
+		}
+		
+		// Execute the upgrade using our RunHelmUpgrade implementation
+		client := &HelmClientImpl{}
+		upgradedRelease, err := client.RunHelmUpgrade(cfg, upgradeChart, "test-release", "test-namespace", false)
+		require.NoError(t, err, "RunHelmUpgrade should succeed")
+		require.NotNil(t, upgradedRelease, "Upgraded release should not be nil")
+		
+		// Verify the release was upgraded
+		require.Equal(t, 2, upgradedRelease.Version, "Release version should be incremented")
+		require.Equal(t, release.StatusDeployed, upgradedRelease.Info.Status, "Release should be deployed")
+		
+		// Verify that existing values were preserved and new values were merged
+		require.Equal(t, expectedValues, upgradedRelease.Config, 
+			"Upgraded release should preserve existing values and merge new values")
+		
+		// Specifically verify key values that should be preserved (issue #11218)
+		globalMap, ok := upgradedRelease.Config["global"].(map[string]interface{})
+		require.True(t, ok, "global key should exist and be a map")
+		
+		azureWIMap, ok := globalMap["azureWorkloadIdentity"].(map[string]interface{})
+		require.True(t, ok, "global.azureWorkloadIdentity should exist")
+		require.Equal(t, true, azureWIMap["enabled"], "azureWorkloadIdentity.enabled should be preserved")
+		
+		require.Equal(t, "myregistry.azurecr.io", globalMap["imageRegistry"], "imageRegistry should be preserved")
+		require.Equal(t, "0.48.0", globalMap["imageTag"], "imageTag should be set from new values")
+		
+		dbMap, ok := upgradedRelease.Config["database"].(map[string]interface{})
+		require.True(t, ok, "database key should exist and be a map")
+		require.Equal(t, true, dbMap["enabled"], "database.enabled should be preserved")
+	})
 }
