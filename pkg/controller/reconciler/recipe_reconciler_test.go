@@ -17,7 +17,9 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -62,6 +64,7 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	require.NoError(t, err)
 
 	radius := NewMockRadiusClient()
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&RecipeReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
@@ -72,8 +75,10 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	require.NoError(t, err)
 
 	go func() {
-		err := mgr.Start(ctx)
-		require.NoError(t, err)
+		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
+		}
 	}()
 
 	return radius, mgr.GetClient()
@@ -323,11 +328,13 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	// Recipe will update after operation completes
 	_ = waitForRecipeStateReady(t, client, name)
 
-	// The old secret should be deleted
-	old := corev1.Secret{}
-	err = client.Get(ctx, name, &old)
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
+	// The old secret should be (eventually) deleted - the client reads from
+	// the informer cache so the deletion may not be visible immediately.
+	require.Eventuallyf(t, func() bool {
+		old := corev1.Secret{}
+		err := client.Get(ctx, name, &old)
+		return apierrors.IsNotFound(err)
+	}, recipeTestWaitDuration, recipeTestWaitInterval, "old secret should be deleted")
 
 	secret = corev1.Secret{}
 	err = client.Get(ctx, types.NamespacedName{Namespace: name.Namespace, Name: "new-secret-name"}, &secret)
@@ -345,7 +352,11 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	// Now deleting of the deployment object can complete.
 	waitForRecipeDeleted(t, client, name)
 
-	err = client.Get(ctx, name, &secret)
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
+	// The secret should be (eventually) deleted - the client reads from
+	// the informer cache so the deletion may not be visible immediately.
+	require.Eventuallyf(t, func() bool {
+		s := corev1.Secret{}
+		err := client.Get(ctx, name, &s)
+		return apierrors.IsNotFound(err)
+	}, recipeTestWaitDuration, recipeTestWaitInterval, "secret should be deleted")
 }

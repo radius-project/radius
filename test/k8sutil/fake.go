@@ -87,6 +87,10 @@ type testClient struct {
 // Patch implements client.Patch for apply patches. It checks if the patch type is Apply, then attempts to get
 // the object, create it if it doesn't exist, or update it if it does. If an error is encountered, it is returned.
 func (c *testClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	// Using client.Apply patch type for server-side apply testing.
+	// The new client.Client.Apply() API requires ApplyConfiguration types which are
+	// not straightforward to generate for dynamic/unstructured resources.
+	//nolint:staticcheck // SA1019: client.Apply will be replaced when ApplyConfiguration support is available
 	if patch.Type() != client.Apply.Type() {
 		return c.WithWatch.Patch(ctx, obj, patch, opts...)
 	}

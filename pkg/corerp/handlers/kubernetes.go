@@ -102,6 +102,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		return nil, err
 	}
 
+	// Using client.Apply patch type for server-side apply with unstructured types.
+	// The new client.Client.Apply() API requires ApplyConfiguration types which are
+	// not straightforward to generate for dynamic/unstructured resources.
+	//nolint:staticcheck // SA1019: client.Apply will be replaced when ApplyConfiguration support is available
 	err = handler.client.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return nil, err

@@ -18,13 +18,11 @@ package reconciler
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,8 +33,7 @@ import (
 // It configures the webhook to watch for changes on the Recipe resource and uses the provided validator.
 // Returns an error if there was a problem setting up the webhook.
 func (r *RecipeWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&radappiov1alpha3.Recipe{}).
+	return ctrl.NewWebhookManagedBy(mgr, &radappiov1alpha3.Recipe{}).
 		WithValidator(r).
 		Complete()
 }
@@ -45,40 +42,25 @@ func (r *RecipeWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 type RecipeWebhook struct{}
 
 // ValidateCreate validates the creation of a Recipe object.
-func (r *RecipeWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (r *RecipeWebhook) ValidateCreate(ctx context.Context, recipe *radappiov1alpha3.Recipe) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-
-	recipe, ok := obj.(*radappiov1alpha3.Recipe)
-	if !ok {
-		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
-	}
 
 	logger.Info("Validating Create Recipe %s", recipe.Name)
 	return r.validateRecipeType(ctx, recipe)
 }
 
 // ValidateUpdate validates the update of a Recipe object.
-func (r *RecipeWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (r *RecipeWebhook) ValidateUpdate(ctx context.Context, oldRecipe, newRecipe *radappiov1alpha3.Recipe) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	recipe, ok := newObj.(*radappiov1alpha3.Recipe)
-	if !ok {
-		return nil, fmt.Errorf("expected a Recipe but got a %T", newObj)
-	}
-
-	logger.Info("Validating Update Recipe %s", recipe.Name)
-	return r.validateRecipeType(ctx, recipe)
+	logger.Info("Validating Update Recipe %s", newRecipe.Name)
+	return r.validateRecipeType(ctx, newRecipe)
 }
 
 // ValidateDelete validates the deletion of a Recipe object.
-func (r *RecipeWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (r *RecipeWebhook) ValidateDelete(ctx context.Context, recipe *radappiov1alpha3.Recipe) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Validating Delete Recipe")
-
-	_, ok := obj.(*radappiov1alpha3.Recipe)
-	if !ok {
-		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
-	}
 
 	// currently there is no validation when deleting Recipe
 	return nil, nil

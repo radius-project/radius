@@ -55,25 +55,27 @@ env:
   GOTESTSUM_VER: 1.13.0
 
   # Container registry for storing Bicep recipe artifacts
-  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
-  # ACR url for uploading test UDT Bicep types
-  TEST_BICEP_TYPES_REGISTRY: testuserdefinedbiceptypes.azurecr.io
+  BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
+  # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
+  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  # bicep-types ACR url for uploading test Radius Bicep types
+  TEST_BICEP_TYPES_REGISTRY: ${{ vars.TEST_BICEP_TYPES_REGISTRY }}
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
-  AZURE_LOCATION: westus3
+  AZURE_LOCATION: westus2
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The region for AWS resources
   AWS_REGION: us-west-2
 
   # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: 425843
+  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
 
   # The AKS cluster name
-  AKS_CLUSTER_NAME: radlrtest00-aks
+  AKS_CLUSTER_NAME: ${{ vars.LRT_AKS_CLUSTER_NAME }}
   # The resource group for AKS_CLUSTER_NAME resource.
-  AKS_RESOURCE_GROUP: radlrtest00
+  AKS_RESOURCE_GROUP: ${{ vars.LRT_AKS_RESOURCE_GROUP }}
 
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
@@ -95,7 +97,7 @@ env:
 
 jobs:
   tests:
-    if: github.repository == 'radius-project/radius'
+    if: github.repository == vars.RADIUS_REPOSITORY
     name: Run functional tests
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -113,7 +115,7 @@ jobs:
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
 
       - name: Get GitHub app token
-        if: github.repository == 'radius-project/radius'
+        if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         id: get_installation_token
         with:
@@ -132,13 +134,12 @@ jobs:
           permission-contents: read
 
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          submodules: recursive
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: radius-project/samples
           path: samples
@@ -167,7 +168,7 @@ jobs:
           ./.github/scripts/checkout-release-codebase.sh
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version-file: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.mod
           cache-dependency-path: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.sum
@@ -181,7 +182,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -208,7 +209,7 @@ jobs:
 
       - name: Restore skip-delete-resources-list
         if: always()
-        uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
@@ -242,6 +243,21 @@ jobs:
         env:  
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Point dynamicrp testresources extension to test ACR
+        run: |
+          set -euo pipefail
+
+          BICEP_CONFIG_FILE="./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
+          TMP_FILE="$(mktemp)"
+          jq --arg radius "br:${BICEP_TYPES_REGISTRY}/radius:latest" \
+            --arg aws "br:${BICEP_TYPES_REGISTRY}/aws:latest" \
+            --arg testresources "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" \
+            '.extensions.radius = $radius | .extensions.aws = $aws | .extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
+            "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
+          mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
+        env:
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+
       - name: Publish Bicep Test Recipes
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -266,7 +282,7 @@ jobs:
           kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
 
       - name: Save list of resources not to be deleted
-        uses: actions/cache/save@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
@@ -340,12 +356,12 @@ jobs:
       - name: Restore Bicep artifacts before running functional tests
         # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
         # so we can restore all Bicep artifacts before the tests start.
-        run: |  
-          # Restore Radius Bicep types  
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force  
-          # Restore AWS Bicep types  
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force  
-        env:  
+        run: |
+          # Restore Radius Bicep types
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
+          # Restore AWS Bicep types
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
+        env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Run functional tests
@@ -370,6 +386,8 @@ jobs:
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
+          set -euo pipefail
+
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
 
@@ -380,7 +398,17 @@ jobs:
           # AZURE_MSSQL_RESOURCE_ID
           # AZURE_MSSQL_USERNAME
           # AZURE_MSSQL_PASSWORD
-          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
+          if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
+            echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
+            echo "Expected keys: AZURE_COSMOS_MONGODB_ACCOUNT_ID, AZURE_MSSQL_RESOURCE_ID, AZURE_MSSQL_USERNAME, AZURE_MSSQL_PASSWORD"
+            exit 1
+          fi
+
+          export AZURE_COSMOS_MONGODB_ACCOUNT_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_COSMOS_MONGODB_ACCOUNT_ID')"
+          export AZURE_MSSQL_RESOURCE_ID="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_RESOURCE_ID')"
+          export AZURE_MSSQL_USERNAME="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_USERNAME')"
+          export AZURE_MSSQL_PASSWORD="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_PASSWORD')"
 
           make test-functional-all
 
@@ -398,7 +426,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: all_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -434,7 +462,7 @@ jobs:
 
       - name: Restore skip-delete-resources-list
         if: always()
-        uses: actions/cache/restore@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
@@ -453,12 +481,11 @@ jobs:
           ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
 
   report-failure:
-    if: failure() && github.repository == 'radius-project/radius' && github.event_name == 'schedule'
+    if: failure() && github.repository == vars.RADIUS_REPOSITORY && github.event_name == 'schedule'
     name: Report test failure
     needs: [tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
     steps:
       - name: Create failure issue for failing long running test run
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0

@@ -101,6 +101,10 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprConfigu
 		return &processors.ValidationError{Message: err.Error()}
 	}
 
+	// Using runtime.Apply patch type for server-side apply with Dapr components.
+	// The new client.Client.Apply() API requires ApplyConfiguration types which are
+	// not straightforward to generate for dynamic/unstructured resources.
+	//nolint:staticcheck // SA1019: runtime.Apply will be replaced when ApplyConfiguration support is available
 	err = p.Client.Patch(ctx, &component, runtime.Apply, &runtime.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return &processors.ResourceError{Inner: err}

@@ -18,5 +18,6 @@
   "terminal.integrated.env.windows": {
     "RADIUS_DEV_ROOT": "${workspaceFolder}/debug_files"
   },
-  "makefile.configureOnOpen": false
+  "makefile.configureOnOpen": false,
+  "typespec.tsp-server.path": "${workspaceFolder}/typespec/node_modules/@typespec/compiler"
 }

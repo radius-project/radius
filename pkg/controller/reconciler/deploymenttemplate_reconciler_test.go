@@ -17,8 +17,10 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -42,7 +44,7 @@ import (
 
 const (
 	deploymentTemplateTestWaitDuration            = time.Second * 10
-	deploymentTemplateTestWaitInterval            = time.Second * 1
+	deploymentTemplateTestWaitInterval            = time.Millisecond * 200
 	deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 )
 
@@ -77,6 +79,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
 
 	// Set up DeploymentTemplateReconciler.
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentTemplateReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
@@ -88,6 +91,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	require.NoError(t, err)
 
 	// Set up DeploymentResourceReconciler.
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
@@ -99,8 +103,10 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	require.NoError(t, err)
 
 	go func() {
-		err := mgr.Start(ctx)
-		require.NoError(t, err)
+		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
+		}
 	}()
 
 	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()

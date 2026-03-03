@@ -1,0 +1,175 @@
+{{- if .Values.encryption.rotation.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: radius-key-rotation
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-key-rotation
+    app.kubernetes.io/part-of: radius
+spec:
+  schedule: {{ .Values.encryption.rotation.schedule | quote }}
+  # Set to 1 for security - prevents log retention with sensitive metadata
+  # Monitor rotation via secret annotations and CronJob status instead
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: radius-key-rotation
+            app.kubernetes.io/part-of: radius
+        spec:
+          serviceAccountName: dynamic-rp
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            fsGroup: 65532
+          containers:
+          - name: rotate-keys
+            # Pin to specific version for security and reproducibility
+            # Consider using Dependabot/Renovate to automate version updates
+            image: bitnami/kubectl@sha256:b349e60a6ae2969af84a778c0b976b050a0cc77f4fb6a4ad44307cd0a06e9d8f
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+
+              echo "Starting key rotation at $(date)"
+
+              NAMESPACE="{{ .Release.Namespace }}"
+              SECRET_NAME="radius-encryption-key"
+              GRACE_PERIOD_DAYS="{{ .Values.encryption.rotation.gracePeriodDays }}"
+              ROTATION_INTERVAL_DAYS="{{ .Values.encryption.rotation.intervalDays }}"
+
+              # Get current secret
+              echo "Fetching current secret..."
+              # Suppress stderr to prevent secret metadata leakage
+              CURRENT_SECRET=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o json 2>/dev/null)
+              # Suppress stderr to prevent secret metadata leakage
+              CURRENT_SECRET=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o json 2>/dev/null)
+
+              if [ -z "$CURRENT_SECRET" ]; then
+                echo "ERROR: Secret $SECRET_NAME not found in namespace $NAMESPACE"
+                echo "ERROR: Secret $SECRET_NAME not found in namespace $NAMESPACE"
+                exit 1
+              fi
+
+              # Extract current keys.json
+              KEYS_JSON=$(echo "$CURRENT_SECRET" | jq -r '.data."keys.json"' | base64 -d)
+
+              if [ -z "$KEYS_JSON" ]; then
+                echo "ERROR: keys.json not found in secret"
+                exit 1
+              fi
+
+              # Get current version
+              CURRENT_VERSION=$(echo "$KEYS_JSON" | jq -r '.currentVersion')
+              NEW_VERSION=$((CURRENT_VERSION + 1))
+              KEY_COUNT=$(echo "$KEYS_JSON" | jq '.keys | length')
+
+              echo "Current version: $CURRENT_VERSION"
+              echo "Current key count: $KEY_COUNT"
+              echo "New version: $NEW_VERSION"
+
+              # Generate new 32-byte encryption key
+              NEW_KEY=$(openssl rand -base64 32)
+
+              # Calculate timestamps
+              CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              EXPIRES_AT=$(date -u -d "+${ROTATION_INTERVAL_DAYS} days" +"%Y-%m-%dT%H:%M:%SZ")
+              GRACE_CUTOFF=$(date -u -d "-${GRACE_PERIOD_DAYS} days" +"%Y-%m-%dT%H:%M:%SZ")
+
+              echo "New key created at: $CREATED_AT"
+              echo "New key expires at: $EXPIRES_AT"
+              echo "Removing keys expired before: $GRACE_CUTOFF"
+
+              # Build new key store JSON
+              # 1. Add new key version
+              # 2. Update current version
+              # 3. Remove keys past grace period
+              NEW_KEYS_JSON=$(echo "$KEYS_JSON" | jq \
+                --arg version "$NEW_VERSION" \
+                --arg key "$NEW_KEY" \
+                --arg created "$CREATED_AT" \
+                --arg expires "$EXPIRES_AT" \
+                --arg grace_cutoff "$GRACE_CUTOFF" \
+                '
+                # Add new key
+                .keys[$version] = {
+                  "key": $key,
+                  "version": ($version | tonumber),
+                  "createdAt": $created,
+                  "expiresAt": $expires
+                } |
+                # Update current version
+                .currentVersion = ($version | tonumber) |
+                # Remove keys past grace period (keep at least 2 keys)
+                if (.keys | length) > 2 then
+                  .keys = (.keys | to_entries |
+                    map(select(
+                      .value.expiresAt > $grace_cutoff or
+                      .value.version == ($version | tonumber) or
+                      .value.version == (($version | tonumber) - 1)
+                    )) |
+                    from_entries)
+                else
+                  .
+                end
+                ')
+
+              # Count final keys (without logging sensitive data)
+              FINAL_KEY_COUNT=$(echo "$NEW_KEYS_JSON" | jq '.keys | length')
+              echo "Final key count after rotation: $FINAL_KEY_COUNT"
+
+              # Encode new keys.json
+              NEW_KEYS_BASE64=$(echo "$NEW_KEYS_JSON" | base64 -w 0)
+
+              # Create patch JSON
+              PATCH_JSON=$(jq -n \
+                --arg keys "$NEW_KEYS_BASE64" \
+                --arg timestamp "$CREATED_AT" \
+                '{
+                  "data": {
+                    "keys.json": $keys
+                  },
+                  "metadata": {
+                    "annotations": {
+                      "radius.dev/last-rotation": $timestamp
+                    }
+                  }
+                }')
+
+              echo "Applying patch to secret..."
+              # Suppress stderr to prevent potential key leakage in error messages
+              # kubectl might output patch content on error
+              if kubectl patch secret "$SECRET_NAME" \
+                -n "$NAMESPACE" \
+                --type merge \
+                --patch-file - <<<"$PATCH_JSON" 2>/dev/null; then
+                echo "✓ Key rotation completed successfully at $(date)"
+                echo "  - New version: $NEW_VERSION"
+                echo "  - Active keys: $(echo "$NEW_KEYS_JSON" | jq '.keys | keys | length')"
+              else
+                echo "✗ Key rotation failed (check CronJob status for details)"
+                exit 1
+              fi
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+{{- end }}

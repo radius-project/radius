@@ -4,10 +4,6 @@ Radius uses a Makefile to build the repository and automate most common reposito
 
 You can run `make` (no additional arguments) to see the list of targets and their descriptions.
 
-> NOTE: Some parts of the build process depend on the submodule `bicep-types`. After cloning the repository, you should run `git submodule update --init --recursive` to ensure that the `bicep-types` submodule is checked out. By default, `git clone` will not clone submodules. If you have not cloned the submodule, or if the submodule is out of date, some targets in `make build` may fail and prompt you to update the submodule.
->
-> **Go module dependencies**: Go code uses the `bicep-types-go` package as a standard Go module dependency fetched via `go mod download`. The submodule is only required for TypeScript/pnpm tooling.
-
 ## Building the repository
 
 You can build the repository with `make build`. This will build all of the packages and executables. The first time you run `make build` it may take a few minutes because it will download and build dependencies. Subsequent builds will be faster because they can use cached output.
@@ -38,10 +34,10 @@ By default we will assume your Docker registry is your OS username, and assume y
 
 These commands assume you are already logged-in to the registry you are using. If you get errors related to authentication, double-check that you are logged-in.
 
-Here's an example command that will push and push images to a specified registry:
+Here's an example command that will build and push images to a specified registry:
 
 ```sh
-DOCKER_REGISTRY=ghcr.io/my-registry make docker-push docker-build
+DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
 ```
 
 If you work with Radius frequently, you may want to define a shell variable as part of your profile to set your registry.

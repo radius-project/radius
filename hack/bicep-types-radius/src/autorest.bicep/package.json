@@ -7,7 +7,8 @@
     "test": "jest",
     "start": "node ./dist/src/main.js",
     "lint": "eslint src --ext ts",
-    "lint:fix": "eslint src --ext ts --fix"
+    "lint:fix": "eslint src --ext ts --fix",
+    "postinstall": "cd node_modules/bicep-types-repo/src/bicep-types && npm install && npm run build && cd ../../../.. && rm -rf node_modules/bicep-types && ln -sf bicep-types-repo/src/bicep-types node_modules/bicep-types"
   },
   "dependencies": {
     "@autorest/codemodel": "^4.20.0",
@@ -17,19 +18,19 @@
     "lodash": "^4.17.23"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.13",
-    "@types/node": "^22.7.5",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
-    "@typescript-eslint/parser": "^8.8.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
     "colors": "^1.4.0",
     "dir-compare": "^5.0.0",
-    "eslint": "^9.12.0",
+    "eslint": "^10.0.0",
     "eslint-plugin-header": "^3.1.1",
-    "eslint-plugin-jest": "^28.8.3",
-    "jest": "^29.7.0",
+    "eslint-plugin-jest": "^29.13.0",
+    "jest": "^30.2.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
-    "bicep-types": "file:../../../../bicep-types/src/bicep-types"
+    "bicep-types-repo": "git+https://github.com/Azure/bicep-types.git#556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7"
   }
 }

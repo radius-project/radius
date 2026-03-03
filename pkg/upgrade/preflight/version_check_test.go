@@ -67,6 +67,27 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 			expectSuccess:  false,
 			expectMessage:  "Only incremental version upgrades are supported. Expected next version: 0.41.0",
 		},
+		{
+			name:           "valid prerelease upgrade same version",
+			currentVersion: "0.55.0-rc4",
+			targetVersion:  "0.55.0-rc5",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from 0.55.0-rc4 to 0.55.0-rc5 is valid",
+		},
+		{
+			name:           "valid prerelease to release upgrade",
+			currentVersion: "v0.55.0-rc5",
+			targetVersion:  "v0.55.0",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from v0.55.0-rc5 to v0.55.0 is valid",
+		},
+		{
+			name:           "valid patch version upgrade",
+			currentVersion: "v0.55.0",
+			targetVersion:  "v0.55.1",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from v0.55.0 to v0.55.1 is valid",
+		},
 	}
 
 	for _, tt := range tests {
@@ -116,6 +137,31 @@ func TestValidateVersionJump(t *testing.T) {
 			targetVersion:  "v0.43.0",
 			expectValid:    false,
 			expectMessage:  "Downgrading is not supported",
+		},
+		{
+			name:           "safe prerelease upgrade",
+			currentVersion: "0.55.0-rc4",
+			targetVersion:  "0.55.0-rc5",
+			expectValid:    true,
+		},
+		{
+			name:           "safe prerelease to release",
+			currentVersion: "0.55.0-rc5",
+			targetVersion:  "0.55.0",
+			expectValid:    true,
+		},
+		{
+			name:           "safe patch bump",
+			currentVersion: "v0.55.0",
+			targetVersion:  "v0.55.1",
+			expectValid:    true,
+		},
+		{
+			name:           "same version rejected",
+			currentVersion: "v0.55.0",
+			targetVersion:  "v0.55.0",
+			expectValid:    false,
+			expectMessage:  "Target version is the same as current version",
 		},
 	}
 

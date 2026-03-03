@@ -22,7 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
+
+	"github.com/radius-project/radius/pkg/schema"
 )
 
 var (
@@ -212,7 +213,7 @@ func (h *SensitiveDataHandler) processFieldAtPath(data map[string]any, path stri
 		return ErrInvalidFieldPath
 	}
 
-	segments := parseFieldPath(path)
+	segments := schema.ParseFieldPath(path)
 	if len(segments) == 0 {
 		return ErrInvalidFieldPath
 	}
@@ -221,7 +222,7 @@ func (h *SensitiveDataHandler) processFieldAtPath(data map[string]any, path stri
 }
 
 // processPathSegments recursively processes path segments to find and transform the target field.
-func (h *SensitiveDataHandler) processPathSegments(current any, segments []pathSegment, processor func(any) (any, error)) error {
+func (h *SensitiveDataHandler) processPathSegments(current any, segments []schema.FieldPathSegment, processor func(any) (any, error)) error {
 	if len(segments) == 0 {
 		return nil
 	}
@@ -229,20 +230,19 @@ func (h *SensitiveDataHandler) processPathSegments(current any, segments []pathS
 	segment := segments[0]
 	remainingSegments := segments[1:]
 
-	switch segment.segmentType {
-	case segmentTypeField:
-		return h.processFieldSegment(current, segment.value, remainingSegments, processor)
-	case segmentTypeWildcard:
+	if segment.IsField() {
+		return h.processFieldSegment(current, segment.Value, remainingSegments, processor)
+	} else if segment.IsWildcard() {
 		return h.processWildcardSegment(current, remainingSegments, processor)
-	case segmentTypeIndex:
-		return h.processIndexSegment(current, segment.value, remainingSegments, processor)
-	default:
-		return ErrInvalidFieldPath
+	} else if segment.IsIndex() {
+		return h.processIndexSegment(current, segment.Value, remainingSegments, processor)
 	}
+
+	return ErrInvalidFieldPath
 }
 
 // processFieldSegment handles a regular field name segment in the path.
-func (h *SensitiveDataHandler) processFieldSegment(current any, fieldName string, remainingSegments []pathSegment, processor func(any) (any, error)) error {
+func (h *SensitiveDataHandler) processFieldSegment(current any, fieldName string, remainingSegments []schema.FieldPathSegment, processor func(any) (any, error)) error {
 	dataMap, ok := current.(map[string]any)
 	if !ok {
 		return ErrFieldNotFound
@@ -268,7 +268,7 @@ func (h *SensitiveDataHandler) processFieldSegment(current any, fieldName string
 }
 
 // processWildcardSegment handles [*] segments for arrays and maps.
-func (h *SensitiveDataHandler) processWildcardSegment(current any, remainingSegments []pathSegment, processor func(any) (any, error)) error {
+func (h *SensitiveDataHandler) processWildcardSegment(current any, remainingSegments []schema.FieldPathSegment, processor func(any) (any, error)) error {
 	// Handle array
 	if arr, ok := current.([]any); ok {
 		for i := range arr {
@@ -319,7 +319,7 @@ func (h *SensitiveDataHandler) processWildcardSegment(current any, remainingSegm
 }
 
 // processIndexSegment handles specific index segments like [0], [1], etc.
-func (h *SensitiveDataHandler) processIndexSegment(current any, indexStr string, remainingSegments []pathSegment, processor func(any) (any, error)) error {
+func (h *SensitiveDataHandler) processIndexSegment(current any, indexStr string, remainingSegments []schema.FieldPathSegment, processor func(any) (any, error)) error {
 	arr, ok := current.([]any)
 	if !ok {
 		return ErrFieldNotFound
@@ -478,29 +478,28 @@ func getSchemaType(schema map[string]any) string {
 // getSchemaForPath retrieves the schema definition for a specific field path.
 // It navigates through the schema following the path segments (supporting nested properties,
 // array items via [*], and additionalProperties for maps).
-func getSchemaForPath(schema map[string]any, path string) map[string]any {
-	if schema == nil || path == "" {
+func getSchemaForPath(schemaData map[string]any, path string) map[string]any {
+	if schemaData == nil || path == "" {
 		return nil
 	}
 
-	segments := parseFieldPath(path)
-	current := schema
+	segments := schema.ParseFieldPath(path)
+	current := schemaData
 
 	for _, segment := range segments {
-		switch segment.segmentType {
-		case segmentTypeField:
+		if segment.IsField() {
 			// Navigate to properties -> fieldName
 			properties, ok := current["properties"].(map[string]any)
 			if !ok {
 				return nil
 			}
-			fieldSchema, ok := properties[segment.value].(map[string]any)
+			fieldSchema, ok := properties[segment.Value].(map[string]any)
 			if !ok {
 				return nil
 			}
 			current = fieldSchema
 
-		case segmentTypeWildcard:
+		} else if segment.IsWildcard() {
 			// Could be array items or additionalProperties
 			if items, ok := current["items"].(map[string]any); ok {
 				current = items
@@ -510,7 +509,7 @@ func getSchemaForPath(schema map[string]any, path string) map[string]any {
 				return nil
 			}
 
-		case segmentTypeIndex:
+		} else if segment.IsIndex() {
 			// Specific array index - use items schema
 			if items, ok := current["items"].(map[string]any); ok {
 				current = items
@@ -596,75 +595,4 @@ func coerceTypesFromSchema(data map[string]any, schema map[string]any) {
 			}
 		}
 	}
-}
-
-// pathSegment represents a segment of a field path.
-type pathSegment struct {
-	segmentType segmentType
-	value       string
-}
-
-type segmentType int
-
-const (
-	segmentTypeField segmentType = iota
-	segmentTypeWildcard
-	segmentTypeIndex
-)
-
-// parseFieldPath parses a field path into segments.
-// Examples:
-//   - "credentials.password" -> [field:credentials, field:password]
-//   - "secrets[*].value" -> [field:secrets, wildcard, field:value]
-//   - "config[*]" -> [field:config, wildcard]
-//   - "items[0].name" -> [field:items, index:0, field:name]
-func parseFieldPath(path string) []pathSegment {
-	var segments []pathSegment
-	var current strings.Builder
-
-	i := 0
-	for i < len(path) {
-		ch := path[i]
-
-		switch ch {
-		case '.':
-			if current.Len() > 0 {
-				segments = append(segments, pathSegment{segmentType: segmentTypeField, value: current.String()})
-				current.Reset()
-			}
-			i++
-
-		case '[':
-			if current.Len() > 0 {
-				segments = append(segments, pathSegment{segmentType: segmentTypeField, value: current.String()})
-				current.Reset()
-			}
-
-			// Find the closing bracket
-			end := strings.Index(path[i:], "]")
-			if end == -1 {
-				// Invalid path - unterminated bracket, return nil to signal error
-				return nil
-			}
-
-			bracketContent := path[i+1 : i+end]
-			if bracketContent == "*" {
-				segments = append(segments, pathSegment{segmentType: segmentTypeWildcard})
-			} else {
-				segments = append(segments, pathSegment{segmentType: segmentTypeIndex, value: bracketContent})
-			}
-			i += end + 1
-
-		default:
-			current.WriteByte(ch)
-			i++
-		}
-	}
-
-	// Don't forget the last segment
-	if current.Len() > 0 {
-		segments = append(segments, pathSegment{segmentType: segmentTypeField, value: current.String()})
-	}
-
-	return segments
 }

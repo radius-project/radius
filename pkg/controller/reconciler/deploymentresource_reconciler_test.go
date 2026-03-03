@@ -17,6 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -38,7 +40,7 @@ import (
 
 const (
 	DeploymentResourceTestWaitDuration            = time.Second * 10
-	DeploymentResourceTestWaitInterval            = time.Second * 1
+	DeploymentResourceTestWaitInterval            = time.Millisecond * 200
 	DeploymentResourceTestControllerDelayInterval = time.Millisecond * 100
 
 	TestDeploymentResourceNamespace           = "deploymentresource-basic"
@@ -81,6 +83,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	mockRadiusClient := NewMockRadiusClient()
 	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
 
+	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentResourceReconciler{
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
@@ -92,8 +95,10 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	require.NoError(t, err)
 
 	go func() {
-		err := mgr.Start(ctx)
-		require.NoError(t, err)
+		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
+		}
 	}()
 
 	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()
