@@ -185,4 +185,55 @@ types:
           required:
             - application
             - environment
-
+  sensitiveResource:
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties:
+            application:
+              type: string
+              description: The resource ID of the application.
+            environment:
+              type: string
+              description: The resource ID of the environment.
+            username:
+              type: string
+              description: A non-sensitive username field.
+            password:
+              type: string
+              description: A sensitive password field.
+              x-radius-sensitive: true
+            apiKey:
+              type: string
+              description: A sensitive API key field.
+              x-radius-sensitive: true
+            credentials:
+              type: object
+              description: Nested object with mixed sensitivity.
+              properties:
+                host:
+                  type: string
+                  description: Non-sensitive host.
+                secret:
+                  type: string
+                  description: Sensitive nested secret.
+                  x-radius-sensitive: true
+            connectionConfig:
+              type: object
+              description: A sensitive object containing non-sensitive fields. The entire object should be redacted.
+              x-radius-sensitive: true
+              properties:
+                url:
+                  type: string
+                  description: Connection URL.
+                token:
+                  type: string
+                  description: Access token.
+            secretName:
+              type: string
+              description: The name of the Kubernetes secret created by the recipe.
+              readOnly: true
+          required:
+            - application
+            - environment
