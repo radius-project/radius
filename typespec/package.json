@@ -10,13 +10,13 @@
     "@azure-tools/typespec-azure-core": "^0.65.0",
     "@azure-tools/typespec-azure-resource-manager": "^0.65.0",
     "@typespec/compiler": "^1.9.0",
-    "@typespec/http": "^1.9.0",
+    "@typespec/http": "^1.9.1",
     "@typespec/openapi": "^1.9.0",
     "@typespec/rest": "^0.79.0",
     "@typespec/versioning": "^0.79.0"
   },
   "devDependencies": {
-    "autorest": "3.7.2",
+    "autorest": "3.8.0",
     "oav": "4.0.3"
   },
   "pnpm": {
