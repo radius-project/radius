@@ -119,6 +119,9 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 	t.Run("Delete namespace", func(t *testing.T) {
 		t.Log("Deleting namespace")
 
+		// Log namespace state and all resources before deletion for diagnostics.
+		logNamespaceState(ctx, t, namespace, opts)
+
 		err = opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 		require.NoError(t, err)
 
@@ -421,6 +424,9 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		return len(deployments.Items) == 0
 	}, time.Minute*3, time.Second*5, "waiting for deployments in namespace %s to be deleted before namespace deletion", namespace)
 
+	// Log namespace state and all resources before deletion for diagnostics.
+	logNamespaceState(ctx, t, namespace, opts)
+
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 	if !apierrors.IsNotFound(err) {
 		require.NoError(t, err, "failed to delete namespace %s", namespace)
@@ -434,4 +440,90 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 		return apierrors.IsNotFound(err)
 	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+}
+
+// logNamespaceState logs the namespace status, all pods, deployments, and other resources
+// present in the namespace. Used for diagnostics before namespace deletion.
+func logNamespaceState(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
+	t.Logf("=== Namespace state before deletion: %s ===", namespace)
+
+	// Namespace status and finalizers
+	ns, err := opts.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		t.Logf("  Namespace %s does not exist", namespace)
+		return
+	}
+	if err != nil {
+		t.Logf("  Error getting namespace %s: %v", namespace, err)
+	} else {
+		t.Logf("  Namespace phase: %s, finalizers: %v", ns.Status.Phase, ns.Finalizers)
+		for _, cond := range ns.Status.Conditions {
+			t.Logf("  Namespace condition: type=%s status=%s reason=%s message=%s", cond.Type, cond.Status, cond.Reason, cond.Message)
+		}
+	}
+
+	// Pods
+	pods, err := opts.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("  Error listing pods: %v", err)
+	} else {
+		t.Logf("  Pods (%d):", len(pods.Items))
+		for _, pod := range pods.Items {
+			t.Logf("    pod/%s phase=%s finalizers=%v", pod.Name, pod.Status.Phase, pod.Finalizers)
+			for _, cond := range pod.Status.Conditions {
+				t.Logf("      condition: type=%s status=%s reason=%s", cond.Type, cond.Status, cond.Reason)
+			}
+		}
+	}
+
+	// Deployments
+	deployments, err := opts.K8sClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("  Error listing deployments: %v", err)
+	} else {
+		t.Logf("  Deployments (%d):", len(deployments.Items))
+		for _, d := range deployments.Items {
+			t.Logf("    deployment/%s replicas=%d ready=%d finalizers=%v deletionTimestamp=%v",
+				d.Name, d.Status.Replicas, d.Status.ReadyReplicas, d.Finalizers, d.DeletionTimestamp)
+			for _, cond := range d.Status.Conditions {
+				t.Logf("      condition: type=%s status=%s reason=%s message=%s", cond.Type, cond.Status, cond.Reason, cond.Message)
+			}
+		}
+	}
+
+	// ReplicaSets
+	replicaSets, err := opts.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("  Error listing replicasets: %v", err)
+	} else {
+		t.Logf("  ReplicaSets (%d):", len(replicaSets.Items))
+		for _, rs := range replicaSets.Items {
+			t.Logf("    replicaset/%s replicas=%d ready=%d finalizers=%v deletionTimestamp=%v",
+				rs.Name, rs.Status.Replicas, rs.Status.ReadyReplicas, rs.Finalizers, rs.DeletionTimestamp)
+		}
+	}
+
+	// Services
+	services, err := opts.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("  Error listing services: %v", err)
+	} else {
+		t.Logf("  Services (%d):", len(services.Items))
+		for _, svc := range services.Items {
+			t.Logf("    service/%s finalizers=%v deletionTimestamp=%v", svc.Name, svc.Finalizers, svc.DeletionTimestamp)
+		}
+	}
+
+	// Secrets
+	secrets, err := opts.K8sClient.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("  Error listing secrets: %v", err)
+	} else {
+		t.Logf("  Secrets (%d):", len(secrets.Items))
+		for _, s := range secrets.Items {
+			t.Logf("    secret/%s finalizers=%v deletionTimestamp=%v", s.Name, s.Finalizers, s.DeletionTimestamp)
+		}
+	}
+
+	t.Logf("=== End namespace state: %s ===", namespace)
 }
