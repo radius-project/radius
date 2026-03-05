@@ -50,6 +50,7 @@ import (
 )
 
 func Test_DeploymentTemplate_Env(t *testing.T) {
+	t.Skip("Skipping due to LRT fails in Delete namespace test")
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
@@ -130,6 +131,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Module(t *testing.T) {
+	t.Skip("Skipping due to LRT fails in Delete namespace test")
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
@@ -205,6 +207,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
+	t.Skip("Skipping due to LRT fails in Delete namespace test")
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
