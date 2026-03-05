@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -401,6 +402,25 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 }
 
 func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
+	// Wait for all Deployments in the namespace to be gone before issuing the namespace delete.
+	// This avoids the namespace getting stuck in Terminating while pods from Radius-managed
+	// Deployments are still shutting down (Radius marks the operation complete before pods terminate).
+	require.Eventually(t, func() bool {
+		deployments := &appsv1.DeploymentList{}
+		err := opts.Client.List(ctx, deployments, controller_runtime.InNamespace(namespace))
+		if apierrors.IsNotFound(err) {
+			return true
+		}
+		if err != nil {
+			t.Logf("Error listing deployments in namespace %s: %v", namespace, err)
+			return false
+		}
+		if len(deployments.Items) > 0 {
+			t.Logf("Waiting for %d deployment(s) in namespace %s to be deleted", len(deployments.Items), namespace)
+		}
+		return len(deployments.Items) == 0
+	}, time.Minute*3, time.Second*5, "waiting for deployments in namespace %s to be deleted before namespace deletion", namespace)
+
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 	if !apierrors.IsNotFound(err) {
 		require.NoError(t, err, "failed to delete namespace %s", namespace)
