@@ -478,7 +478,7 @@ def gh_assert_branch_not_exists(repo: str, branch: str) -> None:
 
 
 def gh_assert_tag_not_exists(repo: str, tag: str) -> None:
-    data = gh_api_json(f"repos/{repo}/git/refs/tags/{tag}", silent_fail=True)
+    data = gh_api_json(f"repos/{repo}/git/ref/tags/{tag}", silent_fail=True)
     if data is not None:
         error(f"Tag already exists in remote: {tag} in {repo}")
 
@@ -529,7 +529,7 @@ def gh_get_file_content(
 
 def gh_tag_exists(repo: str, tag: str) -> bool:
     """Check whether a tag exists in a remote repository."""
-    data = gh_api_json(f"repos/{repo}/git/refs/tags/{tag}", silent_fail=True)
+    data = gh_api_json(f"repos/{repo}/git/ref/tags/{tag}", silent_fail=True)
     return data is not None
 
 
