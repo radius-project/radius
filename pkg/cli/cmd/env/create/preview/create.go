@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -70,8 +71,12 @@ type Runner struct {
 	EnvironmentName         string
 	ResourceGroupName       string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
-	ConfigFileInterface     framework.ConfigFileInterface
-	ConnectionFactory       connections.Factory
+	// DefaultScopeClientFactory is a client factory scoped to the default resource group.
+	// Singleton recipe packs are always created in this scope. If nil, it will be
+	// initialized automatically.
+	DefaultScopeClientFactory *corerpv20250801.ClientFactory
+	ConfigFileInterface       framework.ConfigFileInterface
+	ConnectionFactory         connections.Factory
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -129,9 +134,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad env create` command.
-
-// Run creates an environment in the specified resource group using the provided environment name and
-// returns an error if unsuccessful.
+//
+// Run creates a new Radius.Core environment with the default recipe pack
+// for core resource types linked to it.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
@@ -141,19 +146,46 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	r.Output.LogInfo("Creating Radius Core Environment...")
+	r.Output.LogInfo("Creating Radius Core Environment %q...", r.EnvironmentName)
 
-	resource := &corerpv20250801.EnvironmentResource{
-		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &corerpv20250801.EnvironmentProperties{},
-	}
-
-	_, err := r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.EnvironmentName, *resource, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
-
+	// Ensure the default resource group exists before creating recipe packs in it.
+	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
-	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.ResourceGroupName)
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
+		return err
+	}
 
+	// Create the default recipe pack in the default resource group.
+	// The default pack lives in the default scope regardless of the current workspace scope.
+	if r.DefaultScopeClientFactory == nil {
+		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return err
+		}
+		r.DefaultScopeClientFactory = defaultClientFactory
+	}
+
+	defaultPack := recipepack.NewDefaultRecipePackResource()
+	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
+	if err != nil {
+		return err
+	}
+
+	resource := &corerpv20250801.EnvironmentResource{
+		Location: to.Ptr(v1.LocationGlobal),
+		Properties: &corerpv20250801.EnvironmentProperties{
+			RecipePacks: []*string{to.Ptr(recipepack.DefaultRecipePackID())},
+		},
+	}
+
+	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, *resource, nil)
+	if err != nil {
+		return err
+	}
+
+	r.Output.LogInfo("Successfully created environment %q in resource group %q with default Kubernetes recipe packs.", r.EnvironmentName, r.ResourceGroupName)
 	return nil
 }
