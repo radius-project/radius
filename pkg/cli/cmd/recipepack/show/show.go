@@ -52,7 +52,7 @@ rad recipe-show show my-recipe-pack --group my-group
 		RunE: framework.RunCommand(runner),
 	}
 
-	commonflags.AddOutputFlagWithPlainText(cmd)
+	commonflags.AddOutputFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 
@@ -130,7 +130,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	if r.Format != "json" {
+	if r.Format != output.FormatJson {
 		err = r.Output.WriteFormatted(output.FormatTable, recipePack, objectformats.GetRecipePackTableFormat())
 		if err != nil {
 			return err
