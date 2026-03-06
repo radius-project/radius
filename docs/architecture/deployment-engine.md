@@ -135,13 +135,13 @@ sequenceDiagram
     Bicep-->>CLI: ARM JSON template
     CLI->>CLI: Inject environment/application params
     CLI->>CLI: Build ProviderConfig (Radius, Azure, AWS scopes)
-    CLI->>UCP: PUT /planes/radius/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+    CLI->>UCP: PUT /planes/radius/local/resourceGroups/{rg}/providers/Microsoft.Resources/deployments/{name}
     UCP->>DE: Proxy PUT request
     DE->>DE: Evaluate template expressions
     DE->>DE: Resolve resource dependencies
 
     loop For each resource in template
-        DE->>UCP: PUT /planes/radius/local/resourcegroups/{rg}/providers/{type}/{name}
+        DE->>UCP: PUT /planes/radius/local/resourceGroups/{rg}/providers/{type}/{name}
         UCP->>RP: Route to appropriate RP
         RP-->>UCP: Resource created/updated
         UCP-->>DE: Response
@@ -177,7 +177,7 @@ sequenceDiagram
 3. A `ResourceDeploymentsClient` sends a PUT request to UCP at a path like:
 
    ```text
-   /planes/radius/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/rad-deploy-{uuid}
+   /planes/radius/local/resourceGroups/{rg}/providers/Microsoft.Resources/deployments/rad-deploy-{uuid}
    ```
 
    The request body includes the compiled template, parameters, and provider
@@ -194,7 +194,7 @@ sequenceDiagram
 
 6. UCP routes each resource request to the appropriate resource provider (Core
    RP, Dynamic RP, or portable resource providers) using `ValidateDownstream`
-   ([pkg/ucp/frontend/controller/resourcegroups/util.go](../../pkg/ucp/frontend/controller/resourcegroups/util.go)).
+   ([pkg/ucp/frontend/controller/resourceGroups/util.go](../../pkg/ucp/frontend/controller/resourceGroups/util.go)).
 
 7. The CLI polls the deployment operations endpoint to display progress to the
    user. Nested Bicep modules are tracked recursively.
@@ -379,7 +379,7 @@ stateDiagram-v2
    pattern:
 
    ```text
-   /planes/radius/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}
+   /planes/radius/local/resourceGroups/{rg}/providers/Microsoft.Resources/deployments/{name}
    ```
 
 2. **Accepted (202)**: UCP proxies the request to the deployment engine, which
@@ -580,8 +580,13 @@ In a production Kubernetes cluster, the deployment engine runs as:
 
 - **Deployment**: `bicep-de` with 1 replica
 - **Service**: `bicep-de` on port 6443
-- **ServiceAccount**: `bicep-de` with cluster-admin privileges (needed to
-  manage Kubernetes resources)
+- **ServiceAccount**: `bicep-de` with cluster-admin privileges — required
+  because Bicep templates can use the Kubernetes extensibility provider
+  (`extension kubernetes`) to deploy arbitrary Kubernetes resource types
+  (Deployments, Services, Secrets, CRDs, etc.) directly to the Kubernetes
+  API, bypassing UCP. Since the set of resource types and target namespaces
+  is determined by user templates and is unbounded, a fixed set of RBAC
+  rules is not feasible.
 - **ConfigMap**: `bicep-de-config` with ASP.NET Core app settings
 
 The deployment engine communicates with UCP via the `RADIUSBACKENDURL`
