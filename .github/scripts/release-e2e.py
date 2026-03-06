@@ -1855,7 +1855,7 @@ def run_final_flow() -> None:
     # Steps 2-5: prepare, branch, commit, PR
     _create_versioning_pr(
         extra_files={release_notes_repo_path: release_notes_content},
-        pr_title=f"Release v{cfg.version}",
+        pr_title=f"chore(release): v{cfg.version}",
         pr_body=f"Automated final release preparation for v{cfg.version}.",
     )
 
