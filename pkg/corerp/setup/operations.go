@@ -259,4 +259,64 @@ var operationList = []v1.Operation{
 		},
 		IsDataAction: false,
 	},
+	{
+		Name: "Radius.Core/terraformSettings/read",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "terraformSettings",
+			Operation:   "Get/List terraform settings",
+			Description: "Gets/Lists terraform settings resource(s).",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/terraformSettings/write",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "terraformSettings",
+			Operation:   "Create/Update terraform settings",
+			Description: "Creates or updates a terraform settings resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/terraformSettings/delete",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "terraformSettings",
+			Operation:   "Delete terraform settings",
+			Description: "Deletes a terraform settings resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/bicepSettings/read",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "bicepSettings",
+			Operation:   "Get/List bicep settings",
+			Description: "Gets/Lists bicep settings resource(s).",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/bicepSettings/write",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "bicepSettings",
+			Operation:   "Create/Update bicep settings",
+			Description: "Creates or updates a bicep settings resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/bicepSettings/delete",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "bicepSettings",
+			Operation:   "Delete bicep settings",
+			Description: "Deletes a bicep settings resource.",
+		},
+		IsDataAction: false,
+	},
 }
