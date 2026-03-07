@@ -91,23 +91,34 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-  # Approval gate for external contributors. This job uses GitHub Environment protection
-  # to require manual approval before running tests on PRs from non-members.
-  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
-  # - Dependabot: Tests run immediately
-  # - External contributors: Requires approval via GitHub UI button
+  # External contributor approval gate using GitHub Environment protection rules.
+  #
+  # How it works:
+  #   - For pull_request_target: Uses a conditional environment to gate external PRs.
+  #     Trusted users (org OWNER/MEMBER/COLLABORATOR and dependabot) use the
+  #     'pr-trusted' environment (no protection rules, runs immediately).
+  #     External contributors use 'external-contributor-approval' (requires manual approval).
+  #   - For all other events (schedule, workflow_dispatch, repository_dispatch):
+  #     This job is skipped entirely (no approval needed).
+  #
+  # Requirements:
+  #   1. 'external-contributor-approval' environment: configured with required reviewers
+  #   2. 'pr-trusted' environment: configured with NO protection rules (auto-approves)
   approval-gate:
     name: Approval Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # Only run for external contributors on pull_request_target events.
-    # Trusted users (dependabot, org members) skip this job entirely.
-    # External contributors require approval via 'external-contributor-approval' environment.
-    if: |
-      github.event_name == 'pull_request_target' &&
-      github.actor != 'dependabot[bot]' &&
-      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
-    environment: external-contributor-approval
+    if: github.event_name == 'pull_request_target'
+    # Trusted users get 'pr-trusted' (no protection rules, instant approval).
+    # External contributors get 'external-contributor-approval' (requires manual review).
+    environment: >-
+      ${{
+        (github.actor == 'dependabot[bot]' ||
+         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+                  github.event.pull_request.author_association))
+        && 'pr-trusted'
+        || 'external-contributor-approval'
+      }}
     permissions: {}
     steps:
       - name: Approved
@@ -116,12 +127,7 @@ jobs:
   setup:
     name: Setup
     needs: [approval-gate]
-    # Run for all events. For PRs, approval-gate either succeeds (external contributors approved)
-    # or is skipped (trusted users like org members and dependabot).
-    if: |
-      always() &&
-      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
-      (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
+    if: ${{ !cancelled() && needs.approval-gate.result != 'failure' && (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
