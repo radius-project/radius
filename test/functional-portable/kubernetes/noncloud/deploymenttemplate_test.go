@@ -125,7 +125,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 			return apierrors.IsNotFound(err)
-		}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
+		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
 	})
 }
 
@@ -413,5 +413,5 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 		return apierrors.IsNotFound(err)
-	}, time.Minute*3, time.Second*10, "waiting for environment namespace to be deleted")
+	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
 }

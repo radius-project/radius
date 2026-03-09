@@ -354,6 +354,8 @@ func RequireAzureSubscriptionId(cmd *cobra.Command) (string, error) {
 
 // RequireOutput reads the output format flag, normalizes it (trim and lowercase), and validates
 // it against the supported formats. Returns an error if the format is not supported.
+//
+// For backwards compatibility, "plain-text" is silently normalized to "table".
 func RequireOutput(cmd *cobra.Command) (string, error) {
 	format, err := cmd.Flags().GetString("output")
 	if err != nil {
@@ -366,14 +368,16 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 		return output.DefaultFormat, nil
 	}
 
-	allFormats := output.AllFormats()
-	for _, f := range allFormats {
+	// Backwards compatibility: accept deprecated aliases silently.
+	format = output.NormalizeFormat(format)
+
+	for _, f := range output.SupportedFormats() {
 		if format == f {
 			return format, nil
 		}
 	}
 
-	return "", clierrors.Message("unsupported output format %q, supported formats are: %s", format, strings.Join(allFormats, ", "))
+	return "", clierrors.Message("unsupported output format %q, supported formats are: %s", format, strings.Join(output.SupportedFormats(), ", "))
 }
 
 // RequireWorkspace is used by commands that require an existing workspace either set as the default,
