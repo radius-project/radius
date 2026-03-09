@@ -102,6 +102,21 @@ path/to/file.ext
 
 Include an overall PR assessment summarizing the key findings and recommendations.
 
+### Step 4: Assess Contributor Documentation Impact
+
+Use the [Contributing Docs Updater](../skills/contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
+
+Common triggers for doc updates:
+
+- New or changed CLI commands/flags
+- Build system changes (Makefile targets, scripts)
+- New packages, directories, or commands
+- Test framework or workflow changes
+- Configuration or prerequisite changes
+- Architecture changes
+
+If doc updates are needed, note which docs to update and what changes are required in your review.
+
 ### Best Practices for Effective Reviews
 
 1. **Clear titles**: Use descriptive headings for different review sections
