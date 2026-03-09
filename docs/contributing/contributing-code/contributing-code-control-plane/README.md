@@ -2,8 +2,7 @@
 
 The Radius control-plane services are the microservices that run to deploy and manage applications and cloud resources. This page is an index of relevant topics for developing with the control-plane.
 
-If you need code-oriented architecture context before changing the services, see
-the architecture set in [../../../architecture/README.md](../../../architecture/README.md).
+If you need code-oriented architecture context before changing the services, see the architecture docs in [../../../architecture/README.md](../../../architecture/README.md).
 The most relevant pages are the service interaction map, shared runtime, UCP,
 `dynamic-rp`, controller, and CLI architecture docs.
 
