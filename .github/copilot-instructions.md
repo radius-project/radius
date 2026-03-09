@@ -40,6 +40,7 @@ The following instruction files are available:
 These skills are available for specific Radius tasks under the `.github/skills/` directory.
 
 - **[Architecture Documentation](skills/architecture-documenter/SKILL.md)** - Document and diagram application architecture
+- **[Contributing Docs Updater](skills/contributing-docs-updater/SKILL.md)** - Update, create, review, and find gaps in contributor documentation
 
 ## How to Use
 
