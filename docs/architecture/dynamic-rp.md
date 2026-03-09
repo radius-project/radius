@@ -4,8 +4,8 @@
 have their own dedicated provider implementation in this repository.
 
 This process owns generic resource lifecycle handling for dynamic types. It is
-the place for shared generic provider behavior, not for specialized logic that
-belongs in a dedicated Applications.* provider.
+the main place for authoring and handling Radius resource types through a
+generic provider model.
 
 ## Entry Points
 
@@ -48,15 +48,14 @@ The process starts in [cmd/dynamic-rp/cmd/root.go](../../cmd/dynamic-rp/cmd/root
 which reads config, constructs runtime options, and builds a host through
 [pkg/dynamicrp/server/server.go](../../pkg/dynamicrp/server/server.go).
 
-The important distinction from `applications-rp` is not “simpler” but
-“generic.” Dynamic RP exists so Radius can manage types without a bespoke RP
-implementation, so its route and backend layers need to stay type-agnostic.
+Dynamic RP exists so Radius resource types can be authored without a bespoke RP
+implementation for each type, so its route and backend layers need to stay
+type-agnostic.
 
 Change `dynamic-rp` when the behavior applies across dynamic resource types,
 such as generic lifecycle orchestration, shared persistence behavior, generic
-async handling, or common validation and metadata behavior. If the behavior is
-really specific to one Applications.* resource, it probably belongs in a
-dedicated RP.
+async handling, common validation and metadata behavior, or new Radius resource
+type authoring patterns.
 
 ## Invariants And Constraints
 
@@ -160,5 +159,4 @@ instead of a resource-specific registration table.
 ## Related Docs
 
 - [service-interaction-map.md](service-interaction-map.md)
-- [applications-rp.md](applications-rp.md)
 - [state-persistence.md](state-persistence.md)

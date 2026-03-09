@@ -5,7 +5,7 @@ for Radius. It watches cluster resources, reconciles them, and drives Radius
 APIs where Kubernetes-native automation is required.
 
 The controller owns reconciliation and webhook behavior. It is not the primary
-home of Applications.Core business logic or UCP routing logic.
+home of resource-type authoring or UCP routing logic.
 
 ## Entry Points
 

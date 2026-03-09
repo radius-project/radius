@@ -8,7 +8,6 @@ service.
 graph TD
     CLI[rad CLI\ncmd/rad]
     UCP[UCP\ncmd/ucpd]
-    APPRP[applications-rp\ncmd/applications-rp]
     DYNRP[dynamic-rp\ncmd/dynamic-rp]
     CTRL[controller\ncmd/controller]
     DE[deployment-engine\nexternal repo]
@@ -19,18 +18,13 @@ graph TD
 
     CLI --> UCP
     CLI --> K8S
-    UCP --> APPRP
     UCP --> DYNRP
     UCP --> K8S
-    APPRP --> DB
-    APPRP --> Q
-    APPRP --> S
     DYNRP --> DB
     DYNRP --> Q
     DYNRP --> S
     CTRL --> K8S
     CTRL --> UCP
-    APPRP --> DE
     DYNRP --> DE
 ```
 
@@ -40,14 +34,17 @@ graph TD
   builds clients, and invokes Radius APIs or Kubernetes/Helm operations.
 - **`ucpd`** is the Universal Control Plane. It is the main routing point for
   control-plane API requests.
-- **`applications-rp`** hosts the Applications.Core resource provider and the
-  portable resource providers that are wired into the same process.
-- **`dynamic-rp`** handles resource types that do not have a dedicated provider
-  implementation.
+- **`dynamic-rp`** is the main authoring surface for Radius resource types and
+  generic resource lifecycle behavior.
 - **`controller`** runs Kubernetes reconcilers and webhooks for Radius custom
   resources and related workflows.
 - **Deployment Engine** is not implemented in this repository, but several
   flows cross that boundary.
+
+This map is intentionally focused on the current contributor path for new work.
+Some legacy provider processes still exist in the runtime, but new authoring
+work should target Radius resource types through `dynamic-rp`.
+`dynamic-rp`.
 
 ## Main Runtime Patterns
 
@@ -62,7 +59,6 @@ cluster for install/debug workflows.
 UCP receives the request, identifies the target plane or provider, and either:
 
 - serves UCP-native behavior itself
-- proxies to `applications-rp`
 - proxies to `dynamic-rp`
 - adapts the request for an external control plane such as AWS
 
@@ -92,7 +88,7 @@ sequenceDiagram
     participant User
     participant CLI as rad
     participant UCP
-    participant RP as applications-rp or dynamic-rp
+  participant RP as dynamic-rp
     participant Queue
     participant Worker as async worker
 
@@ -126,9 +122,7 @@ sequenceDiagram
 
 - If the change is about **routing, plane selection, or protocol translation**,
   start in UCP.
-- If the change is about **Applications.Core or portable resource behavior**,
-  start in `applications-rp`.
-- If the change is about **generic resource lifecycle for non-dedicated types**,
+- If the change is about **authoring or handling Radius resource types**,
   start in `dynamic-rp`.
 - If the change is about **Kubernetes watch/reconcile/webhook behavior**,
   start in `controller`.
@@ -139,8 +133,6 @@ sequenceDiagram
 
 - [cmd/ucpd/main.go](../../cmd/ucpd/main.go)
 - [cmd/ucpd/cmd/root.go](../../cmd/ucpd/cmd/root.go)
-- [cmd/applications-rp/main.go](../../cmd/applications-rp/main.go)
-- [cmd/applications-rp/cmd/root.go](../../cmd/applications-rp/cmd/root.go)
 - [cmd/dynamic-rp/main.go](../../cmd/dynamic-rp/main.go)
 - [cmd/dynamic-rp/cmd/root.go](../../cmd/dynamic-rp/cmd/root.go)
 - [cmd/controller/main.go](../../cmd/controller/main.go)

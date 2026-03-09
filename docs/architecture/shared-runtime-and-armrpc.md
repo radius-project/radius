@@ -8,9 +8,8 @@ operation machinery.
 The shared runtime provides a consistent model for loading service
 configuration, building long-running services, wiring HTTP servers and
 middleware, registering API handlers by namespace and operation, and processing
-ARM-style async operations. It exists so UCP, `applications-rp`, and
-`dynamic-rp` do not each invent their own hosting, routing, validation, and
-async patterns.
+ARM-style async operations. It exists so UCP and `dynamic-rp` do not each
+invent their own hosting, routing, validation, and async patterns.
 
 ## Quick Reference
 
@@ -86,7 +85,6 @@ Each service root command follows the same general pattern:
 Examples:
 
 - [cmd/ucpd/cmd/root.go](../../cmd/ucpd/cmd/root.go)
-- [cmd/applications-rp/cmd/root.go](../../cmd/applications-rp/cmd/root.go)
 - [cmd/dynamic-rp/cmd/root.go](../../cmd/dynamic-rp/cmd/root.go)
 
 For services using the standard host options path, the main constructor is
@@ -103,7 +101,7 @@ defines a small but important contract:
 - shutdown is coordinated through context cancellation and a timeout
 
 This abstraction is what lets one process host multiple subsystems, such as the
-API service and async worker inside `applications-rp`.
+API service and async worker inside `dynamic-rp`.
 
 ## HTTP Runtime Model
 
@@ -208,9 +206,6 @@ more specific controller.
 
 - UCP uses the shared hosting and HTTP runtime patterns, but its routing layer
   is specialized around module dispatch, proxying, and adaptation.
-- `applications-rp` is the clearest full example: [pkg/server/apiservice.go](../../pkg/server/apiservice.go)
-  creates the shared API service and [pkg/server/asyncworker.go](../../pkg/server/asyncworker.go)
-  creates the worker using the same builder registrations.
 - `dynamic-rp` uses the same runtime concepts, but applies them to generic
   resource handling rather than a multi-namespace hosted-provider process.
 
@@ -267,7 +262,6 @@ once.
 - `go test ./pkg/armrpc/...`
 - `go test ./pkg/server/...`
 - `go test ./pkg/ucp/...`
-- `go test ./pkg/corerp/...`
 - `go test ./pkg/dynamicrp/...`
 
 If the change is broad enough to affect shared process lifecycle or cross-cutting
@@ -290,6 +284,5 @@ HTTP behavior, also run the repo unit-test target documented in
 
 - [service-interaction-map.md](service-interaction-map.md)
 - [ucp.md](ucp.md)
-- [applications-rp.md](applications-rp.md)
 - [dynamic-rp.md](dynamic-rp.md)
 - [state-persistence.md](state-persistence.md)

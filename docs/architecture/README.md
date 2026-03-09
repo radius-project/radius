@@ -16,10 +16,8 @@ change-safety guidance.
   common hosting, HTTP, builder, and async-operation framework used across the
   services.
 - [ucp.md](ucp.md) explains how UCP routes and adapts requests.
-- [applications-rp.md](applications-rp.md) explains the main Applications.*
-  resource provider process.
 - [dynamic-rp.md](dynamic-rp.md) explains the generic resource provider used for
-  types without a dedicated implementation.
+  authoring and handling Radius resource types.
 - [deployment-engine.md](deployment-engine.md) explains the deployment engine
   that processes Bicep/ARM deployments.
 - [controller.md](controller.md) explains the Kubernetes controller process and
@@ -36,12 +34,11 @@ If you are new to the codebase, read these in order:
 1. [service-interaction-map.md](service-interaction-map.md)
 2. [shared-runtime-and-armrpc.md](shared-runtime-and-armrpc.md)
 3. [ucp.md](ucp.md)
-4. [applications-rp.md](applications-rp.md)
-5. [dynamic-rp.md](dynamic-rp.md)
-6. [deployment-engine.md](deployment-engine.md)
-7. [controller.md](controller.md)
-8. [rad-cli.md](rad-cli.md)
-9. [state-persistence.md](state-persistence.md)
+4. [dynamic-rp.md](dynamic-rp.md)
+5. [deployment-engine.md](deployment-engine.md)
+6. [controller.md](controller.md)
+7. [rad-cli.md](rad-cli.md)
+8. [state-persistence.md](state-persistence.md)
 
 ## Related Material
 

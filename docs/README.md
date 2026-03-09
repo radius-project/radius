@@ -6,8 +6,9 @@ The documentation for Radius is at https://docs.radapp.io, with the source in th
 
 This repository also contains code-oriented architecture notes for contributors
 under [architecture](./architecture/README.md). These documents focus on the
-service binaries, the CLI, and the shared runtime patterns implemented in this
-repo.
+current service binaries, the CLI, and the shared runtime patterns implemented
+in this repo, with current authoring guidance centered on dynamic resource
+types.
 
 ## Contributing to Radius
 

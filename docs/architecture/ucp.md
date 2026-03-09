@@ -6,8 +6,8 @@ reverse-proxies the request, or adapts it to an external system.
 
 UCP owns request routing, plane-aware addressing, parts of protocol
 translation, and shared control-plane concerns such as API version handling. It
-is not the place for Applications.Core business logic or Kubernetes
-reconciliation logic.
+is not the place for resource-type authoring or Kubernetes reconciliation
+logic.
 
 ## Entry Points
 
@@ -67,8 +67,8 @@ simple proxying.
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
-- Business logic for Applications.* resources should remain in the provider
-  processes.
+- Resource-type authoring logic should remain in provider processes, primarily
+  `dynamic-rp`.
 - Resource ID parsing and plane resolution need to stay consistent across all
   entry points.
 - Changes in proxy behavior often require checking call flows, headers, and API
@@ -144,8 +144,8 @@ graph TD
 
 The important static seam is `root -> host -> frontend/api module dispatch`
 versus `backend worker` and `initializer`. UCP does not use the builder-driven
-namespace model used by `applications-rp`; it dispatches through plane modules
-and then drops into controller, proxy, and resource-ID logic.
+namespace model used by the generic provider; it dispatches through plane
+modules and then drops into controller, proxy, and resource-ID logic.
 
 ## Representative Flow
 
