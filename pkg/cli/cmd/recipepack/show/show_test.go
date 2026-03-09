@@ -83,9 +83,6 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	recipePack := corerpv20250801preview.RecipePackResource{
 		Name: to.Ptr("sample-pack"),
 		Properties: &corerpv20250801preview.RecipePackProperties{
@@ -101,40 +98,84 @@ func Test_Run(t *testing.T) {
 		},
 	}
 
-	appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appMgmtClient.EXPECT().
-		GetRecipePack(gomock.Any(), "sample-pack").
-		Return(recipePack, nil).
-		Times(1)
+	t.Run("json format", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-	workspace := &workspaces.Workspace{
-		Connection: map[string]any{
-			"kind":    "kubernetes",
-			"context": "kind-kind",
-		},
-		Name:  "kind-kind",
-		Scope: "/planes/radius/local/resourceGroups/test-group",
-	}
+		appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appMgmtClient.EXPECT().
+			GetRecipePack(gomock.Any(), "sample-pack").
+			Return(recipePack, nil).
+			Times(1)
 
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
-		Workspace:         workspace,
-		Output:            outputSink,
-		RecipePackName:    "sample-pack",
-		Format:            "json",
-	}
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
 
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			RecipePackName:    "sample-pack",
+			Format:            "json",
+		}
 
-	expected := []any{
-		output.FormattedOutput{
-			Format:  "json",
-			Obj:     recipePack,
-			Options: objectformats.GetRecipePackTableFormat(),
-		},
-	}
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
 
-	require.Equal(t, expected, outputSink.Writes)
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "json",
+				Obj:     recipePack,
+				Options: objectformats.GetRecipePackTableFormat(),
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("table format", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appMgmtClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appMgmtClient.EXPECT().
+			GetRecipePack(gomock.Any(), "sample-pack").
+			Return(recipePack, nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appMgmtClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			RecipePackName:    "sample-pack",
+			Format:            "table",
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		// Table format produces a table write followed by display (LogInfo) output
+		require.NotEmpty(t, outputSink.Writes)
+		firstWrite, ok := outputSink.Writes[0].(output.FormattedOutput)
+		require.True(t, ok)
+		require.Equal(t, "table", firstWrite.Format)
+		require.Equal(t, recipePack, firstWrite.Obj)
+	})
 }
