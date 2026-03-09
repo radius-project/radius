@@ -1,0 +1,49 @@
+# Service Architecture
+
+This folder contains living architecture documentation for the executables and
+shared runtime patterns implemented in this repository.
+
+These docs are for both human contributors and AI agents. Each primary service
+page is code-oriented and includes the entry points, the packages that matter
+most, one package dependency view, one representative flow, and focused
+change-safety guidance.
+
+## Start Here
+
+- [service-interaction-map.md](service-interaction-map.md) explains how the main
+  binaries fit together.
+- [shared-runtime-and-armrpc.md](shared-runtime-and-armrpc.md) explains the
+  common hosting, HTTP, builder, and async-operation framework used across the
+  services.
+- [ucp.md](ucp.md) explains how UCP routes and adapts requests.
+- [applications-rp.md](applications-rp.md) explains the main Applications.*
+  resource provider process.
+- [dynamic-rp.md](dynamic-rp.md) explains the generic resource provider used for
+  types without a dedicated implementation.
+- [controller.md](controller.md) explains the Kubernetes controller process and
+  its reconcilers.
+- [rad-cli.md](rad-cli.md) explains how the CLI is wired and how commands reach
+  backend services.
+- [state-persistence.md](state-persistence.md) explains the shared database,
+  secret, and queue abstractions used by the control-plane services.
+
+## Reading Order
+
+If you are new to the codebase, read these in order:
+
+1. [service-interaction-map.md](service-interaction-map.md)
+2. [shared-runtime-and-armrpc.md](shared-runtime-and-armrpc.md)
+3. [ucp.md](ucp.md)
+4. [applications-rp.md](applications-rp.md)
+5. [dynamic-rp.md](dynamic-rp.md)
+6. [controller.md](controller.md)
+7. [rad-cli.md](rad-cli.md)
+8. [state-persistence.md](state-persistence.md)
+
+## Related Material
+
+- UCP-specific background and older walkthroughs live in [../ucp](../ucp).
+- contributor-oriented operational setup lives in
+  [../contributing](../contributing).
+- larger design proposals and historical decisions live in the external
+  `radius-project/design-notes` repository.
