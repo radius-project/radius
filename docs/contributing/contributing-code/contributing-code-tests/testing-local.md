@@ -48,7 +48,7 @@ Note, this only applies when we want to update the app core image, if we need to
    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart \
      --set global.imageRegistry=ghcr.io/your-registry \
      --set global.imageTag=latest \
-     --set-string 'global.imagePullSecrets[0].name=regcred'
+     --set 'global.imagePullSecrets[0].name=regcred'
    ```
 
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.

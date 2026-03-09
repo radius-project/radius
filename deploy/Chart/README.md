@@ -139,7 +139,7 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 ```console
 rad install kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io \
-  --set-string 'global.imagePullSecrets[0].name=regcred'
+  --set 'global.imagePullSecrets[0].name=regcred'
 ```
 
 #### Air-gapped Environment Setup
