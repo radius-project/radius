@@ -44,6 +44,9 @@ These skills are available for specific Radius tasks under the `.github/skills/`
 - **[Build and Push Container Images](skills/radius-build-images/SKILL.md)** - Build and push Radius Docker images to a registry
 - **[Install Radius from Custom Images](skills/radius-install-custom/SKILL.md)** - Install Radius on Kubernetes from custom-built images
 - **[Contributing Docs Updater](skills/contributing-docs-updater/SKILL.md)** - Update, create, review, and find gaps in contributor documentation
+- **[Build Radius CLI](skills/radius-build-cli/SKILL.md)** - Build the `rad` CLI binary from source
+- **[Build and Push Container Images](skills/radius-build-images/SKILL.md)** - Build and push Radius Docker images to a registry
+- **[Install Radius from Custom Images](skills/radius-install-custom/SKILL.md)** - Install Radius on Kubernetes from custom-built images
 
 ## How to Use
 
