@@ -1,8 +1,7 @@
 # Deployment Engine Architecture
 
 The **Deployment Engine** (DE) is the component in Radius responsible for
-processing ARM/Bicep template deployments. It is an external service (not
-written in Go) that evaluates ARM JSON templates — the compiled output of Bicep
+processing ARM/Bicep template deployments. It is an external service (written in C#) that evaluates ARM JSON templates — the compiled output of Bicep
 — and orchestrates the creation, update, and deletion of the resources defined
 within them. The deployment engine acts as a bridge between declarative template
 definitions and the imperative resource operations handled by UCP and the
@@ -21,18 +20,18 @@ graph TD
     subgraph "Radius Control Plane"
         UCP["UCP<br/>cmd/ucpd"]
         Controller["Kubernetes Controller<br/>cmd/controller"]
-    end
 
-    subgraph "Deployment Engine"
-        DE["Deployment Engine<br/>(bicep-de container)"]
-    end
-
-    subgraph "Resource Providers"
-        subgraph "Applications RP (cmd/applications-rp)"
-            CoreRP["Core RP<br/>(Applications.Core)"]
-            PortableRP["Portable RPs<br/>(Dapr, Datastores, Messaging)"]
+        subgraph "Deployment Engine"
+            DE["Deployment Engine<br/>(bicep-de container)"]
         end
-        DynRP["Dynamic RP<br/>cmd/dynamic-rp"]
+
+        subgraph "Resource Providers"
+            subgraph "Applications RP (cmd/applications-rp)"
+                CoreRP["Core RP<br/>(Applications.Core)"]
+                PortableRP["Portable RPs<br/>(Dapr, Datastores, Messaging)"]
+            end
+            DynRP["Dynamic RP<br/>cmd/dynamic-rp"]
+        end
     end
 
     subgraph "External Systems"
