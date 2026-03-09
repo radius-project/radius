@@ -1,6 +1,6 @@
 # Writing Guidelines for Contributor Documentation
 
-Standards for creating and updating docs in `docs/contributing/`.
+Standards for creating and updating contributor docs, including `CONTRIBUTING.md`, `docs/contributing/`, and `docs/architecture/`.
 
 ## Content Types
 
