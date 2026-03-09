@@ -43,30 +43,23 @@ invent their own hosting, routing, validation, and async patterns.
 
 ```mermaid
 graph TD
-    Config[config file + env]
-    Options[hostoptions]
-    Root[service root command]
-    Host[hosting.Host]
-    HTTP[frontend server]
-    Builder[builder.Builder]
-    API[API controllers]
-    Status[statusmanager]
-    Queue[(queue.Client)]
-    Worker[async worker]
-    AsyncCtrl[async controllers]
-    DB[(database.Client)]
+    Config[config file + env] --> Options[hostoptions]
+    Options --> Root[service root command]
+    Root --> Host[hosting.Host]
 
-    Config --> Options
-    Options --> Root
-    Root --> Host
-    Host --> HTTP
-    HTTP --> Builder
-    Builder --> API
-    API --> Status
+    Host --> HTTP[frontend server]
+    Host --> Worker[async worker]
+
+    Builder[builder.Builder] -.registers.-> HTTP
+    Builder -.registers.-> Worker
+
+    HTTP --> API[API controllers]
+    API --> DB[(database.Client)]
+    API --> Status[statusmanager]
     Status --> DB
-    Status --> Queue
+    Status --> Queue[(queue.Client)]
     Queue --> Worker
-    Worker --> AsyncCtrl
+    Worker --> AsyncCtrl[async controllers]
     AsyncCtrl --> DB
 ```
 

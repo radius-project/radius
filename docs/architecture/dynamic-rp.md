@@ -84,13 +84,13 @@ type authoring patterns.
 ```mermaid
 graph TD
   Root[cmd/dynamic-rp/cmd]
-  Options[pkg/dynamicrp\nconfig and options]
-  Host[pkg/dynamicrp/server\nplus hosting/components]
+  Options["pkg/dynamicrp<br/>config and options"]
+  Host["pkg/dynamicrp/server<br/>plus hosting/components"]
   Frontend[pkg/dynamicrp/frontend]
   Backend[pkg/dynamicrp/backend]
   BackendController[pkg/dynamicrp/backend/controller]
   API[pkg/dynamicrp/api]
-  DataModel[pkg/dynamicrp/datamodel\nand converter]
+  DataModel["pkg/dynamicrp/datamodel<br/>and converter"]
   Shared[pkg/armrpc + pkg/components + middleware]
   UCPClients[pkg/ucp/api/v20231001preview + pkg/sdk]
   Crypto[pkg/crypto/encryption]

@@ -6,11 +6,12 @@ service.
 
 ```mermaid
 graph TD
-    CLI[rad CLI\ncmd/rad]
-    UCP[UCP\ncmd/ucpd]
-    DYNRP[dynamic-rp\ncmd/dynamic-rp]
-    CTRL[controller\ncmd/controller]
-    DE[deployment-engine\nexternal repo]
+    CLI["rad CLI<br/>cmd/rad"]
+    UCP["UCP<br/>cmd/ucpd"]
+    APPRP["applications-rp<br/>cmd/applications-rp"]
+    DYNRP["dynamic-rp<br/>cmd/dynamic-rp"]
+    CTRL["controller<br/>cmd/controller"]
+    DE["deployment-engine<br/>external repo"]
     DB[(database.Client)]
     Q[(queue.Client)]
     S[(secret.Client)]
@@ -18,14 +19,22 @@ graph TD
 
     CLI --> UCP
     CLI --> K8S
+    UCP --> APPRP
     UCP --> DYNRP
+    UCP --> DE
     UCP --> K8S
+    UCP --> DB
+    UCP --> Q
+    UCP --> S
+    APPRP --> DB
+    APPRP --> Q
+    APPRP --> S
     DYNRP --> DB
     DYNRP --> Q
     DYNRP --> S
     CTRL --> K8S
     CTRL --> UCP
-    DYNRP --> DE
+    DE --> UCP
 ```
 
 ## Components
@@ -34,17 +43,20 @@ graph TD
   builds clients, and invokes Radius APIs or Kubernetes/Helm operations.
 - **`ucpd`** is the Universal Control Plane. It is the main routing point for
   control-plane API requests.
+- **`applications-rp`** hosts the Applications.Core resource provider and the
+  portable resource providers (Dapr, Datastores, Messaging) in the same process.
 - **`dynamic-rp`** is the main authoring surface for Radius resource types and
   generic resource lifecycle behavior.
 - **`controller`** runs Kubernetes reconcilers and webhooks for Radius custom
   resources and related workflows.
 - **Deployment Engine** is not implemented in this repository, but several
-  flows cross that boundary.
+  flows cross that boundary. UCP proxies deployment requests to the deployment
+  engine, and the deployment engine calls back to UCP for each resource it
+  needs to create or update.
 
 This map is intentionally focused on the current contributor path for new work.
 Some legacy provider processes still exist in the runtime, but new authoring
 work should target Radius resource types through `dynamic-rp`.
-`dynamic-rp`.
 
 ## Main Runtime Patterns
 
@@ -59,12 +71,14 @@ cluster for install/debug workflows.
 UCP receives the request, identifies the target plane or provider, and either:
 
 - serves UCP-native behavior itself
-- proxies to `dynamic-rp`
+- proxies to `applications-rp` for Applications.Core and portable resource types
+- proxies to `dynamic-rp` for dynamically registered resource types
+- proxies deployment requests to the deployment engine
 - adapts the request for an external control plane such as AWS
 
 ### Shared state model
 
-The provider processes share pluggable abstractions for:
+UCP and the provider processes share pluggable abstractions for:
 
 - resource state in `database.Client`
 - async work in `queue.Client`
@@ -88,16 +102,21 @@ sequenceDiagram
     participant User
     participant CLI as rad
     participant UCP
-  participant RP as dynamic-rp
+    participant DE as deployment-engine
+    participant RP as dynamic-rp
     participant Queue
     participant Worker as async worker
 
     User->>CLI: run command
-    CLI->>UCP: send control-plane request
-    UCP->>RP: route or proxy request
+    CLI->>UCP: send deployment request
+    UCP->>DE: proxy to deployment engine
+    DE->>UCP: PUT each resource in template
+    UCP->>RP: route to resource provider
     RP->>Queue: enqueue async work if needed
     RP-->>UCP: return ARM-style async response
-    UCP-->>CLI: return status URL / operation state
+    UCP-->>DE: resource result
+    DE-->>UCP: deployment complete
+    UCP-->>CLI: return status / operation state
     Worker->>RP: process queued operation
 ```
 
@@ -133,6 +152,8 @@ sequenceDiagram
 
 - [cmd/ucpd/main.go](../../cmd/ucpd/main.go)
 - [cmd/ucpd/cmd/root.go](../../cmd/ucpd/cmd/root.go)
+- [cmd/applications-rp/main.go](../../cmd/applications-rp/main.go)
+- [cmd/applications-rp/cmd/root.go](../../cmd/applications-rp/cmd/root.go)
 - [cmd/dynamic-rp/main.go](../../cmd/dynamic-rp/main.go)
 - [cmd/dynamic-rp/cmd/root.go](../../cmd/dynamic-rp/cmd/root.go)
 - [cmd/controller/main.go](../../cmd/controller/main.go)

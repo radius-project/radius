@@ -96,15 +96,15 @@ simple proxying.
 ```mermaid
 graph TD
   Root[cmd/ucpd/cmd]
-  Options[pkg/ucp\nconfig and options]
-  Host[pkg/ucp/server\nplus hosting/components]
+  Options["pkg/ucp<br/>config and options"]
+  Host["pkg/ucp/server<br/>plus hosting/components"]
   Frontend[pkg/ucp/frontend/api]
   Modules[pkg/ucp/frontend/modules]
-  PlaneFrontends[pkg/ucp/frontend/aws\npkg/ucp/frontend/azure\npkg/ucp/frontend/radius]
+  PlaneFrontends["pkg/ucp/frontend/aws<br/>pkg/ucp/frontend/azure<br/>pkg/ucp/frontend/radius"]
   FrontendControllers[pkg/ucp/frontend/controller/...]
   Proxy[pkg/ucp/proxy]
   Resources[pkg/ucp/resources]
-  DataModel[pkg/ucp/datamodel\nand converter]
+  DataModel["pkg/ucp/datamodel<br/>and converter"]
   Backend[pkg/ucp/backend]
   BackendControllers[pkg/ucp/backend/controller/...]
   Initializer[pkg/ucp/initializer]
@@ -118,14 +118,15 @@ graph TD
   Host --> Initializer
   Host --> Shared
   Frontend --> Modules
+  Frontend --> PlaneFrontends
   Frontend --> FrontendControllers
   Frontend --> Resources
   Frontend --> DataModel
   Frontend --> Shared
-  Modules --> PlaneFrontends
+  PlaneFrontends --> Modules
   PlaneFrontends --> FrontendControllers
-  PlaneFrontends --> Proxy
-  PlaneFrontends --> Resources
+  PlaneFrontends --> DataModel
+  PlaneFrontends --> Shared
   FrontendControllers --> Resources
   FrontendControllers --> DataModel
   FrontendControllers --> Proxy
@@ -134,11 +135,11 @@ graph TD
   Backend --> Shared
   Backend --> SDK
   BackendControllers --> DataModel
+  BackendControllers --> Resources
   BackendControllers --> SDK
   Proxy --> Resources
   Proxy --> Shared
-  Initializer --> Resources
-  Initializer --> DataModel
+  Initializer --> SDK
   Initializer --> Shared
 ```
 
@@ -152,18 +153,16 @@ modules and then drops into controller, proxy, and resource-ID logic.
 ```mermaid
 sequenceDiagram
   participant Client
-  participant Service as ucp frontend service
-  participant Register as frontend/api/routes.go
-  participant CatchAll as unknown plane router
+  participant Router as chi router (configured at startup)
+  participant CatchAll as /planes/{planeType} subrouter
   participant Module as plane module handler
   participant Controller as plane controller
   participant Downstream as provider or external plane
 
-  Client->>Service: HTTP request
-  Service->>Register: router already configured
-  Register->>CatchAll: /planes/{planeType}/...
-  CatchAll->>Module: choose handler by planeType
-  Module->>Controller: route inside module
+  Client->>Router: HTTP request
+  Router->>CatchAll: match /planes/{planeType}/...
+  CatchAll->>Module: look up handler by planeType
+  Module->>Controller: route to controller via module routes
   Controller->>Downstream: proxy or adapt request
 ```
 
