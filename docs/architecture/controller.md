@@ -126,7 +126,7 @@ sequenceDiagram
   alt operation in progress
     Rec->>Deploy: continue poll with resume token
     Deploy-->>Rec: done or still running
-    Rec->>Status: update phrase, outputs, operation state
+    Rec->>Status: update phase, outputs, operation state
     Rec->>Out: create/delete DeploymentResource objects
   else update path
     Rec->>Status: ensure finalizer + observed generation
