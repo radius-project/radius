@@ -1,12 +1,12 @@
 ---
 name: radius-build-images
-description: 'Build and push Radius container images to a registry. Use when building Radius Docker images from source, pushing images to a custom registry, building multi-arch images, testing custom builds, or deploying a custom Radius installation. Prompts for DOCKER_REGISTRY if not set.'
-argument-hint: 'Optional: target registry (e.g. ghcr.io/myorg) — or leave blank to be prompted'
+description: 'Build Radius container images from source for local development and testing. Supports local registries for k3d and kind clusters, and Azure Container Registry for AKS clusters.'
+argument-hint: 'Optional: target registry (e.g. k3d-myregistry:5050, localhost:5001, or myacr.azurecr.io/radius) — or leave blank to be prompted'
 ---
 
 # Radius: Build and Push Container Images
 
-Build Radius service images from source and push them to a container registry.
+Build Radius service images from source and push them to a registry reachable by your cluster. Use a local registry for k3d or kind, or Azure Container Registry for AKS.
 
 ## Images
 
@@ -34,83 +34,110 @@ Check that the required tools are available:
 1. **Docker**: Run `docker info` — confirm the Docker daemon is running.
 2. **Make**: Run `make --version` — confirm GNU Make is installed.
 3. **Go**: Run `go version` — the required version is in `go.mod`.
+4. **kubectl context**: Run `kubectl config current-context` — confirm the current kubeconfig context points to the cluster where you want to run Radius.
+5. **kubectl connectivity**: Run `kubectl cluster-info` — confirm the current kubeconfig context is reachable.
+6. **k3d** *(k3d path only)*: Run `k3d version` — confirm k3d is installed.
+7. **kind** *(kind path only)*: Run `kind version` — confirm kind is installed.
+8. **Azure CLI** *(AKS path only)*: Run `az version` — confirm the Azure CLI is installed and you are logged in with `az login`.
 
 If any prerequisite is missing, stop and report which tool needs to be installed.
 
-### Step 2: Resolve the Target Registry
+### Step 2: Set Up the Registry
 
-Check the **effective** `DOCKER_REGISTRY` value — both the shell environment and Makefile:
+Choose the registry setup that matches the cluster in your current kubeconfig context.
 
-```sh
-echo "Shell: ${DOCKER_REGISTRY:-<not set>}"
-make -p 2>/dev/null | grep '^DOCKER_REGISTRY'
-```
+#### Option A: k3d local registry
 
-> **Important:** Even if `DOCKER_REGISTRY` is not set in your shell, the Makefile may pick up a default from `build/test.mk` (`ghcr.io/radius-project/dev`). This overlaps with real public images on GHCR and should **not** be used for local builds — it makes it impossible to tell local images apart from pulled ones.
-
-**Always explicitly set `DOCKER_REGISTRY`** for local builds:
+Create a local registry and a k3d cluster wired to use it:
 
 ```sh
-export DOCKER_REGISTRY=<value>
+k3d registry create myregistry --port 5050
+k3d cluster create mycluster --registry-use k3d-myregistry:5050
 ```
 
-- For **pushing to a registry**: use your own registry (e.g. `ghcr.io/myorg`, `docker.io/myusername`, `myacr.azurecr.io`)
-- For **local-only builds**: use a clearly local prefix (e.g. `local`, `dev`, or `$(whoami)`):
-  ```sh
-  export DOCKER_REGISTRY=local
-  ```
-  Images will be tagged as `local/<image>:latest`.
-
-Ask the user which registry to use if not already set. Do not proceed without an explicit value.
-
-### Step 3: Set the Image Tag (Optional)
-
-By default the tag is `latest`. To use a different tag:
+Then set the registry and tag:
 
 ```sh
-export DOCKER_TAG_VERSION=<tag>   # e.g. 0.48.0, pr-1234, dev
+export DOCKER_REGISTRY=k3d-myregistry:5050
+export DOCKER_TAG_VERSION=latest
 ```
 
-If the user does not specify a tag, proceed with `latest`.
+#### Option B: kind local registry
 
-### Step 4: Authenticate to the Registry
-
-Ensure the user is logged in before pushing:
+Create a local registry container and a kind cluster configured to use it:
 
 ```sh
-docker login <registry-host>
+docker run -d --restart=always -p "127.0.0.1:5001:5000" --name kind-registry registry:2
+cat <<'EOF' | kind create cluster --name kind --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+	[plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+		endpoint = ["http://kind-registry:5000"]
+EOF
+docker network connect kind kind-registry || true
 ```
 
-For common registries:
-- **GitHub (ghcr.io)**: `docker login ghcr.io -u <username> --password-stdin` (use a PAT with `write:packages` scope)
-- **Docker Hub**: `docker login`
-- **Azure Container Registry**: `az acr login --name <acr-name>`
-
-If the user is already authenticated, skip this step.
-
-### Step 5: Build the Images
-
-Run the build:
+Then set the registry and tag:
 
 ```sh
-DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION:-latest} make docker-build
+export DOCKER_REGISTRY=localhost:5001
+export DOCKER_TAG_VERSION=latest
 ```
 
-This compiles all Go binaries for `linux/amd64` and builds each Docker image. The `copy-manifests` step runs automatically.
+If your kind cluster already exists and was not created with the registry mirror patch, recreate it with the configuration above before continuing.
 
-> **Apple Silicon / arm64 hosts:** The default `docker-build` produces `linux/amd64` images (via emulation), which is slower and won't run natively on `arm64` Kubernetes clusters (k3d/kind on macOS). Use `make docker-multi-arch-push` for native multi-architecture images — see the Multi-Architecture Builds section below.
+#### Option C: AKS + Azure Container Registry
 
-To build a **single image** instead of all:
+Log in to ACR so Docker can push to it:
+
+```sh
+az acr login --name <acr-name>
+```
+
+Then set the registry and tag:
+
+```sh
+export DOCKER_REGISTRY=<acr-name>.azurecr.io/radius
+export DOCKER_TAG_VERSION=latest
+```
+
+Grant the AKS cluster pull access to ACR once per cluster:
+
+```sh
+az aks update -n <aks-cluster-name> -g <resource-group> --attach-acr <acr-name>
+```
+
+> **Note:** The Makefile default is `ghcr.io/radius-project/dev` (from `build/test.mk`). Always set `DOCKER_REGISTRY` explicitly so images aren't confused with public ones.
+
+### Step 3: Build the Images
+
+```sh
+DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION} make docker-build
+```
+
+This compiles all Go binaries and builds each Docker image. The `copy-manifests` step runs automatically.
+
+> **Apple Silicon (arm64):** The default build produces `linux/amd64` images via emulation. For native-speed images on an arm64 Kubernetes cluster, use `make docker-multi-arch-push` instead — see [Multi-Architecture Builds](#multi-architecture-builds).
+
+To build a **single image**:
 
 ```sh
 make docker-build-<image-name>   # e.g. make docker-build-controller
 ```
 
-### Step 6: Push the Images
+### Step 4: Push to the Local Registry
+
+Push the images to the registry selected in Step 2:
 
 ```sh
-DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION:-latest} make docker-push
+DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION} make docker-push
 ```
+
+For **k3d** and **kind**, the images are immediately available inside the cluster when the cluster has been configured to use the local registry.
+
+For **AKS + ACR**, the images are available in ACR and AKS will pull them using the attached identity.
 
 To push a single image:
 
@@ -118,80 +145,60 @@ To push a single image:
 make docker-push-<image-name>   # e.g. make docker-push-ucpd
 ```
 
-### Step 7: Verify
+### Step 5: Verify
 
-Confirm the images were pushed successfully:
+Confirm the images were pushed to the selected registry:
 
 ```sh
-docker images --filter "reference=${DOCKER_REGISTRY}/*:${DOCKER_TAG_VERSION:-latest}"
+docker images --filter "reference=${DOCKER_REGISTRY}/*:${DOCKER_TAG_VERSION}"
 ```
+
+For **AKS + ACR**, you can also verify the repositories in ACR:
+
+```sh
+az acr repository list --name <acr-name>
+```
+
+Then proceed to the `radius-install-custom` skill to install Radius on your cluster.
 
 ## Multi-Architecture Builds
 
-For `linux/amd64`, `linux/arm64`, and `linux/arm` images, first set up the buildx environment (one-time):
+For native `linux/arm64` images on Apple Silicon, first set up buildx (one-time):
 
 ```sh
 make configure-buildx
 ```
 
-Then build and push all architectures in one step:
+Then build and push all architectures:
 
 ```sh
-DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION:-latest} make docker-multi-arch-push
-```
-
-Or build without pushing:
-
-```sh
-make docker-multi-arch-build
-```
-
-## Installing a Custom Build on Kubernetes
-
-After pushing, install the custom build:
-
-```sh
-rad install kubernetes \
-  --chart deploy/Chart/ \
-  --set global.imageRegistry=${DOCKER_REGISTRY} \
-  --set global.imageTag=${DOCKER_TAG_VERSION:-latest}
-```
-
-For private registries requiring a pull secret:
-
-```sh
-kubectl create secret docker-registry regcred \
-  --docker-server=${DOCKER_REGISTRY} \
-  --docker-username=<username> \
-  --docker-password=<password> \
-  -n radius-system
-
-rad install kubernetes \
-  --chart deploy/Chart/ \
-  --set global.imageRegistry=${DOCKER_REGISTRY} \
-  --set global.imageTag=${DOCKER_TAG_VERSION:-latest} \
-  --set-string 'global.imagePullSecrets[0].name=regcred'
+DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION} make docker-multi-arch-push
 ```
 
 ## Quick Reference
 
 | Goal | Command |
 |------|---------|
+| Check target cluster | `kubectl config current-context && kubectl cluster-info` |
+| Create k3d registry + cluster | `k3d registry create myregistry --port 5050 && k3d cluster create mycluster --registry-use k3d-myregistry:5050` |
+| Set k3d registry env vars | `export DOCKER_REGISTRY=k3d-myregistry:5050 && export DOCKER_TAG_VERSION=latest` |
+| Create kind registry + cluster | `docker run -d --restart=always -p "127.0.0.1:5001:5000" --name kind-registry registry:2` plus `kind create cluster` with a `containerdConfigPatches` mirror for `localhost:5001` |
+| Set kind registry env vars | `export DOCKER_REGISTRY=localhost:5001 && export DOCKER_TAG_VERSION=latest` |
+| Log in to ACR | `az acr login --name <acr-name>` |
+| Set ACR registry env vars | `export DOCKER_REGISTRY=<acr-name>.azurecr.io/radius && export DOCKER_TAG_VERSION=latest` |
+| Grant AKS pull access | `az aks update -n <cluster> -g <rg> --attach-acr <acr-name>` |
 | Build all images | `make docker-build` |
 | Push all images | `make docker-push` |
 | Build + push (one step) | `make docker-build docker-push` |
-| Multi-arch build | `make docker-multi-arch-build` |
-| Multi-arch build + push | `make docker-multi-arch-push` |
 | Single image build | `make docker-build-<name>` |
 | Single image push | `make docker-push-<name>` |
-| Save images to `.tar` | `make docker-save-images` |
-| Load images from `.tar` | `make docker-load-images` |
+| Multi-arch build + push | `make docker-multi-arch-push` |
 | Setup buildx (one-time) | `make configure-buildx` |
 
 ## Key Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DOCKER_REGISTRY` | `$(whoami)` | Target registry (e.g. `ghcr.io/myorg`) |
+| `DOCKER_REGISTRY` | `ghcr.io/radius-project/dev` (set by `build/test.mk`) | Target registry for built images. Set to `k3d-myregistry:5050` for k3d, `localhost:5001` for kind, or `<acr-name>.azurecr.io/radius` for AKS. |
 | `DOCKER_TAG_VERSION` | `latest` | Image tag |
 | `DOCKER_CACHE_GHA` | `0` | Set to `1` to enable GitHub Actions layer caching |

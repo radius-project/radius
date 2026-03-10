@@ -1,19 +1,18 @@
 ---
 name: radius-install-custom
-description: 'Install Radius on Kubernetes from custom-built container images. Use when deploying a dev build, testing local changes on a cluster, installing from a private registry, or reinstalling Radius with custom images. Complements the radius-build-images skill.'
-argument-hint: 'Optional: registry and tag (e.g. ghcr.io/myorg latest) — or leave blank to be prompted'
+description: 'Install Radius on a Kubernetes cluster from custom-built container images. Use the local registry path for k3d and kind clusters, and the ACR path only when the target cluster is AKS.'
+argument-hint: 'Optional: registry and tag (e.g. k3d-myregistry:5050 latest, localhost:5001 latest, or myacr.azurecr.io/radius latest) — or leave blank to use the defaults from the build skill'
 ---
 
 # Install Radius from Custom Images
 
-Install the Radius control plane on Kubernetes using images you built and pushed to a container registry.
+Install the Radius control plane on a Kubernetes cluster using images you built from source. Use the local registry flow for k3d and kind clusters. Use Azure Container Registry only when the target cluster is AKS.
 
 ## Prerequisites
 
-- Images already pushed to a registry (see the `radius-build-images` skill)
-- A running Kubernetes cluster (k3d, kind, AKS, EKS, GKE, etc.)
-- `rad` CLI built and available in `$PATH` (see the `radius-build-cli` skill, or use a released version)
-- `kubectl` configured to talk to the target cluster
+- Images built and pushed using the `radius-build-images` skill
+- `kubectl` configured for the target cluster (`kubectl cluster-info`)
+- `rad` CLI available in `$PATH` (see the `radius-build-cli` skill, or use a released version)
 
 ## Procedure
 
@@ -22,31 +21,50 @@ Install the Radius control plane on Kubernetes using images you built and pushed
 Run these checks:
 
 1. **rad CLI**: `rad version` — confirm the rad CLI is installed and working.
-2. **kubectl**: `kubectl cluster-info` — confirm a Kubernetes cluster is reachable.
-3. **Namespace**: `kubectl get namespace radius-system 2>/dev/null` — check if Radius is already installed.
+2. **kubectl context**: `kubectl config current-context` — confirm the current kubeconfig context points to the cluster where you want to install Radius.
+3. **kubectl connectivity**: `kubectl cluster-info` — confirm the current kubeconfig context is reachable.
+4. **Existing install**: `kubectl get namespace radius-system 2>/dev/null` — check if Radius is already installed.
 
 If `rad` is not in `$PATH` but was built locally, the binary is at `./dist/$(go env GOOS)_$(go env GOARCH)/release/rad`.
 
-### Step 2: Resolve Registry and Tag
+`rad install kubernetes` installs to the active kubeconfig context by default. If the current context is not the target cluster, switch it before continuing:
 
-Check whether `DOCKER_REGISTRY` and `DOCKER_TAG_VERSION` are already set:
+```sh
+kubectl config use-context <context-name>
+```
+
+If the current context points to an AKS cluster, use the ACR path below. Otherwise use the local registry path for k3d or kind.
+
+### Step 2: Confirm Registry and Tag
+
+Confirm the registry and tag match what was used in the build step:
 
 ```sh
 echo "Registry: ${DOCKER_REGISTRY:-<not set>}"
 echo "Tag: ${DOCKER_TAG_VERSION:-latest}"
 ```
 
-- If `DOCKER_REGISTRY` is **not set**, ask the user:
-  > What registry did you push the images to?
-  > (e.g. `ghcr.io/myorg`, `docker.io/myusername`, `myacr.azurecr.io`)
+If not set, use the registry values from the `radius-build-images` skill:
 
-- If `DOCKER_TAG_VERSION` is not set, default to `latest`.
-
-Set the variables:
+**k3d cluster:**
 
 ```sh
-export DOCKER_REGISTRY=<value>
-export DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION:-latest}
+export DOCKER_REGISTRY=k3d-myregistry:5050
+export DOCKER_TAG_VERSION=latest
+```
+
+**kind cluster:**
+
+```sh
+export DOCKER_REGISTRY=localhost:5001
+export DOCKER_TAG_VERSION=latest
+```
+
+**AKS cluster:**
+
+```sh
+export DOCKER_REGISTRY=<acr-name>.azurecr.io/radius
+export DOCKER_TAG_VERSION=latest
 ```
 
 ### Step 3: Check for Existing Installation
@@ -58,12 +76,17 @@ rad version
 Look at the control plane status in the output:
 
 - **Not installed** → proceed to Step 4 (fresh install).
-- **Already installed (same version)** → ask the user if they want to reinstall with `--reinstall`.
-- **Already installed (different version)** → suggest `rad upgrade kubernetes` or `--reinstall`.
+- **Already installed** → add `--reinstall` to the install command in Step 4.
 
 ### Step 4: Install Radius
 
-For a **fresh install** using the local Helm chart from the repository:
+The following command installs Radius on the cluster referenced by your current kubeconfig context.
+
+Use the registry that matches the target cluster:
+
+- **k3d cluster**: `DOCKER_REGISTRY=k3d-myregistry:5050`
+- **kind cluster**: `DOCKER_REGISTRY=localhost:5001`
+- **AKS cluster**: `DOCKER_REGISTRY=<acr-name>.azurecr.io/radius`
 
 ```sh
 rad install kubernetes \
@@ -71,10 +94,14 @@ rad install kubernetes \
   --set global.imageRegistry=${DOCKER_REGISTRY} \
   --set global.imageTag=${DOCKER_TAG_VERSION} \
   --set de.image=ghcr.io/radius-project/deployment-engine \
-  --set dashboard.image=ghcr.io/radius-project/dashboard
+  --set de.tag=latest \
+  --set dashboard.image=ghcr.io/radius-project/dashboard \
+  --set dashboard.tag=latest
 ```
 
-For a **reinstall** over an existing installation:
+If you want to target a different cluster without changing the active kubeconfig context, add `--kubecontext <context-name>`.
+
+For a **reinstall** over an existing installation, add `--reinstall`:
 
 ```sh
 rad install kubernetes \
@@ -82,47 +109,15 @@ rad install kubernetes \
   --set global.imageRegistry=${DOCKER_REGISTRY} \
   --set global.imageTag=${DOCKER_TAG_VERSION} \
   --set de.image=ghcr.io/radius-project/deployment-engine \
+  --set de.tag=latest \
   --set dashboard.image=ghcr.io/radius-project/dashboard \
+  --set dashboard.tag=latest \
   --reinstall
 ```
 
-> **External images:** The `deployment-engine` and `dashboard` images are **not built from this repository** — they come from `ghcr.io/radius-project/`. Setting `global.imageRegistry` overrides the registry for *all* images, including these. The `--set de.image=...` and `--set dashboard.image=...` flags above pin them to their public location so Kubernetes doesn't try to pull them from your custom registry.
+> **Why pin `de.image`/`de.tag` and `dashboard.image`/`dashboard.tag`?** The `deployment-engine` and `dashboard` images are not built in this repository — they come from `ghcr.io/radius-project/`. Setting `global.imageRegistry` would otherwise redirect those pulls to your selected registry where they don't exist. Pinning the image and tag for just these two components keeps them pointed at the public source.
 
-#### Private Registry Authentication
-
-If the cluster cannot pull images (401 Unauthorized / `ImagePullBackOff`), the cluster needs credentials to access the registry.
-
-> **Note:** Authenticating locally with `docker login` or `az acr login` only allows your machine to push/pull. The Kubernetes cluster nodes need their own access.
-
-**AKS + Azure Container Registry (recommended):** Attach the ACR to your AKS cluster (one-time):
-
-```sh
-az aks update -n <aks-cluster-name> -g <resource-group> --attach-acr <acr-name>
-```
-
-This grants the AKS managed identity pull access to the ACR. No image pull secrets needed.
-
-**Any cluster — image pull secret:** Create a Kubernetes secret:
-
-```sh
-kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret docker-registry regcred \
-  --docker-server=${DOCKER_REGISTRY} \
-  --docker-username=<username> \
-  --docker-password=<password> \
-  -n radius-system
-```
-
-Then install with the pull secret:
-
-```sh
-rad install kubernetes \
-  --chart deploy/Chart/ \
-  --set global.imageRegistry=${DOCKER_REGISTRY} \
-  --set global.imageTag=${DOCKER_TAG_VERSION} \
-  --set-string 'global.imagePullSecrets[0].name=regcred'
-```
+> **AKS + ACR:** If the target cluster is AKS, make sure `az aks update --attach-acr` has already been run for the cluster so nodes can pull the custom images.
 
 ### Step 5: Verify the Installation
 
@@ -134,15 +129,15 @@ rad install kubernetes \
 
    Wait for all pods to reach `Running` and `1/1` ready status.
 
-   > **Architecture mismatch:** If pods crash with `exec format error`, the image architecture doesn't match the cluster node architecture. For example, `linux/amd64` images won't run on `arm64` nodes (common with k3d/kind on Apple Silicon). Rebuild images using `make docker-multi-arch-push` (see the `radius-build-images` skill) or target the correct platform.
+   > **Architecture mismatch:** If pods crash with `exec format error`, the image architecture doesn't match the cluster node architecture. Rebuild images using `make docker-multi-arch-push` (see the `radius-build-images` skill).
 
-2. Verify the control plane version matches:
+2. Verify the control plane version:
 
    ```sh
    rad version
    ```
 
-3. Confirm images are from the correct registry:
+3. Confirm images are from the selected registry:
 
    ```sh
    kubectl get pods -n radius-system -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .spec.containers[*]}{.image}{"\n"}{end}{end}'
@@ -156,41 +151,27 @@ If this is a fresh cluster, set up a Radius workspace and environment:
 rad init
 ```
 
-This creates the default workspace, environment, and any required credentials.
-
-## Common Install Options
-
-| Flag | Purpose |
-|------|---------|
-| `--chart deploy/Chart/` | Use the local Helm chart (for dev builds) |
-| `--set global.imageRegistry=...` | Override image registry |
-| `--set global.imageTag=...` | Override image tag |
-| `--reinstall` | Force reinstall over existing installation |
-| `--skip-contour-install` | Skip the Contour ingress controller |
-| `--kubecontext <name>` | Target a specific Kubernetes context |
-| `--set global.zipkin.url=...` | Enable distributed tracing |
-| `--set database.enabled=true` | Enable PostgreSQL database |
-| `--set-string 'global.imagePullSecrets[0].name=...'` | Image pull secret for private registries |
-| `--set de.image=ghcr.io/radius-project/deployment-engine` | Pin deployment-engine to public registry (required when using custom `global.imageRegistry`) |
-| `--set dashboard.image=ghcr.io/radius-project/dashboard` | Pin dashboard to public registry (required when using custom `global.imageRegistry`) |
-
 ## Quick Reference
 
 | Goal | Command |
 |------|---------|
-| Fresh install (custom images) | `rad install kubernetes --chart deploy/Chart/ --set global.imageRegistry=REG --set global.imageTag=TAG --set de.image=ghcr.io/radius-project/deployment-engine --set dashboard.image=ghcr.io/radius-project/dashboard` |
+| Fresh install | `rad install kubernetes --chart deploy/Chart/ --set global.imageRegistry=${DOCKER_REGISTRY} --set global.imageTag=${DOCKER_TAG_VERSION} --set de.image=ghcr.io/radius-project/deployment-engine --set de.tag=latest --set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=latest` |
 | Reinstall | Add `--reinstall` to the above |
+| k3d registry | `export DOCKER_REGISTRY=k3d-myregistry:5050 && export DOCKER_TAG_VERSION=latest` |
+| kind registry | `export DOCKER_REGISTRY=localhost:5001 && export DOCKER_TAG_VERSION=latest` |
+| AKS ACR registry | `export DOCKER_REGISTRY=<acr-name>.azurecr.io/radius && export DOCKER_TAG_VERSION=latest` |
 | Check status | `rad version` |
 | Check pods | `kubectl get pods -n radius-system` |
 | Uninstall | `rad uninstall kubernetes` |
-| Rollback stuck Helm release | `helm rollback radius <revision> -n radius-system` |
 | Initialize environment | `rad init` |
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `ImagePullBackOff` on deployment-engine or dashboard | `global.imageRegistry` redirected these external images to your custom registry | Add `--set de.image=ghcr.io/radius-project/deployment-engine --set dashboard.image=ghcr.io/radius-project/dashboard` |
-| `ImagePullBackOff` with 401 Unauthorized | Cluster nodes can't authenticate to the private registry | AKS: `az aks update --attach-acr <acr>`; other clusters: create an image pull secret |
+| `ImagePullBackOff` on deployment-engine or dashboard | `global.imageRegistry` redirected external images to the selected registry | Ensure `--set de.image=ghcr.io/radius-project/deployment-engine --set de.tag=latest --set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=latest` are set |
+| `ImagePullBackOff` on Radius images in k3d | The k3d cluster is not wired to the local registry | Recreate the cluster with `k3d cluster create mycluster --registry-use k3d-myregistry:5050` |
+| `ImagePullBackOff` on Radius images in kind | The kind cluster was not created with the local registry mirror configuration | Recreate the kind cluster with the `containerdConfigPatches` mirror for `localhost:5001` from the `radius-build-images` skill |
+| `ImagePullBackOff` on Radius images in AKS | AKS does not have pull access to ACR | Run `az aks update -n <cluster> -g <rg> --attach-acr <acr-name>` |
 | `rad install` fails with "another operation in progress" | Helm release stuck in `pending-upgrade` or `pending-install` | `helm rollback radius <last-good-revision> -n radius-system`, then retry |
-| Pods crash with `exec format error` | Image architecture doesn't match node architecture | Rebuild with `make docker-multi-arch-push` or target the correct `TARGETARCH` |
+| Pods crash with `exec format error` | Image architecture doesn't match node architecture | Rebuild with `make docker-multi-arch-push` |
