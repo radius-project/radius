@@ -186,3 +186,53 @@ go install go.uber.org/mock/mockgen@v0.4.0
 ```
 
 > **Note:** `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.
+
+## Updating the dev container lockfile
+
+The repository includes a `devcontainer-lock.json` file alongside the `devcontainer.json` in the `.devcontainer/` directory. This lockfile pins each dev container feature to an exact version and records its SHA-256 integrity hash, similar to how `package-lock.json` works for npm. It ensures that every contributor gets the same feature versions when building the dev container, and detects if a published feature artifact has been tampered with after the hash was first recorded.
+
+You must update the lockfile whenever you change the `features` section of `.devcontainer/devcontainer.json` (for example, adding, removing, or changing the version constraint of a feature). The lockfile should be committed alongside the `devcontainer.json` change.
+
+### Prerequisites
+
+Install the Dev Container CLI:
+
+```bash
+$ npm install -g @devcontainers/cli
+```
+
+### Checking for outdated features
+
+To see which features have newer versions available, run from the repository root:
+
+```bash
+$ devcontainer outdated --workspace-folder .
+```
+
+This prints a table showing the current locked version, the latest version matching the version constraint in `devcontainer.json` ("Wanted"), and the overall latest version for each feature.
+
+### Updating the lockfile
+
+To update the lockfile, run from the repository root:
+
+```bash
+$ devcontainer upgrade --workspace-folder .
+```
+
+This resolves every feature in `devcontainer.json` to the latest version that satisfies its version constraint, downloads the feature artifacts, computes their SHA-256 hashes, and writes the result to `.devcontainer/devcontainer-lock.json`.
+
+To preview the updated lockfile without writing it to disk, add the `--dry-run` flag:
+
+```bash
+$ devcontainer upgrade --workspace-folder . --dry-run
+```
+
+### Verifying the update
+
+After running `devcontainer upgrade`, confirm the lockfile was updated:
+
+```bash
+$ git diff .devcontainer/devcontainer-lock.json
+```
+
+Review the diff to verify that only the expected features changed. Commit the updated lockfile together with any `devcontainer.json` changes.
