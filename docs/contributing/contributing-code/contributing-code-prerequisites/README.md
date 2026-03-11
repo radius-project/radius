@@ -198,7 +198,7 @@ You must update the lockfile whenever you change the `features` section of `.dev
 Install the Dev Container CLI:
 
 ```bash
-$ npm install -g @devcontainers/cli
+npm install -g @devcontainers/cli
 ```
 
 ### Checking for outdated features
@@ -206,7 +206,7 @@ $ npm install -g @devcontainers/cli
 To see which features have newer versions available, run from the repository root:
 
 ```bash
-$ devcontainer outdated --workspace-folder .
+devcontainer outdated --workspace-folder .
 ```
 
 This prints a table showing the current locked version, the latest version matching the version constraint in `devcontainer.json` ("Wanted"), and the overall latest version for each feature.
@@ -216,7 +216,7 @@ This prints a table showing the current locked version, the latest version match
 To update the lockfile, run from the repository root:
 
 ```bash
-$ devcontainer upgrade --workspace-folder .
+devcontainer upgrade --workspace-folder .
 ```
 
 This resolves every feature in `devcontainer.json` to the latest version that satisfies its version constraint, downloads the feature artifacts, computes their SHA-256 hashes, and writes the result to `.devcontainer/devcontainer-lock.json`.
@@ -224,7 +224,7 @@ This resolves every feature in `devcontainer.json` to the latest version that sa
 To preview the updated lockfile without writing it to disk, add the `--dry-run` flag:
 
 ```bash
-$ devcontainer upgrade --workspace-folder . --dry-run
+devcontainer upgrade --workspace-folder . --dry-run
 ```
 
 ### Verifying the update
@@ -232,7 +232,13 @@ $ devcontainer upgrade --workspace-folder . --dry-run
 After running `devcontainer upgrade`, confirm the lockfile was updated:
 
 ```bash
-$ git diff .devcontainer/devcontainer-lock.json
+git diff .devcontainer/devcontainer-lock.json
 ```
 
 Review the diff to verify that only the expected features changed. Commit the updated lockfile together with any `devcontainer.json` changes.
+
+Finally, run the formatter to ensure the JSON file is properly linted:
+
+```bash
+make format-write
+```
