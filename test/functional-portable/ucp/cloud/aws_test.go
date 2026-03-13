@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -71,7 +72,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		require.NoError(t, err)
 		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
+		requireResponseStatus(t, deleteResponse, http.StatusAccepted)
 
 		// Get the operation status url from the Azure-Asyncoperation header
 		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
@@ -126,7 +127,7 @@ func Test_AWS_ListResources(t *testing.T) {
 		listResponse, err := roundTripper.RoundTrip(listRequest)
 		require.NoError(t, err)
 
-		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+		requireResponseStatus(t, listResponse, http.StatusOK)
 
 		defer listResponse.Body.Close()
 		payload, err := io.ReadAll(listResponse.Body)
@@ -199,4 +200,38 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 
 func generateLogGroupName() string {
 	return "ucpfunctionaltest-" + uuid.NewString()
+}
+
+func requireResponseStatus(t *testing.T, response *http.Response, expectedStatus int) {
+	t.Helper()
+	require.NotNil(t, response)
+
+	if response.StatusCode == expectedStatus {
+		return
+	}
+
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+
+	response.Body = io.NopCloser(bytes.NewReader(body))
+
+	headerKeys := make([]string, 0, len(response.Header))
+	for key := range response.Header {
+		headerKeys = append(headerKeys, key)
+	}
+	sort.Strings(headerKeys)
+
+	headers := make([]string, 0, len(headerKeys))
+	for _, key := range headerKeys {
+		headers = append(headers, fmt.Sprintf("%s=%s", key, strings.Join(response.Header.Values(key), ",")))
+	}
+
+	require.Failf(t, "unexpected response status",
+		"expected status %d, got %d\nheaders: %s\nbody: %s",
+		expectedStatus,
+		response.StatusCode,
+		strings.Join(headers, "; "),
+		string(body),
+	)
 }
