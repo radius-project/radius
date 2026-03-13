@@ -10,7 +10,6 @@ startup via configuration.
 graph TD
     subgraph "Control Plane Services"
         UCP["UCP<br/>cmd/ucpd"]
-        CoreRP["Applications RP<br/>cmd/applications-rp"]
         DynRP["Dynamic RP<br/>cmd/dynamic-rp"]
     end
 
@@ -45,9 +44,6 @@ graph TD
     UCP --> DBProvider
     UCP --> SecretProvider
     UCP --> QueueProvider
-    CoreRP --> DBProvider
-    CoreRP --> SecretProvider
-    CoreRP --> QueueProvider
     DynRP --> DBProvider
     DynRP --> SecretProvider
     DynRP --> QueueProvider
@@ -589,7 +585,7 @@ func TestDynamoDBClient(t *testing.T) {
 
 ### Step 7: Configure and use
 
-Each Radius control-plane service (UCP, Applications RP, Dynamic RP, etc.)
+Each Radius control-plane service (UCP, Dynamic RP, controller-side helpers, etc.)
 reads its provider settings from a YAML configuration file at startup. How that
 file is delivered depends on the environment:
 
@@ -599,7 +595,7 @@ file is delivered depends on the environment:
   YAML. The `Deployment` mounts the ConfigMap and passes
   `--config-file=/etc/config/<service>-config.yaml` to the container.
 - **Local development** — Config files live under `build/configs/`
-  (e.g. `build/configs/ucp.yaml`, `build/configs/applications-rp.yaml`)
+  (e.g. `build/configs/ucp.yaml`, `build/configs/dynamic-rp.yaml`)
   and are referenced directly when running services outside of
   Kubernetes.
 
