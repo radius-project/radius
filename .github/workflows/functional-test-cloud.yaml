@@ -815,6 +815,127 @@ jobs:
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
+      - name: Capture AWS federation diagnostics
+        if: always() && matrix.name == 'ucp-cloud'
+        continue-on-error: true
+        env:
+          FUNC_TEST_RAD_IRSA_ROLE: ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p ./dist/functional_test/debug
+          LOG_FILE=./dist/functional_test/debug/aws-irsa-diagnostics.log
+          exec > >(tee "${LOG_FILE}") 2>&1
+
+          echo "== CI AWS federation diagnostics =="
+          echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          OIDC_JSON='${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}'
+          EXPECTED_ISSUER="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER')"
+          EXPECTED_PROVIDER_URL="${EXPECTED_ISSUER#https://}"
+          EXPECTED_PROVIDER_URL="${EXPECTED_PROVIDER_URL%/}"
+
+          echo "expected_issuer=${EXPECTED_ISSUER}"
+          echo "expected_provider_url=${EXPECTED_PROVIDER_URL}"
+
+          echo "== kubectl context =="
+          kubectl config current-context
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+          echo "== ucp deployment and service account token projection =="
+          kubectl get deployment ucp -n radius-system -o json | jq '{serviceAccountName: .spec.template.spec.serviceAccountName, projectedServiceAccountTokens: [.spec.template.spec.volumes[]? | select(.name == "aws-iam-token") | .projected.sources[]?.serviceAccountToken]}'
+          kubectl get sa ucp -n radius-system -o yaml
+
+          echo "== kube-apiserver service account flags =="
+          docker exec radius-control-plane grep -n "service-account-" /etc/kubernetes/manifests/kube-apiserver.yaml
+
+          echo "== expected issuer discovery and JWKS =="
+          curl -fsSL "${EXPECTED_ISSUER}.well-known/openid-configuration" > ./dist/functional_test/debug/expected-openid-configuration.json
+          jq '{issuer, jwks_uri}' ./dist/functional_test/debug/expected-openid-configuration.json
+          JWKS_URI="$(jq -r '.jwks_uri' ./dist/functional_test/debug/expected-openid-configuration.json)"
+          curl -fsSL "${JWKS_URI}" > ./dist/functional_test/debug/expected-jwks.json
+          jq '{kids: [.keys[].kid], key_count: (.keys | length)}' ./dist/functional_test/debug/expected-jwks.json
+
+          echo "== aws account OIDC providers =="
+          aws iam list-open-id-connect-providers --output json > ./dist/functional_test/debug/aws-oidc-providers.json
+          jq . ./dist/functional_test/debug/aws-oidc-providers.json
+
+          PROVIDER_MATCH=""
+          while IFS= read -r provider_arn; do
+            [ -n "${provider_arn}" ] || continue
+            provider_doc="./dist/functional_test/debug/$(basename "${provider_arn}").json"
+            aws iam get-open-id-connect-provider --open-id-connect-provider-arn "${provider_arn}" --output json > "${provider_doc}"
+            jq --arg arn "${provider_arn}" '{arn: $arn, url: .Url, clientIDs: .ClientIDList, thumbprints: .ThumbprintList}' "${provider_doc}"
+            provider_url="$(jq -r '.Url' "${provider_doc}")"
+            if [ "${provider_url}" = "${EXPECTED_PROVIDER_URL}" ]; then
+              PROVIDER_MATCH="${provider_arn}"
+            fi
+          done < <(jq -r '.OpenIDConnectProviderList[].Arn' ./dist/functional_test/debug/aws-oidc-providers.json)
+
+          if [ -n "${PROVIDER_MATCH}" ]; then
+            echo "matching_provider_arn=${PROVIDER_MATCH}"
+          else
+            echo "::warning::No AWS OIDC provider matched the expected issuer"
+          fi
+
+          echo "== aws role trust policy =="
+          ROLE_NAME="${FUNC_TEST_RAD_IRSA_ROLE##*/}"
+          aws iam get-role --role-name "${ROLE_NAME}" --query 'Role.AssumeRolePolicyDocument' --output json > ./dist/functional_test/debug/aws-role-trust-policy.json
+          jq . ./dist/functional_test/debug/aws-role-trust-policy.json
+
+          echo "== mint debug token from cluster =="
+          TOKEN="$(kubectl create token ucp -n radius-system --audience sts.amazonaws.com --duration 15m)"
+          export TOKEN
+          python3 <<'PY' > ./dist/functional_test/debug/minted-token.json
+          import base64
+          import json
+          import os
+
+          token = os.environ["TOKEN"]
+          header_b64, payload_b64, _ = token.split(".")
+
+          def decode(part: str):
+              part += "=" * (-len(part) % 4)
+              return json.loads(base64.urlsafe_b64decode(part).decode())
+
+          print(json.dumps({"header": decode(header_b64), "payload": decode(payload_b64)}, indent=2))
+          PY
+          cat ./dist/functional_test/debug/minted-token.json
+
+          TOKEN_ISS="$(jq -r '.payload.iss' ./dist/functional_test/debug/minted-token.json)"
+          TOKEN_KID="$(jq -r '.header.kid' ./dist/functional_test/debug/minted-token.json)"
+
+          if [ "${TOKEN_ISS}" != "${EXPECTED_ISSUER}" ]; then
+            echo "::warning::Minted service account token issuer does not match the expected issuer"
+          fi
+
+          if jq -e --arg kid "${TOKEN_KID}" '.keys[] | select(.kid == $kid)' ./dist/functional_test/debug/expected-jwks.json >/dev/null; then
+            echo "minted_token_kid_found_in_expected_jwks=true"
+          else
+            echo "::warning::Minted service account token kid was not found in the expected JWKS"
+          fi
+
+          echo "== direct sts probe =="
+          set +e
+          aws sts assume-role-with-web-identity \
+            --role-arn "${FUNC_TEST_RAD_IRSA_ROLE}" \
+            --role-session-name ci-irsa-debug \
+            --web-identity-token "${TOKEN}" \
+            --duration-seconds 900 \
+            > ./dist/functional_test/debug/sts-success.json \
+            2> ./dist/functional_test/debug/sts-error.log
+          sts_exit=$?
+          set -e
+
+          echo "sts_exit_code=${sts_exit}"
+          if [ -s ./dist/functional_test/debug/sts-success.json ]; then
+            cat ./dist/functional_test/debug/sts-success.json
+          fi
+          if [ -s ./dist/functional_test/debug/sts-error.log ]; then
+            cat ./dist/functional_test/debug/sts-error.log
+          fi
+
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
@@ -919,6 +1040,14 @@ jobs:
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+
+      - name: Upload AWS federation diagnostics
+        if: always() && matrix.name == 'ucp-cloud'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ matrix.name }}_aws_federation_diagnostics
+          path: ./dist/functional_test/debug
+          if-no-files-found: warn
 
       - name: Get Terraform recipe publishing logs
         if: always()
