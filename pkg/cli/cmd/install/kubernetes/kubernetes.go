@@ -70,11 +70,11 @@ rad install kubernetes --set global.imageRegistry=myregistry.azurecr.io,global.i
 
 # Install Radius with private registry and image pull secrets
 # Note: Secret must be created in radius-system namespace first
-rad install kubernetes --set global.imageRegistry=myregistry.azurecr.io --set-string 'global.imagePullSecrets[0].name=regcred'
+rad install kubernetes --set global.imageRegistry=myregistry.azurecr.io --set 'global.imagePullSecrets[0].name=regcred'
 
 # Install Radius with multiple image pull secrets for different registries
-rad install kubernetes --set-string 'global.imagePullSecrets[0].name=azure-cred' \
-                       --set-string 'global.imagePullSecrets[1].name=aws-cred'
+rad install kubernetes --set 'global.imagePullSecrets[0].name=azure-cred' \
+                       --set 'global.imagePullSecrets[1].name=aws-cred'
 
 # Install Radius with the intermediate root CA certificate in the current Kubernetes context
 rad install kubernetes --set-file global.rootCA.cert=/path/to/rootCA.crt
