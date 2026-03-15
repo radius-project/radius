@@ -1,0 +1,16 @@
+name: Rivendell Council Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  council:
+    name: Convene the Council
+    uses: sylvainsf/rivendell_council/.github/workflows/council.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
+      models: read
+    with:
+      model: anthropic/claude-sonnet-4.6
