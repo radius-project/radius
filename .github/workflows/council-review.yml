@@ -13,7 +13,7 @@ jobs:
     name: Convene the Council
     # Skip on fork PRs - GITHUB_TOKEN is read-only for forks and cannot write PR comments
     if: github.event.pull_request.head.repo.full_name == github.repository
-    uses: sylvainsf/rivendell_council/.github/workflows/council.yml@v1
+    uses: sylvainsf/rivendell_council/.github/workflows/council.yml@v0
     permissions:
       contents: read
       pull-requests: write
