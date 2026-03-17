@@ -1162,7 +1162,7 @@ func Test_setupCloudProviders(t *testing.T) {
 				Scope: "/planes/aws/aws/accounts/account-id/regions/us-west-2",
 			},
 			expectedAzure: &clients.AzureProvider{
-				Scope: "/planes/azure/azure/Subscriptions/test-subscription/ResourceGroups/test-rg",
+				Scope: "/subscriptions/test-subscription/resourceGroups/test-rg",
 			},
 		},
 	}
@@ -1575,7 +1575,7 @@ func Test_ConfigureProviders(t *testing.T) {
 			applicationName:       "myapp",
 			expectedEnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv",
 			expectedApplicationID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/applications/myapp",
-			expectedAzureScope:    "/planes/azure/azure/Subscriptions/test-sub-id/ResourceGroups/test-rg-name",
+			expectedAzureScope:    "/subscriptions/test-sub-id/resourceGroups/test-rg-name",
 			expectedAWSScope:      "/planes/aws/aws/accounts/123456789012/regions/us-west-2",
 		},
 		{
