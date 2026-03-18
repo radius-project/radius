@@ -133,6 +133,13 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 		return false, fmt.Sprintf("Skipping multiple major versions not supported. Expected next major version: %d.0.0", current.Major()+1), nil
 	}
 
+	// Allow upgrades within the same minor version (patch bumps, prerelease upgrades)
+	// e.g., 0.55.0-rc4 -> 0.55.0-rc5, 0.55.0-rc5 -> 0.55.0, 0.55.0 -> 0.55.1
+	// Same-version case (e.g., 0.55.0 -> 0.55.0) is already rejected by the Equal check above.
+	if target.Major() == current.Major() && target.Minor() == current.Minor() {
+		return true, "", nil
+	}
+
 	// Allow increment of minor version by exactly 1
 	if target.Major() == current.Major() && target.Minor() == current.Minor()+1 {
 		return true, "", nil

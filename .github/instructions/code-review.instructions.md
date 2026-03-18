@@ -90,11 +90,26 @@ Act as a critic of your own review to ensure:
 - **Value**: Remove any comments that are purely complimentary
 - **Correctness**: Fix any discrepancies found during validation
 
+### Step 4: Assess Contributor Documentation Impact
+
+Use the [Contributing Docs Updater](../skills/contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
+
+Common triggers for doc updates:
+
+- New or changed CLI commands/flags
+- Build system changes (Makefile targets, scripts)
+- New packages, directories, or commands
+- Test framework or workflow changes
+- Configuration or prerequisite changes
+- Architecture changes
+
+If doc updates are needed, note which docs to update and what changes are required in your review.
+
 ### Review Output Format
 
 Structure your review comments as:
 
-```
+```text
 path/to/file.ext
     Line X: Specific issue description
     Line Y: Suggestion for improvement

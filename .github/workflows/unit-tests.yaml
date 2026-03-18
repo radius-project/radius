@@ -26,10 +26,19 @@ env:
   GOTESTSUMVERSION: 1.13.0
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
     permissions:
       contents: read
       checks: write
@@ -42,7 +51,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -62,13 +71,20 @@ jobs:
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
           make test
 
+      - name: Run make test-validate-cli (CLI integration tests)
+        env:
+          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/cli_results.xml
+          GOTEST_OPTS: -race -coverprofile ./dist/unit_test/cli_coverage.out
+        run: |
+          make test-validate-cli
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           # This secret is unavailable for fork PRs; Codecov falls back to tokenless upload.
           token: ${{ secrets.CODECOV_TOKEN }}
           codecov_yml_path: ./.codecov.yml
-          files: ./dist/unit_test/ut_coverage.out
+          files: ./dist/unit_test/ut_coverage.out,./dist/unit_test/cli_coverage.out
           fail_ci_if_error: false
           verbose: true
 

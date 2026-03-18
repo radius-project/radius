@@ -35,6 +35,16 @@ The following instruction files are available:
 - **[Make](instructions/make.instructions.md)** - Best practices for GNU Make Makefiles
 - **[Shell Scripts](instructions/shell.instructions.md)** - Guidelines for Bash/Shell script development
 
+## Skills
+
+These skills are available for specific Radius tasks under the `.github/skills/` directory.
+
+- **[Architecture Documentation](skills/architecture-documenter/SKILL.md)** - Document and diagram application architecture
+- **[Build Radius CLI](skills/radius-build-cli/SKILL.md)** - Build the `rad` CLI binary from source
+- **[Build and Push Container Images](skills/radius-build-images/SKILL.md)** - Build and push Radius Docker images to a registry
+- **[Install Radius from Custom Images](skills/radius-install-custom/SKILL.md)** - Install Radius on Kubernetes from custom-built images
+- **[Contributing Docs Updater](skills/contributing-docs-updater/SKILL.md)** - Update, create, review, and find gaps in contributor documentation
+
 ## How to Use
 
 When working on files that match the patterns defined in instruction files (e.g., `*.sh`, `.github/workflows/*.yml`), Copilot will automatically apply the relevant guidelines from the corresponding instruction file.

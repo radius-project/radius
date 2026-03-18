@@ -54,7 +54,7 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@2be0094729a1006f61e8339ce9934bfb3cbb549f # v4.52.2
+        uses: mikefarah/yq@5a7e72a743649b1b3a47d1a1d8214f3453173c51 # v4.52.4
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -93,7 +93,7 @@ jobs:
             })
             return data.body
 
-      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
+      - uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
         with:
           header: relnote-${{ github.run_id }}
           number: ${{ github.event.pull_request.number }}
@@ -116,7 +116,7 @@ jobs:
             echo "RELNOTE_FOUND=true" >> "${GITHUB_ENV}"
           fi
 
-      - uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
+      - uses: marocchino/sticky-pull-request-comment@70d2764d1a7d5d9560b100cbea0077fc8f633987 # v3.0.2
         continue-on-error: true
         if: ${{ !contains(steps.get-version.outputs.release-version, '-rc') && env.RELNOTE_FOUND == 'false' }}
         with:
@@ -143,7 +143,6 @@ jobs:
     environment: release
     permissions:
       contents: read # Required for actions/checkout
-      id-token: write # Required for azure/login (copy-deployment-engine-image)
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -194,7 +193,7 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@2be0094729a1006f61e8339ce9934bfb3cbb549f # v4.52.2
+        uses: mikefarah/yq@5a7e72a743649b1b3a47d1a1d8214f3453173c51 # v4.52.4
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
@@ -261,15 +260,63 @@ jobs:
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
 
-      - name: Copy Deployment Engine image to GHCR
+      - name: Get App Token for radius-publisher
         if: success() && steps.release-branch-exists.outputs.result == 'false'
-        uses: ./.github/actions/copy-deployment-engine-image
-        env:
-          GHCR_PASSWORD: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          DE_CONTAINER_AZURE_CLIENT_ID: ${{ secrets.DE_CONTAINER_AZURE_CLIENT_ID }}
-          DE_CONTAINER_AZURE_TENANT_ID: ${{ secrets.DE_CONTAINER_AZURE_TENANT_ID }}
-          DE_CONTAINER_AZURE_SUBSCRIPTION_ID: ${{ secrets.DE_CONTAINER_AZURE_SUBSCRIPTION_ID }}
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        id: get-de-token
         with:
-          tag: ${{ steps.get-version.outputs.release-channel }}
-          src_image: radiusdeploymentengine.azurecr.io/deployment-engine
-          dest_image: ghcr.io/radius-project/deployment-engine
+          app-id: ${{ secrets.RADIUS_PUBLISHER_BOT_APP_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          permission-metadata: read
+          permission-actions: read
+          permission-contents: write
+          owner: azure-octo
+          repositories: |
+            radius-publisher
+
+      - name: Capture DE dispatch start time
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        id: de-dispatch-start
+        shell: bash
+        run: |
+          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch Deployment Engine image publish
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
+        with:
+          token: ${{ steps.get-de-token.outputs.token }}
+          repository: azure-octo/radius-publisher
+          event-type: deployment-engine
+          client-payload: |-
+            {
+              "source_repository": "${{ github.repository }}",
+              "src_image": "radiusdeploymentengine.azurecr.io/deployment-engine",
+              "dest_image": "ghcr.io/radius-project/deployment-engine",
+              "tag": "${{ steps.get-version.outputs.release-channel }}"
+            }
+
+      - name: Monitor DE image publish workflow
+        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        id: monitor-de-workflow
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ steps.get-de-token.outputs.token }}
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await script({context, github, core})
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-deployment-engine.yml
+          INPUT_DISPATCH_STARTED_AT: ${{ steps.de-dispatch-start.outputs.started_at }}
+          INPUT_MAX_WAIT_SECONDS: "600"
+          INPUT_POLL_INTERVAL_SECONDS: "15"
+
+      - name: Show failed DE publish logs
+        if: failure() && steps.monitor-de-workflow.outputs.run_id != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.get-de-token.outputs.token }}
+        run: |
+          gh run view "${{ steps.monitor-de-workflow.outputs.run_id }}" --repo azure-octo/radius-publisher --log-failed || true
