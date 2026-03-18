@@ -105,7 +105,7 @@ install_radius() {
     echo "Installing Radius..."
     if ! rad install kubernetes \
         --set global.azureWorkloadIdentity.enabled=true \
-        --set database.enabled=true; then
+        --set database.enabled=false; then
         echo ""
         echo "============================================================================"
         echo "ERROR: Radius installation failed"
@@ -117,6 +117,10 @@ install_radius() {
     echo "Radius installation complete."
 
     verify_manifests_registered
+
+    echo "Saving list of resources not to be deleted after install..."
+    kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
+    echo "Saved skip-delete-resources-list.txt"
 }
 
 main() {
@@ -185,11 +189,10 @@ main() {
         # NOTE: Helm upgrades do not automatically reuse values from the previous release.
         # We must re-apply critical chart values or they will reset to chart defaults.
         # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
-        # - database.enabled defaults to false and is required for this workflow's control plane setup.
         # https://github.com/radius-project/radius/issues/11218
         if ! rad upgrade kubernetes \
             --set global.azureWorkloadIdentity.enabled=true \
-            --set database.enabled=true; then
+            --set database.enabled=false; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius upgrade failed"
@@ -200,6 +203,10 @@ main() {
             exit 1
         fi
         echo "Radius upgrade complete."
+
+        echo "Saving list of resources not to be deleted after upgrade..."
+        kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
+        echo "Saved skip-delete-resources-list.txt"
     fi
 
     echo "============================================================================"
