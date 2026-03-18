@@ -92,7 +92,7 @@ repository:
   bug-fixes-only: true
   accepts-change-request: true
   accepts-automated-change-request: true
-  no-third-party-packages: true
+  no-third-party-packages: false
   core-team:
     - name: Radius Core Team
       affiliation: Microsoft
