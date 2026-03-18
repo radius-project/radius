@@ -39,6 +39,9 @@ type TemplateInspectionResult struct {
 	// ContainsEnvironmentResource indicates whether the template contains an environment resource.
 	ContainsEnvironmentResource bool
 
+	// EnvironmentResources contains the list of environment resources found in the template.
+	EnvironmentResources []map[string]any
+
 	// DeprecatedResources contains the list of resource types using the deprecated Applications.* namespace
 	// with the 2023-10-01-preview API version.
 	DeprecatedResources []string
@@ -89,6 +92,11 @@ func InspectTemplateResources(template map[string]any) TemplateInspectionResult 
 			result.ContainsEnvironmentResource = true
 		}
 
+		// add Radius.Core environment resources to the result list
+		if strings.HasPrefix(resourceTypeLower, environmentResourceType) {
+			result.EnvironmentResources = append(result.EnvironmentResources, resource)
+		}
+
 		// Check for deprecated Applications.* namespace with 2023-10-01-preview API version
 		if strings.HasPrefix(resourceTypeLower, deprecatedNamespacePrefix) &&
 			strings.HasSuffix(resourceTypeLower, "@"+deprecatedAPIVersion) {
@@ -106,6 +114,13 @@ func InspectTemplateResources(template map[string]any) TemplateInspectionResult 
 // {"resources": {"resourceName": {"type": "Applications.Core/environments@2023-10-01-preview", ...}}}
 func ContainsEnvironmentResource(template map[string]any) bool {
 	return InspectTemplateResources(template).ContainsEnvironmentResource
+}
+
+// GetEnvironmentResources inspects the compiled Radius Bicep template's resources and returns
+// all environment resources found as mutable maps. The returned maps are references to the
+// original template entries, so mutations are reflected in the template.
+func GetEnvironmentResources(template map[string]any) []map[string]any {
+	return InspectTemplateResources(template).EnvironmentResources
 }
 
 // GetDeprecatedResources inspects the compiled Radius Bicep template's resources to find any resources
