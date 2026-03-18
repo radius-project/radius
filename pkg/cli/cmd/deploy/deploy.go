@@ -736,7 +736,7 @@ func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource 
 
 	// Try to GET the default recipe pack from the default scope.
 	// If it doesn't exist, create it.
-	packID, err := getOrCreateDefaultRecipePack(ctx, recipePackDefaultClient)
+	packID, err := recipepack.GetOrCreateDefaultRecipePack(ctx, recipePackDefaultClient)
 	if err != nil {
 		return err
 	}
@@ -759,25 +759,6 @@ func hasAnyRecipePacks(properties map[string]any) bool {
 		return false
 	}
 	return len(packsArray) > 0
-}
-
-// getOrCreateDefaultRecipePack attempts to GET the default recipe pack from
-// the default scope. If it doesn't exist (404), it creates it with all core
-// resource type recipes. Returns the full resource ID.
-func getOrCreateDefaultRecipePack(ctx context.Context, client *v20250801preview.RecipePacksClient) (string, error) {
-	_, err := client.Get(ctx, recipepack.DefaultRecipePackResourceName, nil)
-	if err != nil {
-		if !clients.Is404Error(err) {
-			return "", fmt.Errorf("failed to get default recipe pack from default scope: %w", err)
-		}
-		// Not found — create the default recipe pack with all core types.
-		resource := recipepack.NewDefaultRecipePackResource()
-		_, err = client.CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, resource, nil)
-		if err != nil {
-			return "", fmt.Errorf("failed to create default recipe pack: %w", err)
-		}
-	}
-	return recipepack.DefaultRecipePackID(), nil
 }
 
 // configureProviders configures environment and cloud providers based on the environment and provider type
