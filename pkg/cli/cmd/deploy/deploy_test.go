@@ -974,6 +974,19 @@ func Test_Run(t *testing.T) {
 	})
 }
 
+const radiusCoreEnvironmentsType = "Radius.Core/environments@2025-08-01-preview"
+
+// getRecipePacks navigates a template resource entry and returns the recipePacks slice.
+// It returns (packs, true) when the key exists and is a []any, or (nil, false) otherwise.
+func getRecipePacks(t *testing.T, template map[string]any, resourceKey string) ([]any, bool) {
+	t.Helper()
+	envRes := template["resources"].(map[string]any)[resourceKey].(map[string]any)
+	outerProps := envRes["properties"].(map[string]any)
+	innerProps := outerProps["properties"].(map[string]any)
+	packs, ok := innerProps["recipePacks"].([]any)
+	return packs, ok
+}
+
 func Test_setupRecipePacks(t *testing.T) {
 	scope := "/planes/radius/local/resourceGroups/test-group"
 
@@ -1006,7 +1019,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		template := map[string]any{
 			"resources": map[string]any{
 				"env": map[string]any{
-					"type": "Radius.Core/environments@2025-08-01-preview",
+					"type": radiusCoreEnvironmentsType,
 					"properties": map[string]any{
 						"name":       "myenv",
 						"properties": map[string]any{},
@@ -1019,10 +1032,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify that the default recipe pack was injected.
-		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
-		outerProps := envRes["properties"].(map[string]any)
-		innerProps := outerProps["properties"].(map[string]any)
-		packs, ok := innerProps["recipePacks"].([]any)
+		packs, ok := getRecipePacks(t, template, "env")
 		require.True(t, ok)
 		require.Len(t, packs, 1, "should have the default recipe pack")
 		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
@@ -1043,7 +1053,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		template := map[string]any{
 			"resources": map[string]any{
 				"env": map[string]any{
-					"type": "Radius.Core/environments@2025-08-01-preview",
+					"type": radiusCoreEnvironmentsType,
 					"properties": map[string]any{
 						"name": "myenv",
 						"properties": map[string]any{
@@ -1057,10 +1067,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		err := runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 
-		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
-		outerProps := envRes["properties"].(map[string]any)
-		innerProps := outerProps["properties"].(map[string]any)
-		packs := innerProps["recipePacks"].([]any)
+		packs, _ := getRecipePacks(t, template, "env")
 		// Only the original pack — no singletons added
 		require.Len(t, packs, 1)
 		require.Equal(t, existingPackID, packs[0])
@@ -1138,7 +1145,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		template := map[string]any{
 			"resources": map[string]any{
 				"envWithPacks": map[string]any{
-					"type": "Radius.Core/environments@2025-08-01-preview",
+					"type": radiusCoreEnvironmentsType,
 					"properties": map[string]any{
 						"name": "envWithPacks",
 						"properties": map[string]any{
@@ -1147,7 +1154,7 @@ func Test_setupRecipePacks(t *testing.T) {
 					},
 				},
 				"envWithout": map[string]any{
-					"type": "Radius.Core/environments@2025-08-01-preview",
+					"type": radiusCoreEnvironmentsType,
 					"properties": map[string]any{
 						"name":       "envWithout",
 						"properties": map[string]any{},
@@ -1160,18 +1167,12 @@ func Test_setupRecipePacks(t *testing.T) {
 		require.NoError(t, err)
 
 		// envWithPacks should be untouched — still just 1 pack.
-		envWithPacks := template["resources"].(map[string]any)["envWithPacks"].(map[string]any)
-		wpOuterProps := envWithPacks["properties"].(map[string]any)
-		wpInnerProps := wpOuterProps["properties"].(map[string]any)
-		wpPacks := wpInnerProps["recipePacks"].([]any)
+		wpPacks, _ := getRecipePacks(t, template, "envWithPacks")
 		require.Len(t, wpPacks, 1, "envWithPacks should keep its original pack only")
 		require.Equal(t, existingPackID, wpPacks[0])
 
 		// envWithout should have received the default pack.
-		envWithout := template["resources"].(map[string]any)["envWithout"].(map[string]any)
-		woOuterProps := envWithout["properties"].(map[string]any)
-		woInnerProps := woOuterProps["properties"].(map[string]any)
-		woPacks, ok := woInnerProps["recipePacks"].([]any)
+		woPacks, ok := getRecipePacks(t, template, "envWithout")
 		require.True(t, ok, "expected recipePacks on envWithout")
 		require.Len(t, woPacks, 1, "envWithout should have the default recipe pack")
 		require.Equal(t, recipepack.DefaultRecipePackID(), woPacks[0])
@@ -1207,7 +1208,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		template := map[string]any{
 			"resources": map[string]any{
 				"env": map[string]any{
-					"type": "Radius.Core/environments@2025-08-01-preview",
+					"type": radiusCoreEnvironmentsType,
 					"properties": map[string]any{
 						"name":       "myenv",
 						"properties": map[string]any{},
@@ -1219,10 +1220,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		err = runner.setupRecipePack(context.Background(), template)
 		require.NoError(t, err)
 
-		envRes := template["resources"].(map[string]any)["env"].(map[string]any)
-		outerProps := envRes["properties"].(map[string]any)
-		innerProps := outerProps["properties"].(map[string]any)
-		packs, ok := innerProps["recipePacks"].([]any)
+		packs, ok := getRecipePacks(t, template, "env")
 		require.True(t, ok)
 		require.Len(t, packs, 1, "should have the default recipe pack")
 		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
