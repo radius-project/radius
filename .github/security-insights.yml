@@ -80,10 +80,8 @@ project:
       email: radiuscoreteam@service.microsoft.com
       primary: true
     security-policy: https://github.com/radius-project/radius/blob/main/SECURITY.md
-    in-scope:
-      - ''
-    out-of-scope:
-      - ''
+    in-scope: []
+    out-of-scope: []
     pgp-key: ''
     comment: ''
 repository:
