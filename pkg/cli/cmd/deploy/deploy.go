@@ -660,7 +660,7 @@ func (r *Runner) setupCloudProviders(properties any) {
 // injects its ID into the template. If the environment already has any recipe pack
 // IDs set (literal or Bicep expression references), no changes are made.
 func (r *Runner) setupRecipePack(ctx context.Context, template map[string]any) error {
-	envResources := findRadiusCoreEnvironmentResources(template)
+	envResources := bicep.GetEnvironmentResources(template)
 	if len(envResources) == 0 {
 		return nil
 	}
@@ -677,7 +677,7 @@ func (r *Runner) setupRecipePack(ctx context.Context, template map[string]any) e
 // setupRecipePackForEnvironment sets up recipe packs for a single Radius.Core/environments resource.
 // If the environment already has any recipe packs set (literal IDs or ARM expression references),
 // no changes are made. Otherwise, it fetches or creates the default recipe pack from
-// the default scope and injects their IDs into the template.
+// the default scope and injects its ID into the template.
 func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource map[string]any) error {
 	// The compiled ARM template has a double-nested properties structure:
 	//   envResource["properties"]["properties"] is where resource-level fields live.
@@ -766,43 +766,6 @@ func getOrCreateDefaultRecipePack(ctx context.Context, client *v20250801preview.
 		}
 	}
 	return recipepack.DefaultRecipePackID(), nil
-}
-
-// findRadiusCoreEnvironmentResources walks the template's resources and returns
-// all Radius.Core/environments resources found (as mutable maps).
-func findRadiusCoreEnvironmentResources(template map[string]any) []map[string]any {
-	if template == nil {
-		return nil
-	}
-
-	resourcesValue, ok := template["resources"]
-	if !ok {
-		return nil
-	}
-
-	resourcesMap, ok := resourcesValue.(map[string]any)
-	if !ok {
-		return nil
-	}
-
-	var envResources []map[string]any
-	for _, resourceValue := range resourcesMap {
-		resource, ok := resourceValue.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		resourceType, ok := resource["type"].(string)
-		if !ok {
-			continue
-		}
-
-		if strings.HasPrefix(strings.ToLower(resourceType), "radius.core/environments") {
-			envResources = append(envResources, resource)
-		}
-	}
-
-	return envResources
 }
 
 // configureProviders configures environment and cloud providers based on the environment and provider type
