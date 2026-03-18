@@ -26,32 +26,31 @@ import (
 )
 
 func Test_GetDefaultRecipePackDefinition(t *testing.T) {
-	definitions := GetDefaultRecipePackDefinition()
+	definitions := GetCoreTypesRecipeInfo()
 
 	// Verify we have the expected number of definitions
 	require.Len(t, definitions, 4)
 
-	// Verify expected resource types and names
-	expectedDefinitions := map[string]string{
-		"containers":        "Radius.Compute/containers",
-		"persistentvolumes": "Radius.Compute/persistentVolumes",
-		"routes":            "Radius.Compute/routes",
-		"secrets":           "Radius.Security/secrets",
+	// Verify expected resource types
+	expectedResourceTypes := []string{
+		"Radius.Compute/containers",
+		"Radius.Compute/persistentVolumes",
+		"Radius.Compute/routes",
+		"Radius.Security/secrets",
 	}
-
-	for _, def := range definitions {
-		expectedResourceType, exists := expectedDefinitions[def.Name]
-		require.True(t, exists, "Unexpected definition name: %s", def.Name)
-		require.Equal(t, expectedResourceType, def.ResourceType, "Resource type mismatch for %s", def.Name)
-		require.NotEmpty(t, def.RecipeLocation, "RecipeLocation should not be empty for %s", def.Name)
+	actualResourceTypes := make([]string, len(definitions))
+	for i, def := range definitions {
+		actualResourceTypes[i] = def.ResourceType
+		require.NotEmpty(t, def.RecipeLocation, "RecipeLocation should not be empty for %s", def.ResourceType)
 	}
+	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
 }
 
 func Test_GetDefaultRecipePackDefinition_UsesLatestTagForEdgeChannel(t *testing.T) {
 	// The test binary is built without ldflags, so channel defaults to "edge".
 	require.True(t, version.IsEdgeChannel(), "default should be on edge channel")
 
-	definitions := GetDefaultRecipePackDefinition()
+	definitions := GetCoreTypesRecipeInfo()
 	for _, def := range definitions {
 		require.True(t, strings.HasSuffix(def.RecipeLocation, ":latest"),
 			"Expected :latest tag for edge channel, got %s", def.RecipeLocation)
@@ -70,7 +69,7 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 	require.NotNil(t, resource.Properties.Recipes)
 
 	// Verify the resource contains recipes for all core types.
-	definitions := GetDefaultRecipePackDefinition()
+	definitions := GetCoreTypesRecipeInfo()
 	require.Len(t, resource.Properties.Recipes, len(definitions))
 
 	for _, def := range definitions {

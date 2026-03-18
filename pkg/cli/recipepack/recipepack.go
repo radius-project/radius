@@ -52,7 +52,7 @@ type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGr
 func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 	bicepKind := corerpv20250801.RecipeKindBicep
 	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
-	for _, def := range GetDefaultRecipePackDefinition() {
+	for _, def := range GetCoreTypesRecipeInfo() {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
 			RecipeKind:     &bicepKind,
 			RecipeLocation: to.Ptr(def.RecipeLocation),
@@ -106,42 +106,36 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 	return DefaultRecipePackID(), nil
 }
 
-// SingletonRecipePackDefinition defines a singleton recipe pack for a single resource type.
-type SingletonRecipePackDefinition struct {
-	// Name is the name of the recipe pack (derived from resource type).
-	Name string
+// CoreTypesRecipeInfo defines a singleton recipe pack for a single resource type.
+type CoreTypesRecipeInfo struct {
 	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
 	ResourceType string
 	// RecipeLocation is the OCI registry location for the recipe.
 	RecipeLocation string
 }
 
-// GetDefaultRecipePackDefinition returns the list of default recipe pack definitions.
+// GetCoreTypesRecipeInfo returns recipe information for all core types.
 // Each definition represents a recipe for one core resource type.
 // The OCI tag is set to the current Radius version channel (e.g., "0.40" or "edge").
-func GetDefaultRecipePackDefinition() []SingletonRecipePackDefinition {
+func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
 		tag = "latest"
 	}
-	return []SingletonRecipePackDefinition{
+	return []CoreTypesRecipeInfo{
 		{
-			Name:           "containers",
 			ResourceType:   "Radius.Compute/containers",
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:" + tag,
 		},
 		{
-			Name:           "persistentvolumes",
 			ResourceType:   "Radius.Compute/persistentVolumes",
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
 		},
 		{
-			Name:           "routes",
 			ResourceType:   "Radius.Compute/routes",
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
 		},
 		{
-			Name:           "secrets",
 			ResourceType:   "Radius.Security/secrets",
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
