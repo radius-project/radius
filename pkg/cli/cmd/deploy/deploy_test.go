@@ -1165,6 +1165,19 @@ func Test_setupCloudProviders(t *testing.T) {
 				Scope: "/subscriptions/test-subscription/resourceGroups/test-rg",
 			},
 		},
+		{
+			name: "v20250801preview with Azure subscription only (nil ResourceGroupName)",
+			properties: &v20250801preview.EnvironmentProperties{
+				Providers: &v20250801preview.Providers{
+					Azure: &v20250801preview.ProvidersAzure{
+						SubscriptionID: to.Ptr("test-subscription"),
+					},
+				},
+			},
+			expectedAzure: &clients.AzureProvider{
+				Scope: "/subscriptions/test-subscription",
+			},
+		},
 	}
 
 	for _, tc := range testcases {
