@@ -189,7 +189,7 @@ main() {
         # https://github.com/radius-project/radius/issues/11218
         if ! rad upgrade kubernetes \
             --set global.azureWorkloadIdentity.enabled=true \
-            --set database.enabled=false; then
+            --set database.enabled=true; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius upgrade failed"
