@@ -976,6 +976,22 @@ func Test_Run(t *testing.T) {
 
 const radiusCoreEnvironmentsType = "Radius.Core/environments@2025-08-01-preview"
 
+// buildEnvResource creates a Radius.Core/environments resource entry for use in test templates.
+// If recipePacks is nil, the environment will have no recipePacks field.
+func buildEnvResource(name string, recipePacks []any) map[string]any {
+	innerProps := map[string]any{}
+	if recipePacks != nil {
+		innerProps["recipePacks"] = recipePacks
+	}
+	return map[string]any{
+		"type": radiusCoreEnvironmentsType,
+		"properties": map[string]any{
+			"name":       name,
+			"properties": innerProps,
+		},
+	}
+}
+
 // getRecipePacks navigates a template resource entry and returns the recipePacks slice.
 // It returns (packs, true) when the key exists and is a []any, or (nil, false) otherwise.
 func getRecipePacks(t *testing.T, template map[string]any, resourceKey string) ([]any, bool) {
@@ -1015,16 +1031,9 @@ func Test_setupRecipePacks(t *testing.T) {
 			Output:                    &output.MockOutput{},
 		}
 
-		// Template with a Radius.Core/environments resource and no recipe packs.
 		template := map[string]any{
 			"resources": map[string]any{
-				"env": map[string]any{
-					"type": radiusCoreEnvironmentsType,
-					"properties": map[string]any{
-						"name":       "myenv",
-						"properties": map[string]any{},
-					},
-				},
+				"env": buildEnvResource("myenv", nil),
 			},
 		}
 
@@ -1048,19 +1057,10 @@ func Test_setupRecipePacks(t *testing.T) {
 
 		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
 
-		// Template with a Radius.Core/environments resource that already has one pack.
 		// Since packs are already set, no changes should be made.
 		template := map[string]any{
 			"resources": map[string]any{
-				"env": map[string]any{
-					"type": radiusCoreEnvironmentsType,
-					"properties": map[string]any{
-						"name": "myenv",
-						"properties": map[string]any{
-							"recipePacks": []any{existingPackID},
-						},
-					},
-				},
+				"env": buildEnvResource("myenv", []any{existingPackID}),
 			},
 		}
 
@@ -1144,22 +1144,8 @@ func Test_setupRecipePacks(t *testing.T) {
 		// Two environments: envWithPacks already has a pack, envWithout has none.
 		template := map[string]any{
 			"resources": map[string]any{
-				"envWithPacks": map[string]any{
-					"type": radiusCoreEnvironmentsType,
-					"properties": map[string]any{
-						"name": "envWithPacks",
-						"properties": map[string]any{
-							"recipePacks": []any{existingPackID},
-						},
-					},
-				},
-				"envWithout": map[string]any{
-					"type": radiusCoreEnvironmentsType,
-					"properties": map[string]any{
-						"name":       "envWithout",
-						"properties": map[string]any{},
-					},
-				},
+				"envWithPacks": buildEnvResource("envWithPacks", []any{existingPackID}),
+				"envWithout":   buildEnvResource("envWithout", nil),
 			},
 		}
 
@@ -1204,16 +1190,9 @@ func Test_setupRecipePacks(t *testing.T) {
 			Output:                    &output.MockOutput{},
 		}
 
-		// Template with a Radius.Core/environments resource and no recipe packs.
 		template := map[string]any{
 			"resources": map[string]any{
-				"env": map[string]any{
-					"type": radiusCoreEnvironmentsType,
-					"properties": map[string]any{
-						"name":       "myenv",
-						"properties": map[string]any{},
-					},
-				},
+				"env": buildEnvResource("myenv", nil),
 			},
 		}
 
