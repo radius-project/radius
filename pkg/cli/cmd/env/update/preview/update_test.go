@@ -18,8 +18,10 @@ package preview
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
@@ -108,6 +110,9 @@ func Test_Run(t *testing.T) {
 			serverFactory: test_client_factory.WithEnvironmentServerNoError,
 			expectedOutput: []any{
 				output.LogOutput{
+					Format: "WARNING: The existing recipe pack list will be replaced with the specified packs.",
+				},
+				output.LogOutput{
 					Format: "Updating Environment...",
 				},
 				output.FormattedOutput{
@@ -164,4 +169,86 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, tc.expectedOutput, outputSink.Writes)
 		})
 	}
+}
+
+func Test_Run_RecipePacksReplaced(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	// Track the resource sent to CreateOrUpdate so we can assert on its recipe packs.
+	var capturedEnv v20250801preview.EnvironmentResource
+
+	existingPackID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/old-pack"
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					EnvironmentResource: v20250801preview.EnvironmentResource{
+						Name: to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: []*string{to.Ptr(existingPackID)},
+						},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				resource v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				capturedEnv = resource
+				result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+					EnvironmentResource: resource,
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		nil, // uses default RecipePacksServer (accepts any name)
+	)
+	require.NoError(t, err)
+
+	outputSink := &output.MockOutput{}
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  outputSink,
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{"new-pack-a", "new-pack-b"},
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(context.Background())
+	require.NoError(t, err)
+
+	// The old pack should be gone — only the two new packs should remain.
+	require.Len(t, capturedEnv.Properties.RecipePacks, 2, "recipe packs list should be replaced, not appended")
+	packIDs := []string{*capturedEnv.Properties.RecipePacks[0], *capturedEnv.Properties.RecipePacks[1]}
+	require.NotContains(t, packIDs, existingPackID, "old pack should not be in the updated list")
+
+	// Verify the replacement warning was emitted.
+	foundWarning := false
+	for _, w := range outputSink.Writes {
+		if logOut, ok := w.(output.LogOutput); ok && logOut.Format == "WARNING: The existing recipe pack list will be replaced with the specified packs." {
+			foundWarning = true
+			break
+		}
+	}
+	require.True(t, foundWarning, "expected replacement warning in output")
 }

@@ -275,6 +275,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// replace recipe packs if any are specified
 	if len(r.recipePacks) > 0 {
+		if len(env.Properties.RecipePacks) > 0 {
+			r.Output.LogInfo("WARNING: The existing recipe pack list will be replaced with the specified packs.")
+		}
+
 		// Create a new list to replace the existing recipe packs
 		newRecipePacks := []*string{}
 
