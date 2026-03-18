@@ -73,6 +73,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
 		require.NoError(t, err)
 		requireResponseStatus(t, deleteResponse, http.StatusAccepted)
+		defer deleteResponse.Body.Close()
 
 		// Get the operation status url from the Azure-Asyncoperation header
 		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
@@ -86,9 +87,9 @@ func Test_AWS_DeleteResource(t *testing.T) {
 			require.Equal(t, http.StatusOK, getResponse.StatusCode)
 
 			// Read the request status from the body
-			defer getResponse.Body.Close()
 			payload, err := io.ReadAll(getResponse.Body)
 			require.NoError(t, err)
+			require.NoError(t, getResponse.Body.Close())
 			body := map[string]any{}
 			err = json.Unmarshal(payload, &body)
 			require.NoError(t, err)
