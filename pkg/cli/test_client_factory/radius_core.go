@@ -415,3 +415,15 @@ func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
 		},
 	}
 }
+
+// WithRecipePackServerInternalError returns a RecipePacksServer that returns a 500
+// internal server error on Get, simulating a transient or unexpected failure.
+func WithRecipePackServerInternalError() corerpfake.RecipePacksServer {
+	return corerpfake.RecipePacksServer{
+		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("internal server error"))
+			errResp.SetResponseError(500, "InternalServerError")
+			return
+		},
+	}
+}

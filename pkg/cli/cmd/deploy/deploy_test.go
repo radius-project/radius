@@ -1133,6 +1133,69 @@ func Test_setupRecipePacks(t *testing.T) {
 		require.Len(t, packs, 1, "should have the default recipe pack")
 		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
 	})
+
+	t.Run("returns error when default scope GET fails with non-404", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory returns 500 on GET (unexpected error).
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerInternalError,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
+	})
+
+	t.Run("returns error when CreateOrUpdateResourceGroup fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(fmt.Errorf("resource group creation failed")).
+			Times(1)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:            &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource group creation failed")
+	})
 }
 
 func Test_injectAutomaticParameters(t *testing.T) {
