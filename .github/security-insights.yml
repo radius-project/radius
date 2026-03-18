@@ -161,7 +161,7 @@ repository:
     tools:
       - name: Scorecard
         type: Supply Chain Security
-        version: ''
+        version: '2.4.3'
         rulesets:
           - default
         results:
