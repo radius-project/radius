@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -84,6 +85,25 @@ func EnsureDefaultResourceGroup(ctx context.Context, createOrUpdate ResourceGrou
 	return createOrUpdate(ctx, "local", DefaultResourceGroupName, &ucpv20231001.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
+}
+
+// GetOrCreateDefaultRecipePack attempts to GET the default recipe pack from
+// the default scope. If it doesn't exist (404), it creates it with all core
+// resource type recipes. Returns the full resource ID.
+func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.RecipePacksClient) (string, error) {
+	_, err := client.Get(ctx, DefaultRecipePackResourceName, nil)
+	if err != nil {
+		if !clients.Is404Error(err) {
+			return "", fmt.Errorf("failed to get default recipe pack from default scope: %w", err)
+		}
+		// Not found — create the default recipe pack with all core types.
+		resource := NewDefaultRecipePackResource()
+		_, err = client.CreateOrUpdate(ctx, DefaultRecipePackResourceName, resource, nil)
+		if err != nil {
+			return "", fmt.Errorf("failed to create default recipe pack: %w", err)
+		}
+	}
+	return DefaultRecipePackID(), nil
 }
 
 // SingletonRecipePackDefinition defines a singleton recipe pack for a single resource type.
