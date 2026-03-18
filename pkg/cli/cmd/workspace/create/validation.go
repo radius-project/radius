@@ -32,8 +32,8 @@ func ValidateArgs() cobra.PositionalArgs {
 		if len(args) < 1 || len(args) > 2 {
 			return fmt.Errorf("usage: rad workspace create [workspaceType] [workspaceName] [flags]")
 		}
-		if args[0] != "kubernetes" {
-			return fmt.Errorf("workspaces currently only support type 'kubernetes'")
+		if args[0] != "kubernetes" && args[0] != "github" {
+			return fmt.Errorf("workspaces support types 'kubernetes' and 'github'")
 		}
 		return nil
 	}

@@ -65,6 +65,18 @@ func (w Workspace) IsEditableWorkspace() bool {
 	return w.Source != SourceFallback
 }
 
+// StateDir returns the state directory for GitHub workspaces. Returns the default state directory
+// if the workspace is not a GitHub workspace or the state directory is not configured.
+func (w Workspace) StateDir() string {
+	if sd, ok := w.Connection["stateDir"]; ok {
+		if str, ok := sd.(string); ok && str != "" {
+			return str
+		}
+	}
+
+	return DefaultStateDir
+}
+
 // Source specifies how a workspace was loaded.
 type Source string
 

@@ -102,6 +102,8 @@ rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
+	cmd.Flags().String("kind", "kubernetes", "Workspace type: 'kubernetes' or 'github'")
+	cmd.Flags().String("state-dir", ".radius/state", "State directory for PostgreSQL backups (used with --kind github)")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	return cmd, runner
@@ -144,6 +146,12 @@ type Runner struct {
 
 	// Full determines whether or not we ask the user for all options.
 	Full bool
+
+	// Kind specifies the workspace type: 'kubernetes' (default) or 'github'.
+	Kind string
+
+	// StateDir is the directory for PostgreSQL backups (used with --kind github).
+	StateDir string
 
 	// Set is the list of additional Helm values to set.
 	Set []string
@@ -192,6 +200,28 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Full, err = cmd.Flags().GetBool("full")
 	if err != nil {
 		return err
+	}
+
+	r.Kind, err = cmd.Flags().GetString("kind")
+	if err != nil {
+		return err
+	}
+
+	r.StateDir, err = cmd.Flags().GetString("state-dir")
+	if err != nil {
+		return err
+	}
+
+	// GitHub workspace type uses a dedicated init flow.
+	if r.Kind == workspaces.KindGitHub {
+		options, workspace, err := r.enterGitHubInitOptions(cmd.Context(), r.StateDir)
+		if err != nil {
+			return err
+		}
+
+		r.Options = options
+		r.Workspace = workspace
+		return nil
 	}
 
 	for {
@@ -255,6 +285,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to install Radius.")
+		}
+
+		// For GitHub workspace type, run post-install steps (wait for PG, restore state).
+		if r.Kind == workspaces.KindGitHub {
+			if err := r.runGitHubPostInstall(ctx); err != nil {
+				return clierrors.MessageWithCause(err, "Failed to complete GitHub workspace setup.")
+			}
 		}
 	}
 	progress.InstallComplete = true
