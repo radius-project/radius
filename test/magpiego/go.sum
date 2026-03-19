@@ -34,10 +34,10 @@ github.com/coder/websocket v1.8.13 h1:f3QZdXy7uGVz+4uCJy2nTZyM0yTBj8yANEHhqlXZ9F
 github.com/coder/websocket v1.8.13/go.mod h1:LNVeNrXQZfe5qhS9ALED3uA+l5pPqvwXg3CKoDBB2gs=
 github.com/dapr/dapr v1.17.0 h1:GI9uU7yZVTBkzGRJl4cA/LJObEcV0+SJJJ46Dtueayo=
 github.com/dapr/dapr v1.17.0/go.mod h1:r9fVhTqfzsZfeUNZ3JHJ1x3oieOeGPkoypmFWBM+d78=
-github.com/dapr/durabletask-go v0.11.0 h1:e9Ns/3a2b6JDKGuvksvx6gCHn7rd+nwZZyAXbg5Ley4=
-github.com/dapr/durabletask-go v0.11.0/go.mod h1:0Ts4rXp74JyG19gDWPcwNo5V6NBZzhARzHF5XynmA7Q=
-github.com/dapr/go-sdk v1.14.1 h1:fXc2Bk2RSRCs/x+qXt3ODBujaIbYuZbYHGqFWH7OqsA=
-github.com/dapr/go-sdk v1.14.1/go.mod h1:knMKBC95OCI3WdtitIsEXWy7eTpbZOMBh1NG/2QoV5Y=
+github.com/dapr/durabletask-go v0.11.3 h1:DVWfiPo9+Xg0Q3uJIFGvEh2707uNyFKwIoy/PXiTXGc=
+github.com/dapr/durabletask-go v0.11.3/go.mod h1:omLTzNvLQvpemgQYpKpfQGLMLVzDyUxBePRT/UlwqYI=
+github.com/dapr/go-sdk v1.14.2 h1:HV44TpxlpoX30LwddTMbiN8aZHwgFKRHI39wp/SzUdE=
+github.com/dapr/go-sdk v1.14.2/go.mod h1:k2A5GrEYXVTlZdTFMRGkzKaLRPP7Rdd6+KcqI674Ud8=
 github.com/dapr/kit v0.17.0 h1:WCltVyKRMwk+3pbBs/3Qe5on4BZUnhy6tKgLObB2nMs=
 github.com/dapr/kit v0.17.0/go.mod h1:40ZWs5P6xfYf7O59XgwqZkIyDldTIXlhTQhGop8QoSM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
