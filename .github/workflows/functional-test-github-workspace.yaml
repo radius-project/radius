@@ -112,9 +112,12 @@ jobs:
           curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=${{ env.K3D_VER }} bash
           k3d version
 
-      - uses: azure/setup-kubectl@776406ecffb20c6b1c3f3d74e45c368e65e5680a # v4.0.1
-        with:
-          version: ${{ env.KUBECTL_VER }}
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VER }}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
 
       - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
