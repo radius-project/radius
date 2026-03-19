@@ -1428,7 +1428,7 @@ tests:
       - ucp/configmaps.yaml
     asserts:
       - contains:
-          path: data["ucp.yaml"]
+          path: data["ucp-config.yaml"]
           content: 'provider: "apiserver"'
         template: ucp/configmaps.yaml
 
@@ -1439,7 +1439,7 @@ tests:
       - ucp/configmaps.yaml
     asserts:
       - contains:
-          path: data["ucp.yaml"]
+          path: data["ucp-config.yaml"]
           content: postgresql
         template: ucp/configmaps.yaml
 
@@ -1448,7 +1448,7 @@ tests:
       - rp/configmaps.yaml
     asserts:
       - contains:
-          path: data["applications-rp.yaml"]
+          path: data["radius-self-host.yaml"]
           content: 'provider: "apiserver"'
         template: rp/configmaps.yaml
 
@@ -1459,7 +1459,7 @@ tests:
       - rp/configmaps.yaml
     asserts:
       - contains:
-          path: data["applications-rp.yaml"]
+          path: data["radius-self-host.yaml"]
           content: postgresql
         template: rp/configmaps.yaml
 
@@ -1468,7 +1468,7 @@ tests:
       - dynamic-rp/configmaps.yaml
     asserts:
       - contains:
-          path: data["dynamic-rp.yaml"]
+          path: data["radius-self-host.yaml"]
           content: 'provider: "apiserver"'
         template: dynamic-rp/configmaps.yaml
 
@@ -1479,7 +1479,7 @@ tests:
       - dynamic-rp/configmaps.yaml
     asserts:
       - contains:
-          path: data["dynamic-rp.yaml"]
+          path: data["radius-self-host.yaml"]
           content: postgresql
         template: dynamic-rp/configmaps.yaml
 
