@@ -72,7 +72,7 @@ type Runner struct {
 	ResourceGroupName       string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 	// DefaultScopeClientFactory is a client factory scoped to the default resource group.
-	// Singleton recipe packs are always created in this scope. If nil, it will be
+	// The default recipe pack is always created in this scope. If nil, it will be
 	// initialized automatically.
 	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 	ConfigFileInterface       framework.ConfigFileInterface
@@ -136,7 +136,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad env create` command.
 //
 // Run creates a new Radius.Core environment with the default recipe pack
-// for core resource types linked to it.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
@@ -148,7 +147,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Creating Radius Core Environment %q...", r.EnvironmentName)
 
-	// Ensure the default resource group exists before creating recipe packs in it.
+	// Ensure the default resource group exists before creating recipe pack in it.
 	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -167,8 +166,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.DefaultScopeClientFactory = defaultClientFactory
 	}
 
-	defaultPack := recipepack.NewDefaultRecipePackResource()
-	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
+	recipePackClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
+	_, err = recipepack.GetOrCreateDefaultRecipePack(ctx, recipePackClient)
 	if err != nil {
 		return err
 	}

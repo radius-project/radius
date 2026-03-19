@@ -29,16 +29,16 @@ import (
 )
 
 const (
-	// DefaultRecipePackResourceName is the name of the default recipe pack
-	// resource that contains recipes for all core resource types.
+	// DefaultRecipePackResourceName is the name of the Radius provided
+	// recipe pack resource that contains kubernetes recipes for all core resource types.
 	DefaultRecipePackResourceName = "default"
 
 	// DefaultResourceGroupName is the name of the default resource group where
-	// singleton recipe packs are created and looked up.
+	// the default recipe pack is created and looked up.
 	DefaultResourceGroupName = "default"
 
 	// DefaultResourceGroupScope is the full scope path for the default resource group.
-	// Singleton recipe packs that Radius provides by default always live in this scope.
+	// default recipe pack that Radius provides always live in this scope.
 	DefaultResourceGroupScope = "/planes/radius/local/resourceGroups/" + DefaultResourceGroupName
 )
 
@@ -73,7 +73,7 @@ func DefaultRecipePackID() string {
 }
 
 // EnsureDefaultResourceGroup creates the default resource group if it does not already exist.
-// This must be called before creating singleton recipe packs, because recipe packs are
+// This must be called before creating the default recipe pack, because recipe packs are
 // stored in the default resource group and the PUT will fail with 404 if the group is missing.
 // The group might be missing in a sequence such as below:
 // 1. rad install
@@ -106,7 +106,7 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 	return DefaultRecipePackID(), nil
 }
 
-// CoreTypesRecipeInfo defines a singleton recipe pack for a single resource type.
+// CoreTypesRecipeInfo defines a recipe entry for a single resource type in the default recipe pack.
 type CoreTypesRecipeInfo struct {
 	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
 	ResourceType string

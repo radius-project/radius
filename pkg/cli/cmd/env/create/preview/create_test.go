@@ -201,6 +201,83 @@ func Test_Run(t *testing.T) {
 			Params: []interface{}{"testenv", "test-resource-group"},
 		})
 	})
+
+	t.Run("creates default recipe pack when not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			test_client_factory.WithEnvironmentServer404OnGet,
+			nil,
+		)
+		require.NoError(t, err)
+
+		// Default scope factory returns 404 on GET, succeeds on CreateOrUpdate.
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory:   factory,
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    outputSink,
+			Workspace:                 workspace,
+			EnvironmentName:           "testenv",
+			ResourceGroupName:         "test-resource-group",
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+	})
+
+	t.Run("returns error when default recipe pack GET fails with non-404", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			test_client_factory.WithEnvironmentServer404OnGet,
+			nil,
+		)
+		require.NoError(t, err)
+
+		// Default scope factory returns 500 on GET.
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerInternalError,
+		)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory:   factory,
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    outputSink,
+			Workspace:                 workspace,
+			EnvironmentName:           "testenv",
+			ResourceGroupName:         "test-resource-group",
+		}
+
+		err = runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
+	})
 }
 
 func expectResourceGroupSuccess(client *clients.MockApplicationsManagementClient, name string) {

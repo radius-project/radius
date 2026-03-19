@@ -109,8 +109,7 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 }
 
 // GetEnvironmentResources inspects the compiled Radius Bicep template's resources and returns
-// all environment resources found as mutable maps. The returned maps are references to the
-// original template entries, so mutations are reflected in the template.
+// all environment resources found as maps.
 func GetEnvironmentResources(template map[string]any) []map[string]any {
 	return InspectTemplateResources(template).EnvironmentResources
 }
