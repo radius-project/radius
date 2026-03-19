@@ -71,7 +71,7 @@ func Test_enterInitOptions(t *testing.T) {
 				Namespace: "default",
 			},
 			Recipes: recipePackOptions{
-				DevRecipes: true,
+				DefaultRecipePack: true,
 			},
 		}
 		require.Equal(t, expectedOptions, *options)

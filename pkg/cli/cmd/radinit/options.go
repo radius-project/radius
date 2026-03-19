@@ -61,7 +61,7 @@ type cloudProviderOptions struct {
 
 // recipePackOptions holds all of the options that will be used to initialize recipe packs as part of the environment.
 type recipePackOptions struct {
-	DevRecipes bool
+	DefaultRecipePack bool
 }
 
 // applicationOptions holds all of the options that will be used to initialize an application in the current directory.
@@ -111,7 +111,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	options.Recipes.DevRecipes = !r.Full
+	options.Recipes.DefaultRecipePack = !r.Full
 
 	// If the user has a current workspace we should overwrite it.
 	// If the user does not have a current workspace we should create a new one called default and set it as current
@@ -158,15 +158,6 @@ func (r *Runner) UpdateCloudProviderOptions(azure *azure.Provider, aws *cli_aws.
 
 	r.Options.CloudProviders.Azure = azure
 	r.Options.CloudProviders.AWS = aws
-}
-
-// UpdateRecipePackOptions updates the recipe pack options with the provided values.
-func (r *Runner) UpdateRecipePackOptions(devRecipes bool) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Recipes.DevRecipes = devRecipes
 }
 
 // UpdateApplicationOptions updates the application options with the provided values.
