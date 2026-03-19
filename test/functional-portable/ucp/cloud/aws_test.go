@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -45,10 +46,10 @@ var (
 )
 
 func Test_AWS_DeleteResource(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		logGroupName := generateLogGroupName()
+		logGroupName := generateLogGroupName(t)
 		setupTestAWSResource(t, ctx, logGroupName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
@@ -71,7 +72,8 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		require.NoError(t, err)
 		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
+		requireResponseStatus(t, deleteResponse, http.StatusAccepted)
+		defer deleteResponse.Body.Close()
 
 		// Get the operation status url from the Azure-Asyncoperation header
 		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
@@ -85,9 +87,9 @@ func Test_AWS_DeleteResource(t *testing.T) {
 			require.Equal(t, http.StatusOK, getResponse.StatusCode)
 
 			// Read the request status from the body
-			defer getResponse.Body.Close()
 			payload, err := io.ReadAll(getResponse.Body)
 			require.NoError(t, err)
+			require.NoError(t, getResponse.Body.Close())
 			body := map[string]any{}
 			err = json.Unmarshal(payload, &body)
 			require.NoError(t, err)
@@ -106,10 +108,10 @@ func Test_AWS_DeleteResource(t *testing.T) {
 }
 
 func Test_AWS_ListResources(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	myTest := test.NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		var logGroupName = generateLogGroupName()
+		var logGroupName = generateLogGroupName(t)
 		setupTestAWSResource(t, ctx, logGroupName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
@@ -126,7 +128,7 @@ func Test_AWS_ListResources(t *testing.T) {
 		listResponse, err := roundTripper.RoundTrip(listRequest)
 		require.NoError(t, err)
 
-		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+		requireResponseStatus(t, listResponse, http.StatusOK)
 
 		defer listResponse.Body.Close()
 		payload, err := io.ReadAll(listResponse.Body)
@@ -165,9 +167,12 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
 
 	t.Cleanup(func() {
+		// Use a fresh context because t.Context() is cancelled before cleanup runs.
+		cleanupCtx := context.Background()
+
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
-		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		_, err := awsClient.GetResource(cleanupCtx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
@@ -175,14 +180,14 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 			return
 		}
 		// Just in case delete fails
-		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+		deleteOutput, err := awsClient.DeleteResource(cleanupCtx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		require.NoError(t, err)
 
 		// Ignoring status of delete since AWS command fails if the resource does not already exist
-		waitForSuccess(t, ctx, awsClient, deleteOutput.ProgressEvent.RequestToken)
+		waitForSuccess(t, cleanupCtx, awsClient, deleteOutput.ProgressEvent.RequestToken)
 	})
 	// End of test setup
 }
@@ -197,6 +202,41 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 	require.NoError(t, err)
 }
 
-func generateLogGroupName() string {
+func generateLogGroupName(t *testing.T) string {
+	t.Helper()
 	return "ucpfunctionaltest-" + uuid.NewString()
+}
+
+func requireResponseStatus(t *testing.T, response *http.Response, expectedStatus int) {
+	t.Helper()
+	require.NotNil(t, response)
+
+	if response.StatusCode == expectedStatus {
+		return
+	}
+
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+
+	response.Body = io.NopCloser(bytes.NewReader(body))
+
+	headerKeys := make([]string, 0, len(response.Header))
+	for key := range response.Header {
+		headerKeys = append(headerKeys, key)
+	}
+	sort.Strings(headerKeys)
+
+	headers := make([]string, 0, len(headerKeys))
+	for _, key := range headerKeys {
+		headers = append(headers, fmt.Sprintf("%s=%s", key, strings.Join(response.Header.Values(key), ",")))
+	}
+
+	require.Failf(t, "unexpected response status",
+		"expected status %d, got %d\nheaders: %s\nbody: %s",
+		expectedStatus,
+		response.StatusCode,
+		strings.Join(headers, "; "),
+		string(body),
+	)
 }
