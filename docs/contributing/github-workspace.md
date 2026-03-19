@@ -218,3 +218,17 @@ It exercises the full lifecycle on a GitHub Actions runner within a single job:
 | `k3d` | `pkg/cli/k3d` | k3d cluster lifecycle |
 | `pgbackup` | `pkg/cli/pgbackup` | PostgreSQL backup/restore via `kubectl exec` |
 | `gitstate` | `pkg/cli/gitstate` | Orphan branch state via `git worktree` + semaphores |
+
+## Databases Backed Up
+
+Three PostgreSQL databases are managed by the backup/restore cycle:
+
+| Database | Owner | Component |
+|----------|-------|-----------|
+| `ucp` | `ucp` | UCP (Universal Control Plane) |
+| `applications_rp` | `applications_rp` | Applications resource provider |
+| `dynamic_rp` | `dynamic_rp` | Dynamic resource provider |
+
+The init-db script (mounted at `/docker-entrypoint-initdb.d/`) creates each database and user
+on first start. `pgbackup` dumps all three with `pg_dump` and restores them with `psql` in the
+same order.

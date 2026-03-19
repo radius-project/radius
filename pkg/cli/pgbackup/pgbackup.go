@@ -40,7 +40,7 @@ const (
 )
 
 // databases is the list of PostgreSQL databases to back up and restore.
-var databases = []string{"ucp", "applications_rp"}
+var databases = []string{"ucp", "applications_rp", "dynamic_rp"}
 
 // HasBackup checks whether backup SQL files exist in the given state directory.
 func HasBackup(stateDir string) bool {

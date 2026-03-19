@@ -13,7 +13,7 @@ data:
     #!/bin/bash
     set -e
 
-    RESOURCE_PROVIDERS=("ucp" "applications_rp")
+    RESOURCE_PROVIDERS=("ucp" "applications_rp" "dynamic_rp")
 
     for RESOURCE_PROVIDER in "${RESOURCE_PROVIDERS[@]}"; do
         echo "Creating database and user for $RESOURCE_PROVIDER"
