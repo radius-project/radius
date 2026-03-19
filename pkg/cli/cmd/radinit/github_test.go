@@ -17,50 +17,132 @@ limitations under the License.
 package radinit
 
 import (
+	"context"
+	"errors"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/radius-project/radius/pkg/cli/gitstate"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
-func Test_enterGitHubInitOptions_WorkspaceKind(t *testing.T) {
-	// When enterGitHubInitOptions builds the workspace, it must produce a GitHub workspace.
-	// We test only the workspace fields that don't require k3d to be installed by constructing
-	// the expected workspace manually and verifying the structure.
-	expectedConnection := map[string]any{
-		"kind":     workspaces.KindGitHub,
-		"context":  "k3d-radius-github",
-		"stateDir": ".radius/state",
+// makeGitHubRunner returns a minimal Runner configured for testing runGitHubPostInstall.
+// The Worktree.Path is set to a temp dir so pgbackup stateDir reads/writes don't fail on
+// path validation — the PGBackupClient mock short-circuits actual kubectl calls anyway.
+func makeGitHubRunner(t *testing.T, pg PGBackupClient, semaphore gitstate.SemaphoreState) *Runner {
+	t.Helper()
+	return &Runner{
+		Workspace: &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    workspaces.KindGitHub,
+				"context": "k3d-radius-github",
+			},
+		},
+		Options: &initOptions{
+			Cluster: clusterOptions{Namespace: "radius-system"},
+		},
+		Worktree:             &gitstate.StateWorktree{Path: t.TempDir()},
+		GitHubSemaphoreState: semaphore,
+		PGBackupClient:       pg,
 	}
-
-	ws := &workspaces.Workspace{
-		Name:        "default",
-		Connection:  expectedConnection,
-		Scope:       "/planes/radius/local/resourceGroups/default",
-		Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-	}
-
-	// Verify the workspace has the correct kind.
-	require.Equal(t, workspaces.KindGitHub, ws.Connection["kind"])
-
-	// Verify the workspace has a Kubernetes context.
-	ctx, ok := ws.KubernetesContext()
-	require.True(t, ok)
-	require.Equal(t, "k3d-radius-github", ctx)
-
-	// Verify the state dir helper works.
-	require.Equal(t, ".radius/state", ws.StateDir())
 }
 
-func Test_enterGitHubInitOptions_DefaultStateDir(t *testing.T) {
-	// When stateDir is not set, StateDir() should return the default.
-	ws := &workspaces.Workspace{
-		Name: "default",
-		Connection: map[string]any{
-			"kind":    workspaces.KindGitHub,
-			"context": "k3d-radius-github",
-		},
-	}
+// --- Nil worktree ---
 
-	require.Equal(t, workspaces.DefaultStateDir, ws.StateDir())
+func Test_runGitHubPostInstall_NilWorktree(t *testing.T) {
+	runner := &Runner{
+		Workspace: &workspaces.Workspace{
+			Connection: map[string]any{"kind": workspaces.KindGitHub, "context": "ctx"},
+		},
+		Options:        &initOptions{Cluster: clusterOptions{Namespace: "radius-system"}},
+		Worktree:       nil,
+		PGBackupClient: nil,
+	}
+	err := runner.runGitHubPostInstall(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "state worktree is not initialised")
+}
+
+// --- WaitForReady failure ---
+
+func Test_runGitHubPostInstall_WaitForReady_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	pg := NewMockPGBackupClient(ctrl)
+	pg.EXPECT().WaitForReady(gomock.Any(), "k3d-radius-github", "radius-system").
+		Return(errors.New("postgres not ready"))
+
+	err := makeGitHubRunner(t, pg, gitstate.SemaphoreFirstRun).runGitHubPostInstall(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "postgres not ready")
+}
+
+// --- SemaphoreInterrupted ---
+
+func Test_runGitHubPostInstall_Interrupted(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	pg := NewMockPGBackupClient(ctrl)
+	pg.EXPECT().WaitForReady(gomock.Any(), "k3d-radius-github", "radius-system").Return(nil)
+	// No backup or restore calls expected.
+
+	err := makeGitHubRunner(t, pg, gitstate.SemaphoreInterrupted).runGitHubPostInstall(context.Background())
+	require.NoError(t, err)
+}
+
+// --- SemaphoreFirstRun ---
+
+func Test_runGitHubPostInstall_FirstRun(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	pg := NewMockPGBackupClient(ctrl)
+	pg.EXPECT().WaitForReady(gomock.Any(), "k3d-radius-github", "radius-system").Return(nil)
+
+	err := makeGitHubRunner(t, pg, gitstate.SemaphoreFirstRun).runGitHubPostInstall(context.Background())
+	require.NoError(t, err)
+}
+
+// --- SemaphoreClean, no backup files ---
+
+func Test_runGitHubPostInstall_Clean_NoBackup(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	pg := NewMockPGBackupClient(ctrl)
+	pg.EXPECT().WaitForReady(gomock.Any(), "k3d-radius-github", "radius-system").Return(nil)
+	pg.EXPECT().HasBackup(gomock.Any()).Return(false)
+
+	err := makeGitHubRunner(t, pg, gitstate.SemaphoreClean).runGitHubPostInstall(context.Background())
+	require.NoError(t, err)
+}
+
+// --- SemaphoreClean, backup present, restore succeeds ---
+
+func Test_runGitHubPostInstall_Clean_Restore_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	pg := NewMockPGBackupClient(ctrl)
+	pg.EXPECT().WaitForReady(gomock.Any(), "k3d-radius-github", "radius-system").Return(nil)
+	pg.EXPECT().HasBackup(gomock.Any()).Return(true)
+	pg.EXPECT().Restore(gomock.Any(), "k3d-radius-github", "radius-system", gomock.Any()).Return(nil)
+
+	err := makeGitHubRunner(t, pg, gitstate.SemaphoreClean).runGitHubPostInstall(context.Background())
+	require.NoError(t, err)
+}
+
+// --- SemaphoreClean, backup present, restore fails ---
+
+func Test_runGitHubPostInstall_Clean_Restore_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	pg := NewMockPGBackupClient(ctrl)
+	pg.EXPECT().WaitForReady(gomock.Any(), "k3d-radius-github", "radius-system").Return(nil)
+	pg.EXPECT().HasBackup(gomock.Any()).Return(true)
+	pg.EXPECT().Restore(gomock.Any(), "k3d-radius-github", "radius-system", gomock.Any()).
+		Return(errors.New("restore failed"))
+
+	err := makeGitHubRunner(t, pg, gitstate.SemaphoreClean).runGitHubPostInstall(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "restore failed")
+}
+
+// --- PGBackupClient production wrapper sanity check ---
+
+func Test_NewPGBackupClient_ReturnsNonNil(t *testing.T) {
+	require.NotNil(t, NewPGBackupClient())
 }

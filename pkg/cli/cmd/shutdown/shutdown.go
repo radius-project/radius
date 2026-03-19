@@ -42,11 +42,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Shut down a Radius GitHub workspace",
 		Long: `Shut down a Radius GitHub workspace.
 
-Backs up PostgreSQL state to the state directory, commits the state to the
-radius-state orphan branch, and optionally deletes the k3d cluster.
-
-Note: after running this command, run 'git push origin radius-state' to push
-the state to the remote repository.`,
+Backs up PostgreSQL state to the state worktree, commits everything to the
+radius-state orphan branch (including .backup-ok sentinel), pushes to origin,
+and optionally deletes the k3d cluster.`,
 		Example: `
 # Shut down the current GitHub workspace
 rad shutdown
@@ -63,20 +61,50 @@ rad shutdown --cleanup`,
 	return cmd, runner
 }
 
+// worktreeHandle bundles the callbacks returned by openWorktree so Run can
+// call them without holding a concrete *gitstate.StateWorktree.
+type worktreeHandle struct {
+	path       string
+	clearLock  func(context.Context) error
+	removeFunc func(context.Context)
+}
+
 // Runner is the runner implementation for the `rad shutdown` command.
 type Runner struct {
-	ConfigHolder *framework.ConfigHolder
-	Output       output.Interface
-	Workspace    *workspaces.Workspace
-	Cleanup      bool
+	ConfigHolder   *framework.ConfigHolder
+	Output         output.Interface
+	Workspace      *workspaces.Workspace
+	Cleanup        bool
+	PGBackupClient PGBackupClient
+
+	// openWorktree opens (or creates) the state worktree and returns a handle.
+	// Overridable in tests to avoid real git operations.
+	openWorktree func(ctx context.Context) (worktreeHandle, error)
+
+	// deleteCluster deletes a k3d cluster by name. Overridable in tests.
+	deleteCluster func(ctx context.Context, name string) error
 }
 
 // NewRunner creates a new instance of the Runner for the `rad shutdown` command.
 func NewRunner(factory framework.Factory) *Runner {
-	return &Runner{
-		ConfigHolder: factory.GetConfigHolder(),
-		Output:       factory.GetOutput(),
+	r := &Runner{
+		ConfigHolder:   factory.GetConfigHolder(),
+		Output:         factory.GetOutput(),
+		PGBackupClient: NewPGBackupClient(),
+		deleteCluster:  k3d.DeleteCluster,
 	}
+	r.openWorktree = func(ctx context.Context) (worktreeHandle, error) {
+		w, err := gitstate.OpenOrCreate(ctx, gitstate.DefaultBranch)
+		if err != nil {
+			return worktreeHandle{}, err
+		}
+		return worktreeHandle{
+			path:       w.Path,
+			clearLock:  w.ClearLock,
+			removeFunc: w.Remove,
+		}, nil
+	}
+	return r
 }
 
 // Validate runs validation for the `rad shutdown` command.
@@ -109,19 +137,23 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Could not determine Kubernetes context for workspace '%s'.", r.Workspace.Name)
 	}
 
-	stateDir := r.Workspace.StateDir()
+	wt, err := r.openWorktree(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to open state worktree: %w", err)
+	}
+	defer wt.removeFunc(ctx)
 
-	r.Output.LogInfo("Backing up PostgreSQL state to %s...", stateDir)
-	if err := pgbackup.Backup(ctx, kubeContext, pgbackup.DefaultNamespace, stateDir); err != nil {
+	r.Output.LogInfo("Backing up PostgreSQL state to state worktree...")
+	if err := r.PGBackupClient.Backup(ctx, kubeContext, pgbackup.DefaultNamespace, wt.path); err != nil {
 		return fmt.Errorf("failed to back up PostgreSQL state: %w", err)
 	}
 
-	r.Output.LogInfo("Committing state to git branch '%s'...", gitstate.DefaultBranch)
-	if err := gitstate.CommitState(ctx, stateDir, gitstate.DefaultBranch); err != nil {
-		return fmt.Errorf("failed to commit state: %w", err)
+	r.Output.LogInfo("Committing state and clearing deploy lock on branch '%s'...", gitstate.DefaultBranch)
+	if err := wt.clearLock(ctx); err != nil {
+		return fmt.Errorf("failed to commit and push state: %w", err)
 	}
 
-	r.Output.LogInfo("State committed. Run 'git push origin %s' to push to the remote repository.", gitstate.DefaultBranch)
+	r.Output.LogInfo("State committed and pushed to branch '%s'.", gitstate.DefaultBranch)
 
 	if r.Cleanup {
 		clusterName := k3d.DefaultClusterName
@@ -132,7 +164,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		r.Output.LogInfo("Deleting k3d cluster '%s'...", clusterName)
-		if err := k3d.DeleteCluster(ctx, clusterName); err != nil {
+		if err := r.deleteCluster(ctx, clusterName); err != nil {
 			return fmt.Errorf("failed to delete k3d cluster: %w", err)
 		}
 

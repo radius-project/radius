@@ -35,7 +35,7 @@ workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: T
 .PHONY: workflow-github-workspace-init
 workflow-github-workspace-init: ## Initialize a Radius GitHub workspace (rad init --kind github)
 	@echo "--- rad init --kind github ---"
-	rad init --kind github --state-dir .radius/state --skip-dev-recipes
+	rad init --kind github --skip-dev-recipes
 
 .PHONY: workflow-github-workspace-shutdown
 workflow-github-workspace-shutdown: ## Back up state and delete the k3d cluster (rad shutdown --cleanup)
@@ -46,9 +46,9 @@ workflow-github-workspace-shutdown: ## Back up state and delete the k3d cluster 
 workflow-github-workspace-verify-restore: ## Verify that PostgreSQL state was restored after re-init
 	@echo "--- Verifying state restore ---"
 	@echo "Checking that backup SQL files exist on the state branch..."
-	@git show $(RADIUS_STATE_BRANCH):.radius/state/ucp.sql > /dev/null 2>&1 || \
+	@git show $(RADIUS_STATE_BRANCH):ucp.sql > /dev/null 2>&1 || \
 		{ echo "ERROR: ucp.sql not found on $(RADIUS_STATE_BRANCH) branch"; exit 1; }
-	@git show $(RADIUS_STATE_BRANCH):.radius/state/applications_rp.sql > /dev/null 2>&1 || \
+	@git show $(RADIUS_STATE_BRANCH):applications_rp.sql > /dev/null 2>&1 || \
 		{ echo "ERROR: applications_rp.sql not found on $(RADIUS_STATE_BRANCH) branch"; exit 1; }
 	@echo "State backup files verified."
 

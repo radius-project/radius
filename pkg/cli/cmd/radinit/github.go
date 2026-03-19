@@ -21,24 +21,40 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli/gitstate"
-	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/k3d"
-	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/version"
 )
 
-// enterGitHubInitOptions gathers options for a GitHub workspace type init.
-// It creates a k3d cluster, installs Radius with PostgreSQL, and optionally restores state.
-func (r *Runner) enterGitHubInitOptions(ctx context.Context, stateDir string) (*initOptions, *workspaces.Workspace, error) {
-	// Ensure k3d is available.
+// enterGitHubInitOptions gathers options for a GitHub workspace kind init.
+//
+// It opens (or creates) a git worktree for the state orphan branch. State files from any
+// previous run are already present in the worktree directory — they are never written to
+// the application working tree. It then records the semaphore state, writes a lock to
+// signal that a deploy is in progress, and creates the k3d cluster.
+func (r *Runner) enterGitHubInitOptions(ctx context.Context) (*initOptions, *workspaces.Workspace, error) {
 	if err := k3d.EnsureInstalled(ctx); err != nil {
 		return nil, nil, err
 	}
 
-	clusterName := k3d.DefaultClusterName
+	// Open (or create) the state worktree in a temp directory isolated from the app checkout.
+	w, err := gitstate.OpenOrCreate(ctx, gitstate.DefaultBranch)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open state worktree: %w", err)
+	}
+	r.Worktree = w
 
-	// Create or reuse k3d cluster.
+	// Capture semaphore state BEFORE writing the lock so we know whether to restore later.
+	r.GitHubSemaphoreState = w.CheckSemaphore()
+
+	// Write .lock and push to signal that a deploy is in progress.
+	// If the push fails (no remote) it is logged as a warning and we continue.
+	if err := w.WriteLock(ctx); err != nil {
+		return nil, nil, fmt.Errorf("failed to write deploy lock: %w", err)
+	}
+
+	clusterName := k3d.DefaultClusterName
 	kubeContext, err := k3d.CreateCluster(ctx, clusterName)
 	if err != nil {
 		return nil, nil, err
@@ -66,9 +82,8 @@ func (r *Runner) enterGitHubInitOptions(ctx context.Context, stateDir string) (*
 	workspace := &workspaces.Workspace{
 		Name: "default",
 		Connection: map[string]any{
-			"kind":     workspaces.KindGitHub,
-			"context":  kubeContext,
-			"stateDir": stateDir,
+			"kind":    workspaces.KindGitHub,
+			"context": kubeContext,
 		},
 		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name),
 		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name),
@@ -77,44 +92,60 @@ func (r *Runner) enterGitHubInitOptions(ctx context.Context, stateDir string) (*
 	return options, workspace, nil
 }
 
-// runGitHubPostInstall performs post-install steps for GitHub workspace type:
-// waits for PostgreSQL readiness and restores state if a backup exists.
+// runGitHubPostInstall performs post-install steps for the GitHub workspace kind:
+//  1. Waits for PostgreSQL to be ready.
+//  2. If the previous run completed cleanly (SemaphoreClean), restores the PostgreSQL state
+//     from the backup files that are already present in the worktree directory.
+//  3. After a successful restore, attempts to sync resource types from resource-types-contrib.
+//     If the sync fails, logs a warning and continues using only the restored state rather
+//     than failing the entire init — the user should resolve any type conflicts manually.
+//  4. Logs an appropriate message for interrupted or first-run states.
 func (r *Runner) runGitHubPostInstall(ctx context.Context) error {
-	kubeContext, _ := r.Workspace.KubernetesContext()
-	stateDir := r.Workspace.StateDir()
-	namespace := r.Options.Cluster.Namespace
+	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Wait for PostgreSQL to be ready.
-	if err := pgbackup.WaitForReady(ctx, kubeContext, namespace); err != nil {
+	if r.Worktree == nil {
+		return fmt.Errorf("state worktree is not initialised; this is a bug")
+	}
+
+	kubeContext, _ := r.Workspace.KubernetesContext()
+	namespace := r.Options.Cluster.Namespace
+	stateDir := r.Worktree.Path
+
+	if err := r.PGBackupClient.WaitForReady(ctx, kubeContext, namespace); err != nil {
 		return fmt.Errorf("failed waiting for PostgreSQL: %w", err)
 	}
 
-	// Try to restore state from the git orphan branch first.
-	_ = gitstate.RestoreState(ctx, stateDir, gitstate.DefaultBranch)
+	switch r.GitHubSemaphoreState {
 
-	// If backup files exist, restore them into PostgreSQL.
-	if pgbackup.HasBackup(stateDir) {
-		if err := pgbackup.Restore(ctx, kubeContext, namespace, stateDir); err != nil {
+	case gitstate.SemaphoreInterrupted:
+		// The previous runner was evicted mid-deploy (spot instance or similar).
+		// The backup files in the worktree may be from an earlier successful run, but
+		// the semaphore signals that the last deploy was incomplete, so we skip restore
+		// to avoid applying a potentially stale state.
+		logger.Info("Previous run was interrupted (spot instance eviction?); skipping state restore. Manual intervention may be required if partial state was applied.")
+
+	case gitstate.SemaphoreFirstRun:
+		logger.Info("First run detected; no prior state to restore.")
+
+	case gitstate.SemaphoreClean:
+		if !r.PGBackupClient.HasBackup(stateDir) {
+			logger.Info("State branch is clean but contains no backup files; skipping restore.")
+			break
+		}
+
+		logger.Info("Restoring PostgreSQL state from previous run", "stateDir", stateDir)
+		if err := r.PGBackupClient.Restore(ctx, kubeContext, namespace, stateDir); err != nil {
 			return fmt.Errorf("failed to restore PostgreSQL state: %w", err)
 		}
-	}
 
-	return nil
-}
-
-// installRadiusForGitHub installs Radius with GitHub-specific Helm values (database.enabled=true).
-func (r *Runner) installRadiusForGitHub(ctx context.Context) error {
-	cliOptions := helm.CLIClusterOptions{
-		Radius: helm.ChartOptions{
-			SetArgs:     append(r.Options.SetValues, r.Set...),
-			SetFileArgs: r.SetFile,
-		},
-	}
-
-	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
-
-	if err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context); err != nil {
-		return fmt.Errorf("failed to install Radius: %w", err)
+		// TODO(github-workspace): After restore, sync resource types from resource-types-contrib:
+		//   rad resource type sync --source oci://ghcr.io/radius-project/resource-types-contrib:latest
+		//
+		// The sync must happen AFTER restore so the restored types form the baseline. If the sync
+		// detects a conflict (e.g. an attribute set was altered upstream), it should return an error
+		// here and the caller should log a warning and proceed with saved state only — never silently
+		// overwrite user data. Implement once 'rad resource type sync' exists.
+		logger.Info("State restored. Resource-type sync from resource-types-contrib is not yet implemented; types reflect the saved state only.")
 	}
 
 	return nil

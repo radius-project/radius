@@ -31,8 +31,6 @@ import (
 const KindKubernetes string = "kubernetes"
 const KindGitHub string = "github"
 
-const DefaultStateDir = ".radius/state"
-
 // MakeFallbackWorkspace creates an un-named workspace that will use the current KubeContext.
 // This is is used in fallback cases where the user has no config.
 //
@@ -102,10 +100,6 @@ func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
 		err = decoder.Decode(ws.Connection)
 		if err != nil {
 			return nil, err
-		}
-
-		if config.StateDir == "" {
-			config.StateDir = DefaultStateDir
 		}
 
 		return config, nil
@@ -253,14 +247,11 @@ type GitHubConnectionConfig struct {
 	// Context is the kubernetes kubeconfig context used to connect (typically a k3d context).
 	Context string `json:"context" mapstructure:"context" yaml:"context"`
 
-	// StateDir is the directory where PostgreSQL backups are stored for persistence across runs.
-	// Defaults to ".radius/state".
-	StateDir string `json:"stateDir,omitempty" mapstructure:"stateDir" yaml:"stateDir,omitempty"`
 }
 
 // String returns a string that describes the GitHub connection configuration.
 func (c *GitHubConnectionConfig) String() string {
-	return fmt.Sprintf("GitHub (context=%s, stateDir=%s)", c.Context, c.StateDir)
+	return fmt.Sprintf("GitHub (context=%s)", c.Context)
 }
 
 // GetKind returns the string KindGitHub.

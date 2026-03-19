@@ -47,9 +47,8 @@ func Test_ConnectionConfig_GitHub(t *testing.T) {
 	ws := Workspace{
 		Name: "github-workspace",
 		Connection: map[string]any{
-			"kind":     KindGitHub,
-			"context":  "k3d-radius-github",
-			"stateDir": ".radius/state",
+			"kind":    KindGitHub,
+			"context": "k3d-radius-github",
 		},
 	}
 
@@ -60,7 +59,6 @@ func Test_ConnectionConfig_GitHub(t *testing.T) {
 	require.True(t, ok, "expected *GitHubConnectionConfig, got %T", cfg)
 	require.Equal(t, KindGitHub, ghCfg.Kind)
 	require.Equal(t, "k3d-radius-github", ghCfg.Context)
-	require.Equal(t, ".radius/state", ghCfg.StateDir)
 }
 
 func Test_KubernetesContext_GitHub(t *testing.T) {
@@ -75,29 +73,6 @@ func Test_KubernetesContext_GitHub(t *testing.T) {
 	got, ok := ws.KubernetesContext()
 	require.True(t, ok)
 	require.Equal(t, "k3d-radius-github", got)
-}
-
-func Test_StateDir_Default(t *testing.T) {
-	ws := Workspace{
-		Name: "github-workspace",
-		Connection: map[string]any{
-			"kind": KindGitHub,
-		},
-	}
-
-	require.Equal(t, DefaultStateDir, ws.StateDir())
-}
-
-func Test_StateDir_Custom(t *testing.T) {
-	ws := Workspace{
-		Name: "github-workspace",
-		Connection: map[string]any{
-			"kind":     KindGitHub,
-			"stateDir": "/custom/state",
-		},
-	}
-
-	require.Equal(t, "/custom/state", ws.StateDir())
 }
 
 func Test_ConnectionConfigEquals_GitHub(t *testing.T) {

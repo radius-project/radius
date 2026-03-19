@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -103,7 +104,6 @@ rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
 	cmd.Flags().String("kind", "kubernetes", "Workspace type: 'kubernetes' or 'github'")
-	cmd.Flags().String("state-dir", ".radius/state", "State directory for PostgreSQL backups (used with --kind github)")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	return cmd, runner
@@ -138,6 +138,9 @@ type Runner struct {
 	// DevRecipeClient is the interface for the dev recipe client.
 	DevRecipeClient DevRecipeClient
 
+	// PGBackupClient is the interface for PostgreSQL backup/restore (used with --kind github).
+	PGBackupClient PGBackupClient
+
 	// Format is the output format.
 	Format string
 
@@ -150,8 +153,12 @@ type Runner struct {
 	// Kind specifies the workspace type: 'kubernetes' (default) or 'github'.
 	Kind string
 
-	// StateDir is the directory for PostgreSQL backups (used with --kind github).
-	StateDir string
+	// Worktree is the git worktree for the state orphan branch (used with --kind github).
+	// It is opened during Validate and must be removed at the end of Run.
+	Worktree *gitstate.StateWorktree
+
+	// GitHubSemaphoreState is the semaphore state captured before WriteLock during Validate.
+	GitHubSemaphoreState gitstate.SemaphoreState
 
 	// Set is the list of additional Helm values to set.
 	Set []string
@@ -178,6 +185,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
 		DevRecipeClient:     NewDevRecipeClient(),
+		PGBackupClient:      NewPGBackupClient(),
 		awsClient:           factory.GetAWSClient(),
 		azureClient:         factory.GetAzureClient(),
 	}
@@ -207,14 +215,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.StateDir, err = cmd.Flags().GetString("state-dir")
-	if err != nil {
-		return err
-	}
-
 	// GitHub workspace type uses a dedicated init flow.
 	if r.Kind == workspaces.KindGitHub {
-		options, workspace, err := r.enterGitHubInitOptions(cmd.Context(), r.StateDir)
+		options, workspace, err := r.enterGitHubInitOptions(cmd.Context())
 		if err != nil {
 			return err
 		}
@@ -257,6 +260,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
+
+	// Release the state worktree when Run exits (opened during Validate for GitHub kind).
+	if r.Worktree != nil {
+		defer r.Worktree.Remove(ctx)
+	}
 
 	// Use this channel to send progress updates to the UI.
 	progressChan := make(chan progressMsg)
