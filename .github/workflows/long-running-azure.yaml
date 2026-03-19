@@ -277,10 +277,6 @@ jobs:
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/manage-radius-installation.sh
 
-      - name: Create a list of resources not to be deleted
-        run: |
-          kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
-
       - name: Save list of resources not to be deleted
         uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
