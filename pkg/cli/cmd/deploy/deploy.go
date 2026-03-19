@@ -642,8 +642,12 @@ func (r *Runner) setupCloudProviders(properties any) {
 				}
 			}
 			if props.Providers.Azure != nil {
+				scope := "/subscriptions/" + *props.Providers.Azure.SubscriptionID
+				if props.Providers.Azure.ResourceGroupName != nil && *props.Providers.Azure.ResourceGroupName != "" {
+					scope += "/resourceGroups/" + *props.Providers.Azure.ResourceGroupName
+				}
 				r.Providers.Azure = &clients.AzureProvider{
-					Scope: "/planes/azure/azure/" + "Subscriptions/" + *props.Providers.Azure.SubscriptionID + "/ResourceGroups/" + *props.Providers.Azure.ResourceGroupName,
+					Scope: scope,
 				}
 			}
 		}
