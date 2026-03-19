@@ -1039,7 +1039,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					AWS:   tc.awsProvider,
 				},
 				Recipes: recipePackOptions{
-					DevRecipes: !tc.full,
+					DefaultRecipePack: !tc.full,
 				},
 				Application: applicationOptions{
 					Scaffold: false,
