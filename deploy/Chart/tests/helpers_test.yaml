@@ -1427,9 +1427,9 @@ tests:
     templates:
       - ucp/configmaps.yaml
     asserts:
-      - contains:
+      - matchRegex:
           path: data["ucp-config.yaml"]
-          content: 'provider: "apiserver"'
+          pattern: 'provider: "apiserver"'
         template: ucp/configmaps.yaml
 
   - it: should use postgresql provider in UCP configmap when database.enabled=true
@@ -1438,18 +1438,18 @@ tests:
     templates:
       - ucp/configmaps.yaml
     asserts:
-      - contains:
+      - matchRegex:
           path: data["ucp-config.yaml"]
-          content: postgresql
+          pattern: postgresql
         template: ucp/configmaps.yaml
 
   - it: should use apiserver provider in applications-rp configmap when database is disabled (default)
     templates:
       - rp/configmaps.yaml
     asserts:
-      - contains:
+      - matchRegex:
           path: data["radius-self-host.yaml"]
-          content: 'provider: "apiserver"'
+          pattern: 'provider: "apiserver"'
         template: rp/configmaps.yaml
 
   - it: should use postgresql provider in applications-rp configmap when database.enabled=true
@@ -1458,18 +1458,18 @@ tests:
     templates:
       - rp/configmaps.yaml
     asserts:
-      - contains:
+      - matchRegex:
           path: data["radius-self-host.yaml"]
-          content: postgresql
+          pattern: postgresql
         template: rp/configmaps.yaml
 
   - it: should use apiserver provider in dynamic-rp configmap when database is disabled (default)
     templates:
       - dynamic-rp/configmaps.yaml
     asserts:
-      - contains:
+      - matchRegex:
           path: data["radius-self-host.yaml"]
-          content: 'provider: "apiserver"'
+          pattern: 'provider: "apiserver"'
         template: dynamic-rp/configmaps.yaml
 
   - it: should use postgresql provider in dynamic-rp configmap when database.enabled=true
@@ -1478,9 +1478,9 @@ tests:
     templates:
       - dynamic-rp/configmaps.yaml
     asserts:
-      - contains:
+      - matchRegex:
           path: data["radius-self-host.yaml"]
-          content: postgresql
+          pattern: postgresql
         template: dynamic-rp/configmaps.yaml
 
   - it: should not inject POSTGRES_PASSWORD env into UCP when database is disabled (default)
