@@ -167,9 +167,12 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
 
 	t.Cleanup(func() {
+		// Use a fresh context because t.Context() is cancelled before cleanup runs.
+		cleanupCtx := context.Background()
+
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
-		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		_, err := awsClient.GetResource(cleanupCtx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
@@ -177,14 +180,14 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 			return
 		}
 		// Just in case delete fails
-		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+		deleteOutput, err := awsClient.DeleteResource(cleanupCtx, &cloudcontrol.DeleteResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
 		require.NoError(t, err)
 
 		// Ignoring status of delete since AWS command fails if the resource does not already exist
-		waitForSuccess(t, ctx, awsClient, deleteOutput.ProgressEvent.RequestToken)
+		waitForSuccess(t, cleanupCtx, awsClient, deleteOutput.ProgressEvent.RequestToken)
 	})
 	// End of test setup
 }
