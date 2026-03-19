@@ -273,15 +273,18 @@ jobs:
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
 
       - name: Manage Radius control plane installation
+        id: manage-radius-installation
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/manage-radius-installation.sh
 
       - name: Create a list of resources not to be deleted
+        if: steps.manage-radius-installation.outputs.installed_or_upgraded == 'true'
         run: |
           kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
 
       - name: Save list of resources not to be deleted
+        if: steps.manage-radius-installation.outputs.installed_or_upgraded == 'true'
         uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: skip-delete-resources-list.txt

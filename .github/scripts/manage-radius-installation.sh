@@ -121,6 +121,10 @@ install_radius() {
     echo "Saving list of resources not to be deleted after install..."
     kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
     echo "Saved skip-delete-resources-list.txt"
+
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "installed_or_upgraded=true" >> "${GITHUB_OUTPUT}"
+    fi
 }
 
 main() {
@@ -207,6 +211,10 @@ main() {
         echo "Saving list of resources not to be deleted after upgrade..."
         kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt
         echo "Saved skip-delete-resources-list.txt"
+
+        if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+            echo "installed_or_upgraded=true" >> "${GITHUB_OUTPUT}"
+        fi
     fi
 
     echo "============================================================================"
