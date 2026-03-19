@@ -1,7 +1,10 @@
+# CUE schema for validation: https://raw.githubusercontent.com/ossf/security-insights/refs/heads/main/spec/schema.cue
+# cue vet -d '#SecurityInsights' schema.cue .github/security-insights.yml
+---
 header:
   schema-version: 2.0.0
-  last-updated: '2026-02-20'
-  last-reviewed: '2026-02-20'
+  last-updated: 2026-02-20
+  last-reviewed: 2026-02-20
   url: https://github.com/radius-project/radius
   comment: >-
     This file contains all possible information for both project and repository,
@@ -14,7 +17,7 @@ project:
   homepage: https://radapp.io
   roadmap: https://aka.ms/radius-roadmap
   steward:
-    uri: ''
+    uri: ""
     comment: No steward designated
   administrators:
     - name: Sylvain Niles
@@ -157,13 +160,13 @@ repository:
           release: false
       - name: CodeQL
         type: SAST
-        version: '2'
+        version: "2"
         rulesets:
           - default
         results:
           ci:
             name: CodeQL GitHub workflow
-            predicate-uri: ''
+            predicate-uri: ""
             location: >-
               https://github.com/radius-project/radius/blob/main/.github/workflows/codeql.yml
             comment: GitHub workflow to run CodeQL
