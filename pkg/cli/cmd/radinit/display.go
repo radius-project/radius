@@ -19,6 +19,7 @@ package radinit
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/mattn/go-isatty"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -94,6 +96,14 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 // This function should be called from a goroutine while installation proceeds in the background.
 // provide a channel to update progress.
 func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
+	// On non-interactive runners (e.g. GitHub Actions) there is no TTY, so bubbletea would fail
+	// trying to open /dev/tty. In that case, simply drain the channel without rendering any UI.
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		for range progressChan {
+		}
+		return nil
+	}
+
 	model := NewProgessModel(*options)
 	program := tea.NewProgram(model, tea.WithContext(ctx))
 
