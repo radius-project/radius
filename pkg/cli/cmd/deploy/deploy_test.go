@@ -997,7 +997,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		require.NoError(t, err)
 
 		packs, _ := getRecipePacks(t, template, "env")
-		// Only the original pack — no singletons added
+		// Only the original pack — no default pack added
 		require.Len(t, packs, 1)
 		require.Equal(t, existingPackID, packs[0])
 	})

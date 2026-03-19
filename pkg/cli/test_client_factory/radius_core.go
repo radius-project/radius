@@ -273,14 +273,14 @@ func WithEnvironmentServerCustomRecipePacks(recipePacks []*string) func() corerp
 	}
 }
 
-// WithRecipePackServerCoreTypes returns a RecipePacksServer that maps singleton pack names
-// to their actual core resource types. Non-singleton names get a unique test type.
+// WithRecipePackServerCoreTypes returns a RecipePacksServer that maps core pack names
+// to their actual core resource types. Other names get a unique test type.
 func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
-	// Build lookup from singleton definitions. These mirror the core
-	// singleton recipe packs used by the CLI, but are duplicated here to
+	// Build lookup from core type definitions. These mirror the core
+	// recipe pack types used by the CLI, but are duplicated here to
 	// avoid importing the recipepack package and creating an import cycle in
 	// tests.
-	singletonTypes := map[string]string{
+	coreTypes := map[string]string{
 		"containers":        "Radius.Compute/containers",
 		"persistentvolumes": "Radius.Compute/persistentVolumes",
 		"routes":            "Radius.Compute/routes",
@@ -289,7 +289,7 @@ func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
 
 	return corerpfake.RecipePacksServer{
 		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
-			resourceType, ok := singletonTypes[recipePackName]
+			resourceType, ok := coreTypes[recipePackName]
 			if !ok {
 				resourceType = "Test.Resource/" + recipePackName
 			}
