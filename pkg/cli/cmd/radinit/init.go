@@ -139,7 +139,7 @@ type Runner struct {
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
 	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
-	// Singleton recipe packs are always created/queried in the default scope.
+	// The default recipe pack is always created/queried in the default scope.
 	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
 	// Format is the output format.

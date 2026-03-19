@@ -138,7 +138,7 @@ type Runner struct {
 	Deploy                  deploy.Interface
 	Output                  output.Interface
 	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
-	// Recipe packs are always created/queried in the default scope.
+	// The default recipe pack is always created/queried in the default scope.
 	DefaultScopeClientFactory *v20250801preview.ClientFactory
 
 	ApplicationName          string
@@ -713,7 +713,6 @@ func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource 
 	}
 
 	// No recipe packs set — provide defaults from the default scope.
-
 	// Ensure the default resource group exists before accessing recipe packs.
 	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
