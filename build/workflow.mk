@@ -35,7 +35,7 @@ workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: T
 .PHONY: workflow-github-workspace-init
 workflow-github-workspace-init: ## Initialize a Radius GitHub workspace (rad init --kind github)
 	@echo "--- rad init --kind github ---"
-	rad init --kind github --skip-dev-recipes
+	rad init --kind github
 
 .PHONY: workflow-github-workspace-shutdown
 workflow-github-workspace-shutdown: ## Back up state and delete the k3d cluster (rad shutdown --cleanup)
