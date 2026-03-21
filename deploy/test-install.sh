@@ -37,18 +37,27 @@ readonly INSTALLER="${SCRIPT_DIR}/install.sh"
 # A known-good release used for pinned-version tests.
 PINNED_VERSION="0.40.0"
 
+usage() {
+    echo "Usage: $0 [--version <VERSION>]"
+}
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --version)
-            PINNED_VERSION="$2"
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1"
-            echo "Usage: $0 [--version <VERSION>]"
+    --version)
+        if [[ $# -lt 2 || -z "${2}" ]]; then
+            echo "Error: --version requires a value" >&2
+            usage >&2
             exit 1
-            ;;
+        fi
+        PINNED_VERSION="$2"
+        shift 2
+        ;;
+    *)
+        echo "Unknown option: $1" >&2
+        usage >&2
+        exit 1
+        ;;
     esac
 done
 readonly PINNED_VERSION
@@ -61,13 +70,28 @@ declare -a FAILURES=()
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+# Track whether $HOME/.rad existed before tests so we only clean up
+# what we created (rad bicep download writes there).
+RAD_HOME_EXISTED=false
+
 setup() {
     TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/rad-test-XXXXXX")
+    if [[ -d "${HOME}/.rad" ]]; then
+        RAD_HOME_EXISTED=true
+    fi
 }
 
 cleanup() {
+    # Restore permissions on any dirs we may have made non-writable,
+    # otherwise rm -rf cannot remove them.
     if [[ -d "${TEST_ROOT:-}" ]]; then
+        chmod -R u+rwX "${TEST_ROOT}" 2>/dev/null || true
         rm -rf "${TEST_ROOT}"
+    fi
+
+    # Remove $HOME/.rad if the tests created it.
+    if [[ "${RAD_HOME_EXISTED}" == "false" && -d "${HOME}/.rad" ]]; then
+        rm -rf "${HOME}/.rad"
     fi
 }
 trap cleanup EXIT
@@ -84,6 +108,7 @@ make_test_dir() {
 assert_rad_installed() {
     local dir="$1"
     local rad="${dir}/rad"
+    local output=""
 
     if [[ ! -f "${rad}" ]]; then
         echo "  ASSERT FAILED: rad binary not found in ${dir}"
@@ -93,8 +118,9 @@ assert_rad_installed() {
         echo "  ASSERT FAILED: rad binary is not executable"
         return 1
     fi
-    if ! "${rad}" version --cli > /dev/null 2>&1; then
+    if ! output=$("${rad}" version --cli 2>&1); then
         echo "  ASSERT FAILED: 'rad version --cli' exited non-zero"
+        echo "${output}"
         return 1
     fi
     return 0
@@ -115,9 +141,14 @@ assert_contains() {
 
 # Assert that a command exits with non-zero.
 assert_fails() {
+    local output=""
+
     echo "  CMD: $*"
-    if "$@" > /dev/null 2>&1; then
+    if output=$("$@" 2>&1); then
         echo "  ASSERT FAILED: expected non-zero exit from: $*"
+        if [[ -n "${output}" ]]; then
+            echo "${output}"
+        fi
         return 1
     fi
     return 0
@@ -126,9 +157,16 @@ assert_fails() {
 # Run the installer, log the command, and store output in LAST_OUTPUT.
 LAST_OUTPUT=""
 run_installer() {
+    local status=0
+
     echo "  CMD: $*"
-    LAST_OUTPUT=$("$@" 2>&1)
+    if LAST_OUTPUT=$("$@" 2>&1); then
+        status=0
+    else
+        status=$?
+    fi
     echo "${LAST_OUTPUT}"
+    return "${status}"
 }
 
 # Run a named test function and track results.
@@ -142,10 +180,10 @@ run_test() {
 
     if ${func}; then
         echo "  ✓ PASSED"
-        (( ++PASS ))
+        ((++PASS))
     else
         echo "  ✗ FAILED"
-        (( ++FAIL ))
+        ((++FAIL))
         FAILURES+=("${name}")
     fi
     echo ""
@@ -270,6 +308,74 @@ test_path_hint_shown() {
     assert_contains "${LAST_OUTPUT}" "not in your"
 }
 
+# ── Non-privileged Environment Tests ────────────────────────────────────────
+
+test_default_dir_nonroot() {
+    # When not root and no INSTALL_DIR is set, the installer should
+    # default to $HOME/.local/bin (not /usr/local/bin).
+    if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+        echo "  SKIP: test requires non-root user"
+        return 0
+    fi
+
+    local fake_home
+    fake_home=$(make_test_dir "fakehome")
+
+    # Pre-create the expected default directory so needsSudo() sees a
+    # writable dir and doesn't try to escalate.
+    mkdir -p "${fake_home}/.local/bin"
+
+    HOME="${fake_home}" run_installer "${INSTALLER}" \
+        --version "${PINNED_VERSION}"
+    assert_rad_installed "${fake_home}/.local/bin"
+}
+
+test_nonwritable_dir_no_sudo_fails() {
+    # Installing to a non-writable directory when sudo is unavailable
+    # should fail with "requires root privileges".
+    if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+        echo "  SKIP: test requires non-root user"
+        return 0
+    fi
+
+    # Both the target AND its parent must be non-writable so needsSudo()
+    # returns true (it checks both).
+    local parent
+    parent=$(make_test_dir "noperm-parent")
+    local dir="${parent}/bin"
+    mkdir -p "${dir}"
+    chmod 555 "${dir}" "${parent}"
+
+    # Build a PATH containing only the tools the installer needs,
+    # notably excluding sudo.
+    local bin_dir
+    bin_dir=$(make_test_dir "nosudo-bin")
+    local tool tool_path
+    for tool in bash curl wget chmod cp rm mkdir mktemp uname id \
+        tr grep awk sed dirname basename cat ln; do
+        tool_path=$(command -v "${tool}" 2>/dev/null) || continue
+        ln -sf "${tool_path}" "${bin_dir}/"
+    done
+
+    local status=0
+    echo "  CMD: PATH=<no-sudo> ${INSTALLER} --version ${PINNED_VERSION} --install-dir ${dir}"
+    if LAST_OUTPUT=$(PATH="${bin_dir}" "${INSTALLER}" --version "${PINNED_VERSION}" \
+        --install-dir "${dir}" 2>&1); then
+        status=0
+    else
+        status=$?
+    fi
+    echo "${LAST_OUTPUT}"
+
+    chmod 755 "${parent}" "${dir}"
+
+    if [[ "${status}" -eq 0 ]]; then
+        echo "  ASSERT FAILED: expected non-zero exit"
+        return 1
+    fi
+    assert_contains "${LAST_OUTPUT}" "requires root privileges"
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 echo "============================================================================"
@@ -295,12 +401,14 @@ run_test "reinstall over existing binary" test_reinstall_over_existing
 run_test "legacy positional version arg" test_legacy_positional_version
 run_test "unknown flag exits non-zero" test_unknown_flag_fails
 run_test "PATH hint shown for non-PATH dir" test_path_hint_shown
+run_test "default dir is ~/.local/bin for non-root" test_default_dir_nonroot
+run_test "non-writable dir without sudo fails" test_nonwritable_dir_no_sudo_fails
 
 echo "============================================================================"
 echo "Results: ${PASS} passed, ${FAIL} failed"
 echo "============================================================================"
 
-if (( FAIL > 0 )); then
+if ((FAIL > 0)); then
     echo ""
     echo "Failed tests:"
     for name in "${FAILURES[@]}"; do
