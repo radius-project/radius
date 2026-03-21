@@ -50,7 +50,7 @@ jobs:
 
   verify-bash-installer:
     name: Validate Bash Installer
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
