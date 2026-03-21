@@ -105,9 +105,18 @@ function Get-SystemInfo {
         "linux"
     }
 
-    $rawArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower()
+    # Use PROCESSOR_ARCHITECTURE on Windows (always available, including PS 5.1).
+    # Fall back to RuntimeInformation for non-Windows platforms (pwsh on Linux/macOS).
+    if ($detectedOS -eq "windows") {
+        $rawArch = ($env:PROCESSOR_ARCHITECTURE).ToLower()
+    }
+    else {
+        $rawArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower()
+    }
+
     $detectedArch = switch ($rawArch) {
         "x64" { "amd64" }
+        "amd64" { "amd64" }
         "arm64" { "arm64" }
         "arm" { "arm" }
         default { $rawArch }
@@ -375,7 +384,7 @@ if ($Help) {
 }
 
 # Respect INCLUDE_RC environment variable
-$shouldIncludeRC = $IncludeRC.IsPresent
+$shouldIncludeRC = [bool]$IncludeRC
 if ($env:INCLUDE_RC -eq "true") {
     $shouldIncludeRC = $true
 }
