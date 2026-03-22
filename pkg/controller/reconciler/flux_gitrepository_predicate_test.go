@@ -41,6 +41,11 @@ func TestGitRepositoryRevisionChangePredicate_Create(t *testing.T) {
 			expected: false,
 		},
 		{
+			name:     "Object is nil",
+			event:    event.CreateEvent{Object: nil},
+			expected: false,
+		},
+		{
 			name: "Source has no artifact",
 			event: event.CreateEvent{
 				Object: &sourcev1.GitRepository{
