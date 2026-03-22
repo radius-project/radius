@@ -481,17 +481,16 @@ func Test_TryAcquireDeployLock_ReadOnlyDir(t *testing.T) {
 		t.Skip("running as root; read-only dirs are not enforced")
 	}
 
-	dir := initGitRepo(t)
+	initGitRepo(t)
 
 	w, err := OpenOrCreate(context.Background(), DefaultBranch)
 	require.NoError(t, err)
-	defer func() {
+	t.Cleanup(func() {
 		_ = os.Chmod(w.Path, 0o755)
 		w.Remove(context.Background())
-	}()
+	})
 
 	require.NoError(t, os.Chmod(w.Path, 0o555))
-	_ = dir // keep dir in scope
 
 	err = w.TryAcquireDeployLock(context.Background(), LockInfo{RunID: "r", RunAttempt: 1})
 	require.Error(t, err)

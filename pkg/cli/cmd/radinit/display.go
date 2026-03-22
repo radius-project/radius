@@ -96,16 +96,16 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 // This function should be called from a goroutine while installation proceeds in the background.
 // provide a channel to update progress.
 func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
-	// On non-interactive runners (e.g. GitHub Actions) there is no TTY, so bubbletea would fail
-	// trying to open /dev/tty. In that case, simply drain the channel without rendering any UI.
+	model := NewProgessModel(*options)
+
+	programOpts := []tea.ProgramOption{tea.WithContext(ctx)}
 	if !isatty.IsTerminal(os.Stdout.Fd()) {
-		for range progressChan {
-		}
-		return nil
+		// On non-interactive runners (e.g. GitHub Actions) there is no TTY. Provide a no-op
+		// input reader to prevent BubbleTea from trying to open /dev/tty for raw input.
+		programOpts = append(programOpts, tea.WithInput(strings.NewReader("")))
 	}
 
-	model := NewProgessModel(*options)
-	program := tea.NewProgram(model, tea.WithContext(ctx))
+	program := tea.NewProgram(model, programOpts...)
 
 	go func() {
 		for msg := range progressChan {
