@@ -335,7 +335,8 @@ function Add-ToPathWindows {
         Remove-Item -Recurse -Force "C:\radius"
     }
 
-    if (-not ($userPath -like "*$TargetDir*")) {
+    $pathEntries = $userPath -split ';' | Where-Object { $_ -ne '' }
+    if (-not ($pathEntries -contains $TargetDir)) {
         Write-Output "Adding $TargetDir to User Path..."
         $newPath = if ($userPath) { "$userPath;$TargetDir" } else { $TargetDir }
         Set-ItemProperty HKCU:\Environment "PATH" "$newPath" -Type ExpandString
