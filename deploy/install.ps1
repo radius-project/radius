@@ -81,13 +81,12 @@ Environment Variables:
   INCLUDE_RC               Set to "true" to include release candidates
 
 Install Directory Detection:
-  Windows: LOCALAPPDATA\radius
-  macOS/Linux: HOME/.local/bin
-
+  Windows: `$env:LOCALAPPDATA\radius
+  macOS/Linux: `$HOME/.local/bin
 Examples:
   ./install.ps1
   ./install.ps1 -Version 0.40.0
-  ./install.ps1 -InstallDir "HOME/bin"
+  ./install.ps1 -InstallDir "`$HOME/bin"
   ./install.ps1 -Version edge
 "@
     Write-Output $helpText
