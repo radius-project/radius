@@ -21,8 +21,8 @@ import (
 	"errors"
 	"testing"
 
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/workspaces"

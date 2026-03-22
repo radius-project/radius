@@ -72,11 +72,13 @@ func (r *Runner) enterGitHubInitOptions(ctx context.Context) (*initOptions, *wor
 			Name:      "default",
 			Namespace: "default",
 		},
-		Recipes: recipePackOptions{
-			DefaultRecipePack: true,
+		// Enable PostgreSQL in the Helm chart. Use the official Docker Hub image directly to
+		// avoid the registry-mirror fallback, which would resolve to
+		// ghcr.io/radius-project/mirror/postgres and fail in public CI.
+		SetValues: []string{
+			"database.enabled=true",
+			"database.image=docker.io/library/postgres",
 		},
-		// Enable PostgreSQL in the Helm chart.
-		SetValues: []string{"database.enabled=true"},
 	}
 
 	workspace := &workspaces.Workspace{
