@@ -41,9 +41,9 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 	}
 }
 
-// NewRabbitMqQueuesClient creates a new instance of RabbitMqQueuesClient.
-func (c *ClientFactory) NewRabbitMqQueuesClient() *RabbitMqQueuesClient {
-	return &RabbitMqQueuesClient{
+// NewRabbitMQQueuesClient creates a new instance of RabbitMQQueuesClient.
+func (c *ClientFactory) NewRabbitMQQueuesClient() *RabbitMQQueuesClient {
+	return &RabbitMQQueuesClient{
 		rootScope: c.rootScope,
 		internal:  c.internal,
 	}
