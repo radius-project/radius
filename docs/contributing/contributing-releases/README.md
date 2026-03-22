@@ -99,19 +99,9 @@ git push origin vX.Y.Z-rc1
 
 1. After maintainer approval, merge the pull request to `main`.
 
-1. Cherry-pick the `versions.yaml` commit - and optionally any additional commits that must be included in this RC - into the release branch. Create a new branch from the release branch (format: `release/x.y`) and open a PR targeting the release branch.
+2. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vX.Y.Z-rc<N>` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
 
-   ```bash
-   git checkout release/0.<MINOR>
-   git pull origin release/0.<MINOR>
-   git checkout -b <USERNAME>/cherry-pick-rc<N>-to-release-branch
-   ```
-
-   Cherry-pick the `versions.yaml` change (required):
-
-   ```bash
-   git cherry-pick -x <VERSIONS_YAML_COMMIT_HASH>
-   ```
+1. Ensure that a new release [branch](https://github.com/radius-project/radius/branches) was created with the name `release/<channel>`. For example, `release/0.56`. This branch will contain the updated `versions.yaml` file you just merged in the previous step. Also verify that the release candidate was created under the [releases](https://github.com/radius-project/radius/releases) section of the GitHub repo.
 
    **(Optional)** If specific bug fixes or other commits from `main` need to be included in this RC, cherry-pick them as well:
 
@@ -130,32 +120,26 @@ git push origin vX.Y.Z-rc1
    git push origin <USERNAME>/cherry-pick-rc<N>-to-release-branch
    ```
 
-1. After maintainer approval, merge the cherry-pick PR into the release branch.
-
-1. You may need to wait around ~20 minutes for the release assets to be built and published.
-
-1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vX.Y.Z-rc<N>` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
-
 1. In the `bicep-types-aws` repository, there should be a run of the `Update extensibility provider types` job that was triggered by the `vX.Y.Z-rc<N>` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully.
 
 1. Verify that an RC release was created on GitHub Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
 1. In the `radius-project/radius` repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: `release/x.y`) and use the Radius RC release version number being released.
 
-1. In the `radius-project/docs` repo, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
+1.  In the `radius-project/docs` repo, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
 
    > This workflow will generate a PR which you will need to get approval and merge before proceeding. The PR will not include changes to `docs/config.toml` and `docs/layouts/partials/hooks/body-end.html`, because those files are specific to the branch.
 
-1. In the `radius-project/samples` repo, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
+1.  In the `radius-project/samples` repo, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow. Run the workflow from the current branch (e.g. if you are working on release `v0.35`, then you'd run this workflow from the `v0.34` branch).
 
    > This workflow will generate a PR which you will need to get approval and merge before proceeding. The PR will not include changes to `bicepconfig.json` because that file is specific to the branch.
 
-1. In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
+1.  In the `radius-project/samples` repo, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow. Run the workflow from the `edge` branch and using the Radius RC release version number being released.
 
    > The `Test Samples` workflow should only be run once the upmerge PR has been merged to `edge`.
    > If this workflow run fails, then there should be further investigation. Try checking the logs to see what failed and why, and checking if there is already an issue open for this failure in the samples repo. Sometimes, the workflow run will fail because of flaky tests. Try re-running, and if the failure is persistent, then file an issue in the samples repo and raise it with the maintainers.
 
-1. If these workflows pass, then the release candidate has been successfully created and validated. We can now proceed to creating the final release. If the workflows fail, then we need to fix the issues and create a new RC release (increment the RC number, e.g. `rc2`, `rc3`, etc.) by repeating the steps above.
+1.  If these workflows pass, then the release candidate has been successfully created and validated. We can now proceed to creating the final release. If the workflows fail, then we need to fix the issues and create a new RC release (increment the RC number, e.g. `rc2`, `rc3`, etc.) by repeating the steps above.
 
 ### Creating the final release
 
