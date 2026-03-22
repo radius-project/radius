@@ -26,10 +26,6 @@ graph TD
         end
 
         subgraph "Resource Providers"
-            subgraph "Applications RP (cmd/applications-rp)"
-                CoreRP["Core RP<br/>(Applications.Core)"]
-                PortableRP["Portable RPs<br/>(Dapr, Datastores, Messaging)"]
-            end
             DynRP["Dynamic RP<br/>cmd/dynamic-rp"]
         end
     end
@@ -46,14 +42,8 @@ graph TD
     RecipeEntry -->|"1. PUT deployment"| UCP
     UCP -->|"2. Proxy to DE"| DE
     DE -->|"3. PUT each resource"| UCP
-    UCP -->|"4. Route to RP"| CoreRP
     UCP -->|"4. Route to RP"| DynRP
-    UCP -->|"4. Route to RP"| PortableRP
-    CoreRP --> K8s
     DynRP --> K8s
-    PortableRP --> Azure
-    PortableRP --> AWS
-    PortableRP --> K8s
 ```
 
 The deployment engine sits at the center of Radius's deployment pipeline. It
@@ -191,8 +181,8 @@ sequenceDiagram
    dependencies, evaluates Bicep/ARM functions, and issues individual
    PUT requests back to UCP for each resource in the template.
 
-6. UCP routes each resource request to the appropriate resource provider (Core
-   RP, Dynamic RP, or portable resource providers) using `ValidateDownstream`
+6. UCP routes each resource request to the appropriate resource provider,
+  with current authoring work primarily flowing through Dynamic RP, using `ValidateDownstream`
    ([pkg/ucp/frontend/controller/resourceGroups/util.go](../../pkg/ucp/frontend/controller/resourceGroups/util.go)).
 
 7. The CLI polls the deployment operations endpoint to display progress to the
@@ -402,8 +392,9 @@ to each resource it deploys. Because a single Bicep template can declare
 resources across multiple platforms (Radius, Azure, AWS), the deployment engine
 needs to know *where* each category of resource lives. For example, a Radius
 resource's full ID is formed by combining the Radius scope
-(`/planes/radius/local/resourceGroups/my-rg`) with the resource type and name
-(`/providers/Applications.Core/containers/myapp`). An Azure resource uses its
+(`/planes/radius/local/resourceGroups/my-rg`) with the provider namespace,
+resource type, and name (for example,
+`/providers/<radius-provider>/<resource-type>/my-resource`). An Azure resource uses its
 Azure subscription and resource group as the scope, and an AWS resource uses
 its account and region. Without scopes, the deployment engine would not know
 which plane, subscription, account, or resource group to target when issuing
@@ -441,7 +432,7 @@ different resource types:
 }
 ```
 
-- **`radius`**: Scope for Radius resource types (Applications.Core, etc.)
+- **`radius`**: Scope for Radius resource types handled by the control plane
 - **`deployments`**: Scope for nested `Microsoft.Resources/deployments`
 - **`az`**: Optional Azure subscription/resource group scope
 - **`aws`**: Optional AWS account/region scope
@@ -449,7 +440,7 @@ different resource types:
 #### Why ProviderConfig Exists
 
 A compiled Bicep/ARM template contains resource *types* (e.g.
-`Applications.Core/containers`, `Microsoft.Storage/storageAccounts`,
+`<radius-provider>/<resource-type>`, `Microsoft.Storage/storageAccounts`,
 `AWS.S3/Bucket`) but does **not** contain any information about which Radius
 resource group, Azure subscription, or AWS account those resources should be
 created in. That targeting information is external to the template — it depends
@@ -477,8 +468,7 @@ and flow through the system as follows:
    - AWS: `/planes/aws/aws/accounts/{account-id}/regions/{region}`
 
    The scopes are stored as part of the `Providers` field on the Radius
-   **Environment** resource (e.g.
-   `Applications.Core/environments/my-env`).
+  **Environment** resource.
 
 2. **CLI reads providers from the environment** — At deploy time, the `rad
    deploy` runner fetches the environment resource and extracts the provider

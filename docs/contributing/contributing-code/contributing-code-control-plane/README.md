@@ -2,17 +2,22 @@
 
 The Radius control-plane services are the microservices that run to deploy and manage applications and cloud resources. This page is an index of relevant topics for developing with the control-plane.
 
+If you need code-oriented architecture context before changing the services, see the architecture docs in [../../../architecture/README.md](../../../architecture/README.md).
+The most relevant pages are the service interaction map, shared runtime, UCP,
+`dynamic-rp`, controller, and CLI architecture docs.
+
+For new authoring work in this repo, prefer Radius resource types and generic
+provider behavior in `dynamic-rp` over legacy `Applications.*` resource work.
+
 You might hear these components referred to as:
 
 - UCP (Universal control plane): Front-door proxy and integration with cloud resources
-- Core RP (`Applications.Core` Resource Provider): Support for core Radius concepts like applications and containers
-- Dapr RP (`Applications.Dapr` Resource Provider): Support for Dapr integration
-- Datastores RP (`Applications.Datastores` Resource Provider): Support for databases and recipes
-- Messaging RP (`Applications.Messaging` Resource Provider): Support for messaging technologies and recipes
-- Link RP: Legacy name for Dapr, Datastores, or Messaging RP
+- Dynamic RP: Main authoring surface for Radius resource types and generic resource behavior
+- Legacy Applications.* RPs: Older provider processes that still exist in the runtime but are not the preferred target for new authoring work
 
 ## Table of contents
 
+- [Architecture docs](../../../architecture/README.md)
 - [Configuration](./configSettings.md)
 - [Logging](logging.md)
 - [Running the control-plane locally](./running-controlplane-locally.md)
