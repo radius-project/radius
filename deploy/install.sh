@@ -20,11 +20,12 @@
 # Radius CLI Installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh | /bin/bash
-#   curl -fsSL ... | /bin/bash -s -- --version 0.40.0
-#   curl -fsSL ... | /bin/bash -s -- --install-dir ~/.local/bin
-#   curl -fsSL ... | /bin/bash -s -- --version 0.40.0 --install-dir /opt/bin
-#   curl -fsSL ... | /bin/bash -s -- --include-rc
+#   wget -qO- https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh | /bin/bash
+#   wget -qO- ... | /bin/bash -s -- --version 0.40.0
+#   wget -qO- ... | /bin/bash -s -- --install-dir ~/.local/bin
+#   wget -qO- ... | /bin/bash -s -- --version 0.40.0 --install-dir /opt/bin
+#   wget -qO- ... | /bin/bash -s -- --include-rc
+#   wget -qO- ... | sudo /bin/bash -s -- --install-dir /usr/local/bin
 #
 # Environment variables (override flags):
 #   INSTALL_DIR         - Installation directory (default: auto-detected)
