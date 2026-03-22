@@ -66,6 +66,7 @@ interface AwsPlanes {
   @doc("List AWS planes")
   @get
   @route("/aws")
+  @list
   @armResourceList(AwsPlaneResource)
   list(
     ...ApiVersionParameter,

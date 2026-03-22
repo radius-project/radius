@@ -69,6 +69,7 @@ interface AzurePlanes {
   @doc("List azure planes")
   @get
   @route("/azure")
+  @list
   @armResourceList(AzurePlaneResource)
   list(
     ...ApiVersionParameter,

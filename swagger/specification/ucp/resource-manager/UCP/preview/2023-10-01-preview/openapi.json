@@ -107,6 +107,9 @@
           "List planes": {
             "$ref": "./examples/Planes_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -135,6 +138,9 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -387,6 +393,9 @@
           "List AWS IRSA credentials": {
             "$ref": "./examples/AWSCredential_IRSA_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -625,6 +634,9 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -877,6 +889,9 @@
           "List Azure Workload Identity credentials": {
             "$ref": "./examples/AzureCredential_WorkloadIdentity_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -1115,6 +1130,9 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -1370,6 +1388,9 @@
           "List resource provider summaries. The resource provider summary aggregates common information about resource types, api versions, and locations.": {
             "$ref": "./examples/ResourceProviders_ListProviderSummaries.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -1463,6 +1484,9 @@
           "List resource providers.": {
             "$ref": "./examples/ResourceProviders_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -1707,6 +1731,9 @@
           "List locations supported by a resource provider.": {
             "$ref": "./examples/Locations_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -1978,6 +2005,9 @@
           "List resource types defined by a resource provider.": {
             "$ref": "./examples/ResourceTypes_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -2258,6 +2288,9 @@
           "List api versions defined by a resource type supported by a resource provider.": {
             "$ref": "./examples/ApiVersions_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -2547,6 +2580,9 @@
           "List resource groups": {
             "$ref": "./examples/ResourceGroups_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -2820,6 +2856,9 @@
           "List resources in a resource group.": {
             "$ref": "./examples/Resources_List.json"
           }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     }
