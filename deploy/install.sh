@@ -324,7 +324,7 @@ installCompleted() {
     echo ""
 
     # Check if the install dir is in PATH
-    if ! echo "${PATH}" | tr ':' '\n' | grep -qx "${INSTALL_DIR}"; then
+    if ! echo "${PATH}" | tr ':' '\n' | grep -Fqx "${INSTALL_DIR}"; then
         echo "============================================================================"
         echo "NOTE: ${INSTALL_DIR} is not in your \$PATH."
         echo ""
