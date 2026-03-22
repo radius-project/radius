@@ -110,7 +110,8 @@ jobs:
     if: github.event_name == 'pull_request_target'
     outputs:
       is-external: ${{ steps.check.outputs.is-external }}
-    permissions: {}
+    permissions:
+      members: read # Required for org membership check on fork PRs
     steps:
       - name: Determine trust level
         id: check
@@ -129,17 +130,12 @@ jobs:
           fi
 
           # Fork PR: check if the author is an org member via GitHub API.
-          # GET /orgs/{org}/members/{username} returns 204 for members, 404/302 otherwise.
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/${ORG}/members/${PR_AUTHOR}")
-
-          if [ "${HTTP_CODE}" = "204" ]; then
+          # gh api returns exit code 0 for 204 (member) and non-zero for 404/302 (not a member).
+          if gh api "orgs/${ORG}/members/${PR_AUTHOR}" --silent 2>/dev/null; then
             echo "Fork PR from org member ${PR_AUTHOR} — trusted"
             echo "is-external=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "Fork PR from ${PR_AUTHOR} (HTTP ${HTTP_CODE}) — external"
+            echo "Fork PR from ${PR_AUTHOR} — external"
             echo "is-external=true" >> "${GITHUB_OUTPUT}"
           fi
 
@@ -165,10 +161,12 @@ jobs:
     #   - check-trust determines if the author is external
     #   - approval-gate runs only for external contributors and requires manual approval
     #   - If check-trust or approval-gate are skipped (non-PR events), setup proceeds
+    # For pull_request_target, require approval-gate to be 'success' or 'skipped' — block
+    # on 'cancelled' (rejected approval) to prevent running PR code with secrets.
     if: |
       !cancelled() &&
-      needs.check-trust.result != 'failure' &&
-      needs.approval-gate.result != 'failure' &&
+      (needs.check-trust.result == 'success' || needs.check-trust.result == 'skipped') &&
+      (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
       (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
