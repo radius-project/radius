@@ -29,7 +29,6 @@ namespace Radius.Core;
 @doc("Supported API versions for the Radius.Core resource provider.")
 enum Versions {
   @doc("2025-08-01-preview")
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2025_08_01_preview: "2025-08-01-preview",
 }
 

@@ -43,6 +43,5 @@ namespace Ucp;
 @doc("Supported API versions for Universal Control Plane resource provider.")
 enum Versions {
   @doc("2023-10-01-preview")
-  @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
   v2023_10_01_preview: "2023-10-01-preview",
 }
