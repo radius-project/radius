@@ -148,20 +148,18 @@ needsSudo() {
 }
 
 runAsRoot() {
-    local CMD="$*"
-
     if needsSudo "${INSTALL_DIR}"; then
         if command -v sudo &> /dev/null; then
-            CMD="sudo ${CMD}"
+            sudo "$@"
         else
             echo "Error: installation to ${INSTALL_DIR} requires root privileges."
             echo "Either run as root, install sudo, or use --install-dir to choose a user-writable location."
             echo "  Example: $0 --install-dir \"\${HOME}/.local/bin\""
             exit 1
         fi
+    else
+        "$@"
     fi
-
-    ${CMD}
 }
 
 verifySupported() {
