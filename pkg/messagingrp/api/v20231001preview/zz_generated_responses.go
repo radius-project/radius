@@ -10,37 +10,37 @@ type OperationsClientListResponse struct {
 	OperationListResult
 }
 
-// RabbitMQQueuesClientCreateOrUpdateResponse contains the response from method RabbitMQQueuesClient.BeginCreateOrUpdate.
-type RabbitMQQueuesClientCreateOrUpdateResponse struct {
+// RabbitMqQueuesClientCreateOrUpdateResponse contains the response from method RabbitMqQueuesClient.BeginCreateOrUpdate.
+type RabbitMqQueuesClientCreateOrUpdateResponse struct {
 	// RabbitMQQueue portable resource
 	RabbitMQQueueResource
 }
 
-// RabbitMQQueuesClientDeleteResponse contains the response from method RabbitMQQueuesClient.BeginDelete.
-type RabbitMQQueuesClientDeleteResponse struct {
+// RabbitMqQueuesClientDeleteResponse contains the response from method RabbitMqQueuesClient.BeginDelete.
+type RabbitMqQueuesClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// RabbitMQQueuesClientGetResponse contains the response from method RabbitMQQueuesClient.Get.
-type RabbitMQQueuesClientGetResponse struct {
+// RabbitMqQueuesClientGetResponse contains the response from method RabbitMqQueuesClient.Get.
+type RabbitMqQueuesClientGetResponse struct {
 	// RabbitMQQueue portable resource
 	RabbitMQQueueResource
 }
 
-// RabbitMQQueuesClientListByScopeResponse contains the response from method RabbitMQQueuesClient.NewListByScopePager.
-type RabbitMQQueuesClientListByScopeResponse struct {
+// RabbitMqQueuesClientListByScopeResponse contains the response from method RabbitMqQueuesClient.NewListByScopePager.
+type RabbitMqQueuesClientListByScopeResponse struct {
 	// The response of a RabbitMQQueueResource list operation.
 	RabbitMQQueueResourceListResult
 }
 
-// RabbitMQQueuesClientListSecretsResponse contains the response from method RabbitMQQueuesClient.ListSecrets.
-type RabbitMQQueuesClientListSecretsResponse struct {
+// RabbitMqQueuesClientListSecretsResponse contains the response from method RabbitMqQueuesClient.ListSecrets.
+type RabbitMqQueuesClientListSecretsResponse struct {
 	// The secret values for the given RabbitMQQueue resource
 	RabbitMQListSecretsResult
 }
 
-// RabbitMQQueuesClientUpdateResponse contains the response from method RabbitMQQueuesClient.BeginUpdate.
-type RabbitMQQueuesClientUpdateResponse struct {
+// RabbitMqQueuesClientUpdateResponse contains the response from method RabbitMqQueuesClient.BeginUpdate.
+type RabbitMqQueuesClientUpdateResponse struct {
 	// RabbitMQQueue portable resource
 	RabbitMQQueueResource
 }

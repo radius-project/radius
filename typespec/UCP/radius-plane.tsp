@@ -68,7 +68,6 @@ interface RadiusPlanes {
   @doc("List Radius planes")
   @get
   @route("/radius")
-  @list
   @armResourceList(RadiusPlaneResource)
   list(
     ...ApiVersionParameter,

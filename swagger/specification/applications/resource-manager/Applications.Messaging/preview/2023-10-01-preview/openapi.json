@@ -49,7 +49,7 @@
   "paths": {
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues": {
       "get": {
-        "operationId": "RabbitMQQueues_ListByScope",
+        "operationId": "RabbitMqQueues_ListByScope",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -76,14 +76,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "List RabbitMQQueue resources by resource group": {
-            "$ref": "./examples/RabbitMQQueues_List.json"
-          },
-          "List RabbitMQQueue resources by rootScope": {
-            "$ref": "./examples/RabbitMQQueues_ListByRootScope.json"
-          }
-        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -91,7 +83,7 @@
     },
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}": {
       "get": {
-        "operationId": "RabbitMQQueues_Get",
+        "operationId": "RabbitMqQueues_Get",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -126,15 +118,10 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Get a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_Get.json"
-          }
         }
       },
       "put": {
-        "operationId": "RabbitMQQueues_CreateOrUpdate",
+        "operationId": "RabbitMqQueues_CreateOrUpdate",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -196,18 +183,13 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Create Or Update a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_CreateOrUpdate.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "azure-async-operation"
         },
         "x-ms-long-running-operation": true
       },
       "patch": {
-        "operationId": "RabbitMQQueues_Update",
+        "operationId": "RabbitMqQueues_Update",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -266,18 +248,13 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Update a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_Update.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       },
       "delete": {
-        "operationId": "RabbitMQQueues_Delete",
+        "operationId": "RabbitMqQueues_Delete",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -324,11 +301,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Delete a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_Delete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -337,7 +309,7 @@
     },
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets": {
       "post": {
-        "operationId": "RabbitMQQueues_ListSecrets",
+        "operationId": "RabbitMqQueues_ListSecrets",
         "tags": [
           "RabbitMQQueues"
         ],
@@ -381,11 +353,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "List the secrets of a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_ListSecrets.json"
-          }
         }
       }
     },
@@ -424,7 +391,6 @@
   "definitions": {
     "Azure.ResourceManager.CommonTypes.TrackedResourceUpdate": {
       "type": "object",
-      "title": "Tracked Resource",
       "description": "The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags' and a 'location'",
       "properties": {
         "tags": {

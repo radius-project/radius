@@ -249,7 +249,6 @@ interface ResourceProviders {
 
   @doc("List resource provider summaries. The resource provider summary aggregates the most commonly used information including locations, api versions and resource types.")
   @segment("providers")
-  @list
   listProviderSummaries(
     ...PlaneBaseParameters<RadiusPlaneResource>,
   ): Azure.Core.Page<ResourceProviderSummary> | ErrorResponse;

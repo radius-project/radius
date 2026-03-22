@@ -34,7 +34,7 @@ using OpenAPI;
 @autoRoute
 @doc("List {name}", TResource)
 @segmentOf(TResource)
-@list
+@listsResource(TResource)
 @armResourceList(TResource)
 op UcpResourceList<TResource extends Foundations.Resource, TBaseParameters>(
   ...TBaseParameters,
