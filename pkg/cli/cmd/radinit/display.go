@@ -254,8 +254,8 @@ func (m *summaryModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.SubscriptionID), highlight(options.CloudProviders.Azure.ResourceGroup)))
 		}
 
-		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
+		if options.Recipes.DefaultRecipePack {
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default kubernetes recipe pack")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
@@ -397,8 +397,8 @@ func (m *progressModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.SubscriptionID), highlight(options.CloudProviders.Azure.ResourceGroup)))
 		}
 
-		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
+		if options.Recipes.DefaultRecipePack {
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default kubernetes recipe pack")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))

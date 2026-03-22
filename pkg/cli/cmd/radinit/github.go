@@ -73,7 +73,7 @@ func (r *Runner) enterGitHubInitOptions(ctx context.Context) (*initOptions, *wor
 			Namespace: "default",
 		},
 		Recipes: recipePackOptions{
-			DevRecipes: true,
+			DefaultRecipePack: true,
 		},
 		// Enable PostgreSQL in the Helm chart.
 		SetValues: []string{"database.enabled=true"},

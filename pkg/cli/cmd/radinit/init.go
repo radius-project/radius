@@ -39,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
@@ -135,8 +136,13 @@ type Runner struct {
 	// Prompter is the interface for the prompter.
 	Prompter prompt.Interface
 
-	// DevRecipeClient is the interface for the dev recipe client.
-	DevRecipeClient DevRecipeClient
+	// RadiusCoreClientFactory is the client factory for Radius.Core resources.
+	// If nil, it will be initialized during Run.
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
+
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// The default recipe pack is always created/queried in the default scope.
+	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
 	// PGBackupClient is the interface for PostgreSQL backup/restore (used with --kind github).
 	PGBackupClient PGBackupClient
@@ -174,7 +180,7 @@ type Runner struct {
 //
 
 // NewRunner creates a new Runner struct with the given factory's ConfigHolder, Output, ConnectionFactory, Prompter,
-// ConfigFileInterface, KubernetesInterface, HelmInterface, DevRecipeClient, AWSClient, and AzureClient.
+// ConfigFileInterface, KubernetesInterface, HelmInterface, AWSClient, and AzureClient.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
@@ -184,7 +190,6 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
-		DevRecipeClient:     NewDevRecipeClient(),
 		PGBackupClient:      NewPGBackupClient(),
 		awsClient:           factory.GetAWSClient(),
 		azureClient:         factory.GetAzureClient(),

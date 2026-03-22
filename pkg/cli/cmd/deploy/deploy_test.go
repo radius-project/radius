@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -900,76 +901,300 @@ func Test_Run(t *testing.T) {
 		// is always empty.
 		require.Empty(t, outputSink.Writes)
 	})
+}
 
-	t.Run("Deployment with deprecated Applications.* resource types shows warning", func(t *testing.T) {
+const radiusCoreEnvironmentsType = "Radius.Core/environments@2025-08-01-preview"
+
+// buildEnvResource creates a Radius.Core/environments resource entry for use in test templates.
+// If recipePacks is nil, the environment will have no recipePacks field.
+func buildEnvResource(name string, recipePacks []any) map[string]any {
+	innerProps := map[string]any{}
+	if recipePacks != nil {
+		innerProps["recipePacks"] = recipePacks
+	}
+	return map[string]any{
+		"type": radiusCoreEnvironmentsType,
+		"properties": map[string]any{
+			"name":       name,
+			"properties": innerProps,
+		},
+	}
+}
+
+// getRecipePacks navigates a template resource entry and returns the recipePacks slice.
+// It returns (packs, true) when the key exists and is a []any, or (nil, false) otherwise.
+func getRecipePacks(t *testing.T, template map[string]any, resourceKey string) ([]any, bool) {
+	t.Helper()
+	envRes := template["resources"].(map[string]any)[resourceKey].(map[string]any)
+	outerProps := envRes["properties"].(map[string]any)
+	innerProps := outerProps["properties"].(map[string]any)
+	packs, ok := innerProps["recipePacks"].([]any)
+	return packs, ok
+}
+
+func Test_setupRecipePacks(t *testing.T) {
+	scope := "/planes/radius/local/resourceGroups/test-group"
+
+	t.Run("injects default recipe pack into template", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		bicepMock := bicep.NewMockInterface(ctrl)
-
-		deployMock := deploy.NewMockInterface(ctrl)
-		deployMock.EXPECT().
-			DeployWithProgress(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
-				return clients.DeploymentResult{}, nil
-			}).
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
 			Times(1)
 
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name: "kind-kind",
-		}
-		outputSink := &output.MockOutput{}
-
-		providers := clients.Providers{
-			Radius: &clients.RadiusProvider{
-				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
-			},
-		}
-
-		runner := &Runner{
-			Bicep:               bicepMock,
-			ConnectionFactory:   &connections.MockFactory{},
-			Deploy:              deployMock,
-			Output:              outputSink,
-			Providers:           &providers,
-			FilePath:            "app.bicep",
-			EnvironmentNameOrID: radcli.TestEnvironmentID,
-			Parameters:          map[string]map[string]any{},
-			Workspace:           workspace,
-			Template:            map[string]any{},
-			TemplateInspectionResult: bicep.TemplateInspectionResult{
-				ContainsEnvironmentResource: false,
-				DeprecatedResources:         []string{"Applications.Core/containers@2023-10-01-preview"},
-			},
-		}
-
-		err := runner.Run(context.Background())
+		// Default scope factory — GET succeeds (pack already exists).
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
 		require.NoError(t, err)
 
-		// Verify deprecation warning was logged
-		require.NotEmpty(t, outputSink.Writes)
-
-		// Check that the warning message contains the expected text
-		foundWarning := false
-		foundResourceType := false
-		for _, write := range outputSink.Writes {
-			if logOutput, ok := write.(output.LogOutput); ok {
-				if logOutput.Format == "WARNING: The following resource types are deprecated:" {
-					foundWarning = true
-				}
-				if logOutput.Format == "  - %s" && len(logOutput.Params) > 0 {
-					if resourceType, ok := logOutput.Params[0].(string); ok && resourceType == "Applications.Core/containers@2023-10-01-preview" {
-						foundResourceType = true
-					}
-				}
-			}
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
 		}
-		require.True(t, foundWarning, "Expected to find deprecation warning in output")
-		require.True(t, foundResourceType, "Expected to find deprecated resource type in output")
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		// Verify that the default recipe pack was injected.
+		packs, ok := getRecipePacks(t, template, "env")
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
+	})
+
+	t.Run("skips when environment has existing packs", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Since packs are already set, no changes should be made.
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", []any{existingPackID}),
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		packs, _ := getRecipePacks(t, template, "env")
+		// Only the original pack — no default pack added
+		require.Len(t, packs, 1)
+		require.Equal(t, existingPackID, packs[0])
+	})
+
+	t.Run("no-op when template has no environment resource", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"app": map[string]any{
+					"type": "Radius.Core/applications@2025-08-01-preview",
+				},
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+	})
+
+	t.Run("no-op for Applications.Core environment", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": map[string]any{
+					"type": "Applications.Core/environments@2023-10-01-preview",
+				},
+			},
+		}
+
+		// Should be a no-op since we only handle Radius.Core environments
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+	})
+
+	t.Run("injects packs only for environment without packs in mixed template", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		// Only one env needs packs, so only one EnsureDefaultResourceGroup call.
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Two environments: envWithPacks already has a pack, envWithout has none.
+		template := map[string]any{
+			"resources": map[string]any{
+				"envWithPacks": buildEnvResource("envWithPacks", []any{existingPackID}),
+				"envWithout":   buildEnvResource("envWithout", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		// envWithPacks should be untouched — still just 1 pack.
+		wpPacks, _ := getRecipePacks(t, template, "envWithPacks")
+		require.Len(t, wpPacks, 1, "envWithPacks should keep its original pack only")
+		require.Equal(t, existingPackID, wpPacks[0])
+
+		// envWithout should have received the default pack.
+		woPacks, ok := getRecipePacks(t, template, "envWithout")
+		require.True(t, ok, "expected recipePacks on envWithout")
+		require.Len(t, woPacks, 1, "envWithout should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), woPacks[0])
+	})
+
+	t.Run("creates default pack when not found in default scope", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory returns 404 on GET (packs don't exist yet)
+		// but succeeds on CreateOrUpdate.
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		packs, ok := getRecipePacks(t, template, "env")
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
+	})
+
+	t.Run("returns error when default scope GET fails with non-404", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory returns 500 on GET (unexpected error).
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerInternalError,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
+	})
+
+	t.Run("returns error when CreateOrUpdateResourceGroup fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(fmt.Errorf("resource group creation failed")).
+			Times(1)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:            &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource group creation failed")
 	})
 }
 
@@ -1162,7 +1387,20 @@ func Test_setupCloudProviders(t *testing.T) {
 				Scope: "/planes/aws/aws/accounts/account-id/regions/us-west-2",
 			},
 			expectedAzure: &clients.AzureProvider{
-				Scope: "/planes/azure/azure/Subscriptions/test-subscription/ResourceGroups/test-rg",
+				Scope: "/subscriptions/test-subscription/resourceGroups/test-rg",
+			},
+		},
+		{
+			name: "v20250801preview with Azure subscription only (nil ResourceGroupName)",
+			properties: &v20250801preview.EnvironmentProperties{
+				Providers: &v20250801preview.Providers{
+					Azure: &v20250801preview.ProvidersAzure{
+						SubscriptionID: to.Ptr("test-subscription"),
+					},
+				},
+			},
+			expectedAzure: &clients.AzureProvider{
+				Scope: "/subscriptions/test-subscription",
 			},
 		},
 	}
@@ -1575,7 +1813,7 @@ func Test_ConfigureProviders(t *testing.T) {
 			applicationName:       "myapp",
 			expectedEnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv",
 			expectedApplicationID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/applications/myapp",
-			expectedAzureScope:    "/planes/azure/azure/Subscriptions/test-sub-id/ResourceGroups/test-rg-name",
+			expectedAzureScope:    "/subscriptions/test-sub-id/resourceGroups/test-rg-name",
 			expectedAWSScope:      "/planes/aws/aws/accounts/123456789012/regions/us-west-2",
 		},
 		{
