@@ -41,5 +41,53 @@ func Test_IsSameKubernetesContext(t *testing.T) {
 	ctx = "aks1"
 	isSame = ws.IsSameKubernetesContext(ctx)
 	require.Equal(t, isSame, false)
+}
 
+func Test_ConnectionConfig_GitHub(t *testing.T) {
+	ws := Workspace{
+		Name: "github-workspace",
+		Connection: map[string]any{
+			"kind":    KindGitHub,
+			"context": "k3d-radius-github",
+		},
+	}
+
+	cfg, err := ws.ConnectionConfig()
+	require.NoError(t, err)
+
+	ghCfg, ok := cfg.(*GitHubConnectionConfig)
+	require.True(t, ok, "expected *GitHubConnectionConfig, got %T", cfg)
+	require.Equal(t, KindGitHub, ghCfg.Kind)
+	require.Equal(t, "k3d-radius-github", ghCfg.Context)
+}
+
+func Test_KubernetesContext_GitHub(t *testing.T) {
+	ws := Workspace{
+		Name: "github-workspace",
+		Connection: map[string]any{
+			"kind":    KindGitHub,
+			"context": "k3d-radius-github",
+		},
+	}
+
+	got, ok := ws.KubernetesContext()
+	require.True(t, ok)
+	require.Equal(t, "k3d-radius-github", got)
+}
+
+func Test_ConnectionConfigEquals_GitHub(t *testing.T) {
+	ws := Workspace{
+		Connection: map[string]any{
+			"kind":    KindGitHub,
+			"context": "k3d-radius-github",
+		},
+	}
+
+	same := &GitHubConnectionConfig{Kind: KindGitHub, Context: "k3d-radius-github"}
+	different := &GitHubConnectionConfig{Kind: KindGitHub, Context: "k3d-other"}
+	kubernetes := &KubernetesConnectionConfig{Kind: KindKubernetes, Context: "k3d-radius-github"}
+
+	require.True(t, ws.ConnectionConfigEquals(same))
+	require.False(t, ws.ConnectionConfigEquals(different))
+	require.False(t, ws.ConnectionConfigEquals(kubernetes))
 }

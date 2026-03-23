@@ -11,5 +11,5 @@ metadata:
 stringData:
   POSTGRES_USER: "{{ .Values.database.postgres_user }}"
   POSTGRES_PASSWORD: "{{ randAlphaNum 16 }}"
-  POSTGRES_DB: POSTGRES_DB
+  POSTGRES_DB: "radius"
 {{- end }}

@@ -3,13 +3,17 @@ templates:
   - _helpers.tpl
   - controller/deployment.yaml
   - ucp/deployment.yaml
+  - ucp/configmaps.yaml
   - rp/deployment.yaml
+  - rp/configmaps.yaml
   - dynamic-rp/deployment.yaml
+  - dynamic-rp/configmaps.yaml
   - dynamic-rp/secret.yaml
   - dynamic-rp/serviceaccount.yaml
   - de/deployment.yaml
   - dashboard/deployment.yaml
   - database/statefulset.yaml
+  - database/configmap-initdb.yaml
 tests:
   - it: should use default ghcr.io registry when global.imageRegistry is not set
     set:
@@ -1416,3 +1420,122 @@ tests:
       # - If secret missing: generates new versioned key store (version 1)
       # This ensures upgrades never accidentally replace the key store
       # CronJob handles automatic rotation, not Helm upgrades
+
+  # PostgreSQL-specific tests (database.enabled)
+
+  - it: should use apiserver provider in UCP configmap when database is disabled (default)
+    templates:
+      - ucp/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'provider: "apiserver"'
+        template: ucp/configmaps.yaml
+
+  - it: should use postgresql provider in UCP configmap when database.enabled=true
+    set:
+      database.enabled: true
+    templates:
+      - ucp/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: postgresql
+        template: ucp/configmaps.yaml
+
+  - it: should use apiserver provider in applications-rp configmap when database is disabled (default)
+    templates:
+      - rp/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'provider: "apiserver"'
+        template: rp/configmaps.yaml
+
+  - it: should use postgresql provider in applications-rp configmap when database.enabled=true
+    set:
+      database.enabled: true
+    templates:
+      - rp/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: postgresql
+        template: rp/configmaps.yaml
+
+  - it: should use apiserver provider in dynamic-rp configmap when database is disabled (default)
+    templates:
+      - dynamic-rp/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'provider: "apiserver"'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: should use postgresql provider in dynamic-rp configmap when database.enabled=true
+    set:
+      database.enabled: true
+    templates:
+      - dynamic-rp/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: postgresql
+        template: dynamic-rp/configmaps.yaml
+
+  - it: should not inject POSTGRES_PASSWORD env into UCP when database is disabled (default)
+    templates:
+      - ucp/deployment.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+        template: ucp/deployment.yaml
+
+  - it: should inject POSTGRES_PASSWORD env into UCP when database.enabled=true
+    set:
+      database.enabled: true
+    templates:
+      - ucp/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: database-secret
+                key: POSTGRES_PASSWORD
+        template: ucp/deployment.yaml
+
+  - it: should mount init-db scripts on PostgreSQL StatefulSet when database.enabled=true
+    set:
+      database.enabled: true
+    templates:
+      - database/statefulset.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: initdb-scripts
+            configMap:
+              name: database-initdb
+        template: database/statefulset.yaml
+
+  - it: should render init-db ConfigMap when database.enabled=true
+    set:
+      database.enabled: true
+    templates:
+      - database/configmap-initdb.yaml
+    asserts:
+      - isKind:
+          of: ConfigMap
+        template: database/configmap-initdb.yaml
+      - equal:
+          path: metadata.name
+          value: database-initdb
+        template: database/configmap-initdb.yaml
+      - isNotEmpty:
+          path: data["init-db.sh"]
+        template: database/configmap-initdb.yaml

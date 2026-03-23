@@ -80,6 +80,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/rollback"
 	rollback_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/rollback/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
+	cmd_shutdown "github.com/radius-project/radius/pkg/cli/cmd/shutdown"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/upgrade"
@@ -344,6 +345,9 @@ func initSubCommands() {
 
 	initCmd, _ := radinit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
+
+	shutdownCmd, _ := cmd_shutdown.NewCommand(framework)
+	RootCmd.AddCommand(shutdownCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	previewCreateCmd, _ := env_create_preview.NewCommand(framework)

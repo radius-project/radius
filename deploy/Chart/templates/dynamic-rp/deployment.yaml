@@ -137,6 +137,13 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- if .Values.database.enabled }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        {{- end }}
         - name: SKIP_ARM
           value: 'false'
         - name: ARM_AUTH_METHOD

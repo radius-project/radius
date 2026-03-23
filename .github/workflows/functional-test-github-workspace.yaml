@@ -1,0 +1,206 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Functional Test - GitHub Workspace
+
+# Tests the 'github' workspace kind end-to-end:
+#   1. rad init --kind github  →  creates k3d cluster + installs Radius with PostgreSQL
+#   2. (future) deploy a demo app and verify resources
+#   3. rad shutdown --cleanup  →  backs up PostgreSQL to radius-state branch
+#   4. rad init --kind github  →  verifies state is restored from backup
+#
+# See docs/contributing/github-workspace.md for the full design.
+
+on:
+  # Enable manual trigger for development and debugging.
+  # TODO: comment out workflow_dispatch before merging to production if this workflow
+  # is scheduled or triggered automatically from another workflow.
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to run the workflow on
+        required: false
+        default: main
+
+  # Run on PRs touching workspace / PostgreSQL / k3d code paths.
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
+    paths:
+      - pkg/cli/k3d/**
+      - pkg/cli/pgbackup/**
+      - pkg/cli/gitstate/**
+      - pkg/cli/cmd/shutdown/**
+      - pkg/cli/cmd/radinit/**
+      - pkg/cli/workspaces/**
+      - deploy/Chart/**
+      - .github/workflows/functional-test-github-workspace.yaml
+
+permissions: {}
+
+env:
+  # k3d version to install
+  K3D_VER: v5.8.3
+  # kubectl version
+  KUBECTL_VER: v1.30.0
+  # Helm version
+  HELM_VER: v3.19.4
+  # The Radius helm chart location
+  RADIUS_CHART_LOCATION: deploy/Chart/
+  # The git branch used for PostgreSQL state backups
+  RADIUS_STATE_BRANCH: radius-state
+  # Timeout for rad init
+  RAD_INIT_TIMEOUT: 10m
+
+jobs:
+  test:
+    name: GitHub Workspace End-to-End Test
+    # Only run on the main repository; forks lack the k3d runner resources and
+    # the write permission needed to push the radius-state branch.
+    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Fetch all branches so the radius-state branch can be found on restore.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Build rad CLI
+        run: |
+          make build
+          mkdir -p ./bin
+          cp ./dist/linux_amd64/release/rad ./bin/rad
+          chmod +x ./bin/rad
+          echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
+
+      - name: Verify rad CLI
+        run: |
+          rad version
+          rad --help
+
+      - name: Install k3d
+        run: |
+          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=${{ env.K3D_VER }} bash
+          k3d version
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/${{ env.KUBECTL_VER }}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
+
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: ${{ env.HELM_VER }}
+
+      - name: Configure git identity for state commits
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      # ---------------------------------------------------------------------------
+      # Phase 1: Initialize Radius with GitHub workspace kind
+      # ---------------------------------------------------------------------------
+
+      - name: rad init (first run — no prior state)
+        run: make workflow-github-workspace-init
+        env:
+          RAD_INIT_TIMEOUT: ${{ env.RAD_INIT_TIMEOUT }}
+
+      - name: Verify Radius is running
+        run: |
+          kubectl --context k3d-radius-github -n radius-system get pods
+          rad env list
+
+      # ---------------------------------------------------------------------------
+      # Phase 2: Deploy demo content
+      #
+      # Currently this step is a placeholder. The repo under test is empty; there
+      # is no application to deploy yet.
+      #
+      # Future work: when a demo application is available, replace this step with:
+      #   rad deploy <app-bicep-file>
+      #   rad resource list Applications.Core/containers
+      # and add assertions that the expected resources exist.
+      # See docs/contributing/github-workspace.md §"Demo Application" for details.
+      # ---------------------------------------------------------------------------
+
+      - name: Deploy demo content (placeholder)
+        run: |
+          echo "No demo application yet. Future: rad deploy <app>"
+
+      # ---------------------------------------------------------------------------
+      # Phase 3: Shut down — back up state and delete cluster
+      # ---------------------------------------------------------------------------
+
+      - name: rad shutdown (backup + delete cluster)
+        run: make workflow-github-workspace-shutdown
+        env:
+          RADIUS_STATE_BRANCH: ${{ env.RADIUS_STATE_BRANCH }}
+
+      # The state files (.radius/state/*.sql) and the local radius-state git branch
+      # persist on this runner between steps — no push to origin is needed for the
+      # round-trip test. The gitstate package committed the SQL files to the local
+      # radius-state branch; rad init will restore from it in Phase 4.
+      #
+      # NOTE: In a real demo repo you would persist state across *runs*, not just
+      # steps. See docs/contributing/github-workspace.md §"State Persistence" for
+      # the recommended approach (Actions artifact upload/download).
+
+      # ---------------------------------------------------------------------------
+      # Phase 4: Restore — re-init and verify state round-trips
+      # ---------------------------------------------------------------------------
+
+      - name: rad init (second run — should restore state from local radius-state branch)
+        run: make workflow-github-workspace-init
+        env:
+          RAD_INIT_TIMEOUT: ${{ env.RAD_INIT_TIMEOUT }}
+
+      - name: Verify state was restored
+        run: make workflow-github-workspace-verify-restore
+
+      # ---------------------------------------------------------------------------
+      # Phase 5: Final cleanup
+      # ---------------------------------------------------------------------------
+
+      - name: Cleanup k3d cluster
+        if: always()
+        run: k3d cluster delete radius-github || true
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: github-workspace-test-logs
+          path: dist/logs/
+          retention-days: 3

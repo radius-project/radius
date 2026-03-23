@@ -29,6 +29,7 @@ import (
 )
 
 const KindKubernetes string = "kubernetes"
+const KindGitHub string = "github"
 
 // MakeFallbackWorkspace creates an un-named workspace that will use the current KubeContext.
 // This is is used in fallback cases where the user has no config.
@@ -89,6 +90,19 @@ func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
 		}
 
 		return config, nil
+	case KindGitHub:
+		config := &GitHubConnectionConfig{}
+		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{ErrorUnused: true, Result: config})
+		if err != nil {
+			return nil, err
+		}
+
+		err = decoder.Decode(ws.Connection)
+		if err != nil {
+			return nil, err
+		}
+
+		return config, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection kind '%s'", kind)
 	}
@@ -117,8 +131,8 @@ func (ws Workspace) Connect(ctx context.Context) (sdk.Connection, error) {
 	return connectionConfig.Connect()
 }
 
-// ConnectionConfigEquals() checks if the given ConnectionConfig is of type Kubernetes and if the Kubernetes
-// context is the same as the one stored in the Workspace, and returns a boolean value accordingly.
+// ConnectionConfigEquals() checks if the given ConnectionConfig is of type Kubernetes or GitHub and if the
+// connection context is the same as the one stored in the Workspace, and returns a boolean value accordingly.
 func (ws Workspace) ConnectionConfigEquals(other ConnectionConfig) bool {
 	switch other.GetKind() {
 	case KindKubernetes:
@@ -128,15 +142,23 @@ func (ws Workspace) ConnectionConfigEquals(other ConnectionConfig) bool {
 		}
 
 		return ws.Connection["kind"] == KindKubernetes && ws.IsSameKubernetesContext(kc.Context)
+	case KindGitHub:
+		gc, ok := other.(*GitHubConnectionConfig)
+		if !ok {
+			return false
+		}
+
+		return ws.Connection["kind"] == KindGitHub && ws.Connection["context"] == gc.Context
 	default:
 		return false
 	}
 }
 
-// KubernetesContext checks if the workspace connection is of type Kubernetes and returns the context string if it exists,
-// otherwise it returns an empty string and false.
+// KubernetesContext checks if the workspace connection is of type Kubernetes or GitHub and returns the context string
+// if it exists, otherwise it returns an empty string and false.
 func (ws Workspace) KubernetesContext() (string, bool) {
-	if ws.Connection["kind"] != KindKubernetes {
+	kind := ws.Connection["kind"]
+	if kind != KindKubernetes && kind != KindGitHub {
 		return "", false
 	}
 
@@ -205,6 +227,40 @@ func (c *KubernetesConnectionConfig) Connect() (sdk.Connection, error) {
 		return sdk.NewDirectConnection(strURL)
 	}
 
+	config, err := kubernetes.NewCLIClientConfig(c.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	return sdk.NewKubernetesConnectionFromConfig(config)
+}
+
+var _ ConnectionConfig = (*GitHubConnectionConfig)(nil)
+
+// GitHubConnectionConfig represents a connection to a Radius instance running in a k3d cluster
+// managed by the GitHub workspace type. The GitHub workspace type is designed for use in
+// GitHub Actions workflows with PostgreSQL-backed state that persists across runs.
+type GitHubConnectionConfig struct {
+	// Kind specifies the kind of connection. For GitHubConnectionConfig this is always 'github'.
+	Kind string `json:"kind" mapstructure:"kind" yaml:"kind"`
+
+	// Context is the kubernetes kubeconfig context used to connect (typically a k3d context).
+	Context string `json:"context" mapstructure:"context" yaml:"context"`
+
+}
+
+// String returns a string that describes the GitHub connection configuration.
+func (c *GitHubConnectionConfig) String() string {
+	return fmt.Sprintf("GitHub (context=%s)", c.Context)
+}
+
+// GetKind returns the string KindGitHub.
+func (c *GitHubConnectionConfig) GetKind() string {
+	return KindGitHub
+}
+
+// Connect creates a connection to the Radius instance running in the k3d cluster.
+func (c *GitHubConnectionConfig) Connect() (sdk.Connection, error) {
 	config, err := kubernetes.NewCLIClientConfig(c.Context)
 	if err != nil {
 		return nil, err

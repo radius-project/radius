@@ -19,6 +19,7 @@ package radinit
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/mattn/go-isatty"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -95,7 +97,15 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 // provide a channel to update progress.
 func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
 	model := NewProgessModel(*options)
-	program := tea.NewProgram(model, tea.WithContext(ctx))
+
+	programOpts := []tea.ProgramOption{tea.WithContext(ctx)}
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		// On non-interactive runners (e.g. GitHub Actions) there is no TTY. Provide a no-op
+		// input reader to prevent BubbleTea from trying to open /dev/tty for raw input.
+		programOpts = append(programOpts, tea.WithInput(strings.NewReader("")))
+	}
+
+	program := tea.NewProgram(model, programOpts...)
 
 	go func() {
 		for msg := range progressChan {

@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -103,6 +104,7 @@ rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
+	cmd.Flags().String("kind", "kubernetes", "Workspace type: 'kubernetes' or 'github'")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	return cmd, runner
@@ -142,6 +144,9 @@ type Runner struct {
 	// The default recipe pack is always created/queried in the default scope.
 	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
+	// PGBackupClient is the interface for PostgreSQL backup/restore (used with --kind github).
+	PGBackupClient PGBackupClient
+
 	// Format is the output format.
 	Format string
 
@@ -150,6 +155,16 @@ type Runner struct {
 
 	// Full determines whether or not we ask the user for all options.
 	Full bool
+
+	// Kind specifies the workspace type: 'kubernetes' (default) or 'github'.
+	Kind string
+
+	// Worktree is the git worktree for the state orphan branch (used with --kind github).
+	// It is opened during Validate and must be removed at the end of Run.
+	Worktree *gitstate.StateWorktree
+
+	// GitHubSemaphoreState is the semaphore state captured before WriteLock during Validate.
+	GitHubSemaphoreState gitstate.SemaphoreState
 
 	// Set is the list of additional Helm values to set.
 	Set []string
@@ -175,6 +190,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
+		PGBackupClient:      NewPGBackupClient(),
 		awsClient:           factory.GetAWSClient(),
 		azureClient:         factory.GetAzureClient(),
 	}
@@ -197,6 +213,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Full, err = cmd.Flags().GetBool("full")
 	if err != nil {
 		return err
+	}
+
+	r.Kind, err = cmd.Flags().GetString("kind")
+	if err != nil {
+		return err
+	}
+
+	// GitHub workspace type uses a dedicated init flow.
+	if r.Kind == workspaces.KindGitHub {
+		options, workspace, err := r.enterGitHubInitOptions(cmd.Context())
+		if err != nil {
+			return err
+		}
+
+		r.Options = options
+		r.Workspace = workspace
+		return nil
 	}
 
 	for {
@@ -233,6 +266,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
+	// Release the state worktree when Run exits (opened during Validate for GitHub kind).
+	if r.Worktree != nil {
+		defer r.Worktree.Remove(ctx)
+	}
+
 	// Use this channel to send progress updates to the UI.
 	progressChan := make(chan progressMsg)
 	progressCompleteChan := make(chan error)
@@ -260,6 +298,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to install Radius.")
+		}
+
+		// For GitHub workspace type, run post-install steps (wait for PG, restore state).
+		if r.Kind == workspaces.KindGitHub {
+			if err := r.runGitHubPostInstall(ctx); err != nil {
+				return clierrors.MessageWithCause(err, "Failed to complete GitHub workspace setup.")
+			}
 		}
 	}
 	progress.InstallComplete = true

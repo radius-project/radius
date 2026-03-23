@@ -33,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -40,6 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )
@@ -150,11 +152,17 @@ type Runner struct {
 	Workspace                *workspaces.Workspace
 	Providers                *clients.Providers
 	EnvResult                *EnvironmentCheckResult
+
+	// acquireDeployLock acquires a deploy lock for GitHub workspaces before the deployment
+	// begins and returns a release function that must be deferred. For non-GitHub workspaces
+	// it returns a no-op release. When nil the locking step is skipped entirely (used in
+	// tests that construct Runner directly).
+	acquireDeployLock func(ctx context.Context, workspace *workspaces.Workspace) (release func(context.Context), err error)
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
 func NewRunner(factory framework.Factory) *Runner {
-	return &Runner{
+	r := &Runner{
 		Bicep:             factory.GetBicep(),
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -162,6 +170,8 @@ func NewRunner(factory framework.Factory) *Runner {
 		Output:            factory.GetOutput(),
 		Providers:         &clients.Providers{},
 	}
+	r.acquireDeployLock = defaultAcquireDeployLock
+	return r
 }
 
 // Validate runs validation for the `rad deploy` command.
@@ -264,6 +274,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run deploys a Bicep template into an environment from a workspace, optionally creating an application if
 // specified, and displays progress and completion messages. It returns an error if any of the operations fail.
 func (r *Runner) Run(ctx context.Context) error {
+	if r.acquireDeployLock != nil {
+		release, err := r.acquireDeployLock(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		defer release(ctx)
+	}
+
 	// Use the template that was prepared during validation
 	template := r.Template
 
@@ -803,4 +821,36 @@ func (r *Runner) configureProviders() error {
 	}
 
 	return nil
+}
+
+// defaultAcquireDeployLock is the production implementation of acquireDeployLock.
+// For GitHub workspaces it opens the state worktree, records runner identity in a
+// .deploy-lock file, and returns a release function that removes the lock and tears
+// down the worktree. For all other workspace kinds it returns a no-op release.
+func defaultAcquireDeployLock(ctx context.Context, workspace *workspaces.Workspace) (func(context.Context), error) {
+	if workspace.Connection["kind"] != workspaces.KindGitHub {
+		return func(context.Context) {}, nil
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	w, err := gitstate.OpenOrCreate(ctx, gitstate.DefaultBranch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open state worktree: %w", err)
+	}
+
+	info := gitstate.NewLockInfoFromEnv()
+	if err := w.TryAcquireDeployLock(ctx, info); err != nil {
+		w.Remove(ctx)
+		return nil, err
+	}
+
+	logger.Info("Deploy lock acquired", "runID", info.RunID, "attempt", info.RunAttempt)
+
+	return func(releaseCtx context.Context) {
+		if releaseErr := w.ReleaseDeployLock(releaseCtx); releaseErr != nil {
+			ucplog.FromContextOrDiscard(releaseCtx).Info("Failed to release deploy lock", "error", releaseErr)
+		}
+		w.Remove(releaseCtx)
+	}, nil
 }

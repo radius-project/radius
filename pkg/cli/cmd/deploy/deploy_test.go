@@ -1868,3 +1868,126 @@ func Test_ConfigureProviders(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Deploy lock — acquireDeployLock integration in Run()
+// ---------------------------------------------------------------------------
+
+func Test_Run_DeployLock_NonGitHub_NoOp(t *testing.T) {
+	// Non-GitHub workspace: acquireDeployLock returns no-op without error.
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	called := false
+	released := false
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{"kind": "kubernetes", "context": "kind-kind"},
+		Name:       "kind-kind",
+	}
+	provider := &clients.Providers{
+		Radius: &clients.RadiusProvider{
+			EnvironmentID: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		},
+	}
+
+	deployMock := deploy.NewMockInterface(ctrl)
+	deployMock.EXPECT().
+		DeployWithProgress(gomock.Any(), gomock.Any()).
+		Return(clients.DeploymentResult{}, nil).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:               bicep.NewMockInterface(ctrl),
+		Deploy:              deployMock,
+		Output:              &output.MockOutput{},
+		FilePath:            "app.bicep",
+		EnvironmentNameOrID: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		Parameters:          map[string]map[string]any{},
+		Workspace:           workspace,
+		Providers:           provider,
+		Template:            map[string]any{},
+		acquireDeployLock: func(_ context.Context, ws *workspaces.Workspace) (func(context.Context), error) {
+			called = true
+			require.Equal(t, "kubernetes", ws.Connection["kind"])
+			return func(context.Context) { released = true }, nil
+		},
+	}
+
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
+	require.True(t, called, "acquireDeployLock should be called")
+	require.True(t, released, "release function should be deferred and called")
+}
+
+func Test_Run_DeployLock_GitHubWorkspace_LockHeld(t *testing.T) {
+	// GitHub workspace: acquireDeployLock returns ErrDeployLockHeld → Run must fail.
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{"kind": "github", "context": "kind-radius-github"},
+		Name:       "github",
+	}
+
+	runner := &Runner{
+		Bicep:               bicep.NewMockInterface(ctrl),
+		Deploy:              deploy.NewMockInterface(ctrl), // never called
+		Output:              &output.MockOutput{},
+		FilePath:            "app.bicep",
+		EnvironmentNameOrID: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		Parameters:          map[string]map[string]any{},
+		Workspace:           workspace,
+		Providers: &clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+			},
+		},
+		Template: map[string]any{},
+		acquireDeployLock: func(_ context.Context, _ *workspaces.Workspace) (func(context.Context), error) {
+			return nil, fmt.Errorf("deploy is already in progress")
+		},
+	}
+
+	err := runner.Run(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "deploy is already in progress")
+}
+
+func Test_Run_DeployLock_Nil_Skipped(t *testing.T) {
+	// When acquireDeployLock is nil (direct Runner construction in tests), locking is skipped.
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{"kind": "kubernetes", "context": "kind-kind"},
+		Name:       "kind-kind",
+	}
+	provider := &clients.Providers{
+		Radius: &clients.RadiusProvider{
+			EnvironmentID: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		},
+	}
+
+	deployMock := deploy.NewMockInterface(ctrl)
+	deployMock.EXPECT().
+		DeployWithProgress(gomock.Any(), gomock.Any()).
+		Return(clients.DeploymentResult{}, nil).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:               bicep.NewMockInterface(ctrl),
+		Deploy:              deployMock,
+		Output:              &output.MockOutput{},
+		FilePath:            "app.bicep",
+		EnvironmentNameOrID: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		Parameters:          map[string]map[string]any{},
+		Workspace:           workspace,
+		Providers:           provider,
+		Template:            map[string]any{},
+		// acquireDeployLock intentionally nil
+	}
+
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
+}

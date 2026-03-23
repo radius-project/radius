@@ -20,6 +20,7 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -91,12 +92,11 @@ func initPostgreSQLClient(ctx context.Context, opt Options) (store.Client, error
 	}
 
 	url := opt.PostgreSQL.URL
-	regex := regexp.MustCompile(`$\{([a-zA-Z_]+)\}`)
-	matches := regex.FindSubmatch([]byte(opt.PostgreSQL.URL))
-	if len(matches) > 1 {
-		// Extract the captured expression.
-		url = string(matches[1])
-	}
+	regex := regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}`)
+	url = regex.ReplaceAllStringFunc(url, func(match string) string {
+		varName := regex.FindStringSubmatch(match)[1]
+		return os.Getenv(varName)
+	})
 
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {
