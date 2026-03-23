@@ -65,12 +65,16 @@ jobs:
     name: Integration Test (GitHub API)
     runs-on: ubuntu-latest
     # This job needs write access to create/delete environments and variables.
+    # id-token: write is needed for Azure OIDC federated login verification.
     permissions:
       contents: read
+      id-token: write
       # Note: The GITHUB_TOKEN in pull_request events from forks does NOT have
       # environment write access. This job will only fully pass on:
       # - workflow_dispatch (manual trigger)
       # - pull_request from the same repo (not forks)
+    outputs:
+      azure_env_name: ${{ steps.set-env-name.outputs.azure_env_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,18 +84,29 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Generate Azure environment name
+        id: set-env-name
+        run: |
+          # Use a fixed name so the verify workflow can reference it statically.
+          AZURE_ENV_NAME="radius-oidc-verify"
+          echo "azure_env_name=${AZURE_ENV_NAME}" >> "$GITHUB_OUTPUT"
+
       - name: Run integration test
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN }}
           TEST_GITHUB_OWNER: ${{ github.repository_owner }}
           TEST_GITHUB_REPO: ${{ github.event.repository.name }}
+          TEST_AZURE_APP_ID: ${{ secrets.AZURE_APP_ID }}
+          TEST_AZURE_SUB_ID: ${{ secrets.AZURE_SUB_ID }}
+          TEST_AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          TEST_AZURE_ENV_NAME: ${{ steps.set-env-name.outputs.azure_env_name }}
         run: |
           echo "=== Running GitHub API integration test ==="
           echo "Repository: ${TEST_GITHUB_OWNER}/${TEST_GITHUB_REPO}"
           echo ""
           go test -v -race -count=1 -tags=integration \
             -run TestIntegration \
-            ./pkg/github/environment/... 2>&1 | tee integration-output.txt
+            ./pkg/github/environment/... ./pkg/github/credential/... 2>&1 | tee integration-output.txt
 
           echo ""
           echo "=== Integration Test Summary ==="
@@ -113,7 +128,7 @@ jobs:
 
       - name: Build and start server
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN }}
         run: |
           echo "=== Building server ==="
           go build -o github-app ./cmd/github-app/
@@ -174,10 +189,59 @@ jobs:
           echo ""
           echo "=== Verification workflow generation tests passed ==="
 
+  # This job verifies that the Azure credentials stored on the GitHub Environment
+  # by the integration test can actually be used by a runner to authenticate.
+  verify-azure-access:
+    name: Verify Azure Access (Runner)
+    needs: [integration-test]
+    if: needs.integration-test.outputs.azure_env_name != ''
+    runs-on: ubuntu-latest
+    environment: ${{ needs.integration-test.outputs.azure_env_name }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Verify environment variables are set
+        run: |
+          echo "AZURE_CLIENT_ID is set: ${{ vars.AZURE_CLIENT_ID != '' }}"
+          echo "AZURE_TENANT_ID is set: ${{ vars.AZURE_TENANT_ID != '' }}"
+          echo "AZURE_SUBSCRIPTION_ID is set: ${{ vars.AZURE_SUBSCRIPTION_ID != '' }}"
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Confirm authentication
+        run: |
+          echo "Successfully authenticated to Azure using environment credentials"
+
+  # Clean up the Azure test environment after verification.
+  cleanup-azure-env:
+    name: Cleanup Azure Environment
+    needs: [integration-test, verify-azure-access]
+    if: always() && needs.integration-test.outputs.azure_env_name != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete test environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.INTEGRATION_TEST_TOKEN }}
+          REPO: ${{ github.repository }}
+          ENV_NAME: ${{ needs.integration-test.outputs.azure_env_name }}
+        run: |
+          curl -sf -X DELETE \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/environments/${ENV_NAME}" \
+            && echo "Environment deleted" \
+            || echo "Environment may already be deleted"
+
   summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-test, credential-flow-test]
+    needs: [unit-tests, integration-test, credential-flow-test, verify-azure-access, cleanup-azure-env]
     if: always()
     steps:
       - name: Report results
@@ -188,7 +252,9 @@ jobs:
           echo "|-----|--------|"
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |"
           echo "| Integration Test | ${{ needs.integration-test.result }} |"
+          echo "| Verify Azure Access | ${{ needs.verify-azure-access.result }} |"
           echo "| Credential Flow Test | ${{ needs.credential-flow-test.result }} |"
+          echo "| Cleanup Azure Env | ${{ needs.cleanup-azure-env.result }} |"
           echo ""
 
           if [ "${{ needs.unit-tests.result }}" != "success" ] || \
