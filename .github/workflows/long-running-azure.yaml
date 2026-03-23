@@ -149,7 +149,8 @@ jobs:
         run: |
           # Install the latest Radius CLI, including release candidates if available.
           # The INCLUDE_RC environment variable tells the installer to consider RC versions.
-          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | INCLUDE_RC=true /bin/bash
+          # Pin INSTALL_DIR to /usr/local/bin (requires sudo) to match the path expected below.
+          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | INSTALL_DIR=/usr/local/bin INCLUDE_RC=true sudo /bin/bash
           mkdir -p ./bin
           cp /usr/local/bin/rad ./bin/rad
           chmod +x ./bin/rad
