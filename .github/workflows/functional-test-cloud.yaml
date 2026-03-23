@@ -37,7 +37,7 @@ on:
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
   # pull_request_target runs in the context of the base branch, providing access to secrets.
-  # For external contributors, the approval-gate job requires manual approval before tests run.
+  # For external contributors (fork PRs), the approval-gate job requires manual approval before tests run.
   # SECURITY: We use pull_request_target but do NOT run any code from the PR until after approval.
   pull_request_target:
     branches:
@@ -91,22 +91,63 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-  # Approval gate for external contributors. This job uses GitHub Environment protection
-  # to require manual approval before running tests on PRs from non-members.
-  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
-  # - Dependabot: Tests run immediately
-  # - External contributors: Requires approval via GitHub UI button
-  approval-gate:
-    name: Approval Gate
+  # Trust check for pull_request_target events. Determines whether the PR author
+  # is a trusted contributor (org member or same-repo push) or an external contributor.
+  #
+  # Trust is determined by:
+  #   1. Same-repo PR (head repo == base repo): trusted (only users with write access
+  #      can push branches to the repo).
+  #   2. Fork PR + org member: trusted (checked via GitHub API).
+  #   3. Fork PR + non-member: external (requires approval).
+  #
+  # NOTE: We do NOT rely on github.event.pull_request.author_association because
+  # webhook payloads report incorrect values for org members with private
+  # membership visibility (returns CONTRIBUTOR instead of MEMBER).
+  check-trust:
+    name: Check Trust
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # Only run for external contributors on pull_request_target events.
-    # Trusted users (dependabot, org members) skip this job entirely.
-    # External contributors require approval via 'external-contributor-approval' environment.
+    if: github.event_name == 'pull_request_target'
+    outputs:
+      is-external: ${{ steps.check.outputs.is-external }}
+    permissions:
+      members: read # Required for org membership check on fork PRs
+    steps:
+      - name: Determine trust level
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          ORG: ${{ github.repository_owner }}
+        run: |
+          # Same-repo PRs are always trusted (requires write access to push branches)
+          if [ "${HEAD_REPO}" = "${BASE_REPO}" ]; then
+            echo "Same-repo PR from ${PR_AUTHOR} — trusted"
+            echo "is-external=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Fork PR: check if the author is an org member via GitHub API.
+          # gh api returns exit code 0 for 204 (member) and non-zero for 404/302 (not a member).
+          if gh api "orgs/${ORG}/members/${PR_AUTHOR}" --silent 2>/dev/null; then
+            echo "Fork PR from org member ${PR_AUTHOR} — trusted"
+            echo "is-external=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Fork PR from ${PR_AUTHOR} — external"
+            echo "is-external=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+  # Approval gate for external contributors. Uses GitHub Environment protection
+  # to require manual approval before running tests on PRs from non-members.
+  approval-gate:
+    name: Approval Gate
+    needs: [check-trust]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     if: |
-      github.event_name == 'pull_request_target' &&
-      github.actor != 'dependabot[bot]' &&
-      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+      needs.check-trust.outputs.is-external == 'true'
     environment: external-contributor-approval
     permissions: {}
     steps:
@@ -115,12 +156,17 @@ jobs:
 
   setup:
     name: Setup
-    needs: [approval-gate]
-    # Run for all events. For PRs, approval-gate either succeeds (external contributors approved)
-    # or is skipped (trusted users like org members and dependabot).
+    needs: [check-trust, approval-gate]
+    # Run for all events. For PRs:
+    #   - check-trust determines if the author is external
+    #   - approval-gate runs only for external contributors and requires manual approval
+    #   - If check-trust or approval-gate are skipped (non-PR events), setup proceeds
+    # For pull_request_target, require approval-gate to be 'success' or 'skipped' — block
+    # on 'cancelled' (rejected approval) to prevent running PR code with secrets.
     if: |
-      always() &&
-      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
+      !cancelled() &&
+      (needs.check-trust.result == 'success' || needs.check-trust.result == 'skipped') &&
+      (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
       (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -146,6 +192,9 @@ jobs:
           echo "Event Name: ${{ github.event_name }}"
           echo "Actor: ${{ github.actor }}"
           echo "Author Association: ${{ github.event.pull_request.author_association }}"
+          echo "PR Head Repo: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "PR Base Repo: ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "Is Fork: ${{ github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}"
 
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
