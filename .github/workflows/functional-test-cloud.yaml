@@ -846,6 +846,35 @@ jobs:
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
           # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
+
+      # Re-assume the AWS role to get fresh temporary credentials before running tests.
+      # The initial credentials may have expired during the lengthy cluster setup and
+      # recipe publishing steps.
+      - name: Refresh AWS credentials
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        with:
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS credentials and IRSA configuration
+        run: |
+          echo "=== Runner AWS Identity ==="
+          aws sts get-caller-identity
+
+          echo "=== Verify runner can call CloudWatch Logs ==="
+          aws logs describe-log-groups --region ${{ env.AWS_REGION }} --limit 1 || echo "WARNING: Runner cannot list CloudWatch log groups"
+
+          echo "=== Radius IRSA service account annotation ==="
+          kubectl get serviceaccount -n radius-system -o yaml | grep -A5 'eks.amazonaws.com' || echo "No IRSA annotations found on service accounts"
+
+          echo "=== Radius system pod status ==="
+          kubectl get pods -n radius-system -o wide
+
+          echo "=== Radius credential status ==="
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          rad credential show aws || echo "WARNING: Could not show AWS credential"
+
       - name: Run functional tests
         run: |
           set -euo pipefail
@@ -907,11 +936,22 @@ jobs:
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
           mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
           {
-            echo "kubectl get pods -A"
+            echo "=== kubectl get pods -A ==="
             kubectl get pods -A
-            echo "kubectl describe pods -A"
+            echo ""
+            echo "=== kubectl describe pods -n radius-system ==="
+            kubectl describe pods -n radius-system
+            echo ""
+            echo "=== kubectl describe pods -A ==="
             kubectl describe pods -A
           } >> "${POD_STATE_LOG_FILENAME}"
+
+          # Print radius-system pod details directly to workflow logs for quick diagnosis
+          echo "=== Radius System Pods ==="
+          kubectl get pods -n radius-system -o wide
+          echo ""
+          echo "=== Non-Running Pods (all namespaces) ==="
+          kubectl get pods -A --field-selector 'status.phase!=Running,status.phase!=Succeeded' || echo "All pods are running"
 
       - name: Upload container logs
         if: always()
