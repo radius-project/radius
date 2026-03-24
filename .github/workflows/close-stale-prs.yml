@@ -1,4 +1,4 @@
-# This workflow warns and then closes PRs that have had no activity for 28 days.
+# This workflow marks PRs as stale after 4 weeks of inactivity, then closes them 1 day later.
 #
 # For more information, see:
 # https://github.com/actions/stale
