@@ -1,0 +1,32 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+
+[*.{go,mod}]
+indent_style = tab
+
+[*.md]
+indent_size = unset
+
+[*.py]
+indent_size = 4
+
+[*.ps1]
+indent_size = 4
+
+[*.{cmd,bat}]
+end_of_line = crlf
+
+# Shell scripts
+[{*.sh,*.bash,.bashrc,.mk-sbuild.rc,.quiltrc,.startxwinrc,user-dirs.dirs}]
+indent_size = 4
+binary_next_line = true         # shfmt: -bn
+switch_case_indent = true       # shfmt: -ci
+space_redirects = true          # shfmt: -sr
+keep_padding = true             # shfmt: -kp

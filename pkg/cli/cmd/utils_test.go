@@ -17,13 +17,16 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	v20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -139,4 +142,32 @@ func TestCreateEnvProviders(t *testing.T) {
 			require.Equal(t, tc.err, err)
 		})
 	}
+}
+
+func TestPopulateRecipePackClients(t *testing.T) {
+	scope := "/planes/radius/local/resourceGroups/test-group"
+
+	t.Run("no-op for empty packIDs", func(t *testing.T) {
+		clientsByScope := map[string]*v20250801preview.RecipePacksClient{
+			scope: {}, // placeholder client
+		}
+
+		err := PopulateRecipePackClients(context.Background(), &workspaces.Workspace{Scope: scope}, clientsByScope, nil)
+		require.NoError(t, err)
+		require.Len(t, clientsByScope, 1)
+	})
+
+	t.Run("skips packs whose scope is already in the map", func(t *testing.T) {
+		clientsByScope := map[string]*v20250801preview.RecipePacksClient{
+			scope: {},
+		}
+		packIDs := []string{
+			scope + "/providers/Radius.Core/recipePacks/pack1",
+			scope + "/providers/Radius.Core/recipePacks/pack2",
+		}
+
+		err := PopulateRecipePackClients(context.Background(), &workspaces.Workspace{Scope: scope}, clientsByScope, packIDs)
+		require.NoError(t, err)
+		require.Len(t, clientsByScope, 1, "no new scopes should be added")
+	})
 }
