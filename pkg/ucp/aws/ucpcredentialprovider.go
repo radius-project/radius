@@ -145,8 +145,9 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 			return aws.Credentials{}, err
 		}
 		value.Source = credentialSource
-		value.CanExpire = true
-		value.Expires = time.Now().UTC().Add(c.options.Duration)
+		// Do not override value.CanExpire or value.Expires — use the expiry set by STS directly.
+		// The STS-issued token already has CanExpire=true and a correct Expires (~1 hour from issuance).
+		// Overriding with DefaultExpireDuration (15 min) causes premature credential expiry.
 	default:
 		return aws.Credentials{}, errors.New("invalid credential kind")
 	}
