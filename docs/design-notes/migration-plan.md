@@ -27,7 +27,7 @@ docs/
 │   ├── deployment-engine.md
 │   └── state-persistence.md
 ├── design-notes/
-│   ├── README.md                          # Index linking to all design notes
+│   ├── migration-plan.md                  # Index and migration plan for design notes
 │   ├── architecture/                      # System-level architecture decisions
 │   │   ├── 2023-06-arch-vnext.md
 │   │   ├── 2023-10-kubernetes-integration.md
