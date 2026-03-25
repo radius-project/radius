@@ -24,7 +24,7 @@ jobs:
         with:
           repo-token: ${{ github.token }}
           stale-pr-message: |
-            This pull request has been automatically marked as stale because it has been inactive for 4 weeks. To keep it open, either remove the `stale` label or add a new comment to this pull request. If there is no further activity, it will be closed in 1 day.
+            This pull request has been automatically marked as stale because it has been inactive for 4 weeks. To keep it open, either remove the `stale` label or add a new comment to this pull request. If there is no further activity, it will be closed in 1 day. Feel free to re-open this pull request if you would like to see further activity on it.
           stale-pr-label: stale
           days-before-pr-stale: 28 # 4 weeks
           days-before-pr-close: 1
