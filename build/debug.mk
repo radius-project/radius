@@ -121,28 +121,29 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 		echo "  terraform: https://learn.hashicorp.com/tutorials/terraform/install-cli"; \
 		exit 1; \
 	fi; \
-	if ! command -v psql >/dev/null 2>&1; then \
-		echo "❌ psql not available - PostgreSQL client is required"; \
-		exit 1; \
-	fi; \
 	echo "🔍 Checking PostgreSQL connectivity..."; \
-	if psql "$(POSTGRES_ADMIN_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
-		echo "✅ PostgreSQL accessible via Docker (postgres user)"; \
-	elif psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
-		echo "✅ PostgreSQL accessible via local user ($(shell whoami))"; \
+	if command -v psql >/dev/null 2>&1; then \
+		if psql "$(POSTGRES_ADMIN_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
+			echo "✅ PostgreSQL accessible via local psql (Docker connection)"; \
+		elif psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
+			echo "✅ PostgreSQL accessible via local psql (local user)"; \
+		else \
+			echo "❌ psql found but cannot connect to PostgreSQL"; \
+			echo "   Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
+			exit 1; \
+		fi; \
+	elif docker exec radius-postgres psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then \
+		echo "✅ PostgreSQL accessible via Docker container (radius-postgres)"; \
 	else \
 		echo "❌ Cannot connect to PostgreSQL"; \
-		echo "   Please ensure:"; \
-		echo "   1. PostgreSQL is running on localhost:5432"; \
-		echo "   2. Either Docker PostgreSQL (postgres/radius_pass) or local user access"; \
-		echo "   3. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
+		echo "   No local psql client found and Docker container 'radius-postgres' is not running."; \
 		echo ""; \
-		echo "   macOS (homebrew):  brew services start postgresql"; \
-		echo "   macOS manual:     pg_ctl -D /opt/homebrew/var/postgres start"; \
-		echo "   Linux (systemd):  sudo systemctl start postgresql"; \
-		echo ""; \
-		echo "   Quick one-off (Docker) alternative:"; \
+		echo "   Option 1 (recommended): Start PostgreSQL in Docker:"; \
 		echo "     docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
+		echo ""; \
+		echo "   Option 2: Install psql client and start a local PostgreSQL:"; \
+		echo "     macOS (homebrew):  brew install postgresql && brew services start postgresql"; \
+		echo "     Linux (systemd):   sudo systemctl start postgresql"; \
 		echo ""; \
 		echo "   After starting, re-run: make debug-check-prereqs"; \
 		exit 1; \
