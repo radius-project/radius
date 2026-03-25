@@ -120,7 +120,7 @@ eng/
 | [`architecture/2023-06-arch-vnext.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2023-06-arch-vnext.md) | Proposes vNext service architecture to address in-memory data store issues in the Deployment Engine, simplify building new resource providers, and add resource change notification. | Radius uses Dapr for data/queue (`pkg/components/`), the `armrpc` package provides an RP programming model (`pkg/armrpc/`). |
 | [`architecture/2023-10-kubernetes-integration.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2023-10-kubernetes-integration.md) | Proposes a Kubernetes-first adoption strategy, focusing on ease-of-adoption by integrating with existing K8s tooling rather than requiring full application model rewrite. | Radius has deep K8s integration via the controller (`pkg/controller/`), CRDs, and K8s-native workflows. |
 | [`architecture/2024-05-radius-on-dapr.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-05-radius-on-dapr.md) | Proposes replacing Radius plumbing with Dapr for state store, pub/sub, and workflows, taking an install-time dependency on Dapr. | Radius requires Dapr; state store and queue use Dapr building blocks (`pkg/components/database/`, `pkg/components/queue/`). |
-| [`architecture/2025-03-upgrade-design-doc.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2025-03-upgrade-design-doc.md) | Designs in-place upgrades for the Radius control plane via `rad upgrade kubernetes`. | `cmd/pre-upgrade/` exists; Helm-based upgrade path is implemented (`pkg/cli/helm/`). |
+| [`architecture/2025-03-upgrade-design-doc.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2025-03-upgrade-design-doc.md) | Designs in-place upgrades for the Radius control plane via `rad upgrade kubernetes` (migrated as `eng/design-notes/architecture/2025-03-upgrade-design.md`). | `cmd/pre-upgrade/` exists; Helm-based upgrade path is implemented (`pkg/cli/helm/`). |
 
 ### CLI (2 documents)
 
@@ -135,7 +135,7 @@ eng/
 |----------|---------|---------------------------|
 | [`features/2024-06-resource-extensibility-feature-spec.md`](https://github.com/radius-project/design-notes/blob/main/features/2024-06-resource-extensibility-feature-spec.md) | Feature spec for user-defined resource types (UDTs), enabling users to define custom resource types beyond built-in types. | Dynamic RP (`pkg/dynamicrp/`, `cmd/dynamic-rp/`) handles user-defined types. |
 | [`architecture/2024-07-user-defined-types.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-07-user-defined-types.md) | High-level architecture for user-defined types, including dynamic and declarative implementation approach. | Dynamic RP implements declarative UDT processing. |
-| [`architecture/2024-07-user-defned-types-schema-design.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-07-user-defned-types-schema-design.md) | Defines the OpenAPI subset supported for UDT schemas and validation rules. | Schema validation for resource type manifests exists in the codebase. |
+| [`architecture/2024-07-user-defined-types-schema-design.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-07-user-defined-types-schema-design.md) | Defines the OpenAPI subset supported for UDT schemas and validation rules. | Schema validation for resource type manifests exists in the codebase. |
 | [`architecture/2024-08-resource-types-registration.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-resource-types-registration.md) | Detailed API design for resource type registration (resource providers, types, locations, API versions). | Registration APIs exist in UCP (`pkg/ucp/`); `rad resource-type create` CLI command exists. |
 | [`features/2025-02-user-defined-resource-type-feature-spec.md`](https://github.com/radius-project/design-notes/blob/main/features/2025-02-user-defined-resource-type-feature-spec.md) | Comprehensive feature spec for user-defined resource types, covering the full user experience. | UDT feature is implemented and actively used via `pkg/dynamicrp/` and `pkg/cli/manifest/`. |
 | [`architecture/2025-04-compute-extensibility.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2025-04-compute-extensibility.md) | Designs extensible support for multiple compute platforms through recipes rather than hard-coded support; core resource types (`containers`, `gateways`, `secretStores`) allow recipe registration. | `Radius.Compute/containers` and routes are defined in `deploy/manifest/built-in-providers/dev/radius_compute.yaml`; recipe-backed provisioning is active. |
@@ -150,8 +150,6 @@ eng/
 | [`features/2024-06-gitops-feature-spec.md`](https://github.com/radius-project/design-notes/blob/main/features/2024-06-gitops-feature-spec.md) | Feature spec for integrating Radius with GitOps tools (Flux, ArgoCD) via the DeploymentTemplate controller. | DeploymentTemplate CRD and controller exist in `pkg/controller/reconciler/`. |
 | [`architecture/2024-10-deploymenttemplate-controller.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-10-deploymenttemplate-controller.md) | Design for the DeploymentTemplate Kubernetes controller that deploys Bicep manifests using K8s tooling. | Controller is implemented in `pkg/controller/reconciler/`; CRDs are defined. |
 | [`tools/2025-01-gitops-technical-design.md`](https://github.com/radius-project/design-notes/blob/main/tools/2025-01-gitops-technical-design.md) | Technical design for the Radius Flux Controller that watches Flux GitRepository sources and reconciles Bicep deployments. | Flux controller implemented in `pkg/controller/reconciler/flux_controller.go` with GitRepository predicate in `pkg/controller/reconciler/flux_gitrepository_predicate.go`; functional tests in `test/functional-portable/kubernetes/noncloud/flux_test.go`. |
-
-
 
 ### Security (3 documents)
 
@@ -178,14 +176,14 @@ eng/
 
 | Document | Summary | Evidence of Implementation |
 |----------|---------|---------------------------|
-| [`guide/api-design-guidelines.md`](https://github.com/radius-project/design-notes/blob/main/guide/api-design-guidelines.md) | Prescriptive API design guidelines for Radius contributors, currently focused on secrets handling. Living document. | Guidelines are actively referenced in design reviews and API development. |
+| [`guides/api-design-guidelines.md`](https://github.com/radius-project/design-notes/blob/main/guides/api-design-guidelines.md) | Prescriptive API design guidelines for Radius contributors, currently focused on secrets handling. Living document. | Guidelines are actively referenced in design reviews and API development. |
 
 ### Recipes (2 documents)
 
 | Document | Summary | Evidence of Implementation |
 |----------|---------|---------------------------|
 | [`recipe/2025-08-recipe-packs.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2025-08-recipe-packs.md) | Designs Recipe Packs as a first-class resource type, enabling bundling of multiple recipe selections into a reusable unit referenced by environments. | RecipePack TypeSpec in `typespec/Radius.Core/recipePacks.tsp`; controller in `pkg/corerp/frontend/controller/recipepacks/`. |
-| [`recipe/2025-09-container.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2025-09-container.md) | Replaces the imperative Go renderer chain for containers with a Bicep recipe for the `Radius.Compute/containers` resource type. | `Radius.Compute/containers` is recipe-backed in `deploy/manifest/built-in-providers/dev/radius_compute.yaml`. |
+| [`recipe/2025-09-container.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2025-09-container.md) | Replaces the imperative Go renderer chain for containers with a Bicep recipe for the `Radius.Compute/containers` resource type. Migrated as `recipes/2025-09-container-recipe.md`. | `Radius.Compute/containers` is recipe-backed in `deploy/manifest/built-in-providers/dev/radius_compute.yaml`. |
 
 ### Templates (3 documents)
 
