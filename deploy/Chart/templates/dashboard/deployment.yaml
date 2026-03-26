@@ -30,6 +30,9 @@ spec:
       - name: dashboard
         image: "{{ include "radius.image" (dict "image" .Values.dashboard.image "tag" (.Values.dashboard.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         imagePullPolicy: Always
+        env:
+        - name: NODE_ENV
+          value: {{ .Values.dashboard.nodeEnv | default "development" | quote }}
         ports:
         - name: http
           containerPort: {{ .Values.dashboard.containerPort }}
