@@ -193,7 +193,7 @@ checkExistingRadius() {
     if [[ -f "${cli_file}" ]]; then
         local version
         version=$("${cli_file}" version --cli 2> /dev/null || echo "unknown")
-        printf '\nRadius CLI is detected. Current version: %s\n' "${version}"
+        printf '\nRadius CLI is detected. Current version: %s\n\n' "${version}"
         printf 'Reinstalling Radius CLI - %s...\n\n' "${cli_file}"
     else
         printf 'Installing Radius CLI...\n\n'

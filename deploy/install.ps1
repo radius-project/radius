@@ -316,6 +316,10 @@ function Show-ExistingRadiusWarning {
 
         $candidate = Join-Path $dir $CliFileName
         if (Test-Path $candidate -PathType Leaf) {
+            # On non-Windows, skip non-executable files (matches bash installer's -x check)
+            if (-not ($IsWindows -or $env:OS -eq "Windows_NT")) {
+                if (-not (& test -x $candidate)) { continue }
+            }
             $resolvedDir = (Resolve-Path -Path $dir).Path
             if ($resolvedDir -ne $resolvedInstall) {
                 $stalePaths += $candidate
@@ -485,6 +489,7 @@ if (Test-Path $cliFilePath -PathType Leaf) {
     catch {
         Write-Output "Previous installation detected (version unknown)"
     }
+    Write-Output ""
     Write-Output "Reinstalling Radius CLI - $cliFilePath..."
 }
 else {
