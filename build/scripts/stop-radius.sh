@@ -7,7 +7,7 @@ POSTGRES_FALLBACK_CONNECTION="postgresql://$(whoami)@localhost:5432/postgres"
 POSTGRES_CONTAINER_NAME="radius-postgres"
 
 # Helper function to execute PostgreSQL commands with proper connection
-# Tries: 1) local psql with Docker connection, 2) local psql with Homebrew, 3) docker exec
+# Tries: 1) local psql with Docker connection, 2) local psql with fallback connection (current user on localhost), 3) docker exec
 psql_exec() {
   local sql="$1"
   if command -v psql >/dev/null 2>&1; then
