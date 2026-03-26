@@ -193,11 +193,64 @@ checkExistingRadius() {
     if [[ -f "${cli_file}" ]]; then
         local version
         version=$("${cli_file}" version --cli 2> /dev/null || echo "unknown")
-        printf '\nRadius CLI is detected. Current version: %s\n' "${version}"
+        printf '\nRadius CLI is detected. Current version: %s\n\n' "${version}"
         printf 'Reinstalling Radius CLI - %s...\n\n' "${cli_file}"
     else
         printf 'Installing Radius CLI...\n\n'
     fi
+}
+
+# Warn if existing rad binaries are found in PATH at different locations.
+warnExistingRadiusElsewhere() {
+    # Resolve the target install directory to an absolute path without creating it
+    local resolved_install
+    if [[ -d "${INSTALL_DIR}" ]]; then
+        if ! resolved_install=$(cd "${INSTALL_DIR}" && pwd -P); then
+            resolved_install="${INSTALL_DIR}"
+        fi
+    else
+        resolved_install="${INSTALL_DIR}"
+    fi
+
+    # Walk every PATH directory looking for rad binaries elsewhere
+    local stale_paths=()
+    local IFS=':'
+    for dir in ${PATH}; do
+        local path_dir="${dir}"
+        if [[ "${path_dir}" == "~" ]]; then
+            path_dir="${HOME}"
+        elif [[ "${path_dir}" == "~/"* ]]; then
+            path_dir="${HOME}/${path_dir:2}"
+        fi
+
+        local candidate="${path_dir}/${RADIUS_CLI_FILENAME}"
+        if [[ -x "${candidate}" ]]; then
+            local resolved_dir
+            resolved_dir=$(cd "${path_dir}" 2> /dev/null && pwd -P) || continue
+            if [[ "${resolved_dir}" != "${resolved_install}" ]]; then
+                stale_paths+=("${candidate}")
+            fi
+        fi
+    done
+
+    if (( ${#stale_paths[@]} == 0 )); then
+        return
+    fi
+
+    echo "============================================================================"
+    echo "WARNING: Existing Radius CLI installation(s) found in different location(s):"
+    for p in "${stale_paths[@]}"; do
+        echo "  ${p}"
+    done
+    echo ""
+    echo "The new installation will be placed in:"
+    echo "  ${INSTALL_DIR}/${RADIUS_CLI_FILENAME}"
+    echo ""
+    echo "Remove the old binary(ies) before continuing to avoid using the wrong version:"
+    for p in "${stale_paths[@]}"; do
+        echo "  rm -- \"${p}\""
+    done
+    echo "============================================================================"
 }
 
 getLatestRelease() {
@@ -415,6 +468,7 @@ fi
 
 verifySupported
 checkExistingRadius
+warnExistingRadiusElsewhere
 
 echo "Installing ${ret_val} Radius CLI..."
 echo "Install directory: ${INSTALL_DIR}"

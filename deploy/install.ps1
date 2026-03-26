@@ -295,6 +295,63 @@ function Install-RadRelease {
     }
 }
 
+function Show-ExistingRadiusWarning {
+    param (
+        [string]$TargetDir,
+        [string]$CliFileName
+    )
+
+    $resolvedInstall = (Resolve-Path -Path $TargetDir -ErrorAction SilentlyContinue).Path
+    if (-not $resolvedInstall) {
+        $resolvedInstall = $TargetDir
+    }
+
+    $separator = if ($IsWindows -or $env:OS -eq "Windows_NT") { ';' } else { ':' }
+    $stalePaths = @()
+
+    foreach ($dir in ($env:PATH -split [regex]::Escape($separator))) {
+        if (-not $dir -or -not (Test-Path $dir -PathType Container)) {
+            continue
+        }
+
+        $candidate = Join-Path $dir $CliFileName
+        if (Test-Path $candidate -PathType Leaf) {
+            # On non-Windows, skip non-executable files (matches bash installer's -x check)
+            if (-not ($IsWindows -or $env:OS -eq "Windows_NT")) {
+                if (-not (& test -x $candidate)) { continue }
+            }
+            $resolvedDir = (Resolve-Path -Path $dir).Path
+            if ($resolvedDir -ne $resolvedInstall) {
+                $stalePaths += $candidate
+            }
+        }
+    }
+
+    if ($stalePaths.Count -eq 0) {
+        return
+    }
+
+    Write-Output "============================================================================"
+    Write-Output "WARNING: Existing Radius CLI installation(s) found in different location(s):"
+    foreach ($p in $stalePaths) {
+        Write-Output "  $p"
+    }
+    Write-Output ""
+    Write-Output "The new installation will be placed in:"
+    Write-Output "  $(Join-Path $TargetDir $CliFileName)"
+    Write-Output ""
+    Write-Output "Remove the old binary(ies) before continuing to avoid using the wrong version:"
+    foreach ($p in $stalePaths) {
+        if ($IsWindows -or $env:OS -eq "Windows_NT") {
+            Write-Output "  Remove-Item -LiteralPath `"$p`""
+        }
+        else {
+            Write-Output "  rm `"$p`""
+        }
+    }
+    Write-Output "============================================================================"
+}
+
 function Add-ToPath {
     param (
         [string]$TargetDir,
@@ -432,11 +489,15 @@ if (Test-Path $cliFilePath -PathType Leaf) {
     catch {
         Write-Output "Previous installation detected (version unknown)"
     }
+    Write-Output ""
     Write-Output "Reinstalling Radius CLI - $cliFilePath..."
 }
 else {
     Write-Output "Installing Radius CLI..."
 }
+
+# Warn if rad exists elsewhere in PATH
+Show-ExistingRadiusWarning -TargetDir $resolvedInstallDir -CliFileName $cliFileName
 
 # Ensure TLS 1.2 on Windows PowerShell (version < 6)
 if ($PSVersionTable.PSVersion.Major -lt 6) {
