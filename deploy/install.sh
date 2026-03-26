@@ -200,6 +200,46 @@ checkExistingRadius() {
     fi
 }
 
+# Warn if existing rad binaries are found in PATH at different locations.
+warnExistingRadiusElsewhere() {
+    # Resolve the target install directory to an absolute path
+    local resolved_install
+    resolved_install=$(mkdir -p "${INSTALL_DIR}" 2> /dev/null && cd "${INSTALL_DIR}" && pwd -P)
+
+    # Walk every PATH directory looking for rad binaries elsewhere
+    local stale_paths=()
+    local IFS=':'
+    for dir in ${PATH}; do
+        local candidate="${dir}/${RADIUS_CLI_FILENAME}"
+        if [[ -x "${candidate}" ]]; then
+            local resolved_dir
+            resolved_dir=$(cd "${dir}" 2> /dev/null && pwd -P) || continue
+            if [[ "${resolved_dir}" != "${resolved_install}" ]]; then
+                stale_paths+=("${candidate}")
+            fi
+        fi
+    done
+
+    if (( ${#stale_paths[@]} == 0 )); then
+        return
+    fi
+
+    echo "============================================================================"
+    echo "WARNING: Existing Radius CLI installation(s) found in different location(s):"
+    for p in "${stale_paths[@]}"; do
+        echo "  ${p}"
+    done
+    echo ""
+    echo "The new installation will be placed in:"
+    echo "  ${INSTALL_DIR}/${RADIUS_CLI_FILENAME}"
+    echo ""
+    echo "Remove the old binary(ies) before continuing to avoid using the wrong version:"
+    for p in "${stale_paths[@]}"; do
+        echo "  rm ${p}"
+    done
+    echo "============================================================================"
+}
+
 getLatestRelease() {
     local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
     local latest_release=""
@@ -415,6 +455,7 @@ fi
 
 verifySupported
 checkExistingRadius
+warnExistingRadiusElsewhere
 
 echo "Installing ${ret_val} Radius CLI..."
 echo "Install directory: ${INSTALL_DIR}"
