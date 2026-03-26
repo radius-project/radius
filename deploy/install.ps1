@@ -339,10 +339,10 @@ function Show-ExistingRadiusWarning {
     Write-Output "Remove the old binary(ies) before continuing to avoid using the wrong version:"
     foreach ($p in $stalePaths) {
         if ($IsWindows -or $env:OS -eq "Windows_NT") {
-            Write-Output "  Remove-Item $p"
+            Write-Output "  Remove-Item -LiteralPath `"$p`""
         }
         else {
-            Write-Output "  rm $p"
+            Write-Output "  rm `"$p`""
         }
     }
     Write-Output "============================================================================"

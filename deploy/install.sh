@@ -202,9 +202,15 @@ checkExistingRadius() {
 
 # Warn if existing rad binaries are found in PATH at different locations.
 warnExistingRadiusElsewhere() {
-    # Resolve the target install directory to an absolute path
+    # Resolve the target install directory to an absolute path without creating it
     local resolved_install
-    resolved_install=$(mkdir -p "${INSTALL_DIR}" 2> /dev/null && cd "${INSTALL_DIR}" && pwd -P)
+    if [[ -d "${INSTALL_DIR}" ]]; then
+        if ! resolved_install=$(cd "${INSTALL_DIR}" && pwd -P); then
+            resolved_install="${INSTALL_DIR}"
+        fi
+    else
+        resolved_install="${INSTALL_DIR}"
+    fi
 
     # Walk every PATH directory looking for rad binaries elsewhere
     local stale_paths=()
@@ -242,7 +248,7 @@ warnExistingRadiusElsewhere() {
     echo ""
     echo "Remove the old binary(ies) before continuing to avoid using the wrong version:"
     for p in "${stale_paths[@]}"; do
-        echo "  rm ${p}"
+        echo "  rm -- \"${p}\""
     done
     echo "============================================================================"
 }
