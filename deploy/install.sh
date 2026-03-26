@@ -210,10 +210,17 @@ warnExistingRadiusElsewhere() {
     local stale_paths=()
     local IFS=':'
     for dir in ${PATH}; do
-        local candidate="${dir}/${RADIUS_CLI_FILENAME}"
+        local path_dir="${dir}"
+        if [[ "${path_dir}" == "~" ]]; then
+            path_dir="${HOME}"
+        elif [[ "${path_dir}" == "~/"* ]]; then
+            path_dir="${HOME}/${path_dir:2}"
+        fi
+
+        local candidate="${path_dir}/${RADIUS_CLI_FILENAME}"
         if [[ -x "${candidate}" ]]; then
             local resolved_dir
-            resolved_dir=$(cd "${dir}" 2> /dev/null && pwd -P) || continue
+            resolved_dir=$(cd "${path_dir}" 2> /dev/null && pwd -P) || continue
             if [[ "${resolved_dir}" != "${resolved_install}" ]]; then
                 stale_paths+=("${candidate}")
             fi
