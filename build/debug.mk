@@ -33,6 +33,7 @@ DEBUG_DEV_ROOT ?= $(PWD)/debug_files
 # PostgreSQL connection - Try Docker first (postgres user), fallback to local user
 POSTGRES_ADMIN_CONNECTION ?= postgresql://postgres:radius_pass@localhost:5432/postgres
 POSTGRES_FALLBACK_CONNECTION ?= postgresql://$(shell whoami)@localhost:5432/postgres
+POSTGRES_CONTAINER_NAME ?= radius-postgres
 
 .PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-deploy debug-deployment-engine-port-forward debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init debug-check-prereqs
 
@@ -127,19 +128,21 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 			echo "✅ PostgreSQL accessible via local psql (Docker connection)"; \
 		elif psql "$(POSTGRES_FALLBACK_CONNECTION)" -c "SELECT 1;" >/dev/null 2>&1; then \
 			echo "✅ PostgreSQL accessible via local psql (local user)"; \
+		elif docker exec $(POSTGRES_CONTAINER_NAME) psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then \
+			echo "✅ PostgreSQL accessible via Docker container ($(POSTGRES_CONTAINER_NAME))"; \
 		else \
 			echo "❌ psql found but cannot connect to PostgreSQL"; \
-			echo "   Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
+			echo "   Quick start: docker run --name $(POSTGRES_CONTAINER_NAME) -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
 			exit 1; \
 		fi; \
-	elif docker exec radius-postgres psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then \
-		echo "✅ PostgreSQL accessible via Docker container (radius-postgres)"; \
+	elif docker exec $(POSTGRES_CONTAINER_NAME) psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then \
+		echo "✅ PostgreSQL accessible via Docker container ($(POSTGRES_CONTAINER_NAME))"; \
 	else \
 		echo "❌ Cannot connect to PostgreSQL"; \
-		echo "   No local psql client found and Docker container 'radius-postgres' is not running."; \
+		echo "   No local psql client found and Docker container '$(POSTGRES_CONTAINER_NAME)' is not running."; \
 		echo ""; \
 		echo "   Option 1 (recommended): Start PostgreSQL in Docker:"; \
-		echo "     docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
+		echo "     docker run --name $(POSTGRES_CONTAINER_NAME) -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"; \
 		echo ""; \
 		echo "   Option 2: Install psql client and start a local PostgreSQL:"; \
 		echo "     macOS (homebrew):  brew install postgresql && brew services start postgresql"; \

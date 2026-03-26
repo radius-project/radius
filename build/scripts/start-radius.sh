@@ -24,7 +24,7 @@ print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 print_error() { echo -e "${RED}✗${NC} $1"; }
 
 # Helper function to execute PostgreSQL commands with proper connection
-# Tries: 1) local psql with Docker connection, 2) local psql with Homebrew, 3) docker exec
+# Tries: 1) local psql with Docker connection, 2) local psql with fallback connection (current user on localhost), 3) docker exec
 psql_exec() {
   local sql="$1"
   if command -v psql >/dev/null 2>&1; then
@@ -53,7 +53,8 @@ detect_postgres_connection() {
       return
     fi
   fi
-  if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then
+  if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1 \
+     && docker port "$POSTGRES_CONTAINER_NAME" 5432/tcp >/dev/null 2>&1; then
     echo "docker-exec"
     export POSTGRES_WORKING_CONNECTION=""
     return
@@ -75,7 +76,11 @@ check_prerequisites() {
   command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform -> https://developer.hashicorp.com/terraform/install")
   if ! command -v psql >/dev/null 2>&1; then
     if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then
-      print_info "PostgreSQL accessible via Docker container ($POSTGRES_CONTAINER_NAME)"
+      if docker port "$POSTGRES_CONTAINER_NAME" 5432/tcp >/dev/null 2>&1; then
+        print_info "PostgreSQL accessible via Docker container ($POSTGRES_CONTAINER_NAME)"
+      else
+        advisory_msgs+=("PostgreSQL running in Docker container '$POSTGRES_CONTAINER_NAME' but port 5432 is not published. Ensure port is published: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
+      fi
     else
       advisory_msgs+=("psql client not found and Docker container '$POSTGRES_CONTAINER_NAME' not running. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
     fi
@@ -258,13 +263,15 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${db_user};
 if init_db_tables "applications_rp" "applications_rp"; then
   echo "✅ applications_rp tables created/verified"
 else
-  print_warning "Could not verify/create applications_rp tables"
+  print_error "Could not create applications_rp tables - database cannot be initialized"
+  exit 1
 fi
 
 if init_db_tables "ucp" "ucp"; then
   echo "✅ UCP tables created/verified"
 else
-  print_warning "Could not verify/create UCP tables"
+  print_error "Could not create UCP tables - database cannot be initialized"
+  exit 1
 fi
 
 print_success "Database initialization complete (idempotent)"
