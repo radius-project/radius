@@ -100,6 +100,17 @@ verify_manifests_registered() {
     echo "Manifest verification complete."
 }
 
+# Save the list of Radius UCP resources to skip-delete-resources-list.txt
+# This file is used by the cleanup job to avoid deleting Radius-managed resources.
+save_skip_resources_list() {
+    echo "Saving list of resources not to be deleted..."
+    if ! kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt; then
+        echo "Error: Failed to retrieve UCP resources from cluster." >&2
+        exit 1
+    fi
+    echo "Skip resources list saved."
+}
+
 # Install Radius on the cluster
 install_radius() {
     echo "Installing Radius..."
@@ -117,6 +128,8 @@ install_radius() {
     echo "Radius installation complete."
 
     verify_manifests_registered
+
+    save_skip_resources_list
 }
 
 main() {
@@ -185,7 +198,6 @@ main() {
         # NOTE: Helm upgrades do not automatically reuse values from the previous release.
         # We must re-apply critical chart values or they will reset to chart defaults.
         # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
-        # - database.enabled defaults to false and is required for this workflow's control plane setup.
         # https://github.com/radius-project/radius/issues/11218
         if ! rad upgrade kubernetes \
             --set global.azureWorkloadIdentity.enabled=true \
@@ -200,6 +212,7 @@ main() {
             exit 1
         fi
         echo "Radius upgrade complete."
+        save_skip_resources_list
     fi
 
     echo "============================================================================"
