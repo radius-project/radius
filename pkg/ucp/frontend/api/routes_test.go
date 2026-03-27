@@ -128,6 +128,65 @@ func Test_Route_ToModule(t *testing.T) {
 	require.True(t, matched)
 }
 
+func Test_trimProxyPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		pathBase string
+		expected string
+	}{
+		{
+			name:     "strips path base and preserves remaining path",
+			path:     "/apis/api.ucp.dev/v1alpha3/installer/terraform/status",
+			pathBase: "/apis/api.ucp.dev/v1alpha3",
+			expected: "/installer/terraform/status",
+		},
+		{
+			name:     "returns root when path equals path base",
+			path:     "/apis/api.ucp.dev/v1alpha3",
+			pathBase: "/apis/api.ucp.dev/v1alpha3",
+			expected: "/",
+		},
+		{
+			name:     "ensures leading slash when missing after trim",
+			path:     "/apis/api.ucp.dev/v1alpha3installer/terraform/status",
+			pathBase: "/apis/api.ucp.dev/v1alpha3",
+			expected: "/installer/terraform/status",
+		},
+		{
+			name:     "handles empty path base",
+			path:     "/installer/terraform/status",
+			pathBase: "",
+			expected: "/installer/terraform/status",
+		},
+		{
+			name:     "handles path not starting with path base",
+			path:     "/other/path",
+			pathBase: "/apis/api.ucp.dev/v1alpha3",
+			expected: "/other/path",
+		},
+		{
+			name:     "handles install endpoint",
+			path:     "/apis/api.ucp.dev/v1alpha3/installer/terraform/install",
+			pathBase: "/apis/api.ucp.dev/v1alpha3",
+			expected: "/installer/terraform/install",
+		},
+		{
+			name:     "handles nested paths correctly",
+			path:     "/apis/api.ucp.dev/v1alpha3/installer/terraform/versions/1.6.4",
+			pathBase: "/apis/api.ucp.dev/v1alpha3",
+			expected: "/installer/terraform/versions/1.6.4",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := trimProxyPath(tt.path, tt.pathBase)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 type testModule struct {
 }
 

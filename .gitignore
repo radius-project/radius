@@ -87,3 +87,6 @@ demo
 .copilot-tracking/
 
 .codeql-results
+
+# Go Cache
+.gocache/
