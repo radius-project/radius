@@ -32,7 +32,7 @@ namespace Applications.Datastores;
 
 interface Operations extends Azure.ResourceManager.Operations {}
 
-@doc("Supported API versions for the Applications.Databases resource provider.")
+@doc("Supported API versions for the Applications.Datastores resource provider.")
 enum Versions {
   @doc("2023-10-01-preview")
   v2023_10_01_preview: "2023-10-01-preview",
