@@ -152,9 +152,17 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Get the recipe metadata (template schema)
 	recipeDetails, err := client.GetRecipeMetadata(ctx, r.Workspace.Environment, v20231001preview.RecipeGetMetadata{Name: &r.RecipeName, ResourceType: &r.ResourceType})
 	if err != nil {
 		return err
+	}
+
+	// Try to get the environment to retrieve configured parameter values (optional)
+	// If this fails, we'll just continue with the original behavior
+	var environment *v20231001preview.EnvironmentResource
+	if env, err := client.GetEnvironment(ctx, r.Workspace.Environment); err == nil {
+		environment = &env
 	}
 
 	recipe := types.EnvironmentRecipe{
@@ -180,6 +188,18 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	var recipeParams []types.RecipeParameter
 
+	// Get environment-specific parameter values for this recipe (if environment is available)
+	var environmentParameters map[string]any
+	if environment != nil && environment.Properties.Recipes != nil {
+		if resourceTypeRecipes, exists := environment.Properties.Recipes[r.ResourceType]; exists {
+			if recipeProps, exists := resourceTypeRecipes[r.RecipeName]; exists {
+				if recipePropsActual := recipeProps.GetRecipeProperties(); recipePropsActual != nil {
+					environmentParameters = recipePropsActual.Parameters
+				}
+			}
+		}
+	}
+
 	for parameter := range recipeDetails.Parameters {
 		values := recipeDetails.Parameters[parameter].(map[string]any)
 
@@ -190,6 +210,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			MinValue:     "-",
 		}
 
+		// Process template schema information
 		for paramDetailName, paramDetailValue := range values {
 			switch paramDetailName {
 			case "type":
@@ -200,6 +221,13 @@ func (r *Runner) Run(ctx context.Context) error {
 				paramItem.MaxValue = fmt.Sprintf("%v", paramDetailValue.(float64))
 			case "minValue":
 				paramItem.MinValue = fmt.Sprintf("%v", paramDetailValue.(float64))
+			}
+		}
+
+		// Override with environment-specific value if it exists
+		if environmentParameters != nil {
+			if envValue, exists := environmentParameters[parameter]; exists {
+				paramItem.DefaultValue = envValue
 			}
 		}
 
