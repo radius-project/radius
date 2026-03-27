@@ -99,19 +99,9 @@ git push origin vX.Y.Z-rc1
 
 1. After maintainer approval, merge the pull request to `main`.
 
-1. Cherry-pick the `versions.yaml` commit - and optionally any additional commits that must be included in this RC - into the release branch. Create a new branch from the release branch (format: `release/x.y`) and open a PR targeting the release branch.
+1. There should be a GitHub workflow run [in progress here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vX.Y.Z-rc<N>` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
 
-   ```bash
-   git checkout release/0.<MINOR>
-   git pull origin release/0.<MINOR>
-   git checkout -b <USERNAME>/cherry-pick-rc<N>-to-release-branch
-   ```
-
-   Cherry-pick the `versions.yaml` change (required):
-
-   ```bash
-   git cherry-pick -x <VERSIONS_YAML_COMMIT_HASH>
-   ```
+1. Ensure that a new release [branch](https://github.com/radius-project/radius/branches) was created with the name `release/<channel>`. For example, `release/0.56`. This branch will contain the updated `versions.yaml` file you just merged in the previous step.
 
    **(Optional)** If specific bug fixes or other commits from `main` need to be included in this RC, cherry-pick them as well:
 
@@ -130,13 +120,7 @@ git push origin vX.Y.Z-rc1
    git push origin <USERNAME>/cherry-pick-rc<N>-to-release-branch
    ```
 
-1. After maintainer approval, merge the cherry-pick PR into the release branch.
-
-1. You may need to wait around ~20 minutes for the release assets to be built and published.
-
-1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vX.Y.Z-rc<N>` tag. Monitor this workflow to ensure that it completes successfully. If it does, then the release candidate has been created.
-
-1. In the `bicep-types-aws` repository, there should be a run of the `Update extensibility provider types` job that was triggered by the `vX.Y.Z-rc<N>` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully.
+1. In the `bicep-types-aws` repository, there should be a run of the `Dispatch Bicep Types publish` job that was triggered by the `vX.Y.Z-rc<N>` tag. Monitor this workflow to ensure that it completes successfully.
 
 1. Verify that an RC release was created on GitHub Releases for the current version ([Example](https://github.com/radius-project/radius/releases)).
 
@@ -215,7 +199,7 @@ git push origin vX.Y.Z
 
 1. There should be a GitHub workflow run in progress [here](https://github.com/radius-project/radius/actions/workflows/build.yaml) that was triggered by the `vX.Y.Z` tag. Monitor this workflow to ensure that it completes successfully.
 
-1. In the `bicep-types-aws` repository, there should be a run of the `Update extensibility provider types` job that was triggered by the `vX.Y.Z` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully.
+1. In the `bicep-types-aws` repository, there should be a run of the `Dispatch Bicep Types publish` job that was triggered by the `vX.Y.Z` tag that needs to be approved and started. Approve the run of this job and monitor it to ensure that it completes successfully.
 
 1. You may need to wait around ~20 minutes for the release assets to be published.
 
