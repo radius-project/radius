@@ -107,3 +107,5 @@ See the [code reviewing documentation](../contributing-code/contributing-code-re
 ## Inactive Pull Requests
 
 Pull requests that have been inactive for 90 days will be marked with a stale label. They will automatically be closed after a subsequent 7 days of inactivity. This timeframe may be adjusted in the future based on project needs.
+
+Draft pull requests are exempt from the stale policy and will not be automatically closed.
