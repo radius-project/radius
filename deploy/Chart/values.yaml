@@ -146,6 +146,10 @@ dashboard:
   image: dashboard
   # Default tag uses Chart AppVersion.
   # tag: latest
+  # nodeEnv controls the NODE_ENV environment variable for the Backstage
+  # dashboard. Defaults to "development" so the guest auth provider is
+  # enabled. Set to "production" only when a real auth provider is configured.
+  nodeEnv: development
   resources:
     requests:
       memory: "60Mi"
