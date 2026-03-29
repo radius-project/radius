@@ -24,6 +24,7 @@ on:
       - deploy/test-pwsh-install.ps1
       - deploy/install.sh
       - deploy/test-install.sh
+      - .github/workflows/validate-installers.yaml
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
