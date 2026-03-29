@@ -85,7 +85,7 @@ cleanup() {
     # Restore permissions on any dirs we may have made non-writable,
     # otherwise rm -rf cannot remove them.
     if [[ -d "${TEST_ROOT:-}" ]]; then
-        chmod -R u+rwX "${TEST_ROOT}" 2>/dev/null || true
+        find "${TEST_ROOT}" -type d -exec chmod u+rwx {} + 2>/dev/null || true
         rm -rf "${TEST_ROOT}"
     fi
 
