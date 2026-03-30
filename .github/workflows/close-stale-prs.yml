@@ -1,4 +1,4 @@
-# This workflow warns and then closes PRs that have had no activity for 90 days.
+# This workflow marks PRs as stale after 4 weeks of inactivity, then closes them 1 day later.
 #
 # For more information, see:
 # https://github.com/actions/stale
@@ -24,9 +24,9 @@ jobs:
         with:
           repo-token: ${{ github.token }}
           stale-pr-message: |
-            This pull request has been automatically marked as stale because it has been inactive for 90 days. Remove stale label or comment or this PR will be closed in 7 days.
+            This pull request has been automatically marked as stale because it has been inactive for 4 weeks. To keep it open, either remove the `stale` label or add a new comment to this pull request. If there is no further activity, it will be closed in 1 day. Feel free to re-open this pull request if you would like to see further activity on it.
           stale-pr-label: stale
-          days-before-pr-stale: 90 # 3 months
-          days-before-pr-close: 7
+          days-before-pr-stale: 28 # 4 weeks
+          days-before-pr-close: 1
           days-before-issue-stale: -1
           days-before-issue-close: -1
