@@ -174,7 +174,9 @@ func Test_Run_NoKubernetesContext_Error(t *testing.T) {
 
 func Test_Run_OpenWorktree_Error(t *testing.T) {
 	runner := newRunnerForTest(t,
-		func(_ context.Context) (worktreeHandle, error) { return worktreeHandle{}, errors.New("git not available") },
+		func(_ context.Context) (worktreeHandle, error) {
+			return worktreeHandle{}, errors.New("git not available")
+		},
 		nil,
 		nil,
 		githubWorkspace("k3d-radius-github"),
