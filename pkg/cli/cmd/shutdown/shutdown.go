@@ -44,19 +44,15 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 Backs up PostgreSQL state to the state worktree, commits everything to the
 radius-state orphan branch (including .backup-ok sentinel), pushes to origin,
-and optionally deletes the k3d cluster.`,
+and deletes the k3d cluster.`,
 		Example: `
 # Shut down the current GitHub workspace
-rad shutdown
-
-# Shut down and delete the k3d cluster
-rad shutdown --cleanup`,
+rad shutdown`,
 		Args: cobra.NoArgs,
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
-	cmd.Flags().Bool("cleanup", false, "Delete the k3d cluster after backing up state")
 
 	return cmd, runner
 }
@@ -74,7 +70,6 @@ type Runner struct {
 	ConfigHolder   *framework.ConfigHolder
 	Output         output.Interface
 	Workspace      *workspaces.Workspace
-	Cleanup        bool
 	PGBackupClient PGBackupClient
 
 	// openWorktree opens (or creates) the state worktree and returns a handle.
@@ -94,7 +89,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		deleteCluster:  k3d.DeleteCluster,
 	}
 	r.openWorktree = func(ctx context.Context) (worktreeHandle, error) {
-		w, err := gitstate.OpenOrCreate(ctx, gitstate.DefaultBranch)
+		w, err := gitstate.OpenOrCreate(ctx, gitstate.BranchName())
 		if err != nil {
 			return worktreeHandle{}, err
 		}
@@ -121,12 +116,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.Workspace = workspace
 
-	cleanup, err := cmd.Flags().GetBool("cleanup")
-	if err != nil {
-		return err
-	}
-	r.Cleanup = cleanup
-
 	return nil
 }
 
@@ -148,28 +137,26 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to back up PostgreSQL state: %w", err)
 	}
 
-	r.Output.LogInfo("Committing state and clearing deploy lock on branch '%s'...", gitstate.DefaultBranch)
+	r.Output.LogInfo("Committing state and clearing deploy lock on branch '%s'...", gitstate.BranchName())
 	if err := wt.clearLock(ctx); err != nil {
 		return fmt.Errorf("failed to commit and push state: %w", err)
 	}
 
-	r.Output.LogInfo("State committed and pushed to branch '%s'.", gitstate.DefaultBranch)
+	r.Output.LogInfo("State committed and pushed to branch '%s'.", gitstate.BranchName())
 
-	if r.Cleanup {
-		clusterName := k3d.DefaultClusterName
-		if c, ok := r.Workspace.Connection["cluster"]; ok {
-			if s, ok := c.(string); ok {
-				clusterName = s
-			}
+	clusterName := k3d.DefaultClusterName
+	if c, ok := r.Workspace.Connection["cluster"]; ok {
+		if s, ok := c.(string); ok {
+			clusterName = s
 		}
-
-		r.Output.LogInfo("Deleting k3d cluster '%s'...", clusterName)
-		if err := r.deleteCluster(ctx, clusterName); err != nil {
-			return fmt.Errorf("failed to delete k3d cluster: %w", err)
-		}
-
-		r.Output.LogInfo("Cluster deleted.")
 	}
+
+	r.Output.LogInfo("Deleting k3d cluster '%s'...", clusterName)
+	if err := r.deleteCluster(ctx, clusterName); err != nil {
+		return fmt.Errorf("failed to delete k3d cluster: %w", err)
+	}
+
+	r.Output.LogInfo("Cluster deleted.")
 
 	return nil
 }

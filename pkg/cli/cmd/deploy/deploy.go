@@ -834,7 +834,7 @@ func defaultAcquireDeployLock(ctx context.Context, workspace *workspaces.Workspa
 
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	w, err := gitstate.OpenOrCreate(ctx, gitstate.DefaultBranch)
+	w, err := gitstate.OpenOrCreate(ctx, gitstate.BranchName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open state worktree: %w", err)
 	}

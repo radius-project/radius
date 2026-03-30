@@ -35,10 +35,22 @@ const (
 	// DefaultBranch is the default orphan branch name for Radius state.
 	DefaultBranch = "radius-state"
 
+	// branchEnvVar is the environment variable that overrides the default branch name.
+	branchEnvVar = "RADIUS_STATE_BRANCH"
+
 	lockFile       = ".lock"
 	backupOKFile   = ".backup-ok"
 	deployLockFile = ".deploy-lock"
 )
+
+// BranchName returns the state branch name. It checks the RADIUS_STATE_BRANCH
+// environment variable first and falls back to DefaultBranch if unset or empty.
+func BranchName() string {
+	if v := os.Getenv(branchEnvVar); v != "" {
+		return v
+	}
+	return DefaultBranch
+}
 
 // SemaphoreState describes the condition of the state branch detected from sentinel files.
 type SemaphoreState int

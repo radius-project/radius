@@ -67,12 +67,6 @@ workspaces:
 			ConfigHolder:  framework.ConfigHolder{Config: githubConfig},
 		},
 		{
-			Name:          "github workspace with cleanup flag",
-			Input:         []string{"--cleanup"},
-			ExpectedValid: true,
-			ConfigHolder:  framework.ConfigHolder{Config: githubConfig},
-		},
-		{
 			Name:          "kubernetes workspace invalid",
 			Input:         []string{},
 			ExpectedValid: false,
@@ -98,14 +92,12 @@ func newRunnerForTest(t *testing.T,
 	pgClient PGBackupClient,
 	deleteCluster func(context.Context, string) error,
 	workspace *workspaces.Workspace,
-	cleanup bool,
 ) *Runner {
 	t.Helper()
 	return &Runner{
 		ConfigHolder:   &framework.ConfigHolder{},
 		Output:         &output.MockOutput{},
 		Workspace:      workspace,
-		Cleanup:        cleanup,
 		PGBackupClient: pgClient,
 		openWorktree:   openWorktree,
 		deleteCluster:  deleteCluster,
@@ -130,23 +122,7 @@ func noopWorktree(_ context.Context) (worktreeHandle, error) {
 	}, nil
 }
 
-func Test_Run_Success_NoCleanup(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	pg := NewMockPGBackupClient(ctrl)
-	pg.EXPECT().Backup(gomock.Any(), "k3d-radius-github", "radius-system", "/tmp/fake-state-dir").Return(nil)
-
-	runner := newRunnerForTest(t,
-		noopWorktree,
-		pg,
-		func(_ context.Context, _ string) error { t.Fatal("deleteCluster should not be called"); return nil },
-		githubWorkspace("k3d-radius-github"),
-		false,
-	)
-
-	require.NoError(t, runner.Run(context.Background()))
-}
-
-func Test_Run_Success_WithCleanup_DefaultCluster(t *testing.T) {
+func Test_Run_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	pg := NewMockPGBackupClient(ctrl)
 	pg.EXPECT().Backup(gomock.Any(), "k3d-radius-github", "radius-system", "/tmp/fake-state-dir").Return(nil)
@@ -157,14 +133,13 @@ func Test_Run_Success_WithCleanup_DefaultCluster(t *testing.T) {
 		pg,
 		func(_ context.Context, name string) error { deletedName = name; return nil },
 		githubWorkspace("k3d-radius-github"),
-		true,
 	)
 
 	require.NoError(t, runner.Run(context.Background()))
 	require.Equal(t, "radius-github", deletedName)
 }
 
-func Test_Run_Success_WithCleanup_CustomCluster(t *testing.T) {
+func Test_Run_Success_CustomCluster(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	pg := NewMockPGBackupClient(ctrl)
 	pg.EXPECT().Backup(gomock.Any(), "k3d-radius-github", "radius-system", "/tmp/fake-state-dir").Return(nil)
@@ -178,7 +153,6 @@ func Test_Run_Success_WithCleanup_CustomCluster(t *testing.T) {
 		pg,
 		func(_ context.Context, name string) error { deletedName = name; return nil },
 		ws,
-		true,
 	)
 
 	require.NoError(t, runner.Run(context.Background()))
@@ -190,9 +164,8 @@ func Test_Run_NoKubernetesContext_Error(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		// Workspace with no connection at all — KubernetesContext returns false.
+		// Workspace with no connection at all.
 		&workspaces.Workspace{Name: "broken", Connection: map[string]any{}},
-		false,
 	)
 
 	err := runner.Run(context.Background())
@@ -205,7 +178,6 @@ func Test_Run_OpenWorktree_Error(t *testing.T) {
 		nil,
 		nil,
 		githubWorkspace("k3d-radius-github"),
-		false,
 	)
 
 	err := runner.Run(context.Background())
@@ -218,7 +190,7 @@ func Test_Run_Backup_Error(t *testing.T) {
 	pg := NewMockPGBackupClient(ctrl)
 	pg.EXPECT().Backup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("kubectl unavailable"))
 
-	runner := newRunnerForTest(t, noopWorktree, pg, nil, githubWorkspace("k3d-radius-github"), false)
+	runner := newRunnerForTest(t, noopWorktree, pg, nil, githubWorkspace("k3d-radius-github"))
 
 	err := runner.Run(context.Background())
 	require.Error(t, err)
@@ -238,7 +210,7 @@ func Test_Run_ClearLock_Error(t *testing.T) {
 				removeFunc: func(_ context.Context) {},
 			}, nil
 		},
-		pg, nil, githubWorkspace("k3d-radius-github"), false,
+		pg, nil, githubWorkspace("k3d-radius-github"),
 	)
 
 	err := runner.Run(context.Background())
@@ -256,7 +228,6 @@ func Test_Run_DeleteCluster_Error(t *testing.T) {
 		pg,
 		func(_ context.Context, _ string) error { return errors.New("k3d not found") },
 		githubWorkspace("k3d-radius-github"),
-		true,
 	)
 
 	err := runner.Run(context.Background())

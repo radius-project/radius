@@ -64,8 +64,8 @@ env:
   HELM_VER: v3.19.4
   # The Radius helm chart location
   RADIUS_CHART_LOCATION: deploy/Chart/
-  # The git branch used for PostgreSQL state backups
-  RADIUS_STATE_BRANCH: radius-state
+  # The git branch used for PostgreSQL state backups (per-run to avoid leaking test artifacts)
+  RADIUS_STATE_BRANCH: radius-state-test-${{ github.run_id }}
   # Timeout for rad init
   RAD_INIT_TIMEOUT: 10m
 
@@ -196,6 +196,10 @@ jobs:
       - name: Cleanup k3d cluster
         if: always()
         run: k3d cluster delete radius-github || true
+
+      - name: Cleanup state branch
+        if: always()
+        run: git push origin --delete "$RADIUS_STATE_BRANCH" 2>/dev/null || true
 
       - name: Upload logs on failure
         if: failure()

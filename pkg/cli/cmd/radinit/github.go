@@ -39,7 +39,7 @@ func (r *Runner) enterGitHubInitOptions(ctx context.Context) (*initOptions, *wor
 	}
 
 	// Open (or create) the state worktree in a temp directory isolated from the app checkout.
-	w, err := gitstate.OpenOrCreate(ctx, gitstate.DefaultBranch)
+	w, err := gitstate.OpenOrCreate(ctx, gitstate.BranchName())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open state worktree: %w", err)
 	}
