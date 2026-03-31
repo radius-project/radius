@@ -40,7 +40,7 @@ The goal is to let teams use Radius in GitHub Actions with the familiar `rad ini
 
 #### Scenario 1: First-time setup in a GitHub Actions workflow
 
-A developer runs `rad init --kind github` once (locally or in a setup workflow). This creates the initial workspace configuration and performs the first deployment cycle: spin up k3d, install Radius with PostgreSQL, deploy the application, then `rad shutdown` to back up state and tear down the cluster.
+A developer runs `rad init --kind github` once (locally or in a setup workflow). This creates the initial workspace configuration: spin up k3d, install Radius with PostgreSQL, then `rad shutdown` to back up state and tear down the cluster.
 
 #### Scenario 2: Subsequent deploys triggered by UI or workflow dispatch
 
