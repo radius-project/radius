@@ -61,6 +61,7 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 	response, err := p.awsClients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
+		RoleArn:    cloudControlRoleARN(ctx, p.awsClients),
 	}, cloudControlOpts...)
 	if err != nil {
 		if ucp_aws.IsAWSResourceNotFoundError(err) {

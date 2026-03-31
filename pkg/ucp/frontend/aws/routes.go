@@ -343,6 +343,22 @@ func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
 		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
 
+		// Provide a function that returns the IRSA role ARN for CloudControl API calls.
+		// When IRSA credentials are used, passing the RoleArn tells CloudFormation to
+		// assume the role directly, avoiding session chaining issues with web identity
+		// federation credentials.
+		m.AWSClients.CloudControlRoleARN = func(ctx context.Context) string {
+			cred, err := provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
+			if err != nil {
+				logger.V(5).Info("Failed to fetch AWS credential for CloudControl RoleARN", "error", err.Error())
+				return ""
+			}
+			if cred.Kind == ucp_aws.CredentialKindIRSA && cred.IRSACredential != nil {
+				return cred.IRSACredential.RoleARN
+			}
+			return ""
+		}
+
 	default:
 		logger.Info("Configuring default authentication mode with environment variable.")
 	}
