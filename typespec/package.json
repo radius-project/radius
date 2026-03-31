@@ -6,17 +6,17 @@
   "author": "Radius Authors",
   "type": "module",
   "dependencies": {
-    "@azure-tools/typespec-autorest": "^0.65.0",
-    "@azure-tools/typespec-azure-core": "^0.65.0",
-    "@azure-tools/typespec-azure-resource-manager": "^0.65.0",
-    "@typespec/compiler": "^1.9.0",
-    "@typespec/http": "^1.9.0",
-    "@typespec/openapi": "^1.9.0",
-    "@typespec/rest": "^0.79.0",
-    "@typespec/versioning": "^0.79.0"
+    "@azure-tools/typespec-autorest": "^0.66.1",
+    "@azure-tools/typespec-azure-core": "^0.66.1",
+    "@azure-tools/typespec-azure-resource-manager": "^0.66.0",
+    "@typespec/compiler": "^1.10.0",
+    "@typespec/http": "^1.10.0",
+    "@typespec/openapi": "^1.10.0",
+    "@typespec/rest": "^0.80.0",
+    "@typespec/versioning": "^0.80.0"
   },
   "devDependencies": {
-    "autorest": "3.7.2",
+    "autorest": "3.8.0",
     "oav": "4.0.3"
   },
   "pnpm": {
