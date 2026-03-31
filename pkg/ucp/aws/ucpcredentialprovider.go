@@ -65,17 +65,28 @@ type UCPCredentialOptions struct {
 
 	// Duration is the duration for the secret keys.
 	Duration time.Duration
+
+	// STSEndpointRegion is the AWS region to use for the STS endpoint when retrieving
+	// IRSA credentials. Using a regional STS endpoint (matching the target service region)
+	// avoids token compatibility issues with some AWS services like CloudWatch Logs.
+	// If empty, defaults to "us-east-1" (global endpoint).
+	STSEndpointRegion string
 }
 
 // NewUCPCredentialProvider creates UCPCredentialProvider provider to fetch Secret Access key using UCP credential APIs.
-func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential], expireDuration time.Duration) *UCPCredentialProvider {
+func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential], expireDuration time.Duration, stsEndpointRegion string) *UCPCredentialProvider {
 	if expireDuration == 0 {
 		expireDuration = DefaultExpireDuration
 	}
 
+	if stsEndpointRegion == "" {
+		stsEndpointRegion = awsSTSGlobalEndPointSigningRegion
+	}
+
 	o := UCPCredentialOptions{
-		Provider: provider,
-		Duration: expireDuration,
+		Provider:          provider,
+		Duration:          expireDuration,
+		STSEndpointRegion: stsEndpointRegion,
 	}
 
 	return &UCPCredentialProvider{options: o}
@@ -112,17 +123,17 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}
 		logger.Info(fmt.Sprintf("Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
 
-		// Radius requests will first be routed to STS endpoint,
-		// where it will be validated and then the request to the specific service (such as S3) will be made using
-		// the bearer token from the STS response.
-		// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
-		// STS endpoint should be region based, and in the same region as
-		// Radius instance to minimize latency associated eith STS call and thereby improve performance.
-		// We should provide the user with ability to configure the STS endpoint region.
-		// For now, we are using the global STS endpoint, which is the default.
+		// Use a regional STS endpoint to obtain session tokens. Regional STS endpoints
+		// produce tokens that are compatible with all downstream AWS services, whereas
+		// the global endpoint (us-east-1) can produce tokens that some services (e.g.,
+		// CloudWatch Logs via CloudControl) reject with "UnrecognizedClientException".
+		// See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html
 		// Ref. https://github.com/radius-project/radius/issues/7747
+		stsRegion := c.options.STSEndpointRegion
+		logger.Info(fmt.Sprintf("Using STS endpoint region: %s", stsRegion))
+
 		awscfg, err := config.LoadDefaultConfig(context.TODO(),
-			config.WithRegion(awsSTSGlobalEndPointSigningRegion))
+			config.WithRegion(stsRegion))
 
 		if err != nil {
 			return aws.Credentials{}, err

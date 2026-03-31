@@ -54,6 +54,9 @@ global:
   # Configure global.aws.irsa.enabled=true to enable AWS IRSA.
   # Disabled by default.
   aws:
+    # AWS region for STS endpoint when using IRSA credentials.
+    # Using a regional STS endpoint avoids token compatibility issues with some AWS services.
+    region: ""
     irsa:
       enabled: false
 
