@@ -17,12 +17,14 @@ package awsproxy
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // CloudControlRegionOption sets the region for the CloudControl client.
@@ -43,12 +45,16 @@ func CloudFormationRegionOption(region string) func(*cloudformation.Options) {
 // or nil otherwise. When non-nil, this should be passed to CloudControl API
 // calls so CloudFormation assumes the role directly.
 func cloudControlRoleARN(ctx context.Context, clients ucp_aws.Clients) *string {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	if clients.CloudControlRoleARN == nil {
+		logger.Info("CloudControl RoleARN provider is not configured")
 		return nil
 	}
 	arn := clients.CloudControlRoleARN(ctx)
 	if arn == "" {
+		logger.Info("CloudControl RoleARN provider returned empty string")
 		return nil
 	}
+	logger.Info(fmt.Sprintf("Using CloudControl RoleARN: %s", arn))
 	return aws.String(arn)
 }

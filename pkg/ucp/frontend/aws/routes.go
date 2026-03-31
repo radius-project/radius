@@ -350,10 +350,12 @@ func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {
 		m.AWSClients.CloudControlRoleARN = func(ctx context.Context) string {
 			cred, err := provider.Fetch(ctx, sdk_cred.AWSPublic, "default")
 			if err != nil {
-				logger.V(5).Info("Failed to fetch AWS credential for CloudControl RoleARN", "error", err.Error())
+				logger.Info("CloudControlRoleARN: failed to fetch AWS credential", "error", err.Error())
 				return ""
 			}
+			logger.Info("CloudControlRoleARN: fetched credential", "kind", cred.Kind, "hasIRSA", cred.IRSACredential != nil)
 			if cred.Kind == ucp_aws.CredentialKindIRSA && cred.IRSACredential != nil {
+				logger.Info("CloudControlRoleARN: returning IRSA RoleARN", "roleARN", cred.IRSACredential.RoleARN)
 				return cred.IRSACredential.RoleARN
 			}
 			return ""
