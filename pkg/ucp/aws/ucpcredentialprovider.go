@@ -123,41 +123,72 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}
 		logger.Info(fmt.Sprintf("Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
 
-		// Use a regional STS endpoint to obtain session tokens. Regional STS endpoints
-		// produce tokens that are compatible with all downstream AWS services, whereas
-		// the global endpoint (us-east-1) can produce tokens that some services (e.g.,
-		// CloudWatch Logs via CloudControl) reject with "UnrecognizedClientException".
-		// See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html
-		// Ref. https://github.com/radius-project/radius/issues/7747
 		stsRegion := c.options.STSEndpointRegion
 		logger.Info(fmt.Sprintf("Using STS endpoint region: %s", stsRegion))
 
 		awscfg, err := config.LoadDefaultConfig(context.TODO(),
 			config.WithRegion(stsRegion))
-
 		if err != nil {
 			return aws.Credentials{}, err
 		}
 
-		client := sts.NewFromConfig(awscfg)
+		stsClient := sts.NewFromConfig(awscfg)
 
-		credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
-			client,
+		// Step 1: Get web identity credentials via AssumeRoleWithWebIdentity.
+		webIdentityProvider := stscreds.NewWebIdentityRoleProvider(
+			stsClient,
 			s.IRSACredential.RoleARN,
 			stscreds.IdentityTokenFile(TokenFilePath),
 			func(o *stscreds.WebIdentityRoleOptions) {
-				o.RoleSessionName = sessionPrefix + uuid.New().String()
+				o.RoleSessionName = sessionPrefix + "wi-" + uuid.New().String()
 			},
-		))
+		)
 
-		value, err = credsCache.Retrieve(ctx)
+		webIdentityCreds, err := webIdentityProvider.Retrieve(ctx)
 		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to retrieve AWS Credential IRSA - %s", err.Error()))
+			logger.Info(fmt.Sprintf("Failed to retrieve web identity credentials - %s", err.Error()))
 			return aws.Credentials{}, err
 		}
-		value.Source = credentialSource
-		value.CanExpire = true
-		value.Expires = time.Now().UTC().Add(c.options.Duration)
+		logger.Info("Successfully retrieved web identity credentials")
+
+		// Step 2: Re-assume the same role using regular AssumeRole. This "launders"
+		// the credentials from a web identity federation session into a regular
+		// AssumeRole session. Web identity sessions have restrictions on session
+		// chaining that cause CloudControl's internal operations to fail with
+		// "invalid security token" errors. A regular AssumeRole session does not
+		// have these restrictions.
+		// See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#term-RoleChaining
+		reAssumeCfg, err := config.LoadDefaultConfig(context.TODO(),
+			config.WithRegion(stsRegion),
+			config.WithCredentialsProvider(aws.CredentialsProviderFunc(
+				func(ctx context.Context) (aws.Credentials, error) {
+					return webIdentityCreds, nil
+				},
+			)),
+		)
+		if err != nil {
+			return aws.Credentials{}, err
+		}
+
+		reAssumeClient := sts.NewFromConfig(reAssumeCfg)
+		assumeRoleOutput, err := reAssumeClient.AssumeRole(ctx, &sts.AssumeRoleInput{
+			RoleArn:         &s.IRSACredential.RoleARN,
+			RoleSessionName: aws.String(sessionPrefix + uuid.New().String()),
+		})
+		if err != nil {
+			logger.Info(fmt.Sprintf("Failed to re-assume role for clean session - %s", err.Error()))
+			return aws.Credentials{}, err
+		}
+		logger.Info("Successfully re-assumed role for clean session credentials")
+
+		value = aws.Credentials{
+			AccessKeyID:     *assumeRoleOutput.Credentials.AccessKeyId,
+			SecretAccessKey:  *assumeRoleOutput.Credentials.SecretAccessKey,
+			SessionToken:    *assumeRoleOutput.Credentials.SessionToken,
+			Source:          credentialSource,
+			CanExpire:       true,
+			Expires:         assumeRoleOutput.Credentials.Expiration.UTC(),
+		}
 	default:
 		return aws.Credentials{}, errors.New("invalid credential kind")
 	}
