@@ -157,14 +157,14 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 		if isWriteOnlyProperty && isCreateOnlyProperty {
 			flattenedDesiredStateObject[k] = v
 		} else if _, exists := flattenedDesiredStateObject[k]; !exists {
-			// Add the property (if not exists already) to the desired state if it is a read-only, create-only,
-			// or conditional-create-only property. This ensures that these types of properties result in a
-			// no-op in the patch if they aren't updated in the desired state
-			isReadOnlyProperty := slices.Contains(resourceTypeSchema.ReadOnlyProperties, property)
-			isConditionalCreateOnlyProperty := slices.Contains(resourceTypeSchema.ConditionalCreateOnlyProperties, property)
-			if isReadOnlyProperty || isCreateOnlyProperty || isConditionalCreateOnlyProperty {
-				flattenedDesiredStateObject[k] = v
-			}
+			// Preserve all properties from the current state that the user didn't
+			// explicitly specify. This prevents generating "remove" operations for
+			// properties that AWS may have added since the template was written,
+			// and ensures the patch only modifies properties the user explicitly
+			// specified. This matches the standard behavior of infrastructure-as-code
+			// tools like Terraform and CloudFormation, where unmentioned properties
+			// are left unchanged.
+			flattenedDesiredStateObject[k] = v
 		}
 	}
 
