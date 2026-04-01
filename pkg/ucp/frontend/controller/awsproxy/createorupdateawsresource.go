@@ -95,7 +95,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	getResponse, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-		RoleArn:    cloudControlRoleARN(ctx, p.awsClients),
 	}, cloudControlOpts...)
 	if ucp_aws.IsAWSResourceNotFoundError(err) {
 		existing = false
@@ -153,7 +152,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
-				RoleArn:       cloudControlRoleARN(ctx, p.awsClients),
 			}, cloudControlOpts...)
 			if err != nil {
 				return ucp_aws.HandleAWSError(err)
@@ -181,7 +179,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
-			RoleArn:      cloudControlRoleARN(ctx, p.awsClients),
 		}, cloudControlOpts...)
 		if err != nil {
 			return ucp_aws.HandleAWSError(err)

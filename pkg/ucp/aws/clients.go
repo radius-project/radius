@@ -16,8 +16,6 @@ limitations under the License.
 
 package aws
 
-import "context"
-
 // Clients contains the AWS clients.
 type Clients struct {
 	// CloudControl is the AWS Cloud Control client.
@@ -25,12 +23,4 @@ type Clients struct {
 
 	// CloudFormation is the AWS Cloud Formation client.
 	CloudFormation AWSCloudFormationClient
-
-	// CloudControlRoleARN is an optional function that returns the IAM role ARN
-	// to pass to CloudControl API calls. When IRSA credentials are used,
-	// CloudFormation will assume this role directly to perform resource operations,
-	// avoiding session chaining restrictions that cause "invalid security token"
-	// errors with web identity federation credentials.
-	// Returns empty string when IRSA is not configured or credentials are unavailable.
-	CloudControlRoleARN func(ctx context.Context) string
 }

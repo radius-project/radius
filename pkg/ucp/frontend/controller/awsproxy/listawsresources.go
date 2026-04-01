@@ -60,7 +60,6 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	// TODO pagination
 	response, err := p.awsClients.CloudControl.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
-		RoleArn:  cloudControlRoleARN(ctx, p.awsClients),
 	}, cloudControlOpts...)
 	if err != nil {
 		return ucpaws.HandleAWSError(err)

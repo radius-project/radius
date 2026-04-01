@@ -61,7 +61,6 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 	response, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
-		RoleArn:    cloudControlRoleARN(ctx, p.awsClients),
 	}, cloudControlOpts...)
 	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil

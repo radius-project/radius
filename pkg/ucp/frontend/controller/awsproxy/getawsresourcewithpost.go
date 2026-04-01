@@ -110,7 +110,6 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
 			Identifier: aws.String(awsResourceIdentifier),
-			RoleArn:    cloudControlRoleARN(ctx, p.awsClients),
 		}, cloudcontrolOpts...)
 
 		// If the resource is not found, retry.
