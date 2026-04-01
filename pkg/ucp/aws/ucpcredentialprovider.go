@@ -151,8 +151,8 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}
 		logger.Info("Successfully retrieved web identity credentials")
 
-		// Step 2: Re-assume the same role using regular AssumeRole. This "launders"
-		// the credentials from a web identity federation session into a regular
+		// Step 2: Re-assume the same role using regular AssumeRole (role chaining).
+		// This converts the web identity federation session into a standard
 		// AssumeRole session. Web identity sessions have restrictions on session
 		// chaining that cause CloudControl's internal operations to fail with
 		// "invalid security token" errors. A regular AssumeRole session does not
