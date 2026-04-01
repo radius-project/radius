@@ -216,7 +216,41 @@ The [`.specify/`](https://github.com/radius-project/design-notes/tree/main/.spec
 
 **Total: 33 documents/directories recommended for migration (32 + `.specify/`).**
 
----
+### Agents and Prompts (20 files)
+
+Custom agents and Copilot prompts from the design-notes repository are migrated to the `.github/agents` and `.github/prompts` directories to support Spec Kit workflows and development in the Radius repository.
+
+**Agents (10 files)**
+
+| Source | Destination | Summary |
+|--------|-------------|---------|
+| [`.github/agents/radius.speckit.prompt.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/radius.speckit.prompt.agent.md) | `.github/agents/radius.speckit.prompt.agent.md` | Agent for creating Radius-specific Spec Kit prompts. |
+| [`.github/agents/speckit.analyze.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.analyze.agent.md) | `.github/agents/speckit.analyze.agent.md` | Spec Kit agent for analyzing and understanding design documents. |
+| [`.github/agents/speckit.checklist.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.checklist.agent.md) | `.github/agents/speckit.checklist.agent.md` | Spec Kit agent for creating and managing project checklists. |
+| [`.github/agents/speckit.clarify.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.clarify.agent.md) | `.github/agents/speckit.clarify.agent.md` | Spec Kit agent for clarifying and refining project requirements. |
+| [`.github/agents/speckit.constitution.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.constitution.agent.md) | `.github/agents/speckit.constitution.agent.md` | Spec Kit agent for defining and maintaining project constitution. |
+| [`.github/agents/speckit.implement.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.implement.agent.md) | `.github/agents/speckit.implement.agent.md` | Spec Kit agent for implementing features and tracking implementation progress. |
+| [`.github/agents/speckit.plan.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.plan.agent.md) | `.github/agents/speckit.plan.agent.md` | Spec Kit agent for creating and managing project plans. |
+| [`.github/agents/speckit.specify.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.specify.agent.md) | `.github/agents/speckit.specify.agent.md` | Spec Kit agent for specifying features and design decisions. |
+| [`.github/agents/speckit.tasks.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.tasks.agent.md) | `.github/agents/speckit.tasks.agent.md` | Spec Kit agent for creating and managing project tasks. |
+| [`.github/agents/speckit.taskstoissues.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.taskstoissues.agent.md) | `.github/agents/speckit.taskstoissues.agent.md` | Spec Kit agent for converting tasks to GitHub issues. |
+
+**Prompts (10 files)**
+
+| Source | Destination | Summary |
+|--------|-------------|---------|
+| [`.github/prompts/radius.speckit.prompt.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/radius.speckit.prompt.prompt.md) | `.github/prompts/radius.speckit.prompt.prompt.md` | Prompt for creating Radius-specific Spec Kit prompts and agents. |
+| [`.github/prompts/speckit.analyze.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.analyze.prompt.md) | `.github/prompts/speckit.analyze.prompt.md` | Spec Kit prompt for analyzing design documents and project documents. |
+| [`.github/prompts/speckit.checklist.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.checklist.prompt.md) | `.github/prompts/speckit.checklist.prompt.md` | Spec Kit prompt for creating and managing project checklists. |
+| [`.github/prompts/speckit.clarify.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.clarify.prompt.md) | `.github/prompts/speckit.clarify.prompt.md` | Spec Kit prompt for clarifying and refining project requirements and specifications. |
+| [`.github/prompts/speckit.constitution.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.constitution.prompt.md) | `.github/prompts/speckit.constitution.prompt.md` | Spec Kit prompt for defining and maintaining project constitution and governance. |
+| [`.github/prompts/speckit.implement.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.implement.prompt.md) | `.github/prompts/speckit.implement.prompt.md` | Spec Kit prompt for implementing features and tracking implementation progress. |
+| [`.github/prompts/speckit.plan.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.plan.prompt.md) | `.github/prompts/speckit.plan.prompt.md` | Spec Kit prompt for creating and managing project plans and roadmaps. |
+| [`.github/prompts/speckit.specify.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.specify.prompt.md) | `.github/prompts/speckit.specify.prompt.md` | Spec Kit prompt for specifying features, design decisions, and requirements. |
+| [`.github/prompts/speckit.tasks.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.tasks.prompt.md) | `.github/prompts/speckit.tasks.prompt.md` | Spec Kit prompt for creating, organizing, and managing project tasks. |
+| [`.github/prompts/speckit.taskstoissues.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.taskstoissues.prompt.md) | `.github/prompts/speckit.taskstoissues.prompt.md` | Spec Kit prompt for converting tasks to GitHub issues for tracking and collaboration. |
+
+**Total: 53 documents/directories recommended for migration (33 + 20 agents/prompts
 
 ## Documents NOT Recommended for Migration
 
