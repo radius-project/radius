@@ -19,17 +19,15 @@ package initializer
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
-	"time"
+	"path/filepath"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/hosting"
-	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -52,30 +50,6 @@ func (s *Service) Name() string {
 	return "initializer"
 }
 
-func waitForServer(ctx context.Context, host, port string, retryInterval time.Duration, connectionTimeout time.Duration, timeout time.Duration) error {
-	address := net.JoinHostPort(host, port)
-	deadline := time.Now().Add(timeout)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("connection attempts canceled or timed out: %w", ctx.Err())
-		default:
-			conn, err := net.DialTimeout("tcp", address, connectionTimeout)
-			if err == nil {
-				conn.Close()
-				return nil
-			}
-
-			if time.Now().After(deadline) {
-				return fmt.Errorf("failed to connect to %s after %v: %w", address, timeout, err)
-			}
-
-			time.Sleep(retryInterval)
-		}
-	}
-}
-
 func (w *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -91,44 +65,206 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("error checking manifest directory: %w", err)
 	}
 
-	if w.options.UCP == nil || w.options.UCP.Endpoint() == "" {
-		return fmt.Errorf("connection to UCP is not set")
-	}
-
-	// Parse the endpoint URL and extract host and port
-	parsedURL, err := url.Parse(w.options.UCP.Endpoint())
+	dbClient, err := w.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to parse endpoint URL: %w", err)
+		return fmt.Errorf("failed to get database client: %w", err)
 	}
 
-	hostName, port, err := net.SplitHostPort(parsedURL.Host)
+	files, err := os.ReadDir(manifestDir)
 	if err != nil {
-		return fmt.Errorf("failed to split host and port: %w", err)
+		return fmt.Errorf("failed to read manifest directory: %w", err)
 	}
 
-	// Attempt to connect to the server
-	err = waitForServer(ctx, hostName, port, 500*time.Millisecond, 500*time.Millisecond, 5*time.Second)
-	if err != nil {
-		return fmt.Errorf("failed to connect to server : %w", err)
-	}
+	for _, fileInfo := range files {
+		if fileInfo.IsDir() {
+			continue
+		}
 
-	// Server is up, proceed to register manifests
-	clientOptions := sdk.NewClientOptions(w.options.UCP)
+		filePath := filepath.Join(manifestDir, fileInfo.Name())
+		logger.Info("Registering manifest", "file", filePath)
 
-	clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, clientOptions)
-	if err != nil {
-		return fmt.Errorf("error creating client factory: %w", err)
-	}
+		resourceProvider, err := manifest.ValidateManifest(ctx, filePath)
+		if err != nil {
+			return fmt.Errorf("failed to validate manifest %s: %w", filePath, err)
+		}
 
-	loggerFunc := func(format string, args ...any) {
-		logger.Info(fmt.Sprintf(format, args...))
-	}
-
-	if err := manifest.RegisterDirectory(ctx, clientFactory, "local", manifestDir, loggerFunc); err != nil {
-		return fmt.Errorf("error registering manifests : %w", err)
+		if err := registerResourceProviderDirect(ctx, dbClient, "local", *resourceProvider); err != nil {
+			return fmt.Errorf("failed to register manifest %s: %w", filePath, err)
+		}
 	}
 
 	logger.Info("Successfully registered manifests", "directory", manifestDir)
+	return nil
+}
+
+// registerResourceProviderDirect writes resource provider metadata directly to the database,
+// bypassing the HTTP API and async operation queue. This is used during server initialization
+// where the resources are known to not exist yet.
+func registerResourceProviderDirect(ctx context.Context, dbClient database.Client, planeName string, rp manifest.ResourceProvider) error {
+	rootScope := "/planes/radius/" + planeName
+
+	// Determine location name and address
+	locationName := v1.LocationGlobal
+	var address string
+	for name, addr := range rp.Location {
+		locationName = name
+		address = addr
+		break
+	}
+
+	rpID := rootScope + "/providers/System.Resources/resourceProviders/" + rp.Namespace
+
+	// 1. Save ResourceProvider
+	rpModel := &datamodel.ResourceProvider{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       rpID,
+				Name:     rp.Namespace,
+				Type:     datamodel.ResourceProviderResourceType,
+				Location: locationName,
+			},
+			InternalMetadata: v1.InternalMetadata{
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+			},
+		},
+	}
+
+	if err := saveResource(ctx, dbClient, rpID, rpModel); err != nil {
+		return fmt.Errorf("failed to save resource provider %s: %w", rp.Namespace, err)
+	}
+
+	// Build summary while iterating
+	summaryResourceTypes := map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{}
+
+	// 2. Save ResourceTypes and APIVersions
+	for typeName, resourceType := range rp.Types {
+		typeID := rpID + "/resourceTypes/" + typeName
+
+		typeModel := &datamodel.ResourceType{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   typeID,
+					Name: typeName,
+					Type: datamodel.ResourceTypeResourceType,
+				},
+				InternalMetadata: v1.InternalMetadata{
+					AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+				},
+			},
+			Properties: datamodel.ResourceTypeProperties{
+				Capabilities:      resourceType.Capabilities,
+				DefaultAPIVersion: resourceType.DefaultAPIVersion,
+				Description:       resourceType.Description,
+			},
+		}
+
+		if err := saveResource(ctx, dbClient, typeID, typeModel); err != nil {
+			return fmt.Errorf("failed to save resource type %s/%s: %w", rp.Namespace, typeName, err)
+		}
+
+		summaryAPIVersions := map[string]datamodel.ResourceProviderSummaryPropertiesAPIVersion{}
+
+		for apiVersionName, apiVersion := range resourceType.APIVersions {
+			avID := typeID + "/apiVersions/" + apiVersionName
+
+			schema, _ := apiVersion.Schema.(map[string]any)
+			avModel := &datamodel.APIVersion{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   avID,
+						Name: apiVersionName,
+						Type: datamodel.APIVersionResourceType,
+					},
+					InternalMetadata: v1.InternalMetadata{
+						AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+					},
+				},
+				Properties: datamodel.APIVersionProperties{
+					Schema: schema,
+				},
+			}
+
+			if err := saveResource(ctx, dbClient, avID, avModel); err != nil {
+				return fmt.Errorf("failed to save API version %s/%s@%s: %w", rp.Namespace, typeName, apiVersionName, err)
+			}
+
+			summaryAPIVersions[apiVersionName] = datamodel.ResourceProviderSummaryPropertiesAPIVersion{
+				Schema: schema,
+			}
+		}
+
+		summaryResourceTypes[typeName] = datamodel.ResourceProviderSummaryPropertiesResourceType{
+			DefaultAPIVersion: resourceType.DefaultAPIVersion,
+			Capabilities:      resourceType.Capabilities,
+			Description:       resourceType.Description,
+			APIVersions:       summaryAPIVersions,
+		}
+	}
+
+	// 3. Save Location
+	locationID := rpID + "/locations/" + locationName
+	locationResourceTypes := map[string]datamodel.LocationResourceTypeConfiguration{}
+	for typeName, resourceType := range rp.Types {
+		apiVersions := map[string]datamodel.LocationAPIVersionConfiguration{}
+		for apiVersionName := range resourceType.APIVersions {
+			apiVersions[apiVersionName] = datamodel.LocationAPIVersionConfiguration{}
+		}
+		locationResourceTypes[typeName] = datamodel.LocationResourceTypeConfiguration{
+			APIVersions: apiVersions,
+		}
+	}
+
+	locationModel := &datamodel.Location{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   locationID,
+				Name: locationName,
+				Type: datamodel.LocationResourceType,
+			},
+			InternalMetadata: v1.InternalMetadata{
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
+			},
+		},
+		Properties: datamodel.LocationProperties{
+			ResourceTypes: locationResourceTypes,
+		},
+	}
+	if address != "" {
+		locationModel.Properties.Address = &address
+	}
+
+	if err := saveResource(ctx, dbClient, locationID, locationModel); err != nil {
+		return fmt.Errorf("failed to save location %s/%s: %w", rp.Namespace, locationName, err)
+	}
+
+	// 4. Save ResourceProviderSummary
+	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
+	summaryModel := &datamodel.ResourceProviderSummary{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   summaryID,
+				Name: rp.Namespace,
+				Type: datamodel.ResourceProviderSummaryResourceType,
+			},
+		},
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			Locations: map[string]datamodel.ResourceProviderSummaryPropertiesLocation{
+				locationName: {},
+			},
+			ResourceTypes: summaryResourceTypes,
+		},
+	}
+
+	if err := saveResource(ctx, dbClient, summaryID, summaryModel); err != nil {
+		return fmt.Errorf("failed to save resource provider summary %s: %w", rp.Namespace, err)
+	}
 
 	return nil
+}
+
+func saveResource(ctx context.Context, dbClient database.Client, id string, data any) error {
+	return dbClient.Save(ctx, &database.Object{
+		Metadata: database.Metadata{ID: id},
+		Data:     data,
+	})
 }
