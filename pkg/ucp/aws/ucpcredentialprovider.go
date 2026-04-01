@@ -126,7 +126,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		stsRegion := c.options.STSEndpointRegion
 		logger.Info(fmt.Sprintf("Using STS endpoint region: %s", stsRegion))
 
-		awscfg, err := config.LoadDefaultConfig(context.TODO(),
+		awscfg, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(stsRegion))
 		if err != nil {
 			return aws.Credentials{}, err
@@ -141,6 +141,9 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 			stscreds.IdentityTokenFile(TokenFilePath),
 			func(o *stscreds.WebIdentityRoleOptions) {
 				o.RoleSessionName = sessionPrefix + "wi-" + uuid.New().String()
+				if c.options.Duration > 0 {
+					o.Duration = c.options.Duration
+				}
 			},
 		)
 
@@ -158,7 +161,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		// "invalid security token" errors. A regular AssumeRole session does not
 		// have these restrictions.
 		// See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#term-RoleChaining
-		reAssumeCfg, err := config.LoadDefaultConfig(context.TODO(),
+		reAssumeCfg, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion(stsRegion),
 			config.WithCredentialsProvider(aws.CredentialsProviderFunc(
 				func(ctx context.Context) (aws.Credentials, error) {
@@ -171,10 +174,17 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}
 
 		reAssumeClient := sts.NewFromConfig(reAssumeCfg)
-		assumeRoleOutput, err := reAssumeClient.AssumeRole(ctx, &sts.AssumeRoleInput{
+
+		assumeRoleInput := &sts.AssumeRoleInput{
 			RoleArn:         &s.IRSACredential.RoleARN,
 			RoleSessionName: aws.String(sessionPrefix + uuid.New().String()),
-		})
+		}
+		if c.options.Duration > 0 {
+			durationSeconds := int32(c.options.Duration.Seconds())
+			assumeRoleInput.DurationSeconds = &durationSeconds
+		}
+
+		assumeRoleOutput, err := reAssumeClient.AssumeRole(ctx, assumeRoleInput)
 		if err != nil {
 			logger.Info(fmt.Sprintf("Failed to re-assume role for clean session - %s", err.Error()))
 			return aws.Credentials{}, err
