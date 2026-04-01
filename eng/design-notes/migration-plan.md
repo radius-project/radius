@@ -70,7 +70,8 @@ eng/
 │   │   ├── 2025-04-compute-extensibility.md
 │   │   ├── 2025-06-compute-extensibility-feature-spec.md
 │   │   ├── 2025-08-container-resource-type.md
-│   │   └── 2025-09-routes-resource-type.md
+│   │   ├── 2025-09-routes-resource-type.md
+│   │   └── 2025-07-resource-types-contribution.md
 │   ├── gitops/                            # GitOps integration designs
 │   │   ├── 2024-06-gitops-feature-spec.md
 │   │   ├── 2024-10-deploymenttemplate-controller.md
@@ -81,7 +82,9 @@ eng/
 │   │   ├── 2025-08-recipe-packs.md
 │   │   └── 2025-09-container-recipe.md
 │   ├── security/                          # Threat models and security designs
+│   │   ├── 2024-08-applications-rp-component-threat-model.md
 │   │   ├── 2024-08-controller-component-threat-model.md
+│   │   ├── 2024-08-dashboard-component-threat-model.md
 │   │   ├── 2024-11-ucp-component-threat-model.md
 │   │   └── 2025-11-secrets-redactdata.md
 │   ├── templates/                         # Design document templates
@@ -93,9 +96,10 @@ eng/
 │   │   └── 2025-03-workflow-changes.md
 │   └── ucp/                               # Universal Control Plane designs
 │       └── 2024-03-planes-apis.md
-├── specs/                                     # Spec Kit specifications
-│   ├── 001-lrt-current-release/
-│   └── 001-remove-bicep-types-submodule/
+
+specs/                                         # Spec Kit specifications
+├── 001-lrt-current-release/
+└── 001-remove-bicep-types-submodule/
 ```
 
 ### Rationale for Structure Changes
@@ -129,7 +133,7 @@ eng/
 | [`cli/2024-04-azure-workload-identity.md`](https://github.com/radius-project/design-notes/blob/main/cli/2024-04-azure-workload-identity.md) | Enables Azure workload identity (federated identity) for Radius to deploy and manage Azure resources without client secrets. Status: **Approved**. | Azure credential management exists in `pkg/ucp/credentials/`, `pkg/cli/azure/`. |
 | [`cli/2024-06-04-aws-irsa-support.md`](https://github.com/radius-project/design-notes/blob/main/cli/2024-06-04-aws-irsa-support.md) | Enables AWS IRSA (IAM Roles for Service Accounts) for Radius to deploy and manage AWS resources without static access keys. | AWS credential management exists in `pkg/ucp/credentials/`, `pkg/cli/aws/`. |
 
-### Extensibility (9 documents)
+### Extensibility (10 documents)
 
 | Document | Summary | Evidence of Implementation |
 |----------|---------|---------------------------|
@@ -142,6 +146,7 @@ eng/
 | [`features/2025-06-compute-extensibility-feature-spec.md`](https://github.com/radius-project/design-notes/blob/main/features/2025-06-compute-extensibility-feature-spec.md) | Feature spec for recipe-backed core resource types, decoupling Radius core logic from platform-specific provisioning code. | Implemented via `Radius.Compute/containers`, `Radius.Compute/routes`, and `Radius.Compute/persistentVolumes` in the compute provider manifest. |
 | [`features/2025-08-29-container-resource-type.md`](https://github.com/radius-project/design-notes/blob/main/features/2025-08-29-container-resource-type.md) | Defines version two of the Containers Resource Type (`Radius.Compute/containers`) with multi-container support, Kubernetes-first design, and recipe-backed provisioning. | Full schema in `deploy/manifest/built-in-providers/dev/radius_compute.yaml`; environment recipe parameters reference `Radius.Compute/containers`. |
 | [`features/2025-09-02-routes-resource-type.md`](https://github.com/radius-project/design-notes/blob/main/features/2025-09-02-routes-resource-type.md) | Proposes the Routes resource type replacing Gateways, removing the Contour dependency and enabling recipe-backed L7 ingress. | Routes defined in `deploy/manifest/built-in-providers/dev/radius_compute.yaml` as a recipe-backed resource type. |
+| [`features/2025-07-radius-resource-types-contribution.md`](https://github.com/radius-project/design-notes/blob/main/features/2025-07-radius-resource-types-contribution.md) | Feature spec defining the experience and pathways for community members to contribute new resource types and Recipes to the Radius ecosystem, including maturity levels (Alpha, Beta, Stable). | Migrated as `extensibility/2025-07-resource-types-contribution.md`. |
 
 ### GitOps (3 documents)
 
@@ -151,11 +156,13 @@ eng/
 | [`architecture/2024-10-deploymenttemplate-controller.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-10-deploymenttemplate-controller.md) | Design for the DeploymentTemplate Kubernetes controller that deploys Bicep manifests using K8s tooling. | Controller is implemented in `pkg/controller/reconciler/`; CRDs are defined. |
 | [`tools/2025-01-gitops-technical-design.md`](https://github.com/radius-project/design-notes/blob/main/tools/2025-01-gitops-technical-design.md) | Technical design for the Radius Flux Controller that watches Flux GitRepository sources and reconciles Bicep deployments. | Flux controller implemented in `pkg/controller/reconciler/flux_controller.go` with GitRepository predicate in `pkg/controller/reconciler/flux_gitrepository_predicate.go`; functional tests in `test/functional-portable/kubernetes/noncloud/flux_test.go`. |
 
-### Security (3 documents)
+### Security (5 documents)
 
 | Document | Summary | Evidence of Implementation |
 |----------|---------|---------------------------|
 | [`architecture/2024-08-controller-component-threat-model.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-controller-component-threat-model.md) | Threat model for the Radius Controller component (Recipe and Deployment controllers, validating webhook). | Controller exists at `pkg/controller/`, `cmd/controller/`. |
+| [`architecture/2024-08-applications-rp-component-threat-model.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-applications-rp-component-threat-model.md) | Threat model for the Applications RP component, covering resource lifecycle management, cloud credential access, and recipe execution security. | Applications RP exists at `pkg/corerp/`, `cmd/applications-rp/`. |
+| [`architecture/2024-08-dashboard-component-threat-model.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-08-dashboard-component-threat-model.md) | Threat model for the Radius Dashboard component (Backstage-based), covering the frontend SPA, backend plugin, and Radius API client security. | Dashboard exists in the `dashboard` repository; Radius plugin integrates via the Radius API. |
 | [`architecture/2024-11-ucp-component-threat-model.md`](https://github.com/radius-project/design-notes/blob/main/architecture/2024-11-ucp-component-threat-model.md) | Threat model for the UCP component (proxy, credential storage, resource routing). | UCP exists at `pkg/ucp/`, `cmd/ucpd/`. |
 | [`resources/2025-11-11-secrets-redactdata.md`](https://github.com/radius-project/design-notes/blob/main/resources/2025-11-11-secrets-redactdata.md) | Designs sensitive data redaction for `Radius.Security/secrets`, ensuring secret values are not exposed through API responses or logs. | `Radius.Security/secrets` resource type defined in `deploy/manifest/built-in-providers/dev/radius_security.yaml` with full schema for secret data storage and referencing. |
 
@@ -195,12 +202,12 @@ eng/
 
 ### Spec Kit Specifications (2 directories)
 
-Spec Kit specifications are structured project artifacts (plans, research, tasks, checklists) that differ from point-in-time design notes. They will be migrated to `eng/specs/` alongside `eng/design-notes/`.
+Spec Kit specifications are structured project artifacts (plans, research, tasks, checklists) that differ from point-in-time design notes. They will be migrated to `specs/` at the repository root.
 
 | Source | Destination | Summary |
-|--------|-------------|--------|
-| [`specs/001-lrt-current-release/`](https://github.com/radius-project/design-notes/tree/main/specs/001-lrt-current-release) | `eng/specs/001-lrt-current-release/` | Design spec for long-running tests using the current release, including plan, research, tasks, checklists, and quickstart. |
-| [`specs/001-remove-bicep-types-submodule/`](https://github.com/radius-project/design-notes/tree/main/specs/001-remove-bicep-types-submodule) | `eng/specs/001-remove-bicep-types-submodule/` | Specification for removing the bicep-types submodule and migrating to pnpm, including plans, research, and tasks. |
+|--------|-------------|-------|
+| [`specs/001-lrt-current-release/`](https://github.com/radius-project/design-notes/tree/main/specs/001-lrt-current-release) | `specs/001-lrt-current-release/` | Design spec for long-running tests using the current release, including plan, research, tasks, checklists, and quickstart. |
+| [`specs/001-remove-bicep-types-submodule/`](https://github.com/radius-project/design-notes/tree/main/specs/001-remove-bicep-types-submodule) | `specs/001-remove-bicep-types-submodule/` | Specification for removing the bicep-types submodule and migrating to pnpm, including plans, research, and tasks. |
 
 ### Spec Kit Configuration (1 directory)
 
@@ -250,11 +257,11 @@ Custom agents and Copilot prompts from the design-notes repository are migrated 
 | [`.github/prompts/speckit.tasks.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.tasks.prompt.md) | `.github/prompts/speckit.tasks.prompt.md` | Spec Kit prompt for creating, organizing, and managing project tasks. |
 | [`.github/prompts/speckit.taskstoissues.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.taskstoissues.prompt.md) | `.github/prompts/speckit.taskstoissues.prompt.md` | Spec Kit prompt for converting tasks to GitHub issues for tracking and collaboration. |
 
-**Total: 53 documents/directories recommended for migration (33 + 20 agents/prompts
+**Total: 56 documents/directories recommended for migration (36 + 20 agents/prompts).**
 
 ## Documents NOT Recommended for Migration
 
-### Aspirational / Not Yet Implemented (8 documents)
+### Aspirational / Not Yet Implemented (7 documents)
 
 These documents describe future plans with no corresponding implementation in the current codebase:
 
@@ -266,17 +273,17 @@ These documents describe future plans with no corresponding implementation in th
 | `features/2025-01-serverless-feature-spec.md` | Serverless platform support (ACI, ECS, ACA) is not implemented. |
 | `features/2025-07-10-offline-install-feature-spec.md` | Offline/air-gapped installation is not implemented. |
 | `features/2025-07-23-radius-configuration-ux.md` | Configuration UX modeling configs as resources is not implemented. |
-| `features/2025-07-radius-resource-types-contribution.md` | Community contribution model for resource types is not implemented. |
+| `features/2025-07-radius-resource-types-contribution.md` | Migrated to `extensibility/` — see Documents Recommended for Migration. |
 | `features/2025-08-14-terraform-bicep-settings.md` | Terraform/Bicep settings refactoring feature spec is not implemented. |
 
-### Applications.Core Related (12 documents)
+### Applications.Core Related (10 documents)
 
 These documents are about `Applications.Core/*` or other `Applications.*` resource types managed by the Applications RP:
 
 | Document | Reason for Exclusion |
 |----------|---------------------|
-| `architecture/2024-08-applications-rp-component-threat-model.md` | Threat model for the Applications RP covering `Applications.Core`, `Applications.Dapr`, `Applications.Datastores`, and `Applications.Messaging`. |
-| `architecture/2024-08-dashboard-component-threat-model.md` | Threat model for the Dashboard component (separate repository, tied to Applications RP). |
+| `architecture/2024-08-applications-rp-component-threat-model.md` | Migrated to `security/` — see Documents Recommended for Migration. |
+| `architecture/2024-08-dashboard-component-threat-model.md` | Migrated to `security/` — see Documents Recommended for Migration. |
 | `features/2024-07-secretstore-feature-spec.md` | Feature spec for extending `Applications.Core/secretStores` use cases. |
 | `recipe/2024-01-global-scope-secret-store.md` | Extends `Applications.Core/secretStores` to global scope. |
 | `resources/2023-04-tls-termination.md` | TLS termination for `Applications.Core/gateways`. |
