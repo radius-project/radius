@@ -140,12 +140,16 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return ucp_aws.HandleAWSError(err)
 		}
 
+		logger.Info(fmt.Sprintf("Update patch: currentState=%s desiredState=%s", string(currentState), string(desiredState)))
+
 		// Call update only if the patch is not empty
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
 			if err != nil {
 				return ucp_aws.HandleAWSError(err)
 			}
+
+			logger.Info(fmt.Sprintf("Sending UpdateResource patchDocument=%s", string(marshaled)))
 
 			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
