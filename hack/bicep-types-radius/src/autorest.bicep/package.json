@@ -32,5 +32,10 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.6.3",
     "bicep-types-repo": "git+https://github.com/Azure/bicep-types.git#556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7"
+  },
+  "pnpm": {
+    "overrides": {
+      "handlebars": ">=4.7.9"
+    }
   }
 }
