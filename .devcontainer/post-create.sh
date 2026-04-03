@@ -11,8 +11,15 @@ if [[ ! -f "${GOLANGCI_LINT_VERSION_FILE}" ]]; then
 	exit 1
 fi
 
-# Stripping any trailing newlines
+# Strip line endings and surrounding whitespace from the version value.
 GOLANGCI_LINT_VERSION="$(tr -d '\r\n' < "${GOLANGCI_LINT_VERSION_FILE}")"
+GOLANGCI_LINT_VERSION="${GOLANGCI_LINT_VERSION#"${GOLANGCI_LINT_VERSION%%[![:space:]]*}"}"
+GOLANGCI_LINT_VERSION="${GOLANGCI_LINT_VERSION%"${GOLANGCI_LINT_VERSION##*[![:space:]]}"}"
+
+if [[ -z "${GOLANGCI_LINT_VERSION}" ]]; then
+	echo "Error: golangci-lint version file is empty: ${GOLANGCI_LINT_VERSION_FILE}" >&2
+	exit 1
+fi
 readonly GOLANGCI_LINT_VERSION
 
 echo "============================================================================"
