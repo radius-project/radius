@@ -7,8 +7,8 @@ readonly SCRIPT_DIR
 readonly GOLANGCI_LINT_VERSION_FILE="${SCRIPT_DIR}/../.golangci-lint-version"
 
 if [[ ! -f "${GOLANGCI_LINT_VERSION_FILE}" ]]; then
-	echo "Error: missing golangci-lint version file: ${GOLANGCI_LINT_VERSION_FILE}" >&2
-	exit 1
+    echo "Error: missing golangci-lint version file: ${GOLANGCI_LINT_VERSION_FILE}" >&2
+    exit 1
 fi
 
 # Strip line endings and surrounding whitespace from the version value.
@@ -17,8 +17,8 @@ GOLANGCI_LINT_VERSION="${GOLANGCI_LINT_VERSION#"${GOLANGCI_LINT_VERSION%%[![:spa
 GOLANGCI_LINT_VERSION="${GOLANGCI_LINT_VERSION%"${GOLANGCI_LINT_VERSION##*[![:space:]]}"}"
 
 if [[ -z "${GOLANGCI_LINT_VERSION}" ]]; then
-	echo "Error: golangci-lint version file is empty: ${GOLANGCI_LINT_VERSION_FILE}" >&2
-	exit 1
+    echo "Error: golangci-lint version file is empty: ${GOLANGCI_LINT_VERSION_FILE}" >&2
+    exit 1
 fi
 readonly GOLANGCI_LINT_VERSION
 
