@@ -197,6 +197,7 @@ test_help_long_flag() {
     assert_contains "${LAST_OUTPUT}" "--version"
     assert_contains "${LAST_OUTPUT}" "--install-dir"
     assert_contains "${LAST_OUTPUT}" "--include-rc"
+    assert_contains "${LAST_OUTPUT}" "edge"
 }
 
 test_help_short_flag() {
@@ -308,6 +309,100 @@ test_path_hint_shown() {
     assert_contains "${LAST_OUTPUT}" "not in your"
 }
 
+test_version_with_v_prefix() {
+    local dir
+    dir=$(make_test_dir "v-prefix")
+    run_installer "${INSTALLER}" --version "v${PINNED_VERSION}" \
+        --install-dir "${dir}"
+    assert_rad_installed "${dir}"
+
+    local actual
+    actual=$("${dir}/rad" version --cli 2>&1)
+    assert_contains "${actual}" "${PINNED_VERSION}"
+}
+
+test_edge_version_without_oras() {
+    local dir
+    dir=$(make_test_dir "edge-no-oras")
+
+    # Build a PATH with the tools install.sh needs, intentionally excluding
+    # oras so this failure path is exercised even on runners where oras exists.
+    local bin_dir
+    bin_dir=$(make_test_dir "edge-no-oras-bin")
+    local tool tool_path
+    for tool in bash curl wget mktemp uname tr grep awk sed; do
+        tool_path=$(command -v "${tool}" 2>/dev/null) || continue
+        ln -sf "${tool_path}" "${bin_dir}/"
+    done
+
+    echo "  CMD: PATH=<no-oras> ${INSTALLER} --version edge --install-dir ${dir}"
+    if LAST_OUTPUT=$(PATH="${bin_dir}" "${INSTALLER}" --version edge \
+        --install-dir "${dir}" 2>&1); then
+        echo "  ASSERT FAILED: expected non-zero exit for edge without oras"
+        return 1
+    fi
+    echo "${LAST_OUTPUT}"
+    assert_contains "${LAST_OUTPUT}" "oras CLI is not installed"
+}
+
+test_edge_version_with_oras() {
+    if ! command -v oras &> /dev/null; then
+        echo "  SKIP: oras is not installed; cannot test edge download"
+        return 0
+    fi
+
+    local dir
+    dir=$(make_test_dir "edge-with-oras")
+    run_installer "${INSTALLER}" --version edge --install-dir "${dir}"
+    assert_rad_installed "${dir}"
+}
+
+test_flag_overrides_install_dir_env() {
+    local env_dir flag_dir
+    env_dir=$(make_test_dir "env-dir-ignored")
+    flag_dir=$(make_test_dir "flag-dir-wins")
+    INSTALL_DIR="${env_dir}" run_installer "${INSTALLER}" \
+        --version "${PINNED_VERSION}" --install-dir "${flag_dir}"
+    assert_rad_installed "${flag_dir}"
+
+    # Ensure the env var directory did NOT get the binary
+    if [[ -f "${env_dir}/rad" ]]; then
+        echo "  ASSERT FAILED: rad found in env var dir (flag should win)"
+        return 1
+    fi
+}
+
+test_install_dir_env_overrides_radius_install_dir() {
+    local primary_dir compat_dir
+    primary_dir=$(make_test_dir "primary-env")
+    compat_dir=$(make_test_dir "compat-env-ignored")
+    INSTALL_DIR="${primary_dir}" RADIUS_INSTALL_DIR="${compat_dir}" \
+        run_installer "${INSTALLER}" --version "${PINNED_VERSION}"
+    assert_rad_installed "${primary_dir}"
+
+    if [[ -f "${compat_dir}/rad" ]]; then
+        echo "  ASSERT FAILED: rad found in RADIUS_INSTALL_DIR (INSTALL_DIR should win)"
+        return 1
+    fi
+}
+
+test_warn_existing_rad_elsewhere() {
+    local old_dir new_dir
+    old_dir=$(make_test_dir "old-rad")
+    new_dir=$(make_test_dir "new-rad")
+
+    # Create a fake rad binary in old_dir
+    printf '#!/bin/bash\necho "fake"' > "${old_dir}/rad"
+    chmod +x "${old_dir}/rad"
+
+    # Install to new_dir with old_dir in PATH so the warning triggers
+    PATH="${old_dir}:${PATH}" run_installer "${INSTALLER}" \
+        --version "${PINNED_VERSION}" --install-dir "${new_dir}"
+    assert_rad_installed "${new_dir}"
+    assert_contains "${LAST_OUTPUT}" "WARNING"
+    assert_contains "${LAST_OUTPUT}" "Existing Radius CLI"
+}
+
 # ── Non-privileged Environment Tests ────────────────────────────────────────
 
 test_default_dir_nonroot() {
@@ -401,6 +496,12 @@ run_test "reinstall over existing binary" test_reinstall_over_existing
 run_test "legacy positional version arg" test_legacy_positional_version
 run_test "unknown flag exits non-zero" test_unknown_flag_fails
 run_test "PATH hint shown for non-PATH dir" test_path_hint_shown
+run_test "version with v prefix" test_version_with_v_prefix
+run_test "edge version without oras fails" test_edge_version_without_oras
+run_test "edge version with oras succeeds" test_edge_version_with_oras
+run_test "--install-dir flag overrides INSTALL_DIR env" test_flag_overrides_install_dir_env
+run_test "INSTALL_DIR env overrides RADIUS_INSTALL_DIR" test_install_dir_env_overrides_radius_install_dir
+run_test "warning for existing rad elsewhere in PATH" test_warn_existing_rad_elsewhere
 run_test "default dir is ~/.local/bin for non-root" test_default_dir_nonroot
 run_test "non-writable dir without sudo fails" test_nonwritable_dir_no_sudo_fails
 
