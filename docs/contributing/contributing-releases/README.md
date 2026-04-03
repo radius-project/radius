@@ -41,14 +41,17 @@ Radius follows a monthly release cadence. All contributions merged to `main` thr
 
 ### Release automation
 
-Two GitHub Actions workflows drive the release process:
+Two GitHub Actions workflows drive the release process. **No one manually creates tags in `radius-project` repos.** Tags for repos in the `radius-project` organization are created automatically by the `release.yaml` workflow. (The [Deployment Engine repo](https://github.com/azure-octo/deployment-engine) in the `azure-octo` organization still requires manual tagging — see the release steps below.)
 
-1. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered by changes to `versions.yaml` on `main` or `release/*` branches. This workflow:
+1. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered whenever `versions.yaml` is pushed to `main` or a `release/*` branch. This workflow:
+   - Reads `versions.yaml` to determine the desired version
+   - Checks whether a git tag for that version already exists
+   - **Automatically creates and pushes the version tag** (e.g., `v0.56.0-rc1`) for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
    - Creates the release branch (`release/<channel>`) if it does not already exist
-   - Creates version tags for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
    - Dispatches Deployment Engine image publishing to GHCR
+   - Skips tag/branch creation if the release branch already exists **and** the trigger was a push to `main` (this prevents duplicate work when `versions.yaml` is merged to `main` and later cherry-picked to the release branch)
 
-2. **[Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml)** (`build.yaml`): Triggered by `v*` tags. This workflow:
+2. **[Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml)** (`build.yaml`): Triggered by `v*` tag pushes (created by `release.yaml` above). This workflow:
    - Builds CLI binaries and container images
    - Dispatches Bicep types publishing
    - Creates the GitHub Release (auto-generated notes for RCs, or from `docs/release-notes/` for final and patch releases)
@@ -56,11 +59,21 @@ Two GitHub Actions workflows drive the release process:
 The automated flow after merging a `versions.yaml` change:
 
 ```text
-Merge versions.yaml change
-  → release.yaml creates tag + branch
-    → tag triggers build.yaml
-      → build.yaml publishes artifacts + creates GitHub Release
+Merge versions.yaml change (to main or release/* branch)
+  → release.yaml detects new version in versions.yaml
+    → release.yaml creates git tag + release branch (if needed)
+      → tag push triggers build.yaml
+        → build.yaml publishes artifacts + creates GitHub Release
 ```
+
+#### When does tag creation happen?
+
+| Scenario | Trigger | What happens |
+| --- | --- | --- |
+| **First RC** | `versions.yaml` merged to `main` | `release.yaml` creates the release branch from `main` and pushes the RC tag |
+| **Subsequent RC** | `versions.yaml` cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the new RC tag |
+| **Final release** | Version bump cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the final tag |
+| **Patch release** | `versions.yaml` cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the patch tag |
 
 ### Cherry-pick workflow
 
@@ -123,14 +136,19 @@ Push the branch and create a PR against `main`:
 git push origin <USERNAME>/release-X.Y.0-rcN
 ```
 
-After maintainer approval, merge the PR.
+After approval, merge the PR to `main`.
 
 ### Step 4: Verify the automated release
 
-After merging, the [release automation](#release-automation) creates the tag and release branch automatically. Monitor and verify:
+After merging, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on `main`.
 
-1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches).
-2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the new tag) completes successfully. This workflow also dispatches Bicep types publishing automatically.
+- **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rcN` tag. The tag push then triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
+- **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 6](#step-6-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 5 for now and return to verify after completing Step 6.
+
+Monitor and verify:
+
+1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches) and the `vX.Y.Z-rcN` [tag](https://github.com/radius-project/radius/tags).
+2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
 3. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
 ### Step 5: Publish Bicep recipes
@@ -159,11 +177,11 @@ Push and create a PR targeting the release branch:
 git push origin <USERNAME>/cherry-pick-rcN-to-release-branch
 ```
 
-After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag.
+After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag. Return to [Step 4](#step-4-verify-the-automated-release) to verify the release completed successfully.
 
 ### Step 7: Run validation workflows
 
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch with the RC version number.
+1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc1`).
 
 2. In `radius-project/docs`, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow from the **previous** release branch (e.g., run from `v0.55` when releasing `v0.56`).
 
@@ -173,7 +191,7 @@ After approval, merge the PR. This triggers the release automation on the releas
 
    > This generates a PR. Get approval and merge it before proceeding. The PR excludes `bicepconfig.json`.
 
-4. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch with the RC version number.
+4. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc1`).
 
    > Run this only after the upmerge PR has been merged to `edge`. If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
@@ -210,8 +228,6 @@ git pull origin main
 git checkout -b <USERNAME>/final-release-X.Y.0
 ```
 
-Make both of the following changes and commit them together in a **single commit** (this is important because only one cherry-pick will be applied to the release branch):
-
 1. **Update `versions.yaml`**: Change the RC version to the final version ([example PR](https://github.com/radius-project/radius/pull/6992/files#diff-1c4cd801df522f4a92edbfb0fea95364ed074a391ea47c284ddc078f512f7b6a)).
 
    ```yaml
@@ -220,23 +236,19 @@ Make both of the following changes and commit them together in a **single commit
        version: 'v0.56.0'   # was v0.56.0-rc1
    ```
 
-2. **Create release notes**: Add `docs/release-notes/vX.Y.Z.md` using the [release notes template](../../release-notes/template.md). See the [release notes README](../../release-notes/README.md) for instructions on generating the changelog and contributor list ([example PR](https://github.com/radius-project/radius/pull/6092/files)).
+2. **Create a draft release notes file**: Add `docs/release-notes/vX.Y.Z.md` using the [release notes template](../../release-notes/template.md). See the [release notes README](../../release-notes/README.md) for instructions ([example PR](https://github.com/radius-project/radius/pull/6092/files)).
 
-> The PR will receive an auto-generated release notes comment — use it as a starting point.
+3. **Push and create a PR** against `main`. The PR will receive an auto-generated release notes comment — use it to fill in the changelog and contributor list in your release notes file. Push an update with the completed release notes.
+
+> The PR will be squash-merged into a single commit on `main`, which is the commit you will cherry-pick to the release branch.
 
 ### Step 3: Merge to main
 
-Push and create a PR against `main`:
-
-```bash
-git push origin <USERNAME>/final-release-X.Y.0
-```
-
-After maintainer approval, merge the PR.
+After approval, squash-merge the PR.
 
 ### Step 4: Cherry-pick to the release branch
 
-Cherry-pick **only the single commit** (version bump + release notes) onto the release branch. Do **not** cherry-pick any other commits.
+Cherry-pick the squash-merged commit (version bump + release notes) onto the release branch.
 
 ```bash
 git checkout release/X.Y
@@ -257,8 +269,13 @@ After approval, merge the PR.
 
 ### Step 5: Verify the automated release
 
-1. Monitor the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow triggered by the `vX.Y.Z` tag. Allow up to ~20 minutes for release assets to be published.
-2. Verify that a final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
+After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the final version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed.
+
+Monitor and verify:
+
+1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
+2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
+3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
 ### Step 6: Publish Bicep recipes
 
@@ -266,15 +283,15 @@ In the `radius-project/resource-types-contrib` repo, manually run the [Publish B
 
 ### Step 7: Publish docs and samples
 
-1. In `radius-project/docs`, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow from the `edge` branch with the version number (`X.Y.Z`).
+1. In `radius-project/docs`, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
-2. In `radius-project/samples`, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow from the `edge` branch with the version number (`X.Y.Z`).
+2. In `radius-project/samples`, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
 ### Step 8: Run validation workflows
 
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch with the final version number.
+1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the final version number without the `v` prefix as the version (e.g., `0.56.0`).
 
-2. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch with the final version number.
+2. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the final version number without the `v` prefix as the version (e.g., `0.56.0`).
 
    > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
@@ -333,14 +350,19 @@ After approval, merge the PR.
 
 ### Step 4: Verify the automated release
 
-1. Monitor the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow triggered by the `vX.Y.Z` tag. Allow up to ~20 minutes for release assets to be published.
-2. Verify that a patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
+After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the patch version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed.
+
+Monitor and verify:
+
+1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
+2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
+3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
 ### Step 5: Run validation workflows
 
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch with the patch version number.
+1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the patch version number without the `v` prefix as the version (e.g., `0.56.1`).
 
-2. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch with the patch version number.
+2. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the patch version number without the `v` prefix as the version (e.g., `0.56.1`).
 
    > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
