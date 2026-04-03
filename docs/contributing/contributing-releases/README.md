@@ -51,6 +51,8 @@ Two GitHub Actions workflows drive the release process. **No one manually create
    - Dispatches Deployment Engine image publishing to GHCR
    - Skips tag/branch creation if the release branch already exists **and** the trigger was a push to `main` (this prevents duplicate work when `versions.yaml` is merged to `main` and later cherry-picked to the release branch)
 
+   > **Note**: The workflow always checks out and reads `versions.yaml` from `main`, even when triggered by a push to a `release/*` branch. This means the version must be merged into `main` before the cherry-pick to the release branch triggers tag creation.
+
    > **Important**:
    >
    > - Add the new release version at the top of the `supported` list in `versions.yaml`.
