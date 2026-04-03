@@ -306,6 +306,8 @@ If all workflows pass, the release is complete.
 
 Use this process to fix a bug in an already-released version.
 
+> **Note**: If the patch includes a fix to the [Deployment Engine](https://github.com/azure-octo/deployment-engine), you must also tag the Deployment Engine with the patch version (e.g., `vX.Y.Z`) before proceeding, following the same process as in the [RC](#step-1-tag-the-deployment-engine) and [Final release](#step-1-tag-the-deployment-engine-1) sections.
+
 ### Step 1: Merge the fix to main
 
 Open a PR with the bug fix targeting `main`. After approval, merge it.
