@@ -2,6 +2,19 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+readonly GOLANGCI_LINT_VERSION_FILE="${SCRIPT_DIR}/../.golangci-lint-version"
+
+if [[ ! -f "${GOLANGCI_LINT_VERSION_FILE}" ]]; then
+	echo "Error: missing golangci-lint version file: ${GOLANGCI_LINT_VERSION_FILE}" >&2
+	exit 1
+fi
+
+# Stripping any trailing newlines
+GOLANGCI_LINT_VERSION="$(tr -d '\r\n' < "${GOLANGCI_LINT_VERSION_FILE}")"
+readonly GOLANGCI_LINT_VERSION
+
 echo "============================================================================"
 echo "Starting post-create setup..."
 echo "============================================================================"
@@ -25,8 +38,8 @@ pnpm config set store-dir /tmp/.pnpm-store
 
 # Install the binary form of golangci-lint, as recommended
 # https://golangci-lint.run/welcome/install/#local-installation
-echo "Installing golangci-lint v2.9.0..."
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.9.0
+echo "Installing golangci-lint ${GOLANGCI_LINT_VERSION}..."
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
 
 # Other go tools
 echo "Installing controller-gen..."
