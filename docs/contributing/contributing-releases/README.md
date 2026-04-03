@@ -44,13 +44,18 @@ Radius follows a monthly release cadence. All contributions merged to `main` thr
 Two GitHub Actions workflows drive the release process. **No one manually creates tags in `radius-project` repos.** Tags for repos in the `radius-project` organization are created automatically by the `release.yaml` workflow. (The [Deployment Engine repo](https://github.com/azure-octo/deployment-engine) in the `azure-octo` organization still requires manual tagging — see the release steps below.)
 
 1. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered whenever `versions.yaml` is pushed to `main` or a `release/*` branch. This workflow:
-   - Reads `versions.yaml` to determine the desired version
+   - Scans `versions.yaml` in `.supported[]` order and selects the first `.version` entry whose git tag does not already exist
    - Checks whether a git tag for that version already exists
    - **Automatically creates and pushes the version tag** (e.g., `v0.56.0-rc1`) for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
    - Creates the release branch (`release/<channel>`) if it does not already exist
    - Dispatches Deployment Engine image publishing to GHCR
    - Skips tag/branch creation if the release branch already exists **and** the trigger was a push to `main` (this prevents duplicate work when `versions.yaml` is merged to `main` and later cherry-picked to the release branch)
 
+   > **Important**:
+   >
+   > - Add the new release version at the top of the `supported` list in `versions.yaml`.
+   > - Change only one version per PR.
+   > - If more than one new untagged version is present in `supported`, `release.yaml` fails rather than guessing which one to release.
 2. **[Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml)** (`build.yaml`): Triggered by `v*` tag pushes (created by `release.yaml` above). This workflow:
    - Builds CLI binaries and container images
    - Dispatches Bicep types publishing
