@@ -79,6 +79,15 @@ eng/
 │   ├── guides/                            # Living design guidelines
 │   │   └── api-design-guidelines.md
 │   ├── recipes/                           # Recipe engine and providers
+│   │   ├── 2023-07-terraform-template-version.md
+│   │   ├── 2023-08-garbage-collection.md
+│   │   ├── 2023-09-populate-terraform-resourcs-ids.md
+│   │   ├── 2023-11-support-insecure-registries.md
+│   │   ├── 2023-11-validate-template-path.md
+│   │   ├── 2024-01-support-private-terraform-repository.md
+│   │   ├── 2024-02-terraform-providers.md
+│   │   ├── 2024-04-terraform-provider-secrets.md
+│   │   ├── 2024-06-private-bicep-registries.md
 │   │   ├── 2025-08-recipe-packs.md
 │   │   └── 2025-09-container-recipe.md
 │   ├── security/                          # Threat models and security designs
@@ -185,10 +194,19 @@ specs/                                         # Spec Kit specifications
 |----------|---------|---------------------------|
 | [`guides/api-design-guidelines.md`](https://github.com/radius-project/design-notes/blob/main/guides/api-design-guidelines.md) | Prescriptive API design guidelines for Radius contributors, currently focused on secrets handling. Living document. | Guidelines are actively referenced in design reviews and API development. |
 
-### Recipes (2 documents)
+### Recipes (11 documents)
 
 | Document | Summary | Evidence of Implementation |
 |----------|---------|---------------------------|
+| [`recipe/2023-07-terraform-template-version.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2023-07-terraform-template-version.md) | Makes Terraform recipe `templateVersion` optional for non-registry sources while preserving versioned registry modules. | Terraform config generation handles omitted versions in `pkg/recipes/terraform/config/config.go`; tests cover the empty-version case in `pkg/recipes/terraform/config/config_test.go`. |
+| [`recipe/2023-08-garbage-collection.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2023-08-garbage-collection.md) | Moves Bicep recipe garbage collection into the recipe execution path by comparing prior output resources with the current deployment output. | `pkg/recipes/engine/types.go` carries previous state into execution; `pkg/recipes/driver/bicep/bicep.go` deletes obsolete output resources; `pkg/recipes/errorcodes.go` defines `RecipeGarbageCollectionFailed`. |
+| [`recipe/2023-09-populate-terraform-resourcs-ids.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2023-09-populate-terraform-resourcs-ids.md) | Populates Terraform recipe output resources from Terraform state and synthesizes UCP-qualified IDs for Azure, AWS, and Kubernetes resources. | `pkg/recipes/driver/terraform/terraform.go` parses Terraform state in `getDeployedOutputResources`; coverage for AWS and Kubernetes ID conversion exists in `pkg/recipes/driver/terraform/terraform_test.go`. |
+| [`recipe/2023-11-support-insecure-registries.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2023-11-support-insecure-registries.md) | Adds opt-in `plainHttp` support for publishing and consuming Bicep recipes from insecure OCI registries. | `pkg/cli/cmd/bicep/publish/publish.go` and `pkg/cli/cmd/recipe/register/register.go` expose the `plain-http` flag; `pkg/rp/util/registry.go` sets `repo.PlainHTTP`; `pkg/recipes/types.go` carries the setting in recipe definitions. |
+| [`recipe/2023-11-validate-template-path.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2023-11-validate-template-path.md) | Validates Terraform recipe template paths during environment conversion so invalid module sources fail early with user-facing errors. | `pkg/corerp/api/v20231001preview/environment_conversion.go` validates Terraform template paths and rejects unsupported local module paths; `pkg/corerp/api/v20231001preview/environment_conversion_test.go` covers accepted registry and HTTP inputs. |
+| [`recipe/2024-01-support-private-terraform-repository.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2024-01-support-private-terraform-repository.md) | Adds authentication configuration for private Terraform module repositories using secret-backed git credentials in environment recipe config. | `pkg/recipes/engine/engine.go` resolves secret references before execution; `pkg/recipes/driver/terraform/terraform.go` exposes `FindSecretIDs`; `pkg/recipes/configloader/secrets.go` loads the referenced secret data. |
+| [`recipe/2024-02-terraform-providers.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2024-02-terraform-providers.md) | Supports multiple Terraform provider configurations, aliases, and environment variables at the environment recipe-config level. | Terraform provider configuration generation is implemented in `pkg/recipes/terraform/config/providers/`; runtime environment variables and `envSecrets` are applied in `pkg/recipes/terraform/execute.go`. |
+| [`recipe/2024-04-terraform-provider-secrets.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2024-04-terraform-provider-secrets.md) | Defines how provider and environment-variable secrets are discovered in the engine and passed into the Terraform driver without persisting secret values. | The engine-to-driver secret flow is implemented through `pkg/recipes/driver/types.go`, `pkg/recipes/engine/engine.go`, and `pkg/recipes/configloader/secrets.go`; Terraform-specific secret extraction is covered in `pkg/recipes/terraform/types.go`. |
+| [`recipe/2024-06-private-bicep-registries.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2024-06-private-bicep-registries.md) | Adds secret-backed authentication for private Bicep registries, including basic auth, Azure workload identity, and AWS IRSA. | Registry auth resolution is implemented in `pkg/rp/util/registry.go`; auth client types live in `pkg/rp/util/authclient/`; tests cover auth modes in `pkg/rp/util/registry_test.go` and `pkg/rp/util/authclient/types_test.go`. |
 | [`recipe/2025-08-recipe-packs.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2025-08-recipe-packs.md) | Designs Recipe Packs as a first-class resource type, enabling bundling of multiple recipe selections into a reusable unit referenced by environments. | RecipePack TypeSpec in `typespec/Radius.Core/recipePacks.tsp`; controller in `pkg/corerp/frontend/controller/recipepacks/`. |
 | [`recipe/2025-09-container.md`](https://github.com/radius-project/design-notes/blob/main/recipe/2025-09-container.md) | Replaces the imperative Go renderer chain for containers with a Bicep recipe for the `Radius.Compute/containers` resource type. Migrated as `recipes/2025-09-container-recipe.md`. | `Radius.Compute/containers` is recipe-backed in `deploy/manifest/built-in-providers/dev/radius_compute.yaml`. |
 
@@ -221,7 +239,7 @@ The [`.specify/`](https://github.com/radius-project/design-notes/tree/main/.spec
 | [`.specify/scripts/powershell/`](https://github.com/radius-project/design-notes/tree/main/.specify/scripts/powershell) | `.specify/scripts/powershell/` | PowerShell scripts mirroring the Bash scripts: `check-prerequisites.ps1`, `common.ps1`, `create-new-feature.ps1`, `setup-plan.ps1`, `update-agent-context.ps1`. |
 | [`.specify/templates/`](https://github.com/radius-project/design-notes/tree/main/.specify/templates) | `.specify/templates/` | Spec Kit templates: `agent-file-template.md`, `checklist-template.md`, `constitution-template.md`, `plan-template.md`, `spec-template.md`, `tasks-template.md`. |
 
-**Total: 33 documents/directories recommended for migration (32 + `.specify/`).**
+**Total: 42 documents/directories recommended for migration (41 + `.specify/`).**
 
 ### Agents and Prompts (20 files)
 
@@ -257,7 +275,7 @@ Custom agents and Copilot prompts from the design-notes repository are migrated 
 | [`.github/prompts/speckit.tasks.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.tasks.prompt.md) | `.github/prompts/speckit.tasks.prompt.md` | Spec Kit prompt for creating, organizing, and managing project tasks. |
 | [`.github/prompts/speckit.taskstoissues.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.taskstoissues.prompt.md) | `.github/prompts/speckit.taskstoissues.prompt.md` | Spec Kit prompt for converting tasks to GitHub issues for tracking and collaboration. |
 
-**Total: 56 documents/directories recommended for migration (36 + 20 agents/prompts).**
+**Total: 65 documents/directories recommended for migration (45 + 20 agents/prompts).**
 
 ## Documents NOT Recommended for Migration
 
@@ -295,22 +313,6 @@ These documents are about `Applications.Core/*` or other `Applications.*` resour
 | `resources/2024-10-dapr-bindings.md` | Dapr Bindings implementation for `Applications.Dapr/bindings`. |
 | `resources/2025-01-gateway-timeouts.md` | Configurable timeouts for `Applications.Core/gateways`. |
 
-### Recipes (9 documents)
-
-Older recipe design documents (pre-2025) will not be migrated. They describe the recipe engine and provider implementations which are not in scope for migration.
-
-| Document | Reason for Exclusion |
-|----------|---------------------|
-| `recipe/2023-07-terraform-template-version.md` | Recipe engine — not migrating |
-| `recipe/2023-08-garbage-collection.md` | Recipe engine — not migrating |
-| `recipe/2023-09-populate-terraform-resourcs-ids.md` | Recipe engine — not migrating |
-| `recipe/2023-11-support-insecure-registries.md` | Recipe engine — not migrating |
-| `recipe/2023-11-validate-template-path.md` | Recipe engine — not migrating |
-| `recipe/2024-01-support-private-terraform-repository.md` | Recipe engine — not migrating |
-| `recipe/2024-02-terraform-providers.md` | Recipe engine — not migrating |
-| `recipe/2024-04-terraform-provider-secrets.md` | Recipe engine — not migrating |
-| `recipe/2024-06-private-bicep-registries.md` | Recipe engine — not migrating |
-
 ### Operational (1 item)
 
 | Document | Reason for Exclusion |
@@ -323,4 +325,4 @@ Older recipe design documents (pre-2025) will not be migrated. They describe the
 |----------|---------------------|
 | `bicep/README.md` | Directory contains only a README with no design documents. |
 
-**Total: 31 documents/items not recommended for migration.**
+**Total: 22 documents/items not recommended for migration.**
