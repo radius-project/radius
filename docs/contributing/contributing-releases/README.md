@@ -94,6 +94,8 @@ All release types follow the same pattern: changes merge to `main` first, then c
 | **Patch release** | Bug-fix commits + `versions.yaml` update + patch release notes |
 
 > Always use `git cherry-pick -x` to preserve traceability.
+>
+> **Key concept:** The RC release is built from the **release branch** (`release/x.y`), not directly from `main`. After the initial RC is created, the release branch is used for subsequent RCs and for the final release. Changes for RC-2 and all subsequent RCs are first merged to `main` and then cherry-picked to the release branch. This applies to the `versions.yaml` update as well as any optional commits (bug fixes, late features) that must be included in the RC.
 
 ## Creating an RC release
 
