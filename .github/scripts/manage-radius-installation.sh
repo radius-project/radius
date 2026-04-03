@@ -104,11 +104,18 @@ verify_manifests_registered() {
 # This file is used by the cleanup job to avoid deleting Radius-managed resources.
 save_skip_resources_list() {
     echo "Saving list of resources not to be deleted..."
-    if ! kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name" > skip-delete-resources-list.txt; then
+    local tmp_file
+    tmp_file="$(mktemp skip-delete-resources-list.txt.XXXXXX)"
+
+    if kubectl get resources.ucp.dev -n radius-system --no-headers \
+        -o custom-columns=":metadata.name" > "${tmp_file}"; then
+        mv "${tmp_file}" skip-delete-resources-list.txt
+        echo "Skip resources list saved."
+    else
         echo "Error: Failed to retrieve UCP resources from cluster." >&2
+        rm -f "${tmp_file}"
         exit 1
     fi
-    echo "Skip resources list saved."
 }
 
 # Install Radius on the cluster
