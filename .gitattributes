@@ -1,8 +1,20 @@
-# text files use OS defaults on checkout, LF on checkin
-* text eol=auto
+# Force the following filetypes to have unix eols, so Windows does not break them
+* text eol=lf
 
-# shell scripts always use LF
-*.sh text eol=lf
+# Declare files that will always have CRLF line endings on checkout.
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
 
-# images are binary
+# Images are binary
 *.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+
+# Lock files are generated and should ignore line endings
+devcontainer-lock.json -text linguist-generated=true
+pnpm-lock.yaml -text linguist-generated=true
+package-lock.json -text linguist-generated=true
+yarn.lock -text linguist-generated=true
+go.sum -text linguist-generated=true

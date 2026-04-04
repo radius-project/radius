@@ -2,6 +2,8 @@
   "url": "http://example.com/some-path?query=yes",
   "method": "GET",
   "headers": {
+    "X-Forwarded-Host": ["ucp.example.com"],
+    "X-Forwarded-Proto": ["http"],
     "traceparent": ["traceid"]
   },
   "body": ""
