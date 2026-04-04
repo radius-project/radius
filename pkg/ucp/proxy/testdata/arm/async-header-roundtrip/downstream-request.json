@@ -4,7 +4,9 @@
   "headers": {
     "Referer": [
       "http://ucp.example.com/planes/example/local/some-path?query=yes"
-    ]
+    ],
+    "X-Forwarded-Host": ["ucp.example.com"],
+    "X-Forwarded-Proto": ["http"]
   },
   "body": ""
 }
