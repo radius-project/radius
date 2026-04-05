@@ -1,0 +1,43 @@
+{{- if .Values.global.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bicep-de
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: bicep-de
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: bicep-de
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from UCP only (deployment engine receives proxied requests)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+      ports:
+        - protocol: TCP
+          port: 6443
+  egress:
+    # Allow egress to UCP (deployment engine sends resource PUT/DELETE callbacks)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+      ports:
+        - protocol: TCP
+          port: 9443
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

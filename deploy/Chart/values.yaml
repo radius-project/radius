@@ -35,6 +35,13 @@ global:
     workDir: "/work/certs"
     targetMountPath: "/etc/ssl/certs"
 
+  # Configure global.networkPolicy.enabled to add Kubernetes NetworkPolicies
+  # that restrict traffic between Radius components. Requires a CNI plugin
+  # that supports NetworkPolicy (e.g. Calico, Cilium).
+  # Disabled by default for backward compatibility.
+  networkPolicy:
+    enabled: false
+
   prometheus:
     enabled: true
     path: "/metrics"

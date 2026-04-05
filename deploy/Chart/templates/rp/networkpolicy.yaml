@@ -1,0 +1,57 @@
+{{- if .Values.global.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: applications-rp
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: applications-rp
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: applications-rp
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from UCP only
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+      ports:
+        - protocol: TCP
+          port: 5443
+        - protocol: TCP
+          port: 5444
+    {{- if .Values.global.prometheus.enabled }}
+    # Allow Prometheus metrics scraping
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.global.prometheus.port }}
+    {{- end }}
+  egress:
+    # Allow egress to Radius components in the namespace (UCP, database)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: radius
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow egress to Kubernetes API server and external cloud APIs (Azure, AWS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+{{- end }}

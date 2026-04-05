@@ -1,0 +1,41 @@
+{{- if and .Values.global.networkPolicy.enabled .Values.database.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: database
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: database
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from UCP, applications-rp, and dynamic-rp only
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: applications-rp
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: dynamic-rp
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    # Allow DNS resolution only
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

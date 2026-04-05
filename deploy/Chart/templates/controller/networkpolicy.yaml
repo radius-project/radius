@@ -1,0 +1,55 @@
+{{- if .Values.global.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: controller
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow webhook traffic from the Kubernetes API server (any source, as API
+    # server IPs vary by cluster configuration)
+    - ports:
+        - protocol: TCP
+          port: 9443
+    {{- if .Values.global.prometheus.enabled }}
+    # Allow Prometheus metrics scraping
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.global.prometheus.port }}
+    {{- end }}
+  egress:
+    # Allow egress to UCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+      ports:
+        - protocol: TCP
+          port: 9443
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow egress to Kubernetes API server
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+{{- end }}
