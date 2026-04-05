@@ -28,10 +28,102 @@ const (
 	legacyEnvironmentResourceType = "applications.core/environments"
 )
 
+// radiusNamespacePrefixes lists all resource type namespace prefixes that belong to Radius.
+// Resource types with these prefixes are routed through the Radius control plane, not Azure ARM.
+var radiusNamespacePrefixes = []string{
+	"applications.core/",
+	"applications.dapr/",
+	"applications.datastores/",
+	"applications.messaging/",
+	"radius.core/",
+}
+
 // TemplateInspectionResult contains the results of inspecting a Bicep template's resources.
 type TemplateInspectionResult struct {
 	// ContainsEnvironmentResource indicates whether the template contains an environment resource.
 	ContainsEnvironmentResource bool
+}
+
+// ResourceTypeEntry represents a parsed resource type from a compiled Bicep/ARM template.
+type ResourceTypeEntry struct {
+	// FullType is the full type string including API version, e.g. "Radius.Core/applications@2025-08-01-preview".
+	FullType string
+
+	// Type is the resource type without the API version, e.g. "Radius.Core/applications".
+	Type string
+
+	// APIVersion is the API version, e.g. "2025-08-01-preview".
+	APIVersion string
+}
+
+// ExtractResourceTypes extracts all resource types and their API versions from a compiled Bicep/ARM template.
+func ExtractResourceTypes(template map[string]any) []ResourceTypeEntry {
+	if template == nil {
+		return nil
+	}
+
+	resourcesValue, ok := template["resources"]
+	if !ok {
+		return nil
+	}
+
+	resources, ok := resourcesValue.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	var entries []ResourceTypeEntry
+	for _, resourceValue := range resources {
+		resource, ok := resourceValue.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		resourceType, ok := resource["type"].(string)
+		if !ok || resourceType == "" {
+			continue
+		}
+
+		entry := ResourceTypeEntry{FullType: resourceType}
+		if idx := strings.Index(resourceType, "@"); idx >= 0 {
+			entry.Type = resourceType[:idx]
+			entry.APIVersion = resourceType[idx+1:]
+		} else {
+			entry.Type = resourceType
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries
+}
+
+// IsRadiusResourceType returns true if the given resource type belongs to a known Radius namespace.
+func IsRadiusResourceType(resourceType string) bool {
+	lower := strings.ToLower(resourceType)
+	for _, prefix := range radiusNamespacePrefixes {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasOnlyRadiusResourceTypes returns true if the template contains at least one resource and
+// all resources belong to known Radius namespaces (none are Azure ARM or other non-Radius types).
+func HasOnlyRadiusResourceTypes(template map[string]any) bool {
+	entries := ExtractResourceTypes(template)
+	if len(entries) == 0 {
+		return false
+	}
+
+	for _, entry := range entries {
+		if !IsRadiusResourceType(entry.Type) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // InspectTemplateResources inspects the compiled Radius Bicep template's resources to find

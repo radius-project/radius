@@ -1572,3 +1572,99 @@ func Test_ConfigureProviders(t *testing.T) {
 		})
 	}
 }
+
+func Test_addDeploymentErrorContext(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		template       map[string]any
+		expectWrapped  bool
+		expectContains string
+	}{
+		{
+			name: "Non-Azure error is returned as-is",
+			err:  fmt.Errorf("connection refused"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Azure error with only Radius types is wrapped",
+			err:  fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped:  true,
+			expectContains: "incorrect or unsupported API version",
+		},
+		{
+			name: "Azure error with Azure types is returned as-is",
+			err:  fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Azure error with mixed types is returned as-is",
+			err:  fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+					},
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name:          "Azure error with empty template is returned as-is",
+			err:           fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			template:      map[string]any{},
+			expectWrapped: false,
+		},
+		{
+			name: "Azure provider error with only Radius types is wrapped",
+			err:  fmt.Errorf("code: Invalid, message: Azure provider not configured"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped:  true,
+			expectContains: "incorrect or unsupported API version",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := addDeploymentErrorContext(tt.err, tt.template)
+			if tt.expectWrapped {
+				require.NotEqual(t, tt.err, result)
+				require.Contains(t, result.Error(), tt.expectContains)
+				// The original error should be preserved as the cause
+				require.Contains(t, result.Error(), tt.err.Error())
+			} else {
+				require.Equal(t, tt.err, result)
+			}
+		})
+	}
+}
