@@ -56,7 +56,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			assert.Nil(t, real.Transport)
 
 			// No good way to assert the contents of these as they are funcs.
-			assert.NotNil(t, real.Director)
+			assert.NotNil(t, real.Rewrite)
 			assert.NotNil(t, real.ModifyResponse)
 			assert.NotNil(t, real.ErrorHandler)
 		})
@@ -103,7 +103,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			assert.Nil(t, real.Transport)
 
 			// No good way to assert the contents of these as they are funcs.
-			assert.NotNil(t, real.Director)
+			assert.NotNil(t, real.Rewrite)
 			assert.NotNil(t, real.ModifyResponse)
 			assert.NotNil(t, real.ErrorHandler)
 		})
@@ -186,7 +186,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			assert.IsType(t, &transportFunc{}, real.Transport)
 
 			// No good way to assert the contents of these as they are funcs.
-			assert.NotNil(t, real.Director)
+			assert.NotNil(t, real.Rewrite)
 			assert.NotNil(t, real.ModifyResponse)
 			assert.NotNil(t, real.ErrorHandler)
 		})
