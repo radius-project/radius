@@ -39,10 +39,14 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
     # preserved, regardless of whether the skip-delete-resources-list.txt exists.
     # These entries are identified by their ucp.dev/resource-type label.
     RP_INFRA_FILE="$(mktemp)"
-    kubectl get resources.ucp.dev -n radius-system --no-headers \
+    if ! kubectl get resources.ucp.dev -n radius-system --no-headers \
         -o custom-columns=":metadata.name" \
         -l "ucp.dev/resource-type in (system.resources_resourceproviders,system.resources_resourceproviders_resourcetypes,system.resources_resourceproviders_resourcetypes_apiversions,system.resources_resourceproviders_locations)" \
-        > "${RP_INFRA_FILE}" 2>/dev/null || true
+        > "${RP_INFRA_FILE}"; then
+        echo "failed to build resource provider preserve list; aborting resources.ucp.dev cleanup" >&2
+        rm -f "${RP_INFRA_FILE}"
+        exit 1
+    fi
     rp_count=$(wc -l < "${RP_INFRA_FILE}" | tr -d ' ')
     echo "found ${rp_count} resource provider infrastructure entries to preserve"
 
@@ -67,7 +71,7 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
         fi
 
         # Skip resources listed in skip resource file
-        if [[ -n "${SKIP_RESOURCE_FILE}" ]] && [[ -f "${SKIP_RESOURCE_FILE}" ]] && grep -qF "${r}" "${SKIP_RESOURCE_FILE}"; then
+        if [[ -n "${SKIP_RESOURCE_FILE}" ]] && [[ -f "${SKIP_RESOURCE_FILE}" ]] && grep -qFx "${r}" "${SKIP_RESOURCE_FILE}"; then
             echo "skip deletion: ${r} (found in skip-resource-list ${SKIP_RESOURCE_FILE})"
             continue
         fi
