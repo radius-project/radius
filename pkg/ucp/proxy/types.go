@@ -71,14 +71,12 @@ type ReverseProxyBuilder struct {
 
 // Build configures a ReverseProxy with the given parameters and returns a http.HandlerFunc.
 func (builder *ReverseProxyBuilder) Build() ReverseProxy {
-	rp := httputil.NewSingleHostReverseProxy(builder.Downstream)
+	rp := &httputil.ReverseProxy{}
 
-	// NOTE: there's a built-in director. We prepend it here.
-	//
 	// We don't consider workaround28169 optional :-/ the default behavior is just broken.
 	//
 	// We don't want to propagate the Kubernetes authentication headers to the downstream server.
-	directors := []DirectorFunc{rp.Director, workaround28169, filterKubernetesAPIServerHeaders}
+	directors := []DirectorFunc{workaround28169, filterKubernetesAPIServerHeaders}
 	directors = append(directors, builder.Directors...)
 
 	responders := builder.Responders
@@ -100,17 +98,22 @@ func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 	}
 
 	rp.Transport = builder.Transport
-	rp.Director = director(directors)
+	rp.Rewrite = rewrite(builder.Downstream, directors)
 	rp.ModifyResponse = responder(responders)
 	rp.ErrorHandler = errorHandler
 
 	return rp
 }
 
-func director(directors []DirectorFunc) DirectorFunc {
-	return func(r *http.Request) {
+func rewrite(target *url.URL, directors []DirectorFunc) func(*httputil.ProxyRequest) {
+	return func(pr *httputil.ProxyRequest) {
+		pr.SetURL(target)
+		pr.Out.Host = pr.In.Host
+		pr.Out.Header["X-Forwarded-For"] = pr.In.Header["X-Forwarded-For"]
+		pr.SetXForwarded()
+
 		for _, director := range directors {
-			director(r)
+			director(pr.Out)
 		}
 	}
 }
