@@ -49,7 +49,7 @@ const extensionDir = path.resolve(`${rootDir}/src/autorest.bicep/`);
 const autorestBinary = os.platform() === "win32" ? "autorest.cmd" : "autorest";
 const defaultOutDir = path.resolve(`${rootDir}/generated`);
 
-const argsConfig = yargs
+const argsConfig = yargs(process.argv.slice(2))
   .strict()
   .option("specs-dir", {
     type: "string",
