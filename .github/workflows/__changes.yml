@@ -32,13 +32,7 @@ on:
           .github/workflows/devcontainer-feature-test.yaml
           .github/workflows/devops-boards.yaml
           .github/workflows/publish-*.yaml
-          .github/workflows/publish-de-image.yaml
-          .github/workflows/publish-docs.yaml
           .github/workflows/purge-*.yaml
-          .github/workflows/purge-artifacts.yaml
-          .github/workflows/purge-aws-test-resources.yaml
-          .github/workflows/purge-azure-test-resources.yaml
-          .github/workflows/purge-old-images.yaml
           .github/workflows/radius-bot.yaml
           .github/workflows/release.yaml
           .github/workflows/release-verification.yaml
