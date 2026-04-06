@@ -16,11 +16,11 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -e
+set -euo pipefail
 
 SKIP_RESOURCE_FILE="${1:-}"
 echo "cleaning up long-running cluster on Azure"
-echo "Using skip-resource-list from: $SKIP_RESOURCE_FILE"
+echo "Using skip-resource-list from: ${SKIP_RESOURCE_FILE}"
 
 # Delete all test resources in queuemessages.
 if kubectl get crd queuemessages.ucp.dev >/dev/null 2>&1; then
@@ -28,23 +28,55 @@ if kubectl get crd queuemessages.ucp.dev >/dev/null 2>&1; then
     kubectl delete queuemessages.ucp.dev -n radius-system --all --wait=false
 fi
 
-# Testing deletion of deployment.apps.
-
-# Delete all test resources in resources without proxy resource.
+# Delete test resources in resources.ucp.dev while preserving resource provider
+# infrastructure. Resource providers, resource types, API versions, and locations
+# are essential for Radius to function (e.g., Applications.Core/environments).
+# Deleting them causes "resource type not found" errors that break subsequent runs.
 if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
-    echo "delete all resources in resources.ucp.dev"
+    echo "delete test resources in resources.ucp.dev"
+
+    # Build a list of resource provider infrastructure entries that must always be
+    # preserved, regardless of whether the skip-delete-resources-list.txt exists.
+    # These entries are identified by their ucp.dev/resource-type label.
+    RP_INFRA_FILE="$(mktemp)"
+    kubectl get resources.ucp.dev -n radius-system --no-headers \
+        -o custom-columns=":metadata.name" \
+        -l "ucp.dev/resource-type in (system.resources_resourceproviders,system.resources_resourceproviders_resourcetypes,system.resources_resourceproviders_resourcetypes_apiversions,system.resources_resourceproviders_locations)" \
+        > "${RP_INFRA_FILE}" 2>/dev/null || true
+    rp_count=$(wc -l < "${RP_INFRA_FILE}" | tr -d ' ')
+    echo "found ${rp_count} resource provider infrastructure entries to preserve"
+
     resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
-    for r in $resources; do
-        # Skip resources if they're either scope.* or listed in skip resource file
-        if [[ $r == scope.local.* || $r == scope.aws.* || -z "$r" ]]; then
-            echo "skip deletion: $r"
-        elif [ -n "$SKIP_RESOURCE_FILE" ] && [ -f "$SKIP_RESOURCE_FILE" ] && grep -q "$r" "$SKIP_RESOURCE_FILE"; then
-            echo "Skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"    
-        else
-            echo "deleting resource: $r"
-            kubectl delete resources.ucp.dev "$r" -n radius-system --ignore-not-found=true --wait=false
+    for r in ${resources}; do
+        if [[ -z "${r}" ]]; then
+            continue
         fi
+
+        # Skip all scope entries (planes, resource groups, etc.)
+        if [[ ${r} == scope.* ]]; then
+            echo "skip deletion: ${r} (scope entry)"
+            continue
+        fi
+
+        # Skip resource provider infrastructure entries (resource types, API versions, locations).
+        # This is the primary safeguard that protects resource types even when the
+        # skip-delete-resources-list.txt is missing due to a cache miss.
+        if grep -qFx "${r}" "${RP_INFRA_FILE}" 2>/dev/null; then
+            echo "skip deletion: ${r} (resource provider infrastructure)"
+            continue
+        fi
+
+        # Skip resources listed in skip resource file
+        if [[ -n "${SKIP_RESOURCE_FILE}" ]] && [[ -f "${SKIP_RESOURCE_FILE}" ]] && grep -qF "${r}" "${SKIP_RESOURCE_FILE}"; then
+            echo "skip deletion: ${r} (found in skip-resource-list ${SKIP_RESOURCE_FILE})"
+            continue
+        fi
+
+        echo "deleting resource: ${r}"
+        kubectl delete resources.ucp.dev "${r}" -n radius-system --ignore-not-found=true --wait=false
     done
+
+    rm -f "${RP_INFRA_FILE}"
 fi
 
 # Delete all test namespaces.
@@ -70,15 +102,15 @@ namespace_whitelist=(
     "secrets-store-csi-driver"
 )
 namespaces=$(kubectl get namespaces --no-headers -o custom-columns=":metadata.name")
-for ns in $namespaces; do
-    if [ -z "$ns" ]; then
+for ns in ${namespaces}; do
+    if [[ -z "${ns}" ]]; then
         break
     fi
     # shellcheck disable=SC2076
     if [[ " ${namespace_whitelist[*]} " =~ " ${ns} " ]]; then
-        echo "skip deletion: $ns"
+        echo "skip deletion: ${ns}"
     else
-        echo "deleting namespaces: $ns"
-        kubectl delete namespace "$ns" --ignore-not-found=true --wait=false
+        echo "deleting namespaces: ${ns}"
+        kubectl delete namespace "${ns}" --ignore-not-found=true --wait=false
     fi
 done
