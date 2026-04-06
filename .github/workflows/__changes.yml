@@ -14,6 +14,7 @@ on:
           .github/*.md
           docs/**/*.md
           docs/*.md
+          eng/design-notes/**
           test/**/*.md
           test/*.md
           *.md
