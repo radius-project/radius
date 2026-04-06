@@ -19,6 +19,26 @@ on:
           *.md
           versions.yaml
           !docs/release-notes/v*.md
+          .github/workflows/close-stale-prs.yml
+          .github/workflows/devcontainer-feature-release.yaml
+          .github/workflows/devcontainer-feature-test.yaml
+          .github/workflows/devops-boards.yaml
+          .github/workflows/publish-*.yaml
+          .github/workflows/purge-*.yaml
+          .github/workflows/radius-bot.yaml
+          .github/workflows/release.yaml
+          .github/workflows/release-verification.yaml
+          .github/workflows/require-pr-checklist.yaml
+          .github/workflows/scorecard.yaml
+          .github/workflows/triage-bot.yaml
+          .github/ISSUE_TEMPLATE/**
+          .github/configs/**
+          .github/dependabot.yml
+          .github/release.yml
+          .github/runners/**
+          .github/triage-bot/**
+          .devcontainer/**
+          .codecov.yml
       ref:
         description: The branch, tag or SHA to checkout
         required: false
