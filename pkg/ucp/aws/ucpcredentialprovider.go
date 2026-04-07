@@ -185,15 +185,19 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 			logger.Error(err, "Failed to re-assume role for clean session")
 			return aws.Credentials{}, err
 		}
+
+		if assumeRoleOutput.Credentials == nil {
+			return aws.Credentials{}, fmt.Errorf("AssumeRole returned nil credentials")
+		}
 		logger.Info("Successfully re-assumed role for clean session credentials")
 
 		value = aws.Credentials{
-			AccessKeyID:     *assumeRoleOutput.Credentials.AccessKeyId,
-			SecretAccessKey:  *assumeRoleOutput.Credentials.SecretAccessKey,
-			SessionToken:    *assumeRoleOutput.Credentials.SessionToken,
+			AccessKeyID:     aws.ToString(assumeRoleOutput.Credentials.AccessKeyId),
+			SecretAccessKey:  aws.ToString(assumeRoleOutput.Credentials.SecretAccessKey),
+			SessionToken:    aws.ToString(assumeRoleOutput.Credentials.SessionToken),
 			Source:          credentialSource,
 			CanExpire:       true,
-			Expires:         assumeRoleOutput.Credentials.Expiration.UTC(),
+			Expires:         aws.ToTime(assumeRoleOutput.Credentials.Expiration).UTC(),
 		}
 	default:
 		return aws.Credentials{}, errors.New("invalid credential kind")
