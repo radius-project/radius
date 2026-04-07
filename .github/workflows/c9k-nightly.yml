@@ -12,17 +12,19 @@ on:
         required: false
         default: "24"
 
-permissions:
-  issues: write
+permissions: {}
 
 jobs:
   ci-failure-report:
     # Only run on the main repository, not forks
     if: github.repository == 'radius-project/radius'
+    timeout-minutes: 30
+    permissions:
+      issues: write
     runs-on: ubuntu-24.04
     steps:
       - name: Generate CI failure report
-        uses: sylvainsf/causinator9000@v1
+        uses: sylvainsf/causinator9000@037827d60041f6b1235aa7b021a62979d6c3439c # v1
         with:
           hours: ${{ github.event.inputs.hours || '24' }}
           min-confidence: "50"
