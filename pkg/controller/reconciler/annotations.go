@@ -132,8 +132,8 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 	}
 
 	for k, v := range deployment.Annotations {
-		if strings.HasPrefix(k, AnnotationRadiusConnectionPrefix) {
-			result.Configuration.Connections[strings.TrimPrefix(k, AnnotationRadiusConnectionPrefix)] = v
+		if after, ok := strings.CutPrefix(k, AnnotationRadiusConnectionPrefix); ok {
+			result.Configuration.Connections[after] = v
 		}
 	}
 

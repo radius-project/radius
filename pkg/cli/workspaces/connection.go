@@ -170,7 +170,7 @@ type KubernetesConnectionConfig struct {
 	Context string `json:"context" mapstructure:"context" yaml:"context"`
 
 	// Overrides describes local overrides for testing purposes. This field is optional.
-	Overrides KubernetesConnectionOverrides `json:"overrides,omitempty" mapstructure:"overrides" yaml:"overrides,omitempty"`
+	Overrides KubernetesConnectionOverrides `json:"overrides" mapstructure:"overrides" yaml:"overrides,omitempty"`
 }
 
 type KubernetesConnectionOverrides struct {

@@ -42,5 +42,5 @@ type Status struct {
 	ClientObjectID string `json:"clientObjectID,omitempty"`
 
 	// LastUpdatedTime represents the async operation last updated time.
-	LastUpdatedTime time.Time `json:"lastUpdatedTime,omitempty"`
+	LastUpdatedTime time.Time `json:"lastUpdatedTime"`
 }

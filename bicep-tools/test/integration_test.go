@@ -47,13 +47,13 @@ func TestIntegration_WithTypescriptTestData(t *testing.T) {
 			}
 
 			// Validate that types.json is valid JSON array
-			var types []interface{}
+			var types []any
 			if err := json.Unmarshal([]byte(result.TypesContent), &types); err != nil {
 				t.Errorf("Types content is not valid JSON: %v", err)
 			}
 
 			// Validate that index.json is valid JSON object
-			var index map[string]interface{}
+			var index map[string]any
 			if err := json.Unmarshal([]byte(result.IndexContent), &index); err != nil {
 				t.Errorf("Index content is not valid JSON: %v", err)
 			}
@@ -143,7 +143,7 @@ func TestIntegration_CLIEndToEnd(t *testing.T) {
 
 	// Verify the content matches our test data expectations
 	// Test specific content based on the test YAML
-	var index map[string]interface{}
+	var index map[string]any
 	indexPath := filepath.Join(tempDir, "index.json")
 	indexData, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -154,7 +154,7 @@ func TestIntegration_CLIEndToEnd(t *testing.T) {
 	}
 
 	// Verify resources structure
-	resources, ok := index["resources"].(map[string]interface{})
+	resources, ok := index["resources"].(map[string]any)
 	if !ok {
 		t.Fatal("Index resources should be an object")
 	}
@@ -166,7 +166,7 @@ func TestIntegration_CLIEndToEnd(t *testing.T) {
 	}
 
 	// Verify settings
-	settings, ok := index["settings"].(map[string]interface{})
+	settings, ok := index["settings"].(map[string]any)
 	if !ok {
 		t.Fatal("Index settings should be an object")
 	}

@@ -23,7 +23,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/testcontext"
@@ -82,7 +81,7 @@ func Test_ValidateDownstream(t *testing.T) {
 			},
 		},
 		Properties: datamodel.LocationProperties{
-			Address: to.Ptr("http://localhost:7443"),
+			Address: new("http://localhost:7443"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
 				"testResources": {
 					APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{
@@ -306,7 +305,7 @@ func Test_ValidateDownstream(t *testing.T) {
 				},
 			},
 			Properties: datamodel.LocationProperties{
-				Address: to.Ptr("http://localhost:7443"),
+				Address: new("http://localhost:7443"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
 					"testResources2": {
 						APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{
@@ -346,7 +345,7 @@ func Test_ValidateDownstream(t *testing.T) {
 				},
 			},
 			Properties: datamodel.LocationProperties{
-				Address: to.Ptr("http://localhost:7443"),
+				Address: new("http://localhost:7443"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
 					"testResources": {
 						APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{
@@ -386,7 +385,7 @@ func Test_ValidateDownstream(t *testing.T) {
 				},
 			},
 			Properties: datamodel.LocationProperties{
-				Address: to.Ptr("\ninvalid"),
+				Address: new("\ninvalid"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
 					"testResources": {
 						APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{

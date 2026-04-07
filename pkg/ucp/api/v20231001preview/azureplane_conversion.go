@@ -62,7 +62,7 @@ func (dst *AzurePlaneResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	dst.Properties = &AzurePlaneResourceProperties{
 		ProvisioningState: fromProvisioningStateDataModel(plane.InternalMetadata.AsyncProvisioningState),
-		URL:               to.Ptr(plane.Properties.URL),
+		URL:               new(plane.Properties.URL),
 	}
 
 	return nil

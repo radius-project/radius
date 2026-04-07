@@ -63,11 +63,11 @@ func (dst *RecipePackResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(recipePack.ID)
-	dst.Name = to.Ptr(recipePack.Name)
-	dst.Type = to.Ptr(recipePack.Type)
+	dst.ID = new(recipePack.ID)
+	dst.Name = new(recipePack.Name)
+	dst.Type = new(recipePack.Type)
 	dst.SystemData = fromSystemDataModel(&recipePack.SystemData)
-	dst.Location = to.Ptr(recipePack.Location)
+	dst.Location = new(recipePack.Location)
 	dst.Tags = *to.StringMapPtr(recipePack.Tags)
 	dst.Properties = &RecipePackProperties{
 		ProvisioningState: fromProvisioningStateDataModel(recipePack.InternalMetadata.AsyncProvisioningState),
@@ -115,9 +115,9 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 		if recipe != nil {
 			result[key] = &RecipeDefinition{
 				RecipeKind:     fromRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: to.Ptr(recipe.RecipeLocation),
+				RecipeLocation: new(recipe.RecipeLocation),
 				Parameters:     recipe.Parameters,
-				PlainHTTP:      to.Ptr(recipe.PlainHTTP),
+				PlainHTTP:      new(recipe.PlainHTTP),
 			}
 		}
 	}

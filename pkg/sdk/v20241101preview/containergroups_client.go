@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,7 +20,7 @@ import (
 
 type ContainerGroupsClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewContainerGroupsClient creates a new instance of ContainerGroupsClient with the specified values.
@@ -30,7 +29,7 @@ type ContainerGroupsClient struct {
 func NewContainerGroupsClient(subscriptionID string, pl runtime.Pipeline) *ContainerGroupsClient {
 	client := &ContainerGroupsClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -70,7 +69,7 @@ func (client *ContainerGroupsClient) createOrUpdate(ctx context.Context, resourc
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -85,7 +84,7 @@ func (client *ContainerGroupsClient) createOrUpdateCreateRequest(ctx context.Con
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +131,7 @@ func (client *ContainerGroupsClient) deleteOperation(ctx context.Context, resour
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -147,7 +146,7 @@ func (client *ContainerGroupsClient) deleteCreateRequest(ctx context.Context, re
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +192,7 @@ func (client *ContainerGroupsClient) getCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +247,7 @@ func (client *ContainerGroupsClient) getOutboundNetworkDependenciesEndpointsCrea
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +272,7 @@ func (client *ContainerGroupsClient) getOutboundNetworkDependenciesEndpointsHand
 // type, OS type, state, and volumes.
 // Generated from API version 2024-11-01-preview
 // options - ContainerGroupsClientListOptions contains the optional parameters for the ContainerGroupsClient.List method.
-func (client *ContainerGroupsClient) NewListPager(options *ContainerGroupsClientListOptions) (*runtime.Pager[ContainerGroupsClientListResponse]) {
+func (client *ContainerGroupsClient) NewListPager(options *ContainerGroupsClientListOptions) *runtime.Pager[ContainerGroupsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ContainerGroupsClientListResponse]{
 		More: func(page ContainerGroupsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -305,7 +304,7 @@ func (client *ContainerGroupsClient) NewListPager(options *ContainerGroupsClient
 func (client *ContainerGroupsClient) listCreateRequest(ctx context.Context, options *ContainerGroupsClientListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/providers/Microsoft.ContainerInstance/containerGroups"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +331,7 @@ func (client *ContainerGroupsClient) listHandleResponse(resp *http.Response) (Co
 // resourceGroupName - The name of the resource group. The name is case insensitive.
 // options - ContainerGroupsClientListByResourceGroupOptions contains the optional parameters for the ContainerGroupsClient.ListByResourceGroup
 // method.
-func (client *ContainerGroupsClient) NewListByResourceGroupPager(resourceGroupName string, options *ContainerGroupsClientListByResourceGroupOptions) (*runtime.Pager[ContainerGroupsClientListByResourceGroupResponse]) {
+func (client *ContainerGroupsClient) NewListByResourceGroupPager(resourceGroupName string, options *ContainerGroupsClientListByResourceGroupOptions) *runtime.Pager[ContainerGroupsClientListByResourceGroupResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ContainerGroupsClientListByResourceGroupResponse]{
 		More: func(page ContainerGroupsClientListByResourceGroupResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -368,7 +367,7 @@ func (client *ContainerGroupsClient) listByResourceGroupCreateRequest(ctx contex
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +422,7 @@ func (client *ContainerGroupsClient) restart(ctx context.Context, resourceGroupN
 	if !runtime.HasStatusCode(resp, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // restartCreateRequest creates the Restart request.
@@ -438,7 +437,7 @@ func (client *ContainerGroupsClient) restartCreateRequest(ctx context.Context, r
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +482,7 @@ func (client *ContainerGroupsClient) start(ctx context.Context, resourceGroupNam
 	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // startCreateRequest creates the Start request.
@@ -498,7 +497,7 @@ func (client *ContainerGroupsClient) startCreateRequest(ctx context.Context, res
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +541,7 @@ func (client *ContainerGroupsClient) stopCreateRequest(ctx context.Context, reso
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +586,7 @@ func (client *ContainerGroupsClient) updateCreateRequest(ctx context.Context, re
 		return nil, errors.New("parameter containerGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupName}", url.PathEscape(containerGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -606,4 +605,3 @@ func (client *ContainerGroupsClient) updateHandleResponse(resp *http.Response) (
 	}
 	return result, nil
 }
-

@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
@@ -47,7 +46,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 
 	// List should now contain a resource provider.
 	expected := v20231001preview.ResourceProviderSummary{
-		Name:          to.Ptr(resourceProviderNamespace),
+		Name:          new(resourceProviderNamespace),
 		Locations:     map[string]map[string]any{},
 		ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{},
 	}
@@ -65,7 +64,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 	expected.ResourceTypes[resourceTypeName] = &v20231001preview.ResourceProviderSummaryResourceType{
 		APIVersions:       map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{},
 		Capabilities:      []*string{},
-		DefaultAPIVersion: to.Ptr("2025-01-01"),
+		DefaultAPIVersion: new("2025-01-01"),
 	}
 
 	response = server.MakeRequest(http.MethodGet, resourceProviderSummaryURL, nil)

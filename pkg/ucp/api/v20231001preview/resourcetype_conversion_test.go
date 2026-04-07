@@ -49,7 +49,7 @@ func Test_ResourceType_VersionedToDataModel(t *testing.T) {
 				},
 				Properties: datamodel.ResourceTypeProperties{
 					Capabilities:      []string{},
-					DefaultAPIVersion: to.Ptr("2025-01-01"),
+					DefaultAPIVersion: new("2025-01-01"),
 				},
 			},
 		},
@@ -83,13 +83,13 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 		{
 			filename: "resourcetype_datamodel.json",
 			expected: &ResourceTypeResource{
-				ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
 				Type: to.Ptr(datamodel.ResourceTypeResourceType),
-				Name: to.Ptr("testResources"),
+				Name: new("testResources"),
 				Properties: &ResourceTypeProperties{
-					ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
+					ProvisioningState: new(ProvisioningStateSucceeded),
 					Capabilities:      []*string{},
-					DefaultAPIVersion: to.Ptr("2025-01-01"),
+					DefaultAPIVersion: new("2025-01-01"),
 				},
 			},
 		},
@@ -128,7 +128,7 @@ func Test_validateCapability(t *testing.T) {
 		},
 		{
 			name:        "invalid capability",
-			input:       to.Ptr("InvalidCapability"),
+			input:       new("InvalidCapability"),
 			expectedErr: v1.NewClientErrInvalidRequest("capability \"InvalidCapability\" is not recognized. Supported capabilities: ManualResourceProvisioning"),
 		},
 		{

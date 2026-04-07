@@ -300,7 +300,7 @@ func TestUniqueNoncesPerEncryption(t *testing.T) {
 	nonces := make(map[string]bool)
 
 	// Encrypt the same plaintext multiple times
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		encrypted, err := enc.Encrypt(plaintext, nil)
 		require.NoError(t, err)
 

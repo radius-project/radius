@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 
 	"github.com/stretchr/testify/require"
@@ -111,8 +110,8 @@ func Test_Run(t *testing.T) {
 			name:         "Success with --yes flag and resources",
 			confirmation: true,
 			resources: []generated.GenericResource{
-				{Name: to.Ptr("resource1"), Type: to.Ptr("Applications.Core/containers")},
-				{Name: to.Ptr("resource2"), Type: to.Ptr("Applications.Core/gateways")},
+				{Name: new("resource1"), Type: new("Applications.Core/containers")},
+				{Name: new("resource2"), Type: new("Applications.Core/gateways")},
 			},
 			deleteResult: true,
 			skipPrompt:   true,
@@ -184,8 +183,8 @@ func Test_Run(t *testing.T) {
 			name:         "Group with resources - user confirms deletion",
 			confirmation: false,
 			resources: []generated.GenericResource{
-				{Name: to.Ptr("resource1"), Type: to.Ptr("Applications.Core/containers")},
-				{Name: to.Ptr("resource2"), Type: to.Ptr("Applications.Core/gateways")},
+				{Name: new("resource1"), Type: new("Applications.Core/containers")},
+				{Name: new("resource2"), Type: new("Applications.Core/gateways")},
 			},
 			promptResponse: prompt.ConfirmYes,
 			expectedPrompt: "The resource group testrg contains deployed resources. Are you sure you want to delete the resource group and its resources?",
@@ -209,7 +208,7 @@ func Test_Run(t *testing.T) {
 			name:         "Group with resources - user cancels deletion",
 			confirmation: false,
 			resources: []generated.GenericResource{
-				{Name: to.Ptr("resource1"), Type: to.Ptr("Applications.Core/containers")},
+				{Name: new("resource1"), Type: new("Applications.Core/containers")},
 			},
 			promptResponse: prompt.ConfirmNo,
 			expectedPrompt: "The resource group testrg contains deployed resources. Are you sure you want to delete the resource group and its resources?",

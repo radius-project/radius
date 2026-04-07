@@ -67,8 +67,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	dnsPrefix := fmt.Sprintf("%s-%s", gateway.Name, suffix[:10])
 
 	publicIP := &armnetwork.PublicIPAddress{
-		Name:     to.Ptr(gateway.Name),
-		Location: to.Ptr(gateway.Location),
+		Name:     new(gateway.Name),
+		Location: new(gateway.Location),
 		SKU: &armnetwork.PublicIPAddressSKU{
 			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
 			Tier: to.Ptr(armnetwork.PublicIPAddressSKUTierRegional),
@@ -77,7 +77,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			PublicIPAddressVersion:   to.Ptr(armnetwork.IPVersionIPv4),
 			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 			DNSSettings: &armnetwork.PublicIPAddressDNSSettings{
-				DomainNameLabel: to.Ptr(dnsPrefix),
+				DomainNameLabel: new(dnsPrefix),
 			},
 		},
 	}
@@ -98,64 +98,64 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	nsgName := gateway.Name + "-nsg"
 	nsg := &armnetwork.SecurityGroup{
-		Name:     to.Ptr(nsgName),
-		Location: to.Ptr(gateway.Location),
+		Name:     new(nsgName),
+		Location: new(gateway.Location),
 		Properties: &armnetwork.SecurityGroupPropertiesFormat{
 			SecurityRules: []*armnetwork.SecurityRule{
 				{
-					Name: to.Ptr("AppGatewayV2ProbeInbound"),
+					Name: new("AppGatewayV2ProbeInbound"),
 					Properties: &armnetwork.SecurityRulePropertiesFormat{
-						Description:              to.Ptr("Allow traffic from GatewayManager. This rule is needed for application gateway probes to work."),
+						Description:              new("Allow traffic from GatewayManager. This rule is needed for application gateway probes to work."),
 						Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-						SourceAddressPrefix:      to.Ptr("GatewayManager"),
-						SourcePortRange:          to.Ptr("*"),
-						DestinationAddressPrefix: to.Ptr("*"),
-						DestinationPortRange:     to.Ptr("65200-65535"),
+						SourceAddressPrefix:      new("GatewayManager"),
+						SourcePortRange:          new("*"),
+						DestinationAddressPrefix: new("*"),
+						DestinationPortRange:     new("65200-65535"),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](100),
+						Priority:                 new(int32(100)),
 					},
 				},
 				{
-					Name: to.Ptr("AllowHTTPInbound"),
+					Name: new("AllowHTTPInbound"),
 					Properties: &armnetwork.SecurityRulePropertiesFormat{
-						Description:              to.Ptr("Allow Internet traffic on port 80."),
+						Description:              new("Allow Internet traffic on port 80."),
 						Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-						SourceAddressPrefix:      to.Ptr("Internet"),
-						SourcePortRange:          to.Ptr("*"),
-						DestinationAddressPrefix: to.Ptr("*"),
-						DestinationPortRange:     to.Ptr(fmt.Sprintf("%d", targetPort)),
+						SourceAddressPrefix:      new("Internet"),
+						SourcePortRange:          new("*"),
+						DestinationAddressPrefix: new("*"),
+						DestinationPortRange:     new(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](110),
+						Priority:                 new(int32(110)),
 					},
 				},
 				{
-					Name: to.Ptr("AllowPublicIPAddress"),
+					Name: new("AllowPublicIPAddress"),
 					Properties: &armnetwork.SecurityRulePropertiesFormat{
-						Description:              to.Ptr("Allow traffic from public ip address."),
+						Description:              new("Allow traffic from public ip address."),
 						Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-						SourceAddressPrefix:      to.Ptr("Internet"),
-						SourcePortRange:          to.Ptr("*"),
-						DestinationAddressPrefix: to.Ptr("placeholder"), // This gets updated in the handler
-						DestinationPortRange:     to.Ptr(fmt.Sprintf("%d", targetPort)),
+						SourceAddressPrefix:      new("Internet"),
+						SourcePortRange:          new("*"),
+						DestinationAddressPrefix: new("placeholder"), // This gets updated in the handler
+						DestinationPortRange:     new(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](111),
+						Priority:                 new(int32(111)),
 					},
 				},
 				{
-					Name: to.Ptr("AllowVirtualNetworkInbound"),
+					Name: new("AllowVirtualNetworkInbound"),
 					Properties: &armnetwork.SecurityRulePropertiesFormat{
-						Description:              to.Ptr("Allow Internet traffic to Virtual network."),
+						Description:              new("Allow Internet traffic to Virtual network."),
 						Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-						SourceAddressPrefix:      to.Ptr("*"),
-						SourcePortRange:          to.Ptr("*"),
-						DestinationAddressPrefix: to.Ptr("VirtualNetwork"),
-						DestinationPortRange:     to.Ptr(fmt.Sprintf("%d", targetPort)),
+						SourceAddressPrefix:      new("*"),
+						SourcePortRange:          new("*"),
+						DestinationAddressPrefix: new("VirtualNetwork"),
+						DestinationPortRange:     new(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](112),
+						Priority:                 new(int32(112)),
 					},
 				},
 			},
@@ -180,17 +180,17 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	appgwID := resourceGroupID + "/providers/Microsoft.Network/applicationGateways/" + gateway.Name
 
 	subnet := &armnetwork.Subnet{
-		Name: to.Ptr(gateway.Name),
-		Type: to.Ptr("Microsoft.Network/virtualNetworks/subnets"),
+		Name: new(gateway.Name),
+		Type: new("Microsoft.Network/virtualNetworks/subnets"),
 		Properties: &armnetwork.SubnetPropertiesFormat{
-			AddressPrefix: to.Ptr("172.16.2.0/29"),
+			AddressPrefix: new("172.16.2.0/29"),
 			ApplicationGatewayIPConfigurations: []*armnetwork.ApplicationGatewayIPConfiguration{
 				{
-					ID: to.Ptr(strings.Join([]string{appgwID, "gatewayIPConfigurations", gateway.Name}, "/")),
+					ID: new(strings.Join([]string{appgwID, "gatewayIPConfigurations", gateway.Name}, "/")),
 				},
 			},
 			NetworkSecurityGroup: &armnetwork.SecurityGroup{
-				ID: to.Ptr(nsgResource.ID.String()),
+				ID: new(nsgResource.ID.String()),
 			},
 		},
 	}
@@ -216,8 +216,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// AppGateway
 	frontendPortName := fmt.Sprintf("port_%d", targetPort)
 	appgw := &armnetwork.ApplicationGateway{
-		Name:     to.Ptr(gateway.Name),
-		Location: to.Ptr(gateway.Location),
+		Name:     new(gateway.Name),
+		Location: new(gateway.Location),
 		Properties: &armnetwork.ApplicationGatewayPropertiesFormat{
 			SKU: &armnetwork.ApplicationGatewaySKU{
 				Name: to.Ptr(armnetwork.ApplicationGatewaySKUNameStandardV2),
@@ -225,80 +225,80 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			},
 			GatewayIPConfigurations: []*armnetwork.ApplicationGatewayIPConfiguration{
 				{
-					Name: to.Ptr(gateway.Name),
+					Name: new(gateway.Name),
 					Properties: &armnetwork.ApplicationGatewayIPConfigurationPropertiesFormat{
 						Subnet: &armnetwork.SubResource{
-							ID: to.Ptr(vnetID + "/subnets/" + gateway.Name),
+							ID: new(vnetID + "/subnets/" + gateway.Name),
 						},
 					},
 				},
 			},
 			FrontendIPConfigurations: []*armnetwork.ApplicationGatewayFrontendIPConfiguration{
 				{
-					Name: to.Ptr(gateway.Name),
+					Name: new(gateway.Name),
 					Properties: &armnetwork.ApplicationGatewayFrontendIPConfigurationPropertiesFormat{
 						PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
 						PublicIPAddress: &armnetwork.SubResource{
-							ID: to.Ptr(publicIPResource.ID.String()),
+							ID: new(publicIPResource.ID.String()),
 						},
 					},
 				},
 			},
 			FrontendPorts: []*armnetwork.ApplicationGatewayFrontendPort{
 				{
-					Name: to.Ptr(frontendPortName),
+					Name: new(frontendPortName),
 					Properties: &armnetwork.ApplicationGatewayFrontendPortPropertiesFormat{
-						Port: to.Ptr(targetPort),
+						Port: new(targetPort),
 					},
 				},
 			},
 			BackendAddressPools: []*armnetwork.ApplicationGatewayBackendAddressPool{
 				{
-					Name: to.Ptr(containerName),
+					Name: new(containerName),
 				},
 			},
 			BackendHTTPSettingsCollection: []*armnetwork.ApplicationGatewayBackendHTTPSettings{
 				{
-					Name: to.Ptr(containerName),
+					Name: new(containerName),
 					Properties: &armnetwork.ApplicationGatewayBackendHTTPSettingsPropertiesFormat{
-						Port:                to.Ptr(targetPort),
+						Port:                new(targetPort),
 						Protocol:            to.Ptr(armnetwork.ApplicationGatewayProtocolHTTP),
 						CookieBasedAffinity: to.Ptr(armnetwork.ApplicationGatewayCookieBasedAffinityDisabled),
-						RequestTimeout:      to.Ptr[int32](60),
+						RequestTimeout:      new(int32(60)),
 						Probe: &armnetwork.SubResource{
-							ID: to.Ptr(strings.Join([]string{appgwID, "probes", containerName}, "/")),
+							ID: new(strings.Join([]string{appgwID, "probes", containerName}, "/")),
 						},
 					},
 				},
 			},
 			HTTPListeners: []*armnetwork.ApplicationGatewayHTTPListener{
 				{
-					Name: to.Ptr(containerName),
+					Name: new(containerName),
 					Properties: &armnetwork.ApplicationGatewayHTTPListenerPropertiesFormat{
 						FrontendIPConfiguration: &armnetwork.SubResource{
-							ID: to.Ptr(strings.Join([]string{appgwID, "frontendIPConfigurations", gateway.Name}, "/")),
+							ID: new(strings.Join([]string{appgwID, "frontendIPConfigurations", gateway.Name}, "/")),
 						},
 						FrontendPort: &armnetwork.SubResource{
-							ID: to.Ptr(strings.Join([]string{appgwID, "frontendPorts", frontendPortName}, "/")),
+							ID: new(strings.Join([]string{appgwID, "frontendPorts", frontendPortName}, "/")),
 						},
 						Protocol:                    to.Ptr(armnetwork.ApplicationGatewayProtocolHTTP),
-						RequireServerNameIndication: to.Ptr(false),
+						RequireServerNameIndication: new(false),
 					},
 				},
 			},
 			RequestRoutingRules: []*armnetwork.ApplicationGatewayRequestRoutingRule{
 				{
-					Name: to.Ptr(containerName),
+					Name: new(containerName),
 					Properties: &armnetwork.ApplicationGatewayRequestRoutingRulePropertiesFormat{
-						Priority: to.Ptr[int32](1),
+						Priority: new(int32(1)),
 						HTTPListener: &armnetwork.SubResource{
-							ID: to.Ptr(strings.Join([]string{appgwID, "httpListeners", containerName}, "/")),
+							ID: new(strings.Join([]string{appgwID, "httpListeners", containerName}, "/")),
 						},
 						BackendAddressPool: &armnetwork.SubResource{
-							ID: to.Ptr(strings.Join([]string{appgwID, "backendAddressPools", containerName}, "/")),
+							ID: new(strings.Join([]string{appgwID, "backendAddressPools", containerName}, "/")),
 						},
 						BackendHTTPSettings: &armnetwork.SubResource{
-							ID: to.Ptr(strings.Join([]string{appgwID, "backendHttpSettingsCollection", containerName}, "/")),
+							ID: new(strings.Join([]string{appgwID, "backendHttpSettingsCollection", containerName}, "/")),
 						},
 						RuleType: to.Ptr(armnetwork.ApplicationGatewayRequestRoutingRuleTypeBasic),
 					},
@@ -306,21 +306,21 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			},
 			Probes: []*armnetwork.ApplicationGatewayProbe{
 				{
-					Name: to.Ptr(containerName),
+					Name: new(containerName),
 					Properties: &armnetwork.ApplicationGatewayProbePropertiesFormat{
 						Protocol:                            to.Ptr(armnetwork.ApplicationGatewayProtocolHTTP),
-						Host:                                to.Ptr("localhost"),
-						Path:                                to.Ptr("/"),
-						Interval:                            to.Ptr[int32](3600),
-						Timeout:                             to.Ptr[int32](3600),
-						UnhealthyThreshold:                  to.Ptr[int32](3),
-						PickHostNameFromBackendHTTPSettings: to.Ptr(false),
+						Host:                                new("localhost"),
+						Path:                                new("/"),
+						Interval:                            new(int32(3600)),
+						Timeout:                             new(int32(3600)),
+						UnhealthyThreshold:                  new(int32(3)),
+						PickHostNameFromBackendHTTPSettings: new(false),
 					},
 				},
 			},
 			AutoscaleConfiguration: &armnetwork.ApplicationGatewayAutoscaleConfiguration{
-				MinCapacity: to.Ptr[int32](0),
-				MaxCapacity: to.Ptr[int32](3),
+				MinCapacity: new(int32(0)),
+				MaxCapacity: new(int32(3)),
 			},
 		},
 	}

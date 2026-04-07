@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strings"
 	"time"
@@ -207,9 +208,7 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 
 	if len(recipeConfig.Env.AdditionalProperties) > 0 {
 		envVarUpdate = true
-		for key, value := range recipeConfig.Env.AdditionalProperties {
-			envVars[key] = value
-		}
+		maps.Copy(envVars, recipeConfig.Env.AdditionalProperties)
 	}
 
 	if len(recipeConfig.EnvSecrets) > 0 {

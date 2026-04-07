@@ -17,6 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
+	"slices"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
@@ -72,7 +74,7 @@ func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 type ContainerProperties struct {
 	rpv1.BasicResourceProperties
 	Connections          map[string]ConnectionProperties `json:"connections,omitempty"`
-	Container            Container                       `json:"container,omitempty"`
+	Container            Container                       `json:"container"`
 	Extensions           []Extension                     `json:"extensions,omitempty"`
 	Identity             *rpv1.IdentitySettings          `json:"identity,omitempty"`
 	Runtimes             *RuntimeProperties              `json:"runtimes,omitempty"`
@@ -119,7 +121,7 @@ type RuntimeProperties struct {
 type ConnectionProperties struct {
 	Source                string        `json:"source,omitempty"`
 	DisableDefaultEnvVars *bool         `json:"disableDefaultEnvVars,omitempty"`
-	IAM                   IAMProperties `json:"iam,omitempty"`
+	IAM                   IAMProperties `json:"iam"`
 }
 
 // Container - Definition of a container.
@@ -127,9 +129,9 @@ type Container struct {
 	Image           string                         `json:"image,omitempty"`
 	ImagePullPolicy string                         `json:"imagePullPolicy,omitempty"`
 	Env             map[string]EnvironmentVariable `json:"env,omitempty"`
-	LivenessProbe   HealthProbeProperties          `json:"livenessProbe,omitempty"`
+	LivenessProbe   HealthProbeProperties          `json:"livenessProbe"`
 	Ports           map[string]ContainerPort       `json:"ports,omitempty"`
-	ReadinessProbe  HealthProbeProperties          `json:"readinessProbe,omitempty"`
+	ReadinessProbe  HealthProbeProperties          `json:"readinessProbe"`
 	Volumes         map[string]VolumeProperties    `json:"volumes,omitempty"`
 	Command         []string                       `json:"command,omitempty"`
 	Args            []string                       `json:"args,omitempty"`
@@ -298,12 +300,7 @@ type IAMProperties struct {
 // IsValid checks if the IAMKind is valid by comparing it to the list of valid IAMKinds.
 func (k IAMKind) IsValid() bool {
 	s := Kinds()
-	for _, v := range s {
-		if v == k {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, k)
 }
 
 // IsKind compares two IAMKinds and returns true if they are equal.

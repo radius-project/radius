@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
@@ -1564,10 +1563,10 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 					Type: "certificate",
 					Data: map[string]*datamodel.SecretStoreDataValue{
 						"tls.crt": {
-							Value: to.Ptr("test-crt"),
+							Value: new("test-crt"),
 						},
 						"tls.key": {
-							Value: to.Ptr("test-crt"),
+							Value: new("test-crt"),
 						},
 					},
 				},

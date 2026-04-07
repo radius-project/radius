@@ -104,7 +104,7 @@ func (t *TestResource) SetRecipe(r *portableresources.ResourceRecipe) {
 type TestResourceProperties struct {
 	rpv1.BasicResourceProperties
 	IsProcessed bool                             `json:"isProcessed"`
-	Recipe      portableresources.ResourceRecipe `json:"recipe,omitempty"`
+	Recipe      portableresources.ResourceRecipe `json:"recipe"`
 	Secret      any                              `json:"secret,omitempty"`
 	Credentials map[string]any                   `json:"credentials,omitempty"`
 }

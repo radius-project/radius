@@ -146,8 +146,8 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 	switch dm.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		storage = &InternalCredentialStorageProperties{
-			Kind:       to.Ptr(CredentialStorageKindInternal),
-			SecretName: to.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
+			Kind:       new(CredentialStorageKindInternal),
+			SecretName: new(dm.Properties.Storage.InternalCredential.SecretName),
 		}
 	default:
 		return v1.ErrInvalidModelConversion
@@ -160,9 +160,9 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 			return v1.ErrInvalidModelConversion
 		}
 		dst.Properties = &AzureServicePrincipalProperties{
-			Kind:     to.Ptr(AzureCredentialKind(dm.Properties.Kind)),
-			ClientID: to.Ptr(dm.Properties.AzureCredential.ServicePrincipal.ClientID),
-			TenantID: to.Ptr(dm.Properties.AzureCredential.ServicePrincipal.TenantID),
+			Kind:     new(AzureCredentialKind(dm.Properties.Kind)),
+			ClientID: new(dm.Properties.AzureCredential.ServicePrincipal.ClientID),
+			TenantID: new(dm.Properties.AzureCredential.ServicePrincipal.TenantID),
 			Storage:  storage,
 		}
 	case datamodel.AzureWorkloadIdentityCredentialKind:
@@ -170,9 +170,9 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 			return v1.ErrInvalidModelConversion
 		}
 		dst.Properties = &AzureWorkloadIdentityProperties{
-			Kind:     to.Ptr(AzureCredentialKind(dm.Properties.Kind)),
-			ClientID: to.Ptr(dm.Properties.AzureCredential.WorkloadIdentity.ClientID),
-			TenantID: to.Ptr(dm.Properties.AzureCredential.WorkloadIdentity.TenantID),
+			Kind:     new(AzureCredentialKind(dm.Properties.Kind)),
+			ClientID: new(dm.Properties.AzureCredential.WorkloadIdentity.ClientID),
+			TenantID: new(dm.Properties.AzureCredential.WorkloadIdentity.TenantID),
 			Storage:  storage,
 		}
 	default:

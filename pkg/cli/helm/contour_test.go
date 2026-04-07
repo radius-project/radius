@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"maps"
 	"reflect"
 	"testing"
 
@@ -78,8 +79,6 @@ func TestAddContourValues_HostNetworkDisabled_NoChange(t *testing.T) {
 // cloneMap does a shallow copy of a map[string]any for test isolation.
 func cloneMap(src map[string]any) map[string]any {
 	out := make(map[string]any, len(src))
-	for k, v := range src {
-		out[k] = v
-	}
+	maps.Copy(out, src)
 	return out
 }

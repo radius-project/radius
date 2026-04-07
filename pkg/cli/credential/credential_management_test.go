@@ -57,16 +57,16 @@ func Test_AzureCredential_Put(t *testing.T) {
 			planeType: AzurePlaneType,
 			planeName: AzurePlaneName,
 			credential: ucp.AzureCredentialResource{
-				Name:     to.Ptr(azureProviderName),
+				Name:     new(azureProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
-				Type:     to.Ptr(AzureCredential),
+				Type:     new(AzureCredential),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					ClientID:     to.Ptr(clientID),
-					ClientSecret: to.Ptr("cool-client-secret"),
-					TenantID:     to.Ptr(tenantID),
+					ClientID:     new(clientID),
+					ClientSecret: new("cool-client-secret"),
+					TenantID:     new(tenantID),
 				},
 			},
 			err:        nil,
@@ -114,15 +114,15 @@ func Test_AWSCredential_Put(t *testing.T) {
 			planeType: AWSPlaneType,
 			planeName: AWSPlaneName,
 			credential: ucp.AwsCredentialResource{
-				Name:     to.Ptr(awsProviderName),
+				Name:     new(awsProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
-				Type:     to.Ptr(AWSCredential),
+				Type:     new(AWSCredential),
 				Properties: &ucp.AwsAccessKeyCredentialProperties{
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					AccessKeyID:     to.Ptr("access-key-id"),
-					SecretAccessKey: to.Ptr("secret-access-key"),
+					AccessKeyID:     new("access-key-id"),
+					SecretAccessKey: new("secret-access-key"),
 				},
 			},
 			err:        nil,

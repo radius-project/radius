@@ -115,22 +115,22 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format: "table",
 					Obj: corerpv20250801.EnvironmentResource{
-						Name: to.Ptr("env1"),
+						Name: new("env1"),
 						Properties: &corerpv20250801.EnvironmentProperties{
 							RecipePacks: []*string{
-								to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
+								new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 							},
 							Providers: &corerpv20250801.Providers{
 								Azure: &corerpv20250801.ProvidersAzure{
-									SubscriptionID:    to.Ptr("test-subscription-id"),
-									ResourceGroupName: to.Ptr("test-resource-group"),
+									SubscriptionID:    new("test-subscription-id"),
+									ResourceGroupName: new("test-resource-group"),
 								},
 								Aws: &corerpv20250801.ProvidersAws{
-									AccountID: to.Ptr("test-account-id"),
-									Region:    to.Ptr("test-region"),
+									AccountID: new("test-account-id"),
+									Region:    new("test-region"),
 								},
 								Kubernetes: &corerpv20250801.ProvidersKubernetes{
-									Namespace: to.Ptr("test-namespace"),
+									Namespace: new("test-namespace"),
 								},
 							},
 						},
@@ -220,11 +220,11 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 			) (resp azfake.Responder[corerpv20250801.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := corerpv20250801.EnvironmentsClientGetResponse{
 					EnvironmentResource: corerpv20250801.EnvironmentResource{
-						Name: to.Ptr(environmentName),
+						Name: new(environmentName),
 						Properties: &corerpv20250801.EnvironmentProperties{
 							RecipePacks: []*string{
-								to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-b"),
-								to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-a"),
+								new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-b"),
+								new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-a"),
 							},
 						},
 					},
@@ -243,29 +243,29 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 				if recipePackName == "pack-a" {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{
 						"Applications.Datastores/sqlDatabases": {
-							RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/sql"),
+							RecipeLocation: new("ghcr.io/radius-project/recipes/sql"),
 							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
 						},
 						"Applications.Datastores/redisCaches": {
-							RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/redis"),
+							RecipeLocation: new("ghcr.io/radius-project/recipes/redis"),
 							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
 						},
 					}
 				} else {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{
 						"Applications.Messaging/rabbitMQQueues": {
-							RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/rabbitmq"),
+							RecipeLocation: new("ghcr.io/radius-project/recipes/rabbitmq"),
 							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindBicep),
 						},
 						"Applications.Dapr/stateStores": {
-							RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/dapr-state"),
+							RecipeLocation: new("ghcr.io/radius-project/recipes/dapr-state"),
 							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindBicep),
 						},
 					}
 				}
 				result := corerpv20250801.RecipePacksClientGetResponse{
 					RecipePackResource: corerpv20250801.RecipePackResource{
-						Name: to.Ptr(recipePackName),
+						Name: new(recipePackName),
 						Properties: &corerpv20250801.RecipePackProperties{
 							Recipes: recipes,
 						},

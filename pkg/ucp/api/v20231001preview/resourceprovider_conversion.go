@@ -49,15 +49,15 @@ func (dst *ResourceProviderResource) ConvertFrom(src v1.DataModelInterface) erro
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(dm.ID)
-	dst.Name = to.Ptr(dm.Name)
-	dst.Type = to.Ptr(dm.Type)
-	dst.Location = to.Ptr(dm.Location)
+	dst.ID = new(dm.ID)
+	dst.Name = new(dm.Name)
+	dst.Type = new(dm.Type)
+	dst.Location = new(dm.Location)
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.SystemData = fromSystemDataModel(dm.SystemData)
 
 	dst.Properties = &ResourceProviderProperties{
-		ProvisioningState: to.Ptr(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
+		ProvisioningState: new(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
 	}
 
 	return nil

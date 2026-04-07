@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -247,19 +246,19 @@ type ContainerGroupDiagnostics struct {
 // ContainerGroupIdentity - Identity for the container group.
 type ContainerGroupIdentity struct {
 	// The type of identity used for the container group. The type 'SystemAssigned, UserAssigned' includes both an implicitly
-// created identity and a set of user assigned identities. The type 'None' will
-// remove any identities from the container group.
+	// created identity and a set of user assigned identities. The type 'None' will
+	// remove any identities from the container group.
 	Type *ResourceIdentityType `json:"type,omitempty"`
 
 	// The list of user identities associated with the container group.
 	UserAssignedIdentities map[string]*UserAssignedIdentities `json:"userAssignedIdentities,omitempty"`
 
 	// READ-ONLY; The principal id of the container group identity. This property will only be provided for a system assigned
-// identity.
+	// identity.
 	PrincipalID *string `json:"principalId,omitempty" azure:"ro"`
 
 	// READ-ONLY; The tenant id associated with the container group. This property will only be provided for a system assigned
-// identity.
+	// identity.
 	TenantID *string `json:"tenantId,omitempty" azure:"ro"`
 }
 
@@ -350,9 +349,9 @@ type ContainerGroupProfileProperties struct {
 	RegisteredRevisions []*int64 `json:"registeredRevisions,omitempty"`
 
 	// Restart policy for all containers within the container group.
-// * Always Always restart
-// * OnFailure Restart on failure
-// * Never Never restart
+	// * Always Always restart
+	// * OnFailure Restart on failure
+	// * Never Never restart
 	RestartPolicy *ContainerGroupRestartPolicy `json:"restartPolicy,omitempty"`
 
 	// Container group profile current revision number
@@ -389,7 +388,7 @@ type ContainerGroupProfileStub struct {
 	Resource *APIEntityReference `json:"resource,omitempty"`
 
 	// The revision of the CG profile is an optional property. If customer does not to provide a revision then NGroups will pickup
-// the latest revision of CGProfile.
+	// the latest revision of CGProfile.
 	Revision *int32 `json:"revision,omitempty"`
 
 	// Storage profile for storage related settings of a container group profile.
@@ -453,9 +452,9 @@ type ContainerGroupPropertiesProperties struct {
 	Priority *ContainerGroupPriority `json:"priority,omitempty"`
 
 	// Restart policy for all containers within the container group.
-// * Always Always restart
-// * OnFailure Restart on failure
-// * Never Never restart
+	// * Always Always restart
+	// * OnFailure Restart on failure
+	// * Never Never restart
 	RestartPolicy *ContainerGroupRestartPolicy `json:"restartPolicy,omitempty"`
 
 	// The SKU for a container group.
@@ -670,7 +669,7 @@ type ContainersClientExecuteCommandOptions struct {
 // ContainersClientListLogsOptions contains the optional parameters for the ContainersClient.ListLogs method.
 type ContainersClientListLogsOptions struct {
 	// The number of lines to show from the tail of the container instance log. If not provided, all available logs are shown
-// up to 4mb.
+	// up to 4mb.
 	Tail *int32
 	// If true, adds a timestamp at the beginning of every line of log output. If not provided, defaults to false.
 	Timestamps *bool
@@ -706,22 +705,22 @@ type DeploymentExtensionSpecProperties struct {
 	Version *string `json:"version,omitempty"`
 
 	// Protected settings for the extension.
-	ProtectedSettings interface{} `json:"protectedSettings,omitempty"`
+	ProtectedSettings any `json:"protectedSettings,omitempty"`
 
 	// Settings for the extension.
-	Settings interface{} `json:"settings,omitempty"`
+	Settings any `json:"settings,omitempty"`
 }
 
 // ElasticProfile - Describes the elastic profile of the NGroup
 type ElasticProfile struct {
 	// Container Groups are named on a generic guid based naming scheme/policy. Customer can modify naming policy to add prefix
-// to CG names during scale out operation.
+	// to CG names during scale out operation.
 	ContainerGroupNamingPolicy *ElasticProfileContainerGroupNamingPolicy `json:"containerGroupNamingPolicy,omitempty"`
-	DesiredCount *int32 `json:"desiredCount,omitempty"`
+	DesiredCount               *int32                                    `json:"desiredCount,omitempty"`
 
 	// Flag that indicates whether desiredCount should be maintained when customer deletes SPECIFIC container groups (CGs) from
-// the NGroups. In this case, new CGs will be created by NGroup to compensate for
-// the specific deleted ones.
+	// the NGroups. In this case, new CGs will be created by NGroup to compensate for
+	// the specific deleted ones.
 	MaintainDesiredCount *bool `json:"maintainDesiredCount,omitempty"`
 }
 
@@ -733,8 +732,8 @@ type ElasticProfileContainerGroupNamingPolicy struct {
 
 type ElasticProfileContainerGroupNamingPolicyGUIDNamingPolicy struct {
 	// The prefix can be used when there are tooling limitations (e.g. on the Azure portal where CGs from multiple NGroups exist
-// in the same RG). The prefix with the suffixed resource name must still follow
-// Azure resource naming guidelines.
+	// in the same RG). The prefix with the suffixed resource name must still follow
+	// Azure resource naming guidelines.
 	Prefix *string `json:"prefix,omitempty"`
 }
 
@@ -771,7 +770,7 @@ type EnvironmentVariable struct {
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
-	Info interface{} `json:"info,omitempty" azure:"ro"`
+	Info any `json:"info,omitempty" azure:"ro"`
 
 	// READ-ONLY; The additional info type.
 	Type *string `json:"type,omitempty" azure:"ro"`
@@ -825,20 +824,20 @@ type Event struct {
 
 // FileShare - File shares that can be mounted on container groups.
 type FileShare struct {
-	Name *string `json:"name,omitempty"`
-	Properties *FileShareProperties `json:"properties,omitempty"`
-	ResourceGroupName *string `json:"resourceGroupName,omitempty"`
-	StorageAccountName *string `json:"storageAccountName,omitempty"`
+	Name               *string              `json:"name,omitempty"`
+	Properties         *FileShareProperties `json:"properties,omitempty"`
+	ResourceGroupName  *string              `json:"resourceGroupName,omitempty"`
+	StorageAccountName *string              `json:"storageAccountName,omitempty"`
 }
 
 type FileShareProperties struct {
 	// Access tier for specific share. GpV2 account can choose between TransactionOptimized (default), Hot, and Cool. FileStorage
-// account can choose Premium. Learn more at:
-// https://learn.microsoft.com/en-us/rest/api/storagerp/file-shares/create?tabs=HTTP#shareaccesstier
+	// account can choose Premium. Learn more at:
+	// https://learn.microsoft.com/en-us/rest/api/storagerp/file-shares/create?tabs=HTTP#shareaccesstier
 	ShareAccessTier *AzureFileShareAccessTier `json:"shareAccessTier,omitempty"`
 
 	// Specifies how Container Groups can access the Azure file share i.e. all CG will share same Azure file share or going to
-// have exclusive file share.
+	// have exclusive file share.
 	ShareAccessType *AzureFileShareAccessType `json:"shareAccessType,omitempty"`
 }
 
@@ -848,8 +847,8 @@ type GitRepoVolume struct {
 	Repository *string `json:"repository,omitempty"`
 
 	// Target directory name. Must not contain or start with '..'. If '.' is supplied, the volume directory will be the git repository.
-// Otherwise, if specified, the volume will contain the git repository in
-// the subdirectory with the given name.
+	// Otherwise, if specified, the volume will contain the git repository in
+	// the subdirectory with the given name.
 	Directory *string `json:"directory,omitempty"`
 
 	// Commit hash for the specified revision.
@@ -883,12 +882,12 @@ type IPAddress struct {
 	Type *ContainerGroupIPAddressType `json:"type,omitempty"`
 
 	// The value representing the security enum. The 'Unsecure' value is the default value if not selected and means the object's
-// domain name label is not secured against subdomain takeover. The
-// 'TenantReuse' value is the default value if selected and means the object's domain name label can be reused within the
-// same tenant. The 'SubscriptionReuse' value means the object's domain name label
-// can be reused within the same subscription. The 'ResourceGroupReuse' value means the object's domain name label can be
-// reused within the same resource group. The 'NoReuse' value means the object's
-// domain name label cannot be reused within the same resource group, subscription, or tenant.
+	// domain name label is not secured against subdomain takeover. The
+	// 'TenantReuse' value is the default value if selected and means the object's domain name label can be reused within the
+	// same tenant. The 'SubscriptionReuse' value means the object's domain name label
+	// can be reused within the same subscription. The 'ResourceGroupReuse' value means the object's domain name label can be
+	// reused within the same resource group. The 'NoReuse' value means the object's
+	// domain name label cannot be reused within the same resource group, subscription, or tenant.
 	AutoGeneratedDomainNameLabelScope *DNSNameLabelReusePolicy `json:"autoGeneratedDomainNameLabelScope,omitempty"`
 
 	// The Dns name label for the IP.
@@ -1060,9 +1059,9 @@ type ListResultContainerGroupPropertiesProperties struct {
 	Priority *ContainerGroupPriority `json:"priority,omitempty"`
 
 	// Restart policy for all containers within the container group.
-// * Always Always restart
-// * OnFailure Restart on failure
-// * Never Never restart
+	// * Always Always restart
+	// * OnFailure Restart on failure
+	// * Never Never restart
 	RestartPolicy *ContainerGroupRestartPolicy `json:"restartPolicy,omitempty"`
 
 	// The SKU for a container group.
@@ -1200,8 +1199,8 @@ type NGroupContainerGroupProperties struct {
 // NGroupIdentity - Identity for the NGroup.
 type NGroupIdentity struct {
 	// The type of identity used for the NGroup. The type 'SystemAssigned, UserAssigned' includes both an implicitly created identity
-// and a set of user assigned identities. The type 'None' will remove any
-// identities from the NGroup.
+	// and a set of user assigned identities. The type 'None' will remove any
+	// identities from the NGroup.
 	Type *ResourceIdentityType `json:"type,omitempty"`
 
 	// The list of user identities associated with the NGroup.
@@ -1223,8 +1222,8 @@ type NGroupProperties struct {
 	ElasticProfile *ElasticProfile `json:"elasticProfile,omitempty"`
 
 	// Provides options w.r.t allocation and management w.r.t certain placement policies. These utilize capabilities provided
-// by the underlying Azure infrastructure. They are typically used for high
-// availability scenarios. E.g., distributing CGs across fault domains.
+	// by the underlying Azure infrastructure. They are typically used for high
+	// availability scenarios. E.g., distributing CGs across fault domains.
 	PlacementProfile *PlacementProfile `json:"placementProfile,omitempty"`
 
 	// Used by the customer to specify the way to update the Container Groups in NGroup.
@@ -1337,7 +1336,7 @@ type Operation struct {
 	Origin *ContainerInstanceOperationsOrigin `json:"origin,omitempty"`
 
 	// The additional properties.
-	Properties interface{} `json:"properties,omitempty"`
+	Properties any `json:"properties,omitempty"`
 }
 
 // OperationDisplay - The display information of the operation.
@@ -1374,7 +1373,7 @@ type OperationsClientListOptions struct {
 // availability scenarios. E.g., distributing CGs across fault domains.
 type PlacementProfile struct {
 	// The number of fault domains to be used to spread CGs in the NGroups resource. This can only be specified during NGroup
-// creation and is immutable after that.
+	// creation and is immutable after that.
 	FaultDomainCount *int32 `json:"faultDomainCount,omitempty"`
 }
 
@@ -1520,7 +1519,7 @@ type SystemData struct {
 type UpdateProfile struct {
 	// This profile allows the customers to customize the rolling update.
 	RollingUpdateProfile *UpdateProfileRollingUpdateProfile `json:"rollingUpdateProfile,omitempty"`
-	UpdateMode *NGroupUpdateMode `json:"updateMode,omitempty"`
+	UpdateMode           *NGroupUpdateMode                  `json:"updateMode,omitempty"`
 }
 
 // UpdateProfileRollingUpdateProfile - This profile allows the customers to customize the rolling update.
@@ -1535,7 +1534,7 @@ type UpdateProfileRollingUpdateProfile struct {
 	MaxUnhealthyPercent *int32 `json:"maxUnhealthyPercent,omitempty"`
 
 	// The wait time between batches after completing the one batch of the rolling update and starting the next batch. The time
-// duration should be specified in ISO 8601 format for duration.
+	// duration should be specified in ISO 8601 format for duration.
 	PauseTimeBetweenBatches *string `json:"pauseTimeBetweenBatches,omitempty"`
 }
 
@@ -1592,7 +1591,7 @@ type Volume struct {
 	AzureFile *AzureFileVolume `json:"azureFile,omitempty"`
 
 	// The empty directory volume.
-	EmptyDir interface{} `json:"emptyDir,omitempty"`
+	EmptyDir any `json:"emptyDir,omitempty"`
 
 	// The git repo volume.
 	GitRepo *GitRepoVolume `json:"gitRepo,omitempty"`
@@ -1615,4 +1614,3 @@ type VolumeMount struct {
 	// The flag indicating whether the volume mount is read-only.
 	ReadOnly *bool `json:"readOnly,omitempty"`
 }
-

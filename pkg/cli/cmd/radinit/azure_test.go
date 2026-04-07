@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -44,7 +43,7 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 	}
 
 	resourceGroup := armresources.ResourceGroup{
-		Name: to.Ptr("test-resource-group"),
+		Name: new("test-resource-group"),
 	}
 
 	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
@@ -100,7 +99,7 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 	}
 
 	resourceGroup := armresources.ResourceGroup{
-		Name: to.Ptr("test-resource-group"),
+		Name: new("test-resource-group"),
 	}
 
 	setAzureSubscriptions(client, &azure.SubscriptionResult{Default: &subscription, Subscriptions: []azure.Subscription{subscription}})
@@ -266,13 +265,13 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 	// Intentionally not in alphabetical order
 	resourceGroups := []armresources.ResourceGroup{
 		{
-			Name: to.Ptr("b-test-resource-group1"),
+			Name: new("b-test-resource-group1"),
 		},
 		{
-			Name: to.Ptr("a-test-resource-group2"),
+			Name: new("a-test-resource-group2"),
 		},
 		{
-			Name: to.Ptr("c-test-resource-group3"),
+			Name: new("c-test-resource-group3"),
 		},
 	}
 
@@ -285,12 +284,12 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 	// Intentionally not in alphabetical order
 	locations := []armsubscriptions.Location{
 		{
-			Name:        to.Ptr("westus"),
-			DisplayName: to.Ptr("West US"),
+			Name:        new("westus"),
+			DisplayName: new("West US"),
 		},
 		{
-			Name:        to.Ptr("eastus"),
-			DisplayName: to.Ptr("East US"),
+			Name:        new("eastus"),
+			DisplayName: new("East US"),
 		},
 	}
 
@@ -375,13 +374,13 @@ func Test_selectExistingAzureResourceGroup(t *testing.T) {
 	// Intentionally not in alphabetical order
 	resourceGroups := []armresources.ResourceGroup{
 		{
-			Name: to.Ptr("b-test-resource-group1"),
+			Name: new("b-test-resource-group1"),
 		},
 		{
-			Name: to.Ptr("a-test-resource-group2"),
+			Name: new("a-test-resource-group2"),
 		},
 		{
-			Name: to.Ptr("c-test-resource-group3"),
+			Name: new("c-test-resource-group3"),
 		},
 	}
 
@@ -409,13 +408,13 @@ func Test_buildAzureResourceGroupList(t *testing.T) {
 	// Intentionally not in alphabetical order
 	resourceGroups := []armresources.ResourceGroup{
 		{
-			Name: to.Ptr("b-test-resource-group1"),
+			Name: new("b-test-resource-group1"),
 		},
 		{
-			Name: to.Ptr("a-test-resource-group2"),
+			Name: new("a-test-resource-group2"),
 		},
 		{
-			Name: to.Ptr("c-test-resource-group3"),
+			Name: new("c-test-resource-group3"),
 		},
 	}
 
@@ -448,13 +447,13 @@ func Test_selectAzureResourceGroupLocation(t *testing.T) {
 	// Intentionally not in alphabetical order
 	resourceGroups := []armresources.ResourceGroup{
 		{
-			Name: to.Ptr("b-test-resource-group1"),
+			Name: new("b-test-resource-group1"),
 		},
 		{
-			Name: to.Ptr("a-test-resource-group2"),
+			Name: new("a-test-resource-group2"),
 		},
 		{
-			Name: to.Ptr("c-test-resource-group3"),
+			Name: new("c-test-resource-group3"),
 		},
 	}
 
@@ -467,12 +466,12 @@ func Test_selectAzureResourceGroupLocation(t *testing.T) {
 	// Intentionally not in alphabetical order
 	locations := []armsubscriptions.Location{
 		{
-			Name:        to.Ptr("westus"),
-			DisplayName: to.Ptr("West US"),
+			Name:        new("westus"),
+			DisplayName: new("West US"),
 		},
 		{
-			Name:        to.Ptr("eastus"),
-			DisplayName: to.Ptr("East US"),
+			Name:        new("eastus"),
+			DisplayName: new("East US"),
 		},
 	}
 
@@ -499,12 +498,12 @@ func Test_buildAzureResourceGroupLocationListAndMap(t *testing.T) {
 	// Intentionally not in alphabetical order
 	locations := []armsubscriptions.Location{
 		{
-			Name:        to.Ptr("westus"),
-			DisplayName: to.Ptr("West US"),
+			Name:        new("westus"),
+			DisplayName: new("West US"),
 		},
 		{
-			Name:        to.Ptr("eastus"),
-			DisplayName: to.Ptr("East US"),
+			Name:        new("eastus"),
+			DisplayName: new("East US"),
 		},
 	}
 

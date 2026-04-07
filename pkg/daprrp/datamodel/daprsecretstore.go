@@ -62,7 +62,7 @@ type DaprSecretStoreProperties struct {
 	Type                 string                                      `json:"type,omitempty"`
 	Version              string                                      `json:"version,omitempty"`
 	Metadata             map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
-	Recipe               portableresources.ResourceRecipe            `json:"recipe,omitempty"`
+	Recipe               portableresources.ResourceRecipe            `json:"recipe"`
 	ResourceProvisioning portableresources.ResourceProvisioning      `json:"resourceProvisioning,omitempty"`
 }
 

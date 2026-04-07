@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -17,15 +16,15 @@ const host = "https://management.azure.com"
 type AzureFileShareAccessTier string
 
 const (
-	AzureFileShareAccessTierCool AzureFileShareAccessTier = "Cool"
-	AzureFileShareAccessTierHot AzureFileShareAccessTier = "Hot"
-	AzureFileShareAccessTierPremium AzureFileShareAccessTier = "Premium"
+	AzureFileShareAccessTierCool                 AzureFileShareAccessTier = "Cool"
+	AzureFileShareAccessTierHot                  AzureFileShareAccessTier = "Hot"
+	AzureFileShareAccessTierPremium              AzureFileShareAccessTier = "Premium"
 	AzureFileShareAccessTierTransactionOptimized AzureFileShareAccessTier = "TransactionOptimized"
 )
 
 // PossibleAzureFileShareAccessTierValues returns the possible values for the AzureFileShareAccessTier const type.
 func PossibleAzureFileShareAccessTierValues() []AzureFileShareAccessTier {
-	return []AzureFileShareAccessTier{	
+	return []AzureFileShareAccessTier{
 		AzureFileShareAccessTierCool,
 		AzureFileShareAccessTierHot,
 		AzureFileShareAccessTierPremium,
@@ -38,13 +37,13 @@ func PossibleAzureFileShareAccessTierValues() []AzureFileShareAccessTier {
 type AzureFileShareAccessType string
 
 const (
-	AzureFileShareAccessTypeShared AzureFileShareAccessType = "Shared"
+	AzureFileShareAccessTypeShared    AzureFileShareAccessType = "Shared"
 	AzureFileShareAccessTypeExclusive AzureFileShareAccessType = "Exclusive"
 )
 
 // PossibleAzureFileShareAccessTypeValues returns the possible values for the AzureFileShareAccessType const type.
 func PossibleAzureFileShareAccessTypeValues() []AzureFileShareAccessType {
-	return []AzureFileShareAccessType{	
+	return []AzureFileShareAccessType{
 		AzureFileShareAccessTypeShared,
 		AzureFileShareAccessTypeExclusive,
 	}
@@ -55,12 +54,12 @@ type ContainerGroupIPAddressType string
 
 const (
 	ContainerGroupIPAddressTypePrivate ContainerGroupIPAddressType = "Private"
-	ContainerGroupIPAddressTypePublic ContainerGroupIPAddressType = "Public"
+	ContainerGroupIPAddressTypePublic  ContainerGroupIPAddressType = "Public"
 )
 
 // PossibleContainerGroupIPAddressTypeValues returns the possible values for the ContainerGroupIPAddressType const type.
 func PossibleContainerGroupIPAddressTypeValues() []ContainerGroupIPAddressType {
-	return []ContainerGroupIPAddressType{	
+	return []ContainerGroupIPAddressType{
 		ContainerGroupIPAddressTypePrivate,
 		ContainerGroupIPAddressTypePublic,
 	}
@@ -76,7 +75,7 @@ const (
 
 // PossibleContainerGroupNetworkProtocolValues returns the possible values for the ContainerGroupNetworkProtocol const type.
 func PossibleContainerGroupNetworkProtocolValues() []ContainerGroupNetworkProtocol {
-	return []ContainerGroupNetworkProtocol{	
+	return []ContainerGroupNetworkProtocol{
 		ContainerGroupNetworkProtocolTCP,
 		ContainerGroupNetworkProtocolUDP,
 	}
@@ -87,12 +86,12 @@ type ContainerGroupPriority string
 
 const (
 	ContainerGroupPriorityRegular ContainerGroupPriority = "Regular"
-	ContainerGroupPrioritySpot ContainerGroupPriority = "Spot"
+	ContainerGroupPrioritySpot    ContainerGroupPriority = "Spot"
 )
 
 // PossibleContainerGroupPriorityValues returns the possible values for the ContainerGroupPriority const type.
 func PossibleContainerGroupPriorityValues() []ContainerGroupPriority {
-	return []ContainerGroupPriority{	
+	return []ContainerGroupPriority{
 		ContainerGroupPriorityRegular,
 		ContainerGroupPrioritySpot,
 	}
@@ -102,24 +101,24 @@ func PossibleContainerGroupPriorityValues() []ContainerGroupPriority {
 type ContainerGroupProvisioningState string
 
 const (
-	ContainerGroupProvisioningStateAccepted ContainerGroupProvisioningState = "Accepted"
-	ContainerGroupProvisioningStateCanceled ContainerGroupProvisioningState = "Canceled"
-	ContainerGroupProvisioningStateCreating ContainerGroupProvisioningState = "Creating"
-	ContainerGroupProvisioningStateDeleting ContainerGroupProvisioningState = "Deleting"
-	ContainerGroupProvisioningStateFailed ContainerGroupProvisioningState = "Failed"
-	ContainerGroupProvisioningStateNotAccessible ContainerGroupProvisioningState = "NotAccessible"
-	ContainerGroupProvisioningStateNotSpecified ContainerGroupProvisioningState = "NotSpecified"
-	ContainerGroupProvisioningStatePending ContainerGroupProvisioningState = "Pending"
+	ContainerGroupProvisioningStateAccepted       ContainerGroupProvisioningState = "Accepted"
+	ContainerGroupProvisioningStateCanceled       ContainerGroupProvisioningState = "Canceled"
+	ContainerGroupProvisioningStateCreating       ContainerGroupProvisioningState = "Creating"
+	ContainerGroupProvisioningStateDeleting       ContainerGroupProvisioningState = "Deleting"
+	ContainerGroupProvisioningStateFailed         ContainerGroupProvisioningState = "Failed"
+	ContainerGroupProvisioningStateNotAccessible  ContainerGroupProvisioningState = "NotAccessible"
+	ContainerGroupProvisioningStateNotSpecified   ContainerGroupProvisioningState = "NotSpecified"
+	ContainerGroupProvisioningStatePending        ContainerGroupProvisioningState = "Pending"
 	ContainerGroupProvisioningStatePreProvisioned ContainerGroupProvisioningState = "PreProvisioned"
-	ContainerGroupProvisioningStateRepairing ContainerGroupProvisioningState = "Repairing"
-	ContainerGroupProvisioningStateSucceeded ContainerGroupProvisioningState = "Succeeded"
-	ContainerGroupProvisioningStateUnhealthy ContainerGroupProvisioningState = "Unhealthy"
-	ContainerGroupProvisioningStateUpdating ContainerGroupProvisioningState = "Updating"
+	ContainerGroupProvisioningStateRepairing      ContainerGroupProvisioningState = "Repairing"
+	ContainerGroupProvisioningStateSucceeded      ContainerGroupProvisioningState = "Succeeded"
+	ContainerGroupProvisioningStateUnhealthy      ContainerGroupProvisioningState = "Unhealthy"
+	ContainerGroupProvisioningStateUpdating       ContainerGroupProvisioningState = "Updating"
 )
 
 // PossibleContainerGroupProvisioningStateValues returns the possible values for the ContainerGroupProvisioningState const type.
 func PossibleContainerGroupProvisioningStateValues() []ContainerGroupProvisioningState {
-	return []ContainerGroupProvisioningState{	
+	return []ContainerGroupProvisioningState{
 		ContainerGroupProvisioningStateAccepted,
 		ContainerGroupProvisioningStateCanceled,
 		ContainerGroupProvisioningStateCreating,
@@ -143,14 +142,14 @@ func PossibleContainerGroupProvisioningStateValues() []ContainerGroupProvisionin
 type ContainerGroupRestartPolicy string
 
 const (
-	ContainerGroupRestartPolicyAlways ContainerGroupRestartPolicy = "Always"
-	ContainerGroupRestartPolicyNever ContainerGroupRestartPolicy = "Never"
+	ContainerGroupRestartPolicyAlways    ContainerGroupRestartPolicy = "Always"
+	ContainerGroupRestartPolicyNever     ContainerGroupRestartPolicy = "Never"
 	ContainerGroupRestartPolicyOnFailure ContainerGroupRestartPolicy = "OnFailure"
 )
 
 // PossibleContainerGroupRestartPolicyValues returns the possible values for the ContainerGroupRestartPolicy const type.
 func PossibleContainerGroupRestartPolicyValues() []ContainerGroupRestartPolicy {
-	return []ContainerGroupRestartPolicy{	
+	return []ContainerGroupRestartPolicy{
 		ContainerGroupRestartPolicyAlways,
 		ContainerGroupRestartPolicyNever,
 		ContainerGroupRestartPolicyOnFailure,
@@ -162,14 +161,14 @@ type ContainerGroupSKU string
 
 const (
 	ContainerGroupSKUConfidential ContainerGroupSKU = "Confidential"
-	ContainerGroupSKUDedicated ContainerGroupSKU = "Dedicated"
+	ContainerGroupSKUDedicated    ContainerGroupSKU = "Dedicated"
 	ContainerGroupSKUNotSpecified ContainerGroupSKU = "NotSpecified"
-	ContainerGroupSKUStandard ContainerGroupSKU = "Standard"
+	ContainerGroupSKUStandard     ContainerGroupSKU = "Standard"
 )
 
 // PossibleContainerGroupSKUValues returns the possible values for the ContainerGroupSKU const type.
 func PossibleContainerGroupSKUValues() []ContainerGroupSKU {
-	return []ContainerGroupSKU{	
+	return []ContainerGroupSKU{
 		ContainerGroupSKUConfidential,
 		ContainerGroupSKUDedicated,
 		ContainerGroupSKUNotSpecified,
@@ -182,12 +181,12 @@ type ContainerInstanceOperationsOrigin string
 
 const (
 	ContainerInstanceOperationsOriginSystem ContainerInstanceOperationsOrigin = "System"
-	ContainerInstanceOperationsOriginUser ContainerInstanceOperationsOrigin = "User"
+	ContainerInstanceOperationsOriginUser   ContainerInstanceOperationsOrigin = "User"
 )
 
 // PossibleContainerInstanceOperationsOriginValues returns the possible values for the ContainerInstanceOperationsOrigin const type.
 func PossibleContainerInstanceOperationsOriginValues() []ContainerInstanceOperationsOrigin {
-	return []ContainerInstanceOperationsOrigin{	
+	return []ContainerInstanceOperationsOrigin{
 		ContainerInstanceOperationsOriginSystem,
 		ContainerInstanceOperationsOriginUser,
 	}
@@ -203,7 +202,7 @@ const (
 
 // PossibleContainerNetworkProtocolValues returns the possible values for the ContainerNetworkProtocol const type.
 func PossibleContainerNetworkProtocolValues() []ContainerNetworkProtocol {
-	return []ContainerNetworkProtocol{	
+	return []ContainerNetworkProtocol{
 		ContainerNetworkProtocolTCP,
 		ContainerNetworkProtocolUDP,
 	}
@@ -213,15 +212,15 @@ func PossibleContainerNetworkProtocolValues() []ContainerNetworkProtocol {
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -239,16 +238,16 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 type DNSNameLabelReusePolicy string
 
 const (
-	DNSNameLabelReusePolicyNoreuse DNSNameLabelReusePolicy = "Noreuse"
+	DNSNameLabelReusePolicyNoreuse            DNSNameLabelReusePolicy = "Noreuse"
 	DNSNameLabelReusePolicyResourceGroupReuse DNSNameLabelReusePolicy = "ResourceGroupReuse"
-	DNSNameLabelReusePolicySubscriptionReuse DNSNameLabelReusePolicy = "SubscriptionReuse"
-	DNSNameLabelReusePolicyTenantReuse DNSNameLabelReusePolicy = "TenantReuse"
-	DNSNameLabelReusePolicyUnsecure DNSNameLabelReusePolicy = "Unsecure"
+	DNSNameLabelReusePolicySubscriptionReuse  DNSNameLabelReusePolicy = "SubscriptionReuse"
+	DNSNameLabelReusePolicyTenantReuse        DNSNameLabelReusePolicy = "TenantReuse"
+	DNSNameLabelReusePolicyUnsecure           DNSNameLabelReusePolicy = "Unsecure"
 )
 
 // PossibleDNSNameLabelReusePolicyValues returns the possible values for the DNSNameLabelReusePolicy const type.
 func PossibleDNSNameLabelReusePolicyValues() []DNSNameLabelReusePolicy {
-	return []DNSNameLabelReusePolicy{	
+	return []DNSNameLabelReusePolicy{
 		DNSNameLabelReusePolicyNoreuse,
 		DNSNameLabelReusePolicyResourceGroupReuse,
 		DNSNameLabelReusePolicySubscriptionReuse,
@@ -261,14 +260,14 @@ func PossibleDNSNameLabelReusePolicyValues() []DNSNameLabelReusePolicy {
 type GpuSKU string
 
 const (
-	GpuSKUK80 GpuSKU = "K80"
+	GpuSKUK80  GpuSKU = "K80"
 	GpuSKUP100 GpuSKU = "P100"
 	GpuSKUV100 GpuSKU = "V100"
 )
 
 // PossibleGpuSKUValues returns the possible values for the GpuSKU const type.
 func PossibleGpuSKUValues() []GpuSKU {
-	return []GpuSKU{	
+	return []GpuSKU{
 		GpuSKUK80,
 		GpuSKUP100,
 		GpuSKUV100,
@@ -279,14 +278,14 @@ func PossibleGpuSKUValues() []GpuSKU {
 type IdentityAccessLevel string
 
 const (
-	IdentityAccessLevelAll IdentityAccessLevel = "All"
+	IdentityAccessLevelAll    IdentityAccessLevel = "All"
 	IdentityAccessLevelSystem IdentityAccessLevel = "System"
-	IdentityAccessLevelUser IdentityAccessLevel = "User"
+	IdentityAccessLevelUser   IdentityAccessLevel = "User"
 )
 
 // PossibleIdentityAccessLevelValues returns the possible values for the IdentityAccessLevel const type.
 func PossibleIdentityAccessLevelValues() []IdentityAccessLevel {
-	return []IdentityAccessLevel{	
+	return []IdentityAccessLevel{
 		IdentityAccessLevelAll,
 		IdentityAccessLevelSystem,
 		IdentityAccessLevelUser,
@@ -297,13 +296,13 @@ func PossibleIdentityAccessLevelValues() []IdentityAccessLevel {
 type LogAnalyticsLogType string
 
 const (
-	LogAnalyticsLogTypeContainerInsights LogAnalyticsLogType = "ContainerInsights"
+	LogAnalyticsLogTypeContainerInsights     LogAnalyticsLogType = "ContainerInsights"
 	LogAnalyticsLogTypeContainerInstanceLogs LogAnalyticsLogType = "ContainerInstanceLogs"
 )
 
 // PossibleLogAnalyticsLogTypeValues returns the possible values for the LogAnalyticsLogType const type.
 func PossibleLogAnalyticsLogTypeValues() []LogAnalyticsLogType {
-	return []LogAnalyticsLogType{	
+	return []LogAnalyticsLogType{
 		LogAnalyticsLogTypeContainerInsights,
 		LogAnalyticsLogTypeContainerInstanceLogs,
 	}
@@ -313,18 +312,18 @@ func PossibleLogAnalyticsLogTypeValues() []LogAnalyticsLogType {
 type NGroupProvisioningState string
 
 const (
-	NGroupProvisioningStateCanceled NGroupProvisioningState = "Canceled"
-	NGroupProvisioningStateCreating NGroupProvisioningState = "Creating"
-	NGroupProvisioningStateDeleting NGroupProvisioningState = "Deleting"
-	NGroupProvisioningStateFailed NGroupProvisioningState = "Failed"
+	NGroupProvisioningStateCanceled  NGroupProvisioningState = "Canceled"
+	NGroupProvisioningStateCreating  NGroupProvisioningState = "Creating"
+	NGroupProvisioningStateDeleting  NGroupProvisioningState = "Deleting"
+	NGroupProvisioningStateFailed    NGroupProvisioningState = "Failed"
 	NGroupProvisioningStateMigrating NGroupProvisioningState = "Migrating"
 	NGroupProvisioningStateSucceeded NGroupProvisioningState = "Succeeded"
-	NGroupProvisioningStateUpdating NGroupProvisioningState = "Updating"
+	NGroupProvisioningStateUpdating  NGroupProvisioningState = "Updating"
 )
 
 // PossibleNGroupProvisioningStateValues returns the possible values for the NGroupProvisioningState const type.
 func PossibleNGroupProvisioningStateValues() []NGroupProvisioningState {
-	return []NGroupProvisioningState{	
+	return []NGroupProvisioningState{
 		NGroupProvisioningStateCanceled,
 		NGroupProvisioningStateCreating,
 		NGroupProvisioningStateDeleting,
@@ -338,13 +337,13 @@ func PossibleNGroupProvisioningStateValues() []NGroupProvisioningState {
 type NGroupUpdateMode string
 
 const (
-	NGroupUpdateModeManual NGroupUpdateMode = "Manual"
+	NGroupUpdateModeManual  NGroupUpdateMode = "Manual"
 	NGroupUpdateModeRolling NGroupUpdateMode = "Rolling"
 )
 
 // PossibleNGroupUpdateModeValues returns the possible values for the NGroupUpdateMode const type.
 func PossibleNGroupUpdateModeValues() []NGroupUpdateMode {
-	return []NGroupUpdateMode{	
+	return []NGroupUpdateMode{
 		NGroupUpdateModeManual,
 		NGroupUpdateModeRolling,
 	}
@@ -354,13 +353,13 @@ func PossibleNGroupUpdateModeValues() []NGroupUpdateMode {
 type OperatingSystemTypes string
 
 const (
-	OperatingSystemTypesLinux OperatingSystemTypes = "Linux"
+	OperatingSystemTypesLinux   OperatingSystemTypes = "Linux"
 	OperatingSystemTypesWindows OperatingSystemTypes = "Windows"
 )
 
 // PossibleOperatingSystemTypesValues returns the possible values for the OperatingSystemTypes const type.
 func PossibleOperatingSystemTypesValues() []OperatingSystemTypes {
-	return []OperatingSystemTypes{	
+	return []OperatingSystemTypes{
 		OperatingSystemTypesLinux,
 		OperatingSystemTypesWindows,
 	}
@@ -372,15 +371,15 @@ func PossibleOperatingSystemTypesValues() []OperatingSystemTypes {
 type ResourceIdentityType string
 
 const (
-	ResourceIdentityTypeSystemAssigned ResourceIdentityType = "SystemAssigned"
-	ResourceIdentityTypeUserAssigned ResourceIdentityType = "UserAssigned"
+	ResourceIdentityTypeSystemAssigned             ResourceIdentityType = "SystemAssigned"
+	ResourceIdentityTypeUserAssigned               ResourceIdentityType = "UserAssigned"
 	ResourceIdentityTypeSystemAssignedUserAssigned ResourceIdentityType = "SystemAssigned, UserAssigned"
-	ResourceIdentityTypeNone ResourceIdentityType = "None"
+	ResourceIdentityTypeNone                       ResourceIdentityType = "None"
 )
 
 // PossibleResourceIdentityTypeValues returns the possible values for the ResourceIdentityType const type.
 func PossibleResourceIdentityTypeValues() []ResourceIdentityType {
-	return []ResourceIdentityType{	
+	return []ResourceIdentityType{
 		ResourceIdentityTypeSystemAssigned,
 		ResourceIdentityTypeUserAssigned,
 		ResourceIdentityTypeSystemAssignedUserAssigned,
@@ -392,15 +391,14 @@ func PossibleResourceIdentityTypeValues() []ResourceIdentityType {
 type Scheme string
 
 const (
-	SchemeHTTP Scheme = "http"
+	SchemeHTTP  Scheme = "http"
 	SchemeHTTPS Scheme = "https"
 )
 
 // PossibleSchemeValues returns the possible values for the Scheme const type.
 func PossibleSchemeValues() []Scheme {
-	return []Scheme{	
+	return []Scheme{
 		SchemeHTTP,
 		SchemeHTTPS,
 	}
 }
-

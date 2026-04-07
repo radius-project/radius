@@ -104,12 +104,12 @@ func fromRecipeStatus(recipeStatus *rpv1.RecipeStatus) *RecipeStatus {
 	}
 
 	status := &RecipeStatus{
-		TemplateKind: to.Ptr(recipeStatus.TemplateKind),
-		TemplatePath: to.Ptr(recipeStatus.TemplatePath),
+		TemplateKind: new(recipeStatus.TemplateKind),
+		TemplatePath: new(recipeStatus.TemplatePath),
 	}
 
 	if recipeStatus.TemplateVersion != "" {
-		status.TemplateVersion = to.Ptr(recipeStatus.TemplateVersion)
+		status.TemplateVersion = new(recipeStatus.TemplateVersion)
 	}
 
 	return status
@@ -117,11 +117,11 @@ func fromRecipeStatus(recipeStatus *rpv1.RecipeStatus) *RecipeStatus {
 
 func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
-		CreatedBy:          to.Ptr(s.CreatedBy),
-		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
+		CreatedBy:          new(s.CreatedBy),
+		CreatedByType:      (*CreatedByType)(new(s.CreatedByType)),
 		CreatedAt:          v1.UnmarshalTimeString(s.CreatedAt),
-		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
+		LastModifiedBy:     new(s.LastModifiedBy),
+		LastModifiedByType: (*CreatedByType)(new(s.LastModifiedByType)),
 		LastModifiedAt:     v1.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }
@@ -146,7 +146,7 @@ func toRecipeDataModel(r *Recipe) portableresources.ResourceRecipe {
 
 func fromRecipeDataModel(r portableresources.ResourceRecipe) *Recipe {
 	return &Recipe{
-		Name:       to.Ptr(r.Name),
+		Name:       new(r.Name),
 		Parameters: r.Parameters,
 	}
 }
@@ -180,13 +180,13 @@ func fromMetadataDataModel(metadata map[string]*rpv1.DaprComponentMetadataValue)
 	meta := make(map[string]*MetadataValue, len(metadata))
 	for name, valueNode := range metadata {
 		meta[name] = &MetadataValue{
-			Value: to.Ptr(valueNode.Value),
+			Value: new(valueNode.Value),
 		}
 
 		if valueNode.SecretKeyRef != nil {
 			meta[name].SecretKeyRef = &MetadataValueFromSecret{
-				Name: to.Ptr(valueNode.SecretKeyRef.Name),
-				Key:  to.Ptr(valueNode.SecretKeyRef.Key),
+				Name: new(valueNode.SecretKeyRef.Name),
+				Key:  new(valueNode.SecretKeyRef.Key),
 			}
 		}
 	}
@@ -209,7 +209,7 @@ func fromAuthDataModel(auth *rpv1.DaprComponentAuth) *DaprResourceAuth {
 	}
 
 	return &DaprResourceAuth{
-		SecretStore: to.Ptr(auth.SecretStore),
+		SecretStore: new(auth.SecretStore),
 	}
 }
 
@@ -233,7 +233,7 @@ func fromResourcesDataModel(r []*portableresources.ResourceReference) []*Resourc
 	resources := make([]*ResourceReference, len(r))
 	for i, resource := range r {
 		resources[i] = &ResourceReference{
-			ID: to.Ptr(resource.ID),
+			ID: new(resource.ID),
 		}
 	}
 	return resources
@@ -243,12 +243,12 @@ func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource 
 	var outResources []*OutputResource
 	for _, or := range outputResources {
 		r := &OutputResource{
-			ID: to.Ptr(or.ID.String()),
+			ID: new(or.ID.String()),
 		}
 
 		// We will not serialize the following fields if they are empty or nil.
 		if or.LocalID != "" {
-			r.LocalID = to.Ptr(or.LocalID)
+			r.LocalID = new(or.LocalID)
 		}
 		if or.RadiusManaged != nil {
 			r.RadiusManaged = or.RadiusManaged

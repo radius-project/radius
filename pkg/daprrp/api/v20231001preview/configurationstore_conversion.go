@@ -116,19 +116,19 @@ func (dst *DaprConfigurationStoreResource) ConvertFrom(src v1.DataModelInterface
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(daprConfigstore.ID)
-	dst.Name = to.Ptr(daprConfigstore.Name)
-	dst.Type = to.Ptr(daprConfigstore.Type)
+	dst.ID = new(daprConfigstore.ID)
+	dst.Name = new(daprConfigstore.Name)
+	dst.Type = new(daprConfigstore.Type)
 	dst.SystemData = fromSystemDataModel(daprConfigstore.SystemData)
-	dst.Location = to.Ptr(daprConfigstore.Location)
+	dst.Location = new(daprConfigstore.Location)
 	dst.Tags = *to.StringMapPtr(daprConfigstore.Tags)
 
 	dst.Properties = &DaprConfigurationStoreProperties{
-		Environment:          to.Ptr(daprConfigstore.Properties.Environment),
-		Application:          to.Ptr(daprConfigstore.Properties.Application),
+		Environment:          new(daprConfigstore.Properties.Environment),
+		Application:          new(daprConfigstore.Properties.Application),
 		ResourceProvisioning: fromResourceProvisioningDataModel(daprConfigstore.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(daprConfigstore.Properties.Resources),
-		ComponentName:        to.Ptr(daprConfigstore.Properties.ComponentName),
+		ComponentName:        new(daprConfigstore.Properties.ComponentName),
 		ProvisioningState:    fromProvisioningStateDataModel(daprConfigstore.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(daprConfigstore.Properties.Status.OutputResources),
@@ -139,8 +139,8 @@ func (dst *DaprConfigurationStoreResource) ConvertFrom(src v1.DataModelInterface
 
 	if daprConfigstore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = fromMetadataDataModel(daprConfigstore.Properties.Metadata)
-		dst.Properties.Type = to.Ptr(daprConfigstore.Properties.Type)
-		dst.Properties.Version = to.Ptr(daprConfigstore.Properties.Version)
+		dst.Properties.Type = new(daprConfigstore.Properties.Type)
+		dst.Properties.Version = new(daprConfigstore.Properties.Version)
 	} else {
 		dst.Properties.Recipe = fromRecipeDataModel(daprConfigstore.Properties.Recipe)
 	}

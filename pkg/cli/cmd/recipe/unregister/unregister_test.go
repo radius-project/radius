@@ -104,19 +104,19 @@ func Test_Run(t *testing.T) {
 					ds_ctrl.MongoDatabasesResourceType: {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+							TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},
 				Compute: &v20231001preview.KubernetesCompute{
-					Namespace: to.Ptr("default"),
+					Namespace: new("default"),
 				},
 			}
 
 			envResource := v20231001preview.EnvironmentResource{
-				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:       to.Ptr("kind-kind"),
-				Type:       to.Ptr("applications.core/environments"),
+				ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       new("kind-kind"),
+				Type:       new("applications.core/environments"),
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}
@@ -145,7 +145,7 @@ func Test_Run(t *testing.T) {
 			expectedOutput := []any{
 				output.LogOutput{
 					Format: "Successfully unregistered recipe %q from environment %q ",
-					Params: []interface{}{
+					Params: []any{
 						"cosmosDB",
 						"kind-kind",
 					},
@@ -164,19 +164,19 @@ func Test_Run(t *testing.T) {
 				Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
 					ds_ctrl.MongoDatabasesResourceType: {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
-							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+							TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},
 				Compute: &v20231001preview.KubernetesCompute{
-					Namespace: to.Ptr("default"),
+					Namespace: new("default"),
 				},
 			}
 
 			envResource := v20231001preview.EnvironmentResource{
-				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:       to.Ptr("kind-kind"),
-				Type:       to.Ptr("applications.core/environments"),
+				ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       new("kind-kind"),
+				Type:       new("applications.core/environments"),
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}
@@ -224,16 +224,16 @@ func Test_Run(t *testing.T) {
 					ds_ctrl.MongoDatabasesResourceType: {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+							TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},
 			}
 
 			envResource := v20231001preview.EnvironmentResource{
-				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:       to.Ptr("kind-kind"),
-				Type:       to.Ptr("applications.core/environments"),
+				ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       new("kind-kind"),
+				Type:       new("applications.core/environments"),
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}
@@ -262,7 +262,7 @@ func Test_Run(t *testing.T) {
 			expectedOutput := []any{
 				output.LogOutput{
 					Format: "Successfully unregistered recipe %q from environment %q ",
-					Params: []interface{}{
+					Params: []any{
 						"cosmosDB",
 						"kind-kind",
 					},
@@ -278,16 +278,16 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20231001preview.EnvironmentResource{
-				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     to.Ptr("kind-kind"),
-				Type:     to.Ptr("applications.core/environments"),
+				ID:       new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     new("kind-kind"),
+				Type:     new("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.EnvironmentProperties{
 					Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
 						ds_ctrl.MongoDatabasesResourceType: {
 							"cosmosDB": &v20231001preview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-								TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+								TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 							},
 						},
 					},
@@ -316,16 +316,16 @@ func Test_Run(t *testing.T) {
 		t.Run("Unregister recipe with resourceType doesn't exist in the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			envResource := v20231001preview.EnvironmentResource{
-				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     to.Ptr("kind-kind"),
-				Type:     to.Ptr("applications.core/environments"),
+				ID:       new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     new("kind-kind"),
+				Type:     new("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.EnvironmentProperties{
 					Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
 						ds_ctrl.MongoDatabasesResourceType: {
 							"testResource": &v20231001preview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-								TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+								TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 							},
 						},
 					},
@@ -355,9 +355,9 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20231001preview.EnvironmentResource{
-				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:       to.Ptr("kind-kind"),
-				Type:       to.Ptr("applications.core/environments"),
+				ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       new("kind-kind"),
+				Type:       new("applications.core/environments"),
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.EnvironmentProperties{},
 			}
@@ -389,25 +389,25 @@ func Test_Run(t *testing.T) {
 					ds_ctrl.MongoDatabasesResourceType: {
 						"testResource": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+							TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						},
 					},
 					ds_ctrl.RedisCachesResourceType: {
 						"testResource": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/rediscaches:v1"),
+							TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/rediscaches:v1"),
 						},
 					},
 				},
 				Compute: &v20231001preview.KubernetesCompute{
-					Namespace: to.Ptr("default"),
+					Namespace: new("default"),
 				},
 			}
 
 			envResource := v20231001preview.EnvironmentResource{
-				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:       to.Ptr("kind-kind"),
-				Type:       to.Ptr("applications.core/environments"),
+				ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       new("kind-kind"),
+				Type:       new("applications.core/environments"),
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}
@@ -436,7 +436,7 @@ func Test_Run(t *testing.T) {
 			expectedOutput := []any{
 				output.LogOutput{
 					Format: "Successfully unregistered recipe %q from environment %q ",
-					Params: []interface{}{
+					Params: []any{
 						"testResource",
 						"kind-kind",
 					},

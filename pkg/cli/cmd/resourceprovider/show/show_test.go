@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -65,7 +64,7 @@ func Test_Validate(t *testing.T) {
 
 func Test_Run(t *testing.T) {
 	resourceProvider := v20231001preview.ResourceProviderSummary{
-		Name: to.Ptr("Applications.Test"),
+		Name: new("Applications.Test"),
 		ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 			"exampleResources": {
 				APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{

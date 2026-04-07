@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -150,19 +149,19 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-aws-accesskey.json",
 			expected: &AwsCredentialResource{
-				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
-				Name:     to.Ptr("default"),
-				Type:     to.Ptr("System.AWS/credentials"),
-				Location: to.Ptr("west-us-2"),
+				ID:       new("/planes/aws/aws/providers/System.AWS/credentials/default"),
+				Name:     new("default"),
+				Type:     new("System.AWS/credentials"),
+				Location: new("west-us-2"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &AwsAccessKeyCredentialProperties{
-					Kind:        to.Ptr(AWSCredentialKindAccessKey),
-					AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					Kind:        new(AWSCredentialKindAccessKey),
+					AccessKeyID: new("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
-						SecretName: to.Ptr("aws-awscloud-default"),
+						Kind:       new(CredentialStorageKindInternal),
+						SecretName: new("aws-awscloud-default"),
 					},
 				},
 			},
@@ -170,19 +169,19 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-aws-irsa.json",
 			expected: &AwsCredentialResource{
-				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
-				Name:     to.Ptr("default"),
-				Type:     to.Ptr("System.AWS/credentials"),
-				Location: to.Ptr("west-us-2"),
+				ID:       new("/planes/aws/aws/providers/System.AWS/credentials/default"),
+				Name:     new("default"),
+				Type:     new("System.AWS/credentials"),
+				Location: new("west-us-2"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &AwsIRSACredentialProperties{
-					Kind:    to.Ptr(AWSCredentialKindIRSA),
-					RoleARN: to.Ptr("arn:aws:iam::000000000000:role/role-name"),
+					Kind:    new(AWSCredentialKindIRSA),
+					RoleARN: new("arn:aws:iam::000000000000:role/role-name"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
-						SecretName: to.Ptr("aws-awscloud-default"),
+						Kind:       new(CredentialStorageKindInternal),
+						SecretName: new("aws-awscloud-default"),
 					},
 				},
 			},

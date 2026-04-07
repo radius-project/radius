@@ -81,7 +81,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		require.NoError(t, err)
 		maxRetries := 100
 		deleteSucceeded := false
-		for i := 0; i < maxRetries; i++ {
+		for range maxRetries {
 			getResponse, err := roundTripper.RoundTrip(getRequest)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, getResponse.StatusCode)

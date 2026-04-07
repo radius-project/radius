@@ -748,7 +748,7 @@ func (cli *CLI) CreateCommand(ctx context.Context, args []string) (*exec.Cmd, fu
 // execution.
 func (cli *CLI) ReportCommandResult(ctx context.Context, out string, description string, err error) error {
 	// If there's no context error, we know the command completed (or errored).
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		cli.T.Logf("[rad] %s", line)
 	}
 

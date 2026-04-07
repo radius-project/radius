@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,7 +20,7 @@ import (
 
 type NGroupsClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewNGroupsClient creates a new instance of NGroupsClient with the specified values.
@@ -30,7 +29,7 @@ type NGroupsClient struct {
 func NewNGroupsClient(subscriptionID string, pl runtime.Pipeline) *NGroupsClient {
 	client := &NGroupsClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -72,7 +71,7 @@ func (client *NGroupsClient) createOrUpdate(ctx context.Context, resourceGroupNa
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -87,7 +86,7 @@ func (client *NGroupsClient) createOrUpdateCreateRequest(ctx context.Context, re
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +132,7 @@ func (client *NGroupsClient) deleteOperation(ctx context.Context, resourceGroupN
 	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -148,7 +147,7 @@ func (client *NGroupsClient) deleteCreateRequest(ctx context.Context, resourceGr
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +191,7 @@ func (client *NGroupsClient) getCreateRequest(ctx context.Context, resourceGroup
 		return nil, errors.New("parameter ngroupsName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +214,7 @@ func (client *NGroupsClient) getHandleResponse(resp *http.Response) (NGroupsClie
 // NewListPager - Gets a list of all NGroups resources under a subscription.
 // Generated from API version 2024-11-01-preview
 // options - NGroupsClientListOptions contains the optional parameters for the NGroupsClient.List method.
-func (client *NGroupsClient) NewListPager(options *NGroupsClientListOptions) (*runtime.Pager[NGroupsClientListResponse]) {
+func (client *NGroupsClient) NewListPager(options *NGroupsClientListOptions) *runtime.Pager[NGroupsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[NGroupsClientListResponse]{
 		More: func(page NGroupsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -247,7 +246,7 @@ func (client *NGroupsClient) NewListPager(options *NGroupsClientListOptions) (*r
 func (client *NGroupsClient) listCreateRequest(ctx context.Context, options *NGroupsClientListOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/providers/Microsoft.ContainerInstance/ngroups"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +271,7 @@ func (client *NGroupsClient) listHandleResponse(resp *http.Response) (NGroupsCli
 // resourceGroupName - The name of the resource group. The name is case insensitive.
 // options - NGroupsClientListByResourceGroupOptions contains the optional parameters for the NGroupsClient.ListByResourceGroup
 // method.
-func (client *NGroupsClient) NewListByResourceGroupPager(resourceGroupName string, options *NGroupsClientListByResourceGroupOptions) (*runtime.Pager[NGroupsClientListByResourceGroupResponse]) {
+func (client *NGroupsClient) NewListByResourceGroupPager(resourceGroupName string, options *NGroupsClientListByResourceGroupOptions) *runtime.Pager[NGroupsClientListByResourceGroupResponse] {
 	return runtime.NewPager(runtime.PagingHandler[NGroupsClientListByResourceGroupResponse]{
 		More: func(page NGroupsClientListByResourceGroupResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -308,7 +307,7 @@ func (client *NGroupsClient) listByResourceGroupCreateRequest(ctx context.Contex
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +364,7 @@ func (client *NGroupsClient) restart(ctx context.Context, resourceGroupName stri
 	if !runtime.HasStatusCode(resp, http.StatusAccepted) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // restartCreateRequest creates the Restart request.
@@ -380,7 +379,7 @@ func (client *NGroupsClient) restartCreateRequest(ctx context.Context, resourceG
 		return nil, errors.New("parameter ngroupsName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +427,7 @@ func (client *NGroupsClient) start(ctx context.Context, resourceGroupName string
 	if !runtime.HasStatusCode(resp, http.StatusAccepted) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // startCreateRequest creates the Start request.
@@ -443,7 +442,7 @@ func (client *NGroupsClient) startCreateRequest(ctx context.Context, resourceGro
 		return nil, errors.New("parameter ngroupsName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +487,7 @@ func (client *NGroupsClient) stopCreateRequest(ctx context.Context, resourceGrou
 		return nil, errors.New("parameter ngroupsName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +534,7 @@ func (client *NGroupsClient) update(ctx context.Context, resourceGroupName strin
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // updateCreateRequest creates the Update request.
@@ -550,7 +549,7 @@ func (client *NGroupsClient) updateCreateRequest(ctx context.Context, resourceGr
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{ngroupsName}", url.PathEscape(ngroupsName))
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -560,4 +559,3 @@ func (client *NGroupsClient) updateCreateRequest(ctx context.Context, resourceGr
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, nGroup)
 }
-

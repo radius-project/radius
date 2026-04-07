@@ -26,7 +26,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/databaseutil"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -197,7 +196,7 @@ func (p *PostgresClient) Query(ctx context.Context, query database.Query, option
 
 	var routingScopePrefixFilter *string
 	if query.RoutingScopePrefix != "" {
-		routingScopePrefixFilter = to.Ptr(databaseutil.NormalizePart(query.RoutingScopePrefix))
+		routingScopePrefixFilter = new(databaseutil.NormalizePart(query.RoutingScopePrefix))
 	}
 
 	var timestampFilter *string
