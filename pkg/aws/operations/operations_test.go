@@ -241,7 +241,7 @@ func Test_GeneratePatch(t *testing.T) {
 					"G": map[string]any{},
 				},
 			},
-			jsondiff.Patch{},
+			nil,
 		},
 		{
 			"Updating create-and-write-only property noops",
