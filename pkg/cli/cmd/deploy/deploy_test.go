@@ -1613,6 +1613,18 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 			expectContains: "Deployment failed (incorrect or unsupported API version)",
 		},
 		{
+			name: "Non-Azure provider-not-configured error is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider kubernetes is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
 			name: "Exact deployment engine error with Azure types is returned as-is",
 			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type microsoft.storage/storageAccounts"),
 			template: map[string]any{
@@ -1682,4 +1694,39 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 			}
 		})
 	}
+}
+
+type trackingReadCloser struct {
+	*bytes.Reader
+	closed bool
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closed = true
+	return nil
+}
+
+func Test_extractDeploymentEngineErrorDetails_closesAndResetsBody(t *testing.T) {
+	body := []byte(`{"error":{"code":"BadRequest","message":"provider azure is not configured. Cannot support resource type radius.core/applications"}}`)
+	tracker := &trackingReadCloser{Reader: bytes.NewReader(body)}
+	responseErr := &azcore.ResponseError{
+		ErrorCode:  v1.CodeInvalid,
+		StatusCode: http.StatusBadRequest,
+		RawResponse: &http.Response{
+			StatusCode: http.StatusBadRequest,
+			Body:       tracker,
+		},
+	}
+
+	details, ok := extractDeploymentEngineErrorDetails(responseErr)
+
+	require.True(t, ok)
+	require.NotNil(t, details)
+	require.Equal(t, v1.CodeInvalid, details.Code)
+	require.Equal(t, "provider azure is not configured. Cannot support resource type radius.core/applications", details.Message)
+	require.True(t, tracker.closed)
+
+	resetBody, readErr := io.ReadAll(responseErr.RawResponse.Body)
+	require.NoError(t, readErr)
+	require.Equal(t, body, resetBody)
 }

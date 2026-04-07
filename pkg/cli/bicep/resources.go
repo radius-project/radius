@@ -28,11 +28,11 @@ const (
 	legacyEnvironmentResourceType = "applications.core/environments"
 )
 
-// radiusNamespacePrefixes lists all resource type namespace prefixes that belong to Radius.
-// Resource types with these prefixes are routed through the Radius control plane, not Azure ARM.
-var radiusNamespacePrefixes = []string{
-	"applications.",
-	"radius.",
+// radiusNamespacePatterns lists namespace prefixes for resource type namespaces that belong to Radius.
+// Resource types matching these prefixes are routed through the Radius control plane, not Azure ARM.
+var radiusNamespacePatterns = []string{
+	"Applications.*",
+	"Radius.*",
 }
 
 // TemplateInspectionResult contains the results of inspecting a Bicep template's resources.
@@ -96,9 +96,13 @@ func ExtractResourceTypes(template map[string]any) []ResourceTypeEntry {
 }
 
 // IsRadiusResourceType returns true if the given resource type belongs to a known Radius namespace.
+// It matches against the patterns in radiusNamespacePatterns (e.g. "Applications.*", "Radius.*")
+// using case-insensitive prefix matching on the namespace portion before the dot and slash.
 func IsRadiusResourceType(resourceType string) bool {
 	lower := strings.ToLower(resourceType)
-	for _, prefix := range radiusNamespacePrefixes {
+	for _, pattern := range radiusNamespacePatterns {
+		// Convert pattern like "Applications.*" to a lowercase prefix like "applications."
+		prefix := strings.ToLower(strings.TrimSuffix(pattern, "*"))
 		if strings.HasPrefix(lower, prefix) {
 			return true
 		}

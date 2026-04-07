@@ -715,6 +715,13 @@ func addDeploymentErrorContext(err error, template map[string]any) error {
 		unsupportedAPIDocsURL)
 }
 
+// providerNotConfiguredPrefix is the exact error message prefix returned by the Deployment Engine
+// when a resource type is routed to a provider that is not configured. See deploymentprocessor.go.
+const providerNotConfiguredPrefix = "provider "
+
+// providerNotConfiguredSuffix is the middle portion of the Deployment Engine error after the provider name.
+const providerNotConfiguredSuffix = " is not configured. cannot support resource type "
+
 func isUnsupportedRadiusAPIVersionError(err error, template map[string]any) bool {
 	if !bicep.HasOnlyRadiusResourceTypes(template) {
 		return false
@@ -729,10 +736,26 @@ func isUnsupportedRadiusAPIVersionError(err error, template map[string]any) bool
 		return false
 	}
 
-	return strings.HasPrefix(
-		strings.ToLower(errorDetails.Message),
-		"provider azure is not configured. cannot support resource type ",
-	)
+	return isProviderNotConfiguredError(errorDetails.Message)
+}
+
+// isProviderNotConfiguredError checks whether the error message matches the exact pattern
+// "provider <name> is not configured. Cannot support resource type <type>" returned by the Deployment Engine,
+// and only treats it as the unsupported Radius API version case when the provider is Azure.
+func isProviderNotConfiguredError(message string) bool {
+	lower := strings.ToLower(message)
+	if !strings.HasPrefix(lower, providerNotConfiguredPrefix) {
+		return false
+	}
+
+	providerStart := len(providerNotConfiguredPrefix)
+	providerEnd := strings.Index(lower[providerStart:], providerNotConfiguredSuffix)
+	if providerEnd < 0 {
+		return false
+	}
+
+	providerName := lower[providerStart : providerStart+providerEnd]
+	return providerName == "azure"
 }
 
 func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
@@ -746,8 +769,12 @@ func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
 		return nil, false
 	}
 
-	body, readErr := io.ReadAll(responseErr.RawResponse.Body)
+	originalBody := responseErr.RawResponse.Body
+	body, readErr := io.ReadAll(originalBody)
 	if readErr != nil {
+		return nil, false
+	}
+	if closeErr := originalBody.Close(); closeErr != nil {
 		return nil, false
 	}
 	responseErr.RawResponse.Body = io.NopCloser(bytes.NewReader(body))
