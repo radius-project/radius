@@ -413,6 +413,11 @@ func Test_IsRadiusResourceType(t *testing.T) {
 			expected:     true,
 		},
 		{
+			name:         "Applications wildcard namespace",
+			resourceType: "Applications.Networking/gateways",
+			expected:     true,
+		},
+		{
 			name:         "Applications.Datastores type",
 			resourceType: "Applications.Datastores/redisCaches",
 			expected:     true,
@@ -529,4 +534,3 @@ func Test_HasOnlyRadiusResourceTypes(t *testing.T) {
 		})
 	}
 }
-

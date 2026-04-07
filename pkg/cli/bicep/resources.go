@@ -31,11 +31,8 @@ const (
 // radiusNamespacePrefixes lists all resource type namespace prefixes that belong to Radius.
 // Resource types with these prefixes are routed through the Radius control plane, not Azure ARM.
 var radiusNamespacePrefixes = []string{
-	"applications.core/",
-	"applications.dapr/",
-	"applications.datastores/",
-	"applications.messaging/",
-	"radius.core/",
+	"applications.",
+	"radius.",
 }
 
 // TemplateInspectionResult contains the results of inspecting a Bicep template's resources.

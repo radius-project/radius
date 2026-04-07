@@ -17,11 +17,17 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/config"
@@ -1595,7 +1601,7 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 		},
 		{
 			name: "Azure error with only Radius types is wrapped",
-			err:  fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
 			template: map[string]any{
 				"resources": map[string]any{
 					"app": map[string]any{
@@ -1604,11 +1610,11 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 				},
 			},
 			expectWrapped:  true,
-			expectContains: "incorrect or unsupported API version",
+			expectContains: "Deployment failed (incorrect or unsupported API version)",
 		},
 		{
-			name: "Azure error with Azure types is returned as-is",
-			err:  fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			name: "Exact deployment engine error with Azure types is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type microsoft.storage/storageAccounts"),
 			template: map[string]any{
 				"resources": map[string]any{
 					"storage": map[string]any{
@@ -1619,8 +1625,8 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 			expectWrapped: false,
 		},
 		{
-			name: "Azure error with mixed types is returned as-is",
-			err:  fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			name: "Exact deployment engine error with mixed types is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
 			template: map[string]any{
 				"resources": map[string]any{
 					"app": map[string]any{
@@ -1634,14 +1640,23 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 			expectWrapped: false,
 		},
 		{
-			name:          "Azure error with empty template is returned as-is",
-			err:           fmt.Errorf("Azure deployment failed, please ensure you have configured an Azure provider"),
+			name:          "Exact deployment engine error with empty template is returned as-is",
+			err:           v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
 			template:      map[string]any{},
 			expectWrapped: false,
 		},
 		{
-			name: "Azure provider error with only Radius types is wrapped",
-			err:  fmt.Errorf("code: Invalid, message: Azure provider not configured"),
+			name: "Response error with deployment engine payload is wrapped",
+			err: &azcore.ResponseError{
+				ErrorCode:  v1.CodeInvalid,
+				StatusCode: http.StatusBadRequest,
+				RawResponse: &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body: io.NopCloser(bytes.NewReader([]byte(
+						`{"error":{"code":"BadRequest","message":"provider azure is not configured. Cannot support resource type radius.core/applications"}}`,
+					))),
+				},
+			},
 			template: map[string]any{
 				"resources": map[string]any{
 					"app": map[string]any{
@@ -1650,7 +1665,7 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 				},
 			},
 			expectWrapped:  true,
-			expectContains: "incorrect or unsupported API version",
+			expectContains: unsupportedAPIDocsURL,
 		},
 	}
 
@@ -1661,7 +1676,7 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 				require.NotEqual(t, tt.err, result)
 				require.Contains(t, result.Error(), tt.expectContains)
 				// The original error should be preserved as the cause
-				require.Contains(t, result.Error(), tt.err.Error())
+				require.Contains(t, result.Error(), strings.TrimSpace(tt.err.Error()))
 			} else {
 				require.Equal(t, tt.err, result)
 			}

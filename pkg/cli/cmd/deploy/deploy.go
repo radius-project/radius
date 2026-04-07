@@ -17,11 +17,16 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -46,6 +51,7 @@ import (
 const (
 	appCoreProviderName    = "Applications.Core"
 	radiusCoreProviderName = "Radius.Core"
+	unsupportedAPIDocsURL  = "https://docs.radapp.io/reference/api/"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
@@ -699,36 +705,57 @@ func (r *Runner) configureProviders() error {
 	return nil
 }
 
-// addDeploymentErrorContext checks whether a deployment error is misleading and wraps it
-// with additional context to help the user diagnose the problem.
-//
-// When a Bicep template uses a Radius resource type with an unsupported API version
-// (e.g., Radius.Core/applications@2023-10-01-preview), the Bicep compiler cannot resolve
-// the type and treats the resource as a passthrough ARM resource. The deployment engine
-// then attempts to route it through Azure, which fails with an error about Azure provider
-// configuration. This is confusing because the user intended to deploy a Radius resource.
-//
-// This function detects that scenario and wraps the original error with a more helpful message.
 func addDeploymentErrorContext(err error, template map[string]any) error {
-	errMsg := strings.ToLower(err.Error())
-
-	// Check if the error mentions Azure provider/deployment issues.
-	isAzureRelatedError := strings.Contains(errMsg, "azure") &&
-		(strings.Contains(errMsg, "provider") || strings.Contains(errMsg, "deployment"))
-
-	if !isAzureRelatedError {
-		return err
-	}
-
-	// Check if the template contains only Radius resource types (no Azure resources).
-	// If the template has Azure resources, the error about Azure provider is legitimate.
-	if !bicep.HasOnlyRadiusResourceTypes(template) {
+	if !isUnsupportedRadiusAPIVersionError(err, template) {
 		return err
 	}
 
 	return clierrors.MessageWithCause(err,
-		"Deployment failed with an Azure provider error, but the template only contains Radius resource types. "+
-			"This commonly happens when a resource type is used with an incorrect or unsupported API version, "+
-			"causing it to be misrouted. Please verify that each resource uses a supported API version.\n\n"+
-			"For example, Radius.Core types use API version '2025-08-01-preview' and Applications.Core types use '2023-10-01-preview'.")
+		"Deployment failed (incorrect or unsupported API version). Please verify that each resource uses a supported API version. For more information, please reference the documentation: %s",
+		unsupportedAPIDocsURL)
+}
+
+func isUnsupportedRadiusAPIVersionError(err error, template map[string]any) bool {
+	if !bicep.HasOnlyRadiusResourceTypes(template) {
+		return false
+	}
+
+	errorDetails, ok := extractDeploymentEngineErrorDetails(err)
+	if !ok {
+		return false
+	}
+
+	if errorDetails.Code != v1.CodeInvalid {
+		return false
+	}
+
+	return strings.HasPrefix(
+		strings.ToLower(errorDetails.Message),
+		"provider azure is not configured. cannot support resource type ",
+	)
+}
+
+func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
+	var clientErr *v1.ErrClientRP
+	if errors.As(err, &clientErr) {
+		return &v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}, true
+	}
+
+	var responseErr *azcore.ResponseError
+	if !errors.As(err, &responseErr) || responseErr.RawResponse == nil || responseErr.RawResponse.Body == nil {
+		return nil, false
+	}
+
+	body, readErr := io.ReadAll(responseErr.RawResponse.Body)
+	if readErr != nil {
+		return nil, false
+	}
+	responseErr.RawResponse.Body = io.NopCloser(bytes.NewReader(body))
+
+	var errorResponse v1.ErrorResponse
+	if unmarshalErr := json.Unmarshal(body, &errorResponse); unmarshalErr != nil || errorResponse.Error == nil {
+		return nil, false
+	}
+
+	return errorResponse.Error, true
 }
