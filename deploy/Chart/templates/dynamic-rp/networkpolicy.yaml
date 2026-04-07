@@ -1,4 +1,4 @@
-{{- if .Values.global.networkPolicy.enabled }}
+{{- if eq .Values.global.networkPolicy.enabled true }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -23,9 +23,11 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
-    {{- if .Values.global.prometheus.enabled }}
+    {{- if eq .Values.global.prometheus.enabled true }}
     # Allow Prometheus metrics scraping
-    - ports:
+    - from:
+{{ include "radius.networkPolicy.prometheusPeers" . | nindent 8 }}
+      ports:
         - protocol: TCP
           port: {{ .Values.global.prometheus.port }}
     {{- end }}

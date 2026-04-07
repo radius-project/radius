@@ -103,6 +103,12 @@ tests:
       - equal:
           path: spec.ingress[0].ports[0].port
           value: 9443
+      - equal:
+          path: spec.ingress[1].from[0].ipBlock.cidr
+          value: 0.0.0.0/0
+      - equal:
+          path: spec.egress[2].to[0].ipBlock.cidr
+          value: 0.0.0.0/0
 
   - it: bicep-de NetworkPolicy should restrict ingress to UCP only
     set:
@@ -122,16 +128,19 @@ tests:
           path: spec.ingress[0].ports[0].port
           value: 6443
 
-  - it: should include Prometheus port when metrics are enabled
+  - it: should include Prometheus metrics ingress when metrics are enabled
     set:
       global.networkPolicy.enabled: true
       global.prometheus.enabled: true
       global.prometheus.port: 9090
-    template: ucp/networkpolicy.yaml
+    template: de/networkpolicy.yaml
     asserts:
       - equal:
           path: spec.ingress[1].ports[0].port
-          value: 9090
+          value: 6443
+      - equal:
+          path: spec.ingress[1].from[0].podSelector.matchLabels["app.kubernetes.io/name"]
+          value: prometheus
 
   - it: should not include Prometheus port when metrics are disabled
     set:
@@ -142,6 +151,27 @@ tests:
       - lengthEqual:
           path: spec.ingress
           count: 1
+
+  - it: controller NetworkPolicy should render custom Kubernetes API server CIDRs
+    set:
+      global.networkPolicy.enabled: true
+      global.networkPolicy.kubernetesApiServerCidrs:
+        - 10.0.0.0/24
+        - 10.0.1.0/24
+    template: controller/networkpolicy.yaml
+    asserts:
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 10.0.0.0/24
+      - equal:
+          path: spec.ingress[0].from[1].ipBlock.cidr
+          value: 10.0.1.0/24
+      - equal:
+          path: spec.egress[2].to[0].ipBlock.cidr
+          value: 10.0.0.0/24
+      - equal:
+          path: spec.egress[2].to[1].ipBlock.cidr
+          value: 10.0.1.0/24
 
   - it: dashboard NetworkPolicy should not be created when dashboard is disabled
     set:

@@ -103,3 +103,31 @@ Priority for tag (handled by caller):
   ghcr.io/radius-project/{{ .image }}:{{ .tag }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Render the peers allowed to scrape component metrics.
+*/}}
+{{- define "radius.networkPolicy.prometheusPeers" -}}
+- namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: {{ .Release.Namespace | quote }}
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+{{- end -}}
+
+{{/*
+Render the CIDRs allowed to reach the Kubernetes API server.
+Falls back to 0.0.0.0/0 for compatibility when cluster-specific CIDRs are not provided.
+*/}}
+{{- define "radius.networkPolicy.kubernetesApiServerCidrs" -}}
+{{- if gt (len .Values.global.networkPolicy.kubernetesApiServerCidrs) 0 -}}
+{{- range .Values.global.networkPolicy.kubernetesApiServerCidrs }}
+- ipBlock:
+    cidr: {{ . | quote }}
+{{- end -}}
+{{- else -}}
+- ipBlock:
+    cidr: 0.0.0.0/0
+{{- end -}}
+{{- end -}}

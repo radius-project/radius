@@ -41,6 +41,10 @@ global:
   # Disabled by default for backward compatibility.
   networkPolicy:
     enabled: false
+    # Configure the Kubernetes API server CIDRs used by aggregated APIs and webhooks.
+    # When left empty, the chart allows 0.0.0.0/0 for compatibility across clusters.
+    # Set this to your cluster-specific API server CIDRs to tighten the policy.
+    kubernetesApiServerCidrs: []
 
   prometheus:
     enabled: true
