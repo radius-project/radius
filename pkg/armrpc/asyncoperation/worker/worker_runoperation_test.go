@@ -313,7 +313,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	testMessageCnt := 10
 	testMessages := []*queue.Message{}
 	// queue asyncoperation messages.
-	for i := 0; i < testMessageCnt; i++ {
+	for range testMessageCnt {
 		testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
 		testMessages = append(testMessages, testMessage)
 		err = tCtx.testQueue.Enqueue(ctx, testMessage)
@@ -326,7 +326,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	cancel()
 	<-done
 
-	for i := 0; i < testMessageCnt; i++ {
+	for i := range testMessageCnt {
 		require.Equal(t, 1, testMessages[i].DequeueCount)
 	}
 	require.Equal(t, int32(defaultMaxOperationConcurrency), maxConcurrency.Load())

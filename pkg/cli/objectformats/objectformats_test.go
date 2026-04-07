@@ -29,9 +29,9 @@ import (
 
 func Test_GetResourceTableFormat(t *testing.T) {
 	obj := corerpv20231001preview.EnvironmentResource{
-		Name: to.Ptr("test"),
-		Type: to.Ptr("test-type"),
-		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
+		Name: new("test"),
+		Type: new("test-type"),
+		ID:   new("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
 		Properties: &corerpv20231001preview.EnvironmentProperties{
 			ProvisioningState: to.Ptr(corerpv20231001preview.ProvisioningStateUpdating),
 		},
@@ -47,9 +47,9 @@ func Test_GetResourceTableFormat(t *testing.T) {
 
 func Test_GetGenericResourceTableFormat(t *testing.T) {
 	obj := generated.GenericResource{
-		Name: to.Ptr("test"),
-		Type: to.Ptr("test-type"),
-		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
+		Name: new("test"),
+		Type: new("test-type"),
+		ID:   new("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
 		Properties: map[string]any{
 			"provisioningState": corerpv20231001preview.ProvisioningStateUpdating,
 		},

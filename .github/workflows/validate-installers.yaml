@@ -21,6 +21,10 @@ on:
   pull_request:
     paths:
       - deploy/install.ps1
+      - deploy/test-pwsh-install.ps1
+      - deploy/install.sh
+      - deploy/test-install.sh
+      - .github/workflows/validate-installers.yaml
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -30,10 +34,10 @@ concurrency:
 permissions: {}
 
 jobs:
-  verify-installers:
-    name: Validate Installers
+  verify-powershell-installer:
+    name: Validate PowerShell Installer
     runs-on: windows-2025
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -44,3 +48,19 @@ jobs:
       - name: Run installer test script
         shell: powershell
         run: deploy/test-pwsh-install.ps1
+
+  verify-bash-installer:
+    name: Validate Bash Installer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+
+      - name: Run installer test script
+        run: deploy/test-install.sh

@@ -21,23 +21,22 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 	versionedResource := &EnvironmentResource{
-		ID:       to.Ptr("/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-aci-env"),
-		Name:     to.Ptr("my-aci-env"),
-		Type:     to.Ptr("Radius.Core/environments"),
-		Location: to.Ptr("West US"),
+		ID:       new("/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-aci-env"),
+		Name:     new("my-aci-env"),
+		Type:     new("Radius.Core/environments"),
+		Location: new("West US"),
 		Tags: map[string]*string{
-			"env": to.Ptr("test"),
+			"env": new("test"),
 		},
 		Properties: &EnvironmentProperties{
-			ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
+			ProvisioningState: new(ProvisioningStateSucceeded),
 			RecipePacks: []*string{
-				to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"),
+				new("/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"),
 			},
 			RecipeParameters: map[string]map[string]any{
 				"Radius.Compute/containers": {
@@ -46,12 +45,12 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 			},
 			Providers: &Providers{
 				Azure: &ProvidersAzure{
-					SubscriptionID:    to.Ptr("00000000-0000-0000-0000-000000000000"),
-					ResourceGroupName: to.Ptr("my-resource-group"),
+					SubscriptionID:    new("00000000-0000-0000-0000-000000000000"),
+					ResourceGroupName: new("my-resource-group"),
 					Identity: &IdentitySettings{
-						Kind: to.Ptr(IdentitySettingKindUserAssigned),
+						Kind: new(IdentitySettingKindUserAssigned),
 						ManagedIdentity: []*string{
-							to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-identity"),
+							new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/my-identity"),
 						},
 					},
 				},
@@ -120,14 +119,14 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 	err := versionedResource.ConvertFrom(dataModelResource)
 	require.NoError(t, err)
 
-	require.Equal(t, to.Ptr("test-env"), versionedResource.Name)
-	require.Equal(t, to.Ptr("Radius.Core/environments"), versionedResource.Type)
-	require.Equal(t, to.Ptr("West US"), versionedResource.Location)
-	require.Equal(t, map[string]*string{"env": to.Ptr("test")}, versionedResource.Tags)
-	require.Equal(t, []*string{to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/test-pack")}, versionedResource.Properties.RecipePacks)
+	require.Equal(t, new("test-env"), versionedResource.Name)
+	require.Equal(t, new("Radius.Core/environments"), versionedResource.Type)
+	require.Equal(t, new("West US"), versionedResource.Location)
+	require.Equal(t, map[string]*string{"env": new("test")}, versionedResource.Tags)
+	require.Equal(t, []*string{new("/planes/radius/local/providers/Radius.Core/recipePacks/test-pack")}, versionedResource.Properties.RecipePacks)
 	require.NotNil(t, versionedResource.Properties.Providers)
 	require.NotNil(t, versionedResource.Properties.Providers.Kubernetes)
-	require.Equal(t, to.Ptr("default"), versionedResource.Properties.Providers.Kubernetes.Namespace)
+	require.Equal(t, new("default"), versionedResource.Properties.Providers.Kubernetes.Namespace)
 	require.NotNil(t, versionedResource.Properties.RecipeParameters)
 	require.Len(t, versionedResource.Properties.RecipeParameters, 1)
 	containerParams, ok := versionedResource.Properties.RecipeParameters["Radius.Compute/containers"]

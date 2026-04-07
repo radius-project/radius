@@ -53,14 +53,14 @@ func (dst *APIVersionResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(dm.ID)
-	dst.Name = to.Ptr(dm.Name)
-	dst.Type = to.Ptr(dm.Type)
+	dst.ID = new(dm.ID)
+	dst.Name = new(dm.Name)
+	dst.Type = new(dm.Type)
 
 	// NOTE: this is a child resource. It does not have a location, systemData, or tags.
 
 	dst.Properties = &APIVersionProperties{
-		ProvisioningState: to.Ptr(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
+		ProvisioningState: new(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
 		Schema:            dm.Properties.Schema,
 	}
 

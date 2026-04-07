@@ -118,7 +118,7 @@ medium    false               Some-Value  some-value
 }
 
 func Test_Table_Slice_Multiline(t *testing.T) {
-	obj := []interface{}{
+	obj := []any{
 		tableInput{
 			Size:   "mega\nsuper\ncool",
 			IsCool: true,

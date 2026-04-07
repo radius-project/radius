@@ -17,6 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
+	"slices"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
@@ -101,12 +103,7 @@ type GatewayPropertiesTLS struct {
 // IsValid checks if the given MinimumTLSProtocolVersion is valid.
 func (m MinimumTLSProtocolVersion) IsValid() bool {
 	s := ValidMinimumTLSProtocolVersions()
-	for _, v := range s {
-		if v == m {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, m)
 }
 
 // IsEqualTo compares two MinimumTLSProtocolVersion objects and returns true if they are equal.

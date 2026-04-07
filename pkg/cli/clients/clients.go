@@ -19,6 +19,7 @@ package clients
 import (
 	"context"
 	"io"
+	"maps"
 	"os"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -288,9 +289,7 @@ type ApplicationsManagementClient interface {
 // copying each key-value pair into a new object.
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 	copy := DeploymentParameters{}
-	for k, v := range params {
-		copy[k] = v
-	}
+	maps.Copy(copy, params)
 
 	return copy
 }

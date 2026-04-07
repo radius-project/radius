@@ -38,10 +38,10 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	Compute      rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
+	Compute      rpv1.EnvironmentCompute                           `json:"compute"`
 	Recipes      map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
-	Providers    Providers                                         `json:"providers,omitempty"`
-	RecipeConfig RecipeConfigProperties                            `json:"recipeConfig,omitempty"`
+	Providers    Providers                                         `json:"providers"`
+	RecipeConfig RecipeConfigProperties                            `json:"recipeConfig"`
 	Extensions   []Extension                                       `json:"extensions,omitempty"`
 	Simulated    bool                                              `json:"simulated,omitempty"`
 }
@@ -77,9 +77,9 @@ func (e *EnvironmentRecipeProperties) ResourceTypeName() string {
 // Providers represents configs for providers for the environment, eg azure,aws
 type Providers struct {
 	// Azure provider information
-	Azure ProvidersAzure `json:"azure,omitempty"`
+	Azure ProvidersAzure `json:"azure"`
 	// AWS provider information
-	AWS ProvidersAWS `json:"aws,omitempty"`
+	AWS ProvidersAWS `json:"aws"`
 }
 
 // ProvidersAzure represents the azure provider configs

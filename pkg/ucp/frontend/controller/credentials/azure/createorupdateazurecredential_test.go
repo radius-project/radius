@@ -146,20 +146,20 @@ func Test_Azure_Credential(t *testing.T) {
 
 func getAzureCredentialResponse() armrpc_rest.Response {
 	return armrpc_rest.NewOKResponseWithHeaders(&v20231001preview.AzureCredentialResource{
-		Location: to.Ptr("West US"),
-		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
-		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.Azure/credentials"),
+		Location: new("West US"),
+		ID:       new("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+		Name:     new("default"),
+		Type:     new("System.Azure/credentials"),
 		Tags: map[string]*string{
-			"env": to.Ptr("dev"),
+			"env": new("dev"),
 		},
 		Properties: &v20231001preview.AzureServicePrincipalProperties{
-			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			ClientID: new("00000000-0000-0000-0000-000000000000"),
+			TenantID: new("00000000-0000-0000-0000-000000000000"),
 			Kind:     to.Ptr(v20231001preview.AzureCredentialKindServicePrincipal),
 			Storage: &v20231001preview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20231001preview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure-azurecloud-default"),
+				SecretName: new("azure-azurecloud-default"),
 			},
 		},
 	}, map[string]string{"ETag": ""})

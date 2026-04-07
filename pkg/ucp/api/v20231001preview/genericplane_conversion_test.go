@@ -40,12 +40,12 @@ func Test_GenericPlane_ConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "genericplane-datamodel-empty.json",
 			expected: &GenericPlaneResource{
-				ID:       to.Ptr("/planes/aws/aws"),
-				Name:     to.Ptr("aws"),
+				ID:       new("/planes/aws/aws"),
+				Name:     new("aws"),
 				Type:     to.Ptr(datamodel.AWSPlaneResourceType),
-				Location: to.Ptr("global"),
+				Location: new("global"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &GenericPlaneResourceProperties{
 					ProvisioningState: fromProvisioningStateDataModel(v1.ProvisioningStateSucceeded),

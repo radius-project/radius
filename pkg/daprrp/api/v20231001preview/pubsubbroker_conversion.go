@@ -114,19 +114,19 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(daprPubSub.ID)
-	dst.Name = to.Ptr(daprPubSub.Name)
-	dst.Type = to.Ptr(daprPubSub.Type)
+	dst.ID = new(daprPubSub.ID)
+	dst.Name = new(daprPubSub.Name)
+	dst.Type = new(daprPubSub.Type)
 	dst.SystemData = fromSystemDataModel(daprPubSub.SystemData)
-	dst.Location = to.Ptr(daprPubSub.Location)
+	dst.Location = new(daprPubSub.Location)
 	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
 
 	dst.Properties = &DaprPubSubBrokerProperties{
-		Environment:          to.Ptr(daprPubSub.Properties.Environment),
-		Application:          to.Ptr(daprPubSub.Properties.Application),
+		Environment:          new(daprPubSub.Properties.Environment),
+		Application:          new(daprPubSub.Properties.Application),
 		ResourceProvisioning: fromResourceProvisioningDataModel(daprPubSub.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(daprPubSub.Properties.Resources),
-		ComponentName:        to.Ptr(daprPubSub.Properties.ComponentName),
+		ComponentName:        new(daprPubSub.Properties.ComponentName),
 		ProvisioningState:    fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -137,8 +137,8 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 
 	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = fromMetadataDataModel(daprPubSub.Properties.Metadata)
-		dst.Properties.Type = to.Ptr(daprPubSub.Properties.Type)
-		dst.Properties.Version = to.Ptr(daprPubSub.Properties.Version)
+		dst.Properties.Type = new(daprPubSub.Properties.Type)
+		dst.Properties.Version = new(daprPubSub.Properties.Version)
 	} else {
 		dst.Properties.Recipe = fromRecipeDataModel(daprPubSub.Properties.Recipe)
 	}

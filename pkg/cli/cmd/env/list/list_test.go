@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 )
 
@@ -88,10 +87,10 @@ func Test_Run(t *testing.T) {
 
 	environments := []v20231001preview.EnvironmentResource{
 		{
-			Name: to.Ptr("A"),
+			Name: new("A"),
 		},
 		{
-			Name: to.Ptr("B"),
+			Name: new("B"),
 		},
 	}
 

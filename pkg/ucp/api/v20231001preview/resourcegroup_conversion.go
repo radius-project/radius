@@ -52,10 +52,10 @@ func (dst *ResourceGroupResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(rg.ID)
-	dst.Name = to.Ptr(rg.Name)
-	dst.Type = to.Ptr(rg.Type)
-	dst.Location = to.Ptr(rg.Location)
+	dst.ID = new(rg.ID)
+	dst.Name = new(rg.Name)
+	dst.Type = new(rg.Type)
+	dst.Location = new(rg.Location)
 	dst.Tags = *to.StringMapPtr(rg.Tags)
 
 	return nil

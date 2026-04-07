@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -40,7 +39,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 		output := cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.Ptr(testAWSRequestToken),
+				RequestToken:    new(testAWSRequestToken),
 			},
 		}
 		return &output, nil

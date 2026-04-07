@@ -124,7 +124,7 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 		// Resources may be stuck in "Updating" state after failed deployments
 		maxRetries := 5
 		var err error
-		for attempt := 0; attempt < maxRetries; attempt++ {
+		for attempt := range maxRetries {
 			_, err = client.DeleteResource(ctx, resource.Type, resource.Name)
 			if err == nil {
 				break
@@ -187,8 +187,8 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 			// Validate expected output resources are present in the response
 			if len(expectedResource.OutputResources) > 0 {
 				t.Log("validating output resources")
-				status := res.Properties["status"].(map[string]interface{})
-				or := status["outputResources"].([]interface{})
+				status := res.Properties["status"].(map[string]any)
+				or := status["outputResources"].([]any)
 				bytes, err := json.Marshal(or)
 				require.NoError(t, err)
 

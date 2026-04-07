@@ -42,7 +42,7 @@ type MongoDatabase struct {
 type MongoDatabaseProperties struct {
 	rpv1.BasicResourceProperties
 	// Secrets values provided for the Mongo database resource
-	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
+	Secrets MongoDatabaseSecrets `json:"secrets"`
 	// Host name of the target Mongo database
 	Host string `json:"host,omitempty"`
 	// Port value of the target Mongo database
@@ -50,7 +50,7 @@ type MongoDatabaseProperties struct {
 	// Database name of the target Mongo database
 	Database string `json:"database,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Mongo database link
-	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe"`
 	// List of the resource IDs that support the Mongo database resource
 	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed

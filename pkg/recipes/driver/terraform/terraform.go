@@ -349,8 +349,8 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 			// For resource type "kubernetes_manifest" get the required details from the manifest property.
 			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
 			if resource.Type == "kubernetes_manifest" {
-				if manifest, ok := resource.AttributeValues["manifest"].(map[string]interface{}); ok {
-					if metadata, ok := manifest["metadata"].(map[string]interface{}); ok {
+				if manifest, ok := resource.AttributeValues["manifest"].(map[string]any); ok {
+					if metadata, ok := manifest["metadata"].(map[string]any); ok {
 						if name, ok := metadata["name"].(string); ok {
 							resourceName = name
 						}
@@ -379,11 +379,11 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				resourceType = strings.Join(strings.Split(resource.Type, "_")[1:], "")
 
 				if resource.AttributeValues != nil {
-					if metadataList, ok := resource.AttributeValues["metadata"].([]interface{}); ok {
+					if metadataList, ok := resource.AttributeValues["metadata"].([]any); ok {
 						if len(metadataList) == 0 {
 							return []string{}, errors.New("")
 						}
-						metadata := metadataList[0].(map[string]interface{})
+						metadata := metadataList[0].(map[string]any)
 						if name, ok := metadata["name"].(string); ok {
 							resourceName = name
 						}

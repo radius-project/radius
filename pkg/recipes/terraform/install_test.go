@@ -247,7 +247,7 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 	}
 
 	var terraforms []*tfexec.Terraform
-	for i := 0; i < len(tmpDirs); i++ {
+	for range tmpDirs {
 		select {
 		case tf := <-results:
 			terraforms = append(terraforms, tf)

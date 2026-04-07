@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/renderers/dapr"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -263,7 +262,7 @@ func Test_Process(t *testing.T) {
 
 				expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
 				component := rpv1.NewKubernetesOutputResource("Component", tc.generated, metav1.ObjectMeta{Name: tc.generated.GetName(), Namespace: tc.generated.GetNamespace()})
-				component.RadiusManaged = to.Ptr(true)
+				component.RadiusManaged = new(true)
 				expectedOutputResources = append(expectedOutputResources, component)
 				require.NoError(t, err)
 
@@ -357,7 +356,7 @@ func Test_Process(t *testing.T) {
 		}
 
 		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
-		component.RadiusManaged = to.Ptr(true)
+		component.RadiusManaged = new(true)
 		expectedOutputResources = append(expectedOutputResources, component)
 		require.NoError(t, err)
 
@@ -451,8 +450,8 @@ func Test_Process(t *testing.T) {
 		// Create a duplicate with the same component name.
 		existing, err := dapr.ConstructDaprGeneric(
 			dapr.DaprGeneric{
-				Type:     to.Ptr("configuration.redis"),
-				Version:  to.Ptr("v1"),
+				Type:     new("configuration.redis"),
+				Version:  new("v1"),
 				Metadata: map[string]*rpv1.DaprComponentMetadataValue{},
 			},
 			"test-namespace",

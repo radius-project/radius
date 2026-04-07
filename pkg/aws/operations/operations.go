@@ -94,7 +94,7 @@ func UnflattenProperties(state map[string]any) map[string]any {
 			unflattenedState[rootKey] = v
 		} else {
 			var currentState any = unflattenedState
-			for i := 0; i < len(splitPath); i++ {
+			for i := range splitPath {
 				subKey := splitPath[i]
 				if i == len(splitPath)-1 {
 					if currentStateMap, ok := currentState.(map[string]any); ok {
@@ -185,8 +185,8 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 // It returns an error if the property identifier is not in the expected format.
 func ParsePropertyName(propertyIdentifier string) (string, error) {
 	prefix := "/properties/"
-	if strings.HasPrefix(propertyIdentifier, prefix) {
-		return strings.TrimPrefix(propertyIdentifier, prefix), nil
+	if after, ok := strings.CutPrefix(propertyIdentifier, prefix); ok {
+		return after, nil
 	}
 	return "", fmt.Errorf("property identifier %s is not in the format /properties/<propertyName>", propertyIdentifier)
 }

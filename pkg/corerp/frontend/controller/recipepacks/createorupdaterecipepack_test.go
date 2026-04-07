@@ -159,15 +159,15 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 			Recipes: map[string]*v20250801preview.RecipeDefinition{
 				"Applications.Core/extenders": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
-					RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
+					RecipeLocation: new("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
 				},
 				"Radius.Resources/postgreSQL": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
-					RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
+					RecipeLocation: new("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
 				},
 				"Applications.Datastores/redisCaches": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
-					RecipeLocation: to.Ptr("https://github.com/example/recipes/redis-cache.bicep"),
+					RecipeLocation: new("https://github.com/example/recipes/redis-cache.bicep"),
 					Parameters: map[string]any{
 						"tier": "basic",
 					},
@@ -216,21 +216,21 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 			Recipes: map[string]*v20250801preview.RecipeDefinition{
 				"Applications.Core/extenders": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
-					RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
-					PlainHTTP:      to.Ptr(false),
+					RecipeLocation: new("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
+					PlainHTTP:      new(false),
 				},
 				"Radius.Resources/postgreSQL": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
-					RecipeLocation: to.Ptr("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
-					PlainHTTP:      to.Ptr(false),
+					RecipeLocation: new("ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"),
+					PlainHTTP:      new(false),
 				},
 				"Applications.Datastores/redisCaches": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
-					RecipeLocation: to.Ptr("https://github.com/example/recipes/redis-cache.bicep"),
+					RecipeLocation: new("https://github.com/example/recipes/redis-cache.bicep"),
 					Parameters: map[string]any{
 						"tier": "basic",
 					},
-					PlainHTTP: to.Ptr(false),
+					PlainHTTP: new(false),
 				},
 			},
 		},

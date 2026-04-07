@@ -92,12 +92,12 @@ func Test_ListPlanesByType(t *testing.T) {
 		ID:       &testPlaneId,
 		Name:     &testPlaneName,
 		Type:     &testPlaneType,
-		Location: to.Ptr("global"),
+		Location: new("global"),
 		Tags:     map[string]*string{},
 		Properties: &v20231001preview.RadiusPlaneResourceProperties{
 			ProvisioningState: to.Ptr(v20231001preview.ProvisioningState("Succeeded")),
 			ResourceProviders: map[string]*string{
-				"Applications.Core": to.Ptr("https://applications-rp"),
+				"Applications.Core": new("https://applications-rp"),
 			},
 		},
 	}

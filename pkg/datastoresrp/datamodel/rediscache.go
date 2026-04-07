@@ -121,10 +121,10 @@ type RedisCacheProperties struct {
 	TLS bool `json:"tls,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
-	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe"`
 
 	// Secrets provided by resource
-	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
+	Secrets RedisCacheSecrets `json:"secrets"`
 
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`

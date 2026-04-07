@@ -48,7 +48,7 @@ func Test_Location_VersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.LocationProperties{
-					Address: to.Ptr("https://east.myrp.com"),
+					Address: new("https://east.myrp.com"),
 					ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
 						"testResources": {
 							APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{
@@ -89,12 +89,12 @@ func Test_Location_DataModelToVersioned(t *testing.T) {
 		{
 			filename: "location_datamodel.json",
 			expected: &LocationResource{
-				ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east"),
+				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east"),
 				Type: to.Ptr(datamodel.LocationResourceType),
-				Name: to.Ptr("east"),
+				Name: new("east"),
 				Properties: &LocationProperties{
-					ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
-					Address:           to.Ptr("https://east.myrp.com"),
+					ProvisioningState: new(ProvisioningStateSucceeded),
+					Address:           new("https://east.myrp.com"),
 					ResourceTypes: map[string]*LocationResourceType{
 						"testResources": {
 							APIVersions: map[string]map[string]any{

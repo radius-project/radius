@@ -79,7 +79,7 @@ func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, p
 	// Retry to wait for the managed identity to propagate
 	MaxRetries := 100
 	// var ra authorization.RoleAssignment
-	for i := 0; i < MaxRetries; i++ {
+	for i := range MaxRetries {
 		resp, err := client.Create(
 			ctx,
 			scope,
@@ -87,7 +87,7 @@ func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, p
 			armauthorization.RoleAssignmentCreateParameters{
 				Properties: &armauthorization.RoleAssignmentProperties{
 					PrincipalID:      &principalID,
-					RoleDefinitionID: to.Ptr(roleDefinitionID),
+					RoleDefinitionID: new(roleDefinitionID),
 					PrincipalType:    to.Ptr(armauthorization.PrincipalTypeServicePrincipal),
 				},
 			},

@@ -65,7 +65,7 @@ func Test_Validate(t *testing.T) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
 					Return(v20231001preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment"),
+						ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment"),
 					}, nil).
 					Times(1)
 			},
@@ -114,7 +114,7 @@ func Test_Validate(t *testing.T) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
+						ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
 					}, nil).
 					Times(1)
 			},
@@ -136,7 +136,7 @@ func Test_Validate(t *testing.T) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"),
+						ID: new("/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/prod"),
 					}, nil).
 					Times(1)
 			},
@@ -157,7 +157,7 @@ func Test_Validate(t *testing.T) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod").
 					Return(v20231001preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"),
+						ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod"),
 					}, nil).
 					Times(1)
 			},
@@ -361,11 +361,11 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 		mockAppClient.EXPECT().
 			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
 			Return(v20231001preview.EnvironmentResource{
-				ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
+				ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"),
 				Properties: &v20231001preview.EnvironmentProperties{
 					Providers: &v20231001preview.Providers{
 						Azure: &v20231001preview.ProvidersAzure{
-							Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+							Scope: new("/subscriptions/test-subId/resourceGroups/test-rg"),
 						},
 					},
 				},
@@ -490,12 +490,12 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
 					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
+						ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
 						Properties: &v20250801preview.EnvironmentProperties{
 							Providers: &v20250801preview.Providers{
 								Azure: &v20250801preview.ProvidersAzure{
-									SubscriptionID:    to.Ptr("test-sub-id"),
-									ResourceGroupName: to.Ptr("test-rg-name"),
+									SubscriptionID:    new("test-sub-id"),
+									ResourceGroupName: new("test-rg-name"),
 								},
 							},
 						},
@@ -525,11 +525,11 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 		mockAppClient.EXPECT().
 			GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/conflictenv").
 			Return(v20231001preview.EnvironmentResource{
-				ID: to.Ptr("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/conflictenv"),
+				ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/conflictenv"),
 				Properties: &v20231001preview.EnvironmentProperties{
 					Providers: &v20231001preview.Providers{
 						Azure: &v20231001preview.ProvidersAzure{
-							Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
+							Scope: new("/subscriptions/test-subId/resourceGroups/test-rg"),
 						},
 					},
 				},
@@ -1012,7 +1012,7 @@ func Test_setupEnvironmentID(t *testing.T) {
 	}{
 		{
 			name:                  "Valid environment ID",
-			envID:                 to.Ptr("/planes/radius/local/resourceGroups/test/providers/applications.core/environments/env1"),
+			envID:                 new("/planes/radius/local/resourceGroups/test/providers/applications.core/environments/env1"),
 			expectedEnvironmentID: "/planes/radius/local/resourceGroups/test/providers/applications.core/environments/env1",
 			expectedWorkspaceEnv:  "/planes/radius/local/resourceGroups/test/providers/applications.core/environments/env1",
 		},
@@ -1044,7 +1044,7 @@ func Test_setupEnvironmentID(t *testing.T) {
 func Test_setupCloudProviders(t *testing.T) {
 	testcases := []struct {
 		name          string
-		properties    interface{}
+		properties    any
 		expectedAWS   *clients.AWSProvider
 		expectedAzure *clients.AzureProvider
 	}{
@@ -1059,10 +1059,10 @@ func Test_setupCloudProviders(t *testing.T) {
 			properties: &v20231001preview.EnvironmentProperties{
 				Providers: &v20231001preview.Providers{
 					Aws: &v20231001preview.ProvidersAws{
-						Scope: to.Ptr("test-aws-scope"),
+						Scope: new("test-aws-scope"),
 					},
 					Azure: &v20231001preview.ProvidersAzure{
-						Scope: to.Ptr("test-azure-scope"),
+						Scope: new("test-azure-scope"),
 					},
 				},
 			},
@@ -1078,12 +1078,12 @@ func Test_setupCloudProviders(t *testing.T) {
 			properties: &v20250801preview.EnvironmentProperties{
 				Providers: &v20250801preview.Providers{
 					Aws: &v20250801preview.ProvidersAws{
-						AccountID: to.Ptr("account-id"),
-						Region:    to.Ptr("us-west-2"),
+						AccountID: new("account-id"),
+						Region:    new("us-west-2"),
 					},
 					Azure: &v20250801preview.ProvidersAzure{
-						SubscriptionID:    to.Ptr("test-subscription"),
-						ResourceGroupName: to.Ptr("test-rg"),
+						SubscriptionID:    new("test-subscription"),
+						ResourceGroupName: new("test-rg"),
 					},
 				},
 			},
@@ -1099,7 +1099,7 @@ func Test_setupCloudProviders(t *testing.T) {
 			properties: &v20250801preview.EnvironmentProperties{
 				Providers: &v20250801preview.Providers{
 					Azure: &v20250801preview.ProvidersAzure{
-						SubscriptionID: to.Ptr("test-subscription"),
+						SubscriptionID: new("test-subscription"),
 					},
 				},
 			},
@@ -1196,11 +1196,11 @@ func Test_getApplicationsCoreEnvironment(t *testing.T) {
 			name: "Successfully get environment",
 			setupMocks: func(client *clients.MockApplicationsManagementClient) {
 				env := v20231001preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/env1"),
+					ID: new("/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/env1"),
 					Properties: &v20231001preview.EnvironmentProperties{
 						Providers: &v20231001preview.Providers{
 							Azure: &v20231001preview.ProvidersAzure{
-								Scope: to.Ptr("test-scope"),
+								Scope: new("test-scope"),
 							},
 						},
 					},
@@ -1210,11 +1210,11 @@ func Test_getApplicationsCoreEnvironment(t *testing.T) {
 			command: &cobra.Command{},
 			args:    []string{"template.bicep"},
 			expectedEnv: &v20231001preview.EnvironmentResource{
-				ID: to.Ptr("/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/env1"),
+				ID: new("/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/env1"),
 				Properties: &v20231001preview.EnvironmentProperties{
 					Providers: &v20231001preview.Providers{
 						Azure: &v20231001preview.ProvidersAzure{
-							Scope: to.Ptr("test-scope"),
+							Scope: new("test-scope"),
 						},
 					},
 				},
@@ -1297,7 +1297,7 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 			command:         &cobra.Command{},
 			args:            []string{"template.bicep"},
 			expectedEnv: &v20250801preview.EnvironmentResource{
-				Name: to.Ptr("myenv"),
+				Name: new("myenv"),
 			},
 			shouldError: false,
 		},
@@ -1307,7 +1307,7 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 			command:         &cobra.Command{},
 			args:            []string{"template.bicep"},
 			expectedEnv: &v20250801preview.EnvironmentResource{
-				Name: to.Ptr("/planes/radius/local/resourceGroups/test/providers/Radius.Core/environments/myenv"),
+				Name: new("/planes/radius/local/resourceGroups/test/providers/Radius.Core/environments/myenv"),
 			},
 			shouldError: false,
 		},
@@ -1395,11 +1395,11 @@ func Test_FetchEnvironment(t *testing.T) {
 			envNameOrID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv",
 			setupApplicationsCore: func(client *clients.MockApplicationsManagementClient) {
 				env := v20231001preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
+					ID: new("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
 					Properties: &v20231001preview.EnvironmentProperties{
 						Providers: &v20231001preview.Providers{
 							Azure: &v20231001preview.ProvidersAzure{
-								Scope: to.Ptr("/subscriptions/test-sub/resourceGroups/test-rg"),
+								Scope: new("/subscriptions/test-sub/resourceGroups/test-rg"),
 							},
 						},
 					},
@@ -1475,14 +1475,14 @@ func Test_ConfigureProviders(t *testing.T) {
 			envResult: &EnvironmentCheckResult{
 				UseApplicationsCore: true,
 				ApplicationsCoreEnv: &v20231001preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
+					ID: new("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
 					Properties: &v20231001preview.EnvironmentProperties{
 						Providers: &v20231001preview.Providers{
 							Azure: &v20231001preview.ProvidersAzure{
-								Scope: to.Ptr("/subscriptions/test-sub/resourceGroups/test-rg"),
+								Scope: new("/subscriptions/test-sub/resourceGroups/test-rg"),
 							},
 							Aws: &v20231001preview.ProvidersAws{
-								Scope: to.Ptr("/planes/aws/aws/accounts/123456789012/regions/us-west-2"),
+								Scope: new("/planes/aws/aws/accounts/123456789012/regions/us-west-2"),
 							},
 						},
 					},
@@ -1499,16 +1499,16 @@ func Test_ConfigureProviders(t *testing.T) {
 			envResult: &EnvironmentCheckResult{
 				UseApplicationsCore: false,
 				RadiusCoreEnv: &v20250801preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv"),
+					ID: new("/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/myenv"),
 					Properties: &v20250801preview.EnvironmentProperties{
 						Providers: &v20250801preview.Providers{
 							Azure: &v20250801preview.ProvidersAzure{
-								SubscriptionID:    to.Ptr("test-sub-id"),
-								ResourceGroupName: to.Ptr("test-rg-name"),
+								SubscriptionID:    new("test-sub-id"),
+								ResourceGroupName: new("test-rg-name"),
 							},
 							Aws: &v20250801preview.ProvidersAws{
-								AccountID: to.Ptr("123456789012"),
-								Region:    to.Ptr("us-west-2"),
+								AccountID: new("123456789012"),
+								Region:    new("us-west-2"),
 							},
 						},
 					},
@@ -1525,7 +1525,7 @@ func Test_ConfigureProviders(t *testing.T) {
 			envResult: &EnvironmentCheckResult{
 				UseApplicationsCore: true,
 				ApplicationsCoreEnv: &v20231001preview.EnvironmentResource{
-					ID:         to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
+					ID:         new("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/myenv"),
 					Properties: &v20231001preview.EnvironmentProperties{},
 				},
 			},

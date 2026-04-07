@@ -58,20 +58,20 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(ss.ID)
-	dst.Name = to.Ptr(ss.Name)
-	dst.Type = to.Ptr(ss.Type)
+	dst.ID = new(ss.ID)
+	dst.Name = new(ss.Name)
+	dst.Type = new(ss.Type)
 	dst.SystemData = fromSystemDataModel(ss.SystemData)
-	dst.Location = to.Ptr(ss.Location)
+	dst.Location = new(ss.Location)
 	dst.Tags = *to.StringMapPtr(ss.Tags)
 	dst.Properties = &SecretStoreProperties{
 		Status: &ResourceStatus{
 			OutputResources: toOutputResourcesDataModel(ss.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(ss.InternalMetadata.AsyncProvisioningState),
-		Application:       to.Ptr(ss.Properties.Application),
+		Application:       new(ss.Properties.Application),
 		Type:              fromSecretStoreDataTypeDataModel(ss.Properties.Type),
-		Resource:          to.Ptr(ss.Properties.Resource),
+		Resource:          new(ss.Properties.Resource),
 		Data:              fromSecretStoreDataPropertiesDataModel(ss.Properties.Data),
 	}
 
@@ -120,15 +120,15 @@ func toSecretStoreDataTypeDataModel(src *SecretStoreDataType) datamodel.SecretTy
 func fromSecretStoreDataTypeDataModel(src datamodel.SecretType) *SecretStoreDataType {
 	switch src {
 	case datamodel.SecretTypeGeneric:
-		return to.Ptr(SecretStoreDataTypeGeneric)
+		return new(SecretStoreDataTypeGeneric)
 	case datamodel.SecretTypeCert:
-		return to.Ptr(SecretStoreDataTypeCertificate)
+		return new(SecretStoreDataTypeCertificate)
 	case datamodel.SecretTypeBasicAuthentication:
-		return to.Ptr(SecretStoreDataTypeBasicAuthentication)
+		return new(SecretStoreDataTypeBasicAuthentication)
 	case datamodel.SecretTypeAzureWorkloadIdentity:
-		return to.Ptr(SecretStoreDataTypeAzureWorkloadIdentity)
+		return new(SecretStoreDataTypeAzureWorkloadIdentity)
 	case datamodel.SecretTypeAWSIRSA:
-		return to.Ptr(SecretStoreDataTypeAwsIRSA)
+		return new(SecretStoreDataTypeAwsIRSA)
 	}
 	return nil
 }
@@ -175,15 +175,15 @@ func fromSecretStoreDataPropertiesDataModel(src map[string]*datamodel.SecretStor
 
 		switch v.Encoding {
 		case datamodel.SecretValueEncodingRaw:
-			dst[k].Encoding = to.Ptr(SecretValueEncodingRaw)
+			dst[k].Encoding = new(SecretValueEncodingRaw)
 		case datamodel.SecretValueEncodingBase64:
-			dst[k].Encoding = to.Ptr(SecretValueEncodingBase64)
+			dst[k].Encoding = new(SecretValueEncodingBase64)
 		}
 
 		if v.ValueFrom != nil {
 			dst[k].ValueFrom = &ValueFromProperties{
-				Name:    to.Ptr(v.ValueFrom.Name),
-				Version: to.Ptr(v.ValueFrom.Version),
+				Name:    new(v.ValueFrom.Name),
+				Version: new(v.ValueFrom.Version),
 			}
 		}
 	}

@@ -105,7 +105,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				if tt.filename == "containerresource.json" {
 					require.Equal(t, map[string]datamodel.EnvironmentVariable{
 						"DB_USER": {
-							Value: to.Ptr("DB_USER"),
+							Value: new("DB_USER"),
 						},
 						"DB_PASSWORD": {
 							ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -127,7 +127,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "ghcr.io/radius-project/webapptutorial-todoapp", ct.Properties.Container.Image)
 				tcpProbe := ct.Properties.Container.LivenessProbe
 				require.Equal(t, datamodel.TCPHealthProbe, tcpProbe.Kind)
-				require.Equal(t, to.Ptr[float32](5), tcpProbe.TCP.InitialDelaySeconds)
+				require.Equal(t, new(float32(5)), tcpProbe.TCP.InitialDelaySeconds)
 				require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 				require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 				require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
@@ -211,14 +211,14 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 
 				if tt.filename == "containerresourcedatamodel-manual.json" {
 					require.Equal(t, ContainerResourceProvisioning("manual"), *versioned.Properties.ResourceProvisioning)
-					require.Equal(t, []*ResourceReference{{ID: to.Ptr("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
+					require.Equal(t, []*ResourceReference{{ID: new("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
 					return
 				}
 
 				if tt.filename == "containerresourcedatamodel.json" {
 					require.Equal(t, map[string]datamodel.EnvironmentVariable{
 						"DB_USER": {
-							Value: to.Ptr("DB_USER"),
+							Value: new("DB_USER"),
 						},
 						"DB_PASSWORD": {
 							ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -245,7 +245,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.NotNil(t, versioned.Properties.Extensions)
 				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
 				require.Equal(t, to.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
-				require.Equal(t, to.Ptr("/app"), versioned.Properties.Container.WorkingDir)
+				require.Equal(t, new("/app"), versioned.Properties.Container.WorkingDir)
 
 				if r.Properties.Runtimes != nil {
 					require.NotNil(t, versioned.Properties.Runtimes)

@@ -87,16 +87,16 @@ func Test_AzurePlane_ConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "azureplane-datamodel-empty.json",
 			expected: &AzurePlaneResource{
-				ID:       to.Ptr("/planes/azure/azurecloud"),
-				Name:     to.Ptr("azurecloud"),
+				ID:       new("/planes/azure/azurecloud"),
+				Name:     new("azurecloud"),
 				Type:     to.Ptr(datamodel.AzurePlaneResourceType),
-				Location: to.Ptr("global"),
+				Location: new("global"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &AzurePlaneResourceProperties{
 					ProvisioningState: fromProvisioningStateDataModel(v1.ProvisioningStateSucceeded),
-					URL:               to.Ptr("https://management.azure.com"),
+					URL:               new("https://management.azure.com"),
 				},
 			},
 		},
