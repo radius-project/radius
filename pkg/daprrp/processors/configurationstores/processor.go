@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/portableresources/renderers/dapr"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,8 +78,8 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprConfigu
 		dapr.DaprGeneric{
 			Auth:     resource.Properties.Auth,
 			Metadata: resource.Properties.Metadata,
-			Type:     to.Ptr(resource.Properties.Type),
-			Version:  to.Ptr(resource.Properties.Version),
+			Type:     new(resource.Properties.Type),
+			Version:  new(resource.Properties.Version),
 		},
 		options.RuntimeConfiguration.Kubernetes.Namespace,
 		resource.Properties.ComponentName,
@@ -111,7 +110,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprConfigu
 	}
 
 	deployed := rpv1.NewKubernetesOutputResource("Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})
-	deployed.RadiusManaged = to.Ptr(true)
+	deployed.RadiusManaged = new(true)
 	resource.Properties.Status.OutputResources = append(resource.Properties.Status.OutputResources, deployed)
 
 	return nil

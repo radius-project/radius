@@ -792,7 +792,7 @@ func TestAddSchemaType_AdditionalPropertiesAny_Error(t *testing.T) {
 		},
 		AdditionalProperties: &manifest.Schema{
 			Type:        "any", // "any" type is not supported
-			Description: stringPtr("A map of key-value pairs"),
+			Description: new("A map of key-value pairs"),
 		},
 	}
 	typeFactory := factory.NewTypeFactory()
@@ -809,8 +809,10 @@ func TestAddSchemaType_AdditionalPropertiesAny_Error(t *testing.T) {
 }
 
 // Helper function for creating string pointers
+//
+//go:fix inline
 func stringPtr(s string) *string {
-	return &s
+	return new(s)
 }
 
 func TestAddSchemaType_ObjectWithOnlyProperties(t *testing.T) {

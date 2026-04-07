@@ -68,8 +68,8 @@ type RabbitMQQueueProperties struct {
 	VHost                string                                 `json:"vHost,omitempty"`
 	Username             string                                 `json:"username,omitempty"`
 	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
-	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
-	Secrets              RabbitMQSecrets                        `json:"secrets,omitempty"`
+	Recipe               portableresources.ResourceRecipe       `json:"recipe"`
+	Secrets              RabbitMQSecrets                        `json:"secrets"`
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	TLS                  bool                                   `json:"tls,omitempty"`
 }

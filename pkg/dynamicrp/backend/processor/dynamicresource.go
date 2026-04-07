@@ -55,7 +55,6 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 
 	// TODO: loop over schema and add to validator - right now this bypasses validation.
 	for key, value := range options.RecipeOutput.Values {
-		value := value
 		validator.AddOptionalAnyField(key, &value)
 	}
 	for key, value := range options.RecipeOutput.Secrets {

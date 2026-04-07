@@ -82,13 +82,13 @@ func Test_ResourceProvider_DataModelToVersioned(t *testing.T) {
 		{
 			filename: "resourceprovider_datamodel.json",
 			expected: &ResourceProviderResource{
-				ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test"),
+				ID:       new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test"),
 				Type:     to.Ptr(datamodel.ResourceProviderResourceType),
-				Name:     to.Ptr("Applications.Test"),
-				Location: to.Ptr("global"),
+				Name:     new("Applications.Test"),
+				Location: new("global"),
 				Tags:     map[string]*string{},
 				Properties: &ResourceProviderProperties{
-					ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
+					ProvisioningState: new(ProvisioningStateSucceeded),
 				},
 			},
 		},

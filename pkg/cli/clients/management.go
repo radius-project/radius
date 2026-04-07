@@ -372,7 +372,6 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	// Delete resources in parallel
 	g, groupCtx := errgroup.WithContext(ctx)
 	for _, resource := range resources {
-		resource := resource
 		g.Go(func() error {
 			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)
 			if err != nil && !clientv2.Is404Error(err) {
@@ -747,7 +746,6 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 		// Delete all resources in parallel
 		g, groupCtx := errgroup.WithContext(ctx)
 		for _, resource := range resources {
-			resource := resource
 			g.Go(func() error {
 				// Delete each resource using its full ID to ensure correct scope
 				_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)

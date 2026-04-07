@@ -89,17 +89,17 @@ func Test_RadiusPlane_ConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "radiusplane-datamodel-empty.json",
 			expected: &RadiusPlaneResource{
-				ID:       to.Ptr("/planes/radius/local"),
-				Name:     to.Ptr("local"),
+				ID:       new("/planes/radius/local"),
+				Name:     new("local"),
 				Type:     to.Ptr(datamodel.RadiusPlaneResourceType),
-				Location: to.Ptr("global"),
+				Location: new("global"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &RadiusPlaneResourceProperties{
 					ProvisioningState: fromProvisioningStateDataModel(v1.ProvisioningStateSucceeded),
 					ResourceProviders: map[string]*string{
-						"Applications.Core": to.Ptr("http://applications-rp:9000"),
+						"Applications.Core": new("http://applications-rp:9000"),
 					},
 				},
 			},

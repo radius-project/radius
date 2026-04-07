@@ -49,7 +49,7 @@ func Test_getRecipeProperties(t *testing.T) {
 			map[string]corerp.RecipePropertiesClassification{
 				"default": &corerp.BicepRecipeProperties{
 					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-					TemplatePath: to.Ptr(RecipeRepositoryPrefix + "mongodatabases:0.20"),
+					TemplatePath: new(RecipeRepositoryPrefix + "mongodatabases:0.20"),
 				},
 			},
 		},

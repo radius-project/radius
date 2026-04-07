@@ -22,8 +22,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/radius-project/radius/pkg/to"
-
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -70,7 +68,7 @@ func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymen
 func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, apiVersion string, top *int32) (*armresources.DeploymentOperationsListResult, error) {
 	result := &armresources.DeploymentOperationsListResult{
 		Value:    make([]*armresources.DeploymentOperation, 0),
-		NextLink: to.Ptr(""),
+		NextLink: new(""),
 	}
 
 	pager := client.NewListPager(resourceID, apiVersion, &armresources.DeploymentOperationsClientListOptions{

@@ -105,7 +105,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				if tt.filename == "containerresource.json" {
 					require.Equal(t, map[string]datamodel.EnvironmentVariable{
 						"DB_USER": {
-							Value: to.Ptr("DB_USER"),
+							Value: new("DB_USER"),
 						},
 						"DB_PASSWORD": {
 							ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -211,14 +211,14 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 
 				if tt.filename == "containerresourcedatamodel-manual.json" {
 					require.Equal(t, ContainerResourceProvisioning("manual"), *versioned.Properties.ResourceProvisioning)
-					require.Equal(t, []*ResourceReference{{ID: to.Ptr("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
+					require.Equal(t, []*ResourceReference{{ID: new("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
 					return
 				}
 
 				if tt.filename == "containerresourcedatamodel.json" {
 					require.Equal(t, map[string]datamodel.EnvironmentVariable{
 						"DB_USER": {
-							Value: to.Ptr("DB_USER"),
+							Value: new("DB_USER"),
 						},
 						"DB_PASSWORD": {
 							ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -245,7 +245,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.NotNil(t, versioned.Properties.Extensions)
 				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
 				require.Equal(t, to.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
-				require.Equal(t, to.Ptr("/app"), versioned.Properties.Container.WorkingDir)
+				require.Equal(t, new("/app"), versioned.Properties.Container.WorkingDir)
 
 				if r.Properties.Runtimes != nil {
 					require.NotNil(t, versioned.Properties.Runtimes)

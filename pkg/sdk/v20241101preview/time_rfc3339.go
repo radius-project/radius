@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -8,8 +7,6 @@
 // DO NOT EDIT.
 
 package v20241101preview
-
-
 
 import (
 	"encoding/json"
@@ -20,8 +17,6 @@ import (
 	"strings"
 	"time"
 )
-
-
 
 const (
 	utcLayoutJSON = `"2006-01-02T15:04:05.999999999"`
@@ -66,8 +61,7 @@ func (t *timeRFC3339) Parse(layout, value string) error {
 	return err
 }
 
-
-func populateTimeRFC3339(m map[string]interface{}, k string, t *time.Time) {
+func populateTimeRFC3339(m map[string]any, k string, t *time.Time) {
 	if t == nil {
 		return
 	} else if azcore.IsNullValue(t) {

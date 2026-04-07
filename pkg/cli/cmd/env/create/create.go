@@ -161,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Location: to.Ptr(v1.LocationGlobal),
 		Properties: &corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
-				Namespace: to.Ptr(r.Namespace),
+				Namespace: new(r.Namespace),
 			},
 		},
 	}

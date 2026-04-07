@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -113,7 +112,7 @@ func Test_Run(t *testing.T) {
 					Enabled: true,
 				},
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
-					Kind: to.Ptr("ServicePrincipal"),
+					Kind: new("ServicePrincipal"),
 				},
 			}
 
@@ -151,7 +150,7 @@ func Test_Run(t *testing.T) {
 			}
 			require.Equal(t, expected, outputSink.Writes)
 		})
-        
+
 		t.Run("Azure WorkloadIdentity - Exists", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
@@ -161,7 +160,7 @@ func Test_Run(t *testing.T) {
 					Enabled: true,
 				},
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
-					Kind: to.Ptr("WorkloadIdentity"),
+					Kind: new("WorkloadIdentity"),
 				},
 			}
 
@@ -199,7 +198,7 @@ func Test_Run(t *testing.T) {
 			}
 			require.Equal(t, expected, outputSink.Writes)
 		})
-		
+
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
@@ -234,7 +233,7 @@ func Test_Run(t *testing.T) {
 					Enabled: true,
 				},
 				AWSCredentials: &cli_credential.AWSCredentialProperties{
-					Kind: to.Ptr("AccessKey"),
+					Kind: new("AccessKey"),
 				},
 			}
 

@@ -57,13 +57,13 @@ func TestGetConfiguration(t *testing.T) {
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
 					Compute: &model.KubernetesCompute{
-						Kind:       to.Ptr(kind),
-						Namespace:  to.Ptr(envNamespace),
-						ResourceID: to.Ptr(envResourceId),
+						Kind:       new(kind),
+						Namespace:  new(envNamespace),
+						ResourceID: new(envResourceId),
 					},
 					Providers: &model.Providers{
 						Azure: &model.ProvidersAzure{
-							Scope: to.Ptr(azureScope),
+							Scope: new(azureScope),
 						},
 					},
 					RecipeConfig: &model.RecipeConfigProperties{
@@ -72,7 +72,7 @@ func TestGetConfiguration(t *testing.T) {
 								Git: &model.GitAuthConfig{
 									Pat: map[string]*model.SecretConfig{
 										"dev.azure.com": {
-											Secret: to.Ptr("/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/secretStores/secret"),
+											Secret: new("/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/secretStores/secret"),
 										},
 									},
 								},
@@ -110,9 +110,9 @@ func TestGetConfiguration(t *testing.T) {
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
 					Compute: &model.KubernetesCompute{
-						Kind:       to.Ptr(kind),
-						Namespace:  to.Ptr(envNamespace),
-						ResourceID: to.Ptr(envResourceId),
+						Kind:       new(kind),
+						Namespace:  new(envNamespace),
+						ResourceID: new(envResourceId),
 					},
 					RecipeConfig: &model.RecipeConfigProperties{
 						Terraform: &model.TerraformConfigProperties{
@@ -125,7 +125,7 @@ func TestGetConfiguration(t *testing.T) {
 					},
 					Providers: &model.Providers{
 						Aws: &model.ProvidersAws{
-							Scope: to.Ptr(awsScope),
+							Scope: new(awsScope),
 						},
 					},
 				},
@@ -155,13 +155,13 @@ func TestGetConfiguration(t *testing.T) {
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
 					Compute: &model.KubernetesCompute{
-						Kind:       to.Ptr(kind),
-						Namespace:  to.Ptr(envNamespace),
-						ResourceID: to.Ptr(envResourceId),
+						Kind:       new(kind),
+						Namespace:  new(envNamespace),
+						ResourceID: new(envResourceId),
 					},
 					Providers: &model.Providers{
 						Aws: &model.ProvidersAws{
-							Scope: to.Ptr(awsScope),
+							Scope: new(awsScope),
 						},
 					},
 				},
@@ -170,9 +170,9 @@ func TestGetConfiguration(t *testing.T) {
 				Properties: &model.ApplicationProperties{
 					Status: &model.ResourceStatus{
 						Compute: &model.KubernetesCompute{
-							Kind:       to.Ptr(kind),
-							Namespace:  to.Ptr(appNamespace),
-							ResourceID: to.Ptr(appResourceId),
+							Kind:       new(kind),
+							Namespace:  new(appNamespace),
+							ResourceID: new(appResourceId),
 						},
 					},
 				},
@@ -193,11 +193,11 @@ func TestGetConfiguration(t *testing.T) {
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
 					Compute: &model.KubernetesCompute{
-						Kind:       to.Ptr(kind),
-						Namespace:  to.Ptr(envNamespace),
-						ResourceID: to.Ptr(envResourceId),
+						Kind:       new(kind),
+						Namespace:  new(envNamespace),
+						ResourceID: new(envResourceId),
 					},
-					Simulated: to.Ptr(true),
+					Simulated: new(true),
 				},
 			},
 			appResource: nil,
@@ -216,9 +216,9 @@ func TestGetConfiguration(t *testing.T) {
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
 					Compute: &model.KubernetesCompute{
-						Kind:       to.Ptr(kind),
-						Namespace:  to.Ptr(envNamespace),
-						ResourceID: to.Ptr(envResourceId),
+						Kind:       new(kind),
+						Namespace:  new(envNamespace),
+						ResourceID: new(envResourceId),
 					},
 				},
 			},
@@ -236,12 +236,12 @@ func TestGetConfiguration(t *testing.T) {
 			envResource: &model.EnvironmentResource{
 				Properties: &model.EnvironmentProperties{
 					Compute: &model.EnvironmentCompute{
-						Kind:       to.Ptr(kind),
-						ResourceID: to.Ptr(envResourceId),
+						Kind:       new(kind),
+						ResourceID: new(envResourceId),
 					},
 					Providers: &model.Providers{
 						Azure: &model.ProvidersAzure{
-							Scope: to.Ptr(azureScope),
+							Scope: new(azureScope),
 						},
 					},
 				},
@@ -282,33 +282,33 @@ func TestGetRecipeDefinition(t *testing.T) {
 	envResource := model.EnvironmentResource{
 		Properties: &model.EnvironmentProperties{
 			Compute: &model.KubernetesCompute{
-				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(envNamespace),
-				ResourceID: to.Ptr(envResourceId),
+				Kind:       new(kind),
+				Namespace:  new(envNamespace),
+				ResourceID: new(envResourceId),
 			},
 			Providers: &model.Providers{
 				Azure: &model.ProvidersAzure{
-					Scope: to.Ptr(azureScope),
+					Scope: new(azureScope),
 				},
 			},
 			Recipes: map[string]map[string]model.RecipePropertiesClassification{
 				"Applications.Datastores/mongoDatabases": {
 					recipeName: &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0"),
+						TemplatePath: new("ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
 					},
 					"mongo": &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("localhost:8000/recipes/mongodatabases:1.0"),
-						PlainHTTP:    to.Ptr(true),
+						TemplatePath: new("localhost:8000/recipes/mongodatabases:1.0"),
+						PlainHTTP:    new(true),
 					},
 					terraformRecipe: &model.TerraformRecipeProperties{
 						TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
-						TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
-						TemplateVersion: to.Ptr("1.1.0"),
+						TemplatePath:    new("Azure/cosmosdb/azurerm"),
+						TemplateVersion: new("1.1.0"),
 					},
 				},
 			},
@@ -404,13 +404,13 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
 						Azure: &modelv20250801.ProvidersAzure{
-							SubscriptionID: to.Ptr("test-subscription-id"),
+							SubscriptionID: new("test-subscription-id"),
 						},
 						Kubernetes: &modelv20250801.ProvidersKubernetes{
-							Namespace: to.Ptr(envNamespace),
+							Namespace: new(envNamespace),
 						},
 					},
-					Simulated: to.Ptr(false),
+					Simulated: new(false),
 				},
 			},
 			appResource: nil,
@@ -435,14 +435,14 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
 						Azure: &modelv20250801.ProvidersAzure{
-							SubscriptionID:    to.Ptr("85716382-aaaa-aaaa-aaaa-2126e459a123"),
-							ResourceGroupName: to.Ptr("my-resource-group"),
+							SubscriptionID:    new("85716382-aaaa-aaaa-aaaa-2126e459a123"),
+							ResourceGroupName: new("my-resource-group"),
 						},
 						Kubernetes: &modelv20250801.ProvidersKubernetes{
-							Namespace: to.Ptr(envNamespace),
+							Namespace: new(envNamespace),
 						},
 					},
-					Simulated: to.Ptr(false),
+					Simulated: new(false),
 				},
 			},
 			appResource: nil,
@@ -467,14 +467,14 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
 						Aws: &modelv20250801.ProvidersAws{
-							AccountID: to.Ptr("000"),
-							Region:    to.Ptr("cool-region"),
+							AccountID: new("000"),
+							Region:    new("cool-region"),
 						},
 						Kubernetes: &modelv20250801.ProvidersKubernetes{
-							Namespace: to.Ptr(envNamespace),
+							Namespace: new(envNamespace),
 						},
 					},
-					Simulated: to.Ptr(false),
+					Simulated: new(false),
 				},
 			},
 			appResource: nil,
@@ -499,10 +499,10 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
 						Kubernetes: &modelv20250801.ProvidersKubernetes{
-							Namespace: to.Ptr(envNamespace),
+							Namespace: new(envNamespace),
 						},
 					},
-					Simulated: to.Ptr(true),
+					Simulated: new(true),
 				},
 			},
 			appResource: nil,
@@ -522,11 +522,11 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
 						Kubernetes: &modelv20250801.ProvidersKubernetes{
-							Namespace: to.Ptr(envNamespace),
+							Namespace: new(envNamespace),
 						},
 					},
 					RecipePacks: []*string{
-						to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"),
+						new("/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"),
 					},
 				},
 			},
@@ -565,11 +565,11 @@ func TestGetRecipeDefinitionFromEnvironmentV20250801(t *testing.T) {
 		Properties: &modelv20250801.EnvironmentProperties{
 			Providers: &modelv20250801.Providers{
 				Kubernetes: &modelv20250801.ProvidersKubernetes{
-					Namespace: to.Ptr(envNamespace),
+					Namespace: new(envNamespace),
 				},
 			},
 			RecipePacks: []*string{
-				to.Ptr("/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"),
+				new("/planes/radius/local/providers/Radius.Core/recipePacks/kubernetes-pack"),
 			},
 		},
 	}

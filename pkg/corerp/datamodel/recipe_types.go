@@ -19,13 +19,13 @@ package datamodel
 // RecipeConfigProperties - Configuration for Recipes. Defines how each type of Recipe should be configured and run.
 type RecipeConfigProperties struct {
 	// Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment.
-	Terraform TerraformConfigProperties `json:"terraform,omitempty"`
+	Terraform TerraformConfigProperties `json:"terraform"`
 
 	// BicepConfigProperties represents configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment.
-	Bicep BicepConfigProperties `json:"bicep,omitempty"`
+	Bicep BicepConfigProperties `json:"bicep"`
 
 	// Env specifies the environment variables to be set during the Terraform Recipe execution.
-	Env EnvironmentVariables `json:"env,omitempty"`
+	Env EnvironmentVariables `json:"env"`
 
 	// EnvSecrets represents the environment secrets for the recipe.
 	// The keys of the map are the names of the secrets, and the values are the references to the secrets.
@@ -36,7 +36,7 @@ type RecipeConfigProperties struct {
 // part of Recipe deployment.
 type TerraformConfigProperties struct {
 	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
-	Authentication AuthConfig `json:"authentication,omitempty"`
+	Authentication AuthConfig `json:"authentication"`
 
 	// Providers specifies the Terraform provider configurations. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs: https://developer.hashicorp.com/terraform/language/providers/configuration.// Providers specifies the Terraform provider configurations.
 	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
@@ -60,7 +60,7 @@ type RegistrySecretConfig struct {
 // AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.
 type AuthConfig struct {
 	// Authentication information used to access private Terraform modules from Git repository sources.
-	Git GitAuthConfig `json:"git,omitempty"`
+	Git GitAuthConfig `json:"git"`
 }
 
 // GitAuthConfig - Authentication information used to access private Terraform modules from Git repository sources.

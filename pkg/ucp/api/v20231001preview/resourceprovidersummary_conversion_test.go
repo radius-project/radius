@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -38,14 +37,14 @@ func Test_ResourceProviderSummary_DataModelToVersioned(t *testing.T) {
 		{
 			filename: "resourceprovidersummary_datamodel.json",
 			expected: &ResourceProviderSummary{
-				Name: to.Ptr("Applications.Test"),
+				Name: new("Applications.Test"),
 				Locations: map[string]map[string]any{
 					"east": {},
 				},
 				ResourceTypes: map[string]*ResourceProviderSummaryResourceType{
 					"testResources": {
 						Capabilities:      []*string{},
-						DefaultAPIVersion: to.Ptr("2025-01-01"),
+						DefaultAPIVersion: new("2025-01-01"),
 						APIVersions: map[string]*ResourceTypeSummaryResultAPIVersion{
 							"2025-01-01": {
 								Schema: map[string]any{

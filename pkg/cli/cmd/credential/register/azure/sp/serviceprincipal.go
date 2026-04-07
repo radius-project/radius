@@ -137,7 +137,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	credential := ucp.AzureCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AzureCredential),
-		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
+		ID:       new(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
 				Kind: to.Ptr(ucp.CredentialStorageKindInternal),

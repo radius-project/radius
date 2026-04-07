@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -161,8 +160,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Azure.SubscriptionID = to.Ptr(azureSubId)
-		r.providers.Azure.ResourceGroupName = to.Ptr(azureRgId)
+		r.providers.Azure.SubscriptionID = new(azureSubId)
+		r.providers.Azure.ResourceGroupName = new(azureRgId)
 	}
 
 	r.clearEnvAzure, err = cmd.Flags().GetBool(commonflags.ClearEnvAzureFlag)
@@ -183,8 +182,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Aws.Region = to.Ptr(awsRegion)
-		r.providers.Aws.AccountID = to.Ptr(awsAccountId)
+		r.providers.Aws.Region = new(awsRegion)
+		r.providers.Aws.AccountID = new(awsAccountId)
 	}
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
@@ -198,7 +197,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Kubernetes.Namespace = to.Ptr(k8sNamespace)
+		r.providers.Kubernetes.Namespace = new(k8sNamespace)
 	}
 
 	r.clearEnvKubernetes, err = cmd.Flags().GetBool(commonflags.ClearEnvKubernetesFlag)
@@ -308,7 +307,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			}
 
 			if !recipePackExists(env.Properties.RecipePacks, ID.String()) {
-				env.Properties.RecipePacks = append(env.Properties.RecipePacks, to.Ptr(ID.String()))
+				env.Properties.RecipePacks = append(env.Properties.RecipePacks, new(ID.String()))
 			}
 		}
 	}

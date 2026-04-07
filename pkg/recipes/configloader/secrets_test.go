@@ -5,7 +5,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,10 +27,10 @@ func Test_populateSecretData(t *testing.T) {
 					Type: &secretStoreDataTypeGeneric,
 					Data: map[string]*v20231001preview.SecretValueProperties{
 						"secretKey1": {
-							Value: to.Ptr("secretValue1"),
+							Value: new("secretValue1"),
 						},
 						"secretKey2": {
-							Value: to.Ptr("secretValue2"),
+							Value: new("secretValue2"),
 						},
 					}},
 			},
@@ -50,10 +49,10 @@ func Test_populateSecretData(t *testing.T) {
 					Type: &secretStoreDataTypeGeneric,
 					Data: map[string]*v20231001preview.SecretValueProperties{
 						"secretKey1": {
-							Value: to.Ptr("secretValue1"),
+							Value: new("secretValue1"),
 						},
 						"secretKey2": {
-							Value: to.Ptr("secretValue2"),
+							Value: new("secretValue2"),
 						},
 					}},
 			},
@@ -111,10 +110,10 @@ func Test_populateSecretData(t *testing.T) {
 				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
 					Data: map[string]*v20231001preview.SecretValueProperties{
 						"secretKey1": {
-							Value: to.Ptr("secretValue1"),
+							Value: new("secretValue1"),
 						},
 						"secretKey2": {
-							Value: to.Ptr("secretValue2"),
+							Value: new("secretValue2"),
 						},
 					}},
 			},

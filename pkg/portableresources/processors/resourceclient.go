@@ -224,7 +224,7 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 	}
 
 	obj := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": apiVersion,
 			"kind":       kind,
 			"metadata":   metadata,

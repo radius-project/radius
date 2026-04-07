@@ -21,7 +21,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -44,9 +43,9 @@ func Test_GenericResource_DataModelToVersioned(t *testing.T) {
 		{
 			filename: "genericresource_datamodel.json",
 			expected: &GenericResource{
-				ID:   to.Ptr("/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/applications/test-app"),
-				Type: to.Ptr("Applications.Core/applications"),
-				Name: to.Ptr("test-app"),
+				ID:   new("/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/applications/test-app"),
+				Type: new("Applications.Core/applications"),
+				Name: new("test-app"),
 			},
 		},
 	}

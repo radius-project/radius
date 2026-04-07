@@ -681,10 +681,8 @@ func Parse(id string) (ID, error) {
 
 	// Check up front for empty segments
 	segments := strings.Split(id, SegmentSeparator)
-	for _, s := range segments {
-		if s == "" {
-			return ID{}, invalid(original)
-		}
+	if slices.Contains(segments, "") {
+		return ID{}, invalid(original)
 	}
 
 	// Parse scopes - iterate until we get to "providers"

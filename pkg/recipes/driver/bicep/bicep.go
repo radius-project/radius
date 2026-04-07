@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	reflect "reflect"
+	"slices"
 	"strconv"
 	"time"
 
@@ -41,7 +42,6 @@ import (
 	"github.com/radius-project/radius/pkg/rp/util/authclient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -416,13 +416,7 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 	// The lists of resources we work with are small, so this is fine.
 	diff := []rpv1.OutputResource{}
 	for _, prevResourceId := range previous {
-		found := false
-		for _, currentResourceId := range current {
-			if prevResourceId == currentResourceId {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(current, prevResourceId)
 
 		if !found {
 			id, err := resources.Parse(prevResourceId)
@@ -432,7 +426,7 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 
 			diff = append(diff, rpv1.OutputResource{
 				ID:            id,
-				RadiusManaged: to.Ptr(true),
+				RadiusManaged: new(true),
 			})
 		}
 	}

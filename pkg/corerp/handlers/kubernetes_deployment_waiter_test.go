@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +45,7 @@ var testDeployment = &v1.Deployment{
 		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 	},
 	Spec: v1.DeploymentSpec{
-		Replicas: to.Ptr(int32(1)),
+		Replicas: new(int32(1)),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app": "test",
@@ -119,7 +118,7 @@ func TestWaitUntilReady_NewResource(t *testing.T) {
 			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 		Spec: v1.DeploymentSpec{
-			Replicas: to.Ptr(int32(1)),
+			Replicas: new(int32(1)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": "test",
@@ -281,7 +280,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       replicaset.Name,
-					Controller: to.Ptr(true),
+					Controller: new(true),
 					UID:        "1234",
 				},
 			},
@@ -300,7 +299,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       "xyz",
-					Controller: to.Ptr(true),
+					Controller: new(true),
 					UID:        "1234",
 				},
 			},
@@ -658,7 +657,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       replicaSet.Name,
-					Controller: to.Ptr(true),
+					Controller: new(true),
 				},
 			},
 		},
@@ -723,7 +722,7 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       replicaSet.Name,
-					Controller: to.Ptr(true),
+					Controller: new(true),
 				},
 			},
 		},
@@ -756,8 +755,8 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"metadata": map[string]interface{}{
+		Object: map[string]any{
+			"metadata": map[string]any{
 				"name":      "test-deployment",
 				"namespace": "test-namespace",
 			},
@@ -830,8 +829,8 @@ func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"metadata": map[string]interface{}{
+		Object: map[string]any{
+			"metadata": map[string]any{
 				"name":      "test-deployment",
 				"namespace": "test-namespace",
 			},
@@ -873,7 +872,7 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       replicaSet.Name,
-					Controller: to.Ptr(true),
+					Controller: new(true),
 				},
 			},
 		},
@@ -909,8 +908,8 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"metadata": map[string]interface{}{
+		Object: map[string]any{
+			"metadata": map[string]any{
 				"name":      "test-deployment",
 				"namespace": "test-namespace",
 			},
@@ -958,7 +957,7 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       replicaSet.Name,
-					Controller: to.Ptr(true),
+					Controller: new(true),
 				},
 			},
 		},
@@ -991,8 +990,8 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"metadata": map[string]interface{}{
+		Object: map[string]any{
+			"metadata": map[string]any{
 				"name":      "test-deployment",
 				"namespace": "test-namespace",
 			},
@@ -1036,7 +1035,7 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 				{
 					Kind:       "ReplicaSet",
 					Name:       replicaSet.Name,
-					Controller: to.Ptr(true),
+					Controller: new(true),
 				},
 			},
 		},
@@ -1080,8 +1079,8 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"metadata": map[string]interface{}{
+		Object: map[string]any{
+			"metadata": map[string]any{
 				"name":      "test-deployment",
 				"namespace": "test-namespace",
 			},

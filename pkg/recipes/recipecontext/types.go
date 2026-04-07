@@ -30,13 +30,13 @@ const (
 // that are unique for the portable resource calling the recipe.
 type Context struct {
 	// Resource represents the resource information of the deploying recipe resource.
-	Resource Resource `json:"resource,omitempty"`
+	Resource Resource `json:"resource"`
 	// Application represents environment resource information.
-	Application ResourceInfo `json:"application,omitempty"`
+	Application ResourceInfo `json:"application"`
 	// Environment represents environment resource information.
-	Environment ResourceInfo `json:"environment,omitempty"`
+	Environment ResourceInfo `json:"environment"`
 	// Runtime represents Kubernetes Runtime configuration.
-	Runtime recipes.RuntimeConfiguration `json:"runtime,omitempty"`
+	Runtime recipes.RuntimeConfiguration `json:"runtime"`
 	// Azure represents Azure provider scope.
 	Azure *ProviderAzure `json:"azure,omitempty"`
 	// AWS represents AWS provider scope.
@@ -75,9 +75,9 @@ type ResourceInfo struct {
 // ProviderAzure contains Azure provider scope for recipe context.
 type ProviderAzure struct {
 	// ResourceGroup represents the resource group information.
-	ResourceGroup AzureResourceGroup `json:"resourceGroup,omitempty"`
+	ResourceGroup AzureResourceGroup `json:"resourceGroup"`
 	// Subscription represents the subscription information.
-	Subscription AzureSubscription `json:"subscription,omitempty"`
+	Subscription AzureSubscription `json:"subscription"`
 }
 
 // AzureResourceGroup contains Azure Resource Group provider information.

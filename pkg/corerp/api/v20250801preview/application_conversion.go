@@ -56,15 +56,15 @@ func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(app.ID)
-	dst.Name = to.Ptr(app.Name)
-	dst.Type = to.Ptr(app.Type)
+	dst.ID = new(app.ID)
+	dst.Name = new(app.Name)
+	dst.Type = new(app.Type)
 	dst.SystemData = fromSystemDataModel(&app.SystemData)
-	dst.Location = to.Ptr(app.Location)
+	dst.Location = new(app.Location)
 	dst.Tags = *to.StringMapPtr(app.Tags)
 	dst.Properties = &ApplicationProperties{
 		ProvisioningState: fromProvisioningStateDataModel(app.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.Ptr(app.Properties.Environment),
+		Environment:       new(app.Properties.Environment),
 		Status:            &ResourceStatus{},
 	}
 

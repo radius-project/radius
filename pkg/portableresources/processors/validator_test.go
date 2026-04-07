@@ -22,7 +22,6 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
@@ -197,11 +196,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		expected := []rpv1.OutputResource{
 			{
 				ID:            resources.MustParse(output.Resources[0]),
-				RadiusManaged: to.Ptr(true),
+				RadiusManaged: new(true),
 			},
 			{
 				ID:            resources.MustParse(resourcesField[0].ID),
-				RadiusManaged: to.Ptr(false),
+				RadiusManaged: new(false),
 			},
 		}
 

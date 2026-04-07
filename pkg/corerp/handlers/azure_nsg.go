@@ -51,7 +51,7 @@ func (handler *azureNSGHandler) Put(ctx context.Context, options *PutOptions) (m
 	if err != nil {
 		return nil, fmt.Errorf("cannot find resource group location: %w", err)
 	}
-	nsg.Location = to.Ptr(location)
+	nsg.Location = new(location)
 
 	if options.Resource.LocalID == rpv1.LocalIDAzureAppGWNetworkSecurityGroup {
 		publicIP, ok := options.DependencyProperties[rpv1.LocalIDAzurePublicIP]["publicIPAddress"]
@@ -61,7 +61,7 @@ func (handler *azureNSGHandler) Put(ctx context.Context, options *PutOptions) (m
 
 		for i := range nsg.Properties.SecurityRules {
 			if to.String(nsg.Properties.SecurityRules[i].Name) == "AllowPublicIPAddress" {
-				nsg.Properties.SecurityRules[i].Properties.DestinationAddressPrefix = to.Ptr(publicIP)
+				nsg.Properties.SecurityRules[i].Properties.DestinationAddressPrefix = new(publicIP)
 			}
 		}
 	}
