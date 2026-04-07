@@ -91,7 +91,7 @@ The PR check workflow runs a spell checker ([pyspelling](https://pypi.org/projec
 If you install pyspelling locally you can run the spell check on your machine with this command (from the root folder of the repo):
 
 ```bash
-pyspelling --verbose --config ./.github/configs/.pyspelling.yml
+make spellcheck
 ```
 
 Note: Pyspelling has a dependency on [Aspell](http://aspell.net/), which must also be present on your system to run pyspelling.

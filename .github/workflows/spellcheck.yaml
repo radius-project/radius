@@ -26,6 +26,9 @@ on:
     paths:
       - "*.md"
       - "**/*.md"
+      - ".github/workflows/spellcheck.yaml"
+      - ".github/configs/en-custom.txt"
+      - ".github/configs/.pyspelling.yml"
 
 env:
   ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

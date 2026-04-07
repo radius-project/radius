@@ -56,8 +56,8 @@ echo "Installing mockgen..."
 go install go.uber.org/mock/mockgen@v0.4.0
 
 echo "Installing pyspelling and aspell..."
-sudo apt-get update && sudo apt-get install -y aspell aspell-en
-pip install pyspelling
+sudo apt-get update && sudo apt-get install -y aspell aspell-en pipx
+pipx install pyspelling
 
 echo "============================================================================"
 echo "Post-create setup completed successfully!"
