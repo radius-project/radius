@@ -84,6 +84,18 @@ We run [CodeQL](https://codeql.github.com/) as part of the pull-request process 
 
 If CodeQL fails due to your changes, please work with the maintainers to resolve the issue.
 
+### Spell checking
+
+The PR check workflow runs a spell checker ([pyspelling](https://pypi.org/project/pyspelling/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but pyspelling doesn't know them.
+
+If you install pyspelling locally you can run the spell check on your machine with this command (from the root folder of the repo):
+
+```bash
+pyspelling --verbose --config ./.github/configs/.pyspelling.yml
+```
+
+Note: Pyspelling has a dependency on [Aspell](http://aspell.net/), which must also be present on your system to run pyspelling.
+
 ## Code review
 
 The maintainers or other contributors will add comments to your pull request giving feedback, asking questions, and making suggestions. Please respond to these comments to either continue the discussion or explain whether or not you plan to address the feedback. Ultimately, accepting a pull request is at the maintainer's discretion.

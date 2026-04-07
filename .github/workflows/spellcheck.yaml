@@ -1,0 +1,92 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Spellcheck
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "*.md"
+      - "**/*.md"
+
+env:
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+concurrency:
+  group: spellcheck-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  spellcheck:
+    name: Spellcheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Spellcheck
+        uses: rojopolis/spellcheck-github-actions@e3cd8e9aec4587ec73bc0e60745aafd45c37aa2e # 0.60.0
+        with:
+          config_path: .github/configs/.pyspelling.yml
+
+      - name: Post GitHub workflow output on failure
+        if: failure()
+        run: |
+          {
+            echo "## :x: Spellcheck Failed"
+            echo "There are spelling errors in your PR. Visit [the workflow output](${{ env.ACTION_LINK }}) to see what words are failing."
+            echo "### Adding new words"
+            echo "You can add new custom words to [.github/configs/en-custom.txt](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt)."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Post GitHub workflow output on success
+        run: |
+          {
+            echo "## :white_check_mark: Spellcheck Passed"
+            echo "There are no spelling errors in your PR."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Post GitHub comment on failure
+        if: failure()
+        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+        with:
+          header: spellcheck
+          recreate: true
+          message: |
+            ## :x: Spellcheck Failed
+            There are spelling errors in your PR. Visit [the workflow output](${{ env.ACTION_LINK }}) to see what words are failing.
+            ### Adding new words
+            You can add new custom words to [.github/configs/en-custom.txt](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt).
+
+      - name: Clear GitHub comment on success
+        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+        continue-on-error: true
+        with:
+          header: spellcheck
+          delete: true
