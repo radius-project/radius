@@ -69,7 +69,7 @@ type UCPCredentialOptions struct {
 	// STSEndpointRegion is the AWS region to use for the STS endpoint when retrieving
 	// IRSA credentials. Using a regional STS endpoint (matching the target service region)
 	// avoids token compatibility issues with some AWS services like CloudWatch Logs.
-	// If empty, defaults to "us-east-1" (global endpoint).
+	// If empty, defaults to "us-east-1".
 	STSEndpointRegion string
 }
 
@@ -161,25 +161,21 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		// "invalid security token" errors. A regular AssumeRole session does not
 		// have these restrictions.
 		// See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#term-RoleChaining
-		reAssumeCfg, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(stsRegion),
-			config.WithCredentialsProvider(aws.CredentialsProviderFunc(
+		reAssumeClient := sts.NewFromConfig(awscfg, func(o *sts.Options) {
+			o.Credentials = aws.CredentialsProviderFunc(
 				func(ctx context.Context) (aws.Credentials, error) {
 					return webIdentityCreds, nil
 				},
-			)),
-		)
-		if err != nil {
-			return aws.Credentials{}, err
-		}
-
-		reAssumeClient := sts.NewFromConfig(reAssumeCfg)
+			)
+		})
 
 		assumeRoleInput := &sts.AssumeRoleInput{
 			RoleArn:         &s.IRSACredential.RoleARN,
 			RoleSessionName: aws.String(sessionPrefix + uuid.New().String()),
 		}
-		if c.options.Duration > 0 {
+		// Role chaining sessions have a max duration of 1 hour.
+		// Only set DurationSeconds if the value falls within the STS-accepted range.
+		if c.options.Duration >= 15*time.Minute && c.options.Duration <= time.Hour {
 			durationSeconds := int32(c.options.Duration / time.Second)
 			assumeRoleInput.DurationSeconds = &durationSeconds
 		}
