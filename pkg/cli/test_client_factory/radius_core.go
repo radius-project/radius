@@ -64,15 +64,15 @@ func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientGetResponse{
 				RecipePackResource: v20250801preview.RecipePackResource{
-					Name: to.Ptr(recipePackName),
+					Name: new(recipePackName),
 					Properties: &v20250801preview.RecipePackProperties{
 						Recipes: map[string]*v20250801preview.RecipeDefinition{
 							"test-recipe1": {
-								RecipeLocation: to.Ptr("https://example.com/recipe1?ref=v0.1"),
+								RecipeLocation: new("https://example.com/recipe1?ref=v0.1"),
 								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
 							},
 							"test-recipe2": {
-								RecipeLocation: to.Ptr("https://example.com/recipe2?ref=v0.1"),
+								RecipeLocation: new("https://example.com/recipe2?ref=v0.1"),
 								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
 							},
 						},
@@ -106,23 +106,23 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.EnvironmentsClientGetResponse{
 				EnvironmentResource: v20250801preview.EnvironmentResource{
-					Name: to.Ptr(environmentName),
+					Name: new(environmentName),
 					Properties: &v20250801preview.EnvironmentProperties{
 						Providers: &v20250801preview.Providers{
 							Azure: &v20250801preview.ProvidersAzure{
-								SubscriptionID:    to.Ptr("test-subscription-id"),
-								ResourceGroupName: to.Ptr("test-resource-group"),
+								SubscriptionID:    new("test-subscription-id"),
+								ResourceGroupName: new("test-resource-group"),
 							},
 							Aws: &v20250801preview.ProvidersAws{
-								AccountID: to.Ptr("test-account-id"),
-								Region:    to.Ptr("test-region"),
+								AccountID: new("test-account-id"),
+								Region:    new("test-region"),
 							},
 							Kubernetes: &v20250801preview.ProvidersKubernetes{
-								Namespace: to.Ptr("test-namespace"),
+								Namespace: new("test-namespace"),
 							},
 						},
 						RecipePacks: []*string{
-							to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
+							new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 						},
 					},
 				},
@@ -137,10 +137,10 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 					EnvironmentResourceListResult: v20250801preview.EnvironmentResourceListResult{
 						Value: []*v20250801preview.EnvironmentResource{
 							{
-								Name: to.Ptr("test-env-1"),
+								Name: new("test-env-1"),
 							},
 							{
-								Name: to.Ptr("test-env-2"),
+								Name: new("test-env-2"),
 							},
 						},
 					},

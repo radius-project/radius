@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,7 +57,7 @@ func TestCreateEnvProviders(t *testing.T) {
 			},
 			out: corerp.Providers{
 				Azure: &corerp.ProvidersAzure{
-					Scope: to.Ptr("/subscriptions/testSubs/resourceGroups/testRG"),
+					Scope: new("/subscriptions/testSubs/resourceGroups/testRG"),
 				},
 			},
 			err: nil,
@@ -70,7 +69,7 @@ func TestCreateEnvProviders(t *testing.T) {
 			},
 			out: corerp.Providers{
 				Azure: &corerp.ProvidersAzure{
-					Scope: to.Ptr("/subscriptions/testSubs/resourceGroups/testRG"),
+					Scope: new("/subscriptions/testSubs/resourceGroups/testRG"),
 				},
 			},
 			err: nil,
@@ -91,7 +90,7 @@ func TestCreateEnvProviders(t *testing.T) {
 			},
 			out: corerp.Providers{
 				Aws: &corerp.ProvidersAws{
-					Scope: to.Ptr("/planes/aws/aws/accounts/0/regions/westus"),
+					Scope: new("/planes/aws/aws/accounts/0/regions/westus"),
 				},
 			},
 			err: nil,
@@ -113,10 +112,10 @@ func TestCreateEnvProviders(t *testing.T) {
 			},
 			out: corerp.Providers{
 				Azure: &corerp.ProvidersAzure{
-					Scope: to.Ptr("/subscriptions/testSubs/resourceGroups/testRG"),
+					Scope: new("/subscriptions/testSubs/resourceGroups/testRG"),
 				},
 				Aws: &corerp.ProvidersAws{
-					Scope: to.Ptr("/planes/aws/aws/accounts/0/regions/westus"),
+					Scope: new("/planes/aws/aws/accounts/0/regions/westus"),
 				},
 			},
 			err: nil,

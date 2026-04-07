@@ -99,9 +99,9 @@ func Test_Plane_Operations(t *testing.T) {
 			createPlane(t, roundTripper, planeURL, body)
 
 			expected := v20231001preview.AwsPlaneResource{
-				ID:       to.Ptr(planeID),
-				Type:     to.Ptr("System.AWS/planes"),
-				Name:     to.Ptr("testplane"),
+				ID:       new(planeID),
+				Type:     new("System.AWS/planes"),
+				Name:     new("testplane"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.AwsPlaneResourceProperties{
 					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateSucceeded),
@@ -142,20 +142,20 @@ func Test_Plane_Operations(t *testing.T) {
 			body := v20231001preview.AzurePlaneResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.AzurePlaneResourceProperties{
-					URL: to.Ptr("https://www.example.com"),
+					URL: new("https://www.example.com"),
 				},
 			}
 
 			createPlane(t, roundTripper, planeURL, body)
 
 			expected := v20231001preview.AzurePlaneResource{
-				ID:       to.Ptr(planeID),
+				ID:       new(planeID),
 				Type:     to.Ptr(datamodel.AzurePlaneResourceType),
-				Name:     to.Ptr("testplane"),
+				Name:     new("testplane"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.AzurePlaneResourceProperties{
 					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateSucceeded),
-					URL:               to.Ptr("https://www.example.com"),
+					URL:               new("https://www.example.com"),
 				},
 				Tags: map[string]*string{},
 			}
@@ -194,7 +194,7 @@ func Test_Plane_Operations(t *testing.T) {
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.RadiusPlaneResourceProperties{
 					ResourceProviders: map[string]*string{
-						"Applications.Core": to.Ptr("https://applications.core.example.com"),
+						"Applications.Core": new("https://applications.core.example.com"),
 					},
 				},
 			}
@@ -202,14 +202,14 @@ func Test_Plane_Operations(t *testing.T) {
 			createPlane(t, roundTripper, planeURL, body)
 
 			expected := v20231001preview.RadiusPlaneResource{
-				ID:       to.Ptr(planeID),
+				ID:       new(planeID),
 				Type:     to.Ptr(datamodel.RadiusPlaneResourceType),
-				Name:     to.Ptr("testplane"),
+				Name:     new("testplane"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20231001preview.RadiusPlaneResourceProperties{
 					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateSucceeded),
 					ResourceProviders: map[string]*string{
-						"Applications.Core": to.Ptr("https://applications.core.example.com"),
+						"Applications.Core": new("https://applications.core.example.com"),
 					},
 				},
 				Tags: map[string]*string{},

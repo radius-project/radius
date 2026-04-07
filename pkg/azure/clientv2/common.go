@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/radius-project/radius/pkg/to"
 )
 
 // GetResourceGroupLocation retrieves the location of a given resource group from an Azure subscription. It returns an
@@ -51,7 +50,7 @@ func EnsureResourceGroupIsCreated(ctx context.Context, subscriptionID string, re
 		return nil
 	}
 
-	_, err = client.CreateOrUpdate(ctx, resourceGroupName, armresources.ResourceGroup{Location: to.Ptr(location)}, nil)
+	_, err = client.CreateOrUpdate(ctx, resourceGroupName, armresources.ResourceGroup{Location: new(location)}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create resource group: %w", err)
 	}

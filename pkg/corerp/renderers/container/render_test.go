@@ -19,6 +19,7 @@ package container
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"testing"
 
@@ -208,7 +209,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			},
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
 					ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -338,7 +339,7 @@ func Test_Render_Basic(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
 					ValueFrom: &datamodel.EnvironmentVariableReference{
@@ -494,10 +495,10 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 			Command:    []string{"command1", "command2"},
@@ -579,7 +580,7 @@ func Test_Render_Manual(t *testing.T) {
 	expected := []rpv1.OutputResource{
 		{
 			ID:            resources.MustParse(testResourceID),
-			RadiusManaged: to.Ptr(false),
+			RadiusManaged: new(false),
 		},
 	}
 
@@ -658,10 +659,10 @@ func Test_Render_Connections(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 		},
@@ -806,7 +807,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source:                makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String(),
-				DisableDefaultEnvVars: to.Ptr(true),
+				DisableDefaultEnvVars: new(true),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -864,10 +865,10 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 		},
@@ -1163,10 +1164,10 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 			Volumes: map[string]datamodel.VolumeProperties{
@@ -1457,20 +1458,20 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 			ReadinessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.HTTPGetHealthProbe,
 				HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Ptr[float32](30),
-						FailureThreshold:    to.Ptr[float32](10),
-						PeriodSeconds:       to.Ptr[float32](2),
-						TimeoutSeconds:      to.Ptr[float32](5),
+						InitialDelaySeconds: new(float32(30)),
+						FailureThreshold:    new(float32(10)),
+						PeriodSeconds:       new(float32(2)),
+						TimeoutSeconds:      new(float32(5)),
 					},
 					Path:          "/healthz",
 					ContainerPort: 8080,
@@ -1540,20 +1541,20 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 			ReadinessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.TCPHealthProbe,
 				TCP: &datamodel.TCPHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Ptr[float32](30),
-						FailureThreshold:    to.Ptr[float32](10),
-						PeriodSeconds:       to.Ptr[float32](2),
-						TimeoutSeconds:      to.Ptr[float32](5),
+						InitialDelaySeconds: new(float32(30)),
+						FailureThreshold:    new(float32(10)),
+						PeriodSeconds:       new(float32(2)),
+						TimeoutSeconds:      new(float32(5)),
 					},
 					ContainerPort: 8080,
 				},
@@ -1614,20 +1615,20 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 			LivenessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.ExecHealthProbe,
 				Exec: &datamodel.ExecHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Ptr[float32](30),
-						FailureThreshold:    to.Ptr[float32](10),
-						PeriodSeconds:       to.Ptr[float32](2),
-						TimeoutSeconds:      to.Ptr[float32](5),
+						InitialDelaySeconds: new(float32(30)),
+						FailureThreshold:    new(float32(10)),
+						PeriodSeconds:       new(float32(2)),
+						TimeoutSeconds:      new(float32(5)),
 					},
 					Command: "a b c",
 				},
@@ -1802,10 +1803,10 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 			ImagePullPolicy: "Never",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 		},
@@ -1863,10 +1864,10 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
 				envVarName1: {
-					Value: to.Ptr(envVarValue1),
+					Value: new(envVarValue1),
 				},
 				envVarName2: {
-					Value: to.Ptr(envVarValue2),
+					Value: new(envVarValue2),
 				},
 			},
 		},
@@ -1929,10 +1930,10 @@ func Test_Render_BaseManifest(t *testing.T) {
 					Image: "someimage:latest",
 					Env: map[string]datamodel.EnvironmentVariable{
 						envVarName1: {
-							Value: to.Ptr(envVarValue1),
+							Value: new(envVarValue1),
 						},
 						envVarName2: {
-							Value: to.Ptr(envVarValue2),
+							Value: new(envVarValue2),
 						},
 					},
 					Volumes: map[string]datamodel.VolumeProperties{
@@ -1961,10 +1962,10 @@ func Test_Render_BaseManifest(t *testing.T) {
 					Image: "someimage:latest",
 					Env: map[string]datamodel.EnvironmentVariable{
 						envVarName1: {
-							Value: to.Ptr(envVarValue1),
+							Value: new(envVarValue1),
 						},
 						envVarName2: {
-							Value: to.Ptr(envVarValue2),
+							Value: new(envVarValue2),
 						},
 					},
 				},
@@ -2190,13 +2191,9 @@ func Test_updateEnvAndSecretData(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			env := make(map[string]corev1.EnvVar)
-			for k, v := range tc.initialEnv {
-				env[k] = v
-			}
+			maps.Copy(env, tc.initialEnv)
 			secretData := make(map[string][]byte)
-			for k, v := range tc.initialSecretData {
-				secretData[k] = v
-			}
+			maps.Copy(secretData, tc.initialSecretData)
 
 			updatedEnv, updatedSecretData := updateEnvAndSecretData(
 				tc.connName,

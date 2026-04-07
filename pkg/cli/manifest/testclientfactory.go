@@ -24,7 +24,6 @@ import (
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 )
@@ -80,7 +79,7 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetResponse{
 				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: to.Ptr(resourceProviderName),
+					Name: new(resourceProviderName),
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -94,10 +93,10 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetProviderSummaryResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetProviderSummaryResponse{
 				ResourceProviderSummary: v20231001preview.ResourceProviderSummary{
-					Name: to.Ptr(resourceProviderName),
+					Name: new(resourceProviderName),
 					ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
 						"testResources": {
-							Description: to.Ptr("Resource type description"),
+							Description: new("Resource type description"),
 							APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
 								"2023-10-01-preview": {
 									Schema: map[string]any{
@@ -161,7 +160,7 @@ func WithResourceTypeServerNoError() ucpfake.ResourceTypesServer {
 		) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceTypesClientGetResponse{
 				ResourceTypeResource: v20231001preview.ResourceTypeResource{
-					Name: to.Ptr(resourceTypeName),
+					Name: new(resourceTypeName),
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -222,8 +221,8 @@ func WithLocationServerNoError() ucpfake.LocationsServer {
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
 				LocationResource: v20231001preview.LocationResource{
-					Name: to.Ptr(locationName),
-					ID:   to.Ptr("id"),
+					Name: new(locationName),
+					ID:   new("id"),
 					Properties: &v20231001preview.LocationProperties{
 						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
 					},
@@ -262,7 +261,7 @@ func WithResourceProviderServerNotFoundError() ucpfake.ResourceProvidersServer {
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetResponse{
 				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: to.Ptr(resourceProviderName),
+					Name: new(resourceProviderName),
 				},
 			}
 			resp.SetResponse(http.StatusNotFound, response, nil)
@@ -307,7 +306,7 @@ func WithResourceProviderServerInternalError() ucpfake.ResourceProvidersServer {
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetResponse{
 				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: to.Ptr(resourceProviderName),
+					Name: new(resourceProviderName),
 				},
 			}
 			resp.SetResponse(http.StatusInternalServerError, response, nil)

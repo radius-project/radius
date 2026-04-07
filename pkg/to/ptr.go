@@ -19,15 +19,17 @@ limitations under the License.
 package to
 
 // Ptr takes in a value of any type and returns a pointer to that value.
+//
+//go:fix inline
 func Ptr[T any](v T) *T {
-	return &v
+	return new(v)
 }
 
 // SliceOfPtrs takes in a variable number of arguments of any type and returns a slice of pointers to those arguments.
 func SliceOfPtrs[T any](vv ...T) []*T {
 	slc := make([]*T, len(vv))
 	for i := range vv {
-		slc[i] = Ptr(vv[i])
+		slc[i] = new(vv[i])
 	}
 	return slc
 }
@@ -36,7 +38,7 @@ func SliceOfPtrs[T any](vv ...T) []*T {
 func StringMapPtr(ms map[string]string) *map[string]*string {
 	msp := make(map[string]*string, len(ms))
 	for k, s := range ms {
-		msp[k] = Ptr(s)
+		msp[k] = new(s)
 	}
 	return &msp
 }

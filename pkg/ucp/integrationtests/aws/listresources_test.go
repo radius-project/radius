@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -50,8 +49,8 @@ func Test_ListAWSResources(t *testing.T) {
 		output := cloudcontrol.ListResourcesOutput{
 			ResourceDescriptions: []types.ResourceDescription{
 				{
-					Identifier: to.Ptr(testAWSResourceName),
-					Properties: to.Ptr(string(getResponseBodyBytes)),
+					Identifier: new(testAWSResourceName),
+					Properties: new(string(getResponseBodyBytes)),
 				},
 			},
 		}

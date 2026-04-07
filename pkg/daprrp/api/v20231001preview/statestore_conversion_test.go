@@ -146,42 +146,42 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			versionedResource.SystemData = nil
 
 			expected := &DaprStateStoreResource{
-				ID:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/stateStore0"),
-				Name:     to.Ptr("stateStore0"),
+				ID:       new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/stateStore0"),
+				Name:     new("stateStore0"),
 				Type:     to.Ptr(dapr_ctrl.DaprStateStoresResourceType),
 				Location: to.Ptr(v1.LocationGlobal),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &DaprStateStoreProperties{
-					Application:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
-					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
-					ComponentName:     to.Ptr("stateStore0"),
-					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Auth:              &DaprResourceAuth{SecretStore: to.Ptr("test-secret-store")},
+					Application:       new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					Environment:       new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					ComponentName:     new("stateStore0"),
+					ProvisioningState: new(ProvisioningStateAccepted),
+					Auth:              &DaprResourceAuth{SecretStore: new("test-secret-store")},
 					Status:            resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 			}
 
 			if payload == "statestore_values_resourcedatamodel.json" {
-				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningManual)
-				expected.Properties.Type = to.Ptr("state.zookeeper")
-				expected.Properties.Version = to.Ptr("v1")
+				expected.Properties.ResourceProvisioning = new(ResourceProvisioningManual)
+				expected.Properties.Type = new("state.zookeeper")
+				expected.Properties.Version = new("v1")
 				expected.Properties.Metadata = map[string]*MetadataValue{
 					"foo": {
-						Value: to.Ptr("bar"),
+						Value: new("bar"),
 					},
 				}
 				expected.Properties.Resources = []*ResourceReference{
 					{
-						ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"),
+						ID: new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"),
 					},
 				}
 				expected.Properties.Status = resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{})
 			} else if payload == "statestore_recipe_resourcedatamodel.json" {
-				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningRecipe)
+				expected.Properties.ResourceProvisioning = new(ResourceProvisioningRecipe)
 				expected.Properties.Recipe = &Recipe{
-					Name: to.Ptr("recipe-test"),
+					Name: new("recipe-test"),
 				}
 				expected.Properties.Status = resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{})
 			}

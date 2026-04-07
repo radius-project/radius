@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 )
 
@@ -98,7 +97,7 @@ func Test_Show(t *testing.T) {
 		defer ctrl.Finish()
 
 		environment := v20231001preview.EnvironmentResource{
-			Name: to.Ptr("test-env"),
+			Name: new("test-env"),
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)

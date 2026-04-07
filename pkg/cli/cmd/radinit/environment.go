@@ -78,7 +78,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 
 	envProperties := corerp.EnvironmentProperties{
 		Compute: &corerp.KubernetesCompute{
-			Namespace: to.Ptr(r.Options.Environment.Namespace),
+			Namespace: new(r.Options.Environment.Namespace),
 		},
 		Providers: &providers,
 		Recipes:   recipes,

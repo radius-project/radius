@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -107,12 +106,12 @@ func Test_Run(t *testing.T) {
 
 		groups := []v20231001preview.ResourceGroupResource{
 			{
-				Name: to.Ptr("rg1"),
-				ID:   to.Ptr("/planes/radius/local/resourcegroups/rg1"),
+				Name: new("rg1"),
+				ID:   new("/planes/radius/local/resourcegroups/rg1"),
 			},
 			{
-				Name: to.Ptr("rg2"),
-				ID:   to.Ptr("/planes/radius/local/resourcegroups/rg2"),
+				Name: new("rg2"),
+				ID:   new("/planes/radius/local/resourcegroups/rg2"),
 			},
 		}
 

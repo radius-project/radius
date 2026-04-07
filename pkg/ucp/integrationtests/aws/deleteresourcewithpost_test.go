@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -48,7 +47,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String("AWS::Kinesis::Stream"),
-		Schema:   to.Ptr(string(serialized)),
+		Schema:   new(string(serialized)),
 	}
 
 	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
@@ -57,7 +56,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 		output := cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.Ptr(testAWSRequestToken),
+				RequestToken:    new(testAWSRequestToken),
 			},
 		}
 		return &output, nil

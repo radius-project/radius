@@ -66,7 +66,7 @@ func createAzurePlane(ucp *testhost.TestHost, rp *testrp.Server) {
 	body := v20231001preview.AzurePlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Properties: &v20231001preview.AzurePlaneResourceProperties{
-			URL: to.Ptr("http://" + rp.Address()),
+			URL: new("http://" + rp.Address()),
 		},
 	}
 	response := ucp.MakeTypedRequest(http.MethodPut, testAzurePlaneID+"?"+apiVersionParameter, body)

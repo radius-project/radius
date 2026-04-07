@@ -792,7 +792,7 @@ func TestAddSchemaType_AdditionalPropertiesAny_Error(t *testing.T) {
 		},
 		AdditionalProperties: &manifest.Schema{
 			Type:        "any", // "any" type is not supported
-			Description: stringPtr("A map of key-value pairs"),
+			Description: new("A map of key-value pairs"),
 		},
 	}
 	typeFactory := factory.NewTypeFactory()
@@ -806,11 +806,6 @@ func TestAddSchemaType_AdditionalPropertiesAny_Error(t *testing.T) {
 	if !strings.Contains(err.Error(), expectedError) {
 		t.Errorf("Expected error to contain '%s', got '%s'", expectedError, err.Error())
 	}
-}
-
-// Helper function for creating string pointers
-func stringPtr(s string) *string {
-	return &s
 }
 
 func TestAddSchemaType_ObjectWithOnlyProperties(t *testing.T) {

@@ -354,7 +354,7 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 }
 
 func (c *APIServerClient) doWithRetry(action func() (bool, error)) error {
-	for i := 0; i < RetryCount; i++ {
+	for range RetryCount {
 		retryable, err := action()
 		if err != nil && !retryable {
 			return err

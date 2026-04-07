@@ -22,7 +22,6 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -39,7 +38,7 @@ func GetOutputResourcesFromResourcesField(field []*portableresources.ResourceRef
 
 		result := rpv1.OutputResource{
 			ID:            id,
-			RadiusManaged: to.Ptr(false), // Generally when we parse a resource ID from a resource field, it's externally managed.
+			RadiusManaged: new(false), // Generally when we parse a resource ID from a resource field, it's externally managed.
 		}
 		results = append(results, result)
 	}
@@ -59,7 +58,7 @@ func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputRe
 
 		result := rpv1.OutputResource{
 			ID:            id,
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		}
 
 		results = append(results, result)

@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -102,7 +101,7 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		application := v20231001preview.ApplicationResource{
-			Name: to.Ptr("test-app"),
+			Name: new("test-app"),
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -113,12 +112,12 @@ func Test_Run(t *testing.T) {
 
 		resourceList := []generated.GenericResource{
 			{
-				Name: to.Ptr("test-container"),
-				ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-container"),
+				Name: new("test-container"),
+				ID:   new("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-container"),
 			},
 			{
-				Name: to.Ptr("test-gateway"),
-				ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway"),
+				Name: new("test-gateway"),
+				ID:   new("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway"),
 			},
 		}
 
@@ -135,7 +134,7 @@ func Test_Run(t *testing.T) {
 
 		diagnosticsClient.EXPECT().
 			GetPublicEndpoint(gomock.Any(), clients.EndpointOptions{ResourceID: mustParse(t, "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway")}).
-			Return(to.Ptr("http://some-url.example.com"), nil).
+			Return(new("http://some-url.example.com"), nil).
 			Times(1)
 
 		workspace := &workspaces.Workspace{

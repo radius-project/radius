@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"github.com/radius-project/radius/pkg/to"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -44,7 +43,7 @@ func addSecretReference(deployment *appsv1.Deployment, secretName string) bool {
 	from := corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
 			LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-			Optional:             to.Ptr(false),
+			Optional:             new(false),
 		},
 	}
 

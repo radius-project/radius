@@ -143,21 +143,21 @@ func getAzureTestCredentialList(t *testing.T, res *http.Response) []ucp.AzureCre
 
 func getAzureTestCredentialObject() ucp.AzureCredentialResource {
 	return ucp.AzureCredentialResource{
-		Location: to.Ptr("global"),
-		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
-		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.Azure/credentials"),
+		Location: new("global"),
+		ID:       new("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
+		Name:     new("default"),
+		Type:     new("System.Azure/credentials"),
 		Tags: map[string]*string{
-			"env": to.Ptr("dev"),
+			"env": new("dev"),
 		},
 		Properties: &ucp.AzureServicePrincipalProperties{
-			ClientID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
-			TenantID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
-			ClientSecret: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			ClientID:     new("00000000-0000-0000-0000-000000000000"),
+			TenantID:     new("00000000-0000-0000-0000-000000000000"),
+			ClientSecret: new("00000000-0000-0000-0000-000000000000"),
 			Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure-azuretest-default"),
+				SecretName: new("azure-azuretest-default"),
 			},
 		},
 	}
@@ -165,20 +165,20 @@ func getAzureTestCredentialObject() ucp.AzureCredentialResource {
 
 func getExpectedAzureTestCredentialObject() ucp.AzureCredentialResource {
 	return ucp.AzureCredentialResource{
-		Location: to.Ptr("global"),
-		ID:       to.Ptr("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
-		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.Azure/credentials"),
+		Location: new("global"),
+		ID:       new("/planes/azure/azuretest/providers/System.Azure/credentials/default"),
+		Name:     new("default"),
+		Type:     new("System.Azure/credentials"),
 		Tags: map[string]*string{
-			"env": to.Ptr("dev"),
+			"env": new("dev"),
 		},
 		Properties: &ucp.AzureServicePrincipalProperties{
-			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			ClientID: new("00000000-0000-0000-0000-000000000000"),
+			TenantID: new("00000000-0000-0000-0000-000000000000"),
 			Kind:     to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure-azuretest-default"),
+				SecretName: new("azure-azuretest-default"),
 			},
 		},
 	}

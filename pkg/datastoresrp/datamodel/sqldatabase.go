@@ -77,7 +77,7 @@ func (r *SqlDatabase) ResourceTypeName() string {
 type SqlDatabaseProperties struct {
 	rpv1.BasicResourceProperties
 	// The recipe used to automatically deploy underlying infrastructure for the SQL database resource
-	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe"`
 	// Database name of the target SQL database resource
 	Database string `json:"database,omitempty"`
 	// The fully qualified domain name of the SQL database resource
@@ -91,7 +91,7 @@ type SqlDatabaseProperties struct {
 	// Username of the SQL database resource
 	Username string `json:"username,omitempty"`
 	// Secrets values provided for the resource
-	Secrets SqlDatabaseSecrets `json:"secrets,omitempty"`
+	Secrets SqlDatabaseSecrets `json:"secrets"`
 }
 
 // Secrets values consisting of secrets provided for the resource

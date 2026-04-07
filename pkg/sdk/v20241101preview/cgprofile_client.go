@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,7 +20,7 @@ import (
 
 type CGProfileClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewCGProfileClient creates a new instance of CGProfileClient with the specified values.
@@ -30,7 +29,7 @@ type CGProfileClient struct {
 func NewCGProfileClient(subscriptionID string, pl runtime.Pipeline) *CGProfileClient {
 	client := &CGProfileClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -70,7 +69,7 @@ func (client *CGProfileClient) createOrUpdateCreateRequest(ctx context.Context, 
 		return nil, errors.New("parameter containerGroupProfileName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupProfileName}", url.PathEscape(containerGroupProfileName))
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +125,7 @@ func (client *CGProfileClient) deleteOperation(ctx context.Context, resourceGrou
 	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -141,7 +140,7 @@ func (client *CGProfileClient) deleteCreateRequest(ctx context.Context, resource
 		return nil, errors.New("parameter containerGroupProfileName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupProfileName}", url.PathEscape(containerGroupProfileName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +184,7 @@ func (client *CGProfileClient) getCreateRequest(ctx context.Context, resourceGro
 		return nil, errors.New("parameter containerGroupProfileName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupProfileName}", url.PathEscape(containerGroupProfileName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +245,7 @@ func (client *CGProfileClient) getByRevisionNumberCreateRequest(ctx context.Cont
 		return nil, errors.New("parameter revisionNumber cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{revisionNumber}", url.PathEscape(revisionNumber))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +274,7 @@ func (client *CGProfileClient) getByRevisionNumberHandleResponse(resp *http.Resp
 // containerGroupProfileName - ContainerGroupProfile name.
 // options - CGProfileClientListAllRevisionsOptions contains the optional parameters for the CGProfileClient.ListAllRevisions
 // method.
-func (client *CGProfileClient) NewListAllRevisionsPager(resourceGroupName string, containerGroupProfileName string, options *CGProfileClientListAllRevisionsOptions) (*runtime.Pager[CGProfileClientListAllRevisionsResponse]) {
+func (client *CGProfileClient) NewListAllRevisionsPager(resourceGroupName string, containerGroupProfileName string, options *CGProfileClientListAllRevisionsOptions) *runtime.Pager[CGProfileClientListAllRevisionsResponse] {
 	return runtime.NewPager(runtime.PagingHandler[CGProfileClientListAllRevisionsResponse]{
 		More: func(page CGProfileClientListAllRevisionsResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -315,7 +314,7 @@ func (client *CGProfileClient) listAllRevisionsCreateRequest(ctx context.Context
 		return nil, errors.New("parameter containerGroupProfileName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupProfileName}", url.PathEscape(containerGroupProfileName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +368,7 @@ func (client *CGProfileClient) updateCreateRequest(ctx context.Context, resource
 		return nil, errors.New("parameter containerGroupProfileName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerGroupProfileName}", url.PathEscape(containerGroupProfileName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -391,4 +390,3 @@ func (client *CGProfileClient) updateHandleResponse(resp *http.Response) (CGProf
 	}
 	return result, nil
 }
-

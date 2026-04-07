@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -40,7 +39,7 @@ import (
 var outputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/mongoDatabases"
 var outputResource = rpv1.OutputResource{
 	ID:            resources.MustParse(outputResourceResourceID),
-	RadiusManaged: to.Ptr(true),
+	RadiusManaged: new(true),
 }
 
 func TestDeleteResourceRun_20231001Preview(t *testing.T) {
@@ -91,7 +90,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			sb, err := json.Marshal(&status)
 			require.NoError(t, err)
 
-			sm := map[string]interface{}{}
+			sm := map[string]any{}
 			err = json.Unmarshal(sb, &sm)
 			require.NoError(t, err)
 

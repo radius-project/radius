@@ -69,15 +69,15 @@ func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(app.ID)
-	dst.Name = to.Ptr(app.Name)
-	dst.Type = to.Ptr(app.Type)
+	dst.ID = new(app.ID)
+	dst.Name = new(app.Name)
+	dst.Type = new(app.Type)
 	dst.SystemData = fromSystemDataModel(app.SystemData)
-	dst.Location = to.Ptr(app.Location)
+	dst.Location = new(app.Location)
 	dst.Tags = *to.StringMapPtr(app.Tags)
 	dst.Properties = &ApplicationProperties{
 		ProvisioningState: fromProvisioningStateDataModel(app.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.Ptr(app.Properties.Environment),
+		Environment:       new(app.Properties.Environment),
 		Status: &ResourceStatus{
 			Compute: fromEnvironmentComputeDataModel(app.Properties.Status.Compute),
 		},
@@ -100,19 +100,19 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ExtensionCla
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &KubernetesMetadataExtension{
-			Kind:        to.Ptr(string(e.Kind)),
+			Kind:        new(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
 	case datamodel.KubernetesNamespaceExtension:
 		return &KubernetesNamespaceExtension{
-			Kind:      to.Ptr(string(e.Kind)),
-			Namespace: to.Ptr(e.KubernetesNamespace.Namespace),
+			Kind:      new(string(e.Kind)),
+			Namespace: new(e.KubernetesNamespace.Namespace),
 		}
 	case datamodel.ACIExtension:
 		return &AzureContainerInstanceExtension{
-			Kind:          to.Ptr(string(e.Kind)),
-			ResourceGroup: to.Ptr(e.AzureContainerInstance.ResourceGroup),
+			Kind:          new(string(e.Kind)),
+			ResourceGroup: new(e.AzureContainerInstance.ResourceGroup),
 		}
 	}
 

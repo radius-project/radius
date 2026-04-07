@@ -67,22 +67,22 @@ type Value struct {
 
 type Radius struct {
 	Type  string `json:"type,omitempty"`
-	Value Value  `json:"value,omitempty"`
+	Value Value  `json:"value"`
 }
 
 type Az struct {
 	Type  string `json:"type,omitempty"`
-	Value Value  `json:"value,omitempty"`
+	Value Value  `json:"value"`
 }
 
 type AWS struct {
 	Type  string `json:"type,omitempty"`
-	Value Value  `json:"value,omitempty"`
+	Value Value  `json:"value"`
 }
 
 type Deployments struct {
 	Type  string `json:"type,omitempty"`
-	Value Value  `json:"value,omitempty"`
+	Value Value  `json:"value"`
 }
 
 type ProviderConfig struct {

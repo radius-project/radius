@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -74,7 +73,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Return(corerp.ApplicationResource{
 				ID: &invalidAppID,
 				Properties: &corerp.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/test"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/test"),
 				},
 			}, nil).
 			Times(1)

@@ -69,11 +69,11 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(extender.ID)
-	dst.Name = to.Ptr(extender.Name)
-	dst.Type = to.Ptr(extender.Type)
+	dst.ID = new(extender.ID)
+	dst.Name = new(extender.Name)
+	dst.Type = new(extender.Type)
 	dst.SystemData = fromSystemDataModel(extender.SystemData)
-	dst.Location = to.Ptr(extender.Location)
+	dst.Location = new(extender.Location)
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
@@ -81,8 +81,8 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 			Recipe:          fromRecipeStatus(extender.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
-		Environment:          to.Ptr(extender.Properties.Environment),
-		Application:          to.Ptr(extender.Properties.Application),
+		Environment:          new(extender.Properties.Environment),
+		Application:          new(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,
 		Recipe:               fromRecipeDataModel(extender.Properties.ResourceRecipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(extender.Properties.ResourceProvisioning),
@@ -124,12 +124,12 @@ func fromRecipeStatus(recipeStatus *rpv1.RecipeStatus) *RecipeStatus {
 	}
 
 	status := &RecipeStatus{
-		TemplateKind: to.Ptr(recipeStatus.TemplateKind),
-		TemplatePath: to.Ptr(recipeStatus.TemplatePath),
+		TemplateKind: new(recipeStatus.TemplateKind),
+		TemplatePath: new(recipeStatus.TemplatePath),
 	}
 
 	if recipeStatus.TemplateVersion != "" {
-		status.TemplateVersion = to.Ptr(recipeStatus.TemplateVersion)
+		status.TemplateVersion = new(recipeStatus.TemplateVersion)
 	}
 
 	return status
@@ -137,7 +137,7 @@ func fromRecipeStatus(recipeStatus *rpv1.RecipeStatus) *RecipeStatus {
 
 func fromRecipeDataModel(r portableresources.ResourceRecipe) *Recipe {
 	return &Recipe{
-		Name:       to.Ptr(r.Name),
+		Name:       new(r.Name),
 		Parameters: r.Parameters,
 	}
 }

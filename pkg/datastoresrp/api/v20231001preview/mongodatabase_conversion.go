@@ -85,28 +85,28 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(mongo.ID)
-	dst.Name = to.Ptr(mongo.Name)
-	dst.Type = to.Ptr(mongo.Type)
+	dst.ID = new(mongo.ID)
+	dst.Name = new(mongo.Name)
+	dst.Type = new(mongo.Type)
 	dst.SystemData = fromSystemDataModel(mongo.SystemData)
-	dst.Location = to.Ptr(mongo.Location)
+	dst.Location = new(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 
 	dst.Properties = &MongoDatabaseProperties{
 		Resources: fromResourcesDataModel(mongo.Properties.Resources),
-		Host:      to.Ptr(mongo.Properties.Host),
-		Port:      to.Ptr(mongo.Properties.Port),
-		Database:  to.Ptr(mongo.Properties.Database),
+		Host:      new(mongo.Properties.Host),
+		Port:      new(mongo.Properties.Port),
+		Database:  new(mongo.Properties.Database),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(mongo.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(mongo.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
-		Environment:          to.Ptr(mongo.Properties.Environment),
-		Application:          to.Ptr(mongo.Properties.Application),
+		Environment:          new(mongo.Properties.Environment),
+		Application:          new(mongo.Properties.Application),
 		Recipe:               fromRecipeDataModel(mongo.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(mongo.Properties.ResourceProvisioning),
-		Username:             to.Ptr(mongo.Properties.Username),
+		Username:             new(mongo.Properties.Username),
 	}
 
 	return nil
@@ -120,8 +120,8 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.Ptr(mongoSecrets.ConnectionString)
-	dst.Password = to.Ptr(mongoSecrets.Password)
+	dst.ConnectionString = new(mongoSecrets.ConnectionString)
+	dst.Password = new(mongoSecrets.Password)
 
 	return nil
 }

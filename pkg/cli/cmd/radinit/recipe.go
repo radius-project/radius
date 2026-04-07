@@ -141,7 +141,7 @@ func getRecipeProperties(devRecipe DevRecipe, tag string) map[string]corerp.Reci
 	return map[string]corerp.RecipePropertiesClassification{
 		recipeName: &corerp.BicepRecipeProperties{
 			TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
-			TemplatePath: to.Ptr(devRecipe.RepoPath + ":" + tag),
+			TemplatePath: new(devRecipe.RepoPath + ":" + tag),
 		},
 	}
 }

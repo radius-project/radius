@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -131,7 +130,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
 				},
 			}, nil).
 			Times(1)
@@ -204,7 +203,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
 				},
 			}, nil).
 			Times(1)
@@ -272,7 +271,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
 				},
 			}, nil).
 			Times(1)
@@ -314,7 +313,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
 				},
 			}, nil).
 			Times(1)
@@ -387,7 +386,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
 				},
 			}, nil).
 			Times(1)
@@ -426,7 +425,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
 				},
 			}, nil).
 			Times(1)
@@ -482,7 +481,7 @@ func Test_Delete(t *testing.T) {
 			GetApplication(gomock.Any(), "test-app").
 			Return(v20231001preview.ApplicationResource{
 				Properties: &v20231001preview.ApplicationProperties{
-					Environment: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
 				},
 			}, nil).
 			Times(1)
