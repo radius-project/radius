@@ -23,7 +23,9 @@
 *.dotx binary
 *.vsdx binary
 
-# Lock files
-package-lock.json linguist-generated=true
-pnpm-lock.yaml linguist-generated=true
-yarn.lock linguist-generated=true
+# Lock files are generated and should ignore line endings
+devcontainer-lock.json -text linguist-generated=true
+pnpm-lock.yaml -text linguist-generated=true
+package-lock.json -text linguist-generated=true
+yarn.lock -text linguist-generated=true
+go.sum -text linguist-generated=true
