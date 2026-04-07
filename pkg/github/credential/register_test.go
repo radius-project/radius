@@ -106,7 +106,7 @@ func (m *mockGHClient) DeleteEnvironment(_ context.Context, _, _, envName string
 
 func TestCreateAWSEnvironment(t *testing.T) {
 	ghClient := newMockGHClient()
-	svc := NewService(ghClient)
+	svc := NewService(ghClient, nil)
 
 	result, err := svc.CreateAWSEnvironment(context.Background(), "owner", "repo", AWSEnvironmentConfig{
 		EnvironmentName: "dev",
@@ -128,7 +128,7 @@ func TestCreateAWSEnvironment(t *testing.T) {
 }
 
 func TestCreateAWSEnvironment_MissingFields(t *testing.T) {
-	svc := NewService(newMockGHClient())
+	svc := NewService(newMockGHClient(), nil)
 
 	_, err := svc.CreateAWSEnvironment(context.Background(), "owner", "repo", AWSEnvironmentConfig{})
 	assert.Error(t, err)
@@ -143,7 +143,7 @@ func TestCreateAWSEnvironment_MissingFields(t *testing.T) {
 
 func TestCreateAzureEnvironment_WorkloadIdentity(t *testing.T) {
 	ghClient := newMockGHClient()
-	svc := NewService(ghClient)
+	svc := NewService(ghClient, nil)
 
 	result, err := svc.CreateAzureEnvironment(context.Background(), "owner", "repo", AzureEnvironmentConfig{
 		EnvironmentName: "dev",
@@ -168,7 +168,7 @@ func TestCreateAzureEnvironment_WorkloadIdentity(t *testing.T) {
 
 func TestCreateAzureEnvironment_ServicePrincipal(t *testing.T) {
 	ghClient := newMockGHClient()
-	svc := NewService(ghClient)
+	svc := NewService(ghClient, nil)
 
 	result, err := svc.CreateAzureEnvironment(context.Background(), "owner", "repo", AzureEnvironmentConfig{
 		EnvironmentName: "staging",
@@ -187,7 +187,7 @@ func TestCreateAzureEnvironment_ServicePrincipal(t *testing.T) {
 }
 
 func TestCreateAzureEnvironment_SPMissingSecret(t *testing.T) {
-	svc := NewService(newMockGHClient())
+	svc := NewService(newMockGHClient(), nil)
 
 	_, err := svc.CreateAzureEnvironment(context.Background(), "owner", "repo", AzureEnvironmentConfig{
 		EnvironmentName: "dev",
@@ -201,7 +201,7 @@ func TestCreateAzureEnvironment_SPMissingSecret(t *testing.T) {
 }
 
 func TestCreateAzureEnvironment_InvalidAuthType(t *testing.T) {
-	svc := NewService(newMockGHClient())
+	svc := NewService(newMockGHClient(), nil)
 
 	_, err := svc.CreateAzureEnvironment(context.Background(), "owner", "repo", AzureEnvironmentConfig{
 		EnvironmentName: "dev",
@@ -217,7 +217,7 @@ func TestCreateAzureEnvironment_InvalidAuthType(t *testing.T) {
 func TestDeleteEnvironment(t *testing.T) {
 	ghClient := newMockGHClient()
 	ghClient.existingEnvs["dev"] = true
-	svc := NewService(ghClient)
+	svc := NewService(ghClient, nil)
 
 	err := svc.DeleteEnvironment(context.Background(), "owner", "repo", "dev")
 	require.NoError(t, err)
@@ -231,7 +231,7 @@ func TestGetEnvironmentStatus(t *testing.T) {
 		"AWS_IAM_ROLE_ARN": "arn:aws:iam::123:role/test",
 		"AWS_REGION":       "us-east-1",
 	}
-	svc := NewService(ghClient)
+	svc := NewService(ghClient, nil)
 
 	result, err := svc.GetEnvironmentStatus(context.Background(), "owner", "repo", "dev")
 	require.NoError(t, err)
@@ -241,7 +241,7 @@ func TestGetEnvironmentStatus(t *testing.T) {
 }
 
 func TestGetEnvironmentStatus_NotFound(t *testing.T) {
-	svc := NewService(newMockGHClient())
+	svc := NewService(newMockGHClient(), nil)
 
 	result, err := svc.GetEnvironmentStatus(context.Background(), "owner", "repo", "nonexistent")
 	require.NoError(t, err)
@@ -251,13 +251,13 @@ func TestGetEnvironmentStatus_NotFound(t *testing.T) {
 func TestGenerateVerificationWorkflow_AWS(t *testing.T) {
 	content, err := generateVerificationWorkflow("aws", "dev")
 	require.NoError(t, err)
-	assert.Contains(t, string(content), "aws sts get-caller-identity")
+	assert.Contains(t, string(content), "aws sts get-caller-identity --query")
 	assert.Contains(t, string(content), "vars.AWS_IAM_ROLE_ARN")
 }
 
 func TestGenerateVerificationWorkflow_Azure(t *testing.T) {
 	content, err := generateVerificationWorkflow("azure", "staging")
 	require.NoError(t, err)
-	assert.Contains(t, string(content), "az account show")
+	assert.Contains(t, string(content), "az account show --query")
 	assert.Contains(t, string(content), "vars.AZURE_CLIENT_ID")
 }

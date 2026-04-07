@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/radius-project/radius/pkg/github/api"
 	"github.com/radius-project/radius/pkg/github/auth"
+	"github.com/radius-project/radius/pkg/github/azure"
 	"github.com/radius-project/radius/pkg/github/credential"
 	"github.com/radius-project/radius/pkg/github/environment"
 )
@@ -91,8 +93,11 @@ func run() error {
 	// --- GitHub Environment Client ---
 	ghEnvClient := environment.NewClient(ghTokenSource)
 
+	// --- Azure Federation Client ---
+	federationClient := azure.NewFederationClient()
+
 	// --- Credential Service (GitHub Environment only, no Radius registration) ---
-	credService := credential.NewService(ghEnvClient)
+	credService := credential.NewService(ghEnvClient, federationClient)
 
 	// --- Credential Verifier (commits + triggers verification workflow) ---
 	verifier := credential.NewVerifier(ghTokenSource)
@@ -113,8 +118,19 @@ func run() error {
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RequestID)
+	r.Use(corsMiddleware(envOrDefault("CORS_ALLOWED_ORIGINS", "*")))
 
-	api.RegisterRoutes(r, credService, verifier, sessionStore, oauthConfig)
+	// In dev mode (static GITHUB_TOKEN, no App ID), skip auth on API routes.
+	devMode := ghAppID == 0
+
+	devAPIKey := os.Getenv("API_KEY")
+	if devMode && devAPIKey == "" {
+		log.Println("Development mode — API authentication is disabled")
+	} else if devAPIKey != "" {
+		log.Println("Development API key configured — use as Bearer token to authenticate")
+	}
+
+	api.RegisterRoutes(r, credService, verifier, sessionStore, oauthConfig, devAPIKey, devMode)
 
 	// --- Start Server ---
 	server := &http.Server{
@@ -136,6 +152,45 @@ func run() error {
 		return fmt.Errorf("server error: %w", err)
 	}
 	return nil
+}
+
+// corsMiddleware adds CORS headers to allow requests from browser extensions
+// and configured origins. Set CORS_ALLOWED_ORIGINS to a comma-separated list
+// of origins, or "*" (not recommended for production).
+func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
+	origins := strings.Split(allowedOrigins, ",")
+	for i := range origins {
+		origins[i] = strings.TrimSpace(origins[i])
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			allowed := false
+
+			for _, o := range origins {
+				if o == "*" || o == origin || strings.HasPrefix(origin, "chrome-extension://") || strings.HasPrefix(origin, "moz-extension://") {
+					allowed = true
+					break
+				}
+			}
+
+			if allowed && origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Max-Age", "86400")
+			}
+
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func envOrDefault(key, defaultValue string) string {

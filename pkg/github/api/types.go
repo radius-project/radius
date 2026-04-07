@@ -26,6 +26,9 @@ type CreateAWSEnvironmentRequest struct {
 
 	// Region is the AWS region for deployments.
 	Region string `json:"region"`
+
+	// AccountID is the AWS account ID (12-digit number).
+	AccountID string `json:"accountID"`
 }
 
 // CreateAzureEnvironmentRequest is the request body for creating an Azure environment.
@@ -51,6 +54,11 @@ type CreateAzureEnvironmentRequest struct {
 	// ClientSecret is the client secret for Service Principal auth.
 	// Required only when AuthType is "ServicePrincipal".
 	ClientSecret string `json:"clientSecret,omitempty"`
+
+	// AzureAccessToken is an optional Microsoft Graph access token used to
+	// automatically create the federated identity credential. If omitted,
+	// the user must create the federated credential manually.
+	AzureAccessToken string `json:"azureAccessToken,omitempty"`
 }
 
 // EnvironmentResponse is the response body for environment operations.
@@ -69,6 +77,10 @@ type EnvironmentResponse struct {
 
 	// CredentialsVerified is true when cloud access has been verified.
 	CredentialsVerified bool `json:"credentialsVerified"`
+
+	// FederatedCredentialCreated is true when a federated identity credential
+	// was automatically created on the Azure AD application.
+	FederatedCredentialCreated bool `json:"federatedCredentialCreated,omitempty"`
 }
 
 // VerificationResponse is the response body for verification status.
@@ -86,7 +98,55 @@ type VerificationResponse struct {
 	WorkflowRunURL string `json:"workflowRunURL,omitempty"`
 }
 
+// SaveDependenciesRequest is the request body for saving environment dependencies.
+type SaveDependenciesRequest struct {
+	// KubernetesCluster is the name or identifier of the Kubernetes cluster.
+	KubernetesCluster string `json:"kubernetesCluster"`
+
+	// KubernetesNamespace is the target namespace for deployments.
+	KubernetesNamespace string `json:"kubernetesNamespace"`
+
+	// OCIRegistry is the OCI container registry URL.
+	OCIRegistry string `json:"ociRegistry,omitempty"`
+
+	// VPC is the VPC identifier (AWS-specific).
+	VPC string `json:"vpc,omitempty"`
+
+	// Subnets is a comma-separated list of subnet identifiers (AWS-specific).
+	Subnets string `json:"subnets,omitempty"`
+
+	// ResourceGroup is the Azure resource group (Azure-specific).
+	ResourceGroup string `json:"resourceGroup,omitempty"`
+}
+
+// DependenciesResponse is the response body for environment dependencies.
+type DependenciesResponse struct {
+	// VariablesSet lists the GitHub Environment variable names that were set.
+	VariablesSet []string `json:"variablesSet"`
+}
+
 // ErrorResponse is a standard error response.
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+// DeployAppRequest is the request body for deploying a Radius application.
+type DeployAppRequest struct {
+	// AppFile is the Bicep file to deploy (e.g., "app.bicep").
+	AppFile string `json:"appFile"`
+}
+
+// CreateAppFileRequest is the request body for creating an application Bicep file.
+type CreateAppFileRequest struct {
+	// Filename is the Bicep file name (e.g., "app.bicep").
+	Filename string `json:"filename"`
+}
+
+// CreateAppFileResponse is the response body for creating an application Bicep file.
+type CreateAppFileResponse struct {
+	// Filename is the Bicep file name.
+	Filename string `json:"filename"`
+
+	// Created is true if the file was newly created, false if it already existed.
+	Created bool `json:"created"`
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/github/azure"
 	"github.com/radius-project/radius/pkg/github/environment"
 )
 
@@ -42,17 +43,25 @@ type Service interface {
 	// GetEnvironmentStatus returns the credential configuration state for
 	// a GitHub Environment.
 	GetEnvironmentStatus(ctx context.Context, owner, repo, envName string) (*EnvironmentResult, error)
+
+	// SaveDependencies stores environment dependencies as GitHub Environment variables.
+	SaveDependencies(ctx context.Context, owner, repo, envName string, config DependenciesConfig) (*DependenciesResult, error)
+
+	// GetDependencies returns the current environment dependencies from GitHub Environment variables.
+	GetDependencies(ctx context.Context, owner, repo, envName string) (map[string]string, error)
 }
 
 type service struct {
-	ghClient environment.Client
+	ghClient        environment.Client
+	federationClient *azure.FederationClient
 }
 
 // NewService creates a credential orchestration service that manages GitHub
 // Environment variables for cloud credentials.
-func NewService(ghClient environment.Client) Service {
+func NewService(ghClient environment.Client, federationClient *azure.FederationClient) Service {
 	return &service{
-		ghClient: ghClient,
+		ghClient:        ghClient,
+		federationClient: federationClient,
 	}
 }
 
@@ -82,6 +91,9 @@ func (s *service) CreateAWSEnvironment(ctx context.Context, owner, repo string, 
 	vars := map[string]string{
 		"AWS_IAM_ROLE_ARN": config.RoleARN,
 		"AWS_REGION":       config.Region,
+	}
+	if config.AccountID != "" {
+		vars["AWS_ACCOUNT_ID"] = config.AccountID
 	}
 	for key, value := range vars {
 		if err := s.ghClient.SetVariable(ctx, owner, repo, config.EnvironmentName, key, value); err != nil {
@@ -147,6 +159,27 @@ func (s *service) CreateAzureEnvironment(ctx context.Context, owner, repo string
 		}
 	}
 
+	// 4. For Workload Identity with an Azure access token, create the federated
+	// identity credential on the Azure AD application automatically.
+	if config.AuthType == AuthTypeWorkloadIdentity && config.AzureAccessToken != "" && s.federationClient != nil {
+		// Look up the Application Object ID from the Client ID.
+		objectID, err := s.federationClient.LookupApplicationObjectID(ctx, config.AzureAccessToken, config.ClientID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to look up Azure AD application: %w", err)
+		}
+
+		err = s.federationClient.EnsureFederatedCredential(ctx, config.AzureAccessToken, azure.FederatedCredentialConfig{
+			ApplicationObjectID: objectID,
+			Owner:               owner,
+			Repo:                repo,
+			EnvironmentName:     config.EnvironmentName,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create federated identity credential: %w", err)
+		}
+		result.FederatedCredentialCreated = true
+	}
+
 	return result, nil
 }
 
@@ -190,4 +223,68 @@ func (s *service) GetEnvironmentStatus(ctx context.Context, owner, repo, envName
 	}
 
 	return result, nil
+}
+
+func (s *service) SaveDependencies(ctx context.Context, owner, repo, envName string, config DependenciesConfig) (*DependenciesResult, error) {
+	if config.KubernetesNamespace == "" {
+		config.KubernetesNamespace = "default"
+	}
+
+	// Build the variable map — only set non-empty values.
+	// KubernetesCluster and KubernetesNamespace are optional since the
+	// ephemeral k3d model does not require the user's own cluster.
+	vars := make(map[string]string)
+	if config.KubernetesCluster != "" {
+		vars["RADIUS_K8S_CLUSTER"] = config.KubernetesCluster
+	}
+	if config.KubernetesNamespace != "" {
+		vars["RADIUS_K8S_NAMESPACE"] = config.KubernetesNamespace
+	}
+	if config.OCIRegistry != "" {
+		vars["RADIUS_OCI_REGISTRY"] = config.OCIRegistry
+	}
+	if config.VPC != "" {
+		vars["RADIUS_VPC"] = config.VPC
+	}
+	if config.Subnets != "" {
+		vars["RADIUS_SUBNETS"] = config.Subnets
+	}
+	if config.ResourceGroup != "" {
+		vars["RADIUS_RESOURCE_GROUP"] = config.ResourceGroup
+	}
+
+	result := &DependenciesResult{}
+	for key, value := range vars {
+		if err := s.ghClient.SetVariable(ctx, owner, repo, envName, key, value); err != nil {
+			return nil, fmt.Errorf("failed to set variable %q: %w", key, err)
+		}
+		result.VariablesSet = append(result.VariablesSet, key)
+	}
+
+	return result, nil
+}
+
+func (s *service) GetDependencies(ctx context.Context, owner, repo, envName string) (map[string]string, error) {
+	allVars, err := s.ghClient.GetVariables(ctx, owner, repo, envName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get variables for %q: %w", envName, err)
+	}
+
+	// Filter to RADIUS_ dependency variables only.
+	depKeys := []string{
+		"RADIUS_K8S_CLUSTER",
+		"RADIUS_K8S_NAMESPACE",
+		"RADIUS_OCI_REGISTRY",
+		"RADIUS_VPC",
+		"RADIUS_SUBNETS",
+		"RADIUS_RESOURCE_GROUP",
+	}
+	deps := make(map[string]string)
+	for _, key := range depKeys {
+		if val, ok := allVars[key]; ok {
+			deps[key] = val
+		}
+	}
+
+	return deps, nil
 }
