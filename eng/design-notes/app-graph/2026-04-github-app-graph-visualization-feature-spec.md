@@ -99,6 +99,8 @@ resource redisCache 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
 }
 ```
 
+**NOTE:** The pointer to the line number in the app definition file for each resource is tracked by Radius itself based on the compilation of the `app.bicep` file into the serialized application graph. This means that the app graph visualization can provide a link to the relevant line number in the `app.bicep` file for each component without requiring the author to provide this information.
+
 When the user clicks on the source code hyperlink for a _modified_ component (e.g. “cache”), they are taken to the diff view in the PR for the _modified_ source code:
 ![alt text](2026-04-github-app-graph-visualization-feature-spec/image07.png)
 
