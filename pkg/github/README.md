@@ -127,6 +127,45 @@ cmd/github-app/
 
 All `/api/` routes require authentication (Bearer token or session cookie).
 
+### Create Application File
+
+Creates a minimal Radius Bicep template in the repository if it doesn't already exist.
+
+```
+PUT /api/repos/{owner}/{repo}/app
+```
+
+**Request:**
+```json
+{
+  "filename": "app.bicep"
+}
+```
+
+**Response (201 Created / 200 Already Exists):**
+```json
+{
+  "filename": "app.bicep",
+  "created": true
+}
+```
+
+### Check Application File
+
+Checks whether a Bicep application file exists in the repository.
+
+```
+GET /api/repos/{owner}/{repo}/app?filename=app.bicep
+```
+
+**Response (200):**
+```json
+{
+  "filename": "app.bicep",
+  "exists": true
+}
+```
+
 ### Create AWS Environment
 
 ```
@@ -229,6 +268,20 @@ GET /api/repos/{owner}/{repo}/environments/{name}
 
 ```
 DELETE /api/repos/{owner}/{repo}/environments/{name}
+```
+
+### List Environments
+
+```
+GET /api/repos/{owner}/{repo}/environments
+```
+
+### List Deployments
+
+Returns deployment history for the repository.
+
+```
+GET /api/repos/{owner}/{repo}/deployments
 ```
 
 ### Health Check

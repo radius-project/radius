@@ -44,6 +44,7 @@ func (h *handlers) createAWSEnvironment(w http.ResponseWriter, r *http.Request) 
 		EnvironmentName: req.Name,
 		RoleARN:         req.RoleARN,
 		Region:          req.Region,
+		AccountID:       req.AccountID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -71,6 +72,7 @@ func (h *handlers) createAzureEnvironment(w http.ResponseWriter, r *http.Request
 		ResourceGroup:   req.ResourceGroup,
 		AuthType:        req.AuthType,
 		ClientSecret:    req.ClientSecret,
+		AzureAccessToken: req.AzureAccessToken,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -189,6 +191,83 @@ func (h *handlers) getVerificationStatus(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// saveDependencies stores environment dependencies (Kubernetes, registry, networking)
+// as GitHub Environment variables.
+func (h *handlers) saveDependencies(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+	name := chi.URLParam(r, "name")
+
+	var req SaveDependenciesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	result, err := h.svc.SaveDependencies(r.Context(), owner, repo, name, credential.DependenciesConfig{
+		KubernetesCluster:   req.KubernetesCluster,
+		KubernetesNamespace: req.KubernetesNamespace,
+		OCIRegistry:         req.OCIRegistry,
+		VPC:                 req.VPC,
+		Subnets:             req.Subnets,
+		ResourceGroup:       req.ResourceGroup,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, DependenciesResponse{
+		VariablesSet: result.VariablesSet,
+	})
+}
+
+// getDependencies returns the current environment dependencies from GitHub Environment variables.
+func (h *handlers) getDependencies(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+	name := chi.URLParam(r, "name")
+
+	result, err := h.svc.GetDependencies(r.Context(), owner, repo, name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+// commitDeployWorkflow commits a Radius deploy workflow to the repository.
+func (h *handlers) commitDeployWorkflow(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+	name := chi.URLParam(r, "name")
+
+	// Determine provider from the environment.
+	result, err := h.svc.GetEnvironmentStatus(r.Context(), owner, repo, name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if result == nil {
+		writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if result.Provider == "" {
+		writeError(w, http.StatusBadRequest, "no cloud provider configured for this environment")
+		return
+	}
+
+	if err := h.verifier.CommitDeployWorkflow(r.Context(), owner, repo, result.Provider, name); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to commit deploy workflow: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]string{
+		"message": "Deploy workflow committed to repository",
+	})
+}
+
 // handleLogin initiates the GitHub OAuth flow.
 func handleLogin(oauthConfig *auth.OAuthConfig, _ *auth.SessionStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -267,11 +346,12 @@ func handleCallback(oauthConfig *auth.OAuthConfig, sessionStore *auth.SessionSto
 
 func toEnvironmentResponse(result *credential.EnvironmentResult) *EnvironmentResponse {
 	return &EnvironmentResponse{
-		Name:                     result.EnvironmentName,
-		Provider:                 result.Provider,
-		GitHubEnvironmentCreated: result.GitHubEnvironmentCreated,
-		VariablesSet:             result.VariablesSet,
-		CredentialsVerified:      result.CredentialsVerified,
+		Name:                       result.EnvironmentName,
+		Provider:                   result.Provider,
+		GitHubEnvironmentCreated:   result.GitHubEnvironmentCreated,
+		VariablesSet:               result.VariablesSet,
+		CredentialsVerified:        result.CredentialsVerified,
+		FederatedCredentialCreated: result.FederatedCredentialCreated,
 	}
 }
 
@@ -283,4 +363,146 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, ErrorResponse{Error: message})
+}
+
+// commitAppCreateWorkflow commits a Radius app-create workflow to the repository.
+func (h *handlers) commitAppCreateWorkflow(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+	name := chi.URLParam(r, "name")
+
+	result, err := h.svc.GetEnvironmentStatus(r.Context(), owner, repo, name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if result == nil {
+		writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if result.Provider == "" {
+		writeError(w, http.StatusBadRequest, "no cloud provider configured for this environment")
+		return
+	}
+
+	if err := h.verifier.CommitAppCreateWorkflow(r.Context(), owner, repo, result.Provider, name); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to commit app-create workflow: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]string{
+		"message": "App-create workflow committed to repository",
+	})
+}
+
+// triggerAppDeploy dispatches the deploy workflow for an application.
+func (h *handlers) triggerAppDeploy(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+	name := chi.URLParam(r, "name")
+
+	var req DeployAppRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.AppFile == "" {
+		req.AppFile = "app.bicep"
+	}
+
+	if err := h.verifier.TriggerAppDeploy(r.Context(), owner, repo, name, req.AppFile); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to trigger app deployment: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]string{
+		"message": "Deploy workflow triggered",
+	})
+}
+
+// getAppDeployStatus returns the status of the deploy workflow.
+func (h *handlers) getAppDeployStatus(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+	name := chi.URLParam(r, "name")
+
+	result, err := h.verifier.GetAppDeployStatus(r.Context(), owner, repo, name)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, VerificationResponse{
+		Status:         result.Status,
+		Message:        result.Message,
+		WorkflowRunURL: result.WorkflowRunURL,
+	})
+}
+
+// listDeployments returns recent deploy workflow runs for the repository.
+func (h *handlers) listDeployments(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+
+	deployments, err := h.verifier.ListDeployments(r.Context(), owner, repo, 10)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, deployments)
+}
+
+// createAppFile creates a minimal Radius Bicep application file in the repository
+// if it does not already exist.
+func (h *handlers) createAppFile(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+
+	var req CreateAppFileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Filename == "" {
+		req.Filename = "app.bicep"
+	}
+
+	created, err := h.verifier.CreateAppFile(r.Context(), owner, repo, req.Filename)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create app file: "+err.Error())
+		return
+	}
+
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
+
+	writeJSON(w, status, CreateAppFileResponse{
+		Filename: req.Filename,
+		Created:  created,
+	})
+}
+
+// checkAppFile checks if a Bicep application file exists in the repository.
+func (h *handlers) checkAppFile(w http.ResponseWriter, r *http.Request) {
+	owner := chi.URLParam(r, "owner")
+	repo := chi.URLParam(r, "repo")
+
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		filename = "app.bicep"
+	}
+
+	exists, err := h.verifier.CheckAppFile(r.Context(), owner, repo, filename)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to check app file: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"filename": filename,
+		"exists":   exists,
+	})
 }

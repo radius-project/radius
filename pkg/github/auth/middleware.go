@@ -34,10 +34,13 @@ const (
 
 // RequireAuth returns a chi-compatible middleware that validates the user's session.
 // Unauthenticated requests receive a 401 response.
-func RequireAuth(store *SessionStore) func(http.Handler) http.Handler {
+//
+// If devAPIKey is non-empty, requests with a matching "Bearer <key>" header are
+// accepted without a session. This is intended for local development only.
+func RequireAuth(store *SessionStore, devAPIKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token := extractToken(r, store)
+			token := extractToken(r, store, devAPIKey)
 			if token == nil {
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 				return
@@ -56,14 +59,21 @@ func UserFromContext(ctx context.Context) *UserToken {
 }
 
 // extractToken attempts to find a valid session from the request. It checks:
-// 1. Authorization: Bearer <token> header (session ID lookup)
-// 2. Session cookie
-func extractToken(r *http.Request, store *SessionStore) *UserToken {
+// 1. Authorization: Bearer <key> against the dev API key (if set)
+// 2. Authorization: Bearer <token> header (session ID lookup)
+// 3. Session cookie
+func extractToken(r *http.Request, store *SessionStore, devAPIKey string) *UserToken {
 	// Check Authorization header.
 	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
-		if sessionID, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
-			sessionID = strings.TrimSpace(sessionID)
-			if token := store.Get(sessionID); token != nil {
+		if bearer, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
+			bearer = strings.TrimSpace(bearer)
+
+			// Dev API key bypass — only when configured via environment variable.
+			if devAPIKey != "" && bearer == devAPIKey {
+				return &UserToken{Login: "dev", AccessToken: devAPIKey}
+			}
+
+			if token := store.Get(bearer); token != nil {
 				return token
 			}
 		}

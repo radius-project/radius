@@ -25,16 +25,18 @@ import (
 )
 
 // RegisterRoutes registers the GitHub App API routes on the given chi router.
-func RegisterRoutes(r chi.Router, svc credential.Service, verifier credential.Verifier, sessionStore *auth.SessionStore, oauthConfig *auth.OAuthConfig) {
+func RegisterRoutes(r chi.Router, svc credential.Service, verifier credential.Verifier, sessionStore *auth.SessionStore, oauthConfig *auth.OAuthConfig, devAPIKey string, devMode bool) {
 	h := &handlers{svc: svc, verifier: verifier}
 
 	// Auth routes — no middleware required.
 	r.Get("/auth/github/login", handleLogin(oauthConfig, sessionStore))
 	r.Get("/auth/github/callback", handleCallback(oauthConfig, sessionStore))
 
-	// API routes — require authentication.
+	// API routes — require authentication (skipped in dev mode without an API key).
 	r.Route("/api", func(r chi.Router) {
-		r.Use(auth.RequireAuth(sessionStore))
+		if !devMode || devAPIKey != "" {
+			r.Use(auth.RequireAuth(sessionStore, devAPIKey))
+		}
 
 		r.Get("/repos/{owner}/{repo}/environments", h.listEnvironments)
 		r.Get("/repos/{owner}/{repo}/environments/{name}", h.getEnvironment)
@@ -45,6 +47,25 @@ func RegisterRoutes(r chi.Router, svc credential.Service, verifier credential.Ve
 		// Credential verification.
 		r.Post("/repos/{owner}/{repo}/environments/{name}/verify", h.verifyCredentials)
 		r.Get("/repos/{owner}/{repo}/environments/{name}/verify", h.getVerificationStatus)
+
+		// Environment dependencies.
+		r.Post("/repos/{owner}/{repo}/environments/{name}/dependencies", h.saveDependencies)
+		r.Get("/repos/{owner}/{repo}/environments/{name}/dependencies", h.getDependencies)
+
+		// Deploy workflow.
+		r.Post("/repos/{owner}/{repo}/environments/{name}/deploy-workflow", h.commitDeployWorkflow)
+
+		// Application deployment (reuses the deploy workflow).
+		r.Post("/repos/{owner}/{repo}/environments/{name}/app-workflow", h.commitAppCreateWorkflow)
+		r.Post("/repos/{owner}/{repo}/environments/{name}/app", h.triggerAppDeploy)
+		r.Get("/repos/{owner}/{repo}/environments/{name}/app", h.getAppDeployStatus)
+
+		// Deployment history.
+		r.Get("/repos/{owner}/{repo}/deployments", h.listDeployments)
+
+		// Application file management.
+		r.Put("/repos/{owner}/{repo}/app", h.createAppFile)
+		r.Get("/repos/{owner}/{repo}/app", h.checkAppFile)
 	})
 
 	// Health check.

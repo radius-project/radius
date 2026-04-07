@@ -157,7 +157,7 @@ func TestParsePrivateKey_Invalid(t *testing.T) {
 
 func TestRequireAuth_Unauthorized(t *testing.T) {
 	store := NewSessionStore()
-	handler := RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RequireAuth(store, "")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -173,7 +173,7 @@ func TestRequireAuth_BearerToken(t *testing.T) {
 	store.Set("session-123", &UserToken{Login: "testuser", AccessToken: "tok"})
 
 	var capturedUser *UserToken
-	handler := RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RequireAuth(store, "")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedUser = UserFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -192,7 +192,7 @@ func TestRequireAuth_Cookie(t *testing.T) {
 	store := NewSessionStore()
 	store.Set("cookie-session", &UserToken{Login: "cookieuser", AccessToken: "tok"})
 
-	handler := RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RequireAuth(store, "")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := UserFromContext(r.Context())
 		assert.Equal(t, "cookieuser", user.Login)
 		w.WriteHeader(http.StatusOK)

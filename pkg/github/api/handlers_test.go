@@ -94,7 +94,7 @@ func setupTestRouter(t *testing.T, svc credential.Service, v credential.Verifier
 	}
 
 	r := chi.NewRouter()
-	RegisterRoutes(r, svc, v, store, oauthConfig)
+	RegisterRoutes(r, svc, v, store, oauthConfig, "", true)
 	return r, store
 }
 
