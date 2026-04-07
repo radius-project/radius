@@ -38,7 +38,6 @@ import (
 	pr_renderers "github.com/radius-project/radius/pkg/portableresources/renderers"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
@@ -279,7 +278,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		{
 			LocalID:       rpv1.LocalIDAzureCosmosAccount,
 			ID:            resources.MustParse("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account"),
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 		{
 			LocalID: rpv1.LocalIDAzureCosmosDBMongo,
@@ -295,7 +294,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 				},
 				Dependencies: []string{rpv1.LocalIDAzureCosmosAccount},
 			},
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 	}
 

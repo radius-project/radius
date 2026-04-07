@@ -48,7 +48,7 @@ type BasicResourceProperties struct {
 	Application string `json:"application,omitempty"`
 
 	// Status represents the resource status.
-	Status ResourceStatus `json:"status,omitempty"`
+	Status ResourceStatus `json:"status"`
 }
 
 var _ BasicResourcePropertiesAdapter = (*BasicResourceProperties)(nil)
@@ -126,8 +126,8 @@ func (original ResourceStatus) DeepCopyRecipeStatus() ResourceStatus {
 // EnvironmentCompute represents the compute resource of Environment.
 type EnvironmentCompute struct {
 	Kind              EnvironmentComputeKind      `json:"kind"`
-	KubernetesCompute KubernetesComputeProperties `json:"kubernetes,omitempty"`
-	ACICompute        ACIComputeProperties        `json:"aci,omitempty"`
+	KubernetesCompute KubernetesComputeProperties `json:"kubernetes"`
+	ACICompute        ACIComputeProperties        `json:"aci"`
 
 	// Environment-level identity that can be used by any resource in the environment.
 	// Resources can specify its own identities and they will override the environment-level identity.

@@ -124,7 +124,7 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 			resourceType := resourceProviderName + resources.SegmentSeparator + resourceTypeName
 			response := v20231001preview.ResourceTypesClientGetResponse{
 				ResourceTypeResource: v20231001preview.ResourceTypeResource{
-					Name: to.Ptr(resourceTypeName),
+					Name: new(resourceTypeName),
 				},
 			}
 
@@ -166,7 +166,7 @@ func Test_hasCapability(t *testing.T) {
 			name: "has capability",
 			resourceType: &v20231001preview.ResourceTypeResource{
 				Properties: &v20231001preview.ResourceTypeProperties{
-					Capabilities: []*string{to.Ptr("capability1"), to.Ptr("capability2")},
+					Capabilities: []*string{new("capability1"), new("capability2")},
 				},
 			},
 			capability: "capability1",
@@ -176,7 +176,7 @@ func Test_hasCapability(t *testing.T) {
 			name: "does not have capability",
 			resourceType: &v20231001preview.ResourceTypeResource{
 				Properties: &v20231001preview.ResourceTypeProperties{
-					Capabilities: []*string{to.Ptr("capability1"), to.Ptr("capability2")},
+					Capabilities: []*string{new("capability1"), new("capability2")},
 				},
 			},
 			capability: "capability3",

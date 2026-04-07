@@ -21,15 +21,14 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ResourceGroupFormat(t *testing.T) {
 	obj := ucpv20231001preview.ResourceGroupResource{
-		Name: to.Ptr("test"),
-		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group"),
+		Name: new("test"),
+		ID:   new("/planes/radius/local/resourceGroups/test-group"),
 	}
 
 	buffer := &bytes.Buffer{}

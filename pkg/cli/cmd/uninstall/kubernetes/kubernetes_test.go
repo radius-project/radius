@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -172,12 +171,12 @@ func Test_Run(t *testing.T) {
 
 		envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/test-env"
 		environment := corerpv20231001.EnvironmentResource{
-			ID:   to.Ptr(envID),
-			Name: to.Ptr("test-env"),
+			ID:   new(envID),
+			Name: new("test-env"),
 			Properties: &corerpv20231001.EnvironmentProperties{
 				Compute: &corerpv20231001.KubernetesCompute{
-					Kind:      to.Ptr("Kubernetes"),
-					Namespace: to.Ptr("testenv-ns"),
+					Kind:      new("Kubernetes"),
+					Namespace: new("testenv-ns"),
 				},
 			},
 		}
@@ -291,12 +290,12 @@ func Test_Run(t *testing.T) {
 
 		envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/test-env"
 		environment := corerpv20231001.EnvironmentResource{
-			ID:   to.Ptr(envID),
-			Name: to.Ptr("test-env"),
+			ID:   new(envID),
+			Name: new("test-env"),
 			Properties: &corerpv20231001.EnvironmentProperties{
 				Compute: &corerpv20231001.KubernetesCompute{
-					Kind:      to.Ptr("Kubernetes"),
-					Namespace: to.Ptr("default"),
+					Kind:      new("Kubernetes"),
+					Namespace: new("default"),
 				},
 			},
 		}

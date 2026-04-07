@@ -16,6 +16,8 @@ limitations under the License.
 
 package config
 
+import "maps"
+
 const (
 	// moduleSourceKey represents the key for the module source parameter.
 	moduleSourceKey = "source"
@@ -33,9 +35,7 @@ type RecipeParams map[string]any
 
 // SetParams sets the recipe parameters in the Terraform module configuration.
 func (tf TFModuleConfig) SetParams(params RecipeParams) {
-	for k, v := range params {
-		tf[k] = v
-	}
+	maps.Copy(tf, params)
 }
 
 // TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
@@ -90,7 +90,7 @@ type TerraformConfig struct {
 type TerraformDefinition struct {
 	// Backend defines where Terraform stores its state.
 	// https://developer.hashicorp.com/terraform/language/state
-	Backend map[string]interface{} `json:"backend"`
+	Backend map[string]any `json:"backend"`
 
 	// RequiredProviders is the list of required Terraform providers.
 	// The json serialised json field name reflects the fieldname "required_providers" expected

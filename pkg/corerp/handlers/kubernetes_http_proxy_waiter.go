@@ -145,18 +145,18 @@ func (handler *httpProxyWaiter) checkHTTPProxyStatus(ctx context.Context, dynami
 		// We will check the status for the root HTTP proxy
 		if p.Status.CurrentStatus == HTTPProxyStatusInvalid {
 			if strings.Contains(p.Status.Description, "see Errors for details") {
-				var msg string
+				var msg strings.Builder
 				for _, c := range p.Status.Conditions {
 					if c.ObservedGeneration != p.Generation {
 						continue
 					}
 					if c.Type == HTTPProxyConditionValid && c.Status == "False" {
 						for _, e := range c.Errors {
-							msg += fmt.Sprintf("Error - Type: %s, Status: %s, Reason: %s, Message: %s\n", e.Type, e.Status, e.Reason, e.Message)
+							msg.WriteString(fmt.Sprintf("Error - Type: %s, Status: %s, Reason: %s, Message: %s\n", e.Type, e.Status, e.Reason, e.Message))
 						}
 					}
 				}
-				doneCh <- errors.New(msg)
+				doneCh <- errors.New(msg.String())
 			} else {
 				doneCh <- fmt.Errorf("Failed to deploy HTTP proxy. Description: %s", p.Status.Description)
 			}

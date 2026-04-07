@@ -107,21 +107,21 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(daprSecretStore.ID)
-	dst.Name = to.Ptr(daprSecretStore.Name)
-	dst.Type = to.Ptr(daprSecretStore.Type)
+	dst.ID = new(daprSecretStore.ID)
+	dst.Name = new(daprSecretStore.Name)
+	dst.Type = new(daprSecretStore.Type)
 	dst.SystemData = fromSystemDataModel(daprSecretStore.SystemData)
-	dst.Location = to.Ptr(daprSecretStore.Location)
+	dst.Location = new(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	dst.Properties = &DaprSecretStoreProperties{
 		ResourceProvisioning: fromResourceProvisioningDataModel(daprSecretStore.Properties.ResourceProvisioning),
 		ProvisioningState:    fromProvisioningStateDataModel(daprSecretStore.InternalMetadata.AsyncProvisioningState),
-		Environment:          to.Ptr(daprSecretStore.Properties.Environment),
-		Application:          to.Ptr(daprSecretStore.Properties.Application),
-		Type:                 to.Ptr(daprSecretStore.Properties.Type),
-		Version:              to.Ptr(daprSecretStore.Properties.Version),
+		Environment:          new(daprSecretStore.Properties.Environment),
+		Application:          new(daprSecretStore.Properties.Application),
+		Type:                 new(daprSecretStore.Properties.Type),
+		Version:              new(daprSecretStore.Properties.Version),
 		Metadata:             fromMetadataDataModel(daprSecretStore.Properties.Metadata),
-		ComponentName:        to.Ptr(daprSecretStore.Properties.ComponentName),
+		ComponentName:        new(daprSecretStore.Properties.ComponentName),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprSecretStore.Properties.Status.Recipe),
@@ -129,8 +129,8 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = fromMetadataDataModel(daprSecretStore.Properties.Metadata)
-		dst.Properties.Type = to.Ptr(daprSecretStore.Properties.Type)
-		dst.Properties.Version = to.Ptr(daprSecretStore.Properties.Version)
+		dst.Properties.Type = new(daprSecretStore.Properties.Type)
+		dst.Properties.Version = new(daprSecretStore.Properties.Version)
 	} else {
 		dst.Properties.Recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 	}

@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 )
 
@@ -96,8 +95,8 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format: "table",
 					Obj: []*corerpv20250801.EnvironmentResource{
-						{Name: to.Ptr("test-env-1")},
-						{Name: to.Ptr("test-env-2")},
+						{Name: new("test-env-1")},
+						{Name: new("test-env-2")},
 					},
 					Options: objectformats.GetResourceTableFormat(),
 				},

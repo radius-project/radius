@@ -16,7 +16,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -30,11 +29,11 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	application := corerpv20231001preview.ApplicationResource{
-		Name: to.Ptr("test-app"),
-		ID:   to.Ptr(applicationResourceID),
-		Type: to.Ptr("Applications.Core/applications"),
+		Name: new("test-app"),
+		ID:   new(applicationResourceID),
+		Type: new("Applications.Core/applications"),
 		Properties: &corerpv20231001preview.ApplicationProperties{
-			Environment: to.Ptr(environmentResourceID),
+			Environment: new(environmentResourceID),
 		},
 	}
 
@@ -117,39 +116,39 @@ func Test_Run(t *testing.T) {
 	graph := corerpv20231001preview.ApplicationGraphResponse{
 		Resources: []*corerpv20231001preview.ApplicationGraphResource{
 			{
-				ID:                to.Ptr(containerResourceID),
-				Name:              to.Ptr(containerResourceName),
-				Type:              to.Ptr(containerResourceType),
-				ProvisioningState: to.Ptr(provisioningStateSuccess),
+				ID:                new(containerResourceID),
+				Name:              new(containerResourceName),
+				Type:              new(containerResourceType),
+				ProvisioningState: new(provisioningStateSuccess),
 				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
 					{
-						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
-						Type: to.Ptr("kubernetes: apps/Deployment"),
-						Name: to.Ptr("demo"),
+						ID:   new("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
+						Type: new("kubernetes: apps/Deployment"),
+						Name: new("demo"),
 					},
 				},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 					{
-						ID:        to.Ptr(redisResourceID),
+						ID:        new(redisResourceID),
 						Direction: &directionOutbound,
 					},
 				},
 			},
 			{
-				ID:                to.Ptr(redisResourceID),
-				Name:              to.Ptr(redisResourceName),
-				Type:              to.Ptr(redisResourceType),
-				ProvisioningState: to.Ptr(provisioningStateSuccess),
+				ID:                new(redisResourceID),
+				Name:              new(redisResourceName),
+				Type:              new(redisResourceType),
+				ProvisioningState: new(provisioningStateSuccess),
 				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
 					{
-						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/AWS.MemoryDB/Cluster/redis-aqbjixghynqgg"),
-						Type: to.Ptr("aws: AWS.MemoryDB/Cluster"),
-						Name: to.Ptr("redis-aqbjixghynqgg"),
+						ID:   new("/planes/radius/local/resourcegroups/test-group/providers/AWS.MemoryDB/Cluster/redis-aqbjixghynqgg"),
+						Type: new("aws: AWS.MemoryDB/Cluster"),
+						Name: new("redis-aqbjixghynqgg"),
 					},
 				},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 					{
-						ID:        to.Ptr(containerResourceID),
+						ID:        new(containerResourceID),
 						Direction: &directionInbound,
 					},
 				},
@@ -216,20 +215,20 @@ func Test_Run_JSON(t *testing.T) {
 	graph := corerpv20231001preview.ApplicationGraphResponse{
 		Resources: []*corerpv20231001preview.ApplicationGraphResource{
 			{
-				ID:                to.Ptr(containerResourceID),
-				Name:              to.Ptr(containerResourceName),
-				Type:              to.Ptr(containerResourceType),
-				ProvisioningState: to.Ptr(provisioningStateSuccess),
+				ID:                new(containerResourceID),
+				Name:              new(containerResourceName),
+				Type:              new(containerResourceType),
+				ProvisioningState: new(provisioningStateSuccess),
 				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
 					{
-						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
-						Type: to.Ptr("kubernetes: apps/Deployment"),
-						Name: to.Ptr("demo"),
+						ID:   new("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
+						Type: new("kubernetes: apps/Deployment"),
+						Name: new("demo"),
 					},
 				},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 					{
-						ID:        to.Ptr(redisResourceID),
+						ID:        new(redisResourceID),
 						Direction: &directionOutbound,
 					},
 				},

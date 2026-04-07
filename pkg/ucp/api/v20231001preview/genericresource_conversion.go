@@ -20,7 +20,6 @@ import (
 	"errors"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
@@ -41,9 +40,9 @@ func (dst *GenericResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	// The properties are used to store the data of the "tracked" resource.
-	dst.ID = to.Ptr(entry.Properties.ID)
-	dst.Name = to.Ptr(entry.Properties.Name)
-	dst.Type = to.Ptr(entry.Properties.Type)
+	dst.ID = new(entry.Properties.ID)
+	dst.Name = new(entry.Properties.Name)
+	dst.Type = new(entry.Properties.Type)
 
 	return nil
 }

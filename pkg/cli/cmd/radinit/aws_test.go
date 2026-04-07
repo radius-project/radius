@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -38,15 +37,15 @@ func Test_enterAWSCloudProvider_AccessKey(t *testing.T) {
 	outputSink := output.MockOutput{}
 	runner := Runner{Prompter: prompter, awsClient: client, Output: &outputSink}
 	ec2Regions := []ec2_types.Region{
-		{RegionName: to.Ptr("region")},
-		{RegionName: to.Ptr("region2")},
+		{RegionName: new("region")},
+		{RegionName: new("region2")},
 	}
 	regions := []string{"region", "region2"}
 
 	setAWSCredentialKindPrompt(prompter, "Access Key")
 	setAWSAccessKeyIDPrompt(prompter, "access-key-id")
 	setAWSSecretAccessKeyPrompt(prompter, "secret-access-key")
-	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: new("account-id")})
 	setAWSAccountIDConfirmPrompt(prompter, "account-id", prompt.ConfirmYes)
 	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")
@@ -75,14 +74,14 @@ func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
 	outputSink := output.MockOutput{}
 	runner := Runner{Prompter: prompter, awsClient: client, Output: &outputSink}
 	ec2Regions := []ec2_types.Region{
-		{RegionName: to.Ptr("region")},
-		{RegionName: to.Ptr("region2")},
+		{RegionName: new("region")},
+		{RegionName: new("region2")},
 	}
 	regions := []string{"region", "region2"}
 
 	setAWSCredentialKindPrompt(prompter, "IRSA")
 	setAwsIRSARoleARNPrompt(prompter, "role-arn")
-	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: to.Ptr("account-id")})
+	setAWSCallerIdentity(client, &sts.GetCallerIdentityOutput{Account: new("account-id")})
 	setAWSAccountIDConfirmPrompt(prompter, "account-id", prompt.ConfirmYes)
 	setAWSListRegions(client, &ec2.DescribeRegionsOutput{Regions: ec2Regions})
 	setAWSRegionPrompt(prompter, regions, "region")

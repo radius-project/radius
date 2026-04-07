@@ -3,6 +3,7 @@ package extenders
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -55,9 +56,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.Extender, op
 
 func mergeOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOutput, secret bool) map[string]any {
 	values := make(map[string]any)
-	for k, val := range properties {
-		values[k] = val
-	}
+	maps.Copy(values, properties)
 	if recipeOutput == nil {
 		return values
 	}
@@ -68,8 +67,6 @@ func mergeOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOu
 		recipeProperties = recipeOutput.Secrets
 	}
 
-	for k, val := range recipeProperties {
-		values[k] = val
-	}
+	maps.Copy(values, recipeProperties)
 	return values
 }

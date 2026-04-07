@@ -189,7 +189,7 @@ type BaseResource struct {
 	InternalMetadata
 
 	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData SystemData `json:"systemData,omitempty"`
+	SystemData SystemData `json:"systemData"`
 }
 
 // ResourceTypeName returns resource type name.

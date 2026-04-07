@@ -23,7 +23,6 @@ import (
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/to"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -59,7 +58,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	// TODO pagination
 	response, err := p.awsClients.CloudControl.ListResources(ctx, &cloudcontrol.ListResourcesInput{
-		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudControlOpts...)
 	if err != nil {
 		return ucpaws.HandleAWSError(err)

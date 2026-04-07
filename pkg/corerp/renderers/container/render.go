@@ -41,7 +41,6 @@ import (
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
@@ -167,7 +166,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			return renderers.RendererOutput{}, err
 		}
 
-		outputResources = append(outputResources, rpv1.OutputResource{ID: id, RadiusManaged: to.Ptr(false)})
+		outputResources = append(outputResources, rpv1.OutputResource{ID: id, RadiusManaged: new(false)})
 	}
 
 	if properties.ResourceProvisioning == datamodel.ContainerResourceProvisioningManual {
@@ -599,7 +598,7 @@ func (r Renderer) makeDeployment(
 	//
 	// Service links are a flawed and Kubernetes-only feature that we don't
 	// want to leak into Radius containers.
-	podSpec.EnableServiceLinks = to.Ptr(false)
+	podSpec.EnableServiceLinks = new(false)
 
 	// If the user has specified a restart policy, use it. Else, it will use the Kubernetes default.
 	if properties.RestartPolicy != "" {

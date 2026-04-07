@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +41,7 @@ func TestMakeKeyVaultVolumeSpec(t *testing.T) {
 		VolumeSource: corev1.VolumeSource{
 			CSI: &corev1.CSIVolumeSource{
 				Driver:   "secrets-store.csi.k8s.io",
-				ReadOnly: to.Ptr(true),
+				ReadOnly: new(true),
 				VolumeAttributes: map[string]string{
 					"secretProviderClass": "azkv",
 				},

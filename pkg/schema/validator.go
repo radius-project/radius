@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -189,9 +191,7 @@ func normalizeSensitiveType(ref *openapi3.SchemaRef) bool {
 	// Other vendor extensions are preserved.
 	if len(original.Extensions) > 0 {
 		extCopy := make(map[string]any, len(original.Extensions))
-		for k, v := range original.Extensions {
-			extCopy[k] = v
-		}
+		maps.Copy(extCopy, original.Extensions)
 		delete(extCopy, annotationRadiusSensitive)
 		original.Extensions = extCopy
 	}
@@ -716,10 +716,8 @@ func (v *Validator) validateTypeConstraints(schema *openapi3.Schema, path string
 
 	supportedTypes := []string{"string", "number", "integer", "boolean", "object", "array", "enum"}
 
-	for _, supported := range supportedTypes {
-		if schema.Type.Is(supported) {
-			return nil
-		}
+	if slices.ContainsFunc(supportedTypes, schema.Type.Is) {
+		return nil
 	}
 
 	// Get the actual type string from the Types slice

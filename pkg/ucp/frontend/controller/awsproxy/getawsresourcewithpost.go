@@ -26,7 +26,6 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/to"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -84,7 +83,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
 	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
 		return ucpaws.HandleAWSError(err)
@@ -108,7 +107,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	var response *cloudcontrol.GetResourceOutput
 	if err := p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
 		response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+			TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
 			Identifier: aws.String(awsResourceIdentifier),
 		}, cloudcontrolOpts...)
 

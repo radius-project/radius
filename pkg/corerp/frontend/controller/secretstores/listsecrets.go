@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
-	"github.com/radius-project/radius/pkg/to"
 )
 
 const (
@@ -100,7 +99,7 @@ func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.
 
 		resp.Data[k] = &datamodel.SecretStoreDataValue{
 			Encoding: d.Encoding,
-			Value:    to.Ptr(string(val)),
+			Value:    new(string(val)),
 		}
 	}
 

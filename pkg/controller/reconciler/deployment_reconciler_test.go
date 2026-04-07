@@ -27,7 +27,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/assert"
@@ -65,7 +64,7 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: to.Ptr(true),
+			SkipNameValidation: new(true),
 		},
 
 		// Suppress metrics in tests to avoid conflicts.
@@ -132,7 +131,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 	container, err := radius.Containers(annotations.Status.Scope).Get(ctx, deployment.Name, nil)
 	require.NoError(t, err)
 	require.Equal(t, "manual", string(*container.Properties.ResourceProvisioning))
-	require.Equal(t, []*v20231001preview.ResourceReference{{ID: to.Ptr("/planes/kubernetes/local/namespaces/deployment-enabled-deleted/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
+	require.Equal(t, []*v20231001preview.ResourceReference{{ID: new("/planes/kubernetes/local/namespaces/deployment-enabled-deleted/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
 
 	err = client.Delete(ctx, deployment)
 	require.NoError(t, err)
@@ -246,7 +245,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenRadiusDisabled(t *testing.T) {
 	container, err := radius.Containers(annotations.Status.Scope).Get(ctx, deployment.Name, nil)
 	require.NoError(t, err)
 	require.Equal(t, "manual", string(*container.Properties.ResourceProvisioning))
-	require.Equal(t, []*v20231001preview.ResourceReference{{ID: to.Ptr("/planes/kubernetes/local/namespaces/deployment-enabled-disabled/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
+	require.Equal(t, []*v20231001preview.ResourceReference{{ID: new("/planes/kubernetes/local/namespaces/deployment-enabled-disabled/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
 
 	// Trigger cleanup by disabling Radius.
 	err = client.Get(ctx, name, deployment)
@@ -360,13 +359,13 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	require.Equal(t, "manual", string(*container.Properties.ResourceProvisioning))
 	require.Equal(t, map[string]*v20231001preview.ConnectionProperties{
 		"a": {
-			Source: to.Ptr(annotations.Status.Scope + "/providers/Applications.Core/extenders/" + recipeA.Name),
+			Source: new(annotations.Status.Scope + "/providers/Applications.Core/extenders/" + recipeA.Name),
 		},
 		"b": {
-			Source: to.Ptr(annotations.Status.Scope + "/providers/Applications.Core/extenders/" + recipeB.Name),
+			Source: new(annotations.Status.Scope + "/providers/Applications.Core/extenders/" + recipeB.Name),
 		},
 	}, container.Properties.Connections)
-	require.Equal(t, []*v20231001preview.ResourceReference{{ID: to.Ptr("/planes/kubernetes/local/namespaces/deployment-connections/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
+	require.Equal(t, []*v20231001preview.ResourceReference{{ID: new("/planes/kubernetes/local/namespaces/deployment-connections/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
 
 	err = client.Get(ctx, name, deployment)
 	require.NoError(t, err)
@@ -389,7 +388,7 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 		{
 			SecretRef: &corev1.SecretEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{Name: fmt.Sprintf("%s-connections", deployment.Name)},
-				Optional:             to.Ptr(false),
+				Optional:             new(false),
 			},
 		},
 	}

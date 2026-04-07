@@ -115,18 +115,18 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(dm.ID)
-	dst.Name = to.Ptr(dm.Name)
-	dst.Type = to.Ptr(dm.Type)
+	dst.ID = new(dm.ID)
+	dst.Name = new(dm.Name)
+	dst.Type = new(dm.Type)
 	dst.SystemData = &dm.SystemData
-	dst.Location = to.Ptr(dm.Location)
+	dst.Location = new(dm.Location)
 	dst.Tags = *to.StringMapPtr(dm.Tags)
 	dst.Properties = &TestResourceProperties{
 		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.Ptr(dm.Properties.Environment),
-		Application:       to.Ptr(dm.Properties.Application),
-		PropertyA:         to.Ptr(dm.Properties.PropertyA),
-		PropertyB:         to.Ptr(dm.Properties.PropertyB),
+		Environment:       new(dm.Properties.Environment),
+		Application:       new(dm.Properties.Application),
+		PropertyA:         new(dm.Properties.PropertyA),
+		PropertyB:         new(dm.Properties.PropertyB),
 	}
 
 	return nil

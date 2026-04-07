@@ -33,7 +33,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -81,15 +80,15 @@ func Test_Delete_ARM(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMResourceID, handleDeleteSuccess())
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
-			Namespace: to.Ptr("Microsoft.Compute"),
+			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
 				{
-					ResourceType: to.Ptr("anotherType"),
+					ResourceType: new("anotherType"),
 					APIVersions:  []*string{},
 				},
 				{
-					ResourceType:      to.Ptr("virtualMachines"),
-					DefaultAPIVersion: to.Ptr(ARMAPIVersion),
+					ResourceType:      new("virtualMachines"),
+					DefaultAPIVersion: new(ARMAPIVersion),
 				},
 			},
 		}, 200))
@@ -108,11 +107,11 @@ func Test_Delete_ARM(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMResourceID, handleDeleteSuccess())
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
-			Namespace: to.Ptr("Microsoft.Compute"),
+			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
 				{
-					ResourceType: to.Ptr("virtualMachines"),
-					APIVersions:  []*string{to.Ptr("2020-01-01"), to.Ptr("2020-01-02")},
+					ResourceType: new("virtualMachines"),
+					APIVersions:  []*string{new("2020-01-01"), new("2020-01-02")},
 				},
 			},
 		}, 200))
@@ -131,15 +130,15 @@ func Test_Delete_ARM(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMResourceID, handleNotFound(t))
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
-			Namespace: to.Ptr("Microsoft.Compute"),
+			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
 				{
-					ResourceType: to.Ptr("anotherType"),
+					ResourceType: new("anotherType"),
 					APIVersions:  []*string{},
 				},
 				{
-					ResourceType:      to.Ptr("virtualMachines"),
-					DefaultAPIVersion: to.Ptr(ARMAPIVersion),
+					ResourceType:      new("virtualMachines"),
+					DefaultAPIVersion: new(ARMAPIVersion),
 				},
 			},
 		}, 200))
@@ -172,7 +171,7 @@ func Test_Delete_ARM(t *testing.T) {
 	t.Run("failure - lookup API Version - resource type not found", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
-			Namespace:     to.Ptr("Microsoft.Compute"),
+			Namespace:     new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{},
 		}, 200))
 
@@ -191,10 +190,10 @@ func Test_Delete_ARM(t *testing.T) {
 	t.Run("failure - lookup API Version - no api versions", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
-			Namespace: to.Ptr("Microsoft.Compute"),
+			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
 				{
-					ResourceType: to.Ptr("virtualMachines"),
+					ResourceType: new("virtualMachines"),
 					APIVersions:  []*string{},
 				},
 			},

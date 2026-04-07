@@ -112,7 +112,7 @@ func Test_Update(t *testing.T) {
 		defer ctrl.Finish()
 
 		environment := corerp.EnvironmentResource{
-			Name:       to.Ptr("test-env"),
+			Name:       new("test-env"),
 			Properties: &corerp.EnvironmentProperties{},
 		}
 
@@ -126,10 +126,10 @@ func Test_Update(t *testing.T) {
 
 		testProviders := &corerp.Providers{
 			Azure: &corerp.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 			},
 			Aws: &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 			},
 		}
 
@@ -162,7 +162,7 @@ func Test_Update(t *testing.T) {
 		defer ctrl.Finish()
 
 		environment := corerp.EnvironmentResource{
-			Name:       to.Ptr("test-env"),
+			Name:       new("test-env"),
 			Properties: &corerp.EnvironmentProperties{},
 		}
 
@@ -178,10 +178,10 @@ func Test_Update(t *testing.T) {
 
 		testProviders := &corerp.Providers{
 			Azure: &corerp.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 			},
 			Aws: &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 			},
 		}
 
@@ -214,7 +214,7 @@ func Test_Update(t *testing.T) {
 		defer ctrl.Finish()
 
 		environment := corerp.EnvironmentResource{
-			Name:       to.Ptr("test-env"),
+			Name:       new("test-env"),
 			Properties: &corerp.EnvironmentProperties{},
 		}
 
@@ -226,10 +226,10 @@ func Test_Update(t *testing.T) {
 
 		testProviders := &corerp.Providers{
 			Azure: &corerp.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 			},
 			Aws: &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 			},
 		}
 
@@ -277,13 +277,13 @@ func Test_Update(t *testing.T) {
 		defer ctrl.Finish()
 
 		environment := corerp.EnvironmentResource{
-			Name: to.Ptr("test-env"),
+			Name: new("test-env"),
 			Properties: &corerp.EnvironmentProperties{
 				Recipes: map[string]map[string]corerp.RecipePropertiesClassification{},
 				Compute: &corerp.KubernetesCompute{
-					Namespace:  to.Ptr("default"),
-					Kind:       to.Ptr("kubernetes"),
-					ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
+					Namespace:  new("default"),
+					Kind:       new("kubernetes"),
+					ResourceID: new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
 				},
 			},
 		}
@@ -296,10 +296,10 @@ func Test_Update(t *testing.T) {
 
 		testProviders := &corerp.Providers{
 			Azure: &corerp.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 			},
 			Aws: &corerp.ProvidersAws{
-				Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 			},
 		}
 
@@ -307,9 +307,9 @@ func Test_Update(t *testing.T) {
 			Providers: testProviders,
 			Recipes:   map[string]map[string]corerp.RecipePropertiesClassification{},
 			Compute: &corerp.KubernetesCompute{
-				Namespace:  to.Ptr("default"),
-				Kind:       to.Ptr("kubernetes"),
-				ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
+				Namespace:  new("default"),
+				Kind:       new("kubernetes"),
+				ResourceID: new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
 			},
 		}
 		appManagementClient.EXPECT().
@@ -379,18 +379,18 @@ func Test_Update(t *testing.T) {
 				name: "Update Environment With Existing Azure Provider",
 				existingProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
+						Scope: new("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
 					},
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 					},
 				},
 				expectedProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 					},
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 					},
 				},
 				clearEnvAzure: false,
@@ -401,15 +401,15 @@ func Test_Update(t *testing.T) {
 				name: "Update Environment With Existing Azure Provider and Clear Azure Provider",
 				existingProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
+						Scope: new("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
 					},
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 					},
 				},
 				expectedProviders: &corerp.Providers{
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 					},
 				},
 				clearEnvAzure: true,
@@ -420,18 +420,18 @@ func Test_Update(t *testing.T) {
 				name: "Update Environment With Existing AWS Provider",
 				existingProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 					},
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 					},
 				},
 				expectedProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 					},
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount-1/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount-1/regions/us-west-2"),
 					},
 				},
 				clearEnvAzure: false,
@@ -442,15 +442,15 @@ func Test_Update(t *testing.T) {
 				name: "Update Environment With Existing AWS Provider and Clear AWS Provider",
 				existingProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 					},
 					Aws: &corerp.ProvidersAws{
-						Scope: to.Ptr("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
 					},
 				},
 				expectedProviders: &corerp.Providers{
 					Azure: &corerp.ProvidersAzure{
-						Scope: to.Ptr("/subscriptions/testSubId/resourceGroups/test-group"),
+						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
 					},
 				},
 				clearEnvAzure: false,
@@ -465,7 +465,7 @@ func Test_Update(t *testing.T) {
 				defer ctrl.Finish()
 
 				existingEnvironment := corerp.EnvironmentResource{
-					Name: to.Ptr("test-env"),
+					Name: new("test-env"),
 					Properties: &corerp.EnvironmentProperties{
 						Providers: tc.existingProviders,
 					},

@@ -80,7 +80,7 @@ type DaprConfigurationStoreProperties struct {
 	Metadata map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Dapr Configuration store resource.
-	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe"`
 
 	// List of the resource IDs that support the Dapr Configuration store Broker resource.
 	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`

@@ -145,20 +145,20 @@ func getAWSTestCredentialList(t *testing.T, res *http.Response) []ucp.AwsCredent
 
 func getAWSTestCredentialObject() ucp.AwsCredentialResource {
 	return ucp.AwsCredentialResource{
-		Location: to.Ptr("global"),
-		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
-		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.AWS/credentials"),
+		Location: new("global"),
+		ID:       new("/planes/aws/awstest/providers/System.AWS/credentials/default"),
+		Name:     new("default"),
+		Type:     new("System.AWS/credentials"),
 		Tags: map[string]*string{
-			"env": to.Ptr("dev"),
+			"env": new("dev"),
 		},
 		Properties: &ucp.AwsAccessKeyCredentialProperties{
-			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
-			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			AccessKeyID:     new("00000000-0000-0000-0000-000000000000"),
+			SecretAccessKey: new("00000000-0000-0000-0000-000000000000"),
 			Kind:            to.Ptr(ucp.AWSCredentialKindAccessKey),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
-				SecretName: to.Ptr("aws-awstest-default"),
+				SecretName: new("aws-awstest-default"),
 			},
 		},
 	}
@@ -166,19 +166,19 @@ func getAWSTestCredentialObject() ucp.AwsCredentialResource {
 
 func getExpectedAWSTestCredentialObject() ucp.AwsCredentialResource {
 	return ucp.AwsCredentialResource{
-		Location: to.Ptr("global"),
-		ID:       to.Ptr("/planes/aws/awstest/providers/System.AWS/credentials/default"),
-		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.AWS/credentials"),
+		Location: new("global"),
+		ID:       new("/planes/aws/awstest/providers/System.AWS/credentials/default"),
+		Name:     new("default"),
+		Type:     new("System.AWS/credentials"),
 		Tags: map[string]*string{
-			"env": to.Ptr("dev"),
+			"env": new("dev"),
 		},
 		Properties: &ucp.AwsAccessKeyCredentialProperties{
-			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			AccessKeyID: new("00000000-0000-0000-0000-000000000000"),
 			Kind:        to.Ptr(ucp.AWSCredentialKindAccessKey),
 			Storage: &ucp.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
-				SecretName: to.Ptr("aws-awstest-default"),
+				SecretName: new("aws-awstest-default"),
 			},
 		},
 	}

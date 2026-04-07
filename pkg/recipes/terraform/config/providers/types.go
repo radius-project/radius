@@ -19,6 +19,7 @@ package providers
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -75,12 +76,10 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 					}
 
 					// Merge secrets with current provider configuration.
-					for key, value := range secretsConfig {
-						// If the key already exists in the provider configuration,
-						// config value in secrets for the key currently will override config in
-						// additionalProperties.
-						currentProviderConfig[key] = value
-					}
+					// If the key already exists in the provider configuration,
+					// config value in secrets for the key currently will override config in
+					// additionalProperties.
+					maps.Copy(currentProviderConfig, secretsConfig)
 
 					if len(currentProviderConfig) > 0 {
 						configList = append(configList, currentProviderConfig)

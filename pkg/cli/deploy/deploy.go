@@ -43,11 +43,9 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 	progressChan := make(chan clients.ResourceProgress, 1)
 	listener := NewProgressListener(progressChan)
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		listener.Run()
-		wg.Done()
-	}()
+	})
 
 	result, err := deploymentClient.Deploy(ctx, clients.DeploymentOptions{
 		Template:     options.Template,

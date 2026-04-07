@@ -81,27 +81,27 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		envResource := v20231001preview.EnvironmentResource{
-			ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:     to.Ptr("kind-kind"),
-			Type:     to.Ptr("applications.core/environments"),
+			ID:       new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:     new("kind-kind"),
+			Type:     new("applications.core/environments"),
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20231001preview.EnvironmentProperties{
 				Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
 					ds_ctrl.MongoDatabasesResourceType: {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
-							PlainHTTP:    to.Ptr(false),
+							TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+							PlainHTTP:    new(false),
 						},
 						"cosmosDB-terraform": &v20231001preview.TerraformRecipeProperties{
 							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
-							TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
-							TemplateVersion: to.Ptr("1.1.0"),
+							TemplatePath:    new("Azure/cosmosdb/azurerm"),
+							TemplateVersion: new("1.1.0"),
 						},
 						"mongo": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("localhost:8000/mongodatabases:v1"),
-							PlainHTTP:    to.Ptr(true),
+							TemplatePath: new("localhost:8000/mongodatabases:v1"),
+							PlainHTTP:    new(true),
 						},
 					},
 				},

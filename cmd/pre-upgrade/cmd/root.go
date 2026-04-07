@@ -144,7 +144,7 @@ func parseEnabledChecks() []string {
 	}
 
 	var checks []string
-	for _, check := range strings.Split(checksEnv, ",") {
+	for check := range strings.SplitSeq(checksEnv, ",") {
 		check = strings.TrimSpace(check)
 		if check != "" {
 			checks = append(checks, check)
