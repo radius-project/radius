@@ -5,16 +5,25 @@
 *.{cmd,[cC][mM][dD]} text eol=crlf
 *.{bat,[bB][aA][tT]} text eol=crlf
 
-# Images are binary
-*.png binary
+# Common files
+*.pdf binary
+
+# Image files
+*.gif binary
+*.tif binary
+*.ico binary
 *.jpg binary
 *.jpeg binary
-*.gif binary
-*.ico binary
+*.png binary
 
-# Lock files are generated and should ignore line endings
-devcontainer-lock.json -text linguist-generated=true
-pnpm-lock.yaml -text linguist-generated=true
-package-lock.json -text linguist-generated=true
-yarn.lock -text linguist-generated=true
-go.sum -text linguist-generated=true
+# Microsoft Office documents
+*.pptx binary
+*.potx binary
+*.docx binary
+*.dotx binary
+*.vsdx binary
+
+# Lock files
+package-lock.json linguist-generated=true
+pnpm-lock.yaml linguist-generated=true
+yarn.lock linguist-generated=true
