@@ -22,7 +22,6 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
@@ -37,12 +36,12 @@ func Test_GetOutputResourcesFromResourcesField(t *testing.T) {
 		{
 			LocalID:       "",
 			ID:            resources.MustParse(resourcesField[0].ID),
-			RadiusManaged: to.Ptr(false),
+			RadiusManaged: new(false),
 		},
 		{
 			LocalID:       "",
 			ID:            resources.MustParse(resourcesField[1].ID),
-			RadiusManaged: to.Ptr(false),
+			RadiusManaged: new(false),
 		},
 	}
 
@@ -75,12 +74,12 @@ func Test_GetOutputResourcesFromRecipe(t *testing.T) {
 		{
 			LocalID:       "",
 			ID:            resources.MustParse(output.Resources[0]),
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 		{
 			LocalID:       "",
 			ID:            resources.MustParse(output.Resources[1]),
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 	}
 

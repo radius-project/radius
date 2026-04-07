@@ -79,7 +79,7 @@ type ExtenderProperties struct {
 	// Secrets values provided for the resource
 	Secrets map[string]any `json:"secrets,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Extender
-	ResourceRecipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
+	ResourceRecipe portableresources.ResourceRecipe `json:"recipe"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }

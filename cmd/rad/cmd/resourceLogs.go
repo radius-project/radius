@@ -115,7 +115,7 @@ rad resource logs Applications.Core/containers orders --application icecream-sto
 			go captureLogs(logInfo, logErrors, follow)
 		}
 
-		for i := 0; i < len(streams); i++ {
+		for range streams {
 			err := <-logErrors
 			if err != nil {
 				// TODO format

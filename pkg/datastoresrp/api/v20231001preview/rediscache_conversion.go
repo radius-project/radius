@@ -84,28 +84,28 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(redis.ID)
-	dst.Name = to.Ptr(redis.Name)
-	dst.Type = to.Ptr(redis.Type)
+	dst.ID = new(redis.ID)
+	dst.Name = new(redis.Name)
+	dst.Type = new(redis.Type)
 	dst.SystemData = fromSystemDataModel(redis.SystemData)
-	dst.Location = to.Ptr(redis.Location)
+	dst.Location = new(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 
 	dst.Properties = &RedisCacheProperties{
 		Recipe:               fromRecipeDataModel(redis.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(redis.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(redis.Properties.Resources),
-		Host:                 to.Ptr(redis.Properties.Host),
-		Port:                 to.Ptr(redis.Properties.Port),
-		TLS:                  to.Ptr(redis.Properties.TLS),
-		Username:             to.Ptr(redis.Properties.Username),
+		Host:                 new(redis.Properties.Host),
+		Port:                 new(redis.Properties.Port),
+		TLS:                  new(redis.Properties.TLS),
+		Username:             new(redis.Properties.Username),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(redis.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(redis.Properties.Status.Recipe),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.Ptr(redis.Properties.Environment),
-		Application:       to.Ptr(redis.Properties.Application),
+		Environment:       new(redis.Properties.Environment),
+		Application:       new(redis.Properties.Application),
 	}
 
 	return nil
@@ -119,9 +119,9 @@ func (dst *RedisCacheSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.Ptr(redisSecrets.ConnectionString)
-	dst.Password = to.Ptr(redisSecrets.Password)
-	dst.URL = to.Ptr(redisSecrets.URL)
+	dst.ConnectionString = new(redisSecrets.ConnectionString)
+	dst.Password = new(redisSecrets.Password)
+	dst.URL = new(redisSecrets.URL)
 
 	return nil
 }

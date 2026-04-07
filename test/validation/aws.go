@@ -23,8 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/pkg/to"
-
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -68,7 +66,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 		var resourceResponse *cloudcontrol.GetResourceOutput
 		for attempt := 1; attempt <= retryLimit; attempt++ {
 			resourceResponse, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-				Identifier: to.Ptr(resource.Identifier),
+				Identifier: new(resource.Identifier),
 				TypeName:   &resourceType,
 			})
 			if err == nil {
@@ -103,7 +101,7 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 
 	// Check if the resource exists
 	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		Identifier: to.Ptr(resource.Identifier),
+		Identifier: new(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 
@@ -114,7 +112,7 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 	}
 
 	deleteOutput, err := client.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		Identifier: to.Ptr(resource.Identifier),
+		Identifier: new(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 	if err != nil {
@@ -145,7 +143,7 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 	}
 
 	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		Identifier: to.Ptr(resource.Identifier),
+		Identifier: new(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 

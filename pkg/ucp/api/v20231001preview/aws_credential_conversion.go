@@ -145,8 +145,8 @@ func (dst *AwsCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	switch dm.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		storage = &InternalCredentialStorageProperties{
-			Kind:       to.Ptr(CredentialStorageKindInternal),
-			SecretName: to.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
+			Kind:       new(CredentialStorageKindInternal),
+			SecretName: new(dm.Properties.Storage.InternalCredential.SecretName),
 		}
 	default:
 		return v1.ErrInvalidModelConversion
@@ -156,14 +156,14 @@ func (dst *AwsCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	switch dm.Properties.Kind {
 	case datamodel.AWSAccessKeyCredentialKind:
 		dst.Properties = &AwsAccessKeyCredentialProperties{
-			Kind:        to.Ptr(AWSCredentialKind(dm.Properties.Kind)),
-			AccessKeyID: to.Ptr(dm.Properties.AWSCredential.AccessKeyCredential.AccessKeyID),
+			Kind:        new(AWSCredentialKind(dm.Properties.Kind)),
+			AccessKeyID: new(dm.Properties.AWSCredential.AccessKeyCredential.AccessKeyID),
 			Storage:     storage,
 		}
 	case datamodel.AWSIRSACredentialKind:
 		dst.Properties = &AwsIRSACredentialProperties{
-			Kind:    to.Ptr(AWSCredentialKind(dm.Properties.Kind)),
-			RoleARN: to.Ptr(dm.Properties.AWSCredential.IRSACredential.RoleARN),
+			Kind:    new(AWSCredentialKind(dm.Properties.Kind)),
+			RoleARN: new(dm.Properties.AWSCredential.IRSACredential.RoleARN),
 			Storage: storage,
 		}
 	default:

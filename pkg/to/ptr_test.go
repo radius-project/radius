@@ -26,7 +26,7 @@ import (
 
 func TestPtr(t *testing.T) {
 	b := true
-	pb := Ptr(b)
+	pb := new(b)
 
 	require.NotNil(t, pb, "unexpected nil conversion")
 	require.Exactly(t, b, *pb)

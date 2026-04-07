@@ -43,7 +43,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 			args: args{
 				resource: generated.GenericResource{
 					ID: &id,
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
 					},
 				},
@@ -56,7 +56,7 @@ func Test_isResourceInEnvironment(t *testing.T) {
 			args: args{
 				resource: generated.GenericResource{
 					ID: &id,
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
 					},
 				},
@@ -89,7 +89,7 @@ func Test_isResourceInApplication(t *testing.T) {
 			args: args{
 				resource: generated.GenericResource{
 					ID: &id,
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/myapp",
 					},
 				},
@@ -102,7 +102,7 @@ func Test_isResourceInApplication(t *testing.T) {
 			args: args{
 				resource: generated.GenericResource{
 					ID: &id,
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/myapp",
 					},
 				},

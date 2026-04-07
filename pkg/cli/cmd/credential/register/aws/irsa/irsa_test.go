@@ -93,7 +93,7 @@ func Test_Run(t *testing.T) {
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					RoleARN: to.Ptr(roleARN),
+					RoleARN: new(roleARN),
 				},
 			}
 

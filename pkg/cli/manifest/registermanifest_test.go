@@ -29,7 +29,6 @@ import (
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -839,7 +838,7 @@ func TestRegisterResourceProvider_ErrorScenarios(t *testing.T) {
 				Namespace: "Test.WithTypes",
 				Types: map[string]*ResourceType{
 					"testType": {
-						DefaultAPIVersion: to.Ptr("2023-01-01"),
+						DefaultAPIVersion: new("2023-01-01"),
 						Capabilities:      []string{"test"},
 						APIVersions: map[string]*ResourceTypeAPIVersion{
 							"2023-01-01": {
@@ -1038,7 +1037,7 @@ func TestCreateResourceProviderResource(t *testing.T) {
 					// Verify the resource provider exists by checking the logs or calling the Get method
 					rp, getErr := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.resourceProvider.Namespace, nil)
 					require.NoError(t, getErr)
-					require.Equal(t, to.Ptr(tt.resourceProvider.Namespace), rp.Name)
+					require.Equal(t, new(tt.resourceProvider.Namespace), rp.Name)
 				}
 			}
 		})
@@ -1163,7 +1162,7 @@ func TestCreateLocationResource(t *testing.T) {
 				if tt.name != "Success_WithNilLogger" {
 					location, getErr := clientFactory.NewLocationsClient().Get(context.Background(), tt.planeName, tt.namespace, tt.locationName, nil)
 					require.NoError(t, getErr)
-					require.Equal(t, to.Ptr(tt.locationName), location.Name)
+					require.Equal(t, new(tt.locationName), location.Name)
 
 					// For specific tests, verify special behavior
 					if tt.name == "Success_WithAddress" {
@@ -1266,10 +1265,10 @@ func createLocationClientFactoryWithAddress() (*v20231001preview.ClientFactory, 
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
 				LocationResource: v20231001preview.LocationResource{
-					Name: to.Ptr(locationName),
-					ID:   to.Ptr("id"),
+					Name: new(locationName),
+					ID:   new("id"),
 					Properties: &v20231001preview.LocationProperties{
-						Address:       to.Ptr("http://localhost:8080"),
+						Address:       new("http://localhost:8080"),
 						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
 					},
 				},
@@ -1309,8 +1308,8 @@ func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFac
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
 				LocationResource: v20231001preview.LocationResource{
-					Name: to.Ptr(locationName),
-					ID:   to.Ptr("id"),
+					Name: new(locationName),
+					ID:   new("id"),
 					Properties: &v20231001preview.LocationProperties{
 						ResourceTypes: map[string]*v20231001preview.LocationResourceType{
 							"testResource": {
@@ -1359,9 +1358,9 @@ func createTestClientFactory(t *testing.T) *v20231001preview.ClientFactory {
 }
 
 // createTestLogger creates a logger that captures output to a buffer
-func createTestLogger() (func(format string, args ...interface{}), *bytes.Buffer) {
+func createTestLogger() (func(format string, args ...any), *bytes.Buffer) {
 	var logBuffer bytes.Buffer
-	logger := func(format string, args ...interface{}) {
+	logger := func(format string, args ...any) {
 		fmt.Fprintf(&logBuffer, format+"\n", args...)
 	}
 	return logger, &logBuffer
@@ -1371,7 +1370,7 @@ func createTestLogger() (func(format string, args ...interface{}), *bytes.Buffer
 func verifyResourceProviderExists(t *testing.T, clientFactory *v20231001preview.ClientFactory, planeName, expectedResourceProvider string) {
 	rp, err := clientFactory.NewResourceProvidersClient().Get(context.Background(), planeName, expectedResourceProvider, nil)
 	require.NoError(t, err, "Failed to retrieve the expected resource provider")
-	require.Equal(t, to.Ptr(expectedResourceProvider), rp.Name)
+	require.Equal(t, new(expectedResourceProvider), rp.Name)
 }
 
 // verifyLogContains verifies that log output contains expected messages

@@ -82,9 +82,9 @@ func Test_ListResourceGroups(t *testing.T) {
 	resourceGroup := v20231001preview.ResourceGroupResource{
 		ID:       &testResourceGroupID,
 		Name:     &testResourceGroupName,
-		Type:     to.Ptr(ResourceGroupType),
+		Type:     new(ResourceGroupType),
 		Location: to.Ptr(v1.LocationGlobal),
-		Tags:     *to.Ptr(map[string]*string{}),
+		Tags:     *new(map[string]*string{}),
 	}
 	expectedResourceGroupList := &v1.PaginatedList{
 		Value: []any{

@@ -54,7 +54,7 @@ func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {
 	rp := testrp.Start(t)
 
 	rps := map[string]*string{
-		testResourceNamespace: to.Ptr("http://" + rp.Address()),
+		testResourceNamespace: new("http://" + rp.Address()),
 	}
 	createRadiusPlane(ucp, rps)
 
@@ -67,7 +67,7 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 	ucp := testhost.Start(t)
 	rp := testrp.Start(t)
 	rp.Handler = testrp.SyncResource(t, ucp, testResourceGroupID)
-	address := to.Ptr("http://" + rp.Address())
+	address := new("http://" + rp.Address())
 	rps := map[string]*string{
 		testResourceNamespace: address,
 	}
@@ -84,15 +84,15 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 	message := "here is some test data"
 
 	expectedTrackedResource := v20231001preview.GenericResource{
-		ID:   to.Ptr(testResourceID),
-		Name: to.Ptr("test-resource"),
-		Type: to.Ptr("System.Test/testResources"),
+		ID:   new(testResourceID),
+		Name: new("test-resource"),
+		Type: new("System.Test/testResources"),
 	}
 
 	t.Run("PUT", func(t *testing.T) {
 		data := testrp.TestResource{
 			Properties: testrp.TestResourceProperties{
-				Message: to.Ptr(message),
+				Message: new(message),
 			},
 		}
 		body, err := json.Marshal(data)
@@ -196,7 +196,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 	}
 
 	rp.Handler = testrp.AsyncResource(t, ucp, testResourceGroupID, onPut, onDelete)
-	address := to.Ptr("http://" + rp.Address())
+	address := new("http://" + rp.Address())
 	rps := map[string]*string{
 		testResourceNamespace: address,
 	}
@@ -214,16 +214,16 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 	message := "here is some test data"
 
 	expectedTrackedResource := v20231001preview.GenericResource{
-		ID:   to.Ptr(testResourceID),
-		Name: to.Ptr("test-resource"),
-		Type: to.Ptr("System.Test/testResources"),
+		ID:   new(testResourceID),
+		Name: new("test-resource"),
+		Type: new("System.Test/testResources"),
 	}
 
 	t.Run("PUT", func(t *testing.T) {
 		t.Log("starting PUT operation")
 		data := testrp.TestResource{
 			Properties: testrp.TestResourceProperties{
-				Message: to.Ptr(message),
+				Message: new(message),
 			},
 		}
 		body, err := json.Marshal(data)
@@ -434,7 +434,7 @@ func createResourceProvider(ucp *testhost.TestHost) {
 func createResourceType(ucp *testhost.TestHost, id string) {
 	body := v20231001preview.ResourceTypeResource{
 		Properties: &v20231001preview.ResourceTypeProperties{
-			DefaultAPIVersion: to.Ptr("2023-10-01-preview"),
+			DefaultAPIVersion: new("2023-10-01-preview"),
 		},
 	}
 

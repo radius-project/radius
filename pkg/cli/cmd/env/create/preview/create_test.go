@@ -171,7 +171,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: "Successfully created environment %q in resource group %q",
-				Params: []interface{}{
+				Params: []any{
 					"testenv",
 					"test-resource-group",
 				},

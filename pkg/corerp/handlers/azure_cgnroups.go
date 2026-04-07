@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	ngroupsclient "github.com/radius-project/radius/pkg/sdk/v20241101preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -57,13 +56,13 @@ func (handler *azureCGNGroupsHandler) Put(ctx context.Context, options *PutOptio
 	if err != nil {
 		return nil, fmt.Errorf("cannot find resource group location: %w", err)
 	}
-	nGroup.Location = to.Ptr(location)
+	nGroup.Location = new(location)
 
 	cgpID, ok := options.DependencyProperties[rpv1.LocalIDAzureCGProfile]["containerGroupProfileID"]
 	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
-	nGroup.Properties.ContainerGroupProfiles[0].Resource.ID = to.Ptr(cgpID)
+	nGroup.Properties.ContainerGroupProfiles[0].Resource.ID = new(cgpID)
 
 	pl, err := armruntime.NewPipeline("github.com/radius-project/radius", "v0.0.1", handler.arm.ClientOptions.Cred, azruntime.PipelineOptions{}, &armpolicy.ClientOptions{})
 	if err != nil {

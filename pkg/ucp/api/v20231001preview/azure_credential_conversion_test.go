@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -152,20 +151,20 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-azure-serviceprincipal.json",
 			expected: &AzureCredentialResource{
-				ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
-				Name:     to.Ptr("default"),
-				Type:     to.Ptr("System.Azure/credentials"),
-				Location: to.Ptr("west-us-2"),
+				ID:       new("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+				Name:     new("default"),
+				Type:     new("System.Azure/credentials"),
+				Location: new("west-us-2"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &AzureServicePrincipalProperties{
-					Kind:     to.Ptr(AzureCredentialKindServicePrincipal),
-					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					Kind:     new(AzureCredentialKindServicePrincipal),
+					ClientID: new("00000000-0000-0000-0000-000000000000"),
+					TenantID: new("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
-						SecretName: to.Ptr("azure-azurecloud-default"),
+						Kind:       new(CredentialStorageKindInternal),
+						SecretName: new("azure-azurecloud-default"),
 					},
 				},
 			},
@@ -173,20 +172,20 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-azure-workloadidentity.json",
 			expected: &AzureCredentialResource{
-				ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
-				Name:     to.Ptr("default"),
-				Type:     to.Ptr("System.Azure/credentials"),
-				Location: to.Ptr("west-us-2"),
+				ID:       new("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+				Name:     new("default"),
+				Type:     new("System.Azure/credentials"),
+				Location: new("west-us-2"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &AzureWorkloadIdentityProperties{
-					Kind:     to.Ptr(AzureCredentialKindWorkloadIdentity),
-					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					Kind:     new(AzureCredentialKindWorkloadIdentity),
+					ClientID: new("00000000-0000-0000-0000-000000000000"),
+					TenantID: new("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(CredentialStorageKindInternal),
-						SecretName: to.Ptr("azure-azurecloud-default"),
+						Kind:       new(CredentialStorageKindInternal),
+						SecretName: new("azure-azurecloud-default"),
 					},
 				},
 			},

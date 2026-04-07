@@ -20,7 +20,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"golang.org/x/exp/slices"
 )
 
@@ -71,11 +70,11 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 
 func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
-		CreatedBy:          to.Ptr(s.CreatedBy),
-		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
+		CreatedBy:          new(s.CreatedBy),
+		CreatedByType:      (*CreatedByType)(new(s.CreatedByType)),
 		CreatedAt:          v1.UnmarshalTimeString(s.CreatedAt),
-		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
+		LastModifiedBy:     new(s.LastModifiedBy),
+		LastModifiedByType: (*CreatedByType)(new(s.LastModifiedByType)),
 		LastModifiedAt:     v1.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }
@@ -83,13 +82,13 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 func fromIdentityKind(kind rpv1.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
 	case rpv1.AzureIdentityWorkload:
-		return to.Ptr(IdentitySettingKindAzureComWorkload)
+		return new(IdentitySettingKindAzureComWorkload)
 	case rpv1.SystemAssigned:
-		return to.Ptr(IdentitySettingKindSystemAssigned)
+		return new(IdentitySettingKindSystemAssigned)
 	case rpv1.UserAssigned:
-		return to.Ptr(IdentitySettingKindUserAssigned)
+		return new(IdentitySettingKindUserAssigned)
 	case rpv1.SystemAssignedUserAssigned:
-		return to.Ptr(IdentitySettingKindSystemAssignedUserAssigned)
+		return new(IdentitySettingKindSystemAssignedUserAssigned)
 	default:
 		return nil
 	}
@@ -133,12 +132,12 @@ func toOutputResourcesDataModel(outputResources []rpv1.OutputResource) []*Output
 	var outResources []*OutputResource
 	for _, or := range outputResources {
 		r := &OutputResource{
-			ID: to.Ptr(or.ID.String()),
+			ID: new(or.ID.String()),
 		}
 
 		// We will not serialize the following fields if they are empty or nil.
 		if or.LocalID != "" {
-			r.LocalID = to.Ptr(or.LocalID)
+			r.LocalID = new(or.LocalID)
 		}
 		if or.RadiusManaged != nil {
 			r.RadiusManaged = or.RadiusManaged

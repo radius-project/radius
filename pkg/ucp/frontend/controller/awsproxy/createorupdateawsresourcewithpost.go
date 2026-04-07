@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -31,7 +32,6 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
-	"github.com/radius-project/radius/pkg/to"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -80,7 +80,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
-		TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
 		return ucp_aws.HandleAWSError(err)
@@ -109,7 +109,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		// Create and update work differently for AWS - we need to know if the resource
 		// we're working on exists already.
 		getResponse, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+			TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
 			Identifier: aws.String(awsResourceIdentifier),
 		}, cloudControlOpts...)
 		if ucp_aws.IsAWSResourceNotFoundError(err) {
@@ -125,9 +125,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}
 
 	// Properties specified by users take precedence
-	for k, v := range properties {
-		responseProperties[k] = v
-	}
+	maps.Copy(responseProperties, properties)
 
 	if existing {
 		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))
@@ -148,7 +146,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			}
 
 			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
-				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+				TypeName:      new(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(awsResourceIdentifier),
 				PatchDocument: aws.String(string(marshaled)),
 			}, cloudControlOpts...)
@@ -177,7 +175,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	} else {
 		logger.Info(fmt.Sprintf("Creating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))
 		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+			TypeName:     new(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
 		}, cloudControlOpts...)
 		if err != nil {

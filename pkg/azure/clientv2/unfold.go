@@ -28,7 +28,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	"github.com/radius-project/radius/pkg/to"
 )
 
 // ServiceError conforms to the OData v4 error format.
@@ -164,7 +163,7 @@ func extractString(o any) *string {
 	if sp, ok := o.(*string); ok {
 		return sp
 	}
-	return to.Ptr(fmt.Sprintf("%v", o))
+	return new(fmt.Sprintf("%v", o))
 }
 
 // TryUnfoldResponseError attempts to convert a ResponseError into an ErrorDetails object.

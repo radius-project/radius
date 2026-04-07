@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +47,7 @@ func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev
 			CSI: &corev1.CSIVolumeSource{
 				Driver: "secrets-store.csi.k8s.io",
 				// We will support only Read operations
-				ReadOnly: to.Ptr(true),
+				ReadOnly: new(true),
 				VolumeAttributes: map[string]string{
 					"secretProviderClass": spcName,
 				},

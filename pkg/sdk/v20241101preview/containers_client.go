@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -22,7 +21,7 @@ import (
 
 type ContainersClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewContainersClient creates a new instance of ContainersClient with the specified values.
@@ -31,7 +30,7 @@ type ContainersClient struct {
 func NewContainersClient(subscriptionID string, pl runtime.Pipeline) *ContainersClient {
 	client := &ContainersClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -74,7 +73,7 @@ func (client *ContainersClient) attachCreateRequest(ctx context.Context, resourc
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +133,7 @@ func (client *ContainersClient) executeCommandCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +191,7 @@ func (client *ContainersClient) listLogsCreateRequest(ctx context.Context, resou
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -217,4 +216,3 @@ func (client *ContainersClient) listLogsHandleResponse(resp *http.Response) (Con
 	}
 	return result, nil
 }
-

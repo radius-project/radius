@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,7 +20,7 @@ import (
 
 type LocationClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewLocationClient creates a new instance of LocationClient with the specified values.
@@ -30,7 +29,7 @@ type LocationClient struct {
 func NewLocationClient(subscriptionID string, pl runtime.Pipeline) *LocationClient {
 	client := &LocationClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -40,7 +39,7 @@ func NewLocationClient(subscriptionID string, pl runtime.Pipeline) *LocationClie
 // location - The name of the Azure region.
 // options - LocationClientListCachedImagesOptions contains the optional parameters for the LocationClient.ListCachedImages
 // method.
-func (client *LocationClient) NewListCachedImagesPager(location string, options *LocationClientListCachedImagesOptions) (*runtime.Pager[LocationClientListCachedImagesResponse]) {
+func (client *LocationClient) NewListCachedImagesPager(location string, options *LocationClientListCachedImagesOptions) *runtime.Pager[LocationClientListCachedImagesResponse] {
 	return runtime.NewPager(runtime.PagingHandler[LocationClientListCachedImagesResponse]{
 		More: func(page LocationClientListCachedImagesResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -76,7 +75,7 @@ func (client *LocationClient) listCachedImagesCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter location cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{location}", url.PathEscape(location))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +100,7 @@ func (client *LocationClient) listCachedImagesHandleResponse(resp *http.Response
 // location - The name of the Azure region.
 // options - LocationClientListCapabilitiesOptions contains the optional parameters for the LocationClient.ListCapabilities
 // method.
-func (client *LocationClient) NewListCapabilitiesPager(location string, options *LocationClientListCapabilitiesOptions) (*runtime.Pager[LocationClientListCapabilitiesResponse]) {
+func (client *LocationClient) NewListCapabilitiesPager(location string, options *LocationClientListCapabilitiesOptions) *runtime.Pager[LocationClientListCapabilitiesResponse] {
 	return runtime.NewPager(runtime.PagingHandler[LocationClientListCapabilitiesResponse]{
 		More: func(page LocationClientListCapabilitiesResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -137,7 +136,7 @@ func (client *LocationClient) listCapabilitiesCreateRequest(ctx context.Context,
 		return nil, errors.New("parameter location cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{location}", url.PathEscape(location))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +160,7 @@ func (client *LocationClient) listCapabilitiesHandleResponse(resp *http.Response
 // Generated from API version 2024-11-01-preview
 // location - The name of the Azure region.
 // options - LocationClientListUsageOptions contains the optional parameters for the LocationClient.ListUsage method.
-func (client *LocationClient) NewListUsagePager(location string, options *LocationClientListUsageOptions) (*runtime.Pager[LocationClientListUsageResponse]) {
+func (client *LocationClient) NewListUsagePager(location string, options *LocationClientListUsageOptions) *runtime.Pager[LocationClientListUsageResponse] {
 	return runtime.NewPager(runtime.PagingHandler[LocationClientListUsageResponse]{
 		More: func(page LocationClientListUsageResponse) bool {
 			return false
@@ -191,7 +190,7 @@ func (client *LocationClient) listUsageCreateRequest(ctx context.Context, locati
 		return nil, errors.New("parameter location cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{location}", url.PathEscape(location))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -210,4 +209,3 @@ func (client *LocationClient) listUsageHandleResponse(resp *http.Response) (Loca
 	}
 	return result, nil
 }
-

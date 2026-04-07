@@ -87,11 +87,11 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(rabbitmq.ID)
-	dst.Name = to.Ptr(rabbitmq.Name)
-	dst.Type = to.Ptr(rabbitmq.Type)
+	dst.ID = new(rabbitmq.ID)
+	dst.Name = new(rabbitmq.Name)
+	dst.Type = new(rabbitmq.Type)
 	dst.SystemData = fromSystemDataModel(rabbitmq.SystemData)
-	dst.Location = to.Ptr(rabbitmq.Location)
+	dst.Location = new(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQQueueProperties{
 		Status: &ResourceStatus{
@@ -99,16 +99,16 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 			Recipe:          fromRecipeStatus(rabbitmq.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
-		Environment:          to.Ptr(rabbitmq.Properties.Environment),
-		Application:          to.Ptr(rabbitmq.Properties.Application),
+		Environment:          new(rabbitmq.Properties.Environment),
+		Application:          new(rabbitmq.Properties.Application),
 		ResourceProvisioning: fromResourceProvisioningDataModel(rabbitmq.Properties.ResourceProvisioning),
-		Queue:                to.Ptr(rabbitmq.Properties.Queue),
-		Host:                 to.Ptr(rabbitmq.Properties.Host),
-		Port:                 to.Ptr(rabbitmq.Properties.Port),
-		VHost:                to.Ptr(rabbitmq.Properties.VHost),
-		Username:             to.Ptr(rabbitmq.Properties.Username),
+		Queue:                new(rabbitmq.Properties.Queue),
+		Host:                 new(rabbitmq.Properties.Host),
+		Port:                 new(rabbitmq.Properties.Port),
+		VHost:                new(rabbitmq.Properties.VHost),
+		Username:             new(rabbitmq.Properties.Username),
 		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
-		TLS:                  to.Ptr(rabbitmq.Properties.TLS),
+		TLS:                  new(rabbitmq.Properties.TLS),
 	}
 	if rabbitmq.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
@@ -124,8 +124,8 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
-	dst.URI = to.Ptr(rabbitMQSecrets.URI)
-	dst.Password = to.Ptr(rabbitMQSecrets.Password)
+	dst.URI = new(rabbitMQSecrets.URI)
+	dst.Password = new(rabbitMQSecrets.Password)
 	return nil
 }
 

@@ -80,11 +80,11 @@ func Test_APIVersion_DataModelToVersioned(t *testing.T) {
 		{
 			filename: "apiversion_datamodel.json",
 			expected: &APIVersionResource{
-				ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources/apiVersions/2025-01-01"),
+				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources/apiVersions/2025-01-01"),
 				Type: to.Ptr(datamodel.APIVersionResourceType),
-				Name: to.Ptr("2025-01-01"),
+				Name: new("2025-01-01"),
 				Properties: &APIVersionProperties{
-					ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
+					ProvisioningState: new(ProvisioningStateSucceeded),
 				},
 			},
 		},

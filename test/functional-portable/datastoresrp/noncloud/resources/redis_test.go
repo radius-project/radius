@@ -104,7 +104,7 @@ func Test_Redis_Recipe(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, redis)
 				status := redis.Properties["status"].(map[string]any)
-				recipe := status["recipe"].(map[string]interface{})
+				recipe := status["recipe"].(map[string]any)
 				require.Equal(t, "bicep", recipe["templateKind"].(string))
 				// Updated templatePath is calculated by removing the tag from the templatePath
 				templatePath := recipe["templatePath"].(string)[:strings.LastIndex(recipe["templatePath"].(string), ":")]

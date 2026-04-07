@@ -44,7 +44,7 @@ type testQueueMessage struct {
 
 func queueTestMessage(cli queue.Client, num int) error {
 	// Enqueue multiple message and dequeue them
-	for i := 0; i < num; i++ {
+	for i := range num {
 		msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
 
 		err := cli.Enqueue(context.Background(), queue.NewMessage(msg))
@@ -86,7 +86,7 @@ func RunTest(t *testing.T, cli queue.Client, clear func(t *testing.T)) {
 		require.NoError(t, err)
 
 		checked := map[string]*queue.Message{}
-		for i := 0; i < num; i++ {
+		for range num {
 			msg, err := cli.Dequeue(ctx, queue.QueueClientConfig{})
 			require.NoError(t, err)
 			result := &testQueueMessage{}
@@ -228,7 +228,7 @@ func RunTest(t *testing.T, cli queue.Client, clear func(t *testing.T)) {
 		}(msgCh)
 
 		// Producer
-		for i := 0; i < msgCount; i++ {
+		for i := range msgCount {
 			msg := &testQueueMessage{ID: fmt.Sprintf("%d", i), Message: fmt.Sprintf("hello world %d", i)}
 			err = cli.Enqueue(ctx, queue.NewMessage(msg))
 			require.NoError(t, err)

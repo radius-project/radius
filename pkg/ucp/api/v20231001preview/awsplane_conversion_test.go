@@ -85,12 +85,12 @@ func Test_AWSPlane_ConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "awsplane-datamodel-empty.json",
 			expected: &AwsPlaneResource{
-				ID:       to.Ptr("/planes/aws/aws"),
-				Name:     to.Ptr("aws"),
+				ID:       new("/planes/aws/aws"),
+				Name:     new("aws"),
 				Type:     to.Ptr(datamodel.AWSPlaneResourceType),
-				Location: to.Ptr("global"),
+				Location: new("global"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: &AwsPlaneResourceProperties{
 					ProvisioningState: fromProvisioningStateDataModel(v1.ProvisioningStateSucceeded),

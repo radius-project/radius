@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -343,16 +344,12 @@ func reconcileRecipeParameters(recipePackParams map[string]any, envRecipeParams 
 	parameters := make(map[string]any)
 
 	// Start with recipe pack parameters
-	for k, v := range recipePackParams {
-		parameters[k] = v
-	}
+	maps.Copy(parameters, recipePackParams)
 
 	// Override with environment-level recipe parameters for this resource type
 	if envRecipeParams != nil {
 		if params, ok := envRecipeParams[resourceType]; ok {
-			for k, v := range params {
-				parameters[k] = v
-			}
+			maps.Copy(parameters, params)
 		}
 	}
 

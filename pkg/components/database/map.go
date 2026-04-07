@@ -44,7 +44,7 @@ func DecodeMap(in any, out any) error {
 // https://github.com/mitchellh/mapstructure/issues/159
 func toTimeHookFunc() mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
-		if t != reflect.TypeOf(time.Time{}) {
+		if t != reflect.TypeFor[time.Time]() {
 			return data, nil
 		}
 

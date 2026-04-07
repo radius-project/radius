@@ -181,8 +181,8 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
 					AddressSpace: &armnetwork.AddressSpace{
 						AddressPrefixes: []*string{
-							to.Ptr(ApplicationAddressSpace),
-							to.Ptr(LBAddressSpace),
+							new(ApplicationAddressSpace),
+							new(LBAddressSpace),
 						},
 					},
 				},
@@ -214,16 +214,16 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 			Properties: &armnetwork.SecurityGroupPropertiesFormat{
 				SecurityRules: []*armnetwork.SecurityRule{
 					{
-						Name: to.Ptr("AllowHTTPInbound"),
+						Name: new("AllowHTTPInbound"),
 						Properties: &armnetwork.SecurityRulePropertiesFormat{
 							Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-							SourceAddressPrefix:      to.Ptr("*"),
-							SourcePortRange:          to.Ptr("*"),
-							DestinationAddressPrefix: to.Ptr("*"),
-							DestinationPortRange:     to.Ptr("443"),
+							SourceAddressPrefix:      new("*"),
+							SourcePortRange:          new("*"),
+							DestinationAddressPrefix: new("*"),
+							DestinationPortRange:     new("443"),
 							Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 							Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-							Priority:                 to.Ptr[int32](110),
+							Priority:                 new(int32(110)),
 						},
 					},
 				},
@@ -251,7 +251,7 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 		InternalLBSubnetName,
 		armnetwork.Subnet{
 			Properties: &armnetwork.SubnetPropertiesFormat{
-				AddressPrefix: to.Ptr(InternalLBSubnet),
+				AddressPrefix: new(InternalLBSubnet),
 				NetworkSecurityGroup: &armnetwork.SecurityGroup{
 					ID: internalSubnetNSG.ID,
 				},
@@ -288,7 +288,7 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 					// internal loadbalancer must have one frontend ip configuration.
 					FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
 						{
-							Name: to.Ptr("internal-lb-default"),
+							Name: new("internal-lb-default"),
 							Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
 								PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
 								Subnet: &armnetwork.Subnet{
