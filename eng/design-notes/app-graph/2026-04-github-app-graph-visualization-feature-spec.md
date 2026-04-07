@@ -59,7 +59,7 @@ There is currently no static analysis capability for generating the application 
 
 ### GitHub pull request workflow
 
-#### Code changes and PR creation
+#### Code changes and PR creation (for reference only, out of scope for this feature spec)
 
 > Note that the features in this section are to illustrate the user experience following code changes and pull request creation. We use a Copilot-assisted scenario that will leverage some Radius AI Agent tooling (Skill, MCP Server, Platform Constitution) that are outside of the scope of this feature spec.
 
@@ -84,6 +84,20 @@ Radius renders the app graph visualization that shows the diff of added (green),
 
 The app graph visualization is an interactive UI component that the user may click to navigate to relevant parts of the repo for each component. Since this is the abstract app graph as-modeled (i.e. not yet deployed), clicking into each component (e.g. “cache”) gives the user options to navigate to relevant parts of either (1) the app source code or (2) the app definition file:
 ![alt text](2026-04-github-app-graph-visualization-feature-spec/image06.png)
+
+**NOTE:** The pointer to the source code file for each resource will be provided by the author (either human or AI) of the app definition in the `app.bicep` file. This means that a new optional property called `source` (or equivalent) will need to be added to each resource schema. If the `source` property is not provided by the author, the app graph visualization will still render but without the option to navigate to the source code for that component. The `source` property will be a string that contains the file path relative to the repository root, for example:
+```bicep
+resource redisCache 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
+  name: 'redisCache'
+  properties: {
+    application: radiustodoapp.id
+    environment: environment
+    // New property indicating source code location for this resource
+    //  can also be './src/cache/redis.ts#L10' for line number ref
+    source: './src/cache/redis.ts'
+  }
+}
+```
 
 When the user clicks on the source code hyperlink for a _modified_ component (e.g. “cache”), they are taken to the diff view in the PR for the _modified_ source code:
 ![alt text](2026-04-github-app-graph-visualization-feature-spec/image07.png)
