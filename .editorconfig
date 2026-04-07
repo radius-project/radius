@@ -26,6 +26,14 @@ indent_size = 4
 [*.{cmd,bat}]
 end_of_line = crlf
 
+# Shell scripts
+[{*.sh,*.bash,.bashrc,.mk-sbuild.rc,.quiltrc,.startxwinrc,user-dirs.dirs}]
+indent_size = 4
+binary_next_line = true         # shfmt: -bn
+switch_case_indent = true       # shfmt: -ci
+space_redirects = true          # shfmt: -sr
+keep_padding = true             # shfmt: -kp
+
 [Makefile]
 indent_style = tab
 
