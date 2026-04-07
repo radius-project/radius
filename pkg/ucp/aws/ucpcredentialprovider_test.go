@@ -65,24 +65,26 @@ func newMockProviderIRSA() *mockProvider {
 }
 
 func TestNewUCPCredentialProvider(t *testing.T) {
-	p := NewUCPCredentialProvider(newMockProviderAccessKey(), 0)
+	p := NewUCPCredentialProvider(newMockProviderAccessKey(), 0, "")
 	require.Equal(t, DefaultExpireDuration, p.options.Duration)
+	require.Equal(t, awsSTSGlobalEndPointSigningRegion, p.options.STSEndpointRegion)
 
-	p = NewUCPCredentialProvider(newMockProviderIRSA(), 0)
+	p = NewUCPCredentialProvider(newMockProviderIRSA(), 0, "us-west-2")
 	require.Equal(t, DefaultExpireDuration, p.options.Duration)
+	require.Equal(t, "us-west-2", p.options.STSEndpointRegion)
 }
 
 func TestRetrieve(t *testing.T) {
 	t.Run("invalid credential", func(t *testing.T) {
 		p := newMockProviderAccessKey()
-		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
+		cp := NewUCPCredentialProvider(p, DefaultExpireDuration, "")
 		p.fakeCredential.AccessKeyCredential.AccessKeyID = ""
 
 		_, err := cp.Retrieve(context.TODO())
 		require.Error(t, err)
 
 		p = newMockProviderIRSA()
-		cp = NewUCPCredentialProvider(p, DefaultExpireDuration)
+		cp = NewUCPCredentialProvider(p, DefaultExpireDuration, "")
 		p.fakeCredential.IRSACredential.RoleARN = ""
 
 		_, err = cp.Retrieve(context.TODO())
@@ -91,7 +93,7 @@ func TestRetrieve(t *testing.T) {
 
 	t.Run("valid credential", func(t *testing.T) {
 		p := newMockProviderAccessKey()
-		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
+		cp := NewUCPCredentialProvider(p, DefaultExpireDuration, "")
 
 		expectedExpiry := time.Now().UTC().Add(DefaultExpireDuration)
 		cred, err := cp.Retrieve(context.TODO())

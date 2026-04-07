@@ -65,6 +65,10 @@ spec:
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
+        {{- if .Values.global.aws.region }}
+        - name: AWS_REGION
+          value: {{ .Values.global.aws.region | quote }}
+        {{- end}}
         ports:
         - containerPort: 9443
           name: ucp

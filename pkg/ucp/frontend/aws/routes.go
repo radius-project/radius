@@ -19,6 +19,7 @@ package aws
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -327,7 +328,18 @@ func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {
 		if err != nil {
 			return aws.Config{}, err
 		}
-		p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration)
+
+		// Use regional STS endpoint when available. AWS best practices recommend
+		// regional STS endpoints for compatibility with downstream services.
+		stsRegion := os.Getenv("AWS_REGION")
+		if stsRegion == "" {
+			stsRegion = os.Getenv("AWS_DEFAULT_REGION")
+		}
+		if stsRegion != "" {
+			logger.Info("Using regional STS endpoint for AWS credential provider", "region", stsRegion)
+		}
+
+		p := ucp_aws.NewUCPCredentialProvider(provider, ucp_aws.DefaultExpireDuration, stsRegion)
 		credProviders = append(credProviders, config.WithCredentialsProvider(p))
 		logger.Info("Configuring 'UCPCredential' authentication mode using UCP Credential API")
 

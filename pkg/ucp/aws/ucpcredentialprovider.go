@@ -65,17 +65,28 @@ type UCPCredentialOptions struct {
 
 	// Duration is the duration for the secret keys.
 	Duration time.Duration
+
+	// STSEndpointRegion is the AWS region to use for the STS endpoint when retrieving
+	// IRSA credentials. Using a regional STS endpoint (matching the target service region)
+	// avoids token compatibility issues with some AWS services like CloudWatch Logs.
+	// If empty, defaults to "us-east-1" (global endpoint).
+	STSEndpointRegion string
 }
 
 // NewUCPCredentialProvider creates UCPCredentialProvider provider to fetch Secret Access key using UCP credential APIs.
-func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential], expireDuration time.Duration) *UCPCredentialProvider {
+func NewUCPCredentialProvider(provider sdk_cred.CredentialProvider[sdk_cred.AWSCredential], expireDuration time.Duration, stsEndpointRegion string) *UCPCredentialProvider {
 	if expireDuration == 0 {
 		expireDuration = DefaultExpireDuration
 	}
 
+	if stsEndpointRegion == "" {
+		stsEndpointRegion = awsSTSGlobalEndPointSigningRegion
+	}
+
 	o := UCPCredentialOptions{
-		Provider: provider,
-		Duration: expireDuration,
+		Provider:          provider,
+		Duration:          expireDuration,
+		STSEndpointRegion: stsEndpointRegion,
 	}
 
 	return &UCPCredentialProvider{options: o}
@@ -112,41 +123,82 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}
 		logger.Info(fmt.Sprintf("Retrieved AWS Credential - RoleARN: %s", s.IRSACredential.RoleARN))
 
-		// Radius requests will first be routed to STS endpoint,
-		// where it will be validated and then the request to the specific service (such as S3) will be made using
-		// the bearer token from the STS response.
-		// Based on the https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html,
-		// STS endpoint should be region based, and in the same region as
-		// Radius instance to minimize latency associated eith STS call and thereby improve performance.
-		// We should provide the user with ability to configure the STS endpoint region.
-		// For now, we are using the global STS endpoint, which is the default.
-		// Ref. https://github.com/radius-project/radius/issues/7747
-		awscfg, err := config.LoadDefaultConfig(context.TODO(),
-			config.WithRegion(awsSTSGlobalEndPointSigningRegion))
+		stsRegion := c.options.STSEndpointRegion
+		logger.Info(fmt.Sprintf("Using STS endpoint region: %s", stsRegion))
 
+		awscfg, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(stsRegion))
 		if err != nil {
 			return aws.Credentials{}, err
 		}
 
-		client := sts.NewFromConfig(awscfg)
+		stsClient := sts.NewFromConfig(awscfg)
 
-		credsCache := aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(
-			client,
+		// Step 1: Get web identity credentials via AssumeRoleWithWebIdentity.
+		webIdentityProvider := stscreds.NewWebIdentityRoleProvider(
+			stsClient,
 			s.IRSACredential.RoleARN,
 			stscreds.IdentityTokenFile(TokenFilePath),
 			func(o *stscreds.WebIdentityRoleOptions) {
-				o.RoleSessionName = sessionPrefix + uuid.New().String()
+				o.RoleSessionName = sessionPrefix + "wi-" + uuid.New().String()
+				if c.options.Duration > 0 {
+					o.Duration = c.options.Duration
+				}
 			},
-		))
+		)
 
-		value, err = credsCache.Retrieve(ctx)
+		webIdentityCreds, err := webIdentityProvider.Retrieve(ctx)
 		if err != nil {
-			logger.Info(fmt.Sprintf("Failed to retrieve AWS Credential IRSA - %s", err.Error()))
+			logger.Error(err, "Failed to retrieve web identity credentials")
 			return aws.Credentials{}, err
 		}
-		value.Source = credentialSource
-		value.CanExpire = true
-		value.Expires = time.Now().UTC().Add(c.options.Duration)
+		logger.Info("Successfully retrieved web identity credentials")
+
+		// Step 2: Re-assume the same role using regular AssumeRole (role chaining).
+		// This converts the web identity federation session into a standard
+		// AssumeRole session. Web identity sessions have restrictions on session
+		// chaining that cause CloudControl's internal operations to fail with
+		// "invalid security token" errors. A regular AssumeRole session does not
+		// have these restrictions.
+		// See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html#term-RoleChaining
+		reAssumeCfg, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(stsRegion),
+			config.WithCredentialsProvider(aws.CredentialsProviderFunc(
+				func(ctx context.Context) (aws.Credentials, error) {
+					return webIdentityCreds, nil
+				},
+			)),
+		)
+		if err != nil {
+			return aws.Credentials{}, err
+		}
+
+		reAssumeClient := sts.NewFromConfig(reAssumeCfg)
+
+		assumeRoleInput := &sts.AssumeRoleInput{
+			RoleArn:         &s.IRSACredential.RoleARN,
+			RoleSessionName: aws.String(sessionPrefix + uuid.New().String()),
+		}
+		if c.options.Duration > 0 {
+			durationSeconds := int32(c.options.Duration / time.Second)
+			assumeRoleInput.DurationSeconds = &durationSeconds
+		}
+
+		assumeRoleOutput, err := reAssumeClient.AssumeRole(ctx, assumeRoleInput)
+		if err != nil {
+			logger.Error(err, "Failed to re-assume role for clean session")
+			return aws.Credentials{}, err
+		}
+		logger.Info("Successfully re-assumed role for clean session credentials")
+
+		value = aws.Credentials{
+			AccessKeyID:     *assumeRoleOutput.Credentials.AccessKeyId,
+			SecretAccessKey:  *assumeRoleOutput.Credentials.SecretAccessKey,
+			SessionToken:    *assumeRoleOutput.Credentials.SessionToken,
+			Source:          credentialSource,
+			CanExpire:       true,
+			Expires:         assumeRoleOutput.Credentials.Expiration.UTC(),
+		}
 	default:
 		return aws.Credentials{}, errors.New("invalid credential kind")
 	}
