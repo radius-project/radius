@@ -127,7 +127,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "ghcr.io/radius-project/webapptutorial-todoapp", ct.Properties.Container.Image)
 				tcpProbe := ct.Properties.Container.LivenessProbe
 				require.Equal(t, datamodel.TCPHealthProbe, tcpProbe.Kind)
-				require.Equal(t, to.Ptr[float32](5), tcpProbe.TCP.InitialDelaySeconds)
+				require.Equal(t, new(float32(5)), tcpProbe.TCP.InitialDelaySeconds)
 				require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 				require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 				require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)

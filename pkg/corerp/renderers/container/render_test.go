@@ -1468,10 +1468,10 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 				Kind: datamodel.HTTPGetHealthProbe,
 				HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Ptr[float32](30),
-						FailureThreshold:    to.Ptr[float32](10),
-						PeriodSeconds:       to.Ptr[float32](2),
-						TimeoutSeconds:      to.Ptr[float32](5),
+						InitialDelaySeconds: new(float32(30)),
+						FailureThreshold:    new(float32(10)),
+						PeriodSeconds:       new(float32(2)),
+						TimeoutSeconds:      new(float32(5)),
 					},
 					Path:          "/healthz",
 					ContainerPort: 8080,
@@ -1551,10 +1551,10 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 				Kind: datamodel.TCPHealthProbe,
 				TCP: &datamodel.TCPHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Ptr[float32](30),
-						FailureThreshold:    to.Ptr[float32](10),
-						PeriodSeconds:       to.Ptr[float32](2),
-						TimeoutSeconds:      to.Ptr[float32](5),
+						InitialDelaySeconds: new(float32(30)),
+						FailureThreshold:    new(float32(10)),
+						PeriodSeconds:       new(float32(2)),
+						TimeoutSeconds:      new(float32(5)),
 					},
 					ContainerPort: 8080,
 				},
@@ -1625,10 +1625,10 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 				Kind: datamodel.ExecHealthProbe,
 				Exec: &datamodel.ExecHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Ptr[float32](30),
-						FailureThreshold:    to.Ptr[float32](10),
-						PeriodSeconds:       to.Ptr[float32](2),
-						TimeoutSeconds:      to.Ptr[float32](5),
+						InitialDelaySeconds: new(float32(30)),
+						FailureThreshold:    new(float32(10)),
+						PeriodSeconds:       new(float32(2)),
+						TimeoutSeconds:      new(float32(5)),
 					},
 					Command: "a b c",
 				},

@@ -808,13 +808,6 @@ func TestAddSchemaType_AdditionalPropertiesAny_Error(t *testing.T) {
 	}
 }
 
-// Helper function for creating string pointers
-//
-//go:fix inline
-func stringPtr(s string) *string {
-	return new(s)
-}
-
 func TestAddSchemaType_ObjectWithOnlyProperties(t *testing.T) {
 	schema := &manifest.Schema{
 		Type: "object",

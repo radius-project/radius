@@ -223,7 +223,7 @@ func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Con
 							DestinationPortRange:     new("443"),
 							Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 							Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-							Priority:                 to.Ptr[int32](110),
+							Priority:                 new(int32(110)),
 						},
 					},
 				},

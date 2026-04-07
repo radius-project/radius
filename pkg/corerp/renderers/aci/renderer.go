@@ -213,8 +213,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						Properties: &armnetwork.ProbePropertiesFormat{
 							Protocol:          to.Ptr(armnetwork.ProbeProtocolTCP),
 							Port:              new(firstPort),
-							IntervalInSeconds: to.Ptr[int32](15),
-							NumberOfProbes:    to.Ptr[int32](2),
+							IntervalInSeconds: new(int32(15)),
+							NumberOfProbes:    new(int32(2)),
 						},
 					},
 				},
@@ -340,7 +340,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				UpdateMode: to.Ptr(ngroupsclient.NGroupUpdateModeRolling),
 			},
 			ElasticProfile: &ngroupsclient.ElasticProfile{
-				DesiredCount: to.Ptr[int32](1),
+				DesiredCount: new(int32(1)),
 				ContainerGroupNamingPolicy: &ngroupsclient.ElasticProfileContainerGroupNamingPolicy{
 					GUIDNamingPolicy: &ngroupsclient.ElasticProfileContainerGroupNamingPolicyGUIDNamingPolicy{
 						Prefix: new(resource.Name + "-"),

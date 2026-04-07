@@ -113,7 +113,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						DestinationPortRange:     new("65200-65535"),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](100),
+						Priority:                 new(int32(100)),
 					},
 				},
 				{
@@ -127,7 +127,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						DestinationPortRange:     new(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](110),
+						Priority:                 new(int32(110)),
 					},
 				},
 				{
@@ -141,7 +141,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						DestinationPortRange:     new(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](111),
+						Priority:                 new(int32(111)),
 					},
 				},
 				{
@@ -155,7 +155,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						DestinationPortRange:     new(fmt.Sprintf("%d", targetPort)),
 						Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
 						Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-						Priority:                 to.Ptr[int32](112),
+						Priority:                 new(int32(112)),
 					},
 				},
 			},
@@ -264,7 +264,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						Port:                new(targetPort),
 						Protocol:            to.Ptr(armnetwork.ApplicationGatewayProtocolHTTP),
 						CookieBasedAffinity: to.Ptr(armnetwork.ApplicationGatewayCookieBasedAffinityDisabled),
-						RequestTimeout:      to.Ptr[int32](60),
+						RequestTimeout:      new(int32(60)),
 						Probe: &armnetwork.SubResource{
 							ID: new(strings.Join([]string{appgwID, "probes", containerName}, "/")),
 						},
@@ -290,7 +290,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				{
 					Name: new(containerName),
 					Properties: &armnetwork.ApplicationGatewayRequestRoutingRulePropertiesFormat{
-						Priority: to.Ptr[int32](1),
+						Priority: new(int32(1)),
 						HTTPListener: &armnetwork.SubResource{
 							ID: new(strings.Join([]string{appgwID, "httpListeners", containerName}, "/")),
 						},
@@ -311,16 +311,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 						Protocol:                            to.Ptr(armnetwork.ApplicationGatewayProtocolHTTP),
 						Host:                                new("localhost"),
 						Path:                                new("/"),
-						Interval:                            to.Ptr[int32](3600),
-						Timeout:                             to.Ptr[int32](3600),
-						UnhealthyThreshold:                  to.Ptr[int32](3),
+						Interval:                            new(int32(3600)),
+						Timeout:                             new(int32(3600)),
+						UnhealthyThreshold:                  new(int32(3)),
 						PickHostNameFromBackendHTTPSettings: new(false),
 					},
 				},
 			},
 			AutoscaleConfiguration: &armnetwork.ApplicationGatewayAutoscaleConfiguration{
-				MinCapacity: to.Ptr[int32](0),
-				MaxCapacity: to.Ptr[int32](3),
+				MinCapacity: new(int32(0)),
+				MaxCapacity: new(int32(3)),
 			},
 		},
 	}
