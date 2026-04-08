@@ -100,6 +100,40 @@ verify_manifests_registered() {
     echo "Manifest verification complete."
 }
 
+# Actively verify that resource types are registered and the Radius API is
+# able to serve requests. Unlike verify_manifests_registered (which reads
+# historical pod logs), this makes a live API call.
+verify_resource_types_available() {
+    echo ""
+    echo "Verifying resource types are available..."
+
+    # Set up a temporary workspace/group so we can issue a rad CLI command
+    # that exercises the Applications.Core resource-type path.
+    rad workspace create kubernetes --force >/dev/null 2>&1 || true
+    rad group create __healthcheck >/dev/null 2>&1 || true
+
+    local output exit_code
+    output=$(rad env list --group __healthcheck 2>&1) && exit_code=0 || exit_code=$?
+
+    # Clean up the temporary group
+    rad group delete __healthcheck >/dev/null 2>&1 || true
+
+    if [[ ${exit_code} -eq 0 ]]; then
+        echo "Resource types are available."
+        return 0
+    fi
+
+    if echo "${output}" | grep -qi "resource type.*not found"; then
+        echo "ERROR: Resource types are NOT registered."
+        echo "API response: ${output}"
+        return 1
+    fi
+
+    # Other errors (network, auth, etc.) don't indicate a resource-type issue.
+    echo "Resource type check returned a non-resource-type error (continuing): ${output}"
+    return 0
+}
+
 # Save the list of Radius UCP resources to skip-delete-resources-list.txt
 # This file is used by the cleanup job to avoid deleting Radius-managed resources.
 save_skip_resources_list() {
@@ -196,7 +230,19 @@ main() {
         install_radius
     elif [[ "${cp_version}" == "${cli_version}" ]]; then
         echo ""
-        echo "Radius control plane version matches CLI version (${cli_version}). No action needed."
+        echo "Radius control plane version matches CLI version (${cli_version}). Skipping install/upgrade."
+
+        if ! verify_resource_types_available; then
+            echo ""
+            echo "Resource types missing despite matching versions. Reinstalling Radius..."
+            if ! rad uninstall kubernetes --purge --yes; then
+                echo "Warning: Uninstall failed, continuing with install attempt..."
+            fi
+            install_radius
+        else
+            verify_manifests_registered
+            save_skip_resources_list
+        fi
     else
         echo ""
         echo "Version mismatch detected. Attempting upgrade from ${cp_version} to ${cli_version}..."
