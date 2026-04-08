@@ -5,7 +5,53 @@
 
 ---
 
+## Scope
+
+This initiative covers these Radius repositories:
+
+| Repo | Primary tech | Key agent workflows |
+|---|---|---|
+| `radius/` | Go, TypeSpec, Bicep | Control plane, CLI, API types, schema changes, testing |
+| `dashboard/` | TypeScript, React | Backstage plugins, UI components |
+| `docs/` | Markdown, Hugo | Documentation authoring, content review |
+| `resource-types-contrib/` | YAML, Terraform, Bicep | Resource type definitions, recipes |
+| `bicep-types-aws/` | Go, TypeScript | AWS type generation pipeline |
+
+---
+
+## Success Criteria
+
+- [ ] A contributor to any repo can ask Copilot "how do I build this?" and get a correct answer
+- [ ] An agent can build, test, and submit a PR for a code change in any repo
+- [ ] Every high-value developer workflow has a skill backed by a contributing doc
+- [ ] Contributing docs are accurate and verified against current code
+- [ ] Cloud agent can bootstrap and work in any repo out of the box
+- [ ] The skill lifecycle agent detects and recommends improvements from real usage data
+
+---
+
 ## Capabilities
+
+| # | Capability | Summary |
+|---|---|---|
+| 1 | [**Build and test**](#1-build-and-test-features-and-bug-fixes) | Pick up an issue, build, implement, test, and submit a PR |
+| 1.1 | [Set up a dev environment](#11-set-up-a-development-environment) | Bootstrap any repo without trial-and-error |
+| 1.2 | [Write Go code](#12-write-and-modify-go-code) | Idiomatic Go following Radius conventions |
+| 1.3 | [Schema changes](#13-modify-api-type-definitions-schema-changes) | TypeSpec → Swagger → Go code generation pipeline |
+| 1.4 | [CLI commands](#14-add-or-update-cli-commands) | Add/update `rad` CLI commands (Cobra) |
+| 1.5 | [GitHub workflows](#15-edit-github-actions-workflows) | Explain, modify, refactor, and debug CI/CD |
+| 1.6 | [Dockerfiles](#16-write-and-modify-dockerfiles) | Multi-stage builds, minimal images, security |
+| 1.7 | [Bicep files](#17-write-and-modify-bicep-files) | Radius Bicep naming and deployment patterns |
+| 1.8 | [Shell scripts & Makefiles](#18-write-shell-scripts-and-makefiles) | Safe Bash, well-structured Make targets |
+| 1.9 | [Resource types (contrib)](#19-add-or-update-resource-type-definitions-contrib) | Scaffold YAML definitions, recipes, and tests |
+| 1.10 | [Dashboard plugins](#110-develop-dashboard-plugins) | Backstage plugins in TypeScript/React |
+| 1.11 | [Documentation](#111-author-and-edit-documentation) | Hugo-based docs with frontmatter and shortcodes |
+| 1.12 | [Pull requests](#112-create-pull-requests-and-manage-contributions) | Branch handling, fork-aware defaults, clean PRs |
+| 1.13 | [AWS Bicep types](#113-generate-aws-bicep-types) | AWS type generation pipeline in `bicep-types-aws/` |
+| 2 | [**Code review**](#2-review-code) | File-by-file review for bugs, style, and test coverage |
+| 3 | [**Investigate issues**](#3-investigate-issues) | Analyze issues, find relevant code, produce technical summaries |
+| 4 | [**Explain architecture**](#4-explain-architecture-and-design) | Answer "how does X work?" with code references and Mermaid diagrams |
+| 5 | [**Improve agent effectiveness**](#5-continuously-improve-agent-effectiveness) | Automated review of session logs to curate skills and instructions |
 
 ### 1. Build and test features and bug fixes
 
@@ -13,7 +59,7 @@ An agent can pick up an issue, build the project, implement a change, test it, a
 
 #### 1.1 Set up a development environment
 
-An agent (local or cloud) can bootstrap a working environment in any Radius repo without trial-and-error tool installation. Dev containers and `copilot-setup-steps.yml` give agents the same turnkey setup humans get.
+An agent (local or cloud) can bootstrap a working environment in any Radius repo without trial-and-error tool installation. Dev containers and [`copilot-setup-steps.yml`](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/customize-the-agent-environment#customizing-copilots-development-environment-with-copilot-setup-steps) will give agents the same turnkey setup humans get. These do not exist yet — see Phase 0 in [agent-ex-plan.md](agent-ex-plan.md).
 
 **Validation**: "Build this project and run the unit tests." — the agent succeeds without manual intervention in any repo.
 
@@ -125,6 +171,12 @@ An agent can create well-formed pull requests with proper branch handling, fork-
 
 **Validation**: Created PRs have correct base branches, clean commit history, and descriptive titles.
 
+#### 1.13 Generate AWS Bicep types
+
+An agent can run the AWS type generation pipeline in `bicep-types-aws/` — converting AWS CloudFormation schemas into Bicep type definitions.
+
+**Validation**: Generated types compile and match the expected schema output.
+
 ---
 
 ### 2. Review code
@@ -199,25 +251,3 @@ An automated agent periodically reviews agent session logs to assess the effecti
 
 ---
 
-## Success Criteria
-
-- [ ] A contributor to any repo can ask Copilot "how do I build this?" and get a correct answer
-- [ ] An agent can build, test, and submit a PR for a code change in any repo
-- [ ] Every high-value developer workflow has a skill backed by a contributing doc
-- [ ] Contributing docs are accurate and verified against current code
-- [ ] Cloud agent can bootstrap and work in any repo out of the box
-- [ ] The skill lifecycle agent detects and recommends improvements from real usage data
-
----
-
-## Scope
-
-This initiative covers these Radius repositories:
-
-| Repo | Primary tech | Key agent workflows |
-|---|---|---|
-| `radius/` | Go, TypeSpec, Bicep | Control plane, CLI, API types, schema changes, testing |
-| `dashboard/` | TypeScript, React | Backstage plugins, UI components |
-| `docs/` | Markdown, Hugo | Documentation authoring, content review |
-| `resource-types-contrib/` | YAML, Terraform, Bicep | Resource type definitions, recipes |
-| `bicep-types-aws/` | Go, TypeScript | AWS type generation pipeline |
