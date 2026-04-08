@@ -181,6 +181,8 @@ Successfully deployed resources are depicted in green, while failed resources ar
 
 ![alt text](2026-04-github-app-graph-visualization-feature-spec/image20.png)
 
+> The status of each resource (e.g. queued, in progress, successful, failed) is determined by Radius based on the live state of the deployment (perhaps emitted by the runners executing the Radius deployments) and not by polling the cloud provider APIs.
+
 When the user clicks on a successfully deployed resource (e.g. the `mysql-218567fc2534c` instance of AWS RDS MySQL), they are taken to the relevant page in the cloud provider portal (e.g. AWS Console) for that resource:
 
 ![alt text](2026-04-github-app-graph-visualization-feature-spec/image21.png)
