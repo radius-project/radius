@@ -27,8 +27,8 @@ on:
       - "*.md"
       - "**/*.md"
       - ".github/workflows/spellcheck.yaml"
-      - ".github/configs/en-custom.txt"
-      - ".github/configs/.pyspelling.yml"
+      - ".github/configs/.cspell.yml"
+      - ".cspellignore"
 
 env:
   ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -53,10 +53,16 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Spellcheck
-        uses: rojopolis/spellcheck-github-actions@e3cd8e9aec4587ec73bc0e60745aafd45c37aa2e # 0.60.0
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          config_path: .github/configs/.pyspelling.yml
+          node-version-file: .node-version
+
+      - name: Install cspell
+        run: npm install -g cspell
+
+      - name: Spellcheck
+        run: cspell lint --config ./.github/configs/.cspell.yml --no-progress --no-summary --dot "**/*.md"
 
       - name: Post GitHub workflow output on failure
         if: failure()
@@ -65,7 +71,7 @@ jobs:
             echo "## :x: Spellcheck Failed"
             echo "There are spelling errors in your PR. Visit [the workflow output](${{ env.ACTION_LINK }}) to see what words are failing."
             echo "### Adding new words"
-            echo "You can add new custom words to [.github/configs/en-custom.txt](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt)."
+            echo "You can add new custom words to [.cspellignore](https://github.com/radius-project/radius/blob/main/.cspellignore)."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Post GitHub workflow output on success
@@ -85,7 +91,7 @@ jobs:
             ## :x: Spellcheck Failed
             There are spelling errors in your PR. Visit [the workflow output](${{ env.ACTION_LINK }}) to see what words are failing.
             ### Adding new words
-            You can add new custom words to [.github/configs/en-custom.txt](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt).
+            You can add new custom words to [.cspellignore](https://github.com/radius-project/radius/blob/main/.cspellignore).
 
       - name: Clear GitHub comment on success
         uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
