@@ -62,23 +62,23 @@ There is currently no static analysis capability for generating the application 
 
 The user navigates to Copilot chat, points the context to their application repo, and prompts Copilot to make changes to their application. Leveraging the Radius app assembly tools (Skill, MCP Server, Platform Constitution), Copilot plans to implement the app code to use Radius features like Connections and also knows to update the app definition. It proposes a plan for the changes and asks user to confirm the implementation:
 
-![alt text](2026-04-github-app-graph-visualization-feature-spec/image01.png)
+![Copilot plan proposal](2026-04-github-app-graph-visualization-feature-spec/image01.png)
 
 The user accepts the proposed plan and changes from Copilot and prompts it to proceed:
 
-![alt text](2026-04-github-app-graph-visualization-feature-spec/image02.png)
+![Copilot plan accepted and proceed prompt](2026-04-github-app-graph-visualization-feature-spec/image02.png)
 
 Copilot proceeds to make the code changes and creates a PR in the app repo:
 
-![alt text](2026-04-github-app-graph-visualization-feature-spec/image03.png)
+![Copilot-created pull request](2026-04-github-app-graph-visualization-feature-spec/image03.png)
 
 #### Radius auto-generates app graph visualizations
 
 In the PR view, the Radius UI component (e.g. browser extension) detects that the PR includes updates to the app.bicep file and begins to auto generate an app graph for visualization:
-![alt text](2026-04-github-app-graph-visualization-feature-spec/image04.png)
+![PR view showing app graph generation starting](2026-04-github-app-graph-visualization-feature-spec/image04.png)
 
 Radius renders the app graph visualization that shows the diff of added (green), modified (yellow), and removed (red) components. The visualization is inserted into the body of the PR description directly below the PR description text:
-![alt text](2026-04-github-app-graph-visualization-feature-spec/image05.png)
+![PR description with app graph diff visualization](2026-04-github-app-graph-visualization-feature-spec/image05.png)
 
 #### Interactions with diff views and app graph visualizations
 
