@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Generate CI failure report
-        uses: sylvainsf/causinator9000@037827d60041f6b1235aa7b021a62979d6c3439c # v1
+        uses: sylvainsf/causinator9000@29690a2d9bf7ed8377454435752856e62eac26b0 # v1
         with:
           hours: ${{ github.event.inputs.hours || '24' }}
           min-confidence: "50"
