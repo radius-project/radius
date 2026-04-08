@@ -30,12 +30,14 @@ ignoreRegExpList:
 
 # Define custom patterns to ignore specific sections of text that are likely to contain technical terms or formatting that should not be spell-checked
 patterns:
+  # Fenced code blocks: ```lang ... ``` (with or without language identifier)
   - name: code_block
     pattern:
-      - /(^\s*`{3}\w*$)[\s\S]*?(^\s*`{3}$)/gm
+      - /^`{3,}[^\n]*\n[\s\S]*?^`{3,}\s*$/gm
   - name: adr_yaml_formatter
     pattern:
       - /(^([a-z-]*[:]{1})((\w|\s|,|"|-)*?)$)/gm
+  # Inline code: `some code here`
   - name: inline_code
     pattern:
       - /`[^`\r\n]*`/g

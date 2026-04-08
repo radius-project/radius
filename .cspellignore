@@ -115,10 +115,12 @@ DeploymentTemplate
 DevOps
 DictionaryOfRecipeProperties
 DigitalOcean
+Diátaxis
 DoS
 Docker's
 Dockerfile
 Dockerfiles
+Docsy
 Drasi
 DriverWithSecrets
 Dynamicrp
@@ -152,6 +154,7 @@ FoosResponse
 GC
 GCP
 GH
+GOARCH
 GPG
 GPUs
 GVK
@@ -173,6 +176,7 @@ Github's
 Golangci
 Gosec
 GraphQL
+Groot
 HTTPProxy
 HTTPRequest
 HTTPRoute
@@ -292,6 +296,7 @@ ProvidersAws
 ProvidersAzure
 ProvidersKubernetes
 PubSubBroker
+Qube
 RCs
 RDBMS
 RDBMS's
@@ -388,8 +393,10 @@ SystemData
 TBD
 TCPRoute
 TCPRoutes
+TKTK
 TLSRoute
 TTL
+TXXX
 TcpHealthProbeProperties
 Terraform's
 TerraformConfig
@@ -510,12 +517,14 @@ bb
 benefitted
 bicepConfig
 bicepconfig
+bicepparams
 bikeshedding
 bool
 booleans
 breakpoint
 brooke
 bubbletea
+buildx
 caBundle
 camelCased
 cancelled
@@ -639,6 +648,7 @@ dropdown
 dynamicrp
 eBPF
 eShop
+eastus
 eb
 ec
 ecr
@@ -720,6 +730,7 @@ handoff
 hardcoded
 hardcoding
 hashicorp
+healthz
 helmclient
 hostName
 hostable
@@ -761,6 +772,7 @@ io
 ip
 irsa
 isnotnull
+isready
 iteratively
 jose
 jq
@@ -871,6 +883,8 @@ myapp
 mycache
 mycorp
 mydomain
+myenv
+myfrontendimage
 mygateway
 myhostname
 myregistry
@@ -884,6 +898,7 @@ natively
 nd
 newAWSConfig
 nginx
+nindent
 nodeSelector
 nodejs
 noncloud
@@ -1154,6 +1169,7 @@ testGroup
 testType
 testability
 testasyncresources
+testdb
 testrp
 testsyncresources
 tf
@@ -1165,6 +1181,7 @@ timeframe
 timeoutPolicy
 timeoutSeconds
 tls
+tlscrt
 todo
 todos
 tolerations
