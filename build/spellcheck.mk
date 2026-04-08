@@ -20,4 +20,12 @@
 spellcheck: ## Runs spellcheck on the repository.
 	@echo "$(ARROW) Running spellcheck..."
 	@echo ""
+	@command -v pyspelling >/dev/null 2>&1 || { \
+		echo "pyspelling is required for spellcheck. Install pyspelling and aspell, then try again."; \
+		exit 1; \
+	}
+	@command -v aspell >/dev/null 2>&1 || { \
+		echo "aspell is required for spellcheck. Install pyspelling and aspell, then try again."; \
+		exit 1; \
+	}
 	@pyspelling --verbose --config ./.github/configs/.pyspelling.yml
