@@ -50,7 +50,7 @@ Radius has an existing Application Graph feature that operates at runtime:
 - **Dashboard**: The Radius Dashboard (separate repository) provides an interactive, zoomable graph visualization.
 - **Bicep tooling**: The `bicep-tools/` directory contains a Bicep manifest parser and converter that may serve as a foundation for static Bicep analysis.
 
-There is currently no static analysis capability for generating the application graph from Bicep source files, and no GitHub integration for graph visualization in PRs or README auto-update.
+There is currently no static analysis capability for generating the application graph from Bicep source files, and no GitHub integration for graph visualization in PRs or README auto-update. There are also no dedicated pages in GitHub for exploring the modeled, planned, and deployed application graph visualizations.
 
 ## Detailed user experience
 
@@ -157,4 +157,26 @@ The user can interact with the app graph visualization to navigate to relevant p
 
 #### _Deployed_ app graph (P1)
 
+After the user begins a deployment, a link is available in the repository root page in GitHub that the user may click to view the deployed application graph:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image18.png)
+
+This takes the user to a dedicated page for the deployments of the application that includes an app graph visualization of the application as-deployed based on the live state of the deployed infrastructure resources. The modeled application resources are depicted in blue. Actual infrastructure resources for each modeled resource are depicted in grey (queued for deployment) and yellow (deployment in progress):
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image19.png)
+
+Successfully deployed resources are depicted in green, while failed resources are depicted in red:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image20.png)
+
+When the user clicks on a successfully deployed resource (e.g. the `mysql-218567fc2534c` instance of AWS RDS MySQL), they are taken to the relevant page in the cloud provider portal (e.g. AWS Console) for that resource:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image21.png)
+
+When the user clicks on a failed resource (e.g. the `demo:latest` container image in ECR), the Radius deployment error message for that resource is rendered in a pop-up modal to provide more context on the failure:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image22.png)
+
 #### _Planned_ app graph (P2)
+
+TBD
