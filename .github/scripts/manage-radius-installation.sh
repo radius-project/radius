@@ -107,31 +107,22 @@ verify_resource_types_available() {
     echo ""
     echo "Verifying resource types are available..."
 
-    # Set up a temporary workspace/group so we can issue a rad CLI command
-    # that exercises the Applications.Core resource-type path.
+    # Ensure a workspace exists so rad CLI can reach the cluster.
     rad workspace create kubernetes --force >/dev/null 2>&1 || true
-    rad group create __healthcheck >/dev/null 2>&1 || true
 
+    # List registered resource providers. Applications.Core must be present
+    # for environment/container operations to work.
     local output exit_code
-    output=$(rad env list --group __healthcheck 2>&1) && exit_code=0 || exit_code=$?
+    output=$(rad resource-provider list 2>&1) && exit_code=0 || exit_code=$?
 
-    # Clean up the temporary group
-    rad group delete __healthcheck >/dev/null 2>&1 || true
-
-    if [[ ${exit_code} -eq 0 ]]; then
-        echo "Resource types are available."
+    if [[ ${exit_code} -eq 0 ]] && echo "${output}" | grep -q "Applications.Core"; then
+        echo "Resource types are available (Applications.Core provider found)."
         return 0
     fi
 
-    if echo "${output}" | grep -qi "resource type.*not found"; then
-        echo "ERROR: Resource types are NOT registered."
-        echo "API response: ${output}"
-        return 1
-    fi
-
-    # Other errors (network, auth, etc.) don't indicate a resource-type issue.
-    echo "Resource type check returned a non-resource-type error (continuing): ${output}"
-    return 0
+    echo "ERROR: Applications.Core resource provider is NOT registered."
+    echo "rad resource-provider list output: ${output}"
+    return 1
 }
 
 # Save the list of Radius UCP resources to skip-delete-resources-list.txt
