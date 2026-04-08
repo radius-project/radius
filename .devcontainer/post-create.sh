@@ -55,9 +55,8 @@ go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 echo "Installing mockgen..."
 go install go.uber.org/mock/mockgen@v0.4.0
 
-echo "Installing pyspelling and aspell..."
-sudo apt-get update && sudo apt-get install -y aspell aspell-en pipx
-pipx install pyspelling
+echo "Installing cspell..."
+pnpm add -g cspell
 
 echo "============================================================================"
 echo "Post-create setup completed successfully!"
