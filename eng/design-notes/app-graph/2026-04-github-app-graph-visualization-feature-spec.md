@@ -16,11 +16,10 @@ This feature brings Radius Application Graph visualization directly into the Git
 
 ### Challenge(s) faced by the user
 
-1. **Blind code reviews for code and infrastructure changes**: When a developer modifies the application code or definitions, reviewers see raw code diffs but have no visual representation of how the application topology changed. Understanding the impact requires mentally parsing code changes, resource definitions, connection references, and cross-file dependencies.
-2. **Stale architecture diagrams**: Teams often maintain architecture diagrams manually (e.g., in draw.io, Lucidchart, or static images). These diagrams drift out of date as the codebase evolves, leading to confusion and onboarding friction.
-3. **No change-impact summary**: Developers cannot easily answer "what did my change break or affect?" without deploying the application and running `rad app graph`. This is too late in the development cycle.
-4. **Context switching**: To see the application graph today, a developer must deploy the application to a cluster and run `rad app graph` from the CLI. This requires a running environment, which is not always available during code review.
-5. **No centralized, interactive visualization**: There is no single source of truth for the application architecture that is easily accessible and interactive for developers and reviewers. Existing diagrams are often static and disconnected from the code. Visual views of the infrastructure topology for the application are nonexistent.
+1. **Reviews for code and infrastructure changes lack high level visual views**: When a developer modifies the application code or definitions, reviewers see raw code diffs but have no visual representation of how the application topology changed. Reviewers don't get a snapshot view of the overall application graph with the changes highlighted to quickly understand the blast radius of the changes.
+1. **Stale architecture diagrams**: Teams often maintain architecture diagrams manually (e.g., in draw.io, Lucidchart, or static images). These diagrams drift out of date as the codebase evolves, leading to confusion and onboarding friction.
+1. **Context switching**: To see the application graph today, a developer must deploy the application to a cluster and run `rad app graph` from the CLI. This requires a running environment, which is not always available during code review.
+1. **No centralized, interactive visualization**: There is no single source of truth for the application architecture that is easily accessible and interactive for developers and reviewers. Existing diagrams are often static and disconnected from the code. Visual views of the infrastructure topology for the application are nonexistent.
 
 ### Positive user outcome
 
@@ -58,7 +57,7 @@ There is currently no static analysis capability for generating the application 
 
 #### Code changes and PR creation (for reference only, out of scope for this feature spec)
 
-> Note that the features in this section are to illustrate the user experience following code changes and pull request creation. We use a Copilot-assisted scenario that will leverage some Radius AI Agent tooling (Skill, MCP Server, Platform Constitution) that are outside of the scope of this feature spec.
+> Note that the features in this section are to illustrate the user experience for code changes and pull request creation so that the full user story is clear. We use a Copilot-assisted scenario that will leverage some Radius AI Agent tooling (Skill, MCP Server, Platform Constitution) that are outside of the scope of this feature spec. **The scope of work for this feature spec will begin from the point where the pull request has already been created and focuses on the experience of the app graph visualization in the PR and GitHub UIs.**
 
 The user navigates to Copilot chat, points the context to their application repo, and prompts Copilot to make changes to their application. Leveraging the Radius app assembly tools (Skill, MCP Server, Platform Constitution), Copilot plans to implement the app code to use Radius features like Connections and also knows to update the app definition. It proposes a plan for the changes and asks user to confirm the implementation:
 
