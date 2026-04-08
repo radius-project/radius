@@ -1,32 +1,32 @@
 matrix:
-- name: Markdown
-  aspell:
-    lang: en
-    d: en_US
-  dictionary:
-    encoding: utf-8
-    wordlists:
-    - .github/configs/en-custom.txt
-  pipeline:
-  - pyspelling.filters.context:
-      context_visible_first: true
-      delimiters:
-      # Remove markdown image links: ![alt text](path/to/image.png)
-      - open: '!\['
-        close: '\)'
-      # Ignore mention-like tokens such as @user or @team-name.
-      - open: '(?<!\w)@'
-        content: '[\w.-]*?'
-        close: '(?=[^\w.-]|$)'
-  - pyspelling.filters.markdown:
-      markdown_extensions:
-      - markdown.extensions.fenced_code
-  - pyspelling.filters.html:
-      comments: false
-      ignores:
-      - code
-      - pre
-  - pyspelling.filters.url
-  sources:
-  - '**/*.md'
-  default_encoding: utf-8
+  - name: Markdown
+    aspell:
+      lang: en
+      d: en_US
+    dictionary:
+      encoding: utf-8
+      wordlists:
+        - .github/configs/en-custom.txt
+    pipeline:
+      - pyspelling.filters.context:
+          context_visible_first: true
+          delimiters:
+            # Remove markdown image links: ![alt text](path/to/image.png)
+            - open: '!\['
+              close: '\)'
+            # Ignore mention-like tokens such as @user or @team-name.
+            - open: '(?<!\w)@'
+              content: '[\w.-]*?'
+              close: '(?=[^\w.-]|$)'
+      - pyspelling.filters.markdown:
+          markdown_extensions:
+            - markdown.extensions.fenced_code
+      - pyspelling.filters.html:
+          comments: false
+          ignores:
+            - code
+            - pre
+      - pyspelling.filters.url
+    sources:
+      - "**/*.md"
+    default_encoding: utf-8
