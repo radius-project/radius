@@ -38,7 +38,7 @@ patterns:
       - /(^([a-z-]*[:]{1})((\w|\s|,|"|-)*?)$)/gm
   - name: inline_code
     pattern:
-      - /\s*[`]{1}(\w|\W)*[`]{1}/g
+      - /`[^`\r\n]*`/g
   - name: tf_docs
     pattern:
       - ^(?:\s*\|{1}\s*)(?:<a
