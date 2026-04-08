@@ -24,7 +24,7 @@ This is important because organizations write their own Terraform modules and st
 
 ### Goals
 - Enable support to use terraform modules from private Git repositories.
-- It should support git from any platforms(like Bitbucket, Gitlab, Azure DevOps Git etc.)
+- It should support git from any platforms(like Bitbucket, GitLab, Azure DevOps Git etc.)
 
 ### Non goals
 - To Support other terraform module sources like S3, GCP, Mercurial repository. 

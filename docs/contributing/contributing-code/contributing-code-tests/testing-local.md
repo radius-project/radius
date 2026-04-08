@@ -105,7 +105,7 @@ This will:
 
 ## To redeploy the environment
 
-Reploying an environment is a bit clunky right now. Use the following commands and deploy Radius again.
+Re-deploying an environment is a bit clunky right now. Use the following commands and deploy Radius again.
 
 ```console
 go run ./cmd/rad/main.go env delete <envname>

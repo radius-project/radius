@@ -14,7 +14,18 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-ARROW := \033[34;1m=>\033[0m
+##@ Spellcheck
 
-# order matters for these
-include build/help.mk build/version.mk build/build.mk build/util.mk build/generate.mk build/test.mk build/docker.mk build/artifacts.mk build/recipes.mk build/install.mk build/db.mk build/prettier.mk build/spellcheck.mk build/debug.mk build/workflow.mk
+.PHONY: spellcheck
+spellcheck: ## Runs spellcheck on the repository.
+	@echo "$(ARROW) Running spellcheck..."
+	@echo ""
+	@command -v pyspelling >/dev/null 2>&1 || { \
+		echo "pyspelling is required for spellcheck. Install pyspelling and aspell, then try again."; \
+		exit 1; \
+	}
+	@command -v aspell >/dev/null 2>&1 || { \
+		echo "aspell is required for spellcheck. Install pyspelling and aspell, then try again."; \
+		exit 1; \
+	}
+	@pyspelling --verbose --config ./.github/configs/.pyspelling.yml

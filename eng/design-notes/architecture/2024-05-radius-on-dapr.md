@@ -360,7 +360,7 @@ The query building-block is [deprecated](https://github.com/dapr/dapr/issues/733
 
 *Follow-up: What do we miss out on since we're not using an RDBMS?*
 
-RDBMS'es are useful when a system needs rich and flexible query capabilities, and the ability to enforce referential integrity across entities. These aren't requirements that we have in Radius. It's very hard to predict the future, and this design-document does not try.
+RDBMS's are useful when a system needs rich and flexible query capabilities, and the ability to enforce referential integrity across entities. These aren't requirements that we have in Radius. It's very hard to predict the future, and this design-document does not try.
 
 Using a key-value-store abstraction gives us the widest set of options for scalability and support of different technologies.
 
