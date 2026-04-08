@@ -4,7 +4,7 @@
 
 ## Topic Summary
 
-This feature brings Radius Application Graph visualization directly into the GitHub developer workflow. When a developer opens a pull request that modifies the source code and/or app definitions of a Radius application, a visualization of the application graph is rendered directly in the PR with a before/after diff visualization highlighting which resources and connections were added, removed, or changed. Additionally, on every merge to `main`, the updated app graph is rendered in the repository README, ensuring the architecture diagram in the repo root is always up to date and serves as a living architecture reference.
+This feature brings Radius Application Graph visualization directly into the GitHub developer workflow. When a developer opens a pull request that modifies the source code and/or app definitions of a Radius application, a visualization of the application graph is rendered directly in the PR with a before/after diff visualization highlighting which resources and connections were added, removed, or changed. On every merge to `main`, the updated app graph is rendered in the repository README, ensuring the architecture diagram in the repo root is always up to date and serves as a living architecture reference. Finally, dedicated pages for the application graph visualization are available for deeper exploration of the application topology and navigation to relevant code and infrastructure.
 
 ## User profile and challenges
 
@@ -20,10 +20,11 @@ This feature brings Radius Application Graph visualization directly into the Git
 2. **Stale architecture diagrams**: Teams often maintain architecture diagrams manually (e.g., in draw.io, Lucidchart, or static images). These diagrams drift out of date as the codebase evolves, leading to confusion and onboarding friction.
 3. **No change-impact summary**: Developers cannot easily answer "what did my change break or affect?" without deploying the application and running `rad app graph`. This is too late in the development cycle.
 4. **Context switching**: To see the application graph today, a developer must deploy the application to a cluster and run `rad app graph` from the CLI. This requires a running environment, which is not always available during code review.
+5. **No centralized, interactive visualization**: There is no single source of truth for the application architecture that is easily accessible and interactive for developers and reviewers. Existing diagrams are often static and disconnected from the code. Visual views of the infrastructure topology for the application are nonexistent.
 
 ### Positive user outcome
 
-Developers and reviewers can see a clear, auto-generated visual diff of the application graph directly in the GitHub pull request, enabling faster and more confident code reviews. The repository README always contains an accurate, up-to-date architecture diagram, reducing onboarding time and eliminating stale documentation. Teams gain shift-left visibility into application topology changes without needing a running environment.
+Developers and reviewers can see a clear, auto-generated visual diff of the application graph directly in the GitHub pull request, enabling faster and more confident code reviews. The repository README always contains an accurate, up-to-date architecture diagram, reducing onboarding time and eliminating stale documentation. Views of the modeled, planned, and deployed application graph are easily accessible for developers to explore the application topology and navigate to relevant code and infrastructure resources.
 
 ## Key scenarios
 
@@ -35,13 +36,9 @@ A developer modifies the app code and definition to add a new Redis cache and co
 
 When a pull request that modifies the app code and/or definition is merged to `main`, the application graph diagram in the README is automatically regenerated to reflect the latest architecture. The README always shows the current state of the application, eliminating stale diagrams.
 
-## Key dependencies and risks
+### Scenario 3: Dedicated pages for modeled, planned, and deployed app graph visualization
 
-TBD
-
-## Key assumptions to test and questions to answer
-
-TBD
+When a user clicks on the link to the application graph in the repository root, they are taken to a dedicated page that shows the modeled application graph based on the app definition file. From this page, they can also point the app graph to an available Environment to see a view of the planned application graph that depicts the expected (but not yet deployed) infrastructure based on the Environment configurations (e.g. settings, Recipes, etc.). Finally, once the user has successfully deployed the application, they can view the deployed application graph(s) that reflect the actual state of the deployed infrastructure. Each graph visualization is interactive and allows navigation to relevant code and infrastructure resources where applicable.
 
 ## Current state
 
@@ -142,6 +139,22 @@ Just like in the PR views, the app graph visualization is an interactive UI comp
 
 ![alt text](2026-04-github-app-graph-visualization-feature-spec/image14.png)
 
-## Key investments
+### Dedicated pages for application graph visualization
 
-TBD
+#### _Modeled_ app graph (P0)
+
+Once an application definition is added to the repository (e.g. `.radius/app.bicep`), a link to the application is rendered in the repository root page in GitHub. The user clicks on the link:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image15.png)
+
+This takes the user to a dedicated page for the application that includes an app graph visualization of the application as-modeled based on the app definition file. It shows the abstract representation of the application's components and their relationships but not the actual resources following deployment:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image16.png)
+
+The user can interact with the app graph visualization to navigate to relevant parts of the code in the repo:
+
+![alt text](2026-04-github-app-graph-visualization-feature-spec/image17.png)
+
+#### _Deployed_ app graph (P1)
+
+#### _Planned_ app graph (P2)
