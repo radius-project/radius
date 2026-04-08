@@ -6,6 +6,8 @@ on:
   pull_request:
     types: [opened, labeled, unlabeled, synchronize]
 
+permissions: {}
+
 jobs:
   pr-required-labels:
     if: github.event.pull_request.user.login != 'dependabot[bot]' # skip for Dependabot PRs
@@ -23,7 +25,7 @@ jobs:
           labels: |
             pr:standard
             pr:important
-          add_comment: true
+          add_comment: ${{ github.event.pull_request.head.repo.fork == false }}
           message: |
             This PR requires {{ errorString }} {{ count }} of the following labels: {{ provided }}.
             Currently applied labels: {{ applied }}.
@@ -32,5 +34,5 @@ jobs:
             - `pr:important` — Major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
             - `pr:standard` — Ongoing maintenance, bug fixes, minor improvements, documentation updates, and routine development work.
 
-            Please add the appropriate label to this PR before merging.
+            @${{ github.event.pull_request.user.login }}, please add the appropriate label to this PR before merging.
           exit_type: failure
