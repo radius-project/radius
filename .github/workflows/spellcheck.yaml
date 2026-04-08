@@ -62,7 +62,7 @@ jobs:
         run: npm install -g cspell
 
       - name: Spellcheck
-        run: cspell lint --config ./.github/configs/.cspell.yml --no-progress --no-summary --dot "**/*.md"
+        run: make spellcheck
 
       - name: Post GitHub workflow output on failure
         if: failure()
