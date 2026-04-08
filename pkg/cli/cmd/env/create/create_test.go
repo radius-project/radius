@@ -44,7 +44,7 @@ func Test_CommandValidation(t *testing.T) {
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testResourceGroup := v20231001preview.ResourceGroupResource{
-		Name: to.Ptr("test-resource-group"),
+		Name: new("test-resource-group"),
 	}
 
 	testcases := []radcli.ValidateInput{
@@ -153,7 +153,7 @@ func Test_Run(t *testing.T) {
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
-				Namespace: to.Ptr("default"),
+				Namespace: new("default"),
 			},
 		}
 		appManagementClient.EXPECT().
@@ -192,7 +192,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: "Successfully created environment %q in resource group %q",
-				Params: []interface{}{
+				Params: []any{
 					"default",
 					"test-group",
 				},
@@ -211,7 +211,7 @@ func Test_Run(t *testing.T) {
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
-				Namespace: to.Ptr("default"),
+				Namespace: new("default"),
 			},
 		}
 

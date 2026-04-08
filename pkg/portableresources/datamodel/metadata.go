@@ -35,5 +35,5 @@ type PortableResourceMetadata struct {
 	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
 	SecretValues map[string]rpv1.SecretValueReference `json:"secretValues,omitempty"`
 
-	RecipeData portableresources.RecipeData `json:"recipeData,omitempty"`
+	RecipeData portableresources.RecipeData `json:"recipeData"`
 }

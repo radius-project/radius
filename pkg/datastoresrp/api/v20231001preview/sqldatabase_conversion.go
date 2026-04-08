@@ -85,26 +85,26 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(sql.ID)
-	dst.Name = to.Ptr(sql.Name)
-	dst.Type = to.Ptr(sql.Type)
+	dst.ID = new(sql.ID)
+	dst.Name = new(sql.Name)
+	dst.Type = new(sql.Type)
 	dst.SystemData = fromSystemDataModel(sql.SystemData)
-	dst.Location = to.Ptr(sql.Location)
+	dst.Location = new(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	dst.Properties = &SQLDatabaseProperties{
 		ResourceProvisioning: fromResourceProvisioningDataModel(sql.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(sql.Properties.Resources),
-		Database:             to.Ptr(sql.Properties.Database),
-		Server:               to.Ptr(sql.Properties.Server),
-		Port:                 to.Ptr(sql.Properties.Port),
+		Database:             new(sql.Properties.Database),
+		Server:               new(sql.Properties.Server),
+		Port:                 new(sql.Properties.Port),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(sql.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(sql.Properties.Status.Recipe),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-		Environment:       to.Ptr(sql.Properties.Environment),
-		Application:       to.Ptr(sql.Properties.Application),
-		Username:          to.Ptr(sql.Properties.Username),
+		Environment:       new(sql.Properties.Environment),
+		Application:       new(sql.Properties.Application),
+		Username:          new(sql.Properties.Username),
 	}
 	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
@@ -121,8 +121,8 @@ func (dst *SQLDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.Ptr(sqlSecrets.ConnectionString)
-	dst.Password = to.Ptr(sqlSecrets.Password)
+	dst.ConnectionString = new(sqlSecrets.ConnectionString)
+	dst.Password = new(sqlSecrets.Password)
 
 	return nil
 }

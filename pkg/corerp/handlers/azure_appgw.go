@@ -23,7 +23,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/radius-project/radius/pkg/azure/armauth"
-	"github.com/radius-project/radius/pkg/to"
 )
 
 func NewAzureAppGWHandler(arm *armauth.ArmConfig) ResourceHandler {
@@ -50,7 +49,7 @@ func (handler *azureAppGWHandler) Put(ctx context.Context, options *PutOptions) 
 	if err != nil {
 		return nil, fmt.Errorf("cannot find resource group location: %w", err)
 	}
-	appgw.Location = to.Ptr(location)
+	appgw.Location = new(location)
 
 	networkClientFactory, err := armnetwork.NewClientFactory(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {

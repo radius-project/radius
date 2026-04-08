@@ -26,9 +26,9 @@ type EnvironmentRecipe struct {
 }
 
 type RecipeParameter struct {
-	Name         string      `json:"name,omitempty"`
-	DefaultValue interface{} `json:"defaultValue,omitempty"`
-	Type         string      `json:"type,omitempty"`
-	MaxValue     string      `json:"maxValue,omitempty"`
-	MinValue     string      `json:"minValue,omitempty"`
+	Name         string `json:"name,omitempty"`
+	DefaultValue any    `json:"defaultValue,omitempty"`
+	Type         string `json:"type,omitempty"`
+	MaxValue     string `json:"maxValue,omitempty"`
+	MinValue     string `json:"minValue,omitempty"`
 }

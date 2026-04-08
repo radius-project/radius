@@ -437,15 +437,15 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 
 	logger.Info("Starting PUT operation.")
 	properties := v20231001preview.ContainerProperties{
-		Application:          to.Ptr(annotations.Status.Application),
+		Application:          new(annotations.Status.Application),
 		ResourceProvisioning: to.Ptr(v20231001preview.ContainerResourceProvisioningManual),
 		Connections:          map[string]*v20231001preview.ConnectionProperties{},
 		Container: &v20231001preview.Container{
-			Image: to.Ptr("none"),
+			Image: new("none"),
 		},
 		Resources: []*v20231001preview.ResourceReference{
 			{
-				ID: to.Ptr("/planes/kubernetes/local/namespaces/" + deployment.Namespace + "/providers/apps/Deployment/" + deployment.Name),
+				ID: new("/planes/kubernetes/local/namespaces/" + deployment.Namespace + "/providers/apps/Deployment/" + deployment.Name),
 			},
 		},
 	}
@@ -464,7 +464,7 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 		}
 
 		properties.Connections[name] = &v20231001preview.ConnectionProperties{
-			Source: to.Ptr(recipe.Status.Resource),
+			Source: new(recipe.Status.Resource),
 		}
 	}
 

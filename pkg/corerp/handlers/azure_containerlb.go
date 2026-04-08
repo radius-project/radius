@@ -58,7 +58,7 @@ func (handler *azureContainerLoadBalancerHandler) Put(ctx context.Context, optio
 	loadBalancersClient := networkClientFactory.NewLoadBalancersClient()
 
 	var lastErr error
-	for retry := 0; retry < 5; retry++ {
+	for retry := range 5 {
 		lbresp, err := loadBalancersClient.Get(ctx, resourceGroupName, vnetID.Name(), nil)
 		if err != nil {
 			return nil, err
@@ -181,7 +181,7 @@ func (handler *azureContainerLoadBalancerHandler) Delete(ctx context.Context, op
 	loadBalancersClient := networkClientFactory.NewLoadBalancersClient()
 
 	var lastErr error
-	for retry := 0; retry < 5; retry++ {
+	for retry := range 5 {
 		lbresp, err := loadBalancersClient.Get(ctx, resourceGroupName, vnetID.Name(), nil)
 		if err != nil {
 			return err

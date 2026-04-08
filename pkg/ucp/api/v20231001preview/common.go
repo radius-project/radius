@@ -18,7 +18,6 @@ package v20231001preview
 
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/to"
 )
 
 func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningState {
@@ -32,11 +31,11 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 
 func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
-		CreatedBy:          to.Ptr(s.CreatedBy),
-		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
+		CreatedBy:          new(s.CreatedBy),
+		CreatedByType:      (*CreatedByType)(new(s.CreatedByType)),
 		CreatedAt:          v1.UnmarshalTimeString(s.CreatedAt),
-		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
+		LastModifiedBy:     new(s.LastModifiedBy),
+		LastModifiedByType: (*CreatedByType)(new(s.LastModifiedByType)),
 		LastModifiedAt:     v1.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }

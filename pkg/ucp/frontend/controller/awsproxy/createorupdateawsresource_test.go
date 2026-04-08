@@ -30,7 +30,6 @@ import (
 	"github.com/google/uuid"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -49,7 +48,7 @@ func Test_CreateAWSResource(t *testing.T) {
 		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.Ptr(testAWSRequestToken),
+				RequestToken:    new(testAWSRequestToken),
 			},
 		}, nil)
 
@@ -156,8 +155,8 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 
-	expectedResponseObject := map[string]interface{}{
-		"error": map[string]interface{}{
+	expectedResponseObject := map[string]any{
+		"error": map[string]any{
 			"code":    "BadRequest",
 			"message": "failed to read region from request path: 'regions' not found",
 		},
@@ -287,7 +286,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Properties: to.Ptr(string(getResponseBodyBytes)),
+				Properties: new(string(getResponseBodyBytes)),
 			},
 		}, nil)
 

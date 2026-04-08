@@ -83,11 +83,11 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(resource.ID)
-	dst.Name = to.Ptr(resource.Name)
-	dst.Type = to.Ptr(resource.Type)
+	dst.ID = new(resource.ID)
+	dst.Name = new(resource.Name)
+	dst.Type = new(resource.Type)
 	dst.SystemData = fromSystemDataModel(resource.SystemData)
-	dst.Location = to.Ptr(resource.Location)
+	dst.Location = new(resource.Location)
 	dst.Tags = *to.StringMapPtr(resource.Tags)
 
 	switch resource.Properties.Kind {
@@ -97,9 +97,9 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: toOutputResourcesDataModel(resource.Properties.Status.OutputResources),
 			},
-			Kind:              to.Ptr(resource.Properties.Kind),
-			Application:       to.Ptr(resource.Properties.Application),
-			Resource:          to.Ptr(azProp.Resource),
+			Kind:              new(resource.Properties.Kind),
+			Application:       new(resource.Properties.Application),
+			Resource:          new(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
 		}
 		if azProp.Certificates != nil {
@@ -135,7 +135,7 @@ func toStringPtr(v string) *string {
 
 func fromKeyDataModel(dm *datamodel.KeyObjectProperties) *KeyObjectProperties {
 	return &KeyObjectProperties{
-		Name:    to.Ptr(dm.Name),
+		Name:    new(dm.Name),
 		Alias:   toStringPtr(dm.Alias),
 		Version: toStringPtr(dm.Version),
 	}
@@ -151,7 +151,7 @@ func toKeyDataModel(k *KeyObjectProperties) *datamodel.KeyObjectProperties {
 
 func fromSecretDataModel(dm *datamodel.SecretObjectProperties) *SecretObjectProperties {
 	return &SecretObjectProperties{
-		Name:     to.Ptr(dm.Name),
+		Name:     new(dm.Name),
 		Alias:    toStringPtr(dm.Alias),
 		Version:  toStringPtr(dm.Version),
 		Encoding: fromEncoding(dm.Encoding),
@@ -242,7 +242,7 @@ func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjec
 
 func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateObjectProperties {
 	prop := &CertificateObjectProperties{
-		Name:     to.Ptr(dm.Name),
+		Name:     new(dm.Name),
 		Alias:    toStringPtr(dm.Alias),
 		Version:  toStringPtr(dm.Version),
 		Encoding: fromEncoding(dm.Encoding),
@@ -251,22 +251,22 @@ func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateOb
 	if dm.Format != nil {
 		switch *dm.Format {
 		case datamodel.CertificateFormatPEM:
-			prop.Format = to.Ptr(CertificateFormatsPem)
+			prop.Format = new(CertificateFormatsPem)
 		case datamodel.CertificateFormatPFX:
-			prop.Format = to.Ptr(CertificateFormatsPfx)
+			prop.Format = new(CertificateFormatsPfx)
 		default:
-			prop.Format = to.Ptr(CertificateFormatsPem)
+			prop.Format = new(CertificateFormatsPem)
 		}
 	}
 
 	if dm.CertType != nil {
 		switch *dm.CertType {
 		case datamodel.CertificateTypeCertificate:
-			prop.CertType = to.Ptr(CertificateTypesCertificate)
+			prop.CertType = new(CertificateTypesCertificate)
 		case datamodel.CertificateTypePrivateKey:
-			prop.CertType = to.Ptr(CertificateTypesPrivatekey)
+			prop.CertType = new(CertificateTypesPrivatekey)
 		case datamodel.CertificateTypePublicKey:
-			prop.CertType = to.Ptr(CertificateTypesPublickey)
+			prop.CertType = new(CertificateTypesPublickey)
 		}
 	}
 

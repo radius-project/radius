@@ -65,7 +65,7 @@ func convertToSlice(obj any) ([]any, error) {
 	v := reflect.ValueOf(obj)
 
 	// Follow pointers at the top level
-	for v.Kind() == reflect.Ptr {
+	for v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return nil, fmt.Errorf("value is nil")
 		}

@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -47,8 +46,8 @@ func Test_GetAWSResource(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		output := cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Identifier: to.Ptr(testAWSResourceName),
-				Properties: to.Ptr(string(getResponseBodyBytes)),
+				Identifier: new(testAWSResourceName),
+				Properties: new(string(getResponseBodyBytes)),
 			},
 		}
 		return &output, nil

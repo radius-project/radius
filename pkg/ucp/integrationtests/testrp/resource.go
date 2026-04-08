@@ -28,7 +28,7 @@ type TestResource struct {
 	Name       *string `json:"name"`
 	Location   *string `json:"location"`
 	Tags       map[string]*string
-	Properties TestResourceProperties `json:"properties,omitempty"`
+	Properties TestResourceProperties `json:"properties"`
 }
 
 type TestResourceProperties struct {

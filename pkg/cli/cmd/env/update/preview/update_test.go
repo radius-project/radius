@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -147,15 +146,15 @@ func Test_Run(t *testing.T) {
 				recipePacks:             []string{"rp1", "rp2"},
 				providers: &v20250801preview.Providers{
 					Azure: &v20250801preview.ProvidersAzure{
-						SubscriptionID:    to.Ptr("00000000-0000-0000-0000-000000000000"),
-						ResourceGroupName: to.Ptr("testResourceGroup"),
+						SubscriptionID:    new("00000000-0000-0000-0000-000000000000"),
+						ResourceGroupName: new("testResourceGroup"),
 					},
 					Aws: &v20250801preview.ProvidersAws{
-						Region:    to.Ptr("us-west-2"),
-						AccountID: to.Ptr("testAWSAccount"),
+						Region:    new("us-west-2"),
+						AccountID: new("testAWSAccount"),
 					},
 					Kubernetes: &v20250801preview.ProvidersKubernetes{
-						Namespace: to.Ptr("test-namespace"),
+						Namespace: new("test-namespace"),
 					},
 				},
 			}

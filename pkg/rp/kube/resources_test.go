@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -103,7 +102,7 @@ func TestFetchNameSpaceFromEnvironmentResource(t *testing.T) {
 	envResource := model.EnvironmentResource{
 		Properties: &model.EnvironmentProperties{
 			Compute: &model.KubernetesCompute{
-				Namespace: to.Ptr(namespace),
+				Namespace: new(namespace),
 			},
 		},
 	}
@@ -128,7 +127,7 @@ func TestFetchNameSpaceFromApplicationResource(t *testing.T) {
 		Properties: &model.ApplicationProperties{
 			Status: &model.ResourceStatus{
 				Compute: &model.KubernetesCompute{
-					Namespace: to.Ptr(appNamespace),
+					Namespace: new(appNamespace),
 				},
 			},
 		},
@@ -266,7 +265,7 @@ func TestFetchNamespaceFromEnvironmentResourceV20250801(t *testing.T) {
 				Properties: &v20250801preview.EnvironmentProperties{
 					Providers: &v20250801preview.Providers{
 						Kubernetes: &v20250801preview.ProvidersKubernetes{
-							Namespace: to.Ptr(customNamespace),
+							Namespace: new(customNamespace),
 						},
 					},
 				},

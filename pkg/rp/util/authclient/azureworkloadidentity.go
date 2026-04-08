@@ -23,7 +23,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
-	"github.com/radius-project/radius/pkg/to"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
@@ -76,8 +75,8 @@ func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath
 
 	// Get refresh token from ACR by exchanging for the above AAD access token
 	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryHost, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
-		AccessToken: to.Ptr(aadToken.Token),
-		Tenant:      to.Ptr(wi.tenantID),
+		AccessToken: new(aadToken.Token),
+		Tenant:      new(wi.tenantID),
 	})
 
 	if err != nil {

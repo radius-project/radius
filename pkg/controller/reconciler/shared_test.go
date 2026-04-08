@@ -47,8 +47,8 @@ func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
 	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
 	radius.Update(func() {
 		radius.environments[id] = v20231001preview.EnvironmentResource{
-			ID:       to.Ptr(id),
-			Name:     to.Ptr(name),
+			ID:       new(id),
+			Name:     new(name),
 			Location: to.Ptr(v1.LocationGlobal),
 		}
 	})

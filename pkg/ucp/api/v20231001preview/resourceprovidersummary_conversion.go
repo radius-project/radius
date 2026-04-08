@@ -38,7 +38,7 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.Name = to.Ptr(dm.Name)
+	dst.Name = new(dm.Name)
 
 	dst.Locations = map[string]map[string]any{}
 	for locationName := range dm.Properties.Locations {

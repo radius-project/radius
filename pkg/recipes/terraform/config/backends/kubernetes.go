@@ -122,9 +122,9 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.
 // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func generateKubernetesBackendConfig(secretSuffix string) (map[string]interface{}, error) {
-	backend := map[string]interface{}{
-		BackendKubernetes: map[string]interface{}{
+func generateKubernetesBackendConfig(secretSuffix string) (map[string]any, error) {
+	backend := map[string]any{
+		BackendKubernetes: map[string]any{
 			"secret_suffix": secretSuffix,
 			"namespace":     RadiusNamespace,
 		},
@@ -135,7 +135,7 @@ func generateKubernetesBackendConfig(secretSuffix string) (map[string]interface{
 		// If in cluster config is not present, then use default kubeconfig file.
 		if errors.Is(err, rest.ErrNotInCluster) {
 			if value, found := backend[BackendKubernetes]; found {
-				backendValue := value.(map[string]interface{})
+				backendValue := value.(map[string]any)
 				backendValue["config_path"] = clientcmd.RecommendedHomeFile
 			}
 		} else {
@@ -143,7 +143,7 @@ func generateKubernetesBackendConfig(secretSuffix string) (map[string]interface{
 		}
 	} else {
 		if value, found := backend[BackendKubernetes]; found {
-			backendValue := value.(map[string]interface{})
+			backendValue := value.(map[string]any)
 			backendValue["in_cluster_config"] = true
 		}
 	}

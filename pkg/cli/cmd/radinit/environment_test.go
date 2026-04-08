@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -34,16 +33,16 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 	// Intentionally out of order to test sorting.
 	environments := []corerp.EnvironmentResource{
 		{
-			Name: to.Ptr(defaultEnvironmentName),
+			Name: new(defaultEnvironmentName),
 		},
 		{
-			Name: to.Ptr("test-env2"),
+			Name: new("test-env2"),
 		},
 		{
-			Name: to.Ptr("test-env3"),
+			Name: new("test-env3"),
 		},
 		{
-			Name: to.Ptr("test-env1"),
+			Name: new("test-env1"),
 		},
 	}
 
@@ -121,16 +120,16 @@ func Test_selectExistingEnvironment(t *testing.T) {
 	// Intentionally out of order to test sorting.
 	environments := []corerp.EnvironmentResource{
 		{
-			Name: to.Ptr(defaultEnvironmentName),
+			Name: new(defaultEnvironmentName),
 		},
 		{
-			Name: to.Ptr("test-env2"),
+			Name: new("test-env2"),
 		},
 		{
-			Name: to.Ptr("test-env3"),
+			Name: new("test-env3"),
 		},
 		{
-			Name: to.Ptr("test-env1"),
+			Name: new("test-env1"),
 		},
 	}
 
@@ -224,16 +223,16 @@ func Test_buildExistingEnvironmentList(t *testing.T) {
 	// Intentionally out of order to test sorting.
 	environments := []corerp.EnvironmentResource{
 		{
-			Name: to.Ptr("test-env2"),
+			Name: new("test-env2"),
 		},
 		{
-			Name: to.Ptr("test-env3"),
+			Name: new("test-env3"),
 		},
 		{
-			Name: to.Ptr("test-env1"),
+			Name: new("test-env1"),
 		},
 		{
-			Name: to.Ptr(defaultEnvironmentName),
+			Name: new(defaultEnvironmentName),
 		},
 	}
 

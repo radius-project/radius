@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -127,13 +128,7 @@ func (detail DeploymentErrorDetail) Matches(candidate *v1.ErrorDetails) bool {
 	// Details can match recursively.
 	if len(detail.Details) > 0 {
 		for _, subDetail := range detail.Details {
-			matched := false
-			for _, candidateSubDetail := range candidate.Details {
-				if subDetail.Matches(candidateSubDetail) {
-					matched = true
-					break
-				}
-			}
+			matched := slices.ContainsFunc(candidate.Details, subDetail.Matches)
 
 			if !matched {
 				return false
@@ -148,10 +143,8 @@ func (detail DeploymentErrorDetail) Matches(candidate *v1.ErrorDetails) bool {
 func ValidateSingleDetail(code string, detail DeploymentErrorDetail) func(*testing.T, *radcli.CLIError) {
 	return func(t *testing.T, err *radcli.CLIError) {
 		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
-		for _, candidate := range err.ErrorResponse.Error.Details {
-			if detail.Matches(candidate) {
-				return
-			}
+		if slices.ContainsFunc(err.ErrorResponse.Error.Details, detail.Matches) {
+			return
 		}
 
 		require.Fail(t, "failed to find a matching error detail")
@@ -163,10 +156,8 @@ func ValidateAnyDetails(code string, details []DeploymentErrorDetail) func(*test
 	return func(t *testing.T, err *radcli.CLIError) {
 		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
 		for _, detail := range details {
-			for _, candidate := range err.ErrorResponse.Error.Details {
-				if detail.Matches(candidate) {
-					return
-				}
+			if slices.ContainsFunc(err.ErrorResponse.Error.Details, detail.Matches) {
+				return
 			}
 		}
 
@@ -179,13 +170,7 @@ func ValidateAllDetails(code string, details []DeploymentErrorDetail) func(*test
 	return func(t *testing.T, err *radcli.CLIError) {
 		require.Equal(t, code, err.ErrorResponse.Error.Code, "unexpected error code")
 		for _, detail := range details {
-			matched := false
-			for _, candidate := range err.ErrorResponse.Error.Details {
-				if detail.Matches(candidate) {
-					matched = true
-					break
-				}
-			}
+			matched := slices.ContainsFunc(err.ErrorResponse.Error.Details, detail.Matches)
 
 			if !matched {
 				assert.Failf(t, "failed to find a matching error detail with Code: %s and Message: %s", detail.Code, detail.MessageContains)

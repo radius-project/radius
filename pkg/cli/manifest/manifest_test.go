@@ -19,7 +19,6 @@ package manifest
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +30,7 @@ func TestReadFileYAML(t *testing.T) {
 		},
 		Types: map[string]*ResourceType{
 			"testResources": {
-				Description: to.Ptr("This is a test resource type."),
+				Description: new("This is a test resource type."),
 				APIVersions: map[string]*ResourceTypeAPIVersion{
 					"2025-01-01-preview": {
 						Schema: map[string]any{},

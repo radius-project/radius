@@ -179,7 +179,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("cool-existing-env"),
+						Name: new("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, selectExistingEnvironmentCreateSentinel)
@@ -214,7 +214,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("cool-existing-env"),
+						Name: new("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -244,14 +244,14 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("cool-existing-env"),
+						Name: new("cool-existing-env"),
 						Properties: &corerp.EnvironmentProperties{
 							Providers: &corerp.Providers{
 								Azure: &corerp.ProvidersAzure{
-									Scope: to.Ptr("/subscriptions/123/resourceGroups/cool-rg"),
+									Scope: new("/subscriptions/123/resourceGroups/cool-rg"),
 								},
 								Aws: &corerp.ProvidersAws{
-									Scope: to.Ptr("/planes/aws/aws/accounts/123/regions/us-west-2"),
+									Scope: new("/planes/aws/aws/accounts/123/regions/us-west-2"),
 								},
 							},
 						},
@@ -425,7 +425,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("cool-existing-env"),
+						Name: new("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -492,7 +492,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - this will be chosen automatically
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("myenv"),
+						Name: new("myenv"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "myenv")
@@ -516,7 +516,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - this will be chosen automatically
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("default"),
+						Name: new("default"),
 					},
 				})
 				// No application
@@ -539,10 +539,10 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - user has to choose
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.Ptr("dev"),
+						Name: new("dev"),
 					},
 					{
-						Name: to.Ptr("prod"),
+						Name: new("prod"),
 					},
 				})
 
@@ -791,7 +791,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("ghcr.io/radius-project/dev/redis:latest"),
+						TemplatePath: new("ghcr.io/radius-project/dev/redis:latest"),
 					},
 				},
 			},
@@ -957,7 +957,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 			testEnvProperties := &corerp.EnvironmentProperties{
 				Compute: &corerp.KubernetesCompute{
-					Namespace: to.Ptr("defaultNamespace"),
+					Namespace: new("defaultNamespace"),
 				},
 				Providers: buildProviders(tc.azureProvider, tc.awsProvider),
 				Recipes:   tc.recipes,
@@ -987,8 +987,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 								Storage: &ucp.CredentialStorageProperties{
 									Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 								},
-								AccessKeyID:     to.Ptr(tc.awsProvider.AccessKey.AccessKeyID),
-								SecretAccessKey: to.Ptr(tc.awsProvider.AccessKey.SecretAccessKey),
+								AccessKeyID:     new(tc.awsProvider.AccessKey.AccessKeyID),
+								SecretAccessKey: new(tc.awsProvider.AccessKey.SecretAccessKey),
 							},
 						}).
 						Return(nil).
@@ -1002,7 +1002,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 								Storage: &ucp.CredentialStorageProperties{
 									Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 								},
-								RoleARN: to.Ptr(tc.awsProvider.IRSA.RoleARN),
+								RoleARN: new(tc.awsProvider.IRSA.RoleARN),
 							},
 						}).
 						Return(nil).
@@ -1019,7 +1019,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			outputSink := &output.MockOutput{}
 
 			helmInterface := helm.NewMockInterface(ctrl)
-			
+
 			// Verify that Set and SetFile values are passed to Helm
 			expectedClusterOptions := helm.CLIClusterOptions{
 				Radius: helm.ChartOptions{
@@ -1027,7 +1027,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					SetFileArgs: tc.setFile,
 				},
 			}
-			
+
 			helmInterface.EXPECT().
 				InstallRadius(context.Background(), gomock.Any(), "kind-kind").
 				DoAndReturn(func(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
@@ -1098,12 +1098,12 @@ func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *c
 	providers := &corerp.Providers{}
 	if azureProvider != nil {
 		providers.Azure = &corerp.ProvidersAzure{
-			Scope: to.Ptr(fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", azureProvider.SubscriptionID, azureProvider.ResourceGroup)),
+			Scope: new(fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", azureProvider.SubscriptionID, azureProvider.ResourceGroup)),
 		}
 	}
 	if awsProvider != nil {
 		providers.Aws = &corerp.ProvidersAws{
-			Scope: to.Ptr(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountID, awsProvider.Region)),
+			Scope: new(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountID, awsProvider.Region)),
 		}
 	}
 	return providers
@@ -1181,7 +1181,7 @@ type cloudProviderPromptMatcher struct {
 }
 
 // Matches implements gomock.Matcher
-func (*cloudProviderPromptMatcher) Matches(x interface{}) bool {
+func (*cloudProviderPromptMatcher) Matches(x any) bool {
 	return x == confirmCloudProviderPrompt || x == confirmCloudProviderAdditionalPrompt
 }
 
@@ -1452,7 +1452,7 @@ func setAzureCloudProviderServicePrincipal(prompter *prompt.MockInterface, clien
 		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
 	}
 	subscriptions.Default = &subscriptions.Subscriptions[0]
-	resourceGroups := []armresources.ResourceGroup{{Name: to.Ptr(provider.ResourceGroup)}}
+	resourceGroups := []armresources.ResourceGroup{{Name: new(provider.ResourceGroup)}}
 
 	setAzureSubscriptions(client, subscriptions)
 	setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
@@ -1474,7 +1474,7 @@ func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, clien
 		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
 	}
 	subscriptions.Default = &subscriptions.Subscriptions[0]
-	resourceGroups := []armresources.ResourceGroup{{Name: to.Ptr(provider.ResourceGroup)}}
+	resourceGroups := []armresources.ResourceGroup{{Name: new(provider.ResourceGroup)}}
 
 	setAzureSubscriptions(client, subscriptions)
 	setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
@@ -1508,8 +1508,8 @@ func setProgressHandler(prompter *prompt.MockInterface) {
 
 func getMockAWSRegions() []ec2_types.Region {
 	return []ec2_types.Region{
-		{RegionName: to.Ptr("test-region")},
-		{RegionName: to.Ptr("test-region-2")},
+		{RegionName: new("test-region")},
+		{RegionName: new("test-region-2")},
 	}
 }
 

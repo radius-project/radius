@@ -74,11 +74,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(env.ID)
-	dst.Name = to.Ptr(env.Name)
-	dst.Type = to.Ptr(env.Type)
+	dst.ID = new(env.ID)
+	dst.Name = new(env.Name)
+	dst.Type = new(env.Type)
 	dst.SystemData = fromSystemDataModel(&env.SystemData)
-	dst.Location = to.Ptr(env.Location)
+	dst.Location = new(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
@@ -101,7 +101,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	// Convert Simulated
 	if env.Properties.Simulated {
-		dst.Properties.Simulated = to.Ptr(env.Properties.Simulated)
+		dst.Properties.Simulated = new(env.Properties.Simulated)
 	}
 
 	return nil
@@ -160,16 +160,16 @@ func fromProvidersDataModel(providers *datamodel.Providers_v20250801preview) *Pr
 	// Convert Azure provider
 	if providers.Azure != nil {
 		result.Azure = &ProvidersAzure{
-			SubscriptionID:    to.Ptr(providers.Azure.SubscriptionId),
-			ResourceGroupName: to.Ptr(providers.Azure.ResourceGroupName),
+			SubscriptionID:    new(providers.Azure.SubscriptionId),
+			ResourceGroupName: new(providers.Azure.ResourceGroupName),
 		}
 
 		// Convert Identity
 		if providers.Azure.Identity != nil {
 			result.Azure.Identity = &IdentitySettings{
 				Kind:            fromIdentityKind(providers.Azure.Identity.Kind),
-				Resource:        to.Ptr(providers.Azure.Identity.Resource),
-				OidcIssuer:      to.Ptr(providers.Azure.Identity.OIDCIssuer),
+				Resource:        new(providers.Azure.Identity.Resource),
+				OidcIssuer:      new(providers.Azure.Identity.OIDCIssuer),
 				ManagedIdentity: to.ArrayofStringPtrs(providers.Azure.Identity.ManagedIdentity),
 			}
 		}
@@ -178,15 +178,15 @@ func fromProvidersDataModel(providers *datamodel.Providers_v20250801preview) *Pr
 	// Convert Kubernetes provider
 	if providers.Kubernetes != nil {
 		result.Kubernetes = &ProvidersKubernetes{
-			Namespace: to.Ptr(providers.Kubernetes.Namespace),
+			Namespace: new(providers.Kubernetes.Namespace),
 		}
 	}
 
 	// Convert AWS provider
 	if providers.AWS != nil {
 		result.Aws = &ProvidersAws{
-			Region:    to.Ptr(providers.AWS.Region),
-			AccountID: to.Ptr(providers.AWS.AccountID),
+			Region:    new(providers.AWS.Region),
+			AccountID: new(providers.AWS.AccountID),
 		}
 	}
 
@@ -223,21 +223,21 @@ func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState
 func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningState {
 	switch state {
 	case v1.ProvisioningStateProvisioning:
-		return to.Ptr(ProvisioningStateProvisioning)
+		return new(ProvisioningStateProvisioning)
 	case v1.ProvisioningStateUpdating:
-		return to.Ptr(ProvisioningStateUpdating)
+		return new(ProvisioningStateUpdating)
 	case v1.ProvisioningStateDeleting:
-		return to.Ptr(ProvisioningStateDeleting)
+		return new(ProvisioningStateDeleting)
 	case v1.ProvisioningStateAccepted:
-		return to.Ptr(ProvisioningStateAccepted)
+		return new(ProvisioningStateAccepted)
 	case v1.ProvisioningStateSucceeded:
-		return to.Ptr(ProvisioningStateSucceeded)
+		return new(ProvisioningStateSucceeded)
 	case v1.ProvisioningStateFailed:
-		return to.Ptr(ProvisioningStateFailed)
+		return new(ProvisioningStateFailed)
 	case v1.ProvisioningStateCanceled:
-		return to.Ptr(ProvisioningStateCanceled)
+		return new(ProvisioningStateCanceled)
 	default:
-		return to.Ptr(ProvisioningStateSucceeded)
+		return new(ProvisioningStateSucceeded)
 	}
 }
 
@@ -265,17 +265,17 @@ func toIdentityKindDataModel(kind *IdentitySettingKind) rpv1.IdentitySettingKind
 func fromIdentityKind(kind rpv1.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
 	case rpv1.IdentityNone:
-		return to.Ptr(IdentitySettingKindUndefined)
+		return new(IdentitySettingKindUndefined)
 	case rpv1.AzureIdentityWorkload:
-		return to.Ptr(IdentitySettingKindAzureComWorkload)
+		return new(IdentitySettingKindAzureComWorkload)
 	case rpv1.UserAssigned:
-		return to.Ptr(IdentitySettingKindUserAssigned)
+		return new(IdentitySettingKindUserAssigned)
 	case rpv1.SystemAssigned:
-		return to.Ptr(IdentitySettingKindSystemAssigned)
+		return new(IdentitySettingKindSystemAssigned)
 	case rpv1.SystemAssignedUserAssigned:
-		return to.Ptr(IdentitySettingKindSystemAssignedUserAssigned)
+		return new(IdentitySettingKindSystemAssignedUserAssigned)
 	default:
-		return to.Ptr(IdentitySettingKindUndefined)
+		return new(IdentitySettingKindUndefined)
 	}
 }
 
@@ -285,11 +285,11 @@ func fromSystemDataModel(systemData *v1.SystemData) *SystemData {
 	}
 
 	return &SystemData{
-		CreatedBy:          to.Ptr(systemData.CreatedBy),
-		CreatedByType:      (*CreatedByType)(to.Ptr(systemData.CreatedByType)),
+		CreatedBy:          new(systemData.CreatedBy),
+		CreatedByType:      (*CreatedByType)(new(systemData.CreatedByType)),
 		CreatedAt:          v1.UnmarshalTimeString(systemData.CreatedAt),
-		LastModifiedBy:     to.Ptr(systemData.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(to.Ptr(systemData.LastModifiedByType)),
+		LastModifiedBy:     new(systemData.LastModifiedBy),
+		LastModifiedByType: (*CreatedByType)(new(systemData.LastModifiedByType)),
 		LastModifiedAt:     v1.UnmarshalTimeString(systemData.LastModifiedAt),
 	}
 }

@@ -132,7 +132,7 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 
 					// Parse the JSON output to verify API version still exists
 					t.Logf("CLI output for preserved resource type %s: %s", resourceType, output)
-					var resourceTypeData map[string]interface{}
+					var resourceTypeData map[string]any
 					err = json.Unmarshal([]byte(output), &resourceTypeData)
 					require.NoError(t, err)
 
@@ -143,11 +143,11 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 				output, err := cli.RunCommand(ctx, []string{"resource-provider", "show", resourceProviderName, "--output", "json"})
 				require.NoError(t, err)
 
-				var providerData map[string]interface{}
+				var providerData map[string]any
 				err = json.Unmarshal([]byte(output), &providerData)
 				require.NoError(t, err)
 
-				resourceTypes, ok := providerData["resourceTypes"].(map[string]interface{})
+				resourceTypes, ok := providerData["resourceTypes"].(map[string]any)
 				require.True(t, ok, "resourceTypes should exist in resource provider after deletion")
 
 				// Verify deleted resource type is removed from summary
@@ -158,10 +158,10 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 				// Verify preserved resource types still have API versions in summary
 				for _, resourceType := range resourceTypesToPreserve {
 					resourceTypeName := resourceType[len(resourceProviderName)+1:] // Remove "Test.Resources/" prefix
-					resourceTypeEntry, ok := resourceTypes[resourceTypeName].(map[string]interface{})
+					resourceTypeEntry, ok := resourceTypes[resourceTypeName].(map[string]any)
 					require.True(t, ok, "Preserved resource type %s should exist in provider summary", resourceTypeName)
 
-					apiVersions, ok := resourceTypeEntry["apiVersions"].(map[string]interface{})
+					apiVersions, ok := resourceTypeEntry["apiVersions"].(map[string]any)
 					require.True(t, ok, "apiVersions should exist for preserved resource type %s", resourceTypeName)
 
 					_, hasSharedVersion := apiVersions[sharedAPIVersion]

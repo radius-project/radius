@@ -28,15 +28,15 @@ import (
 
 func TestEnqueueDequeueMulti(t *testing.T) {
 	q := NewInMemQueue(messageLockDuration)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		q.Enqueue(&queue.Message{
-			Data: []byte(fmt.Sprintf("test%d", i)),
+			Data: fmt.Appendf(nil, "test%d", i),
 		})
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		msg := q.Dequeue()
-		require.Equal(t, []byte(fmt.Sprintf("test%d", i)), msg.Data)
+		require.Equal(t, fmt.Appendf(nil, "test%d", i), msg.Data)
 
 		err := q.Complete(msg)
 		require.NoError(t, err)

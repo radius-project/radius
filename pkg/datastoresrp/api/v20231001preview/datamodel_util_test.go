@@ -123,7 +123,7 @@ func TestToResourcesDataModel(t *testing.T) {
 	}{
 		{
 			DMResources:        []*portableresources.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
-			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+			VersionedResources: []*ResourceReference{{ID: new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
 		},
 		{
 			DMResources:        []*portableresources.ResourceReference{},
@@ -145,7 +145,7 @@ func TestFromResourcesDataModel(t *testing.T) {
 	}{
 		{
 			DMResources:        []*portableresources.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
-			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+			VersionedResources: []*ResourceReference{{ID: new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: new("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
 		},
 		{
 			DMResources:        []*portableresources.ResourceReference{},
@@ -225,8 +225,8 @@ func Test_fromRecipeStatus(t *testing.T) {
 			TemplateVersion: "1.0",
 		}, &RecipeStatus{
 			TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
-			TemplatePath:    to.Ptr("/path/to/template.tf"),
-			TemplateVersion: to.Ptr("1.0"),
+			TemplatePath:    new("/path/to/template.tf"),
+			TemplateVersion: new("1.0"),
 		}},
 		{nil, nil},
 		{&rpv1.RecipeStatus{
@@ -234,7 +234,7 @@ func Test_fromRecipeStatus(t *testing.T) {
 			TemplatePath: "/path/to/template.bicep",
 		}, &RecipeStatus{
 			TemplateKind:    to.Ptr(recipes.TemplateKindBicep),
-			TemplatePath:    to.Ptr("/path/to/template.bicep"),
+			TemplatePath:    new("/path/to/template.bicep"),
 			TemplateVersion: nil,
 		}},
 	}
@@ -262,7 +262,7 @@ func TestToRecipeDataModel(t *testing.T) {
 		},
 		{
 			&Recipe{
-				Name: to.Ptr("test"),
+				Name: new("test"),
 				Parameters: map[string]any{
 					"foo": "bar",
 				},

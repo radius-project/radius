@@ -55,8 +55,8 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		// Get Resource Group by calling lower case URL.
 		rg, statusCode := getResourceGroup(t, roundTripper, strings.ToLower(rgURL))
 		expectedResourceGroup := v20231001preview.ResourceGroupResource{
-			ID:       to.Ptr(rgID),
-			Name:     to.Ptr("test-RG"),
+			ID:       new(rgID),
+			Name:     new("test-RG"),
 			Tags:     map[string]*string{},
 			Type:     to.Ptr(resourcegroups.ResourceGroupType),
 			Location: to.Ptr(v1.LocationGlobal),

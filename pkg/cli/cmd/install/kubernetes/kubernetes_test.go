@@ -97,7 +97,7 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Installing Radius version %s to namespace: %s...",
-				Params: []interface{}{"edge", "radius-system"},
+				Params: []any{"edge", "radius-system"},
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
@@ -170,7 +170,7 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Reinstalling Radius version %s to namespace: %s...",
-				Params: []interface{}{"edge", "radius-system"},
+				Params: []any{"edge", "radius-system"},
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
@@ -213,7 +213,7 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Installing Radius version %s to namespace: %s...",
-				Params: []interface{}{"edge", "radius-system"},
+				Params: []any{"edge", "radius-system"},
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
@@ -252,7 +252,7 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Installing Radius version %s to namespace: %s...",
-				Params: []interface{}{"edge", "radius-system"},
+				Params: []any{"edge", "radius-system"},
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
@@ -291,7 +291,7 @@ func Test_Run(t *testing.T) {
 		expectedWrites := []any{
 			output.LogOutput{
 				Format: "Installing Radius version %s to namespace: %s...",
-				Params: []interface{}{"edge", "radius-system"},
+				Params: []any{"edge", "radius-system"},
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)

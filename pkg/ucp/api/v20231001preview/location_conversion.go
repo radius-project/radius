@@ -58,14 +58,14 @@ func (dst *LocationResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(dm.ID)
-	dst.Name = to.Ptr(dm.Name)
+	dst.ID = new(dm.ID)
+	dst.Name = new(dm.Name)
 	dst.Type = to.Ptr(datamodel.LocationResourceType)
 
 	// NOTE: this is a child resource. It does not have a location, systemData, or tags.
 
 	dst.Properties = &LocationProperties{
-		ProvisioningState: to.Ptr(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
+		ProvisioningState: new(ProvisioningState(dm.InternalMetadata.AsyncProvisioningState)),
 		Address:           dm.Properties.Address,
 		ResourceTypes:     map[string]*LocationResourceType{},
 	}
