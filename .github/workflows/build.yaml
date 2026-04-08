@@ -184,6 +184,7 @@ jobs:
     name: Build Check
     needs: [build-and-push-cli]
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Check build matrix results
         if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
@@ -498,6 +499,7 @@ jobs:
     name: Build Summary
     needs: [build-check, build-and-push-images, build-and-push-bicep-types]
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions: {}
     steps:
       - name: Check all build jobs
