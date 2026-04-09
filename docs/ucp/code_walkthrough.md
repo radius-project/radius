@@ -10,16 +10,16 @@ The different data stores that UCP supports can be found under pkg/ucp/store. Cu
 <br/><br/>
 
 ## UCP Routes and Controllers
-The different routes registered with UCP can be found in pkg/ucp/frontend/api/routes.go. The different controllers that service the routes can be found under pkg/ucp/frontend/controller. The methods that implement CRUDL operations for different UCP resources can be found in the corresponding controller file. 
+The different routes registered with UCP can be found in pkg/ucp/frontend/api/routes.go. The different controllers that service the routes can be found under pkg/ucp/frontend/controller. The methods that implement CRUDL operations for different UCP resources can be found in the corresponding controller file.
 
-UCP implements a reverse proxy to forward incoming requests to differents RPs such as Applications.Core under Radius RP. This code can be found in pkg/ucp/frontend/controller/planes/proxyplane.go.
+UCP implements a reverse proxy to forward incoming requests to different RPs such as Applications.Core under Radius RP. This code can be found in pkg/ucp/frontend/controller/planes/proxyplane.go.
 
 For proxying requests to the AWS plane, UCP needs to perform request translation from ARM-RPC protocol to AWS Cloud control format. This code can be found under pkg/ucp/frontend/controller/awsproxy.
 
 <br/><br/>
 
 ## UCP Resource Definitions
-The swagger defination for UCP resources are defined in swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/ucp.json.
+The swagger definition for UCP resources are defined in swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/ucp.json.
 
 <br/><br/>
 

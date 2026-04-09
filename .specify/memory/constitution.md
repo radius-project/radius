@@ -118,7 +118,7 @@ Every feature MUST include comprehensive testing across appropriate layers for i
 
 - **Build verification**: Hugo builds complete without errors.
 - **Link validation**: All internal and external links resolve correctly.
-- **Spelling validation**: Use `pyspelling` to catch typos and maintain consistency.
+- **Spelling validation**: Use `cspell` to catch typos and maintain consistency.
 - **Example validation**: All code examples build and run successfully.
 
 Tests MUST be written during feature implementation, not as an afterthought. Code coverage reports are reviewed in PRs to ensure adequate test coverage. New features MUST NOT be merged without corresponding tests at appropriate pyramid levels. Tests MUST fail before implementation (Red-Green-Refactor cycle).
@@ -194,7 +194,7 @@ All documentation MUST follow the [Diátaxis](https://diataxis.fr/) framework or
 
 ### XV. Documentation Contribution Standards (Docs)
 
-All documentation contributions MUST build successfully with Hugo (`hugo serve`). Markdown MUST pass markdownlint validation. Spelling MUST be validated with pyspelling. Links MUST be validated before merging. CLI documentation MUST be auto-generated from Cobra command definitions in the radius repo. API documentation MUST be auto-generated from OpenAPI specs. Manually-written docs MUST be kept in sync with code through CI validation.
+All documentation contributions MUST build successfully with Hugo (`hugo serve`). Markdown MUST pass markdownlint validation. Spelling MUST be validated with cspell. Links MUST be validated before merging. CLI documentation MUST be auto-generated from Cobra command definitions in the radius repo. API documentation MUST be auto-generated from OpenAPI specs. Manually-written docs MUST be kept in sync with code through CI validation.
 
 **Rationale**: Documentation quality directly impacts user success and satisfaction. Automated validation catches errors early while auto-generation from code ensures documentation stays accurate as the platform evolves.
 
@@ -260,7 +260,7 @@ For local Kubernetes testing in radius repo, prefer **k3d** as the primary tool.
 **For docs repo**:
 
 - Hugo extended version for local documentation builds
-- Python with pyspelling for spell checking
+- Node.js with cspell for spell checking
 - Text editor with Markdown support
 
 ### Code Quality Standards
@@ -294,7 +294,7 @@ For local Kubernetes testing in radius repo, prefer **k3d** as the primary tool.
 
 - **Formatting**: All Markdown SHOULD follow consistent style conventions
 - **Linting**: All Markdown MUST pass markdownlint validation (in docs repo)
-- **Spelling**: All documentation MUST pass pyspelling validation (in docs repo)
+- **Spelling**: All documentation MUST pass cspell validation (in docs repo)
 - **Security**: CodeQL security analysis findings MUST be addressed or explicitly justified with rationale
 - **Generated Code**: All generated code (OpenAPI specs, Go types from specs, mocks via mockgen, Kubernetes API types via controller-gen) MUST be checked into source control and kept up-to-date via `make generate`
 - **Dependencies**: Submodules (e.g., `bicep-types`) MUST be updated with `git submodule update --init --recursive` before building

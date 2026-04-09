@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -14,7 +14,14 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-ARROW := \033[34;1m=>\033[0m
+##@ Spellcheck
 
-# order matters for these
-include build/help.mk build/version.mk build/build.mk build/util.mk build/generate.mk build/test.mk build/docker.mk build/artifacts.mk build/recipes.mk build/install.mk build/db.mk build/prettier.mk build/spellcheck.mk build/debug.mk build/workflow.mk
+.PHONY: spellcheck
+spellcheck: ## Runs spellcheck on the repository.
+	@echo "$(ARROW) Running spellcheck..."
+	@echo ""
+	@command -v cspell >/dev/null 2>&1 || { \
+		echo "cspell is required for spellcheck. Install it with 'npm install -g cspell', then try again."; \
+		exit 1; \
+	}
+	@cspell lint --config ./.github/configs/.cspell.yml --no-progress --dot "**/*.md"

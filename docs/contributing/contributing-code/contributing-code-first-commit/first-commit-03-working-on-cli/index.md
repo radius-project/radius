@@ -8,7 +8,7 @@ This step will walk you through making a cosmetic change to the `rad` CLI. This 
 
 First, make sure you've clone the repo to your computer and can open it in your editor of choice.
 
-If you're using VS Code, entring `code .` at the command line from the root directory of the repository will open everything you need.
+If you're using VS Code, enter `code .` at the command line from the root directory of the repository will open everything you need.
 
 Open the file `cmd/rad/main.go`. This is the entry point of the `rad` CLI.
 

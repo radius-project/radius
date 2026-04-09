@@ -17,7 +17,8 @@ import os from "os";
 import path from "path";
 import { existsSync } from "fs";
 import { mkdir, rm, writeFile, readFile } from "fs/promises";
-import yargs from "yargs";
+import yargs from "yargs/yargs";
+import { hideBin } from "yargs/helpers";
 import { Dictionary } from "lodash";
 import {
   TypeFile,
@@ -49,7 +50,7 @@ const extensionDir = path.resolve(`${rootDir}/src/autorest.bicep/`);
 const autorestBinary = os.platform() === "win32" ? "autorest.cmd" : "autorest";
 const defaultOutDir = path.resolve(`${rootDir}/generated`);
 
-const argsConfig = yargs
+const argsConfig = yargs(hideBin(process.argv))
   .strict()
   .option("specs-dir", {
     type: "string",
