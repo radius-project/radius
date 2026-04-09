@@ -187,7 +187,7 @@ func (c *UCPCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, 
 		}
 
 		if assumeRoleOutput.Credentials == nil {
-			return aws.Credentials{}, fmt.Errorf("AssumeRole returned nil credentials")
+			return aws.Credentials{}, fmt.Errorf("assumeRole returned nil credentials")
 		}
 		logger.Info("Successfully re-assumed role for clean session credentials")
 
