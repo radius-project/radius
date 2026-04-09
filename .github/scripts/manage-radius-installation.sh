@@ -108,7 +108,7 @@ verify_resource_types_available() {
     echo "Verifying resource types are available..."
 
     # Ensure a workspace exists so rad CLI can reach the cluster.
-    rad workspace create kubernetes --force >/dev/null 2>&1 || true
+    rad workspace create kubernetes --force
 
     # List registered resource providers. Applications.Core must be present
     # for environment/container operations to work.
@@ -231,7 +231,6 @@ main() {
             fi
             install_radius
         else
-            verify_manifests_registered
             save_skip_resources_list
         fi
     else

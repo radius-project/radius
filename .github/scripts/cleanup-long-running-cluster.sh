@@ -47,7 +47,7 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
 
         # If a skip-resource file is available, use it to protect system resources.
         if [ -n "$SKIP_RESOURCE_FILE" ] && [ -f "$SKIP_RESOURCE_FILE" ]; then
-            if grep -q "$r" "$SKIP_RESOURCE_FILE"; then
+            if grep -F -x -q -- "$r" "$SKIP_RESOURCE_FILE"; then
                 echo "skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"
             else
                 echo "deleting resource: $r"
