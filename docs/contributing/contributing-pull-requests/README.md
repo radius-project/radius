@@ -86,15 +86,15 @@ If CodeQL fails due to your changes, please work with the maintainers to resolve
 
 ### Spell checking
 
-The PR check workflow runs a spell checker ([pyspelling](https://pypi.org/project/pyspelling/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but pyspelling doesn't know them.
+The PR check workflow runs a spell checker ([cspell](https://cspell.org/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but cspell doesn't know them.
 
-If you install pyspelling locally you can run the spell check on your machine with this command (from the root folder of the repo):
+If you install cspell locally you can run the spell check on your machine with this command (from the root folder of the repo):
 
 ```bash
 make spellcheck
 ```
 
-Note: Pyspelling has a dependency on [Aspell](http://aspell.net/), which must also be present on your system to run pyspelling.
+Note: cspell requires [Node.js](https://nodejs.org/). Install it globally with `npm install -g cspell`.
 
 ## Code review
 

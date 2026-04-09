@@ -153,6 +153,7 @@ jobs:
     name: CodeQL
     needs: codeql
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: ✅ OK
         if: ${{ !(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}

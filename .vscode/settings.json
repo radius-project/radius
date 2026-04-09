@@ -19,5 +19,8 @@
     "RADIUS_DEV_ROOT": "${workspaceFolder}/debug_files"
   },
   "makefile.configureOnOpen": false,
-  "typespec.tsp-server.path": "${workspaceFolder}/typespec/node_modules/@typespec/compiler"
+  "typespec.tsp-server.path": "${workspaceFolder}/typespec/node_modules/@typespec/compiler",
+  "cSpell.import": [
+    "./.github/configs/.cspell.yml"
+  ]
 }
