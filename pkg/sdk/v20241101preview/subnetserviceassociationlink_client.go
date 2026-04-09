@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,7 +20,7 @@ import (
 
 type SubnetServiceAssociationLinkClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewSubnetServiceAssociationLinkClient creates a new instance of SubnetServiceAssociationLinkClient with the specified values.
@@ -30,7 +29,7 @@ type SubnetServiceAssociationLinkClient struct {
 func NewSubnetServiceAssociationLinkClient(subscriptionID string, pl runtime.Pipeline) *SubnetServiceAssociationLinkClient {
 	client := &SubnetServiceAssociationLinkClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -72,7 +71,7 @@ func (client *SubnetServiceAssociationLinkClient) deleteOperation(ctx context.Co
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	 return resp, nil
+	return resp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -91,7 +90,7 @@ func (client *SubnetServiceAssociationLinkClient) deleteCreateRequest(ctx contex
 		return nil, errors.New("parameter subnetName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{subnetName}", url.PathEscape(subnetName))
-	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -101,4 +100,3 @@ func (client *SubnetServiceAssociationLinkClient) deleteCreateRequest(ctx contex
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
-

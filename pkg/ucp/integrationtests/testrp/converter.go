@@ -89,14 +89,14 @@ func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(tr.ID)
-	dst.Name = to.Ptr(tr.Name)
-	dst.Type = to.Ptr(tr.Type)
-	dst.Location = to.Ptr(tr.Location)
+	dst.ID = new(tr.ID)
+	dst.Name = new(tr.Name)
+	dst.Type = new(tr.Type)
+	dst.Location = new(tr.Location)
 	dst.Tags = *to.StringMapPtr(tr.Tags)
 	dst.Properties = TestResourceProperties{
 		Message:           tr.Properties.Message,
-		ProvisioningState: to.Ptr[string](string(tr.InternalMetadata.AsyncProvisioningState)),
+		ProvisioningState: new(string(tr.InternalMetadata.AsyncProvisioningState)),
 	}
 
 	return nil

@@ -67,7 +67,7 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 	orgPrefix := to.String(subnet.Properties.AddressPrefix)
 
 	var lastErr error
-	for retry := 0; retry < retryCount; retry++ {
+	for retry := range retryCount {
 		// if subnet.Properties.AddressPrefix is nil, we need to find an available subnet
 		if orgPrefix == "" {
 			// TODO: for loop until we find an available subnet
@@ -105,7 +105,7 @@ func (handler *azureVirtualNetworkSubnetHandler) Put(ctx context.Context, option
 				return nil, errors.New("no available subnet")
 			}
 
-			subnet.Properties.AddressPrefix = to.Ptr(subnetPrefix)
+			subnet.Properties.AddressPrefix = new(subnetPrefix)
 		}
 
 		poller, err := subnetClient.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, to.String(subnet.Name), *subnet, nil)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"strings"
@@ -628,9 +629,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 
 	// Get  dependent resource computedValues
 	computedValues := map[string]any{}
-	for k, v := range dependency.ComputedValues {
-		computedValues[k] = v
-	}
+	maps.Copy(computedValues, dependency.ComputedValues)
 
 	// Get  dependent resource secretValues
 	secretValues, err := dp.FetchSecrets(ctx, dependency)
@@ -639,9 +638,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	}
 
 	// Make dependent resource secretValues as part of computedValues
-	for k, v := range secretValues {
-		computedValues[k] = v
-	}
+	maps.Copy(computedValues, secretValues)
 
 	// Now build the renderer dependency out of these collected dependencies
 	rendererDependency := renderers.RendererDependency{

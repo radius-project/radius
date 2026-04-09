@@ -74,11 +74,11 @@ func Test_TrackedResources(t *testing.T) {
 	})
 
 	t.Run("Create resources", func(t *testing.T) {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			a, err := ac.CreateOrUpdate(ctx, fmt.Sprintf("app-%d", i), corerp.ApplicationResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &corerp.ApplicationProperties{
-					Environment: to.Ptr(options.Workspace.Environment),
+					Environment: new(options.Workspace.Environment),
 				},
 			}, nil)
 			require.NoError(t, err)
@@ -88,8 +88,8 @@ func Test_TrackedResources(t *testing.T) {
 			poller, err := exc.BeginCreateOrUpdate(ctx, fmt.Sprintf("ex-%d", i), corerp.ExtenderResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &corerp.ExtenderProperties{
-					Environment:          to.Ptr(options.Workspace.Environment),
-					Application:          to.Ptr(*a.ID),
+					Environment:          new(options.Workspace.Environment),
+					Application:          new(*a.ID),
 					ResourceProvisioning: to.Ptr(corerp.ResourceProvisioningManual),
 				},
 			}, nil)
@@ -104,16 +104,16 @@ func Test_TrackedResources(t *testing.T) {
 	t.Run("Resource group contains resources", func(t *testing.T) {
 		expected := []*ucp.GenericResource{}
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			expected = append(expected, &ucp.GenericResource{
-				ID:   to.Ptr(resourceGroupID.Append(resources.TypeSegment{Type: "Applications.Core/applications", Name: fmt.Sprintf("app-%d", i)}).String()),
-				Name: to.Ptr(fmt.Sprintf("app-%d", i)),
-				Type: to.Ptr("Applications.Core/applications"),
+				ID:   new(resourceGroupID.Append(resources.TypeSegment{Type: "Applications.Core/applications", Name: fmt.Sprintf("app-%d", i)}).String()),
+				Name: new(fmt.Sprintf("app-%d", i)),
+				Type: new("Applications.Core/applications"),
 			})
 			expected = append(expected, &ucp.GenericResource{
-				ID:   to.Ptr(resourceGroupID.Append(resources.TypeSegment{Type: "Applications.Core/extenders", Name: fmt.Sprintf("ex-%d", i)}).String()),
-				Name: to.Ptr(fmt.Sprintf("ex-%d", i)),
-				Type: to.Ptr("Applications.Core/extenders"),
+				ID:   new(resourceGroupID.Append(resources.TypeSegment{Type: "Applications.Core/extenders", Name: fmt.Sprintf("ex-%d", i)}).String()),
+				Name: new(fmt.Sprintf("ex-%d", i)),
+				Type: new("Applications.Core/extenders"),
 			})
 		}
 
@@ -139,7 +139,7 @@ func Test_TrackedResources(t *testing.T) {
 	})
 
 	t.Run("Delete resources", func(t *testing.T) {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			// Delete in reverse order to make sure the extender is deleted before the application it
 			// belongs to.
 			poller, err := exc.BeginDelete(ctx, fmt.Sprintf("ex-%d", i), nil)

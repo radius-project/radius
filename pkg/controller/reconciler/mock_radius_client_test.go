@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
@@ -404,7 +403,7 @@ func (rc *mockResourceClient) ListSecrets(ctx context.Context, resourceName stri
 	data := obj.(map[string]string)
 	secrets := map[string]*string{}
 	for k, v := range data {
-		secrets[k] = to.Ptr(v)
+		secrets[k] = new(v)
 	}
 
 	return generated.GenericResourcesClientListSecretsResponse{Value: secrets}, nil

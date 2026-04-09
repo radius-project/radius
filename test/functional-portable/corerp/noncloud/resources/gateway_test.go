@@ -406,15 +406,15 @@ func Test_Gateway_Failure(t *testing.T) {
 		},
 	},
 		unstructured.Unstructured{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Secret",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":      secret,
 					"namespace": "mynamespace",
 				},
 				"type": "Opaque",
-				"data": map[string]interface{}{
+				"data": map[string]any{
 					"tls.crt": "",
 					"tls.key": "",
 				},

@@ -40,7 +40,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testcontext"
 	appsv1 "k8s.io/api/apps/v1"
@@ -502,8 +501,8 @@ func Test_Run(t *testing.T) {
 		Properties: &v20231001preview.ApplicationProperties{
 			Status: &v20231001preview.ResourceStatus{
 				Compute: &v20231001preview.KubernetesCompute{
-					Kind:      to.Ptr("kubernetes"),
-					Namespace: to.Ptr("test-namespace-app"),
+					Kind:      new("kubernetes"),
+					Namespace: new("test-namespace-app"),
 				},
 			},
 		},
@@ -668,8 +667,8 @@ func Test_Run_NoDashboard(t *testing.T) {
 		Properties: &v20231001preview.ApplicationProperties{
 			Status: &v20231001preview.ResourceStatus{
 				Compute: &v20231001preview.KubernetesCompute{
-					Kind:      to.Ptr("kubernetes"),
-					Namespace: to.Ptr("test-namespace-app"),
+					Kind:      new("kubernetes"),
+					Namespace: new("test-namespace-app"),
 				},
 			},
 		},
@@ -772,7 +771,7 @@ type PortForwardOptionsMatcher struct {
 	LabelSelector labels.Selector
 }
 
-func (p PortForwardOptionsMatcher) Matches(x interface{}) bool {
+func (p PortForwardOptionsMatcher) Matches(x any) bool {
 	if s, ok := x.(portforward.Options); ok {
 		return p.LabelSelector.String() == s.LabelSelector.String()
 	}

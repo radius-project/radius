@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -48,7 +47,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String("AWS::Kinesis::Stream"),
-		Schema:   to.Ptr(string(serialized)),
+		Schema:   new(string(serialized)),
 	}
 
 	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
@@ -63,8 +62,8 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		output := cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Identifier: to.Ptr(testAWSResourceName),
-				Properties: to.Ptr(string(getResponseBodyBytes)),
+				Identifier: new(testAWSResourceName),
+				Properties: new(string(getResponseBodyBytes)),
 			},
 		}
 		return &output, nil

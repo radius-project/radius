@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
@@ -144,7 +143,7 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: to.Ptr(true),
+			SkipNameValidation: new(true),
 		},
 		Metrics: server.Options{
 			BindAddress: "0",

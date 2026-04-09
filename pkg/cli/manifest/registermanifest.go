@@ -279,7 +279,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 
 	locationResource := locationResourceGetResponse.LocationResource
 	if address != "" {
-		locationResource.Properties.Address = to.Ptr(address)
+		locationResource.Properties.Address = new(address)
 	}
 
 	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
@@ -388,7 +388,7 @@ func createResourceProviderResource(ctx context.Context, clientFactory *v2023100
 		resourceProviderPoller, err := clientFactory.NewResourceProvidersClient().BeginCreateOrUpdate(
 			ctx, planeName, resourceProvider.Namespace,
 			v20231001preview.ResourceProviderResource{
-				Location:   to.Ptr(locationName),
+				Location:   new(locationName),
 				Properties: &v20231001preview.ResourceProviderProperties{},
 			}, nil)
 		if err != nil {
@@ -408,7 +408,7 @@ func createLocationResource(ctx context.Context, clientFactory *v20231001preview
 	}
 
 	if address != "" {
-		locationResource.Properties.Address = to.Ptr(address)
+		locationResource.Properties.Address = new(address)
 	}
 
 	return retryOperation(ctx, func() error {

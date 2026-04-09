@@ -101,7 +101,7 @@ func createResourceGroupIfNotExists(ctx context.Context, radius RadiusClient, re
 
 	resourceGroup := ucpv20231001preview.ResourceGroupResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Name:       to.Ptr(id.Name()),
+		Name:       new(id.Name()),
 		Properties: &ucpv20231001preview.ResourceGroupProperties{},
 	}
 
@@ -135,13 +135,13 @@ func createApplicationIfNotExists(ctx context.Context, radius RadiusClient, envi
 
 	app := corerpv20231001preview.ApplicationResource{
 		Location: to.Ptr(v1.LocationGlobal),
-		Name:     to.Ptr(id.Name()),
+		Name:     new(id.Name()),
 		Properties: &corerpv20231001preview.ApplicationProperties{
-			Environment: to.Ptr(environmentID),
+			Environment: new(environmentID),
 			Extensions: []corerpv20231001preview.ExtensionClassification{
 				&corerpv20231001preview.KubernetesNamespaceExtension{
-					Kind:      to.Ptr("kubernetesNamespace"),
-					Namespace: to.Ptr(id.Name()),
+					Kind:      new("kubernetesNamespace"),
+					Namespace: new(id.Name()),
 				},
 			},
 		},
@@ -192,7 +192,7 @@ func createOrUpdateResource(ctx context.Context, radius RadiusClient, resourceID
 
 	body := generated.GenericResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Name:       to.Ptr(id.Name()),
+		Name:       new(id.Name()),
 		Properties: properties,
 	}
 	poller, err := radius.Resources(id.RootScope(), id.Type()).BeginCreateOrUpdate(ctx, id.Name(), body, nil)
@@ -263,7 +263,7 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 
 	body := corerpv20231001preview.ContainerResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Name:       to.Ptr(id.Name()),
+		Name:       new(id.Name()),
 		Properties: properties,
 	}
 	poller, err := radius.Containers(id.RootScope()).BeginCreateOrUpdate(ctx, id.Name(), body, nil)

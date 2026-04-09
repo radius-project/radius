@@ -19,7 +19,6 @@ package reconciler
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -56,7 +55,7 @@ func Test_addSecretReference_ReferenceAdded(t *testing.T) {
 			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
 		},
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "secret"}, Optional: to.Ptr(false)},
+			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "secret"}, Optional: new(false)},
 		},
 	}
 

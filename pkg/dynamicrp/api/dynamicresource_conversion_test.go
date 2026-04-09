@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -88,12 +87,12 @@ func Test_DynamicResource_ConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "dynamicresource-datamodel.json",
 			expected: &DynamicResource{
-				ID:       to.Ptr("/planes/radius/local/resourceGroups/test/providers/Applications.Test/testResources/testResource"),
-				Name:     to.Ptr("testResource"),
-				Type:     to.Ptr("Applications.Test/testResources"),
-				Location: to.Ptr("global"),
+				ID:       new("/planes/radius/local/resourceGroups/test/providers/Applications.Test/testResources/testResource"),
+				Name:     new("testResource"),
+				Type:     new("Applications.Test/testResources"),
+				Location: new("global"),
 				Tags: map[string]*string{
-					"env": to.Ptr("dev"),
+					"env": new("dev"),
 				},
 				Properties: map[string]any{
 					"provisioningState": fromProvisioningStateDataModel(v1.ProvisioningStateSucceeded),

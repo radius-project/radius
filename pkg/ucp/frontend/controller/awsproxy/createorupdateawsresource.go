@@ -18,6 +18,7 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -29,7 +30,6 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
-	"github.com/radius-project/radius/pkg/to"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -93,7 +93,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// we're working on exists already.
 	existing := true
 	getResponse, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+		TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
 		Identifier: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 	if ucp_aws.IsAWSResourceNotFoundError(err) {
@@ -119,15 +119,13 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Properties specified by users take precedence
-	for k, v := range properties {
-		responseProperties[k] = v
-	}
+	maps.Copy(responseProperties, properties)
 
 	if existing {
 		// Get resource type schema
 		describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 			Type:     types.RegistryTypeResource,
-			TypeName: to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+			TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 		}, cloudFormationOpts...)
 		if err != nil {
 			return nil, err
@@ -149,7 +147,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			}
 
 			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
-				TypeName:      to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+				TypeName:      new(serviceCtx.ResourceTypeInAWSFormat()),
 				Identifier:    aws.String(serviceCtx.ResourceID.Name()),
 				PatchDocument: aws.String(string(marshaled)),
 			}, cloudControlOpts...)
@@ -177,7 +175,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	} else {
 		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-			TypeName:     to.Ptr(serviceCtx.ResourceTypeInAWSFormat()),
+			TypeName:     new(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
 		}, cloudControlOpts...)
 		if err != nil {

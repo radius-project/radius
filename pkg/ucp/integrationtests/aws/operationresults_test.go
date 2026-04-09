@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -40,7 +39,7 @@ func Test_GetOperationResults(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
 		output := cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
-				RequestToken: to.Ptr(testAWSRequestToken),
+				RequestToken: new(testAWSRequestToken),
 			},
 		}
 		return &output, nil

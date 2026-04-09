@@ -22,7 +22,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,10 +32,10 @@ func Test_credentialFormatAzureServicePrincipal(t *testing.T) {
 			Enabled: true,
 		},
 		AzureCredentials: &credential.AzureCredentialProperties{
-			Kind: to.Ptr("ServicePrincipal"),
+			Kind: new("ServicePrincipal"),
 			ServicePrincipal: &credential.AzureServicePrincipalCredentialProperties{
-				ClientID: to.Ptr("test-client-id"),
-				TenantID: to.Ptr("test-tenant-id"),
+				ClientID: new("test-client-id"),
+				TenantID: new("test-tenant-id"),
 			},
 		},
 	}
@@ -58,10 +57,10 @@ func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 			Enabled: true,
 		},
 		AzureCredentials: &credential.AzureCredentialProperties{
-			Kind: to.Ptr("WorkloadIdentity"),
+			Kind: new("WorkloadIdentity"),
 			WorkloadIdentity: &credential.AzureWorkloadIdentityCredentialProperties{
-				ClientID: to.Ptr("test-client-id"),
-				TenantID: to.Ptr("test-tenant-id"),
+				ClientID: new("test-client-id"),
+				TenantID: new("test-tenant-id"),
 			},
 		},
 	}
@@ -83,10 +82,10 @@ func Test_credentialFormatAWSAccessKey(t *testing.T) {
 			Enabled: true,
 		},
 		AWSCredentials: &credential.AWSCredentialProperties{
-			Kind: to.Ptr("AccessKey"),
+			Kind: new("AccessKey"),
 			AccessKey: &credential.AWSAccessKeyCredentialProperties{
-				Kind:        to.Ptr("AccessKey"),
-				AccessKeyID: to.Ptr("test-access-key-id"),
+				Kind:        new("AccessKey"),
+				AccessKeyID: new("test-access-key-id"),
 			},
 		},
 	}
@@ -108,10 +107,10 @@ func Test_credentialFormatAWSIRSA(t *testing.T) {
 			Enabled: true,
 		},
 		AWSCredentials: &credential.AWSCredentialProperties{
-			Kind: to.Ptr("IRSA"),
+			Kind: new("IRSA"),
 			IRSA: &credential.AWSIRSACredentialProperties{
-				Kind:    to.Ptr("IRSA"),
-				RoleARN: to.Ptr("test-role-arn"),
+				Kind:    new("IRSA"),
+				RoleARN: new("test-role-arn"),
 			},
 		},
 	}

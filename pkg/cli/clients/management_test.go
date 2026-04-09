@@ -47,13 +47,13 @@ var (
 			PagedResourceProviderSummary: ucp.PagedResourceProviderSummary{
 				Value: []*ucp.ResourceProviderSummary{
 					{
-						Name: to.Ptr("Applications.Test1"),
+						Name: new("Applications.Test1"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType1": {
 								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
-								DefaultAPIVersion: to.Ptr(version),
+								DefaultAPIVersion: new(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -61,13 +61,13 @@ var (
 						},
 					},
 					{
-						Name: to.Ptr("Applications.Test2"),
+						Name: new("Applications.Test2"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType2": {
 								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
-								DefaultAPIVersion: to.Ptr(version),
+								DefaultAPIVersion: new(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -75,20 +75,20 @@ var (
 						},
 					},
 				},
-				NextLink: to.Ptr("0"),
+				NextLink: new("0"),
 			},
 		},
 		{
 			PagedResourceProviderSummary: ucp.PagedResourceProviderSummary{
 				Value: []*ucp.ResourceProviderSummary{
 					{
-						Name: to.Ptr("Applications.Test3"),
+						Name: new("Applications.Test3"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resourceType3": {
 								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
-								DefaultAPIVersion: to.Ptr(version),
+								DefaultAPIVersion: new(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -96,13 +96,13 @@ var (
 						},
 					},
 					{
-						Name: to.Ptr("Applications.Core"),
+						Name: new("Applications.Core"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"environments": {
 								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									version: {},
 								},
-								DefaultAPIVersion: to.Ptr(version),
+								DefaultAPIVersion: new(version),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -110,13 +110,13 @@ var (
 						},
 					},
 					{
-						Name: to.Ptr("Radius.Core"),
+						Name: new("Radius.Core"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"environments": {
 								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 									"2025-08-01-preview": {},
 								},
-								DefaultAPIVersion: to.Ptr("2025-08-01-preview"),
+								DefaultAPIVersion: new("2025-08-01-preview"),
 							},
 						},
 						Locations: map[string]map[string]any{
@@ -124,7 +124,7 @@ var (
 						},
 					},
 				},
-				NextLink: to.Ptr("1"),
+				NextLink: new("1"),
 			},
 		},
 	}
@@ -138,7 +138,7 @@ func mockResourceGroupExists(mock *MockresourceGroupClient, planeName, rgName st
 		Get(gomock.Any(), planeName, rgName, gomock.Any()).
 		Return(ucp.ResourceGroupsClientGetResponse{
 			ResourceGroupResource: ucp.ResourceGroupResource{
-				Name: to.Ptr(rgName),
+				Name: new(rgName),
 			},
 		}, nil).Times(times)
 }
@@ -181,7 +181,7 @@ func mockProviderSummaryForDeletion(mock *MockresourceProviderClient, planeName,
 				GetProviderSummary(gomock.Any(), planeName, providerName, gomock.Any()).
 				Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
 					ResourceProviderSummary: ucp.ResourceProviderSummary{
-						Name: to.Ptr("Applications.Core"),
+						Name: new("Applications.Core"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"environments": {
 								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -249,9 +249,9 @@ func setupResourceGroupMocks(t *testing.T) (*UCPApplicationsManagementClient, *M
 func createResource(name, resourceType string) *generated.GenericResource {
 	id := fmt.Sprintf("/planes/radius/local/resourceGroups/test-rg/providers/%s/%s", resourceType, name)
 	return &generated.GenericResource{
-		ID:       to.Ptr(id),
-		Type:     to.Ptr(resourceType),
-		Name:     to.Ptr(name),
+		ID:       new(id),
+		Type:     new(resourceType),
+		Name:     new(name),
 		Location: to.Ptr(v1.LocationGlobal),
 	}
 }
@@ -262,7 +262,7 @@ func createResourceList(resources ...*generated.GenericResource) []generated.Gen
 		{
 			GenericResourcesList: generated.GenericResourcesList{
 				Value:    resources,
-				NextLink: to.Ptr("0"),
+				NextLink: new("0"),
 			},
 		},
 	}
@@ -325,8 +325,8 @@ func Test_Resource(t *testing.T) {
 			GenericResourcesList: generated.GenericResourcesList{
 				Value: []*generated.GenericResource{
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test1"),
-						Name:     to.Ptr("test1"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test1"),
+						Name:     new("test1"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: map[string]any{
@@ -335,8 +335,8 @@ func Test_Resource(t *testing.T) {
 						},
 					},
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test2"),
-						Name:     to.Ptr("test2"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test2"),
+						Name:     new("test2"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: map[string]any{
@@ -344,15 +344,15 @@ func Test_Resource(t *testing.T) {
 						},
 					},
 				},
-				NextLink: to.Ptr("0"),
+				NextLink: new("0"),
 			},
 		},
 		{
 			GenericResourcesList: generated.GenericResourcesList{
 				Value: []*generated.GenericResource{
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test3"),
-						Name:     to.Ptr("test3"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test3"),
+						Name:     new("test3"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: map[string]any{
@@ -361,8 +361,8 @@ func Test_Resource(t *testing.T) {
 						},
 					},
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test4"),
-						Name:     to.Ptr("test4"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test4"),
+						Name:     new("test4"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: map[string]any{
@@ -370,7 +370,7 @@ func Test_Resource(t *testing.T) {
 						},
 					},
 				},
-				NextLink: to.Ptr("1"),
+				NextLink: new("1"),
 			},
 		},
 	}
@@ -384,7 +384,7 @@ func Test_Resource(t *testing.T) {
 			return resourceProviderMock, nil
 		}
 		expectedResource := ucp.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test"),
+			Name: new("Applications.Test"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"testResource": {
 					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -438,7 +438,7 @@ func Test_Resource(t *testing.T) {
 			return resourceProviderMock, nil
 		}
 		expectedResource := ucp.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test"),
+			Name: new("Applications.Test"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"testResource": {
 					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -475,7 +475,7 @@ func Test_Resource(t *testing.T) {
 			return resourceProviderMock, nil
 		}
 		expectedResource := ucp.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test"),
+			Name: new("Applications.Test"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"testResource": {
 					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -595,7 +595,7 @@ func Test_Resource(t *testing.T) {
 			return resourceProviderMock, nil
 		}
 		expectedResourceSummary := ucp.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test"),
+			Name: new("Applications.Test"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"testResource": {
 					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -642,7 +642,7 @@ func Test_Resource(t *testing.T) {
 			return resourceProviderMock, nil
 		}
 		expectedResourceSummary := ucp.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test"),
+			Name: new("Applications.Test"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"testResource": {
 					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -688,7 +688,7 @@ func Test_Resource(t *testing.T) {
 			GetProviderSummary(gomock.Any(), "local", "Radius.Core", gomock.Any()).
 			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
 				ResourceProviderSummary: ucp.ResourceProviderSummary{
-					Name: to.Ptr("Radius.Core"),
+					Name: new("Radius.Core"),
 					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 						"environments": {
 							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
@@ -705,9 +705,9 @@ func Test_Resource(t *testing.T) {
 			Get(gomock.Any(), "test-env", gomock.Any()).
 			Return(generated.GenericResourcesClientGetResponse{
 				GenericResource: generated.GenericResource{
-					ID:   to.Ptr("/test/id"),
-					Name: to.Ptr("test-env"),
-					Type: to.Ptr("Radius.Core/environments"),
+					ID:   new("/test/id"),
+					Name: new("test-env"),
+					Type: new("Radius.Core/environments"),
 				},
 			}, nil)
 
@@ -746,50 +746,50 @@ func Test_Application(t *testing.T) {
 			ApplicationResourceListResult: corerp.ApplicationResourceListResult{
 				Value: []*corerp.ApplicationResource{
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test1"),
-						Name:     to.Ptr("test1"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test1"),
+						Name:     new("test1"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: &corerp.ApplicationProperties{
-							Environment: to.Ptr(testScope + "/providers/Applications.Core/environments/test-environment"),
+							Environment: new(testScope + "/providers/Applications.Core/environments/test-environment"),
 						},
 					},
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test2"),
-						Name:     to.Ptr("test2"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test2"),
+						Name:     new("test2"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: &corerp.ApplicationProperties{
-							Environment: to.Ptr(testScope + "/providers/Applications.Core/environments/test-environment"),
+							Environment: new(testScope + "/providers/Applications.Core/environments/test-environment"),
 						},
 					},
 				},
-				NextLink: to.Ptr("0"),
+				NextLink: new("0"),
 			},
 		},
 		{
 			ApplicationResourceListResult: corerp.ApplicationResourceListResult{
 				Value: []*corerp.ApplicationResource{
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test3"),
-						Name:     to.Ptr("test3"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test3"),
+						Name:     new("test3"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: &corerp.ApplicationProperties{
-							Environment: to.Ptr(anotherScope + "/providers/Applications.Core/environments/test-environment"),
+							Environment: new(anotherScope + "/providers/Applications.Core/environments/test-environment"),
 						},
 					},
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test4"),
-						Name:     to.Ptr("test4"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test4"),
+						Name:     new("test4"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 						Properties: &corerp.ApplicationProperties{
-							Environment: to.Ptr(anotherScope + "/providers/Applications.Core/environments/test-environment"),
+							Environment: new(anotherScope + "/providers/Applications.Core/environments/test-environment"),
 						},
 					},
 				},
-				NextLink: to.Ptr("1"),
+				NextLink: new("1"),
 			},
 		},
 	}
@@ -903,9 +903,9 @@ func Test_Application(t *testing.T) {
 				GenericResourcesList: generated.GenericResourcesList{
 					Value: []*generated.GenericResource{
 						{
-							ID:       to.Ptr(testScope + "/providers/Applications.Test/testResources/test1"),
-							Name:     to.Ptr("test1"),
-							Type:     to.Ptr("Applications.Test1/resourceType1"),
+							ID:       new(testScope + "/providers/Applications.Test/testResources/test1"),
+							Name:     new("test1"),
+							Type:     new("Applications.Test1/resourceType1"),
 							Location: to.Ptr(v1.LocationGlobal),
 							Properties: map[string]any{
 								"application": testScope + "/providers/Applications.Core/applications/test-application",
@@ -913,16 +913,16 @@ func Test_Application(t *testing.T) {
 							},
 						},
 						{
-							ID:       to.Ptr(testScope + "/providers/Applications.Test/testResources/test2"),
-							Name:     to.Ptr("test2"),
-							Type:     to.Ptr("Applications.Test1/resourceType1"),
+							ID:       new(testScope + "/providers/Applications.Test/testResources/test2"),
+							Name:     new("test2"),
+							Type:     new("Applications.Test1/resourceType1"),
 							Location: to.Ptr(v1.LocationGlobal),
 							Properties: map[string]any{
 								"environment": testScope + "/providers/Applications.Core/environments/test-environment",
 							},
 						},
 					},
-					NextLink: to.Ptr("0"),
+					NextLink: new("0"),
 				},
 			},
 		}
@@ -1123,38 +1123,38 @@ func Test_Environment(t *testing.T) {
 			EnvironmentResourceListResult: corerp.EnvironmentResourceListResult{
 				Value: []*corerp.EnvironmentResource{
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test1"),
-						Name:     to.Ptr("test1"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test1"),
+						Name:     new("test1"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 					},
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test2"),
-						Name:     to.Ptr("test2"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test2"),
+						Name:     new("test2"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 					},
 				},
-				NextLink: to.Ptr("0"),
+				NextLink: new("0"),
 			},
 		},
 		{
 			EnvironmentResourceListResult: corerp.EnvironmentResourceListResult{
 				Value: []*corerp.EnvironmentResource{
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test3"),
-						Name:     to.Ptr("test3"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test3"),
+						Name:     new("test3"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 					},
 					{
-						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test4"),
-						Name:     to.Ptr("test4"),
+						ID:       new(testScope + "/providers/" + testResourceType + "/" + "test4"),
+						Name:     new("test4"),
 						Type:     &testResourceType,
 						Location: to.Ptr(v1.LocationGlobal),
 					},
 				},
-				NextLink: to.Ptr("1"),
+				NextLink: new("1"),
 			},
 		},
 	}
@@ -1207,8 +1207,8 @@ func Test_Environment(t *testing.T) {
 		client := createClient(mock)
 
 		expectedMetadata := corerp.RecipeGetMetadata{
-			Name:         to.Ptr("test-recipe"),
-			ResourceType: to.Ptr("Applications.Core/gateways"),
+			Name:         new("test-recipe"),
+			ResourceType: new("Applications.Core/gateways"),
 		}
 
 		expectedResult := corerp.RecipeGetMetadataResponse{
@@ -1266,9 +1266,9 @@ func Test_Environment(t *testing.T) {
 				GenericResourcesList: generated.GenericResourcesList{
 					Value: []*generated.GenericResource{
 						{
-							ID:       to.Ptr(testScope + "/providers/Applications.Test/testResources/test1"),
-							Name:     to.Ptr("test1"),
-							Type:     to.Ptr("Applications.Test1/resourceType1"),
+							ID:       new(testScope + "/providers/Applications.Test/testResources/test1"),
+							Name:     new("test1"),
+							Type:     new("Applications.Test1/resourceType1"),
 							Location: to.Ptr(v1.LocationGlobal),
 							Properties: map[string]any{
 								"application": testScope + "/providers/Applications.Core/applications/test-application",
@@ -1276,7 +1276,7 @@ func Test_Environment(t *testing.T) {
 							},
 						},
 					},
-					NextLink: to.Ptr("0"),
+					NextLink: new("0"),
 				},
 			},
 		}
@@ -1321,16 +1321,16 @@ func Test_Environment(t *testing.T) {
 				ApplicationResourceListResult: corerp.ApplicationResourceListResult{
 					Value: []*corerp.ApplicationResource{
 						{
-							ID:       to.Ptr(testScope + "/providers/Applications.Core/applications/test-application"),
-							Name:     to.Ptr("test-application"),
-							Type:     to.Ptr("Applications.Core/applications"),
+							ID:       new(testScope + "/providers/Applications.Core/applications/test-application"),
+							Name:     new("test-application"),
+							Type:     new("Applications.Core/applications"),
 							Location: to.Ptr(v1.LocationGlobal),
 							Properties: &corerp.ApplicationProperties{
-								Environment: to.Ptr(testScope + "/providers/Applications.Core/environments/test-environment"),
+								Environment: new(testScope + "/providers/Applications.Core/environments/test-environment"),
 							},
 						},
 					},
-					NextLink: to.Ptr("0"),
+					NextLink: new("0"),
 				},
 			},
 		}
@@ -1377,9 +1377,9 @@ func Test_ResourceGroup(t *testing.T) {
 	testResourceName := "test-resource-group"
 
 	expectedResource := ucp.ResourceGroupResource{
-		ID:       to.Ptr("/planes/radius/local/resourcegroups/" + testResourceName),
+		ID:       new("/planes/radius/local/resourcegroups/" + testResourceName),
 		Name:     &testResourceName,
-		Type:     to.Ptr("System.Resources/resourceGroups"),
+		Type:     new("System.Resources/resourceGroups"),
 		Location: to.Ptr(v1.LocationGlobal),
 	}
 
@@ -1392,38 +1392,38 @@ func Test_ResourceGroup(t *testing.T) {
 				ResourceGroupResourceListResult: ucp.ResourceGroupResourceListResult{
 					Value: []*ucp.ResourceGroupResource{
 						{
-							ID:       to.Ptr("/planes/radius/local/resourcegroups/test1"),
-							Name:     to.Ptr("test1"),
-							Type:     to.Ptr("System.Resources/resourceGroups"),
+							ID:       new("/planes/radius/local/resourcegroups/test1"),
+							Name:     new("test1"),
+							Type:     new("System.Resources/resourceGroups"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 						{
-							ID:       to.Ptr("/planes/radius/local/resourcegroups/test2"),
-							Name:     to.Ptr("test2"),
-							Type:     to.Ptr("System.Resources/resourceGroups"),
+							ID:       new("/planes/radius/local/resourcegroups/test2"),
+							Name:     new("test2"),
+							Type:     new("System.Resources/resourceGroups"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 					},
-					NextLink: to.Ptr("0"),
+					NextLink: new("0"),
 				},
 			},
 			{
 				ResourceGroupResourceListResult: ucp.ResourceGroupResourceListResult{
 					Value: []*ucp.ResourceGroupResource{
 						{
-							ID:       to.Ptr("/planes/radius/local/resourcegroups/test3"),
-							Name:     to.Ptr("test3"),
-							Type:     to.Ptr("System.Resources/resourceGroups"),
+							ID:       new("/planes/radius/local/resourcegroups/test3"),
+							Name:     new("test3"),
+							Type:     new("System.Resources/resourceGroups"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 						{
-							ID:       to.Ptr("/planes/radius/local/resourcegroups/test4"),
-							Name:     to.Ptr("test4"),
-							Type:     to.Ptr("System.Resources/resourceGroups"),
+							ID:       new("/planes/radius/local/resourcegroups/test4"),
+							Name:     new("test4"),
+							Type:     new("System.Resources/resourceGroups"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 					},
-					NextLink: to.Ptr("1"),
+					NextLink: new("1"),
 				},
 			},
 		}
@@ -1498,7 +1498,7 @@ func Test_ResourceGroup(t *testing.T) {
 			{
 				GenericResourcesList: generated.GenericResourcesList{
 					Value:    []*generated.GenericResource{},
-					NextLink: to.Ptr("0"),
+					NextLink: new("0"),
 				},
 			},
 		}
@@ -1667,19 +1667,19 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 			PagedResourceProviderSummary: ucp.PagedResourceProviderSummary{
 				Value: []*ucp.ResourceProviderSummary{
 					{
-						Name: to.Ptr("Applications.Test"),
+						Name: new("Applications.Test"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resources": {APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{version: {}}},
 						},
 					},
 					{
-						Name: to.Ptr("Applications.TestNoVersion"),
+						Name: new("Applications.TestNoVersion"),
 						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 							"resources": {}, // Empty API versions
 						},
 					},
 				},
-				NextLink: to.Ptr("0"),
+				NextLink: new("0"),
 			},
 		}}
 
@@ -1938,9 +1938,9 @@ func Test_ResourceProvider(t *testing.T) {
 	testResourceProviderName := "Applications.Test"
 
 	expectedResource := ucp.ResourceProviderResource{
-		ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName),
+		ID:       new("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName),
 		Name:     &testResourceProviderName,
-		Type:     to.Ptr("System.Resources/resourceProviders"),
+		Type:     new("System.Resources/resourceProviders"),
 		Location: to.Ptr(v1.LocationGlobal),
 	}
 
@@ -1953,38 +1953,38 @@ func Test_ResourceProvider(t *testing.T) {
 				ResourceProviderResourceListResult: ucp.ResourceProviderResourceListResult{
 					Value: []*ucp.ResourceProviderResource{
 						{
-							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test1"),
-							Name:     to.Ptr("Applications.Test1"),
-							Type:     to.Ptr("System.Resources/resourceProviders"),
+							ID:       new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test1"),
+							Name:     new("Applications.Test1"),
+							Type:     new("System.Resources/resourceProviders"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 						{
-							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test2"),
-							Name:     to.Ptr("Applications.Test2"),
-							Type:     to.Ptr("System.Resources/resourceProviders"),
+							ID:       new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test2"),
+							Name:     new("Applications.Test2"),
+							Type:     new("System.Resources/resourceProviders"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 					},
-					NextLink: to.Ptr("0"),
+					NextLink: new("0"),
 				},
 			},
 			{
 				ResourceProviderResourceListResult: ucp.ResourceProviderResourceListResult{
 					Value: []*ucp.ResourceProviderResource{
 						{
-							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test3"),
-							Name:     to.Ptr("Applications.Test3"),
-							Type:     to.Ptr("System.Resources/resourceProviders"),
+							ID:       new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test3"),
+							Name:     new("Applications.Test3"),
+							Type:     new("System.Resources/resourceProviders"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 						{
-							ID:       to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test4"),
-							Name:     to.Ptr("Applications.Test4"),
-							Type:     to.Ptr("System.Resources/resourceProviders"),
+							ID:       new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test4"),
+							Name:     new("Applications.Test4"),
+							Type:     new("System.Resources/resourceProviders"),
 							Location: to.Ptr(v1.LocationGlobal),
 						},
 					},
-					NextLink: to.Ptr("1"),
+					NextLink: new("1"),
 				},
 			},
 		}
@@ -2061,13 +2061,13 @@ func Test_ResourceProvider(t *testing.T) {
 		client := createClient(mock)
 
 		expectedResource := ucp.ResourceProviderSummary{
-			Name: to.Ptr("Applications.Test1"),
+			Name: new("Applications.Test1"),
 			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
 				"resourceType1": {
 					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
 						version: {},
 					},
-					DefaultAPIVersion: to.Ptr(version),
+					DefaultAPIVersion: new(version),
 				},
 			},
 			Locations: map[string]map[string]any{
@@ -2101,9 +2101,9 @@ func Test_ResourceType(t *testing.T) {
 	testResourceTypeName := "testResources"
 
 	expectedResource := ucp.ResourceTypeResource{
-		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName),
+		ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName),
 		Name: &testResourceTypeName,
-		Type: to.Ptr("System.Resources/resourceProviders/resourceTypes"),
+		Type: new("System.Resources/resourceProviders/resourceTypes"),
 	}
 
 	t.Run("CreateOrUpdateResourceType", func(t *testing.T) {
@@ -2153,9 +2153,9 @@ func Test_APIVersion(t *testing.T) {
 	testAPIVersionResourceName := version
 
 	expectedResource := ucp.APIVersionResource{
-		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName + "/apiVersions/" + testAPIVersionResourceName),
+		ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/resourceTypes/" + testResourceTypeName + "/apiVersions/" + testAPIVersionResourceName),
 		Name: &testAPIVersionResourceName,
-		Type: to.Ptr("System.Resources/resourceProviders/resourceTypes/apiVersions"),
+		Type: new("System.Resources/resourceProviders/resourceTypes/apiVersions"),
 	}
 
 	t.Run("CreateOrUpdateAPIVersion", func(t *testing.T) {
@@ -2188,9 +2188,9 @@ func Test_Location(t *testing.T) {
 	testLocationName := "east"
 
 	expectedResource := ucp.LocationResource{
-		ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/locations/" + testLocationName),
+		ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/" + testResourceProviderName + "/locations/" + testLocationName),
 		Name: &testLocationName,
-		Type: to.Ptr("System.Resources/resourceProviders/locations"),
+		Type: new("System.Resources/resourceProviders/locations"),
 	}
 
 	t.Run("CreateOrUpdateLocation", func(t *testing.T) {

@@ -75,7 +75,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		env = append(env, &ngroupsclient.EnvironmentVariable{
-			Name:  to.Ptr(name),
+			Name:  new(name),
 			Value: val.Value,
 		})
 	}
@@ -89,16 +89,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// Populate environment variables from connections
 	for _, key := range getSortedKeys(envData) {
 		env = append(env, &ngroupsclient.EnvironmentVariable{
-			Name:  to.Ptr(envData[key].Name),
-			Value: to.Ptr(envData[key].Value),
+			Name:  new(envData[key].Name),
+			Value: new(envData[key].Value),
 		})
 	}
 
 	// Populate secret data from connections
 	for _, key := range getSortedKeys(secretData) {
 		env = append(env, &ngroupsclient.EnvironmentVariable{
-			Name:        to.Ptr(secretData[key].Name),
-			SecureValue: to.Ptr(secretData[key].Value),
+			Name:        new(secretData[key].Name),
+			SecureValue: new(secretData[key].Value),
 		})
 	}
 
@@ -118,12 +118,12 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	for _, v := range properties.Container.Ports {
 		// exposed within container group for interacting with the container
 		containerPorts = append(containerPorts, &ngroupsclient.ContainerPort{
-			Port:     to.Ptr(v.ContainerPort),
+			Port:     new(v.ContainerPort),
 			Protocol: to.Ptr(ngroupsclient.ContainerNetworkProtocolTCP),
 		})
 		// ports exposed to communicate with the container group -- standard is port 80
 		ipAddress.Ports = append(ipAddress.Ports, &ngroupsclient.Port{
-			Port:     to.Ptr(v.ContainerPort),
+			Port:     new(v.ContainerPort),
 			Protocol: to.Ptr(ngroupsclient.ContainerGroupNetworkProtocolTCP),
 		})
 	}
@@ -143,21 +143,21 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Build Subnet for this container
 	subnet := &armnetwork.Subnet{
-		Name: to.Ptr(resource.Name),
-		Type: to.Ptr("Microsoft.Network/virtualNetworks/subnets"),
+		Name: new(resource.Name),
+		Type: new("Microsoft.Network/virtualNetworks/subnets"),
 		Properties: &armnetwork.SubnetPropertiesFormat{
 			AddressPrefix: nil, // updated by handler
 			Delegations: []*armnetwork.Delegation{
 				{
-					Name: to.Ptr("Microsoft.ContainerInstance.containerGroups"),
-					Type: to.Ptr("Microsoft.Network/virtualNetworks/subnets/delegations"),
+					Name: new("Microsoft.ContainerInstance.containerGroups"),
+					Type: new("Microsoft.Network/virtualNetworks/subnets/delegations"),
 					Properties: &armnetwork.ServiceDelegationPropertiesFormat{
-						ServiceName: to.Ptr("Microsoft.ContainerInstance/containerGroups"),
+						ServiceName: new("Microsoft.ContainerInstance/containerGroups"),
 					},
 				},
 			},
 			NetworkSecurityGroup: &armnetwork.SecurityGroup{
-				ID: to.Ptr(nsgID),
+				ID: new(nsgID),
 			},
 		},
 	}
@@ -188,52 +188,52 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 		// Build internal loadBalaner configuration for this container
 		lb := &armnetwork.LoadBalancer{
-			Name: to.Ptr(internalLBName),
-			Type: to.Ptr("Microsoft.Network/loadBalancers"),
+			Name: new(internalLBName),
+			Type: new("Microsoft.Network/loadBalancers"),
 			Properties: &armnetwork.LoadBalancerPropertiesFormat{
 				FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
 					{
-						Name: to.Ptr(resource.Name),
+						Name: new(resource.Name),
 						Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
 							PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
 							Subnet: &armnetwork.Subnet{
-								ID: to.Ptr(internalSubnetID),
+								ID: new(internalSubnetID),
 							},
 						},
 					},
 				},
 				BackendAddressPools: []*armnetwork.BackendAddressPool{
 					{
-						Name: to.Ptr(resource.Name),
+						Name: new(resource.Name),
 					},
 				},
 				Probes: []*armnetwork.Probe{
 					{
-						Name: to.Ptr(resource.Name),
+						Name: new(resource.Name),
 						Properties: &armnetwork.ProbePropertiesFormat{
 							Protocol:          to.Ptr(armnetwork.ProbeProtocolTCP),
-							Port:              to.Ptr(firstPort),
-							IntervalInSeconds: to.Ptr[int32](15),
-							NumberOfProbes:    to.Ptr[int32](2),
+							Port:              new(firstPort),
+							IntervalInSeconds: new(int32(15)),
+							NumberOfProbes:    new(int32(2)),
 						},
 					},
 				},
 				LoadBalancingRules: []*armnetwork.LoadBalancingRule{
 					{
-						Name: to.Ptr(resource.Name),
+						Name: new(resource.Name),
 						Properties: &armnetwork.LoadBalancingRulePropertiesFormat{
 							Protocol:       to.Ptr(armnetwork.TransportProtocolTCP),
-							FrontendPort:   to.Ptr(firstPort),
-							BackendPort:    to.Ptr(firstPort),
-							EnableTCPReset: to.Ptr(true),
+							FrontendPort:   new(firstPort),
+							BackendPort:    new(firstPort),
+							EnableTCPReset: new(true),
 							FrontendIPConfiguration: &armnetwork.SubResource{
-								ID: to.Ptr(frontendIPConfID),
+								ID: new(frontendIPConfID),
 							},
 							BackendAddressPool: &armnetwork.SubResource{
-								ID: to.Ptr(backendAddressPoolID),
+								ID: new(backendAddressPoolID),
 							},
 							Probe: &armnetwork.SubResource{
-								ID: to.Ptr(probeID),
+								ID: new(probeID),
 							},
 						},
 					},
@@ -262,7 +262,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 				BackendAddressPools: []*ngroupsclient.LoadBalancerBackendAddressPool{
 					{
 						Resource: &ngroupsclient.APIEntityReference{
-							ID: to.Ptr(backendAddressPoolID),
+							ID: new(backendAddressPoolID),
 						},
 					},
 				},
@@ -275,12 +275,12 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		networkprofile = &ngroupsclient.NetworkProfile{
 			ApplicationGateway: &ngroupsclient.ApplicationGateway{
 				Resource: &ngroupsclient.APIEntityReference{
-					ID: to.Ptr(appgwID),
+					ID: new(appgwID),
 				},
 				BackendAddressPools: []*ngroupsclient.ApplicationGatewayBackendAddressPool{
 					{
 						Resource: &ngroupsclient.APIEntityReference{
-							ID: to.Ptr(strings.Join([]string{appgwID, "backendAddressPools", resource.Name}, "/")),
+							ID: new(strings.Join([]string{appgwID, "backendAddressPools", resource.Name}, "/")),
 						},
 					},
 				},
@@ -289,22 +289,22 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	profile := &ngroupsclient.ContainerGroupProfile{
-		Location: to.Ptr(resource.Location),
-		Name:     to.Ptr(resource.Name),
+		Location: new(resource.Location),
+		Name:     new(resource.Name),
 		Properties: &ngroupsclient.ContainerGroupProfileProperties{
 			Containers: []*ngroupsclient.Container{
 				{
-					Name: to.Ptr(resource.Name),
+					Name: new(resource.Name),
 					Properties: &ngroupsclient.ContainerProperties{
-						Image:                to.Ptr(resource.Properties.Container.Image),
+						Image:                new(resource.Properties.Container.Image),
 						EnvironmentVariables: env,
 						Command:              to.SliceOfPtrs(properties.Container.Command...),
 						Ports:                containerPorts,
 						Resources: &ngroupsclient.ResourceRequirements{
 							// Hard-coded right now!
 							Requests: &ngroupsclient.ResourceRequests{
-								CPU:        to.Ptr(1.0),
-								MemoryInGB: to.Ptr(2.0),
+								CPU:        new(1.0),
+								MemoryInGB: new(2.0),
 							},
 						},
 					},
@@ -332,18 +332,18 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// TODO: rename to ngroup
 	nGroup := &ngroupsclient.NGroup{
-		Name:     to.Ptr(resource.Name),
-		Location: to.Ptr(resource.Location),
+		Name:     new(resource.Name),
+		Location: new(resource.Location),
 		Identity: ProcessNGroupIdentity(options.Environment),
 		Properties: &ngroupsclient.NGroupProperties{
 			UpdateProfile: &ngroupsclient.UpdateProfile{
 				UpdateMode: to.Ptr(ngroupsclient.NGroupUpdateModeRolling),
 			},
 			ElasticProfile: &ngroupsclient.ElasticProfile{
-				DesiredCount: to.Ptr[int32](1),
+				DesiredCount: new(int32(1)),
 				ContainerGroupNamingPolicy: &ngroupsclient.ElasticProfileContainerGroupNamingPolicy{
 					GUIDNamingPolicy: &ngroupsclient.ElasticProfileContainerGroupNamingPolicyGUIDNamingPolicy{
-						Prefix: to.Ptr(resource.Name + "-"),
+						Prefix: new(resource.Name + "-"),
 					},
 				},
 			},
@@ -353,8 +353,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 					ContainerGroupProperties: &ngroupsclient.NGroupContainerGroupProperties{
 						SubnetIDs: []*ngroupsclient.ContainerGroupSubnetID{
 							{
-								ID:   to.Ptr(appSubnetID),
-								Name: to.Ptr(resource.Name),
+								ID:   new(appSubnetID),
+								Name: new(resource.Name),
 							},
 						},
 					},
@@ -476,5 +476,5 @@ func ConvertToManagedIdentityTypes(is *rpv1.IdentitySettings) *ngroupsclient.Res
 		}
 	}
 
-	return to.Ptr(identityType)
+	return new(identityType)
 }

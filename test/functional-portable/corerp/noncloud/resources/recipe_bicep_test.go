@@ -260,7 +260,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 					map[string]any{
 						"id":            scope + "/providers/Applications.Core/extenders/" + name + "-created",
 						"radiusManaged": true,
-					}, map[string]interface{}{
+					}, map[string]any{
 						"id":            scope + "/providers/Applications.Core/extenders/" + name + "-module",
 						"radiusManaged": true,
 					},

@@ -217,6 +217,9 @@ warnExistingRadiusElsewhere() {
     local IFS=':'
     for dir in ${PATH}; do
         local path_dir="${dir}"
+        # shellcheck disable=SC2088
+        # Match literal '~' and '~/' PATH entries so they can be normalized to
+        # $HOME before checking for alternate rad binaries.
         if [[ "${path_dir}" == "~" ]]; then
             path_dir="${HOME}"
         elif [[ "${path_dir}" == "~/"* ]]; then

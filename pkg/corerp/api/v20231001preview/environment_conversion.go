@@ -126,11 +126,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(env.ID)
-	dst.Name = to.Ptr(env.Name)
-	dst.Type = to.Ptr(env.Type)
+	dst.ID = new(env.ID)
+	dst.Name = new(env.Name)
+	dst.Type = new(env.Type)
 	dst.SystemData = fromSystemDataModel(env.SystemData)
-	dst.Location = to.Ptr(env.Location)
+	dst.Location = new(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
@@ -157,18 +157,18 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		dst.Properties.Providers = &Providers{}
 		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
 			dst.Properties.Providers.Azure = &ProvidersAzure{
-				Scope: to.Ptr(env.Properties.Providers.Azure.Scope),
+				Scope: new(env.Properties.Providers.Azure.Scope),
 			}
 		}
 		if env.Properties.Providers.AWS != (datamodel.ProvidersAWS{}) {
 			dst.Properties.Providers.Aws = &ProvidersAws{
-				Scope: to.Ptr(env.Properties.Providers.AWS.Scope),
+				Scope: new(env.Properties.Providers.AWS.Scope),
 			}
 		}
 	}
 
 	if env.Properties.Simulated {
-		dst.Properties.Simulated = to.Ptr(env.Properties.Simulated)
+		dst.Properties.Simulated = new(env.Properties.Simulated)
 	}
 
 	var extensions []ExtensionClassification
@@ -242,7 +242,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 						recipeConfig.Terraform.Authentication.Git.Pat = map[string]*SecretConfig{}
 						for k, v := range config.Terraform.Authentication.Git.PAT {
 							recipeConfig.Terraform.Authentication.Git.Pat[k] = &SecretConfig{
-								Secret: to.Ptr(v.Secret),
+								Secret: new(v.Secret),
 							}
 						}
 					}
@@ -258,7 +258,7 @@ func fromRecipeConfigDatamodel(config datamodel.RecipeConfigProperties) *RecipeC
 				recipeConfig.Bicep.Authentication = map[string]*RegistrySecretConfig{}
 				for k, v := range config.Bicep.Authentication {
 					recipeConfig.Bicep.Authentication[k] = &RegistrySecretConfig{
-						Secret: to.Ptr(v.Secret),
+						Secret: new(v.Secret),
 					}
 				}
 			}
@@ -347,11 +347,11 @@ func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) Enviro
 		}
 		compute := &KubernetesCompute{
 			Kind:      fromEnvironmentComputeKind(envCompute.Kind),
-			Namespace: to.Ptr(envCompute.KubernetesCompute.Namespace),
+			Namespace: new(envCompute.KubernetesCompute.Namespace),
 			Identity:  identity,
 		}
 		if envCompute.KubernetesCompute.ResourceID != "" {
-			compute.ResourceID = to.Ptr(envCompute.KubernetesCompute.ResourceID)
+			compute.ResourceID = new(envCompute.KubernetesCompute.ResourceID)
 		}
 		return compute
 
@@ -365,7 +365,7 @@ func fromEnvironmentComputeDataModel(envCompute *rpv1.EnvironmentCompute) Enviro
 		}
 		compute := &AzureContainerInstanceCompute{
 			Kind:          fromEnvironmentComputeKind(envCompute.Kind),
-			ResourceGroup: to.Ptr(envCompute.ACICompute.ResourceGroup),
+			ResourceGroup: new(envCompute.ACICompute.ResourceGroup),
 			Identity:      identity,
 		}
 		return compute
@@ -406,7 +406,7 @@ func fromEnvExtensionClassificationDataModel(e datamodel.Extension) ExtensionCla
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &KubernetesMetadataExtension{
-			Kind:        to.Ptr(string(e.Kind)),
+			Kind:        new(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
@@ -461,17 +461,17 @@ func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipePr
 	switch e.TemplateKind {
 	case types.TemplateKindTerraform:
 		return &TerraformRecipeProperties{
-			TemplateKind:    to.Ptr(e.TemplateKind),
-			TemplateVersion: to.Ptr(e.TemplateVersion),
-			TemplatePath:    to.Ptr(e.TemplatePath),
+			TemplateKind:    new(e.TemplateKind),
+			TemplateVersion: new(e.TemplateVersion),
+			TemplatePath:    new(e.TemplatePath),
 			Parameters:      e.Parameters,
 		}
 	case types.TemplateKindBicep:
 		return &BicepRecipeProperties{
-			TemplateKind: to.Ptr(e.TemplateKind),
-			TemplatePath: to.Ptr(e.TemplatePath),
+			TemplateKind: new(e.TemplateKind),
+			TemplatePath: new(e.TemplatePath),
 			Parameters:   e.Parameters,
-			PlainHTTP:    to.Ptr(e.PlainHTTP),
+			PlainHTTP:    new(e.PlainHTTP),
 		}
 	}
 
@@ -547,8 +547,8 @@ func fromSecretReferenceDatamodel(secrets map[string]datamodel.SecretReference) 
 		}
 
 		converted[secretKey] = &SecretReference{
-			Source: to.Ptr(secretValue.Source),
-			Key:    to.Ptr(secretValue.Key),
+			Source: new(secretValue.Source),
+			Key:    new(secretValue.Key),
 		}
 	}
 
@@ -573,7 +573,7 @@ func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.Enviro
 func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) map[string]*string {
 	env := map[string]*string{}
 	for k, v := range config.Env.AdditionalProperties {
-		env[k] = to.Ptr(v)
+		env[k] = new(v)
 	}
 
 	return env

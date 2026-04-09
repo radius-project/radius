@@ -208,8 +208,8 @@ func fromEnvironmentVariableDataModel(e map[string]datamodel.EnvironmentVariable
 			environmentVariableMap[key] = &EnvironmentVariable{
 				ValueFrom: &EnvironmentVariableReference{
 					SecretRef: &SecretReference{
-						Source: to.Ptr(val.ValueFrom.SecretRef.Source),
-						Key:    to.Ptr(val.ValueFrom.SecretRef.Key),
+						Source: new(val.ValueFrom.SecretRef.Source),
+						Key:    new(val.ValueFrom.SecretRef.Key),
 					},
 				},
 			}
@@ -232,7 +232,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		var kind *IAMKind
 
 		for _, r := range val.IAM.Roles {
-			roles = append(roles, to.Ptr(r))
+			roles = append(roles, new(r))
 		}
 
 		kind = fromKindDataModel(val.IAM.Kind)
@@ -243,7 +243,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 
 		connections[key] = &ConnectionProperties{
-			Source:                to.Ptr(val.Source),
+			Source:                new(val.Source),
 			DisableDefaultEnvVars: &disableDefaultEnvVars,
 			Iam: &IamProperties{
 				Kind:  kind,
@@ -265,16 +265,16 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	ports := make(map[string]*ContainerPortProperties)
 	for key, val := range c.Properties.Container.Ports {
 		ports[key] = &ContainerPortProperties{
-			ContainerPort: to.Ptr(val.ContainerPort),
+			ContainerPort: new(val.ContainerPort),
 			Protocol:      fromPortProtocolDataModel(val.Protocol),
 		}
 
 		if val.Port != 0 {
-			ports[key].Port = to.Ptr(val.Port)
+			ports[key].Port = new(val.Port)
 		}
 
 		if val.Scheme != "" {
-			ports[key].Scheme = to.Ptr(val.Scheme)
+			ports[key].Scheme = new(val.Scheme)
 		}
 	}
 
@@ -297,27 +297,27 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	if c.Properties.Identity != nil {
 		identity = &IdentitySettings{
 			Kind:            fromIdentityKind(c.Properties.Identity.Kind),
-			Resource:        to.Ptr(c.Properties.Identity.Resource),
-			OidcIssuer:      to.Ptr(c.Properties.Identity.OIDCIssuer),
+			Resource:        new(c.Properties.Identity.Resource),
+			OidcIssuer:      new(c.Properties.Identity.OIDCIssuer),
 			ManagedIdentity: to.ArrayofStringPtrs(c.Properties.Identity.ManagedIdentity),
 		}
 	}
 
-	dst.ID = to.Ptr(c.ID)
-	dst.Name = to.Ptr(c.Name)
-	dst.Type = to.Ptr(c.Type)
+	dst.ID = new(c.ID)
+	dst.Name = new(c.Name)
+	dst.Type = new(c.Type)
 	dst.SystemData = fromSystemDataModel(c.SystemData)
-	dst.Location = to.Ptr(c.Location)
+	dst.Location = new(c.Location)
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
 			OutputResources: toOutputResourcesDataModel(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
-		Application:       to.Ptr(c.Properties.Application),
+		Application:       new(c.Properties.Application),
 		Connections:       connections,
 		Container: &Container{
-			Image:           to.Ptr(c.Properties.Container.Image),
+			Image:           new(c.Properties.Container.Image),
 			ImagePullPolicy: fromImagePullPolicyDataModel(c.Properties.Container.ImagePullPolicy),
 			Env:             fromEnvironmentVariableDataModel(c.Properties.Container.Env),
 			LivenessProbe:   livenessProbe,
@@ -326,7 +326,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 			Volumes:         volumes,
 			Command:         to.SliceOfPtrs(c.Properties.Container.Command...),
 			Args:            to.SliceOfPtrs(c.Properties.Container.Args...),
-			WorkingDir:      to.Ptr(c.Properties.Container.WorkingDir),
+			WorkingDir:      new(c.Properties.Container.WorkingDir),
 		},
 		Extensions:           extensions,
 		Identity:             identity,
@@ -359,11 +359,11 @@ func toImagePullPolicyDataModel(pullPolicy *ImagePullPolicy) string {
 func fromImagePullPolicyDataModel(pullPolicy string) *ImagePullPolicy {
 	switch pullPolicy {
 	case "Always":
-		return to.Ptr(ImagePullPolicyAlways)
+		return new(ImagePullPolicyAlways)
 	case "IfNotPresent":
-		return to.Ptr(ImagePullPolicyIfNotPresent)
+		return new(ImagePullPolicyIfNotPresent)
 	case "Never":
-		return to.Ptr(ImagePullPolicyNever)
+		return new(ImagePullPolicyNever)
 	default:
 		return nil
 	}
@@ -411,7 +411,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			InitialDelaySeconds: h.Exec.InitialDelaySeconds,
 			PeriodSeconds:       h.Exec.PeriodSeconds,
 			TimeoutSeconds:      h.Exec.TimeoutSeconds,
-			Command:             to.Ptr(h.Exec.Command),
+			Command:             new(h.Exec.Command),
 		}
 	case datamodel.HTTPGetHealthProbe:
 		return &HTTPGetHealthProbeProperties{
@@ -420,8 +420,8 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			InitialDelaySeconds: h.HTTPGet.InitialDelaySeconds,
 			PeriodSeconds:       h.HTTPGet.PeriodSeconds,
 			TimeoutSeconds:      h.HTTPGet.TimeoutSeconds,
-			ContainerPort:       to.Ptr(h.HTTPGet.ContainerPort),
-			Path:                to.Ptr(h.HTTPGet.Path),
+			ContainerPort:       new(h.HTTPGet.ContainerPort),
+			Path:                new(h.HTTPGet.Path),
 			Headers:             *to.StringMapPtr(h.HTTPGet.Headers),
 		}
 	case datamodel.TCPHealthProbe:
@@ -431,7 +431,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			InitialDelaySeconds: h.TCP.InitialDelaySeconds,
 			PeriodSeconds:       h.TCP.PeriodSeconds,
 			TimeoutSeconds:      h.TCP.TimeoutSeconds,
-			ContainerPort:       to.Ptr(h.TCP.ContainerPort),
+			ContainerPort:       new(h.TCP.ContainerPort),
 		}
 	}
 
@@ -613,7 +613,7 @@ func fromRuntimePropertiesDataModel(runtime *datamodel.RuntimeProperties) *Runti
 	r := &RuntimesProperties{}
 	if runtime.Kubernetes != nil {
 		r.Kubernetes = &KubernetesRuntimeProperties{
-			Base: to.Ptr(runtime.Kubernetes.Base),
+			Base: new(runtime.Kubernetes.Base),
 		}
 		if runtime.Kubernetes.Pod != "" {
 			podPatch := map[string]any{}
@@ -625,7 +625,7 @@ func fromRuntimePropertiesDataModel(runtime *datamodel.RuntimeProperties) *Runti
 	}
 	if runtime.ACI != nil {
 		r.Aci = &ACIRuntimeProperties{
-			GatewayID: to.Ptr(runtime.ACI.GatewayID),
+			GatewayID: new(runtime.ACI.GatewayID),
 		}
 	}
 	return r
@@ -643,7 +643,7 @@ func toResourceReferencesDataModel(r []*ResourceReference) []datamodel.ResourceR
 func fromResourceReferencesDataModel(r []datamodel.ResourceReference) []*ResourceReference {
 	result := []*ResourceReference{}
 	for _, rr := range r {
-		result = append(result, &ResourceReference{ID: to.Ptr(rr.ID)})
+		result = append(result, &ResourceReference{ID: new(rr.ID)})
 	}
 
 	return result
@@ -667,9 +667,9 @@ func toContainerResourceProvisioningDataModel(r *ContainerResourceProvisioning) 
 func fromContainerResourceProvisioningDataModel(r datamodel.ContainerResourceProvisioning) *ContainerResourceProvisioning {
 	switch r {
 	case datamodel.ContainerResourceProvisioningInternal:
-		return to.Ptr(ContainerResourceProvisioningInternal)
+		return new(ContainerResourceProvisioningInternal)
 	case datamodel.ContainerResourceProvisioningManual:
-		return to.Ptr(ContainerResourceProvisioningManual)
+		return new(ContainerResourceProvisioningManual)
 	default:
 		return nil
 	}
@@ -695,11 +695,11 @@ func toRestartPolicyDataModel(rp *RestartPolicy) string {
 func fromRestartPolicyDataModel(rp string) *RestartPolicy {
 	switch rp {
 	case "Always":
-		return to.Ptr(RestartPolicyAlways)
+		return new(RestartPolicyAlways)
 	case "Never":
-		return to.Ptr(RestartPolicyNever)
+		return new(RestartPolicyNever)
 	case "OnFailure":
-		return to.Ptr(RestartPolicyOnFailure)
+		return new(RestartPolicyOnFailure)
 	default:
 		return nil
 	}
@@ -771,21 +771,21 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassi
 	switch e.Kind {
 	case datamodel.ManualScaling:
 		return &ManualScalingExtension{
-			Kind:     to.Ptr(string(e.Kind)),
+			Kind:     new(string(e.Kind)),
 			Replicas: e.ManualScaling.Replicas,
 		}
 	case datamodel.DaprSidecar:
 		return &DaprSidecarExtension{
-			Kind:     to.Ptr(string(e.Kind)),
-			AppID:    to.Ptr(e.DaprSidecar.AppID),
-			AppPort:  to.Ptr(e.DaprSidecar.AppPort),
-			Config:   to.Ptr(e.DaprSidecar.Config),
+			Kind:     new(string(e.Kind)),
+			AppID:    new(e.DaprSidecar.AppID),
+			AppPort:  new(e.DaprSidecar.AppPort),
+			Config:   new(e.DaprSidecar.Config),
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
 		}
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
 		return &KubernetesMetadataExtension{
-			Kind:        to.Ptr(string(e.Kind)),
+			Kind:        new(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}

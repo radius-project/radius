@@ -138,7 +138,7 @@ func Test_Run(t *testing.T) {
 			ds_ctrl.MongoDatabasesResourceType: {
 				"cosmosDB": &v20231001preview.BicepRecipeProperties{
 					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-					TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+					TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 				},
 			},
 		}
@@ -146,14 +146,14 @@ func Test_Run(t *testing.T) {
 		testEnvProperties := &v20231001preview.EnvironmentProperties{
 			Recipes: testRecipes,
 			Compute: &v20231001preview.KubernetesCompute{
-				Namespace: to.Ptr("default"),
+				Namespace: new("default"),
 			},
 		}
 
 		envResource := v20231001preview.EnvironmentResource{
-			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:       to.Ptr("kind-kind"),
-			Type:       to.Ptr("applications.core/environments"),
+			ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       new("kind-kind"),
+			Type:       new("applications.core/environments"),
 			Location:   to.Ptr(v1.LocationGlobal),
 			Properties: testEnvProperties,
 		}
@@ -183,7 +183,7 @@ func Test_Run(t *testing.T) {
 		expectedOutput := []any{
 			output.LogOutput{
 				Format: "Successfully linked recipe %q to environment %q ",
-				Params: []interface{}{
+				Params: []any{
 					"cosmosDB_new",
 					"kind-kind",
 				},
@@ -201,7 +201,7 @@ func Test_Run(t *testing.T) {
 		testRecipes := map[string]map[string]v20231001preview.RecipePropertiesClassification{
 			ds_ctrl.MongoDatabasesResourceType: {
 				"cosmosDB": &v20231001preview.BicepRecipeProperties{
-					TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+					TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 				},
 			},
 		}
@@ -209,14 +209,14 @@ func Test_Run(t *testing.T) {
 		testEnvProperties := &v20231001preview.EnvironmentProperties{
 			Recipes: testRecipes,
 			Compute: &v20231001preview.KubernetesCompute{
-				Namespace: to.Ptr("default"),
+				Namespace: new("default"),
 			},
 		}
 
 		envResource := v20231001preview.EnvironmentResource{
-			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:       to.Ptr("kind-kind"),
-			Type:       to.Ptr("applications.core/environments"),
+			ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       new("kind-kind"),
+			Type:       new("applications.core/environments"),
 			Location:   to.Ptr(v1.LocationGlobal),
 			Properties: testEnvProperties,
 		}
@@ -290,23 +290,23 @@ func Test_Run(t *testing.T) {
 				ds_ctrl.MongoDatabasesResourceType: {
 					"cosmosDB": &v20231001preview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+						TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						Parameters:   map[string]any{"throughput": 400},
-						PlainHTTP:    to.Ptr(true),
+						PlainHTTP:    new(true),
 					},
 				},
 			},
 			Compute: &v20231001preview.KubernetesCompute{
-				Kind:       to.Ptr("kubernetes"),
-				Namespace:  to.Ptr("default"),
-				ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
+				Kind:       new("kubernetes"),
+				Namespace:  new("default"),
+				ResourceID: new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
 			},
 		}
 
 		envResource := v20231001preview.EnvironmentResource{
-			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:       to.Ptr("kind-kind"),
-			Type:       to.Ptr("applications.core/environments"),
+			ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       new("kind-kind"),
+			Type:       new("applications.core/environments"),
 			Location:   to.Ptr(v1.LocationGlobal),
 			Properties: testEnvProperties,
 		}
@@ -336,7 +336,7 @@ func Test_Run(t *testing.T) {
 		expectedOutput := []any{
 			output.LogOutput{
 				Format: "Successfully linked recipe %q to environment %q ",
-				Params: []interface{}{
+				Params: []any{
 					"redis",
 					"kind-kind",
 				},
@@ -355,16 +355,16 @@ func Test_Run(t *testing.T) {
 				ds_ctrl.MongoDatabasesResourceType: {
 					"cosmosDB": &v20231001preview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+						TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 					},
 				},
 			},
 		}
 
 		envResource := v20231001preview.EnvironmentResource{
-			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:       to.Ptr("kind-kind"),
-			Type:       to.Ptr("applications.core/environments"),
+			ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       new("kind-kind"),
+			Type:       new("applications.core/environments"),
 			Location:   to.Ptr(v1.LocationGlobal),
 			Properties: testEnvProperties,
 		}
@@ -392,7 +392,7 @@ func Test_Run(t *testing.T) {
 		expectedOutput := []any{
 			output.LogOutput{
 				Format: "Successfully linked recipe %q to environment %q ",
-				Params: []interface{}{
+				Params: []any{
 					"cosmosDB_no_namespace",
 					"kind-kind",
 				},
@@ -409,14 +409,14 @@ func Test_Run(t *testing.T) {
 
 		testEnvProperties := &v20231001preview.EnvironmentProperties{
 			Compute: &v20231001preview.KubernetesCompute{
-				Namespace: to.Ptr("default"),
+				Namespace: new("default"),
 			},
 		}
 
 		envResource := v20231001preview.EnvironmentResource{
-			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-			Name:       to.Ptr("kind-kind"),
-			Type:       to.Ptr("applications.core/environments"),
+			ID:         new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+			Name:       new("kind-kind"),
+			Type:       new("applications.core/environments"),
 			Location:   to.Ptr(v1.LocationGlobal),
 			Properties: testEnvProperties,
 		}
@@ -445,7 +445,7 @@ func Test_Run(t *testing.T) {
 		expectedOutput := []any{
 			output.LogOutput{
 				Format: "Successfully linked recipe %q to environment %q ",
-				Params: []interface{}{
+				Params: []any{
 					"redis",
 					"kind-kind",
 				},

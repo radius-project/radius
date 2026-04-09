@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
@@ -268,7 +267,7 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 
 	resources := []*armresources.ResourceReference{
 		{
-			ID: to.Ptr("outputResourceId"),
+			ID: new("outputResourceId"),
 		},
 	}
 
@@ -325,7 +324,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 
 	resources := []*armresources.ResourceReference{
 		{
-			ID: to.Ptr("outputResourceId"),
+			ID: new("outputResourceId"),
 		},
 	}
 
@@ -362,7 +361,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 
 	resources := []*armresources.ResourceReference{
 		{
-			ID: to.Ptr("outputResourceId"),
+			ID: new("outputResourceId"),
 		},
 	}
 	response := map[string]any{}
@@ -406,7 +405,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 				"Deployment",
 				"recipe-app",
 				"redis"),
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 		{
 			LocalID: "RecipeResource1",
@@ -417,7 +416,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 				"recipe-app",
 				"redis"),
 			// We don't expect a call to delete to be made when RadiusManaged is false.
-			RadiusManaged: to.Ptr(false),
+			RadiusManaged: new(false),
 		},
 	}
 	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
@@ -439,7 +438,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 				"Deployment",
 				"recipe-app",
 				"redis"),
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 	}
 	recipeError := recipes.RecipeError{
@@ -532,7 +531,7 @@ func Test_GetGCOutputResources(t *testing.T) {
 	exp := []rpv1.OutputResource{
 		{
 			ID:            id,
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 	}
 	res, err := d.getGCOutputResources(after, before)
@@ -569,7 +568,7 @@ func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 				"Deployment",
 				"recipe-app",
 				"redis"),
-			RadiusManaged: to.Ptr(true),
+			RadiusManaged: new(true),
 		},
 	}
 

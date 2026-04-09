@@ -32,7 +32,7 @@ type AsyncOperationStatus struct {
 	Status ProvisioningState `json:"status,omitempty"`
 
 	// StartTime represents the async operation start time.
-	StartTime time.Time `json:"startTime,omitempty"`
+	StartTime time.Time `json:"startTime"`
 
 	// EndTime represents the async operation end time.
 	EndTime *time.Time `json:"endTime,omitempty"`

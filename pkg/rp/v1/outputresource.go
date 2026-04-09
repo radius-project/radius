@@ -18,6 +18,7 @@ package v1
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/radius-project/radius/pkg/algorithm/graph"
 	"github.com/radius-project/radius/pkg/resourcemodel"
@@ -58,12 +59,7 @@ type Resource struct {
 
 // ExistDependency checks if the given id is in the Dependencies of the Resource and returns true if it is, false otherwise.
 func (r Resource) ExistDependency(localID string) bool {
-	for _, dependency := range r.Dependencies {
-		if dependency == localID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.Dependencies, localID)
 }
 
 // GetResourceType returns the ResourceType of the OutputResource.

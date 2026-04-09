@@ -24,7 +24,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
@@ -90,7 +89,7 @@ func Test_Run(t *testing.T) {
 			},
 		},
 		Properties: datamodel.LocationProperties{
-			Address: to.Ptr("https://localhost:1234"),
+			Address: new("https://localhost:1234"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
 				"testResources": {
 					APIVersions: map[string]datamodel.LocationAPIVersionConfiguration{

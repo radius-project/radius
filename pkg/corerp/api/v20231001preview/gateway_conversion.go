@@ -108,9 +108,9 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	var tls *GatewayTLS
 	if g.Properties.TLS != nil {
 		tls = &GatewayTLS{
-			CertificateFrom:        to.Ptr(g.Properties.TLS.CertificateFrom),
+			CertificateFrom:        new(g.Properties.TLS.CertificateFrom),
 			MinimumProtocolVersion: fromTLSMinVersionDataModel(g.Properties.TLS.MinimumProtocolVersion),
-			SSLPassthrough:         to.Ptr(g.Properties.TLS.SSLPassthrough),
+			SSLPassthrough:         new(g.Properties.TLS.SSLPassthrough),
 		}
 	}
 
@@ -118,15 +118,15 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	if g.Properties.Routes != nil {
 		for _, r := range g.Properties.Routes {
 			s := &GatewayRoute{
-				Destination:      to.Ptr(r.Destination),
-				Path:             to.Ptr(r.Path),
-				ReplacePrefix:    to.Ptr(r.ReplacePrefix),
-				EnableWebsockets: to.Ptr(r.EnableWebsockets),
+				Destination:      new(r.Destination),
+				Path:             new(r.Path),
+				ReplacePrefix:    new(r.ReplacePrefix),
+				EnableWebsockets: new(r.EnableWebsockets),
 			}
 			if r.TimeoutPolicy != nil {
 				s.TimeoutPolicy = &GatewayRouteTimeoutPolicy{
-					Request:        to.Ptr(r.TimeoutPolicy.Request),
-					BackendRequest: to.Ptr(r.TimeoutPolicy.BackendRequest),
+					Request:        new(r.TimeoutPolicy.Request),
+					BackendRequest: new(r.TimeoutPolicy.BackendRequest),
 				}
 			}
 			routes = append(routes, s)
@@ -136,27 +136,27 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	var hostname *GatewayHostname
 	if g.Properties.Hostname != nil {
 		hostname = &GatewayHostname{
-			FullyQualifiedHostname: to.Ptr(g.Properties.Hostname.FullyQualifiedHostname),
-			Prefix:                 to.Ptr(g.Properties.Hostname.Prefix),
+			FullyQualifiedHostname: new(g.Properties.Hostname.FullyQualifiedHostname),
+			Prefix:                 new(g.Properties.Hostname.Prefix),
 		}
 	}
 
-	dst.ID = to.Ptr(g.ID)
-	dst.Name = to.Ptr(g.Name)
-	dst.Type = to.Ptr(g.Type)
+	dst.ID = new(g.ID)
+	dst.Name = new(g.Name)
+	dst.Type = new(g.Type)
 	dst.SystemData = fromSystemDataModel(g.SystemData)
-	dst.Location = to.Ptr(g.Location)
+	dst.Location = new(g.Location)
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
 		Status: &ResourceStatus{
 			OutputResources: toOutputResourcesDataModel(g.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
-		Application:       to.Ptr(g.Properties.Application),
+		Application:       new(g.Properties.Application),
 		Hostname:          hostname,
 		Routes:            routes,
 		TLS:               tls,
-		URL:               to.Ptr(g.Properties.URL),
+		URL:               new(g.Properties.URL),
 	}
 
 	return nil

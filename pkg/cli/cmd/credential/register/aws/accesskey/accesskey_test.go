@@ -107,8 +107,8 @@ func Test_Run(t *testing.T) {
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					AccessKeyID:     to.Ptr(testAccessKeyId),
-					SecretAccessKey: to.Ptr(testSecretAccessKey),
+					AccessKeyID:     new(testAccessKeyId),
+					SecretAccessKey: new(testSecretAccessKey),
 				},
 			}
 
