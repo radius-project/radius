@@ -1,0 +1,19 @@
+{
+  "name": "radius-browser-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deploy with Radius - Browser Extension",
+  "scripts": {
+    "build": "tsc && cp -r src/popup/popup.html src/popup/popup.css dist/popup/ && cp -r src/content/styles.css dist/content/ && cp manifest.json dist/ && cp -r icons dist/",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@types/chrome": "^0.1.38",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "tweetnacl": "^1.0.3"
+  }
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Radius logo: red circle with white gauge needle -->
+  <circle cx="64" cy="64" r="64" fill="#C9452B"/>
+  <!-- Inner shadow circle for depth -->
+  <circle cx="64" cy="64" r="56" fill="#BF3E24" opacity="0.3"/>
+  <!-- White needle pointing upper-left -->
+  <line x1="64" y1="64" x2="34" y2="28" stroke="white" stroke-width="7" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="64" cy="64" r="8" fill="white"/>
+</svg>
