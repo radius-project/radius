@@ -50,7 +50,7 @@ func (handler *azurePublicIPHandler) Put(ctx context.Context, options *PutOption
 	if err != nil {
 		return nil, fmt.Errorf("cannot find resource group location: %w", err)
 	}
-	publicIP.Location = to.Ptr(location)
+	publicIP.Location = new(location)
 
 	networkClientFactory, err := armnetwork.NewClientFactory(subID, handler.arm.ClientOptions.Cred, nil)
 	if err != nil {

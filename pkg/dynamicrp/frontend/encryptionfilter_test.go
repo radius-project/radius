@@ -28,7 +28,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -298,7 +297,7 @@ func createFakeUCPClientFactory(schema map[string]any) (*v20231001preview.Client
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.APIVersionsClientGetResponse{
 				APIVersionResource: v20231001preview.APIVersionResource{
-					Name: to.Ptr(apiVersionName),
+					Name: new(apiVersionName),
 					Properties: &v20231001preview.APIVersionProperties{
 						Schema: schema,
 					},

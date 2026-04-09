@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -69,7 +68,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		output := cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Properties: to.Ptr(string(getResponseBodyBytes)),
+				Properties: new(string(getResponseBodyBytes)),
 			},
 		}
 		return &output, nil
@@ -79,7 +78,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 		output := cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.Ptr(testAWSRequestToken),
+				RequestToken:    new(testAWSRequestToken),
 			},
 		}
 		return &output, nil

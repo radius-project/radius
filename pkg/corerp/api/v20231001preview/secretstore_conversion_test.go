@@ -169,27 +169,27 @@ func TestSecretStorefromSecretStoreDataTypeDataModel(t *testing.T) {
 		{
 			name:     "Generic Secret Type",
 			input:    datamodel.SecretTypeGeneric,
-			expected: to.Ptr(SecretStoreDataTypeGeneric),
+			expected: new(SecretStoreDataTypeGeneric),
 		},
 		{
 			name:     "Certificate Secret Type",
 			input:    datamodel.SecretTypeCert,
-			expected: to.Ptr(SecretStoreDataTypeCertificate),
+			expected: new(SecretStoreDataTypeCertificate),
 		},
 		{
 			name:     "Basic Authentication Secret Type",
 			input:    datamodel.SecretTypeBasicAuthentication,
-			expected: to.Ptr(SecretStoreDataTypeBasicAuthentication),
+			expected: new(SecretStoreDataTypeBasicAuthentication),
 		},
 		{
 			name:     "Azure Workload Identity Secret Type",
 			input:    datamodel.SecretTypeAzureWorkloadIdentity,
-			expected: to.Ptr(SecretStoreDataTypeAzureWorkloadIdentity),
+			expected: new(SecretStoreDataTypeAzureWorkloadIdentity),
 		},
 		{
 			name:     "AWS IRSA Secret Type",
 			input:    datamodel.SecretTypeAWSIRSA,
-			expected: to.Ptr(SecretStoreDataTypeAwsIRSA),
+			expected: new(SecretStoreDataTypeAwsIRSA),
 		},
 		{
 			name:     "None Secret Type",

@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -101,7 +100,7 @@ func Test_Run(t *testing.T) {
 		defer ctrl.Finish()
 
 		application := v20231001preview.ApplicationResource{
-			Name: to.Ptr("test-app"),
+			Name: new("test-app"),
 		}
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)

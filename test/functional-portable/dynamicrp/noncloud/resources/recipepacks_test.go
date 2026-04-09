@@ -172,7 +172,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 //
 // 2. Resource Deployment Failure:
 //   - Attempts to deploy a Bicep template with a recipe pack but no providers configuration in the environment
-//   - The recipe does not have a default namspace
+//   - The recipe does not have a default namespace
 //   - Validates that the deployment fails with "Namespace parameter required." error
 func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	template := "testdata/recipepacks-test-no-provider.bicep"

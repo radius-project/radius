@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -371,10 +372,8 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 	// Backwards compatibility: accept deprecated aliases silently.
 	format = output.NormalizeFormat(format)
 
-	for _, f := range output.SupportedFormats() {
-		if format == f {
-			return format, nil
-		}
+	if slices.Contains(output.SupportedFormats(), format) {
+		return format, nil
 	}
 
 	return "", clierrors.Message("unsupported output format %q, supported formats are: %s", format, strings.Join(output.SupportedFormats(), ", "))

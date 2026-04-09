@@ -27,7 +27,6 @@ import (
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
@@ -482,16 +481,16 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 
 					providerSecretIDs := versioned.Properties.RecipeConfig.Terraform.Providers["azurerm"][0].Secrets
 					require.Equal(t, 2, len(providerSecretIDs))
-					require.Equal(t, providerSecretIDs["secret1"], to.Ptr(SecretReference{Source: to.Ptr(baseSecretStorePath + "secretstore1"), Key: to.Ptr("key1")}))
-					require.Equal(t, providerSecretIDs["secret2"], to.Ptr(SecretReference{Source: to.Ptr(baseSecretStorePath + "secretstore2"), Key: to.Ptr("key2")}))
+					require.Equal(t, providerSecretIDs["secret1"], new(SecretReference{Source: new(baseSecretStorePath + "secretstore1"), Key: new("key1")}))
+					require.Equal(t, providerSecretIDs["secret2"], new(SecretReference{Source: new(baseSecretStorePath + "secretstore2"), Key: new("key2")}))
 
 					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Env))
-					require.Equal(t, to.Ptr("myEnvValue"), versioned.Properties.RecipeConfig.Env["myEnvVar"])
+					require.Equal(t, new("myEnvValue"), versioned.Properties.RecipeConfig.Env["myEnvVar"])
 
 					envSecretIDs := versioned.Properties.RecipeConfig.EnvSecrets
 					envSecretRef, ok := envSecretIDs["myEnvSecretVar"]
 					require.True(t, ok)
-					require.Equal(t, envSecretRef, to.Ptr(SecretReference{Source: to.Ptr(baseSecretStorePath + "envSecretStore1"), Key: to.Ptr("envKey1")}))
+					require.Equal(t, envSecretRef, new(SecretReference{Source: new(baseSecretStorePath + "envSecretStore1"), Key: new("envKey1")}))
 					require.Equal(t, 1, len(envSecretIDs))
 				}
 
@@ -551,9 +550,9 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplateKind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 	require.Equal(t, &IdentitySettings{
-		Kind:       to.Ptr(IdentitySettingKindAzureComWorkload),
-		Resource:   to.Ptr("/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"),
-		OidcIssuer: to.Ptr("https://oidcurl/guid"),
+		Kind:       new(IdentitySettingKindAzureComWorkload),
+		Resource:   new("/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"),
+		OidcIssuer: new("https://oidcurl/guid"),
 	}, versioned.Properties.Compute.GetEnvironmentCompute().Identity)
 	require.Equal(t, "azure.com.workload", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Kind))
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Resource))
@@ -582,8 +581,8 @@ func TestConvertDataModelWithACIToVersioned(t *testing.T) {
 	require.Equal(t, "aci", string(*envCompute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 	require.Equal(t, &IdentitySettings{
-		Kind:            to.Ptr(IdentitySettingKindUserAssigned),
-		ManagedIdentity: []*string{to.Ptr("test-mi-0"), to.Ptr("test-mi-1")},
+		Kind:            new(IdentitySettingKindUserAssigned),
+		ManagedIdentity: []*string{new("test-mi-0"), new("test-mi-1")},
 	}, envCompute.Identity)
 	require.Equal(t, "userAssigned", string(*envCompute.Identity.Kind))
 	// validate managed identity urls match the template input
@@ -826,8 +825,8 @@ func Test_toRecipeConfigTerraformProvidersDatamodel(t *testing.T) {
 								},
 								Secrets: map[string]*SecretReference{
 									"secret1": {
-										Source: to.Ptr("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/secretstore1"),
-										Key:    to.Ptr("key1"),
+										Source: new("/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/secretstore1"),
+										Key:    new("key1"),
 									},
 								},
 							},
@@ -1008,8 +1007,8 @@ func Test_toRecipeConfigEnvDatamodel(t *testing.T) {
 			name: "With Multiple Environment Variables",
 			config: &RecipeConfigProperties{
 				Env: map[string]*string{
-					"key1": to.Ptr("value1"),
-					"key2": to.Ptr("value2"),
+					"key1": new("value1"),
+					"key2": new("value2"),
 				},
 			},
 			want: datamodel.EnvironmentVariables{
@@ -1050,8 +1049,8 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 				},
 			},
 			want: map[string]*string{
-				"key1": to.Ptr("value1"),
-				"key2": to.Ptr("value2"),
+				"key1": new("value1"),
+				"key2": new("value2"),
 			},
 		},
 	}
@@ -1073,12 +1072,12 @@ func Test_toSecretReferenceDatamodel(t *testing.T) {
 			name: "Multiple Provider Secrets",
 			configSecrets: map[string]*SecretReference{
 				"secret1": {
-					Source: to.Ptr("source1"),
-					Key:    to.Ptr("key1"),
+					Source: new("source1"),
+					Key:    new("key1"),
 				},
 				"secret2": {
-					Source: to.Ptr("source2"),
-					Key:    to.Ptr("key2"),
+					Source: new("source2"),
+					Key:    new("key2"),
 				},
 			},
 			expectedResult: map[string]datamodel.SecretReference{
@@ -1109,8 +1108,8 @@ func Test_toSecretReferenceDatamodel(t *testing.T) {
 			configSecrets: map[string]*SecretReference{
 				"secret1": nil,
 				"secret2": {
-					Source: to.Ptr("source2"),
-					Key:    to.Ptr("key2"),
+					Source: new("source2"),
+					Key:    new("key2"),
 				},
 			},
 			expectedResult: map[string]datamodel.SecretReference{
@@ -1152,7 +1151,7 @@ func Test_fromSecretReferenceDatamodel(t *testing.T) {
 				"secret1": {Source: "source1", Key: "key1"},
 			},
 			expected: map[string]*SecretReference{
-				"secret1": {Source: to.Ptr("source1"), Key: to.Ptr("key1")},
+				"secret1": {Source: new("source1"), Key: new("key1")},
 			},
 		},
 		{
@@ -1162,8 +1161,8 @@ func Test_fromSecretReferenceDatamodel(t *testing.T) {
 				"secret2": {Source: "source2", Key: "key2"},
 			},
 			expected: map[string]*SecretReference{
-				"secret1": {Source: to.Ptr("source1"), Key: to.Ptr("key1")},
-				"secret2": {Source: to.Ptr("source2"), Key: to.Ptr("key2")},
+				"secret1": {Source: new("source1"), Key: new("key1")},
+				"secret2": {Source: new("source2"), Key: new("key2")},
 			},
 		},
 	}

@@ -40,7 +40,7 @@ Signed-off-by: Random J Developer <random@developer.example.org>
 
 Here's an [example](https://github.com/radius-project/radius/commit/8e95d07a66e6aa91dfb40217318649ca43ec4bd7).
 
-Include a level of detail that makese sense based on the complexity of problem and solution.
+Include a level of detail that makes sense based on the complexity of problem and solution.
 
 Radius leverages the [Developer Certificate of Origin](https://github.com/apps/dco) to certify that you have the right to submit the code you are contributing to the project. Make sure to include the `Signed-off-by` line in your commit message, or use the `-s` flag when committing.
 

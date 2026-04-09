@@ -428,7 +428,7 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 				"Applications.Core/containers": {
 					RecipeKind:     "bicep",
 					RecipeLocation: "br:test.azurecr.io/recipes/container:latest",
-					Parameters: map[string]interface{}{
+					Parameters: map[string]any{
 						"cpu":    "0.5",
 						"memory": "1Gi",
 					},

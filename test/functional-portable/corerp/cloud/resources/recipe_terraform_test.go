@@ -158,7 +158,7 @@ func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, redis)
 				status := redis.Properties["status"].(map[string]any)
-				recipe := status["recipe"].(map[string]interface{})
+				recipe := status["recipe"].(map[string]any)
 				require.Equal(t, "terraform", recipe["templateKind"].(string))
 				expectedTemplatePath := strings.Replace(testutil.GetTerraformPrivateModuleSource(), "privateGitModule=", "", 1)
 				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))

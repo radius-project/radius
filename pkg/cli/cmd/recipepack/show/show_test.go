@@ -84,12 +84,12 @@ func Test_Validate(t *testing.T) {
 
 func Test_Run(t *testing.T) {
 	recipePack := corerpv20250801preview.RecipePackResource{
-		Name: to.Ptr("sample-pack"),
+		Name: new("sample-pack"),
 		Properties: &corerpv20250801preview.RecipePackProperties{
 			Recipes: map[string]*corerpv20250801preview.RecipeDefinition{
 				"Radius.Core/example": {
 					RecipeKind:     to.Ptr(corerpv20250801preview.RecipeKindTerraform),
-					RecipeLocation: to.Ptr("https://github.com/radius-project/example"),
+					RecipeLocation: new("https://github.com/radius-project/example"),
 					Parameters: map[string]any{
 						"foo": "bar",
 					},

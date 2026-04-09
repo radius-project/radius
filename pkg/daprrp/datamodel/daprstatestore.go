@@ -75,7 +75,7 @@ type DaprStateStoreProperties struct {
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning portableresources.ResourceProvisioning      `json:"resourceProvisioning,omitempty"`
 	Metadata             map[string]*rpv1.DaprComponentMetadataValue `json:"metadata,omitempty"`
-	Recipe               portableresources.ResourceRecipe            `json:"recipe,omitempty"`
+	Recipe               portableresources.ResourceRecipe            `json:"recipe"`
 	Resources            []*portableresources.ResourceReference      `json:"resources,omitempty"`
 	Type                 string                                      `json:"type,omitempty"`
 	Version              string                                      `json:"version,omitempty"`

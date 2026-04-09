@@ -3,6 +3,7 @@ package converter
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Azure/bicep-types/src/bicep-types-go/factory"
@@ -345,11 +346,8 @@ func addObjectProperty(
 
 	// Check if this property is required
 	if parent.Required != nil {
-		for _, requiredProp := range parent.Required {
-			if requiredProp == key {
-				flags |= types.TypePropertyFlagsRequired
-				break
-			}
+		if slices.Contains(parent.Required, key) {
+			flags |= types.TypePropertyFlagsRequired
 		}
 	}
 

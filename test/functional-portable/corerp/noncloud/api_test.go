@@ -88,7 +88,6 @@ func Test_ResourceList(t *testing.T) {
 	}
 
 	for _, resourceType := range resourceTypes {
-		resourceType := resourceType // capture range variable
 		t.Run(fmt.Sprintf("list at resource-group scope: %s", resourceType), func(t *testing.T) {
 			t.Parallel()
 			listResources(t, resourceType)

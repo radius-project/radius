@@ -99,11 +99,11 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.Ptr(daprStateStore.ID)
-	dst.Name = to.Ptr(daprStateStore.Name)
-	dst.Type = to.Ptr(daprStateStore.Type)
+	dst.ID = new(daprStateStore.ID)
+	dst.Name = new(daprStateStore.Name)
+	dst.Type = new(daprStateStore.Type)
 	dst.SystemData = fromSystemDataModel(daprStateStore.SystemData)
-	dst.Location = to.Ptr(daprStateStore.Location)
+	dst.Location = new(daprStateStore.Location)
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 	dst.Properties = &DaprStateStoreProperties{
 		Status: &ResourceStatus{
@@ -111,17 +111,17 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 			Recipe:          fromRecipeStatus(daprStateStore.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
-		Environment:          to.Ptr(daprStateStore.Properties.Environment),
-		Application:          to.Ptr(daprStateStore.Properties.Application),
-		ComponentName:        to.Ptr(daprStateStore.Properties.ComponentName),
+		Environment:          new(daprStateStore.Properties.Environment),
+		Application:          new(daprStateStore.Properties.Application),
+		ComponentName:        new(daprStateStore.Properties.ComponentName),
 		ResourceProvisioning: fromResourceProvisioningDataModel(daprStateStore.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(daprStateStore.Properties.Resources),
 		Auth:                 fromAuthDataModel(daprStateStore.Properties.Auth),
 	}
 
 	if daprStateStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		dst.Properties.Type = to.Ptr(daprStateStore.Properties.Type)
-		dst.Properties.Version = to.Ptr(daprStateStore.Properties.Version)
+		dst.Properties.Type = new(daprStateStore.Properties.Type)
+		dst.Properties.Version = new(daprStateStore.Properties.Version)
 		dst.Properties.Metadata = fromMetadataDataModel(daprStateStore.Properties.Metadata)
 	} else {
 		dst.Properties.Recipe = fromRecipeDataModel(daprStateStore.Properties.Recipe)

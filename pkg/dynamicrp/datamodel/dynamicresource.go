@@ -19,6 +19,7 @@ package datamodel
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -151,17 +152,13 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 
 	// Store computed values and secrets as separate maps under status.
 	computedValues := map[string]any{}
-	for key, value := range deploymentOutput.ComputedValues {
-		computedValues[key] = value
-	}
+	maps.Copy(computedValues, deploymentOutput.ComputedValues)
 	if len(computedValues) > 0 {
 		status["computedValues"] = computedValues
 	}
 
 	secrets := map[string]rpv1.SecretValueReference{}
-	for key, value := range deploymentOutput.SecretValues {
-		secrets[key] = value
-	}
+	maps.Copy(secrets, deploymentOutput.SecretValues)
 	if len(secrets) > 0 {
 		status["secrets"] = secrets
 	}
@@ -262,9 +259,7 @@ func (d *dynamicResourceBasicPropertiesAdapter) SetResourceStatus(status rpv1.Re
 	// This is tricky because users are allowed to add their own fields to ".properties.status".
 	// We need to do a merge instead of a simple overwrite.
 	existingStatus := d.resource.Status()
-	for key, value := range marshaledResourceStatus {
-		existingStatus[key] = value
-	}
+	maps.Copy(existingStatus, marshaledResourceStatus)
 }
 
 // GetComputedValues returns the computed values from the status map.

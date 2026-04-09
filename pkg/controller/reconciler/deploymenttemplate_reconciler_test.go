@@ -65,7 +65,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
-			SkipNameValidation: to.Ptr(true),
+			SkipNameValidation: new(true),
 		},
 
 		// Suppress metrics in tests to avoid conflicts.
@@ -426,7 +426,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
 		}
 		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
@@ -503,7 +503,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
 		}
 		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
@@ -552,7 +552,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
 		}
 		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
@@ -632,9 +632,9 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container")},
 		}
 		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})
@@ -702,8 +702,8 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armresources.ResourceReference{
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
-			{ID: to.Ptr("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
 		}
 		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
 	})

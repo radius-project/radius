@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "skipLibCheck": true,
-    "module": "commonjs",
+    "module": "node16",
+    "moduleResolution": "node16",
     "noEmitOnError": true,
     "noImplicitReturns": true,
     "sourceMap": true,
@@ -10,13 +11,14 @@
     "declaration": true,
     "stripInternal": true,
     "noEmitHelpers": false,
-    "target": "es2019",
+    "target": "es2022",
     "types": ["node"],
     "esModuleInterop": true,
-    "lib": ["es2020"],
+    "lib": ["es2022"],
     "newLine": "LF",
     "outDir": "dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "forceConsistentCasingInFileNames": true
   },
   "exclude": ["dist", "node_modules"]
 }

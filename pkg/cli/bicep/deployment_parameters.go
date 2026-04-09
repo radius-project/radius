@@ -19,6 +19,7 @@ package bicep
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -77,9 +78,9 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	// --parameter foo=@bar.json - declares a single parameter as JSON
 	// --parameter foo=bar - declares a single parameter with a string value
 
-	if strings.HasPrefix(input, "@") {
+	if after, ok := strings.CutPrefix(input, "@"); ok {
 		// input is a file that declares multiple parameters
-		filePath := strings.TrimPrefix(input, "@")
+		filePath := after
 		b, err := pp.FileSystem.ReadFile(filePath)
 		if err != nil {
 			return err
@@ -98,9 +99,9 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	parameterName := parts[0]
 	parameterValue := parts[1]
 
-	if strings.HasPrefix(parameterValue, "@") {
+	if after, ok := strings.CutPrefix(parameterValue, "@"); ok {
 		// input is a file that declares a single parameter
-		filePath := strings.TrimPrefix(parameterValue, "@")
+		filePath := after
 		b, err := pp.FileSystem.ReadFile(filePath)
 		if err != nil {
 			return err
@@ -135,9 +136,7 @@ func (pp ParameterParser) unmarshalParameters(b []byte, output clients.Deploymen
 
 func (pp ParameterParser) mergeParameters(output clients.DeploymentParameters, input clients.DeploymentParameters) {
 	// We intentionally overwrite duplicates.
-	for k, v := range input {
-		output[k] = v
-	}
+	maps.Copy(output, input)
 }
 
 func (pp ParameterParser) mergeSingleParameter(output clients.DeploymentParameters, name string, input any) {

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"html"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -161,9 +162,7 @@ func ReadResponseFromFile(path string) (Response, error) {
 func (req Request) ToTestRequest(ctx context.Context) *http.Request {
 	result := httptest.NewRequest(req.Method, req.URL, bytes.NewBufferString(req.Body))
 	result = result.WithContext(ctx)
-	for key, values := range req.Headers {
-		result.Header[key] = values
-	}
+	maps.Copy(result.Header, req.Headers)
 
 	return result
 }
@@ -198,9 +197,7 @@ func (rt *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	w := httptest.NewRecorder()
 	w.Header()
 
-	for key, values := range rt.Response.Headers {
-		w.Header()[key] = values
-	}
+	maps.Copy(w.Header(), rt.Response.Headers)
 
 	w.WriteHeader(w.Code)
 

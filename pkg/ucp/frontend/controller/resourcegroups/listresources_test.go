@@ -28,7 +28,6 @@ import (
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -36,9 +35,9 @@ import (
 
 func Test_ListResources(t *testing.T) {
 	entryResource := v20231001preview.GenericResource{
-		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"),
-		Type: to.Ptr("Applications.Core/applications"),
-		Name: to.Ptr("test-app"),
+		ID:   new("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"),
+		Type: new("Applications.Core/applications"),
+		Name: new("test-app"),
 	}
 	entryDatamodel := datamodel.GenericResource{
 		BaseResource: v1.BaseResource{

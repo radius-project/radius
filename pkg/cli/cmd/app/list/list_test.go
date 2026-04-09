@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"go.uber.org/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -28,9 +27,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -86,10 +85,10 @@ func Test_Run(t *testing.T) {
 
 	applications := []v20231001preview.ApplicationResource{
 		{
-			Name: to.Ptr("A"),
+			Name: new("A"),
 		},
 		{
-			Name: to.Ptr("B"),
+			Name: new("B"),
 		},
 	}
 

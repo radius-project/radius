@@ -84,6 +84,18 @@ We run [CodeQL](https://codeql.github.com/) as part of the pull-request process 
 
 If CodeQL fails due to your changes, please work with the maintainers to resolve the issue.
 
+### Spell checking
+
+The PR check workflow runs a spell checker ([cspell](https://cspell.org/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but cspell doesn't know them.
+
+If you install cspell locally you can run the spell check on your machine with this command (from the root folder of the repo):
+
+```bash
+make spellcheck
+```
+
+Note: cspell requires [Node.js](https://nodejs.org/). Install it globally with `npm install -g cspell`.
+
 ## Code review
 
 The maintainers or other contributors will add comments to your pull request giving feedback, asking questions, and making suggestions. Please respond to these comments to either continue the discussion or explain whether or not you plan to address the feedback. Ultimately, accepting a pull request is at the maintainer's discretion.

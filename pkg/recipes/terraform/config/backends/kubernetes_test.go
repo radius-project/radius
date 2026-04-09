@@ -81,8 +81,8 @@ func Test_GenerateKubernetesBackendConfig(t *testing.T) {
 	t.Setenv("KUBERNETES_SERVICE_PORT", "")
 	actualConfig, err := generateKubernetesBackendConfig(testSecretSuffix)
 	require.NoError(t, err)
-	expectedConfig := map[string]interface{}{
-		"kubernetes": map[string]interface{}{
+	expectedConfig := map[string]any{
+		"kubernetes": map[string]any{
 			"config_path":   clientcmd.RecommendedHomeFile,
 			"secret_suffix": testSecretSuffix,
 			"namespace":     RadiusNamespace,

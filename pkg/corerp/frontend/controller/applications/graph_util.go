@@ -390,7 +390,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 				connectionsBySource[id] = append(connectionsBySource[id], *connection)
 				//otherID is the destination to the connections in connectionsByDestination
 				connectionInbound := corerpv20231001preview.ApplicationGraphConnection{
-					ID:        to.Ptr(id),
+					ID:        new(id),
 					Direction: to.Ptr(corerpv20231001preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
@@ -439,9 +439,9 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 	}
 
 	return &corerpv20231001preview.ApplicationGraphResource{
-		ID:                to.Ptr(id),
-		Name:              to.Ptr(application.Name()),
-		Type:              to.Ptr(application.Type()),
+		ID:                new(id),
+		Name:              new(application.Name()),
+		Type:              new(application.Type()),
 		ProvisioningState: to.Ptr(string(v1.ProvisioningStateSucceeded)),
 	}
 }
@@ -449,9 +449,9 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
 func outputResourceEntryFromID(id resources.ID) corerpv20231001preview.ApplicationGraphOutputResource {
 	return corerpv20231001preview.ApplicationGraphOutputResource{
-		ID:   to.Ptr(id.String()),
-		Name: to.Ptr(id.Name()),
-		Type: to.Ptr(id.Type()),
+		ID:   new(id.String()),
+		Name: new(id.Name()),
+		Type: new(id.Type()),
 	}
 }
 
@@ -569,8 +569,8 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 		sourceID, dir, err := converter(item)
 		if err == nil && sourceID != "" {
 			entries = append(entries, &corerpv20231001preview.ApplicationGraphConnection{
-				ID:        to.Ptr(sourceID),
-				Direction: to.Ptr(dir),
+				ID:        new(sourceID),
+				Direction: new(dir),
 			})
 		}
 	}

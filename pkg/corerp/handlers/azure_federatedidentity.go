@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/logging"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -128,9 +127,9 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 
 	params := armmsi.FederatedIdentityCredential{
 		Properties: &armmsi.FederatedIdentityCredentialProperties{
-			Audiences: []*string{to.Ptr(AzureFederatedIdentityAudience)},
-			Issuer:    to.Ptr(issuer),
-			Subject:   to.Ptr(subject),
+			Audiences: []*string{new(AzureFederatedIdentityAudience)},
+			Issuer:    new(issuer),
+			Subject:   new(subject),
 		},
 	}
 

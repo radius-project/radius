@@ -30,9 +30,6 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Debug
-        uses: raven-actions/debug@9dbdeb7eea607a7d73411895c65987e71d59a466 # v1.2.0
-
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -55,12 +52,6 @@ jobs:
             actions:
               - ".github/workflows/**"
               - ".github/actions/**"
-
-      - name: Filter outputs
-        run: |
-          echo "${FILTER_OUTPUTS}"
-        env:
-          FILTER_OUTPUTS: ${{ toJson(steps.filter.outputs) }}
 
       - name: Set matrix
         id: set-matrix
@@ -162,6 +153,7 @@ jobs:
     name: CodeQL
     needs: codeql
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: ✅ OK
         if: ${{ !(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}

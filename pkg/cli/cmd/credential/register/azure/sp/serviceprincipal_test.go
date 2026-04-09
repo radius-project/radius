@@ -113,14 +113,14 @@ func Test_Run(t *testing.T) {
 			expectedPut := ucp.AzureCredentialResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AzureCredential),
-				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
+				ID:       new(fmt.Sprintf(common.AzureCredentialID, "default")),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
 						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
-					ClientID:     to.Ptr("cool-client-id"),
-					ClientSecret: to.Ptr("cool-client-secret"),
-					TenantID:     to.Ptr("cool-tenant-id"),
+					ClientID:     new("cool-client-id"),
+					ClientSecret: new("cool-client-secret"),
+					TenantID:     new("cool-tenant-id"),
 					Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 				},
 			}

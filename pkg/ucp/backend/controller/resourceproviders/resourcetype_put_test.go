@@ -19,7 +19,6 @@ package resourceproviders
 import (
 	"testing"
 
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -29,7 +28,7 @@ func TestResourceTypePutController_updateSummary(t *testing.T) {
 	id := resources.MustParse("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources")
 	resourceType := &datamodel.ResourceType{
 		Properties: datamodel.ResourceTypeProperties{
-			DefaultAPIVersion: to.Ptr("2025-01-01"),
+			DefaultAPIVersion: new("2025-01-01"),
 		},
 	}
 
@@ -43,7 +42,7 @@ func TestResourceTypePutController_updateSummary(t *testing.T) {
 		Properties: datamodel.ResourceProviderSummaryProperties{
 			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
 				"testResources": {
-					DefaultAPIVersion: to.Ptr("2025-01-01"),
+					DefaultAPIVersion: new("2025-01-01"),
 				},
 			},
 		},

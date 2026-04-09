@@ -100,7 +100,7 @@ func ScaffoldApplication(directory string, name string) error {
 	}
 
 	radYamlFilepath := filepath.Join(directory, ".rad", "rad.yaml")
-	err = os.WriteFile(radYamlFilepath, []byte(fmt.Sprintf(radYamlTemplate, name)), 0644)
+	err = os.WriteFile(radYamlFilepath, fmt.Appendf(nil, radYamlTemplate, name), 0644)
 	if err != nil {
 		return err
 	}

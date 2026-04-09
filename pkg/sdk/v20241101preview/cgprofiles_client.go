@@ -1,5 +1,4 @@
 //go:build go1.18
-// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
@@ -21,7 +20,7 @@ import (
 
 type CGProfilesClient struct {
 	subscriptionID string
-	pl runtime.Pipeline
+	pl             runtime.Pipeline
 }
 
 // NewCGProfilesClient creates a new instance of CGProfilesClient with the specified values.
@@ -30,7 +29,7 @@ type CGProfilesClient struct {
 func NewCGProfilesClient(subscriptionID string, pl runtime.Pipeline) *CGProfilesClient {
 	client := &CGProfilesClient{
 		subscriptionID: subscriptionID,
-		pl: pl,
+		pl:             pl,
 	}
 	return client
 }
@@ -40,7 +39,7 @@ func NewCGProfilesClient(subscriptionID string, pl runtime.Pipeline) *CGProfiles
 // resourceGroupName - The name of the resource group. The name is case insensitive.
 // options - CGProfilesClientListByResourceGroupOptions contains the optional parameters for the CGProfilesClient.ListByResourceGroup
 // method.
-func (client *CGProfilesClient) NewListByResourceGroupPager(resourceGroupName string, options *CGProfilesClientListByResourceGroupOptions) (*runtime.Pager[CGProfilesClientListByResourceGroupResponse]) {
+func (client *CGProfilesClient) NewListByResourceGroupPager(resourceGroupName string, options *CGProfilesClientListByResourceGroupOptions) *runtime.Pager[CGProfilesClientListByResourceGroupResponse] {
 	return runtime.NewPager(runtime.PagingHandler[CGProfilesClientListByResourceGroupResponse]{
 		More: func(page CGProfilesClientListByResourceGroupResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -76,7 +75,7 @@ func (client *CGProfilesClient) listByResourceGroupCreateRequest(ctx context.Con
 		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +99,7 @@ func (client *CGProfilesClient) listByResourceGroupHandleResponse(resp *http.Res
 // Generated from API version 2024-11-01-preview
 // options - CGProfilesClientListBySubscriptionOptions contains the optional parameters for the CGProfilesClient.ListBySubscription
 // method.
-func (client *CGProfilesClient) NewListBySubscriptionPager(options *CGProfilesClientListBySubscriptionOptions) (*runtime.Pager[CGProfilesClientListBySubscriptionResponse]) {
+func (client *CGProfilesClient) NewListBySubscriptionPager(options *CGProfilesClientListBySubscriptionOptions) *runtime.Pager[CGProfilesClientListBySubscriptionResponse] {
 	return runtime.NewPager(runtime.PagingHandler[CGProfilesClientListBySubscriptionResponse]{
 		More: func(page CGProfilesClientListBySubscriptionResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -132,7 +131,7 @@ func (client *CGProfilesClient) NewListBySubscriptionPager(options *CGProfilesCl
 func (client *CGProfilesClient) listBySubscriptionCreateRequest(ctx context.Context, options *CGProfilesClientListBySubscriptionOptions) (*policy.Request, error) {
 	urlPath := "/subscriptions/{subscriptionId}/providers/Microsoft.ContainerInstance/containerGroupProfiles"
 	urlPath = strings.ReplaceAll(urlPath, "{subscriptionId}", url.PathEscape(client.subscriptionID))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(	host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -151,4 +150,3 @@ func (client *CGProfilesClient) listBySubscriptionHandleResponse(resp *http.Resp
 	}
 	return result, nil
 }
-
