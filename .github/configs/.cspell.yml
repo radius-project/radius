@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+# docs: https://cspell.org/docs/getting-started
+---
+$schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+version: "0.2"
+language: en
+
+# Use the existing custom dictionaries and ignore patterns
+dictionaries:
+  - softwareTerms
+  - companies
+  - python
+  - bash
+  - filetypes
+  - en_US
+  - cspellignore
+
+# Ignore patterns within files
+ignoreRegExpList:
+  - code_block
+  - adr_yaml_formatter
+  - inline_code
+  - tf_docs
+  - md_image_link
+  - md_link
+  - url
+  - at_mention
+  - html_tag
+  - email_address
+
+# Define custom patterns to ignore specific sections of text that are likely to contain technical terms or formatting that should not be spell-checked
+patterns:
+  # Fenced code blocks: ```lang ... ``` (with or without language identifier)
+  - name: code_block
+    pattern:
+      - /^`{3,}[^\n]*\n[\s\S]*?^`{3,}\s*$/gm
+  - name: adr_yaml_formatter
+    pattern:
+      - /(^([a-z-]*[:]{1})((\w|\s|,|"|-)*?)$)/gm
+  # Inline code: `some code here`
+  - name: inline_code
+    pattern:
+      - /`[^`\r\n]*`/g
+  - name: tf_docs
+    pattern:
+      - ^(?:\s*\|{1}\s*)(?:<a
+        name="(?:requirement|provider|module){1}_[\w]*"></a>){1}
+      - \[.*\]\(#(?:requirement|provider|module){1}.*\)\s*
+      - \|{1}\s*\[[\w_\.]*\]\(.*\)\s*\|\s(?:resource|data source)\s*\|
+      - (?:\|\s*){1}(?:Azure\/avm){1}.*(?:\s*\|){1}
+  # Markdown image links: ![alt text](path/to/image.png)
+  - name: md_image_link
+    pattern:
+      - /!\[[^\]]*\]\([^)]*\)/g
+  # Markdown links: [text](url)
+  - name: md_link
+    pattern:
+      - /\[[^\]]*\]\([^)]*\)/g
+  # URLs
+  - name: url
+    pattern:
+      - /https?:\/\/[^\s)>]*/g
+  # @mentions like @user or @team-name
+  - name: at_mention
+    pattern:
+      - /(?<!\w)@[\w.-]+/g
+  # HTML tags
+  - name: html_tag
+    pattern:
+      - /<[^>]+>/g
+  # Email addresses
+  - name: email_address
+    pattern:
+      - /[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}/g
+
+# Use the existing custom dictionary
+dictionaryDefinitions:
+  - name: cspellignore
+    path: ../../.cspellignore
+    addWords: true
+
+# Allow compound words to be checked as a single word (e.g., "spellcheck" instead of "spell check")
+allowCompoundWords: true
+
+# Ignore paths that should not be spell-checked
+ignorePaths:
+  - "**/node_modules/**"
+  - "**/.dev/**"
+  - "**/.venv/**"
+  - "**/venv/**"
+  - "**/.terraform/**"
+  - "**/.cspellignore"
+
+# Only check markdown files
+files:
+  - "**/*.md"

@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: PR Required Labels
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+
+permissions: {}
+
+jobs:
+  pr-required-labels:
+    if: github.event.pull_request.user.login != 'dependabot[bot]' # skip for Dependabot PRs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Run PR Required Labels
+        uses: mheap/github-action-required-labels@0ac283b4e65c1fb28ce6079dea5546ceca98ccbe # v5.5.2
+        with:
+          mode: exactly
+          count: 1
+          labels: |
+            pr:standard
+            pr:important
+          add_comment: ${{ github.event.pull_request.head.repo.fork == false }}
+          message: |
+            This PR requires {{ errorString }} {{ count }} of the following labels: {{ provided }}.
+            Currently applied labels: {{ applied }}.
+
+            **Label descriptions:**
+            - `pr:important` - Major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
+            - `pr:standard` - Ongoing maintenance, minor improvements, documentation updates, and routine development work.
+
+            @${{ github.event.pull_request.user.login }}, please add the appropriate label to this PR before merging.
+          exit_type: failure

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -20,12 +20,8 @@
 spellcheck: ## Runs spellcheck on the repository.
 	@echo "$(ARROW) Running spellcheck..."
 	@echo ""
-	@command -v pyspelling >/dev/null 2>&1 || { \
-		echo "pyspelling is required for spellcheck. Install pyspelling and aspell, then try again."; \
+	@command -v cspell >/dev/null 2>&1 || { \
+		echo "cspell is required for spellcheck. Install it with 'npm install -g cspell', then try again."; \
 		exit 1; \
 	}
-	@command -v aspell >/dev/null 2>&1 || { \
-		echo "aspell is required for spellcheck. Install pyspelling and aspell, then try again."; \
-		exit 1; \
-	}
-	@pyspelling --verbose --config ./.github/configs/.pyspelling.yml
+	@cspell lint --config ./.github/configs/.cspell.yml --no-progress --dot "**/*.md"
