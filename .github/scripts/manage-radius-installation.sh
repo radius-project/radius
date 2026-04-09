@@ -115,7 +115,7 @@ verify_resource_types_available() {
     local output exit_code
     output=$(rad resource-provider list 2>&1) && exit_code=0 || exit_code=$?
 
-    if [[ ${exit_code} -eq 0 ]] && echo "${output}" | grep -q "Applications.Core"; then
+    if [[ ${exit_code} -eq 0 ]] && echo "${output}" | grep -Fq "Applications.Core"; then
         echo "Resource types are available (Applications.Core provider found)."
         return 0
     fi
