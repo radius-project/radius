@@ -32,7 +32,11 @@ fi
 
 # Delete all test resources in resources without proxy resource.
 if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
-    echo "delete all resources in resources.ucp.dev"
+    if [[ -n "$SKIP_RESOURCE_FILE" && -f "$SKIP_RESOURCE_FILE" ]]; then
+        echo "delete resources in resources.ucp.dev except entries in skip-resource-list"
+    else
+        echo "no skip-resource-list available; delete only scope.* resources in resources.ucp.dev"
+    fi
     resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
     for r in $resources; do
         if [[ -z "$r" ]]; then

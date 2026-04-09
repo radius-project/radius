@@ -103,6 +103,7 @@ verify_manifests_registered() {
 # Actively verify that resource types are registered and the Radius API is
 # able to serve requests. Unlike verify_manifests_registered (which reads
 # historical pod logs), this makes a live API call.
+# Returns: 0 = healthy, 1 = provider missing, 2 = query failed
 verify_resource_types_available() {
     echo ""
     echo "Verifying resource types are available..."
@@ -115,7 +116,13 @@ verify_resource_types_available() {
     local output exit_code
     output=$(rad resource-provider list 2>&1) && exit_code=0 || exit_code=$?
 
-    if [[ ${exit_code} -eq 0 ]] && echo "${output}" | grep -Fq "Applications.Core"; then
+    if [[ ${exit_code} -ne 0 ]]; then
+        echo "ERROR: Failed to query registered resource providers (exit code: ${exit_code})."
+        echo "rad resource-provider list output: ${output}"
+        return 2
+    fi
+
+    if echo "${output}" | grep -Fq "Applications.Core"; then
         echo "Resource types are available (Applications.Core provider found)."
         return 0
     fi
@@ -223,7 +230,23 @@ main() {
         echo ""
         echo "Radius control plane version matches CLI version (${cli_version}). Skipping install/upgrade."
 
-        if ! verify_resource_types_available; then
+        # Verify resource types with retry for transient failures.
+        local check_result=0
+        verify_resource_types_available || check_result=$?
+
+        if [[ ${check_result} -eq 2 ]]; then
+            # Query failed (connectivity/auth issue). Retry once after a brief wait
+            # before taking destructive action.
+            echo ""
+            echo "Resource type query failed. Retrying in 30 seconds..."
+            sleep 30
+            check_result=0
+            verify_resource_types_available || check_result=$?
+        fi
+
+        if [[ ${check_result} -eq 0 ]]; then
+            save_skip_resources_list
+        elif [[ ${check_result} -eq 1 ]]; then
             echo ""
             echo "Resource types missing despite matching versions. Reinstalling Radius..."
             if ! rad uninstall kubernetes --purge --yes; then
@@ -231,7 +254,10 @@ main() {
             fi
             install_radius
         else
-            save_skip_resources_list
+            echo ""
+            echo "ERROR: Unable to verify resource types after retry."
+            echo "This may indicate a connectivity or authentication issue."
+            exit 1
         fi
     else
         echo ""
