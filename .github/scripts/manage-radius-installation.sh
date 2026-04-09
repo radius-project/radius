@@ -109,7 +109,15 @@ verify_resource_types_available() {
     echo "Verifying resource types are available..."
 
     # Ensure a workspace exists so rad CLI can reach the cluster.
-    rad workspace create kubernetes --force
+    local workspace_output workspace_exit_code
+    workspace_output=$(rad workspace create kubernetes --force 2>&1) &&
+        workspace_exit_code=0 || workspace_exit_code=$?
+
+    if [[ ${workspace_exit_code} -ne 0 ]]; then
+        echo "ERROR: Failed to create Radius Kubernetes workspace (exit code: ${workspace_exit_code})."
+        echo "rad workspace create output: ${workspace_output}"
+        return 2
+    fi
 
     # List registered resource providers. Applications.Core must be present
     # for environment/container operations to work.
