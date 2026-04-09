@@ -1,0 +1,220 @@
+/* Styles for the injected "Deploy with Radius" button on GitHub pages. */
+/* Designed to match GitHub Primer button styling. */
+
+.radius-deploy-container {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 1;
+  min-width: 0;
+  margin-right: 8px;
+  z-index: 100;
+}
+
+.radius-deploy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  color: #1f2328;
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 20px;
+  white-space: nowrap;
+  vertical-align: middle;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* On narrow viewports, collapse to icon-only */
+@media (max-width: 768px) {
+  .radius-deploy-btn span:not(.radius-badge) {
+    display: none;
+  }
+  .radius-deploy-btn {
+    padding: 5px 8px;
+  }
+}
+
+.radius-deploy-btn:hover {
+  background: #eaeef2;
+  border-color: #bbc0c5;
+}
+
+.radius-deploy-btn:active {
+  background: #d8dce0;
+}
+
+.radius-deploy-icon {
+  flex-shrink: 0;
+}
+
+/* Configured state — green accent */
+.radius-deploy-btn.radius-configured {
+  border-color: #1a7f37;
+  color: #1a7f37;
+}
+
+.radius-deploy-btn.radius-configured:hover {
+  background: #dafbe1;
+}
+
+/* Badge for configured state */
+.radius-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  background: #1a7f37;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border: 2px solid white;
+}
+
+/* Dropdown menu */
+.radius-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+  z-index: 200;
+  overflow: hidden;
+}
+
+/* Flip dropdown above the button when near the bottom of the viewport */
+.radius-dropdown.radius-dropdown--above {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.radius-dropdown.hidden {
+  display: none;
+}
+
+.radius-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  color: #1f2328;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.radius-dropdown-item:hover {
+  background: #f6f8fa;
+}
+
+.radius-dropdown-item + .radius-dropdown-item {
+  border-top: 1px solid #d0d7de;
+}
+
+.radius-dropdown-deploy {
+  color: #1a7f37;
+  font-weight: 600;
+}
+
+.radius-dropdown-deploy:hover {
+  background: #dafbe1;
+}
+
+.radius-dropdown-divider {
+  border: none;
+  border-top: 1px solid #d0d7de;
+  margin: 4px 0;
+}
+
+/* --- Deployments sidebar widget --- */
+
+.radius-deployments-list {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.radius-deployments-loading,
+.radius-deployments-empty {
+  color: #656d76;
+  font-size: 12px;
+}
+
+.radius-deployment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid #d8dee4;
+}
+
+.radius-deployment-item:last-child {
+  border-bottom: none;
+}
+
+.radius-deployment-item:hover {
+  background: #f6f8fa;
+  border-radius: 4px;
+  margin: 0 -4px;
+  padding: 6px 4px;
+}
+
+.radius-deployment-status {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  margin-top: 1px;
+}
+
+.radius-status-success { color: #1a7f37; font-weight: 700; }
+.radius-status-failure { color: #cf222e; font-weight: 700; }
+.radius-status-cancelled { color: #656d76; }
+.radius-status-progress { color: #bf8700; }
+.radius-status-queued { color: #656d76; }
+.radius-status-unknown { color: #656d76; }
+
+.radius-deployment-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.radius-deployment-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2328;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.radius-deployment-label code {
+  font-size: 11px;
+  font-weight: 400;
+  background: #eff1f3;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.radius-deployment-time {
+  font-size: 12px;
+  color: #656d76;
+}
