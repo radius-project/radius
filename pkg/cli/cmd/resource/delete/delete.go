@@ -55,7 +55,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
 # Delete a container named orders
-rad resource delete Applications.Core/containers orders`,
+rad resource delete Applications.Core/containers orders
+
+# Force delete a resource that is stuck in a non-terminal state
+rad resource delete Applications.Core/containers orders --force`,
 		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
 	}
@@ -64,6 +67,7 @@ rad resource delete Applications.Core/containers orders`,
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddConfirmationFlag(cmd)
+	commonflags.AddForceFlag(cmd)
 
 	return cmd, runner
 }
@@ -80,6 +84,7 @@ type Runner struct {
 
 	InputPrompter prompt.Interface
 	Confirm       bool
+	Force         bool
 }
 
 // NewRunner creates a new instance of the `rad resource delete` runner.
@@ -129,6 +134,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Confirm = yes
 
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+	r.Force = force
+
 	return nil
 }
 
@@ -172,7 +183,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	deleted, err := client.DeleteResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
+	if r.Force {
+		r.Output.LogInfo("WARNING: Force deleting a resource in a non-terminal state may leave orphaned external resources that require manual cleanup.")
+	}
+
+	deleted, err := client.DeleteResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Force)
 	if err != nil {
 		return err
 	}

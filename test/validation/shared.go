@@ -125,7 +125,7 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 		maxRetries := 5
 		var err error
 		for attempt := range maxRetries {
-			_, err = client.DeleteResource(ctx, resource.Type, resource.Name)
+			_, err = client.DeleteResource(ctx, resource.Type, resource.Name, false)
 			if err == nil {
 				break
 			}

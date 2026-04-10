@@ -42,6 +42,8 @@ func NewDefaultAsyncDelete[P interface {
 }
 
 // Run executes asynchronous delete operation by validating the request, executing custom delete filters, and starting async job, and returns an async response.
+// When the "force" query parameter is set to "true", the provisioning state check is skipped,
+// allowing deletion of resources stuck in non-terminal states (e.g., "Updating").
 func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
@@ -53,8 +55,16 @@ func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWrite
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if r, err := e.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
-		return r, err
+	force := req.URL.Query().Get("force") == "true"
+	if force {
+		// When force-deleting, skip the provisioning state check but still validate the ETag.
+		if err := ctrl.ValidateETag(*serviceCtx, etag); err != nil {
+			return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+		}
+	} else {
+		if r, err := e.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+			return r, err
+		}
 	}
 
 	for _, filter := range e.DeleteFilters() {
