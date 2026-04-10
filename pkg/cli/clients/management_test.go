@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -716,6 +717,44 @@ func Test_Resource(t *testing.T) {
 		_, err := client.GetResource(context.Background(), "Radius.Core/environments", "test-env")
 		require.NoError(t, err)
 	})
+}
+
+func Test_ForceDeletePolicy(t *testing.T) {
+	t.Run("adds force=true query parameter", func(t *testing.T) {
+		p := &forceDeletePolicy{}
+
+		// Create a minimal pipeline with a transport that captures the request URL.
+		var capturedURL string
+		pipeline := runtime.NewPipeline("test", "v1.0.0", runtime.PipelineOptions{
+			PerCall: []policy.Policy{p},
+		}, &policy.ClientOptions{
+			Transport: &mockTransport{
+				do: func(req *http.Request) (*http.Response, error) {
+					capturedURL = req.URL.String()
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       http.NoBody,
+					}, nil
+				},
+			},
+		})
+
+		req, err := runtime.NewRequest(context.Background(), http.MethodDelete, "http://localhost/test?api-version=2023-10-01-preview")
+		require.NoError(t, err)
+
+		_, err = pipeline.Do(req)
+		require.NoError(t, err)
+		require.Contains(t, capturedURL, "force=true")
+		require.Contains(t, capturedURL, "api-version=2023-10-01-preview")
+	})
+}
+
+type mockTransport struct {
+	do func(req *http.Request) (*http.Response, error)
+}
+
+func (m *mockTransport) Do(req *http.Request) (*http.Response, error) {
+	return m.do(req)
 }
 
 func Test_Application(t *testing.T) {

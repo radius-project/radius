@@ -392,7 +392,17 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return false, err
 	}
 
-	client, err := amc.createApplicationClient(scope)
+	var client applicationResourceClient
+	if force && amc.applicationResourceClientFactory == nil {
+		clientOptions := *amc.ClientOptions
+		clientOptions.PerCallPolicies = append(
+			append([]policy.Policy{}, clientOptions.PerCallPolicies...),
+			&forceDeletePolicy{},
+		)
+		client, err = corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, "/"), &aztoken.AnonymousCredential{}, &clientOptions)
+	} else {
+		client, err = amc.createApplicationClient(scope)
+	}
 	if err != nil {
 		return false, err
 	}
