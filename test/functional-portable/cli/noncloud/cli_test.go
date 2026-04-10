@@ -605,7 +605,7 @@ func Test_CLI_Delete(t *testing.T) {
 		})
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerY")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerY", false)
 		require.NoErrorf(t, err, "failed to delete resource containerY")
 		err = DeleteAppWithoutDeletingResources(t, ctx, options, appNameUnassociatedResources)
 		require.NoErrorf(t, err, "failed to delete application %s", appNameUnassociatedResources)
@@ -618,7 +618,7 @@ func Test_CLI_Delete(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerX")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerX", false)
 		require.NoErrorf(t, err, "failed to delete resource containerX")
 
 	})

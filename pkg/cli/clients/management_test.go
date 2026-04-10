@@ -662,7 +662,7 @@ func Test_Resource(t *testing.T) {
 			BeginDelete(gomock.Any(), testResourceName, gomock.Any()).
 			Return(poller(&generated.GenericResourcesClientDeleteResponse{}), nil)
 
-		deleted, err := client.DeleteResource(context.Background(), testResourceType, testResourceID)
+		deleted, err := client.DeleteResource(context.Background(), testResourceType, testResourceID, false)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -968,7 +968,7 @@ func Test_Application(t *testing.T) {
 				return corerp.ApplicationsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteApplication(context.Background(), testResourceID)
+		deleted, err := client.DeleteApplication(context.Background(), testResourceID, false)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1048,7 +1048,7 @@ func Test_Application(t *testing.T) {
 				return corerp.ApplicationsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteApplication(context.Background(), testResourceID)
+		deleted, err := client.DeleteApplication(context.Background(), testResourceID, false)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1087,7 +1087,7 @@ func Test_Application(t *testing.T) {
 		// Delete should NOT be called when ListResourcesInApplication fails with non-404 error
 		// No expectation set for mock.Delete()
 
-		deleted, err := client.DeleteApplication(context.Background(), testResourceID)
+		deleted, err := client.DeleteApplication(context.Background(), testResourceID, false)
 		require.Error(t, err)
 		require.False(t, deleted)
 		// Verify the error is propagated correctly

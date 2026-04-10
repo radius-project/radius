@@ -111,7 +111,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+			DeleteApplication(gomock.Any(), "test-app", false).
 			Return(true, nil).
 			Times(1)
 
@@ -169,7 +169,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+			DeleteApplication(gomock.Any(), "test-app", false).
 			Return(true, nil).
 			Times(1)
 
@@ -205,7 +205,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+			DeleteApplication(gomock.Any(), "test-app", false).
 			Return(true, nil).
 			Times(1)
 

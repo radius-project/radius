@@ -44,12 +44,16 @@ func TestDefaultAsyncDelete(t *testing.T) {
 		qErr             error
 		saveErr          error
 		rejectedByFilter bool
+		force            bool
 		code             int
 	}{
-		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &database.ErrNotFound{}, nil, nil, false, http.StatusNoContent},
-		{"async-delete-existing-resource-blocked-by-filter", "", v1.ProvisioningStateSucceeded, nil, nil, nil, true, http.StatusConflict},
-		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, false, http.StatusConflict},
-		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, false, http.StatusAccepted},
+		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &database.ErrNotFound{}, nil, nil, false, false, http.StatusNoContent},
+		{"async-delete-existing-resource-blocked-by-filter", "", v1.ProvisioningStateSucceeded, nil, nil, nil, true, false, http.StatusConflict},
+		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, false, false, http.StatusConflict},
+		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, false, false, http.StatusAccepted},
+		{"async-force-delete-existing-resource-in-updating-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, false, true, http.StatusAccepted},
+		{"async-force-delete-existing-resource-in-accepted-state", "", v1.ProvisioningStateAccepted, nil, nil, nil, false, true, http.StatusAccepted},
+		{"async-force-delete-existing-resource-blocked-by-filter", "", v1.ProvisioningStateUpdating, nil, nil, nil, true, true, http.StatusConflict},
 	}
 
 	for _, tt := range deleteCases {
@@ -62,6 +66,12 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
 			require.NoError(t, err)
 			req.Header.Set("If-Match", tt.etag)
+
+			if tt.force {
+				q := req.URL.Query()
+				q.Set("force", "true")
+				req.URL.RawQuery = q.Encode()
+			}
 
 			ctx := rpctest.NewARMRequestContext(req)
 			_, appDataModel, _ := loadTestResurce()
@@ -81,7 +91,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil && !tt.rejectedByFilter && appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
+			if tt.getErr == nil && !tt.rejectedByFilter && (appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() || tt.force) {
 				expectedOptions := statusmanager.QueueOperationOptions{
 					OperationTimeout: asyncOperationTimeout,
 					RetryAfter:       asyncOperationRetryAfter,
