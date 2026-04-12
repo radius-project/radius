@@ -112,6 +112,15 @@ model ApplicationGraphResource {
 
   @doc("provisioningState of this resource.")
   provisioningState: string;
+
+  @doc("Optional repository-root-relative file path to the source code for this resource.")
+  codeReference?: string;
+
+  @doc("Optional 1-based line number of the resource declaration in app.bicep.")
+  appDefinitionLine?: int32;
+
+  @doc("Optional stable hash of review-relevant resource properties for diff classification.")
+  diffHash?: string;
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")

@@ -1,5 +1,96 @@
-// Content script: injects a "Deploy with Radius" button into GitHub repo pages.
+// Content script: injects Radius features into GitHub pages.
+// - "Deploy with Radius" button on repo root pages
+// - Application graph visualization on PR pages
+// - "Application graph" tab on repo root pages
 // Runs on github.com/{owner}/{repo} pages at document_idle.
+
+import { initPRGraph } from './pr-graph.js';
+import { initRepoTab } from './repo-tab.js';
+import { initAppPage } from './app-page.js';
+
+// ── Page Detection ────────────────────────────────────────────
+
+interface PageInfo {
+  type: 'pr' | 'repo-root' | 'app-page' | 'other';
+  owner: string;
+  repo: string;
+  pullNumber?: number;
+  appName?: string;
+}
+
+function detectPage(): PageInfo {
+  const path = window.location.pathname;
+
+  // PR page: /:owner/:repo/pull/:number
+  const prMatch = path.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+  if (prMatch) {
+    return { type: 'pr', owner: prMatch[1], repo: prMatch[2], pullNumber: parseInt(prMatch[3], 10) };
+  }
+
+  // Dedicated app page: /:owner/:repo/radius/app/:name
+  const appMatch = path.match(/^\/([^/]+)\/([^/]+)\/radius\/app\/([^/]+)/);
+  if (appMatch) {
+    return { type: 'app-page', owner: appMatch[1], repo: appMatch[2], appName: appMatch[3] };
+  }
+
+  // Repo root: /:owner/:repo (optionally /tree/...)
+  const repoMatch = path.match(/^\/([^/]+)\/([^/]+)(\/tree\/.*)?$/);
+  if (repoMatch) {
+    const owner = repoMatch[1];
+    const reserved = ['settings', 'marketplace', 'explore', 'notifications', 'new', 'login', 'signup', 'orgs', 'topics'];
+    if (!reserved.includes(owner)) {
+      return { type: 'repo-root', owner, repo: repoMatch[2] };
+    }
+  }
+
+  return { type: 'other', owner: '', repo: '' };
+}
+
+// ── Graph Feature Injection ───────────────────────────────────
+
+let lastInjectedPath = '';
+
+function injectGraphFeatures(): void {
+  const path = window.location.pathname;
+  if (path === lastInjectedPath) return;
+  lastInjectedPath = path;
+
+  const page = detectPage();
+
+  switch (page.type) {
+    case 'pr':
+      if (page.pullNumber) {
+        initPRGraph(page.owner, page.repo, page.pullNumber);
+      }
+      break;
+    case 'repo-root':
+      initRepoTab(page.owner, page.repo);
+      break;
+    case 'app-page':
+      if (page.appName) {
+        initAppPage(page.owner, page.repo, page.appName);
+      }
+      break;
+  }
+}
+
+// ── Debounce utility ──────────────────────────────────────────
+
+function debounce(fn: () => void, delay: number): () => void {
+  let timer: ReturnType<typeof setTimeout>;
+  return () => {
+    clearTimeout(timer);
+    timer = setTimeout(fn, delay);
+  };
+}
+
+const debouncedInject = debounce(() => {
+  injectGraphFeatures();
+  if (!document.getElementById('radius-deploy-btn')) {
+    injectRadiusButton();
+  }
+}, 300);
+
 
 function injectRadiusButton(): boolean {
   // Only inject on the repository main page (root or code tab).
@@ -326,11 +417,18 @@ if (!injectRadiusButton()) {
   }, 500);
 }
 
+// Inject graph features on initial load.
+injectGraphFeatures();
+
 // GitHub uses SPA navigation (turbo/pjax) — re-inject on page changes.
+// Listen for turbo:load for GitHub's SPA navigation.
+document.addEventListener('turbo:load', () => {
+  debouncedInject();
+});
+
+// MutationObserver as fallback for cases where Turbo events don't fire.
 const observer = new MutationObserver(() => {
-  if (!document.getElementById('radius-deploy-btn')) {
-    injectRadiusButton();
-  }
+  debouncedInject();
 });
 
 observer.observe(document.body, { childList: true, subtree: true });

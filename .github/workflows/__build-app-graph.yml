@@ -1,0 +1,82 @@
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Reusable workflow: Build static application graph artifact.
+# Consumer repos call this workflow to install a released rad binary,
+# run `rad graph build`, and commit .radius/static/app.json to the branch.
+name: __build-app-graph
+
+on:
+  workflow_call:
+    inputs:
+      app_file:
+        description: "Path to the Bicep application definition file"
+        required: true
+        type: string
+        default: "app.bicep"
+      artifact_path:
+        description: "Path for the output graph artifact"
+        required: true
+        type: string
+        default: ".radius/static/app.json"
+      rad_version:
+        description: "Version of the rad CLI to install (e.g., 'v0.40.0'). Defaults to latest."
+        required: false
+        type: string
+        default: "latest"
+
+concurrency:
+  group: build-app-graph-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-graph:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine rad version
+        id: version
+        run: |
+          if [ "${{ inputs.rad_version }}" = "latest" ]; then
+            RAD_VERSION=$(curl -fsSL https://api.github.com/repos/radius-project/radius/releases/latest | jq -r '.tag_name')
+          else
+            RAD_VERSION="${{ inputs.rad_version }}"
+          fi
+          echo "version=$RAD_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install rad CLI
+        run: |
+          RAD_VERSION="${{ steps.version.outputs.version }}"
+          curl -fsSL -o rad.tar.gz "https://github.com/radius-project/radius/releases/download/${RAD_VERSION}/rad-linux-amd64.tar.gz"
+          tar -xzf rad.tar.gz
+          sudo mv rad /usr/local/bin/rad
+          rm -f rad.tar.gz
+          rad version
+
+      - name: Build static graph
+        run: |
+          mkdir -p "$(dirname "${{ inputs.artifact_path }}")"
+          rad graph build --bicep "${{ inputs.app_file }}" --output "${{ inputs.artifact_path }}"
+
+      - name: Commit graph artifact
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ inputs.artifact_path }}"
+          git diff --cached --quiet || git commit -m "chore: update app graph artifact [skip ci]"
+          git push
