@@ -188,6 +188,7 @@ Two resolver functions handle different connection types:
   objects with a `destination` field. Used by `Applications.Core/gateways`.
 
 The `findSourceResource()` helper supports three resolution strategies:
+
 1. Direct resource ID parsing (if `source` is a valid ARM ID)
 2. Hostname lookup (if `source` is a URL, extract hostname and match by
    resource name)
@@ -273,6 +274,7 @@ human-readable text representation:
      resources are rendered as clickable console hyperlinks to the Azure Portal.
 
 Example output:
+
 ```
 Displaying application: test-app
 
