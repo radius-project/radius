@@ -44,7 +44,7 @@ When viewing the application graph visualization (in a PR or on the repo root), 
 
 ### User Story 3 - Static Application Graph Construction (Priority: P1)
 
-The system constructs an application graph from Radius Bicep source files without requiring a live deployment or running Radius control plane. The app definition file is compiled to ARM JSON, and the resulting JSON is parsed to extract resources, connections, and dependency edges. The output is a graph data structure compatible with the existing `ApplicationGraphResponse` schema.
+A CI pipeline (GitHub Actions workflow) constructs an application graph from Radius Bicep source files without requiring a live deployment or running Radius control plane. On each push, the workflow compiles the app definition file to ARM JSON, parses the output to extract resources, connections, and dependency edges, and persists the result as a static graph JSON artifact in the repository. The browser extension fetches this pre-built artifact rather than performing compilation itself. The output is a graph data structure compatible with the existing `ApplicationGraphResponse` schema.
 
 **Why this priority**: This is the foundational capability that enables all visualization features. Without static graph construction, no graph can be rendered in any context (PR, repo root, or dedicated pages).
 
@@ -135,7 +135,8 @@ After a deployment, a link is available to view the deployed application graph. 
 - What happens when a `codeReference` points to a file that does not exist in the repository? The "Source code" link is rendered but navigates to a GitHub 404 page; no special handling is needed from the extension.
 - What happens when the browser extension is not installed? The GitHub UI functions normally with no graph visualizations, tabs, or sidebar links visible.
 - What happens when the base branch and PR branch app definitions have no diff? The graph is rendered without any diff coloring (all resources shown in default style).
-- What happens when multiple app definition files exist in the repository? The system detects and visualizes the primary app definition file (e.g., `.radius/app.bicep` or `app.bicep` at the repo root).
+- What happens when multiple app definition files exist in the repository? Only `app.bicep` at the repository root is recognized; other Bicep files are ignored. A future spec will implement a more flexible file discovery system.
+- What happens when the CI-generated graph artifact (`.radius/static/<app>.json`) is missing or not yet built for a branch? The extension displays a message: "Application graph not yet available — waiting for CI to build." No graph is rendered. The user can refresh the page after CI completes.
 
 ## Requirements *(mandatory)*
 
@@ -144,10 +145,11 @@ After a deployment, a link is available to view the deployed application graph. 
 #### Static Graph Construction
 
 - **FR-001**: System MUST construct an application graph from Radius app definition files without requiring a live deployment or running Radius control plane.
-- **FR-002**: System MUST compile `.bicep` files to ARM JSON and parse the output to extract resources, connections (from the `connections` property), and dependency edges (from `dependsOn` arrays).
+- **FR-001a**: The app definition file MUST be located at exactly `app.bicep` in the repository root. No other paths are searched. A future spec will define a more flexible discovery mechanism.
+- **FR-002**: A CI pipeline (GitHub Actions workflow) MUST compile `.bicep` files to ARM JSON and parse the output to extract resources, connections (from the `connections` property), and dependency edges (from `dependsOn` arrays). The browser extension does not perform Bicep compilation.
 - **FR-003**: System MUST resolve `resourceId()` expressions from connection source strings to identify connected resources in the graph.
 - **FR-004**: System MUST output the graph in a data format compatible with (or extending) the existing `ApplicationGraphResponse` schema.
-- **FR-005**: System MUST persist the static graph JSON to `.radius/static/<app>.json` on each branch so that CI can regenerate it on push and the browser extension can fetch it via the GitHub API.
+- **FR-005**: The CI pipeline MUST persist the static graph JSON to `.radius/static/<app>.json` on each branch, regenerating it on every push. The browser extension MUST fetch this pre-built artifact via the GitHub Contents API rather than compiling Bicep itself.
 
 #### `codeReference` Property
 
@@ -155,15 +157,18 @@ After a deployment, a link is available to view the deployed application graph. 
 - **FR-007**: The `codeReference` value MUST be a repository-root-relative file path using forward slashes.
 - **FR-008**: The `codeReference` value MAY include a single-line anchor in the form `#L<number>`.
 - **FR-009**: The `codeReference` value MUST NOT include a URL scheme or host, query string parameters, absolute paths, or path traversal segments (`.` or `..`).
+- **FR-009a**: The browser extension MUST validate `codeReference` values against a strict allowlist regex (e.g., `^[a-zA-Z0-9_\-./]+(?:#L\d+)?$`) before rendering any navigation link. Values that do not match MUST be silently discarded.
+- **FR-009b**: The browser extension MUST construct GitHub navigation URLs programmatically from the validated path components. Raw `codeReference` values MUST NOT be interpolated directly into `href` attributes or `innerHTML`.
 - **FR-010**: Consumers MUST treat `codeReference` values that do not match the valid format as invalid and omit the source-code navigation link rather than attempting to interpret them.
 
 #### PR Diff Visualization
 
 - **FR-011**: The browser extension MUST detect when a PR includes changes to a Radius app definition file.
-- **FR-012**: The browser extension MUST fetch the app definition from both the base branch and the PR branch via the GitHub API.
-- **FR-013**: The browser extension MUST construct static graphs for both versions and compute the diff to identify added, modified, and removed resources.
+- **FR-012**: The browser extension MUST fetch the pre-built static graph JSON (`.radius/static/<app>.json`) from both the base branch and the PR branch via the GitHub Contents API.
+- **FR-013**: The browser extension MUST load the pre-built static graphs for both versions and compute the diff to identify added, modified, and removed resources.
 - **FR-014**: The browser extension MUST render the diff visualization in the PR description area directly below the PR description text with color coding: green (added), yellow (modified), red (removed), default (unchanged).
 - **FR-015**: The browser extension MUST display a loading state ("Generating app graph...") while the graph is being constructed and rendered.
+- **FR-015a**: If the pre-built graph JSON artifact is not found for a branch (404 from the GitHub Contents API), the browser extension MUST display the message "Application graph not yet available — waiting for CI to build." and MUST NOT render a graph or fall back to client-side compilation.
 - **FR-016**: A resource MUST be classified as "modified" if its properties (connections, image, ports, or other key attributes) changed between the base branch and the PR branch.
 
 #### Interactive Navigation
@@ -193,6 +198,8 @@ After a deployment, a link is available to view the deployed application graph. 
 #### Graph Rendering
 
 - **FR-032**: The graph rendering engine MUST layout the application graph as a directed acyclic graph with nodes and edges.
+- **FR-032a**: The initial implementation MUST use Cytoscape.js (canvas-based) for graph rendering and layout.
+- **FR-032b**: (Design goal, not hard requirement) The graph rendering logic SHOULD be abstracted behind an interface so the rendering engine can be swapped (e.g., to D3.js + dagre SVG-based rendering) without rewriting graph data preparation, diff computation, or navigation logic.
 - **FR-033**: Resource nodes MUST display the resource name, resource type, and optionally an image tag or key property.
 - **FR-034**: The graph rendering MUST support diff coloring (green borders for added, yellow for modified, red for removed).
 - **FR-035**: The graph rendering MUST handle varying graph sizes from 3-4 resources to 20+ resources.
@@ -228,6 +235,16 @@ After a deployment, a link is available to view the deployed application graph. 
 - The GitHub REST API provides sufficient access to fetch file contents from specific branches and refs with the permissions already configured in the extension manifest.
 - Graph visualization features for static/modeled graphs do not require a running Radius control plane or deployed application.
 - The deployed app graph feature (P3) will require integration with the Radius control plane to obtain live deployment state and resource status.
+
+## Clarifications
+
+### Session 2026-04-12
+
+- Q: Where does Bicep-to-graph compilation happen (CI pre-build vs. client-side in browser vs. hybrid)? → A: CI pre-builds the graph JSON; the browser extension fetches pre-built artifacts via the GitHub API.
+- Q: What is the security model for `codeReference` rendering (allowlist validation vs. sanitize-on-render vs. both)? → A: Strict allowlist validation; construct GitHub URLs programmatically from validated path segments; raw values never used in `href` or `innerHTML`.
+- Q: How does the extension discover which file is the app definition (fixed path vs. convention+manifest vs. file scan)? → A: Fixed path only—`app.bicep` at the repository root. A future spec will implement a more flexible discovery mechanism.
+- Q: What happens when the CI-generated graph artifact is missing or stale for a PR branch (graceful degradation vs. partial rendering vs. auto-retry)? → A: Graceful degradation; display "Application graph not yet available — waiting for CI to build." No graph rendered; user refreshes after CI completes.
+- Q: What is the graph rendering technology (Canvas/Cytoscape.js vs. SVG/D3+dagre vs. React Flow)? → A: Cytoscape.js (canvas-based). Design goal: abstract the rendering layer so switching to D3.js+dagre or another approach remains feasible (not a hard requirement).
 
 ## Developer Setup & Usage Guide
 
