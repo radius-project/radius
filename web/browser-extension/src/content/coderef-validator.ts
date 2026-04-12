@@ -56,6 +56,19 @@ export interface GitHubFileUrlParams {
   ref: string;
   path: string;
   line?: number;
+  pullNumber?: number;
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function buildDiffAnchor(path: string, line?: number): Promise<string> {
+  const encodedPath = new TextEncoder().encode(path);
+  const digest = await crypto.subtle.digest('SHA-256', encodedPath);
+  const hash = toHex(new Uint8Array(digest));
+
+  return line ? `diff-${hash}R${line}` : `diff-${hash}`;
 }
 
 /**
@@ -66,8 +79,11 @@ export interface GitHubFileUrlParams {
  * @param diffView - If true, constructs a diff-view URL; otherwise a blob-view URL.
  * @returns The constructed GitHub URL string.
  */
-export function buildGitHubFileUrl(params: GitHubFileUrlParams, diffView: boolean = false): string {
-  const { owner, repo, ref, path, line } = params;
+export async function buildGitHubFileUrl(
+  params: GitHubFileUrlParams,
+  diffView: boolean = false,
+): Promise<string> {
+  const { owner, repo, ref, path, line, pullNumber } = params;
 
   // Encode each path component individually to prevent injection.
   const encodedOwner = encodeURIComponent(owner);
@@ -77,12 +93,9 @@ export function buildGitHubFileUrl(params: GitHubFileUrlParams, diffView: boolea
   // Path segments are encoded individually to preserve directory structure.
   const encodedPath = path.split('/').map(encodeURIComponent).join('/');
 
-  if (diffView) {
-    // Diff view: link to the file in the PR diff using a hash anchor.
-    // GitHub's diff anchors use the format: #diff-<hash>
-    // For simplicity, link to the blob view on the PR branch.
-    const url = `https://github.com/${encodedOwner}/${encodedRepo}/blob/${encodedRef}/${encodedPath}`;
-    return line ? `${url}#L${line}` : url;
+  if (diffView && pullNumber != null) {
+    const diffAnchor = await buildDiffAnchor(path, line);
+    return `https://github.com/${encodedOwner}/${encodedRepo}/pull/${pullNumber}/files#${diffAnchor}`;
   }
 
   const url = `https://github.com/${encodedOwner}/${encodedRepo}/blob/${encodedRef}/${encodedPath}`;

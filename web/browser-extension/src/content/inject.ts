@@ -225,19 +225,29 @@ function injectRadiusButton(): boolean {
   // Check environment status to show a badge.
   checkEnvironmentStatus(btn, owner, repo);
 
-  // Inject the deployments sidebar widget.
-  injectDeploymentsSidebar(owner, repo);
+  // Inject the applications sidebar widget.
+  void injectApplicationsSidebar(owner, repo);
 
   return true;
 }
 
-async function injectDeploymentsSidebar(owner: string, repo: string): Promise<void> {
-  // Don't inject if already present.
-  if (document.getElementById('radius-deployments-sidebar')) return;
+async function injectApplicationsSidebar(owner: string, repo: string): Promise<void> {
+  if (document.getElementById('radius-applications-sidebar')) return;
+  if (!chrome?.runtime?.id) return;
+
+  const appInfo = await chrome.runtime.sendMessage({
+    type: 'CHECK_APP',
+    owner,
+    repo,
+  }) as { exists: boolean; filename?: string } | null;
+
+  if (!appInfo?.exists) return;
+
+  const appFile = appInfo.filename ?? 'app.bicep';
+  const appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
+  const modeledAppURL = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/radius/app/${encodeURIComponent(appName)}`;
 
   // Find the right sidebar on the repo page.
-  // GitHub's sidebar contains Releases, Packages, Deployments etc. in a
-  // <div class="BorderGrid"> or similar container.
   const sidebar = document.querySelector(
     '.Layout-sidebar .BorderGrid, ' +
     '[class*="sidebar"] .BorderGrid, ' +
@@ -245,17 +255,27 @@ async function injectDeploymentsSidebar(owner: string, repo: string): Promise<vo
   );
   if (!sidebar) return;
 
-  // Create the widget container.
   const widget = document.createElement('div');
-  widget.id = 'radius-deployments-sidebar';
+  widget.id = 'radius-applications-sidebar';
   widget.className = 'BorderGrid-row';
   widget.innerHTML = `
     <div class="BorderGrid-cell">
       <h2 class="h4 mb-3">
-        <a href="#" class="Link--primary no-underline" id="radius-deployments-title">
+        <a href="${modeledAppURL}" class="Link--primary no-underline" id="radius-applications-title">
           Radius Applications
         </a>
       </h2>
+      <div class="radius-deployments-list">
+        <a href="${modeledAppURL}" class="radius-deployment-item">
+          <span class="radius-deployment-status"><span class="radius-status-queued">○</span></span>
+          <span class="radius-deployment-info">
+            <span class="radius-deployment-label">${escapeHTML(appName)}</span>
+            <span class="radius-deployment-time">Modeled application graph</span>
+          </span>
+        </a>
+      </div>
+      <hr class="mt-3 mb-3">
+      <h3 class="h5 mb-2">Recent deployments</h3>
       <div id="radius-deployments-list" class="radius-deployments-list">
         <span class="radius-deployments-loading">Loading...</span>
       </div>
@@ -264,9 +284,7 @@ async function injectDeploymentsSidebar(owner: string, repo: string): Promise<vo
 
   sidebar.appendChild(widget);
 
-  // Fetch deployments from the backend.
   try {
-    if (!chrome?.runtime?.id) return;
     const deployments = await chrome.runtime.sendMessage({
       type: 'LIST_DEPLOYMENTS',
       owner,
@@ -291,15 +309,13 @@ async function injectDeploymentsSidebar(owner: string, repo: string): Promise<vo
 
     listEl.innerHTML = deployments.slice(0, 5).map((d) => {
       const timeAgo = formatTimeAgo(d.createdAt);
-      // Derive application name: use appFile if available (strip .bicep extension),
-      // otherwise fall back to display title or 'app'.
       const rawName = d.appFile || 'app.bicep';
-      const appName = rawName.replace(/\.bicep$/, '').replace(/^.*\//, '');
+      const deploymentAppName = rawName.replace(/\.bicep$/, '').replace(/^.*\//, '');
       return `
         <a href="${escapeHTML(d.htmlURL)}" target="_blank" rel="noopener" class="radius-deployment-item">
-          <span class="radius-deployment-status"><span class="radius-status-success">✓</span></span>
+          <span class="radius-deployment-status">${getStatusIcon(d.status, d.conclusion)}</span>
           <span class="radius-deployment-info">
-            <span class="radius-deployment-label">${escapeHTML(appName)}</span>
+            <span class="radius-deployment-label">${escapeHTML(deploymentAppName)}</span>
             <span class="radius-deployment-time">${timeAgo}</span>
           </span>
         </a>

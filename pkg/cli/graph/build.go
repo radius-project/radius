@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -135,7 +136,7 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 		}
 
 		// Compute diff hash.
-		hash := ComputeDiffHash(res.Properties)
+		hash := ComputeDiffHash(res.Properties, res.DependsOn...)
 		graphResource.DiffHash = to.Ptr(hash)
 
 		resources = append(resources, graphResource)
@@ -152,13 +153,32 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 	artifact := &StaticGraphArtifact{
 		Version:     artifactVersion,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		SourceFile:  bicepPath,
+		SourceFile:  normalizeSourceFilePath(bicepPath),
 		Application: corerpv20231001preview.ApplicationGraphResponse{
 			Resources: resources,
 		},
 	}
 
 	return artifact, nil
+}
+
+func normalizeSourceFilePath(bicepPath string) string {
+	cleaned := filepath.Clean(bicepPath)
+	if filepath.IsAbs(cleaned) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return filepath.ToSlash(filepath.Base(cleaned))
+		}
+
+		rel, err := filepath.Rel(cwd, cleaned)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return filepath.ToSlash(filepath.Base(cleaned))
+		}
+
+		cleaned = rel
+	}
+
+	return filepath.ToSlash(cleaned)
 }
 
 // parseSourceLineMap reads a Bicep file and maps symbolic resource names to their

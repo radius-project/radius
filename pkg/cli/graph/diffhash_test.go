@@ -118,3 +118,18 @@ func TestComputeDiffHash_EmptyProperties(t *testing.T) {
 	hash := ComputeDiffHash(map[string]interface{}{})
 	assert.NotEmpty(t, hash, "empty properties should still produce a hash")
 }
+
+func TestComputeDiffHash_DependsOnAffectsHash(t *testing.T) {
+	t.Parallel()
+
+	props := map[string]interface{}{
+		"container": map[string]interface{}{
+			"image": "myregistry/app:v1",
+		},
+	}
+
+	hash1 := ComputeDiffHash(props, "app")
+	hash2 := ComputeDiffHash(props, "database")
+
+	assert.NotEqual(t, hash1, hash2, "dependency edges should affect the diff hash")
+}
