@@ -72,7 +72,7 @@ The design document defines the approach for building a static graph:
 
 | Graph type | Persisted where | Written when |
 |---|---|---|
-| Static graph | `.radius/static/<app>.json` on each branch | CI generates from Bicep on push and PR |
+| Static graph | `.radius/static/app.json` on each branch | CI generates from Bicep on push and PR |
 | Run-time graph | `graphs/<app>.json` on `radius-state` orphan branch | `rad shutdown` serializes after deploy |
 
 ### codeReference Property (from requirements spec)
@@ -146,7 +146,7 @@ Build a mechanism to construct an application graph from Bicep source files with
 - Resolve `resourceId()` expressions from connection source strings to identify connected resources
 - Output the graph in a JSON format compatible with (or extending) the existing `ApplicationGraphResponse` schema
 
-The static graph JSON should be persisted to `.radius/static/<app>.json` on each branch so that CI can regenerate it on push and the browser extension can fetch it via the GitHub API.
+The static graph JSON should be persisted to `.radius/static/app.json` on each branch so that CI can regenerate it on push and the browser extension can fetch it via the GitHub API.
 
 Key implementation references:
 - Existing runtime graph computation: `pkg/corerp/frontend/controller/applications/graph_util.go`
@@ -156,7 +156,7 @@ Key implementation references:
 
 #### 2. `codeReference` Property (P0)
 
-Add an optional `codeReference` property to Radius resource schemas. This property is a string with the format of a repo-root-relative file path, optionally with a `#L<number>` line anchor. For example: `src/cache/redis.ts#L10`. The browser extension uses this to provide "Source code" navigation links from the graph visualization. Format requirements:
+Add an optional `codeReference` property to shared authorable Radius resource schema bases. This property is a string with the format of a repo-root-relative file path, optionally with a `#L<number>` line anchor. For example: `src/cache/redis.ts#L10`. The browser extension uses this to provide "Source code" navigation links from the graph visualization. Format requirements:
 - Must be a repo-root-relative path using forward slashes
 - May include `#L<number>` single-line anchor
 - Must not include URL schemes, query strings, absolute paths, or path traversal segments (`.`, `..`)
@@ -166,8 +166,8 @@ Add an optional `codeReference` property to Radius resource schemas. This proper
 
 When a PR modifies an `app.bicep` (or equivalent Radius application definition file), the browser extension should:
 - Detect that the PR includes changes to the app definition
-- Fetch the app definition from both the base branch and the PR branch via the GitHub API
-- Construct static graphs for both versions
+- Fetch `.radius/static/app.json` from the base repo/base ref and head repo/head ref via the GitHub API
+- Compare the two static graphs using precomputed comparison metadata
 - Compute the diff: which resources were added, modified, or removed
 - Render the diff visualization in the PR description area with color coding: green (added), yellow (modified), red (removed), default (unchanged)
 - Show a loading state ("Generating app graph...") while processing
