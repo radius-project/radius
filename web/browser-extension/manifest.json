@@ -21,7 +21,8 @@
         "content/inject.js"
       ],
       "css": [
-        "content/styles.css"
+        "content/styles.css",
+        "content/styles/graph.css"
       ],
       "run_at": "document_idle"
     }

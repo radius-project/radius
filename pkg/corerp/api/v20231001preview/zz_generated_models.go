@@ -53,6 +53,15 @@ type ApplicationGraphResource struct {
 
 	// REQUIRED; The resource type.
 	Type *string
+
+	// Optional repository-root-relative file path to the source code for this resource.
+	CodeReference *string
+
+	// Optional 1-based line number of the resource declaration in app.bicep.
+	AppDefinitionLine *int32
+
+	// Optional stable hash of review-relevant resource properties for diff classification.
+	DiffHash *string
 }
 
 // ApplicationGraphResponse - Describes the application architecture and its dependencies.

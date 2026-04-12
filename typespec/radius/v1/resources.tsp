@@ -60,6 +60,9 @@ model ApplicationScopedResource {
   @doc("Status of a resource.")
   @visibility(Lifecycle.Read)
   status?: ResourceStatus;
+
+  @doc("Optional repository-root-relative file path to the source code for this resource. Format: 'path/to/file.ext' or 'path/to/file.ext#L10'. Must use forward slashes, must not contain URL schemes, query strings, absolute paths, or path traversal segments.")
+  codeReference?: string;
 }
 
 @doc("Base properties of a Global-scoped resource")
@@ -77,6 +80,9 @@ model GlobalScopedResource {
   @doc("Status of a resource.")
   @visibility(Lifecycle.Read)
   status?: ResourceStatus;
+
+  @doc("Optional repository-root-relative file path to the source code for this resource. Format: 'path/to/file.ext' or 'path/to/file.ext#L10'. Must use forward slashes, must not contain URL schemes, query strings, absolute paths, or path traversal segments.")
+  codeReference?: string;
 }
 
 @doc("IdentitySettings is the external identity setting.")

@@ -4,16 +4,20 @@
   "private": true,
   "description": "Deploy with Radius - Browser Extension",
   "scripts": {
-    "build": "tsc && cp -r src/popup/popup.html src/popup/popup.css dist/popup/ && cp -r src/content/styles.css dist/content/ && cp manifest.json dist/ && cp -r icons dist/",
-    "watch": "tsc --watch",
-    "clean": "rm -rf dist"
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@types/chrome": "^0.1.38",
+    "esbuild": "^0.25.0",
     "typescript": "^5.4.0"
   },
   "dependencies": {
+    "cytoscape": "^3.29.0",
+    "cytoscape-dagre": "^2.5.0",
     "tweetnacl": "^1.0.3"
   }
 }
