@@ -156,7 +156,7 @@ graph TD
     subgraph Resolve["2. Resolve Connections"]
         InAppMap --> ForEachRes["For each resource"]
         ForEachRes --> ConnResolver["connectionsResolver:<br/>parse properties.connections"]
-        ForEachRes --> RouteResolver["routesResolver:<br/>parse properties.routes<br/>(Gateways)"]
+        ForEachRes --> RouteResolver["routesPathResolver:<br/>parse properties.routes<br/>(Gateways)"]
         ConnResolver --> Outbound["Outbound connections"]
         RouteResolver --> Outbound
         ForEachRes --> OutputRes["outputResourcesFromAPIData:<br/>parse status.outputResources"]
