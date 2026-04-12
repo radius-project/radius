@@ -26,6 +26,8 @@ change-safety guidance.
   backend services.
 - [state-persistence.md](state-persistence.md) explains the shared database,
   secret, and queue abstractions used by the control-plane services.
+- [application-graph.md](application-graph.md) explains how the application
+  graph is computed from stored resources and displayed via the CLI.
 
 ## Reading Order
 
@@ -39,6 +41,7 @@ If you are new to the codebase, read these in order:
 6. [controller.md](controller.md)
 7. [rad-cli.md](rad-cli.md)
 8. [state-persistence.md](state-persistence.md)
+9. [application-graph.md](application-graph.md)
 
 ## Related Material
 
