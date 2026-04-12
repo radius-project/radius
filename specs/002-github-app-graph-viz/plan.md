@@ -104,11 +104,13 @@ web/browser-extension/
 │   │   ├── graph-renderer.ts     # NEW: Cytoscape.js graph rendering
 │   │   ├── graph-diff.ts         # NEW: Client-side diff computation
 │   │   ├── graph-navigation.ts   # NEW: Popup/navigation link generation
+│   │   ├── coderef-validator.ts  # NEW: codeReference validation and safe URL construction
 │   │   ├── pr-graph.ts           # NEW: PR page graph injection
 │   │   ├── repo-tab.ts           # NEW: Repo root tab injection
 │   │   └── app-page.ts           # NEW: Dedicated application page
 │   ├── shared/
 │   │   ├── github-api.ts         # NEW: GitHub Contents API client for graph artifacts
+│   │   ├── radius-api.ts         # NEW: Radius control plane API client for live deployment state (US7)
 │   │   └── types.ts              # NEW: TypeScript types for ApplicationGraphResponse
 │   └── styles/
 │       └── graph.css             # NEW: Primer-compatible graph styles
