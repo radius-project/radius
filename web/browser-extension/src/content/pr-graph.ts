@@ -24,6 +24,10 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
 
   const api = new GraphGitHubAPI(token);
 
+  // Only render on PRs that change the repository-root app.bicep file.
+  const modifiesAppBicep = await api.pullRequestModifiesAppBicep(owner, repo, pullNumber);
+  if (!modifiesAppBicep) return;
+
   // Find the injection point — below PR description.
   const discussionBucket = document.getElementById('discussion_bucket');
   if (!discussionBucket) return;
@@ -35,7 +39,7 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
   wrapper.innerHTML = `
     <div class="radius-graph-loading">
       <div class="radius-graph-loading-spinner"></div>
-      <span>Loading application graph...</span>
+      <span>Generating app graph...</span>
     </div>
   `;
 
@@ -98,6 +102,7 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
         repo: prDetails.headRepo,
         ref: prDetails.headRef,
         appFile: headArtifact?.sourceFile ?? 'app.bicep',
+        pullNumber,
       },
     });
 
@@ -111,32 +116,6 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
     `;
     console.error('[Radius] PR graph error:', error);
   }
-}
-
-/**
- * Check if the PR modifies app.bicep by looking at the PR file list.
- */
-export function prModifiesAppBicep(): boolean {
-  // Check the file list in the PR "Files changed" tab indicator.
-  const fileLinks = document.querySelectorAll<HTMLAnchorElement>(
-    '.file-info a[title], .file-header a[title], [data-path]',
-  );
-  for (const link of fileLinks) {
-    const path = link.getAttribute('title') || link.getAttribute('data-path') || '';
-    if (path === 'app.bicep' || path.endsWith('/app.bicep')) {
-      return true;
-    }
-  }
-
-  // Also check the PR diff file tree.
-  const treeItems = document.querySelectorAll('[data-file-name]');
-  for (const item of treeItems) {
-    if (item.getAttribute('data-file-name') === 'app.bicep') {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 /**

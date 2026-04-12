@@ -19,6 +19,8 @@ function assertEqual<T>(actual: T, expected: T, msg: string) {
   assert(actual === expected, `${msg} — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
 }
 
+async function run(): Promise<void> {
+
 // --- isValidCodeReference tests ---
 
 // Valid paths
@@ -76,26 +78,26 @@ assertEqual(parseCodeReference('src/app.ts#L1').line, 1, 'parse line 1');
 // --- buildGitHubFileUrl tests ---
 
 assertEqual(
-  buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'main', path: 'src/app.ts' }),
+  await buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'main', path: 'src/app.ts' }),
   'https://github.com/user/repo/blob/main/src/app.ts',
   'basic blob URL',
 );
 
 assertEqual(
-  buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'main', path: 'src/app.ts', line: 42 }),
+  await buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'main', path: 'src/app.ts', line: 42 }),
   'https://github.com/user/repo/blob/main/src/app.ts#L42',
   'blob URL with line',
 );
 
 assertEqual(
-  buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'feat/branch', path: 'src/app.ts' }),
+  await buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'feat/branch', path: 'src/app.ts' }),
   'https://github.com/user/repo/blob/feat%2Fbranch/src/app.ts',
   'URL encodes ref with slash',
 );
 
 assertEqual(
-  buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'main', path: 'src/app.ts' }, true),
-  'https://github.com/user/repo/blob/main/src/app.ts',
+  await buildGitHubFileUrl({ owner: 'user', repo: 'repo', ref: 'main', path: 'src/app.ts', pullNumber: 123 }, true),
+  'https://github.com/user/repo/pull/123/files#diff-841254fe75488c1bd4cd7f68f00b4be0e48dcfbc4a16b45847b68295e0e3b27b',
   'diff view URL',
 );
 
@@ -104,3 +106,10 @@ console.log(`\nResults: ${passed} passed, ${failed} failed`);
 if (failed > 0) {
   process.exit(1);
 }
+
+}
+
+run().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

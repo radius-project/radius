@@ -112,7 +112,7 @@ export function renderGraph(options: RenderGraphOptions): cytoscape.Core {
     const diffStatus = diff ? getResourceDiffStatus(resourceId, diff) : 'unchanged';
     const renderedPosition = node.renderedPosition();
 
-    showGraphPopup(resource, diffStatus, context, container, {
+    void showGraphPopup(resource, diffStatus, context, container, {
       x: renderedPosition.x + 10,
       y: renderedPosition.y + 10,
     });
