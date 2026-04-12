@@ -15,9 +15,9 @@
 
 **Purpose**: Browser extension build system upgrade and Go project scaffolding required before any feature work
 
-- [ ] T001 Create esbuild bundler configuration for Manifest V3 content/background script bundling in web/browser-extension/esbuild.config.mjs
-- [ ] T002 Add cytoscape, cytoscape-dagre, and esbuild dependencies to web/browser-extension/package.json and replace plain tsc-only build/watch/clean scripts with esbuild-based equivalents
-- [ ] T003 [P] Create pkg/cli/graph/ directory with placeholder package declaration for static graph construction module
+- [X] T001 Create esbuild bundler configuration for Manifest V3 content/background script bundling in web/browser-extension/esbuild.config.mjs
+- [X] T002 Add cytoscape, cytoscape-dagre, and esbuild dependencies to web/browser-extension/package.json and replace plain tsc-only build/watch/clean scripts with esbuild-based equivalents
+- [X] T003 [P] Create pkg/cli/graph/ directory with placeholder package declaration for static graph construction module
 
 ---
 
@@ -27,10 +27,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create TypeScript type definitions for ApplicationGraphResponse, ApplicationGraphResource, ApplicationGraphConnection, StaticGraphArtifact, GraphDiff, ModifiedResource, DiffStatus, and Direction in web/browser-extension/src/shared/types.ts
-- [ ] T005 [P] Create GitHub Contents API client with getFileContents (raw file fetch by owner/repo/path/ref), checkFileExists (HEAD check for app.bicep), and fetchPRDetails (base/head repo+ref extraction) methods in web/browser-extension/src/shared/github-api.ts
-- [ ] T006 [P] Create Primer-compatible graph styles including node shapes, diff color borders (green added, yellow modified, red removed), popup overlay styling, loading indicator, and tab styles in web/browser-extension/src/styles/graph.css
-- [ ] T007 [P] Update web/browser-extension/manifest.json with content script matches and permissions needed for GitHub Contents API access on PR and repo root pages
+- [X] T004 Create TypeScript type definitions for ApplicationGraphResponse, ApplicationGraphResource, ApplicationGraphConnection, StaticGraphArtifact, GraphDiff, ModifiedResource, DiffStatus, and Direction in web/browser-extension/src/shared/types.ts
+- [X] T005 [P] Create GitHub Contents API client with getFileContents (raw file fetch by owner/repo/path/ref), checkFileExists (HEAD check for app.bicep), and fetchPRDetails (base/head repo+ref extraction) methods in web/browser-extension/src/shared/github-api.ts
+- [X] T006 [P] Create Primer-compatible graph styles including node shapes, diff color borders (green added, yellow modified, red removed), popup overlay styling, loading indicator, and tab styles in web/browser-extension/src/styles/graph.css
+- [X] T007 [P] Update web/browser-extension/manifest.json with content script matches and permissions needed for GitHub Contents API access on PR and repo root pages
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
@@ -44,9 +44,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T008 [US5] Add optional `codeReference` string property with doc annotation to ApplicationScopedResource and GlobalScopedResource shared authorable bases in typespec/radius/v1/resources.tsp
-- [ ] T009 [US5] Add `codeReference` (string), `appDefinitionLine` (int32), and `diffHash` (string) optional properties to ApplicationGraphResource model in typespec/Applications.Core/applications.tsp
-- [ ] T010 [US5] Run `make generate` to regenerate Go models and serialization code, then verify `CodeReference`, `AppDefinitionLine`, and `DiffHash` fields appear in pkg/corerp/api/v20231001preview/zz_generated_models.go and zz_generated_models_serde.go
+- [X] T008 [US5] Add optional `codeReference` string property with doc annotation to ApplicationScopedResource and GlobalScopedResource shared authorable bases in typespec/radius/v1/resources.tsp
+- [X] T009 [US5] Add `codeReference` (string), `appDefinitionLine` (int32), and `diffHash` (string) optional properties to ApplicationGraphResource model in typespec/Applications.Core/applications.tsp
+- [X] T010 [US5] Run `make generate` to regenerate Go models and serialization code, then verify `CodeReference`, `AppDefinitionLine`, and `DiffHash` fields appear in pkg/corerp/api/v20231001preview/zz_generated_models.go and zz_generated_models_serde.go
 
 **Checkpoint**: Schema extension complete — `codeReference` available on all Radius resources, graph read model extended with metadata fields
 
@@ -60,10 +60,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Implement ARM JSON parser and static graph builder in pkg/cli/graph/build.go: parse languageVersion 1.9 resources map, extract type/name/properties.connections/dependsOn, resolve resourceId() expressions to Radius-style resource IDs, parse app.bicep source text to map symbolic names to declaration line numbers, copy authorable codeReference into the read model, and emit StaticGraphArtifact JSON. Include unit tests in pkg/cli/graph/build_test.go covering: valid multi-resource Bicep, dependsOn edge extraction, codeReference pass-through, source line mapping, and compilation failure error handling.
-- [ ] T012 [P] [US3] Implement canonical diff hash generator in pkg/cli/graph/diffhash.go: extract review-relevant properties (connections, container image, ports, routes), canonicalize to sorted JSON, compute SHA-256 hash, return hex-encoded diffHash string. Include unit tests in pkg/cli/graph/diffhash_test.go covering: deterministic output for identical inputs, different hashes for changed properties, stable ordering across Go map iteration.
-- [ ] T013 [US3] Implement `rad graph build` CLI subcommand with `--bicep` (input file path, default `app.bicep`) and `--output` (output file path, default `.radius/static/app.json`) flags in cmd/rad/cmd/graph.go; wire into existing rad command tree
-- [ ] T014 [P] [US3] Create reusable GitHub Actions workflow in .github/workflows/__build-app-graph.yml that installs a released rad binary, runs `rad graph build`, and commits `.radius/static/app.json` to the branch on push events that modify app.bicep
+- [X] T011 [US3] Implement ARM JSON parser and static graph builder in pkg/cli/graph/build.go: parse languageVersion 1.9 resources map, extract type/name/properties.connections/dependsOn, resolve resourceId() expressions to Radius-style resource IDs, parse app.bicep source text to map symbolic names to declaration line numbers, copy authorable codeReference into the read model, and emit StaticGraphArtifact JSON. Include unit tests in pkg/cli/graph/build_test.go covering: valid multi-resource Bicep, dependsOn edge extraction, codeReference pass-through, source line mapping, and compilation failure error handling.
+- [X] T012 [P] [US3] Implement canonical diff hash generator in pkg/cli/graph/diffhash.go: extract review-relevant properties (connections, container image, ports, routes), canonicalize to sorted JSON, compute SHA-256 hash, return hex-encoded diffHash string. Include unit tests in pkg/cli/graph/diffhash_test.go covering: deterministic output for identical inputs, different hashes for changed properties, stable ordering across Go map iteration.
+- [X] T013 [US3] Implement `rad graph build` CLI subcommand with `--bicep` (input file path, default `app.bicep`) and `--output` (output file path, default `.radius/static/app.json`) flags in cmd/rad/cmd/graph.go; wire into existing rad command tree
+- [X] T014 [P] [US3] Create reusable GitHub Actions workflow in .github/workflows/__build-app-graph.yml that installs a released rad binary, runs `rad graph build`, and commits `.radius/static/app.json` to the branch on push events that modify app.bicep
 
 **Checkpoint**: Static graph construction works locally via CLI and in consumer CI via reusable workflow — graph artifacts are committed to branches
 
@@ -77,8 +77,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Implement graph navigation popup component in web/browser-extension/src/content/graph-navigation.ts: popup DOM creation with "Source code" link (when valid codeReference), "App definition" link (using appDefinitionLine or file-level fallback), and diff-view vs blob-view URL logic based on resource diff status. Imports validation and URL construction utilities from coderef-validator.ts.
-- [ ] T016 [US2] Implement codeReference security validation utilities in web/browser-extension/src/content/coderef-validator.ts (separate file from graph-navigation.ts): exported isValidCodeReference() enforcing strict allowlist regex (`^[a-zA-Z0-9_\-./]+(?:#L\d+)?$`), no `..` path traversal, no absolute paths, no URL schemes, no query strings, no backslashes; and exported buildGitHubFileUrl() for safe programmatic URL construction from validated path components (FR-009a, FR-009b). Include unit tests in web/browser-extension/src/content/coderef-validator.test.ts covering valid paths, line anchors, path traversal rejection, URL scheme rejection, and backslash rejection.
+- [X] T015 [US2] Implement graph navigation popup component in web/browser-extension/src/content/graph-navigation.ts: popup DOM creation with "Source code" link (when valid codeReference), "App definition" link (using appDefinitionLine or file-level fallback), and diff-view vs blob-view URL logic based on resource diff status. Imports validation and URL construction utilities from coderef-validator.ts.
+- [X] T016 [US2] Implement codeReference security validation utilities in web/browser-extension/src/content/coderef-validator.ts (separate file from graph-navigation.ts): exported isValidCodeReference() enforcing strict allowlist regex (`^[a-zA-Z0-9_\-./]+(?:#L\d+)?$`), no `..` path traversal, no absolute paths, no URL schemes, no query strings, no backslashes; and exported buildGitHubFileUrl() for safe programmatic URL construction from validated path components (FR-009a, FR-009b). Include unit tests in web/browser-extension/src/content/coderef-validator.test.ts covering valid paths, line anchors, path traversal rejection, URL scheme rejection, and backslash rejection.
 
 **Checkpoint**: Navigation popup ready — clicking graph nodes provides secure, context-aware navigation to source code and app definition
 
@@ -92,10 +92,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T017 [P] [US1] Implement client-side graph diff computation in web/browser-extension/src/content/graph-diff.ts: build resource ID maps from base and head ApplicationGraphResponse, classify each resource as added (in head only), removed (in base only), modified (in both but diffHash changed), or unchanged (in both with same diffHash), return GraphDiff object. Include unit tests in web/browser-extension/src/content/graph-diff.test.ts covering: added-only diff, removed-only diff, modified detection via diffHash, unchanged pass-through, and empty graph handling.
-- [ ] T018 [US1] Implement Cytoscape.js graph renderer with cytoscape-dagre DAG layout in web/browser-extension/src/content/graph-renderer.ts: create Cytoscape instance on a container element, convert ApplicationGraphResource array to Cytoscape nodes/edges, apply diff status as node data attributes, style nodes with Primer diff colors (green/yellow/red borders), display resource name + type + optional image tag, bind node tap events to graph-navigation popup, support deterministic layout (FR-036), handle 3-20+ resources (FR-035)
-- [ ] T019 [US1] Implement PR page graph injection orchestrator in web/browser-extension/src/content/pr-graph.ts: detect app.bicep in PR changed files, extract base/head repo+ref from PR metadata via github-api.ts, fetch .radius/static/app.json from both refs (handling 404 with "waiting for CI" message), compute diff via graph-diff.ts, inject graph container below PR description (#discussion_bucket), render via graph-renderer.ts, show loading indicator during fetch/render
-- [ ] T020 [US1] Update web/browser-extension/src/content/inject.ts with PR page URL detection (/:owner/:repo/pull/:number pattern), turbo:load and MutationObserver listeners for SPA navigation, debounced re-injection on navigation, duplicate injection prevention via element ID check, and pr-graph.ts initialization trigger
+- [X] T017 [P] [US1] Implement client-side graph diff computation in web/browser-extension/src/content/graph-diff.ts: build resource ID maps from base and head ApplicationGraphResponse, classify each resource as added (in head only), removed (in base only), modified (in both but diffHash changed), or unchanged (in both with same diffHash), return GraphDiff object. Include unit tests in web/browser-extension/src/content/graph-diff.test.ts covering: added-only diff, removed-only diff, modified detection via diffHash, unchanged pass-through, and empty graph handling.
+- [X] T018 [US1] Implement Cytoscape.js graph renderer with cytoscape-dagre DAG layout in web/browser-extension/src/content/graph-renderer.ts: create Cytoscape instance on a container element, convert ApplicationGraphResource array to Cytoscape nodes/edges, apply diff status as node data attributes, style nodes with Primer diff colors (green/yellow/red borders), display resource name + type + optional image tag, bind node tap events to graph-navigation popup, support deterministic layout (FR-036), handle 3-20+ resources (FR-035)
+- [X] T019 [US1] Implement PR page graph injection orchestrator in web/browser-extension/src/content/pr-graph.ts: detect app.bicep in PR changed files, extract base/head repo+ref from PR metadata via github-api.ts, fetch .radius/static/app.json from both refs (handling 404 with "waiting for CI" message), compute diff via graph-diff.ts, inject graph container below PR description (#discussion_bucket), render via graph-renderer.ts, show loading indicator during fetch/render
+- [X] T020 [US1] Update web/browser-extension/src/content/inject.ts with PR page URL detection (/:owner/:repo/pull/:number pattern), turbo:load and MutationObserver listeners for SPA navigation, debounced re-injection on navigation, duplicate injection prevention via element ID check, and pr-graph.ts initialization trigger
 
 **Checkpoint**: Full PR diff visualization working — reviewers see interactive color-coded application graph when viewing PRs that modify the Radius app definition. MVP complete.
 
@@ -109,8 +109,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T021 [US4] Implement repo root tab injection in web/browser-extension/src/content/repo-tab.ts: check for app.bicep existence via github-api.ts checkFileExists, inject "Application graph" tab element into the repo root tab bar, fetch .radius/static/app.json for default branch on tab click, render graph via graph-renderer.ts without diff coloring (all resources as unchanged status), show loading state during fetch, handle missing artifact gracefully
-- [ ] T022 [US4] Update web/browser-extension/src/content/inject.ts with repo root page URL detection (/:owner/:repo with no sub-path or /tree/ pattern), repo-tab.ts initialization trigger, and cleanup on SPA navigation away from repo root
+- [X] T021 [US4] Implement repo root tab injection in web/browser-extension/src/content/repo-tab.ts: check for app.bicep existence via github-api.ts checkFileExists, inject "Application graph" tab element into the repo root tab bar, fetch .radius/static/app.json for default branch on tab click, render graph via graph-renderer.ts without diff coloring (all resources as unchanged status), show loading state during fetch, handle missing artifact gracefully
+- [X] T022 [US4] Update web/browser-extension/src/content/inject.ts with repo root page URL detection (/:owner/:repo with no sub-path or /tree/ pattern), repo-tab.ts initialization trigger, and cleanup on SPA navigation away from repo root
 
 **Checkpoint**: Repo root tab provides a living architecture reference — the graph always reflects the current default-branch topology
 
@@ -124,8 +124,8 @@
 
 ### Implementation for User Story 6
 
-- [ ] T023 [US6] Implement dedicated modeled app graph page in web/browser-extension/src/content/app-page.ts: create full-page graph container, fetch .radius/static/app.json for current branch, render via graph-renderer.ts with full-size layout, support interactive navigation popups, handle missing artifact with informative message
-- [ ] T024 [US6] Update web/browser-extension/src/content/inject.ts with sidebar "Applications" section injection on repo root pages (when app.bicep detected), dedicated page route handling (/:owner/:repo/radius/app/:name URL pattern), and app-page.ts initialization trigger
+- [X] T023 [US6] Implement dedicated modeled app graph page in web/browser-extension/src/content/app-page.ts: create full-page graph container, fetch .radius/static/app.json for current branch, render via graph-renderer.ts with full-size layout, support interactive navigation popups, handle missing artifact with informative message
+- [X] T024 [US6] Update web/browser-extension/src/content/inject.ts with sidebar "Applications" section injection on repo root pages (when app.bicep detected), dedicated page route handling (/:owner/:repo/radius/app/:name URL pattern), and app-page.ts initialization trigger
 
 **Checkpoint**: Dedicated modeled graph page provides full-screen interactive exploration of application topology
 
@@ -139,9 +139,9 @@
 
 ### Implementation for User Story 7
 
-- [ ] T025 [US7] Create Radius control plane API client for fetching live deployment state (resource provisioning status, output resources, deployment errors) in web/browser-extension/src/shared/radius-api.ts (separate from github-api.ts to maintain separation of concerns)
-- [ ] T026 [US7] Extend web/browser-extension/src/content/app-page.ts with deployed graph mode: render modeled and infrastructure (outputResources) nodes, apply DeploymentStatus color indicators (grey/yellow/green/red), add click handler for successful resources linking to cloud provider portal URL, add error modal popup for failed resources displaying deployment error message
-- [ ] T027 [US7] Update web/browser-extension/src/content/inject.ts with deployed app graph page route detection and initialization
+- [X] T025 [US7] Create Radius control plane API client for fetching live deployment state (resource provisioning status, output resources, deployment errors) in web/browser-extension/src/shared/radius-api.ts (separate from github-api.ts to maintain separation of concerns)
+- [X] T026 [US7] Extend web/browser-extension/src/content/app-page.ts with deployed graph mode: render modeled and infrastructure (outputResources) nodes, apply DeploymentStatus color indicators (grey/yellow/green/red), add click handler for successful resources linking to cloud provider portal URL, add error modal popup for failed resources displaying deployment error message
+- [X] T027 [US7] Update web/browser-extension/src/content/inject.ts with deployed app graph page route detection and initialization
 
 **Checkpoint**: Deployed graph page enables post-deployment troubleshooting — developers can see live infrastructure status and drill into failures
 
@@ -151,7 +151,7 @@
 
 **Purpose**: Documentation, validation, and improvements that affect multiple user stories
 
-- [ ] T028 [P] Add documentation for graph visualization feature covering CLI usage, browser extension setup, and CI workflow integration in docs/contributing/
+- [X] T028 [P] Add documentation for graph visualization feature covering CLI usage, browser extension setup, and CI workflow integration in docs/contributing/
 - [ ] T029 Run end-to-end quickstart validation per specs/002-github-app-graph-viz/quickstart.md (schema extension, rad graph build, browser extension load, PR diff, repo root tab, codeReference navigation)
 - [ ] T030 [P] Code cleanup: review cross-story integration points in inject.ts, verify SPA navigation handling across all page types, ensure no duplicate injections
 - [ ] T031 [P] Performance benchmarks: time `rad graph build` execution on a 15-resource Bicep file and verify <2s (SC-005); measure browser extension graph render time with performance.now() on a 15-resource graph and verify <5s (SC-001); validate WCAG 2.1 AA contrast ratios (≥3:1) for diff colors against GitHub light and dark theme backgrounds (SC-002)

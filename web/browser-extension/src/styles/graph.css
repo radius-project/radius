@@ -1,0 +1,236 @@
+/* Graph visualization styles — Primer-compatible
+ * Uses GitHub Primer CSS custom properties for theme compatibility.
+ * Covers: node shapes, diff color borders, popup overlay, loading indicator, tab styles.
+ */
+
+/* ── Graph container ───────────────────────────────────────── */
+
+.radius-graph-container {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  max-height: 700px;
+  border: 1px solid var(--borderColor-default, var(--color-border-default, #d0d7de));
+  border-radius: 6px;
+  background: var(--bgColor-default, var(--color-canvas-default, #ffffff));
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.radius-graph-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* ── Loading indicator ─────────────────────────────────────── */
+
+.radius-graph-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+  font-size: 14px;
+}
+
+.radius-graph-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--borderColor-default, var(--color-border-default, #d0d7de));
+  border-top-color: var(--fgColor-accent, var(--color-accent-fg, #0969da));
+  border-radius: 50%;
+  animation: radius-spin 0.6s linear infinite;
+}
+
+@keyframes radius-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Diff color borders ────────────────────────────────────── */
+
+.radius-graph-node-added {
+  border: 3px solid var(--fgColor-success, var(--color-success-fg, #1a7f37));
+}
+
+.radius-graph-node-removed {
+  border: 3px solid var(--fgColor-danger, var(--color-danger-fg, #cf222e));
+}
+
+.radius-graph-node-modified {
+  border: 3px solid var(--fgColor-attention, var(--color-attention-fg, #9a6700));
+}
+
+.radius-graph-node-unchanged {
+  border: 1px solid var(--borderColor-default, var(--color-border-default, #d0d7de));
+}
+
+/* ── Navigation popup overlay ──────────────────────────────── */
+
+.radius-graph-popup {
+  position: absolute;
+  z-index: 100;
+  background: var(--bgColor-default, var(--color-canvas-overlay, #ffffff));
+  border: 1px solid var(--borderColor-default, var(--color-border-default, #d0d7de));
+  border-radius: 6px;
+  box-shadow: var(--shadow-medium, 0 3px 6px rgba(140, 149, 159, 0.15));
+  padding: 12px;
+  min-width: 200px;
+  max-width: 320px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.radius-graph-popup-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+  word-break: break-word;
+}
+
+.radius-graph-popup-type {
+  font-size: 12px;
+  color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+  margin-bottom: 8px;
+}
+
+.radius-graph-popup-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radius-graph-popup-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--fgColor-accent, var(--color-accent-fg, #0969da));
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.radius-graph-popup-link:hover {
+  background: var(--bgColor-accent-muted, var(--color-accent-subtle, #ddf4ff));
+  text-decoration: underline;
+}
+
+.radius-graph-popup-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+  font-size: 16px;
+  line-height: 1;
+}
+
+.radius-graph-popup-close:hover {
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+}
+
+/* ── Tab styles for repo root injection ────────────────────── */
+
+.radius-graph-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.radius-graph-tab:hover {
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+  border-bottom-color: var(--borderColor-neutral-muted, var(--color-neutral-muted, #afb8c1));
+}
+
+.radius-graph-tab.selected {
+  font-weight: 600;
+  border-bottom-color: var(--underlineNav-borderColor-active, var(--color-primer-border-active, #fd8c73));
+}
+
+.radius-graph-tab-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Graph legend ──────────────────────────────────────────── */
+
+.radius-graph-legend {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+  border-top: 1px solid var(--borderColor-default, var(--color-border-default, #d0d7de));
+}
+
+.radius-graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.radius-graph-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.radius-graph-legend-swatch--added {
+  background: var(--fgColor-success, var(--color-success-fg, #1a7f37));
+}
+
+.radius-graph-legend-swatch--removed {
+  background: var(--fgColor-danger, var(--color-danger-fg, #cf222e));
+}
+
+.radius-graph-legend-swatch--modified {
+  background: var(--fgColor-attention, var(--color-attention-fg, #9a6700));
+}
+
+.radius-graph-legend-swatch--unchanged {
+  background: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+}
+
+/* ── Message states ────────────────────────────────────────── */
+
+.radius-graph-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: var(--fgColor-muted, var(--color-fg-muted, #656d76));
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ── Deployment status indicators (P3) ─────────────────────── */
+
+.radius-graph-status-queued {
+  color: var(--fgColor-muted, var(--color-neutral-emphasis, #656d76));
+}
+
+.radius-graph-status-in-progress {
+  color: var(--fgColor-attention, var(--color-attention-fg, #9a6700));
+}
+
+.radius-graph-status-success {
+  color: var(--fgColor-success, var(--color-success-fg, #1a7f37));
+}
+
+.radius-graph-status-failed {
+  color: var(--fgColor-danger, var(--color-danger-fg, #cf222e));
+}
