@@ -14,6 +14,7 @@ You can find our full **contributor documentation** including instructions at th
 - [Run tests](./docs/contributing/contributing-code/contributing-code-tests/README.md)
 - [Understanding repo organization](./docs/contributing/contributing-code/contributing-code-organization/)
 - [Working with design documents](./docs/contributing/contributing-code/contributing-code-design/)
+- [Working with application graph visualization](./docs/contributing/graph-visualization.md)
 - [Contribute to issues](./docs/contributing/contributing-issues/)
 - [Create pull requests](./docs/contributing/contributing-pull-requests/)
 - [Contribute to documentation](https://github.com/radius-project/docs)
@@ -33,7 +34,7 @@ The Radius project follows the [Developer Certificate of Origin](https://develop
 
 Contributors sign-off that they adhere to these requirements by adding a Signed-off-by line to commit messages.
 
-```
+```text
 This is my commit message
 
 Signed-off-by: Random J Developer <random@developer.example.org>
@@ -41,8 +42,8 @@ Signed-off-by: Random J Developer <random@developer.example.org>
 
 Git even has a -s command line option to append this automatically to your commit message:
 
-```
-$ git commit -s -m 'This is my commit message'
+```bash
+git commit -s -m 'This is my commit message'
 ```
 
 Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Signed-off-by line to commit messages. Search for "sign-off" in VS Code settings to find it and enable it.

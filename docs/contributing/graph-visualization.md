@@ -25,25 +25,29 @@ rad graph build --bicep apps/myapp.bicep --output artifacts/graph.json
 The Radius browser extension (Chrome/Edge, Manifest V3) adds three graph visualization features to GitHub:
 
 #### PR Diff Visualization
+
 - Automatically detects PRs that modify `app.bicep`
 - Fetches pre-built graph artifacts from base and head branches
 - Computes resource-level diff (added/removed/modified/unchanged)
 - Renders an interactive color-coded graph below the PR description
-  - Green borders = added resources
-  - Yellow borders = modified resources
-  - Red borders = removed resources
+
+Green borders = added resources.
+Yellow borders = modified resources.
+Red borders = removed resources.
 
 #### Repository Root Tab
+
 - Injects an "Application graph" tab on repo root pages (when `app.bicep` exists)
 - Renders the current-state graph from the default branch without diff coloring
 
 #### Dedicated Application Page
+
 - Full-page interactive graph at `/:owner/:repo/radius/app/:name`
 - Sidebar "Applications" section link on repo root pages
 
 ### 3. CI Workflow
 
-A reusable GitHub Actions workflow that automates graph artifact generation:
+A reusable GitHub Actions workflow automates graph artifact generation. It prefers a released `rad` binary, falls back to building `rad` from the referenced Radius workflow source when that release does not yet include `rad graph build`, and installs the Bicep CLI before generating the graph artifact:
 
 ```yaml
 # In your repository's .github/workflows/build-graph.yml
@@ -107,7 +111,7 @@ go test ./pkg/cli/graph/ -v
 
 ## Architecture
 
-```
+```text
 TypeSpec (schema) → Go Models (codegen) → rad CLI (graph build) → JSON Artifact
                                                                         ↓
                                               Browser Extension ← GitHub Contents API
@@ -118,7 +122,7 @@ TypeSpec (schema) → Go Models (codegen) → rad CLI (graph build) → JSON Art
 ## File Structure
 
 | Path | Purpose |
-|------|---------|
+| ---- | ------- |
 | `typespec/radius/v1/resources.tsp` | `codeReference` on shared resource bases |
 | `typespec/Applications.Core/applications.tsp` | Extended `ApplicationGraphResource` model |
 | `pkg/cli/graph/build.go` | ARM JSON parser and static graph builder |

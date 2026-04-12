@@ -13,8 +13,9 @@
 # limitations under the License.
 
 # Reusable workflow: Build static application graph artifact.
-# Consumer repos call this workflow to install a released rad binary,
-# run `rad graph build`, and commit .radius/static/app.json to the branch.
+# Consumer repos call this workflow to run `rad graph build` using a released
+# CLI when available, or a CLI built from the referenced Radius workflow source
+# when the requested release does not yet include the graph command.
 name: __build-app-graph
 
 on:
@@ -49,6 +50,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Determine workflow source ref
+        id: workflow-source
+        run: |
+          WORKFLOW_REF='${{ github.workflow_ref }}'
+          echo "git_ref=${WORKFLOW_REF##*@}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Radius workflow source
+        uses: actions/checkout@v4
+        with:
+          repository: radius-project/radius
+          ref: ${{ steps.workflow-source.outputs.git_ref }}
+          path: .radius-workflow-src
+
       - name: Determine rad version
         id: version
         run: |
@@ -59,7 +73,8 @@ jobs:
           fi
           echo "version=$RAD_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Install rad CLI
+      - name: Install released rad CLI
+        continue-on-error: true
         run: |
           RAD_VERSION="${{ steps.version.outputs.version }}"
           curl -fsSL -o rad.tar.gz "https://github.com/radius-project/radius/releases/download/${RAD_VERSION}/rad-linux-amd64.tar.gz"
@@ -67,6 +82,39 @@ jobs:
           sudo mv rad /usr/local/bin/rad
           rm -f rad.tar.gz
           rad version
+
+      - name: Check released rad graph support
+        id: released-rad
+        run: |
+          if command -v rad >/dev/null 2>&1 && rad graph build --help >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Go
+        if: steps.released-rad.outputs.available != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .radius-workflow-src/go.mod
+          cache-dependency-path: .radius-workflow-src/go.sum
+
+      - name: Build rad CLI from workflow source
+        if: steps.released-rad.outputs.available != 'true'
+        run: |
+          cd .radius-workflow-src
+          go build -o "$RUNNER_TEMP/rad" ./cmd/rad
+          sudo mv "$RUNNER_TEMP/rad" /usr/local/bin/rad
+          rad graph build --help >/dev/null
+
+      - name: Install Bicep CLI
+        run: |
+          ./.radius-workflow-src/build/install-bicep.sh edge "$RUNNER_TEMP/radius-bicep" amd64
+          echo "$RUNNER_TEMP/radius-bicep" >> "$GITHUB_PATH"
+          if [ ! -f bicepconfig.json ]; then
+            cp "$RUNNER_TEMP/radius-bicep/bicepconfig.json" ./bicepconfig.json
+          fi
+          "$RUNNER_TEMP/radius-bicep/bicep" --help >/dev/null
 
       - name: Build static graph
         run: |

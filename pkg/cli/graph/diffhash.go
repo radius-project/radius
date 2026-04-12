@@ -36,11 +36,16 @@ var reviewRelevantKeys = []string{
 	"resourceProvisioning",
 }
 
-// ComputeDiffHash extracts review-relevant properties, canonicalizes them
-// to sorted JSON, and returns a hex-encoded SHA-256 hash string.
+// ComputeDiffHash extracts review-relevant properties, plus dependency edges,
+// canonicalizes them to sorted JSON, and returns a hex-encoded SHA-256 hash string.
 // The hash is deterministic: identical inputs always produce the same hash.
-func ComputeDiffHash(properties map[string]interface{}) string {
+func ComputeDiffHash(properties map[string]interface{}, dependsOn ...string) string {
 	canonical := extractCanonicalProperties(properties)
+	if len(dependsOn) > 0 {
+		sortedDependsOn := append([]string(nil), dependsOn...)
+		sort.Strings(sortedDependsOn)
+		canonical["dependsOn"] = sortedDependsOn
+	}
 
 	data, err := marshalCanonical(canonical)
 	if err != nil {

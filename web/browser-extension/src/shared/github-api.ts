@@ -80,6 +80,36 @@ export class GraphGitHubAPI {
   }
 
   /**
+   * Check whether a pull request modifies the repository-root app.bicep file.
+   */
+  async pullRequestModifiesAppBicep(owner: string, repo: string, pullNumber: number): Promise<boolean> {
+    let page = 1;
+
+    while (true) {
+      const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${pullNumber}/files?per_page=100&page=${page}`;
+      const resp = await fetch(url, {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          Authorization: `token ${this.token}`,
+        },
+      });
+
+      if (!resp.ok) throw new Error(`GitHub API error: ${resp.status} ${resp.statusText}`);
+
+      const files = (await resp.json()) as Array<{ filename?: string }>;
+      if (files.some((file) => file.filename === 'app.bicep')) {
+        return true;
+      }
+
+      if (files.length < 100) {
+        return false;
+      }
+
+      page++;
+    }
+  }
+
+  /**
    * Fetch the static graph artifact from a specific branch.
    * Returns the parsed artifact or null if not found.
    */

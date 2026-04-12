@@ -5,11 +5,14 @@
 import type { ApplicationGraphResource, DiffStatus } from '../shared/graph-types.js';
 import { isValidCodeReference, parseCodeReference, buildGitHubFileUrl } from './coderef-validator.js';
 
+let activeOutsideClickHandler: ((event: MouseEvent) => void) | null = null;
+
 export interface PopupContext {
   owner: string;
   repo: string;
   ref: string;
   appFile: string;
+  pullNumber?: number;
 }
 
 /**
@@ -21,13 +24,13 @@ export interface PopupContext {
  * @param container - The graph container element to append the popup to.
  * @param position - The screen position to show the popup at.
  */
-export function showGraphPopup(
+export async function showGraphPopup(
   resource: ApplicationGraphResource,
   diffStatus: DiffStatus,
   context: PopupContext,
   container: HTMLElement,
   position: { x: number; y: number },
-): void {
+): Promise<void> {
   // Remove any existing popup first.
   closeGraphPopup(container);
 
@@ -57,8 +60,8 @@ export function showGraphPopup(
   if (resource.codeReference && isValidCodeReference(resource.codeReference)) {
     const { path, line } = parseCodeReference(resource.codeReference);
     const isDiffView = diffStatus === 'modified';
-    const href = buildGitHubFileUrl(
-      { owner: context.owner, repo: context.repo, ref: context.ref, path, line },
+    const href = await buildGitHubFileUrl(
+      { owner: context.owner, repo: context.repo, ref: context.ref, path, line, pullNumber: context.pullNumber },
       isDiffView,
     );
 
@@ -73,13 +76,14 @@ export function showGraphPopup(
 
   // "App definition" link — always shown, points to resource line in app.bicep.
   const appDefLine = resource.appDefinitionLine;
-  const appDefHref = buildGitHubFileUrl(
+  const appDefHref = await buildGitHubFileUrl(
     {
       owner: context.owner,
       repo: context.repo,
       ref: context.ref,
       path: context.appFile,
       line: appDefLine,
+      pullNumber: context.pullNumber,
     },
     diffStatus === 'modified',
   );
@@ -110,11 +114,16 @@ export function showGraphPopup(
   const closeOnOutsideClick = (e: MouseEvent) => {
     if (!popup.contains(e.target as Node)) {
       closeGraphPopup(container);
-      document.removeEventListener('click', closeOnOutsideClick);
     }
   };
+  activeOutsideClickHandler = closeOnOutsideClick;
+
   // Defer listener to avoid immediate trigger.
-  setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 0);
+  setTimeout(() => {
+    if (activeOutsideClickHandler === closeOnOutsideClick) {
+      document.addEventListener('click', closeOnOutsideClick);
+    }
+  }, 0);
 }
 
 /**
@@ -124,5 +133,10 @@ export function closeGraphPopup(container: HTMLElement): void {
   const existing = container.querySelector('#radius-graph-popup');
   if (existing) {
     existing.remove();
+  }
+
+  if (activeOutsideClickHandler) {
+    document.removeEventListener('click', activeOutsideClickHandler);
+    activeOutsideClickHandler = null;
   }
 }
