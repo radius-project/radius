@@ -140,6 +140,10 @@ After a deployment, a link is available to view the deployed application graph. 
 
 ## Requirements *(mandatory)*
 
+### Terminology
+
+> **App definition file**: The Radius application definition file located at `app.bicep` in the repository root. This document uses "app definition file" as the canonical short form. Variations such as "Radius app definition file" and "app definition" refer to the same file.
+
 ### Functional Requirements
 
 #### Static Graph Construction
@@ -211,6 +215,15 @@ After a deployment, a link is available to view the deployed application graph. 
 - **FR-036**: The graph rendering MUST use a deterministic layout algorithm so that the same graph always renders the same way.
 - **FR-037**: The visual styling MUST match GitHub's Primer design system (colors, fonts, spacing).
 
+### Non-Functional Requirements
+
+- **NFR-001 (Performance)**: The graph visualization MUST render within 5 seconds of page load for applications with up to 15 resources (see SC-001).
+- **NFR-002 (Performance)**: Static graph construction via `rad graph build` MUST complete in under 2 seconds for applications with 5–15 resources (see SC-005).
+- **NFR-003 (Scale)**: The graph rendering engine MUST handle applications with up to 20+ resources without layout degradation or overlapping nodes (see SC-006).
+- **NFR-004 (Architecture)**: The browser extension MUST operate entirely client-side with no backend server dependency for static/modeled graph features (see SC-007).
+- **NFR-005 (Visual Design)**: All injected UI elements MUST use GitHub Primer design system CSS custom properties (`--color-success-fg`, `--color-danger-fg`, `--color-attention-fg`, `--color-fg-default`, `--color-neutral-emphasis`) for colors, fonts, and spacing (see SC-008).
+- **NFR-006 (Security)**: The browser extension MUST validate all user-authored string values (`codeReference`) at the rendering boundary before constructing navigation URLs (see FR-009a, FR-009b).
+
 ### Key Entities
 
 - **Application Graph**: A directed graph representing the topology of a Radius application. Contains a collection of resources and the connections between them. Can exist in static (modeled from source code) or runtime (from live deployment) forms. Key attributes: application name, list of resources, list of connections.
@@ -224,7 +237,7 @@ After a deployment, a link is available to view the deployed application graph. 
 ### Measurable Outcomes
 
 - **SC-001**: PR reviewers can see a visual diff of application topology changes within 5 seconds of viewing a PR that modifies a Radius app definition file.
-- **SC-002**: 90% of users with the browser extension installed can identify which resources were added, modified, or removed in a PR on first glance at the graph visualization.
+- **SC-002**: Diff color coding uses visually distinct hues (green `#2da44e`, yellow `#bf8700`, red `#cf222e`) that meet WCAG 2.1 AA contrast ratio (≥3:1) against the GitHub page background in both light and dark themes, enabling users to distinguish added, modified, and removed resources at a glance.
 - **SC-003**: Users can navigate from a graph resource node to its source code or app definition within 2 clicks (click resource → click link in popup).
 - **SC-004**: The "Application graph" tab in the repository root always reflects the current application topology on the default branch within one page refresh after a merge.
 - **SC-005**: Static graph construction completes in under 2 seconds for typical applications with 5-15 resources.
@@ -419,7 +432,7 @@ To validate the graph rendering scales correctly, test with app definitions of v
 | ------- | ------------ | ---------- |
 | No "Deploy" button or graph appears on GitHub | Extension not loaded or content script not injected | Check `chrome://extensions/` for errors. Reload the extension. Refresh the GitHub tab. |
 | "Generating app graph..." spinner never resolves | GitHub API authentication failure or rate limiting | Open the browser DevTools console (F12) and check for errors. Re-authenticate the extension. Check GitHub API rate limits. |
-| Graph renders but no diff coloring in PR | The PR does not modify a recognized app definition file | Ensure the PR changes a file matching the expected app definition file pattern (e.g., `app.bicep`, `.radius/app.bicep`). |
+| Graph renders but no diff coloring in PR | The PR does not modify the app definition file | Ensure the PR changes `app.bicep` at the repository root (FR-001a). No other paths are recognized. |
 | "Source code" link missing from popup | Resource lacks a `codeReference` property, or the value is invalid | Add a valid `codeReference` to the resource in the app definition. |
 | Extension popup shows authentication error | GitHub App not installed on the repository, or token expired | Re-install the GitHub App on the repo. Sign out and sign back in via the extension. |
 | TypeScript compilation errors on `npm run build` | Missing or outdated dependencies | Run `npm install` again. Check that Node.js version is 18+. |
