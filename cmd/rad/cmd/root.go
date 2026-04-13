@@ -58,6 +58,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
+	radinit_preview "github.com/radius-project/radius/pkg/cli/cmd/radinit/preview"
 	recipe_list "github.com/radius-project/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/radius-project/radius/pkg/cli/cmd/recipe/register"
 	recipe_show "github.com/radius-project/radius/pkg/cli/cmd/recipe/show"
@@ -342,6 +343,8 @@ func initSubCommands() {
 	RootCmd.AddCommand(groupCmd)
 
 	initCmd, _ := radinit.NewCommand(framework)
+	previewInitCmd, _ := radinit_preview.NewCommand(framework)
+	wirePreviewSubcommand(initCmd, previewInitCmd)
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
