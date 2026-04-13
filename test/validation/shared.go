@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli"
@@ -119,27 +118,9 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 		return cli.ApplicationDelete(ctx, resource.Name)
 	} else {
 		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
-
-		// Retry deletion with exponential backoff for 409 Conflict errors
-		// Resources may be stuck in "Updating" state after failed deployments
-		maxRetries := 5
-		var err error
-		for attempt := range maxRetries {
-			_, err = client.DeleteResource(ctx, resource.Type, resource.Name, false)
-			if err == nil {
-				break
-			}
-
-			// Check if it's a 409 Conflict error (resource is updating)
-			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
-				if attempt < maxRetries-1 {
-					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-					time.Sleep(waitTime)
-					continue
-				}
-			}
-			break
-		}
+		// Use force=true to handle resources that may be stuck in non-terminal provisioning states
+		// (e.g., "Updating" after failed deployments), which would otherwise return 409 Conflict.
+		_, err := client.DeleteResource(ctx, resource.Type, resource.Name, true)
 		return err
 	}
 }
