@@ -181,7 +181,7 @@ async getFileContents(owner: string, repo: string, path: string, ref: string): P
 
 ### Rationale
 
-The existing `computeGraph()` in `graph_util.go` builds graphs from live API data (database queries). The static graph constructor builds graphs from ARM JSON plus the original `app.bicep` source text. The CLI distribution model matters here: consumer repositories cannot be expected to `go run` code from the Radius repo, but they can install a released `rad` binary in CI and run the same command locally. Key differences:
+The existing `computeGraph()` in `graph_util.go` builds graphs from live API data (database queries). The static graph constructor builds graphs from ARM JSON plus the original `app.bicep` source text. The CLI distribution model matters here: consumer repositories cannot be expected to `go run` code from the Radius repo, but they can call a reusable workflow that builds `rad` from a specific Radius ref in CI and still run the same command locally after building the CLI themselves. Key differences:
 
 | Aspect | Live Graph (`computeGraph`) | Static Graph (new) |
 |--------|----------------------------|-------------------|
