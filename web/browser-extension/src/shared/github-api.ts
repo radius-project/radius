@@ -15,7 +15,15 @@ export interface PRDetails {
 }
 
 export class GraphGitHubAPI {
-  constructor(private token: string) {}
+  constructor(private token?: string | null) {}
+
+  private createHeaders(headers: Record<string, string> = {}): Record<string, string> {
+    if (this.token) {
+      headers.Authorization = `token ${this.token}`;
+    }
+
+    return headers;
+  }
 
   /**
    * Fetch raw file contents from a specific branch.
@@ -24,10 +32,9 @@ export class GraphGitHubAPI {
   async getFileContents(owner: string, repo: string, path: string, ref: string): Promise<string | null> {
     const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}`;
     const resp = await fetch(url, {
-      headers: {
+      headers: this.createHeaders({
         Accept: 'application/vnd.github.v3.raw',
-        Authorization: `token ${this.token}`,
-      },
+      }),
     });
 
     if (resp.status === 404) return null;
@@ -45,9 +52,7 @@ export class GraphGitHubAPI {
 
     const resp = await fetch(url, {
       method: 'HEAD',
-      headers: {
-        Authorization: `token ${this.token}`,
-      },
+      headers: this.createHeaders(),
     });
 
     return resp.ok;
@@ -60,10 +65,9 @@ export class GraphGitHubAPI {
   async fetchPRDetails(owner: string, repo: string, pullNumber: number): Promise<PRDetails> {
     const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${pullNumber}`;
     const resp = await fetch(url, {
-      headers: {
+      headers: this.createHeaders({
         Accept: 'application/vnd.github.v3+json',
-        Authorization: `token ${this.token}`,
-      },
+      }),
     });
 
     if (!resp.ok) throw new Error(`GitHub API error: ${resp.status} ${resp.statusText}`);
@@ -88,10 +92,9 @@ export class GraphGitHubAPI {
     while (true) {
       const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${pullNumber}/files?per_page=100&page=${page}`;
       const resp = await fetch(url, {
-        headers: {
+        headers: this.createHeaders({
           Accept: 'application/vnd.github.v3+json',
-          Authorization: `token ${this.token}`,
-        },
+        }),
       });
 
       if (!resp.ok) throw new Error(`GitHub API error: ${resp.status} ${resp.statusText}`);
