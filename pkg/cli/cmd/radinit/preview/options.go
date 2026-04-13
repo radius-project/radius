@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package radinit
+package preview
 
 import (
 	"context"
@@ -45,8 +45,6 @@ type clusterOptions struct {
 }
 
 // environmentOptions holds all of the options that will be used to initialize the environment.
-//
-// NOTE: cloud provider scope information is not included here, it is part of the cloud provider options.
 type environmentOptions struct {
 	Create    bool
 	Name      string
@@ -61,7 +59,7 @@ type cloudProviderOptions struct {
 
 // recipePackOptions holds all of the options that will be used to initialize recipe packs as part of the environment.
 type recipePackOptions struct {
-	DevRecipes bool
+	DefaultRecipePack bool
 }
 
 // applicationOptions holds all of the options that will be used to initialize an application in the current directory.
@@ -111,7 +109,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	options.Recipes.DevRecipes = !r.Full
+	options.Recipes.DefaultRecipePack = !r.Full
 
 	// If the user has a current workspace we should overwrite it.
 	// If the user does not have a current workspace we should create a new one called default and set it as current
@@ -122,59 +120,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		workspace.Name = ws.Name
 	}
 
-	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
+	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", options.Environment.Name, options.Environment.Name)
 	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
 	return &options, workspace, nil
-}
-
-// UpdateClusterOptions updates the cluster options with the provided values.
-func (r *Runner) UpdateClusterOptions(install bool, ns, ctx, version string) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Cluster.Install = install
-	r.Options.Cluster.Namespace = ns
-	r.Options.Cluster.Context = ctx
-	r.Options.Cluster.Version = version
-}
-
-// UpdateEnvironmentOptions updates the environment options with the provided values.
-func (r *Runner) UpdateEnvironmentOptions(create bool, name, ns string) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Environment.Create = create
-	r.Options.Environment.Name = name
-	r.Options.Environment.Namespace = ns
-}
-
-// UpdateCloudProviderOptions updates the cloud provider options with the provided values.
-func (r *Runner) UpdateCloudProviderOptions(azure *azure.Provider, aws *cli_aws.Provider) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.CloudProviders.Azure = azure
-	r.Options.CloudProviders.AWS = aws
-}
-
-// UpdateRecipePackOptions updates the recipe pack options with the provided values.
-func (r *Runner) UpdateRecipePackOptions(devRecipes bool) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Recipes.DevRecipes = devRecipes
-}
-
-// UpdateApplicationOptions updates the application options with the provided values.
-func (r *Runner) UpdateApplicationOptions(scaffold bool, name string) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Application.Scaffold = scaffold
-	r.Options.Application.Name = name
 }

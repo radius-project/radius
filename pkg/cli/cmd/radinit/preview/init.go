@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"context"
@@ -23,7 +23,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
-
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -38,18 +37,13 @@ import (
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
-// NOTE: this command is very super big so it's broken up amongst a few files.
-
-// NewCommand creates an instance of the command and runner for the `rad init` command.
-//
-
-// This function "NewCommand" creates a new Cobra command with flags and a runner, which can be used to initialize the
-// Radius control-plane.
+// NewCommand creates an instance of the command and runner for the `rad init --preview` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -67,39 +61,16 @@ By default, 'rad init' will optimize for a developer-focused environment with an
 Specifying the '--full' flag will cause 'rad init' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
 `,
 		Example: `
-## Create a new development environment named "default"
-rad init
+## Create a new development environment named "default" using Radius.Core
+rad init --preview
 
 ## Prompt the user for all available options to create a new environment
-rad init --full
-
-## Initialize with a custom container registry
-## Images will be pulled as: myregistry.azurecr.io/controller, myregistry.azurecr.io/ucpd, etc.
-rad init --set global.imageRegistry=myregistry.azurecr.io
-
-## Initialize with a specific version tag
-rad init --set global.imageTag=0.48
-
-## Initialize with custom registry and tag
-## Images will be pulled as: myregistry.azurecr.io/controller:0.48, etc.
-rad init --set global.imageRegistry=myregistry.azurecr.io,global.imageTag=0.48
-
-## Initialize with private registry and image pull secrets
-## Note: Secret must be created in radius-system namespace first
-rad init --set global.imageRegistry=myregistry.azurecr.io --set 'global.imagePullSecrets[0].name=regcred'
-
-## Initialize with multiple image pull secrets for different registries
-rad init --set 'global.imagePullSecrets[0].name=azure-cred' \
-         --set 'global.imagePullSecrets[1].name=aws-cred'
-
-## Initialize with custom values from a file
-rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
+rad init --preview --full
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
 	}
 
-	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -107,7 +78,7 @@ rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad init` command.
+// Runner is the runner implementation for the `rad init --preview` command.
 type Runner struct {
 	azureClient azure.Client
 	awsClient   aws.Client
@@ -133,8 +104,13 @@ type Runner struct {
 	// Prompter is the interface for the prompter.
 	Prompter prompt.Interface
 
-	// DevRecipeClient is the interface for the dev recipe client.
-	DevRecipeClient DevRecipeClient
+	// RadiusCoreClientFactory is the client factory for Radius.Core resources.
+	// If nil, it will be initialized during Run.
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
+
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// The default recipe pack is always created/queried in the default scope.
+	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
 	// Format is the output format.
 	Format string
@@ -155,11 +131,7 @@ type Runner struct {
 	Options *initOptions
 }
 
-// NewRunner creates a new instance of the `rad init` runner.
-//
-
-// NewRunner creates a new Runner struct with the given factory's ConfigHolder, Output, ConnectionFactory, Prompter,
-// ConfigFileInterface, KubernetesInterface, HelmInterface, DevRecipeClient, AWSClient, and AzureClient.
+// NewRunner creates a new instance of the `rad init --preview` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
@@ -169,19 +141,12 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
-		DevRecipeClient:     NewDevRecipeClient(),
 		awsClient:           factory.GetAWSClient(),
 		azureClient:         factory.GetAzureClient(),
 	}
 }
 
-// Validate runs validation for the `rad init` command.
-// Validates the user prompts, values provided and builds the picture for the backend to execute
-//
-
-// Validate gathers input from the user, creates a workspace and options, and confirms the options with the user before
-// returning the options and workspace. If the user does not confirm the options, the function will loop and gather input again.
-// If an error occurs, the function will return an error.
+// Validate runs validation for the `rad init --preview` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -219,12 +184,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 }
 
-// Run runs the `rad init` command.
-// Creates Radius resources, azure resources if required based on the user input, command flags
-//
-
-// Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud
-// providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
+// Run runs the `rad init --preview` command.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
@@ -275,8 +235,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		// Initialize the application resource if it's not found. This supports the scenario where the application
-		// resource is not defined in bicep.
+		// Initialize the application resource if it's not found.
 		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, &corerp.ApplicationResource{
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &corerp.ApplicationProperties{

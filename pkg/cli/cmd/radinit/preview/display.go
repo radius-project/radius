@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"context"
@@ -67,7 +67,6 @@ var (
 	foregroundBrightStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#111111", Dark: "#EEEEEE"}).Bold(true)
 )
 
-// confirmOptions shows a summary of the user's selections and prompts for confirmation.
 func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool, error) {
 	model := NewSummaryModel(*options)
 	program := tea.NewProgram(model, tea.WithContext(ctx))
@@ -89,10 +88,6 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 	}
 }
 
-// showProgress shows an updating progress display while the user's selections are being applied.
-//
-// This function should be called from a goroutine while installation proceeds in the background.
-// provide a channel to update progress.
 func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
 	model := NewProgessModel(*options)
 	program := tea.NewProgram(model, tea.WithContext(ctx))
@@ -113,7 +108,6 @@ func (r *Runner) showProgress(ctx context.Context, options *initOptions, progres
 	return err
 }
 
-// progressMsg is a message sent to the progress display to update the status of the installation.
 type progressMsg struct {
 	InstallComplete     bool
 	EnvironmentComplete bool
@@ -138,7 +132,6 @@ type summaryModel struct {
 	width   int
 }
 
-// NewSummaryModel creates a new model for the options summary shown during 'rad init'.
 func NewSummaryModel(options initOptions) tea.Model {
 	return &summaryModel{
 		style:   lipgloss.NewStyle().Margin(1, 0),
@@ -146,56 +139,36 @@ func NewSummaryModel(options initOptions) tea.Model {
 	}
 }
 
-// Init implements the init function for tea.Model. This will be called when the model is started, before View or
-// Update are called.
 func (m *summaryModel) Init() tea.Cmd {
 	return nil
 }
 
-// Update implements the update function for tea.Model. This will be called when a message is received by the model.
-//
-// It's safe to update internal state inside this function. View will be called afterwards to draw the UI.
-//
-
-// "summaryModel.Update" handles messages and state transitions, and returns the next model and command based on the type
-// of message received. If the message is a KeyCtrlC, KeyEsc, or KeyEnter, the result is set accordingly and the command is
-//
-//	set to Quit. Otherwise, the message is ignored and no command is returned.
 func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// This function handles messages and state transitions. We don't need to update
-	// any UI here, just return the next model and command.
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC {
-			// User is quitting
 			copy := *m
 			copy.result = resultQuit
 			return &copy, tea.Quit
 		}
 		if msg.Type == tea.KeyEsc {
-			// User is canceling
 			copy := *m
 			copy.result = resultCanceled
 			return &copy, tea.Quit
 		}
 		if msg.Type == tea.KeyEnter {
-			// User has confirmed
 			copy := *m
 			copy.result = resultConfimed
 			return &copy, tea.Quit
 		}
 	}
 
-	// Ignore other messages
 	return m, nil
 }
 
-// View implments the view function for tea.Model. This will be called after Init and after each call to Update to
-// draw the UI.
 func (m *summaryModel) View() string {
-	// Hide when summary is dismissed
 	if m.result != "" {
 		return ""
 	}
@@ -244,8 +217,8 @@ func (m *summaryModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.SubscriptionID), highlight(options.CloudProviders.Azure.ResourceGroup)))
 		}
 
-		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
+		if options.Recipes.DefaultRecipePack {
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default kubernetes recipe pack")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
@@ -269,15 +242,11 @@ func (m *summaryModel) View() string {
 
 var _ tea.Model = &progressModel{}
 
-// NewProgessModel creates a new model for the initialization progress dialog shown during 'rad init'.
 func NewProgessModel(options initOptions) tea.Model {
 	return &progressModel{
 		options: options,
 		spinner: spinner.New(spinner.WithSpinner(progressSpinner)),
-
-		// Setting a height here to avoid double-printing issues when the
-		// hight of the output changes.
-		style: lipgloss.NewStyle().Margin(1, 0),
+		style:   lipgloss.NewStyle().Margin(1, 0),
 	}
 }
 
@@ -287,35 +256,23 @@ type progressModel struct {
 	spinner  spinner.Model
 	style    lipgloss.Style
 
-	// suppressSpinner is used to suppress the ticking of the spinner for testing.
 	suppressSpinner bool
 	width           int
 }
 
-// Init implements the init function for tea.Model. This will be called when the model is started, before View or
-// Update are called.
 func (m *progressModel) Init() tea.Cmd {
 	if m.suppressSpinner {
 		return nil
 	}
 
-	// Start the spinner
 	return m.spinner.Tick
 }
 
-// Update implements the update function for tea.Model. This will be called when a message is received by the model.
-//
-// It's safe to update internal state inside this function. View will be called afterwards to draw the UI.
-//
-
-// Update updates the internal state of the progressModel when it receives a progressMsg or spinner.TickMsg,
-// and returns a tea.Cmd to quit the program if the progress is complete.
 func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		return m, nil
-	// Update our internal state when we receive a progress update message.
 	case progressMsg:
 		m.progress = msg
 		if m.isComplete() {
@@ -323,8 +280,6 @@ func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
-
-	// Update spinner internal state when we receive a tick.
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -334,19 +289,13 @@ func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-// View implments the view function for tea.Model. This will be called after Init and after each call to Update to
-// draw the UI.
-//
-
-// View builds a string containing a summary of the progress of a GO program, including the installation of
-// Kubernetes, the creation of an environment, the scaffolding of an application, and the updating of configuration.
 func (m *progressModel) View() string {
 	options := m.options
 
 	message := &strings.Builder{}
 	message.WriteString(progressHeading)
 
-	waiting := false // It's the hardest part.
+	waiting := false
 
 	m.writeProgressIcon(message, m.progress.InstallComplete, &waiting)
 	if options.Cluster.Install {
@@ -387,8 +336,8 @@ func (m *progressModel) View() string {
 			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.SubscriptionID), highlight(options.CloudProviders.Azure.ResourceGroup)))
 		}
 
-		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
+		if options.Recipes.DefaultRecipePack {
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default kubernetes recipe pack")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
@@ -403,7 +352,6 @@ func (m *progressModel) View() string {
 	message.WriteString(summaryConfigurationUpdateHeading)
 
 	if !waiting {
-		// Everything is complete, so we're done.
 		message.WriteString(progressCompleteFooter)
 	}
 
@@ -414,21 +362,12 @@ func (m *progressModel) isComplete() bool {
 	return m.progress.InstallComplete && m.progress.EnvironmentComplete && m.progress.ApplicationComplete && m.progress.ConfigComplete
 }
 
-// writeProgressIcon writes the correct icon for the progress step depending on the current step.
 func (m *progressModel) writeProgressIcon(message *strings.Builder, condition bool, waiting *bool) {
-	// Logic:
-	//
-	// - If the step is complete, write the complete icon.
-	// - If we're waiting based on a previous step not being complete, write the waiting icon.
-	// - If we're not waiting then this is the current step:
-	//    - Show the spinner
-	//    - Set waiting to true so that we show the waiting icon for the following steps.
 	if condition {
 		message.WriteString(progressStepCompleteIcon)
 	} else if *waiting {
 		message.WriteString(progressStepWaitingIcon)
 	} else if m.suppressSpinner {
-		// We can't render the *real* spinner without starting it, so just render a static glyph.
 		message.WriteString(progressSpinner.Frames[0])
 		*waiting = true
 	} else {
