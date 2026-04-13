@@ -31,6 +31,11 @@ on:
         required: false
         type: string
         default: "radius-graph"
+      workflow_source_ref:
+        description: "Ref in radius-project/radius to use when checking out workflow source for fallback rad builds"
+        required: false
+        type: string
+        default: "main"
       rad_version:
         description: "Version of the rad CLI to install (e.g., 'v0.40.0'). Defaults to latest."
         required: false
@@ -50,17 +55,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine workflow source ref
-        id: workflow-source
-        run: |
-          WORKFLOW_REF='${{ github.workflow_ref }}'
-          echo "git_ref=${WORKFLOW_REF##*@}" >> "$GITHUB_OUTPUT"
-
       - name: Checkout Radius workflow source
         uses: actions/checkout@v4
         with:
           repository: radius-project/radius
-          ref: ${{ steps.workflow-source.outputs.git_ref }}
+          ref: ${{ inputs.workflow_source_ref }}
           path: .radius-workflow-src
 
       - name: Determine rad version
