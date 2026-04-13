@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0
 **File**: `radius/.github/workflows/__build-app-graph.yml` (reusable) plus a thin consumer wrapper workflow
-**Purpose**: Install a released `rad` binary, run `rad graph build`, and commit the graph artifact to the `radius-graph` orphan branch on every push that changes `app.bicep`
+**Purpose**: Build `rad` from the requested Radius source ref, run `rad graph build`, and commit the graph artifact to the `radius-graph` orphan branch on every push that changes `app.bicep`
 
 ## Workflow Definition
 
@@ -38,6 +38,10 @@ on:
         required: false
         type: string
         default: radius-graph
+      workflow_source_ref:
+        required: false
+        type: string
+        default: main
 
 jobs:
   build-graph:
@@ -46,12 +50,17 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: radius-project/radius
+          ref: ${{ inputs.workflow_source_ref }}
+          path: .radius-workflow-src
 
-      - name: Install rad release
+      - name: Build rad from Radius workflow source
         run: |
-          curl -fsSL -o rad.tar.gz https://github.com/radius-project/radius/releases/download/${RAD_VERSION}/rad-linux-amd64.tar.gz
-          tar -xzf rad.tar.gz
-          sudo mv rad /usr/local/bin/rad
+          cd .radius-workflow-src
+          go build -o "$RUNNER_TEMP/rad" ./cmd/rad
+          sudo mv "$RUNNER_TEMP/rad" /usr/local/bin/rad
 
       - name: Build static graph and commit to orphan branch
         run: |
@@ -90,7 +99,7 @@ jobs:
 
 ## Dependencies
 
-- **rad CLI**: Downloaded from Radius releases and contains `graph build`
+- **rad CLI**: Built from the requested `workflow_source_ref` in `radius-project/radius`
 - **Bicep CLI**: Managed internally by `rad graph build` or installed as a runtime dependency by that command
 
 ## Notes

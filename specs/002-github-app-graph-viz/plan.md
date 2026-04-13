@@ -7,7 +7,7 @@
 
 ## Summary
 
-Build interactive application graph visualization delivered via a Chrome/Edge browser extension (Manifest V3, TypeScript) that renders Radius application topology diagrams in GitHub PRs (with diff coloring), repository root pages (as an injected tab), and dedicated application pages. Radius ships graph generation as a new `rad graph build` CLI command so the core build logic remains testable locally and distributable to consumer repositories. A thin consumer GitHub Actions workflow, or a Radius-hosted reusable workflow, installs a released `rad` binary, generates a single static artifact, and commits it to `{source-branch}/app.json` on the `radius-graph` orphan branch. The browser extension fetches this artifact via the GitHub Contents API from the base repo/base ref and the head repo/head ref for forked PRs. A new authorable `codeReference` property is added to shared resource property bases in TypeSpec and propagated into the graph read model together with `appDefinitionLine` and `diffHash` metadata.
+Build interactive application graph visualization delivered via a Chrome/Edge browser extension (Manifest V3, TypeScript) that renders Radius application topology diagrams in GitHub PRs (with diff coloring), repository root pages (as an injected tab), and dedicated application pages. Radius ships graph generation as a new `rad graph build` CLI command so the core build logic remains testable locally and distributable to consumer repositories. A thin consumer GitHub Actions workflow, or a Radius-hosted reusable workflow, builds `rad` from the requested Radius source ref, generates a single static artifact, and commits it to `{source-branch}/app.json` on the `radius-graph` orphan branch. The browser extension fetches this artifact via the GitHub Contents API from the base repo/base ref and the head repo/head ref for forked PRs. A new authorable `codeReference` property is added to shared resource property bases in TypeSpec and propagated into the graph read model together with `appDefinitionLine` and `diffHash` metadata.
 
 ## Technical Context
 
@@ -119,7 +119,7 @@ web/browser-extension/
 
 # Reusable workflow shipped by Radius
 .github/workflows/
-└── __build-app-graph.yml         # NEW: install released rad, run rad graph build, commit to radius-graph orphan branch
+└── __build-app-graph.yml         # NEW: build rad from the requested Radius ref, run rad graph build, commit to radius-graph orphan branch
 
 # Graph artifact output (committed by CI in consumer repos)
 radius-graph orphan branch
