@@ -63,7 +63,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Cont
 	}
 	results := []generated.GenericResource{}
 
-	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions)
+	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions, false)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.getGenericClient(scope, resourceType, apiVersions)
+	client, err := amc.getGenericClient(scope, resourceType, apiVersions, false)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -190,11 +190,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	}
 
 	var client genericResourceClient
-	if force {
-		client, err = amc.getGenericClientWithForce(scope, resourceType, apiVersions)
-	} else {
-		client, err = amc.getGenericClient(scope, resourceType, apiVersions)
-	}
+	client, err = amc.getGenericClient(scope, resourceType, apiVersions, force)
 	if err != nil {
 		return false, err
 	}
@@ -393,16 +389,7 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	}
 
 	var client applicationResourceClient
-	if force && amc.applicationResourceClientFactory == nil {
-		clientOptions := *amc.ClientOptions
-		clientOptions.PerCallPolicies = append(
-			append([]policy.Policy{}, clientOptions.PerCallPolicies...),
-			&forceDeletePolicy{},
-		)
-		client, err = corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, "/"), &aztoken.AnonymousCredential{}, &clientOptions)
-	} else {
-		client, err = amc.createApplicationClient(scope)
-	}
+	client, err = amc.createApplicationClient(scope, force)
 	if err != nil {
 		return false, err
 	}
@@ -819,7 +806,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx con
 			continue // Skip this resource type if we can't get API versions
 		}
 
-		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions)
+		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
 		if err != nil {
 			continue
 		}
@@ -884,7 +871,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroup(c
 		return nil, err
 	}
 
-	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions)
+	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1213,13 +1200,25 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateLocation(ctx context.C
 	return response.LocationResource, nil
 }
 
-func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string) (applicationResourceClient, error) {
-	if amc.applicationResourceClientFactory == nil {
-		// Generated client doesn't like the leading '/' in the scope.
-		return corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+// createApplicationClient creates an application resource client for the specified scope.
+// When force is true, a per-call policy is added that appends force=true to the request URL query string.
+func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string, force ...bool) (applicationResourceClient, error) {
+	if amc.applicationResourceClientFactory != nil {
+		return amc.applicationResourceClientFactory(scope)
 	}
 
-	return amc.applicationResourceClientFactory(scope)
+	clientOptions := amc.ClientOptions
+	if len(force) > 0 && force[0] {
+		opts := *amc.ClientOptions
+		opts.PerCallPolicies = append(
+			append([]policy.Policy{}, opts.PerCallPolicies...),
+			&forceDeletePolicy{},
+		)
+		clientOptions = &opts
+	}
+
+	// Generated client doesn't like the leading '/' in the scope.
+	return corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, clientOptions)
 }
 
 func (amc *UCPApplicationsManagementClient) createRecipePackClient(scope string) (recipePackResourceClient, error) {
@@ -1392,43 +1391,28 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 }
 
 // getGenericClient returns a generic resource client for the specified scope and resource type.
-// if apiVersions is empty, it uses the default version i.e 2023-10-01-preview else uses any version supported by the resource type.
-func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
+// If apiVersions is empty, it uses the default version (2023-10-01-preview), else uses any version supported by the resource type.
+// When force is true, a per-call policy is added that appends force=true to the request URL query string.
+// This is used for force-deleting resources that are in a non-terminal provisioning state.
+func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string, force bool) (client genericResourceClient, err error) {
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
 	if strings.HasPrefix(resourceType, "Radius.Core") {
 		apiVersions = []string{"2025-08-01-preview"}
 	}
-	if len(apiVersions) == 0 {
-		client, err = amc.createGenericClient(scope, resourceType)
-	} else {
-		client, err = amc.createGenericClient(scope, resourceType, apiVersions[0])
-	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	return client, err
-}
-
-// getGenericClientWithForce creates a generic client with a per-call policy that appends
-// the force=true query parameter to the request URL. This is used for force-deleting
-// resources that are in a non-terminal provisioning state.
-func (amc *UCPApplicationsManagementClient) getGenericClientWithForce(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
 	if amc.genericResourceClientFactory != nil {
 		return amc.genericResourceClientFactory(scope, resourceType)
 	}
 
 	clientOptions := *amc.ClientOptions
-	clientOptions.PerCallPolicies = append(
-		append([]policy.Policy{}, clientOptions.PerCallPolicies...),
-		&forceDeletePolicy{},
-	)
 
-	if strings.HasPrefix(resourceType, "Radius.Core") {
-		apiVersions = []string{"2025-08-01-preview"}
+	if force {
+		clientOptions.PerCallPolicies = append(
+			append([]policy.Policy{}, clientOptions.PerCallPolicies...),
+			&forceDeletePolicy{},
+		)
 	}
 
 	if len(apiVersions) != 0 {

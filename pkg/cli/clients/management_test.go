@@ -19,12 +19,15 @@ package clients
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -747,6 +750,189 @@ func Test_ForceDeletePolicy(t *testing.T) {
 		require.Contains(t, capturedURL, "force=true")
 		require.Contains(t, capturedURL, "api-version=2023-10-01-preview")
 	})
+}
+
+func Test_DeleteResource_ForceQueryParameter(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		force    bool
+		expectQP bool
+	}{
+		{
+			name:     "force=true adds force query parameter",
+			force:    true,
+			expectQP: true,
+		},
+		{
+			name:     "force=false does not add force query parameter",
+			force:    false,
+			expectQP: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var capturedURLs []string
+			transport := &mockTransport{
+				do: func(req *http.Request) (*http.Response, error) {
+					capturedURLs = append(capturedURLs, req.URL.String())
+					header := http.Header{}
+					header.Set("Content-Type", "application/json")
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     header,
+						Body:       io.NopCloser(strings.NewReader(`{"status": "Succeeded"}`)),
+						Request:    req,
+					}, nil
+				},
+			}
+
+			ctrl := gomock.NewController(t)
+			rpClient := NewMockresourceProviderClient(ctrl)
+			rpClient.EXPECT().
+				GetProviderSummary(gomock.Any(), "local", "Applications.Test", gomock.Any()).
+				Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+					ResourceProviderSummary: ucp.ResourceProviderSummary{
+						Name: new("Applications.Test"),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							"testResource": {
+								APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+									version: {},
+								},
+							},
+						},
+					},
+				}, nil)
+
+			client := &UCPApplicationsManagementClient{
+				RootScope: testScope,
+				ClientOptions: &arm.ClientOptions{
+					ClientOptions: policy.ClientOptions{
+						Transport: transport,
+					},
+				},
+				resourceProviderClientFactory: func() (resourceProviderClient, error) {
+					return rpClient, nil
+				},
+			}
+
+			// We don't check the return values - we only care about the captured URLs.
+			_, _ = client.DeleteResource(context.Background(), "Applications.Test/testResource", testScope+"/providers/Applications.Test/testResource/myresource", tt.force)
+
+			require.NotEmpty(t, capturedURLs, "expected at least one HTTP request")
+			foundForce := false
+			for _, u := range capturedURLs {
+				if strings.Contains(u, "force=true") {
+					foundForce = true
+					break
+				}
+			}
+			if tt.expectQP {
+				require.True(t, foundForce, "expected force=true in request URL, got URLs: %v", capturedURLs)
+			} else {
+				require.False(t, foundForce, "did not expect force=true in request URL, got URLs: %v", capturedURLs)
+			}
+		})
+	}
+}
+
+func Test_DeleteApplication_ForceQueryParameter(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		force    bool
+		expectQP bool
+	}{
+		{
+			name:     "force=true adds force query parameter to app delete",
+			force:    true,
+			expectQP: true,
+		},
+		{
+			name:     "force=false does not add force query parameter to app delete",
+			force:    false,
+			expectQP: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var appDeleteURLs []string
+			transport := &mockTransport{
+				do: func(req *http.Request) (*http.Response, error) {
+					// Capture URLs of DELETE requests to the applications endpoint
+					if req.Method == http.MethodDelete && strings.Contains(req.URL.Path, "Applications.Core/applications") {
+						appDeleteURLs = append(appDeleteURLs, req.URL.String())
+					}
+					header := http.Header{}
+					header.Set("Content-Type", "application/json")
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     header,
+						Body:       io.NopCloser(strings.NewReader(`{"status": "Succeeded"}`)),
+						Request:    req,
+					}, nil
+				},
+			}
+
+			ctrl := gomock.NewController(t)
+			genericMock := NewMockgenericResourceClient(ctrl)
+			rpClient := NewMockresourceProviderClient(ctrl)
+
+			// Mock for ListResourcesInApplication: return empty list (no child resources)
+			rpClient.EXPECT().
+				NewListProviderSummariesPager("local", gomock.Any()).
+				Return(pager([]ucp.ResourceProvidersClientListProviderSummariesResponse{
+					{
+						PagedResourceProviderSummary: ucp.PagedResourceProviderSummary{
+							Value:    []*ucp.ResourceProviderSummary{},
+							NextLink: new("0"),
+						},
+					},
+				}))
+
+			// Use genericResourceClientFactory so listing doesn't go through transport
+			// but leave applicationResourceClientFactory nil so app delete goes through transport
+			client := &UCPApplicationsManagementClient{
+				RootScope: testScope,
+				ClientOptions: &arm.ClientOptions{
+					ClientOptions: policy.ClientOptions{
+						Transport: transport,
+					},
+				},
+				genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
+					return genericMock, nil
+				},
+				resourceProviderClientFactory: func() (resourceProviderClient, error) {
+					return rpClient, nil
+				},
+			}
+
+			// We don't check the return values - we only care about the captured URLs.
+			_, _ = client.DeleteApplication(context.Background(), testScope+"/providers/Applications.Core/applications/test-app", tt.force)
+
+			require.NotEmpty(t, appDeleteURLs, "expected at least one DELETE request to applications endpoint")
+			foundForce := false
+			for _, u := range appDeleteURLs {
+				if strings.Contains(u, "force=true") {
+					foundForce = true
+					break
+				}
+			}
+			if tt.expectQP {
+				require.True(t, foundForce, "expected force=true in app DELETE URL, got URLs: %v", appDeleteURLs)
+			} else {
+				require.False(t, foundForce, "did not expect force=true in app DELETE URL, got URLs: %v", appDeleteURLs)
+			}
+		})
+	}
 }
 
 type mockTransport struct {
