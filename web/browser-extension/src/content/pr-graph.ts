@@ -3,6 +3,7 @@
 // computes diff, and renders an interactive color-coded graph below PR description.
 
 import type { StaticGraphArtifact } from '../shared/graph-types.js';
+import { getGitHubToken } from '../shared/api.js';
 import { GraphGitHubAPI } from '../shared/github-api.js';
 import { computeGraphDiff } from './graph-diff.js';
 import { renderGraph, createDiffLegend } from './graph-renderer.js';
@@ -19,7 +20,6 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
 
   // Get the auth token from extension storage.
   const token = await getAuthToken();
-  if (!token) return;
 
   const api = new GraphGitHubAPI(token);
 
@@ -122,9 +122,8 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    if (!chrome?.storage?.local) return null;
-    const result = await chrome.storage.local.get('github_token');
-    return result.github_token ?? null;
+    const token = await getGitHubToken();
+    return token || null;
   } catch {
     return null;
   }
