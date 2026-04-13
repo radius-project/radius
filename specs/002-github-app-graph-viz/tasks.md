@@ -54,7 +54,7 @@
 
 ## Phase 4: User Story 3 — Static Application Graph Construction (Priority: P1)
 
-**Goal**: Implement `rad graph build` CLI command that compiles a Bicep app definition to ARM JSON, parses resources/connections/dependencies, maps source line numbers, computes diff hashes, and emits a static graph JSON artifact at `.radius/static/app.json`.
+**Goal**: Implement `rad graph build` CLI command that compiles a Bicep app definition to ARM JSON, parses resources/connections/dependencies, maps source line numbers, computes diff hashes, and emits a static graph JSON artifact either to a local file or to `{source-branch}/app.json` on the `radius-graph` orphan branch.
 
 **Independent Test**: Run `go build -o bin/rad ./cmd/rad && bin/rad graph build --bicep app.bicep --output /tmp/graph.json` with a sample Bicep file and verify the output JSON contains correct resources, connections, `codeReference`, `appDefinitionLine`, and `diffHash` values per the static-graph-artifact contract.
 
@@ -62,10 +62,10 @@
 
 - [X] T011 [US3] Implement ARM JSON parser and static graph builder in pkg/cli/graph/build.go: parse languageVersion 1.9 resources map, extract type/name/properties.connections/dependsOn, resolve resourceId() expressions to Radius-style resource IDs, parse app.bicep source text to map symbolic names to declaration line numbers, copy authorable codeReference into the read model, and emit StaticGraphArtifact JSON. Include unit tests in pkg/cli/graph/build_test.go covering: valid multi-resource Bicep, dependsOn edge extraction, codeReference pass-through, source line mapping, and compilation failure error handling.
 - [X] T012 [P] [US3] Implement canonical diff hash generator in pkg/cli/graph/diffhash.go: extract review-relevant properties (connections, container image, ports, routes), canonicalize to sorted JSON, compute SHA-256 hash, return hex-encoded diffHash string. Include unit tests in pkg/cli/graph/diffhash_test.go covering: deterministic output for identical inputs, different hashes for changed properties, stable ordering across Go map iteration.
-- [X] T013 [US3] Implement `rad graph build` CLI subcommand with `--bicep` (input file path, default `app.bicep`) and `--output` (output file path, default `.radius/static/app.json`) flags in cmd/rad/cmd/graph.go; wire into existing rad command tree
-- [X] T014 [P] [US3] Create reusable GitHub Actions workflow in .github/workflows/__build-app-graph.yml that installs a released rad binary, runs `rad graph build`, and commits `.radius/static/app.json` to the branch on push events that modify app.bicep
+- [X] T013 [US3] Implement `rad graph build` CLI subcommand with `--bicep` (input file path, default `app.bicep`) and `--output` (output file path, default `.radius/static/app.json`) for local file mode, plus orphan-branch publishing flags in cmd/rad/cmd/graph.go; wire into existing rad command tree
+- [X] T014 [P] [US3] Create reusable GitHub Actions workflow in .github/workflows/__build-app-graph.yml that installs a released rad binary, runs `rad graph build`, and commits `{source-branch}/app.json` to the `radius-graph` orphan branch on push events that modify app.bicep
 
-**Checkpoint**: Static graph construction works locally via CLI and in consumer CI via reusable workflow — graph artifacts are committed to branches
+**Checkpoint**: Static graph construction works locally via CLI and in consumer CI via reusable workflow — graph artifacts are committed to the orphan branch
 
 ---
 
@@ -88,13 +88,13 @@
 
 **Goal**: Detect PR pages that modify a Radius app definition, fetch pre-built graph artifacts for base and head branches, compute the diff, and render an interactive color-coded application graph (green=added, yellow=modified, red=removed) in the PR description area.
 
-**Independent Test**: Load the browser extension, navigate to a GitHub PR that modifies `app.bicep` with CI-generated `.radius/static/app.json` on both branches, and verify: loading indicator appears, graph renders below PR description with correct diff coloring, clicking nodes shows navigation popups, PR without app definition changes shows no graph.
+**Independent Test**: Load the browser extension, navigate to a GitHub PR that modifies `app.bicep` with CI-generated artifacts on the `radius-graph` orphan branch for both source branches, and verify: loading indicator appears, graph renders below PR description with correct diff coloring, clicking nodes shows navigation popups, PR without app definition changes shows no graph.
 
 ### Implementation for User Story 1
 
 - [X] T017 [P] [US1] Implement client-side graph diff computation in web/browser-extension/src/content/graph-diff.ts: build resource ID maps from base and head ApplicationGraphResponse, classify each resource as added (in head only), removed (in base only), modified (in both but diffHash changed), or unchanged (in both with same diffHash), return GraphDiff object. Include unit tests in web/browser-extension/src/content/graph-diff.test.ts covering: added-only diff, removed-only diff, modified detection via diffHash, unchanged pass-through, and empty graph handling.
 - [X] T018 [US1] Implement Cytoscape.js graph renderer with cytoscape-dagre DAG layout in web/browser-extension/src/content/graph-renderer.ts: create Cytoscape instance on a container element, convert ApplicationGraphResource array to Cytoscape nodes/edges, apply diff status as node data attributes, style nodes with Primer diff colors (green/yellow/red borders), display resource name + type + optional image tag, bind node tap events to graph-navigation popup, support deterministic layout (FR-036), handle 3-20+ resources (FR-035)
-- [X] T019 [US1] Implement PR page graph injection orchestrator in web/browser-extension/src/content/pr-graph.ts: detect app.bicep in PR changed files, extract base/head repo+ref from PR metadata via github-api.ts, fetch .radius/static/app.json from both refs (handling 404 with "waiting for CI" message), compute diff via graph-diff.ts, inject graph container below PR description (#discussion_bucket), render via graph-renderer.ts, show loading indicator during fetch/render
+- [X] T019 [US1] Implement PR page graph injection orchestrator in web/browser-extension/src/content/pr-graph.ts: detect app.bicep in PR changed files, extract base/head repo+ref from PR metadata via github-api.ts, fetch graph artifacts for both refs from the `radius-graph` orphan branch (handling 404 with "waiting for CI" message), compute diff via graph-diff.ts, inject graph container below PR description (#discussion_bucket), render via graph-renderer.ts, show loading indicator during fetch/render
 - [X] T020 [US1] Update web/browser-extension/src/content/inject.ts with PR page URL detection (/:owner/:repo/pull/:number pattern), turbo:load and MutationObserver listeners for SPA navigation, debounced re-injection on navigation, duplicate injection prevention via element ID check, and pr-graph.ts initialization trigger
 
 **Checkpoint**: Full PR diff visualization working — reviewers see interactive color-coded application graph when viewing PRs that modify the Radius app definition. MVP complete.
@@ -105,11 +105,11 @@
 
 **Goal**: Inject an "Application graph" tab on repository root pages alongside README/License tabs that renders the current-state graph for the default branch without diff coloring.
 
-**Independent Test**: Navigate to a GitHub repo root that contains `app.bicep` with a CI-generated graph artifact, verify the "Application graph" tab appears, click it, and confirm the graph renders without diff coloring with interactive navigation popups on node click. Navigate to a repo without `app.bicep` and verify no tab is injected.
+**Independent Test**: Navigate to a GitHub repo root that contains `app.bicep` with a CI-generated graph artifact on `radius-graph`, verify the "Application graph" tab appears, click it, and confirm the graph renders without diff coloring with interactive navigation popups on node click. Navigate to a repo without `app.bicep` and verify no tab is injected.
 
 ### Implementation for User Story 4
 
-- [X] T021 [US4] Implement repo root tab injection in web/browser-extension/src/content/repo-tab.ts: check for app.bicep existence via github-api.ts checkFileExists, inject "Application graph" tab element into the repo root tab bar, fetch .radius/static/app.json for default branch on tab click, render graph via graph-renderer.ts without diff coloring (all resources as unchanged status), show loading state during fetch, handle missing artifact gracefully
+- [X] T021 [US4] Implement repo root tab injection in web/browser-extension/src/content/repo-tab.ts: check for app.bicep existence via github-api.ts checkFileExists, inject "Application graph" tab element into the repo root tab bar, fetch the default branch artifact from the `radius-graph` orphan branch on tab click, render graph via graph-renderer.ts without diff coloring (all resources as unchanged status), show loading state during fetch, handle missing artifact gracefully
 - [X] T022 [US4] Update web/browser-extension/src/content/inject.ts with repo root page URL detection (/:owner/:repo with no sub-path or /tree/ pattern), repo-tab.ts initialization trigger, and cleanup on SPA navigation away from repo root
 
 **Checkpoint**: Repo root tab provides a living architecture reference — the graph always reflects the current default-branch topology
@@ -124,7 +124,7 @@
 
 ### Implementation for User Story 6
 
-- [X] T023 [US6] Implement dedicated modeled app graph page in web/browser-extension/src/content/app-page.ts: create full-page graph container, fetch .radius/static/app.json for current branch, render via graph-renderer.ts with full-size layout, support interactive navigation popups, handle missing artifact with informative message
+- [X] T023 [US6] Implement dedicated modeled app graph page in web/browser-extension/src/content/app-page.ts: create full-page graph container, fetch the current branch artifact from the `radius-graph` orphan branch, render via graph-renderer.ts with full-size layout, support interactive navigation popups, handle missing artifact with informative message
 - [X] T024 [US6] Update web/browser-extension/src/content/inject.ts with sidebar "Applications" section injection on repo root pages (when app.bicep detected), dedicated page route handling (/:owner/:repo/radius/app/:name URL pattern), and app-page.ts initialization trigger
 
 **Checkpoint**: Dedicated modeled graph page provides full-screen interactive exploration of application topology

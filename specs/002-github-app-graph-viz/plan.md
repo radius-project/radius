@@ -7,13 +7,13 @@
 
 ## Summary
 
-Build interactive application graph visualization delivered via a Chrome/Edge browser extension (Manifest V3, TypeScript) that renders Radius application topology diagrams in GitHub PRs (with diff coloring), repository root pages (as an injected tab), and dedicated application pages. Radius ships graph generation as a new `rad graph build` CLI command so the core build logic remains testable locally and distributable to consumer repositories. A thin consumer GitHub Actions workflow, or a Radius-hosted reusable workflow, installs a released `rad` binary, generates a single static artifact at `.radius/static/app.json`, and commits it to the branch. The browser extension fetches this artifact via the GitHub Contents API from the base repo/base ref and the head repo/head ref for forked PRs. A new authorable `codeReference` property is added to shared resource property bases in TypeSpec and propagated into the graph read model together with `appDefinitionLine` and `diffHash` metadata.
+Build interactive application graph visualization delivered via a Chrome/Edge browser extension (Manifest V3, TypeScript) that renders Radius application topology diagrams in GitHub PRs (with diff coloring), repository root pages (as an injected tab), and dedicated application pages. Radius ships graph generation as a new `rad graph build` CLI command so the core build logic remains testable locally and distributable to consumer repositories. A thin consumer GitHub Actions workflow, or a Radius-hosted reusable workflow, installs a released `rad` binary, generates a single static artifact, and commits it to `{source-branch}/app.json` on the `radius-graph` orphan branch. The browser extension fetches this artifact via the GitHub Contents API from the base repo/base ref and the head repo/head ref for forked PRs. A new authorable `codeReference` property is added to shared resource property bases in TypeSpec and propagated into the graph read model together with `appDefinitionLine` and `diffHash` metadata.
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.4 (browser extension), Go 1.22+ (schema/graph construction), TypeSpec (API definitions)
 **Primary Dependencies**: Cytoscape.js (graph rendering), esbuild (extension bundling), Chrome Extension Manifest V3 APIs, GitHub Contents API, tweetnacl (crypto), @anthropic-ai/sdk (AI features)
-**Storage**: Static JSON artifact at `.radius/static/app.json` per branch (repository-hosted); no backend database
+**Storage**: Static JSON artifact at `{source-branch}/app.json` on the `radius-graph` orphan branch; no backend database
 **Testing**: Jest/Vitest (TypeScript unit tests), Go `testing` package (schema tests), manual browser testing, Playwright (future E2E)
 **Target Platform**: Chrome/Edge browsers (Manifest V3), GitHub Actions CI (Linux runners)
 **Project Type**: Browser extension + CI workflow + schema extension (multi-component)
@@ -119,11 +119,11 @@ web/browser-extension/
 
 # Reusable workflow shipped by Radius
 .github/workflows/
-└── __build-app-graph.yml         # NEW: install released rad, run rad graph build, commit .radius/static/app.json in caller repo
+└── __build-app-graph.yml         # NEW: install released rad, run rad graph build, commit to radius-graph orphan branch
 
 # Graph artifact output (committed by CI in consumer repos)
-.radius/static/
-└── app.json                      # Static graph JSON for the single supported app.bicep
+radius-graph orphan branch
+└── {source-branch}/app.json      # Static graph JSON for the single supported app.bicep
 ```
 
 **Structure Decision**: Multi-component structure following existing repository conventions. Authorable schema changes live in `typespec/radius/v1/resources.tsp`, while the graph read model stays in `typespec/Applications.Core/applications.tsp` with generated Go output in `pkg/corerp/api/`. Static graph logic is implemented once in the existing `rad` CLI so it can be executed both locally and in consumer CI. The browser extension build is upgraded from plain `tsc` output to bundled MV3 assets so Cytoscape can be shipped safely. Radius provides a reusable workflow for consumer repositories instead of requiring them to compile Go from the Radius source tree.

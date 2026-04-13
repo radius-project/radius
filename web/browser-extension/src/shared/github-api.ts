@@ -110,16 +110,18 @@ export class GraphGitHubAPI {
   }
 
   /**
-   * Fetch the static graph artifact from a specific branch.
+   * Fetch the static graph artifact for a given source branch.
+   * The artifact is stored on the orphan branch at {sourceBranch}/app.json.
    * Returns the parsed artifact or null if not found.
    */
   async fetchGraphArtifact(
     owner: string,
     repo: string,
-    ref: string,
-    artifactPath: string = '.radius/static/app.json',
+    sourceBranch: string,
+    orphanBranch: string = 'radius-graph',
   ): Promise<StaticGraphArtifact | null> {
-    const raw = await this.getFileContents(owner, repo, artifactPath, ref);
+    const artifactPath = `${sourceBranch}/app.json`;
+    const raw = await this.getFileContents(owner, repo, artifactPath, orphanBranch);
     if (raw === null) return null;
 
     return JSON.parse(raw) as StaticGraphArtifact;

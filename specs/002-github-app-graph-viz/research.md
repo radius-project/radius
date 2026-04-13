@@ -128,7 +128,7 @@ The current code already identifies repo root pages via regex and injects a Depl
 
 ## Research Task 4: GitHub Contents API for Fetching Graph Artifacts
 
-**Context**: The extension fetches the pre-built `.radius/static/app.json` artifact from specific branches via the GitHub API.
+**Context**: The extension fetches the pre-built graph artifact from the `radius-graph` orphan branch via the GitHub API.
 
 ### Decision: Use GitHub Contents API (`GET /repos/{owner}/{repo}/contents/{path}?ref={branch}`)
 
@@ -137,7 +137,7 @@ The current code already identifies repo root pages via regex and injects a Depl
 The GitHub Contents API is the simplest way to fetch a single file from a specific branch:
 
 ```
-GET /repos/{owner}/{repo}/contents/.radius/static/app.json?ref=main
+GET /repos/{owner}/{repo}/contents/main/app.json?ref=radius-graph
 Accept: application/vnd.github.v3.raw
 Authorization: token {user_token}
 ```
@@ -152,8 +152,8 @@ Key considerations:
 
 ### For PR Diff: Two Fetches
 
-1. Fetch `.radius/static/app.json` from the **base repository + base branch** (e.g., `radius-project/example-repo@main`)
-2. Fetch `.radius/static/app.json` from the **head repository + head branch** (e.g., `contributor/example-repo@feature/add-redis`) for forked PRs, or from the same repo for same-repo PRs
+1. Fetch `{base-branch}/app.json` from the `radius-graph` branch in the **base repository** (e.g., `radius-project/example-repo`, path `main/app.json`, ref `radius-graph`)
+2. Fetch `{head-branch}/app.json` from the `radius-graph` branch in the **head repository** (e.g., `contributor/example-repo`, path `feature/add-redis/app.json`, ref `radius-graph`) for forked PRs, or from the same repo for same-repo PRs
 3. Compute diff client-side in the extension
 
 ### Rate Limits
@@ -198,9 +198,9 @@ Implementation approach:
 4. Construct deterministic Radius-style resource IDs using the same logical shape used by the live graph response
 5. Build `ApplicationGraphConnection` entries from parsed connections
 6. Compute a stable `diffHash` from a canonical subset of resource properties needed for FR-016 (connections, image, ports, and selected display-critical properties)
-7. Emit static artifact JSON at `.radius/static/app.json`
+7. Emit static artifact JSON and publish it to `{source-branch}/app.json` on the `radius-graph` orphan branch in CI
 
-This command is invoked locally and in CI as `rad graph build --bicep app.bicep --output .radius/static/app.json`.
+This command is invoked locally as `rad graph build --bicep app.bicep --output .radius/static/app.json` and in CI as `rad graph build --bicep app.bicep --orphan-branch radius-graph --source-branch <branch>`.
 
 ### Alternatives Considered
 

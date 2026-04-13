@@ -17,12 +17,14 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
+	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/graph"
 	"github.com/spf13/cobra"
 )
@@ -40,10 +42,15 @@ var graphBuildCmd = &cobra.Command{
 
 This command compiles the Bicep file to ARM JSON, parses resources and connections,
 maps source line numbers, computes diff hashes, and emits a static graph artifact
-suitable for consumption by the Radius browser extension.`,
+suitable for consumption by the Radius browser extension.
+
+By default, the artifact is written to a local file. Use --orphan-branch to commit
+the artifact to a git orphan branch instead, stored under {source-branch}/app.json.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bicepFile, _ := cmd.Flags().GetString("bicep")
 		outputPath, _ := cmd.Flags().GetString("output")
+		orphanBranch, _ := cmd.Flags().GetString("orphan-branch")
+		sourceBranch, _ := cmd.Flags().GetString("source-branch")
 
 		// Compile Bicep to ARM JSON using bicep CLI.
 		armJSONPath, err := compileBicep(bicepFile)
@@ -64,13 +71,20 @@ suitable for consumption by the Radius browser extension.`,
 			return fmt.Errorf("marshalling graph artifact: %w", err)
 		}
 
-		// Ensure output directory exists.
+		// If --orphan-branch is set, commit to the orphan branch.
+		if orphanBranch != "" {
+			if sourceBranch == "" {
+				return fmt.Errorf("--source-branch is required when using --orphan-branch")
+			}
+			return commitToOrphanBranch(cmd, data, orphanBranch, sourceBranch)
+		}
+
+		// Otherwise write to the local filesystem.
 		outputDir := filepath.Dir(outputPath)
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
 			return fmt.Errorf("creating output directory: %w", err)
 		}
 
-		// Write output file.
 		if err := os.WriteFile(outputPath, data, 0644); err != nil {
 			return fmt.Errorf("writing graph artifact: %w", err)
 		}
@@ -80,11 +94,38 @@ suitable for consumption by the Radius browser extension.`,
 	},
 }
 
+// commitToOrphanBranch writes the graph artifact to a git orphan branch at
+// {sourceBranch}/app.json using the gitstate package.
+func commitToOrphanBranch(cmd *cobra.Command, data []byte, orphanBranch, sourceBranch string) error {
+	ctx := context.Background()
+
+	wt, err := gitstate.OpenOrCreate(ctx, orphanBranch)
+	if err != nil {
+		return fmt.Errorf("opening orphan branch %q: %w", orphanBranch, err)
+	}
+	defer wt.Remove(ctx)
+
+	artifactRelPath := filepath.Join(sourceBranch, "app.json")
+	if err := wt.WriteFile(artifactRelPath, data); err != nil {
+		return fmt.Errorf("writing artifact to orphan branch: %w", err)
+	}
+
+	commitMsg := fmt.Sprintf("chore: update app graph for %s [skip ci]", sourceBranch)
+	if err := wt.CommitAndPush(ctx, commitMsg); err != nil {
+		return fmt.Errorf("committing to orphan branch: %w", err)
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Static graph artifact committed to %s branch at %s\n", orphanBranch, artifactRelPath)
+	return nil
+}
+
 func init() {
 	RootCmd.AddCommand(graphCmd)
 
 	graphBuildCmd.Flags().String("bicep", "app.bicep", "Path to the Bicep application definition file")
-	graphBuildCmd.Flags().String("output", ".radius/static/app.json", "Path for the output graph artifact")
+	graphBuildCmd.Flags().String("output", ".radius/static/app.json", "Path for the output graph artifact (local file mode)")
+	graphBuildCmd.Flags().String("orphan-branch", "", "Commit the artifact to this git orphan branch instead of writing a local file")
+	graphBuildCmd.Flags().String("source-branch", "", "Source branch name used as the directory prefix on the orphan branch (required with --orphan-branch)")
 	graphCmd.AddCommand(graphBuildCmd)
 }
 

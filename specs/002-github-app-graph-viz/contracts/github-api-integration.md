@@ -9,10 +9,13 @@
 ### Fetch Static Graph Artifact
 
 ```
-GET /repos/{owner}/{repo}/contents/.radius/static/app.json?ref={branch}
+GET /repos/{owner}/{repo}/contents/{source-branch}/app.json?ref=radius-graph
 Accept: application/vnd.github.v3.raw
 Authorization: token {oauth_token}
 ```
+
+The graph artifact is stored on a dedicated `radius-graph` orphan branch, with a
+subdirectory per source branch (e.g., `main/app.json`, `feature/add-redis/app.json`).
 
 **Parameters**:
 
@@ -20,7 +23,8 @@ Authorization: token {oauth_token}
 |-----------|----------|----------|-------------|
 | `owner` | path | Yes | Repository owner (user or org) |
 | `repo` | path | Yes | Repository name |
-| `branch` | query (`ref`) | Yes | Branch name (e.g., `main`, `feature/add-redis`) |
+| `source-branch` | path | Yes | Source branch name (e.g., `main`, `feature/add-redis`) — used as subdirectory |
+| `radius-graph` | query (`ref`) | Yes | Always the orphan branch name `radius-graph` |
 | `oauth_token` | header | Yes | GitHub OAuth token from device flow auth |
 
 **Success Response** (200):
