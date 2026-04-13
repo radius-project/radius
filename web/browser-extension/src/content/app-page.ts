@@ -2,6 +2,7 @@
 // Full-page graph container that renders the application graph from
 // the radius-graph orphan branch with interactive navigation popups.
 
+import { getGitHubToken } from '../shared/api.js';
 import { GraphGitHubAPI } from '../shared/github-api.js';
 import { renderGraph } from './graph-renderer.js';
 
@@ -16,7 +17,6 @@ export async function initAppPage(owner: string, repo: string, _appName: string)
   if (document.getElementById(PAGE_CONTAINER_ID)) return;
 
   const token = await getAuthToken();
-  if (!token) return;
 
   const api = new GraphGitHubAPI(token);
 
@@ -105,11 +105,10 @@ function getCurrentBranch(owner: string, repo: string): string | null {
 async function getDefaultBranch(owner: string, repo: string): Promise<string> {
   try {
     const token = await getAuthToken();
-    if (!token) return 'main';
 
     const resp = await fetch(
       `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
-      { headers: { Authorization: `token ${token}` } },
+      token ? { headers: { Authorization: `token ${token}` } } : undefined,
     );
     if (!resp.ok) return 'main';
     const data = await resp.json();
@@ -121,9 +120,8 @@ async function getDefaultBranch(owner: string, repo: string): Promise<string> {
 
 async function getAuthToken(): Promise<string | null> {
   try {
-    if (!chrome?.storage?.local) return null;
-    const result = await chrome.storage.local.get('github_token');
-    return result.github_token ?? null;
+    const token = await getGitHubToken();
+    return token || null;
   } catch {
     return null;
   }

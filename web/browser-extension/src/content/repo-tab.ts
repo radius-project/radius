@@ -2,6 +2,7 @@
 // Injects an "Application graph" tab on repository root pages alongside
 // README/License tabs. Renders the current-state graph without diff coloring.
 
+import { getGitHubToken } from '../shared/api.js';
 import { GraphGitHubAPI } from '../shared/github-api.js';
 import { renderGraph } from './graph-renderer.js';
 
@@ -17,7 +18,6 @@ export async function initRepoTab(owner: string, repo: string): Promise<void> {
   if (document.getElementById(TAB_ID)) return;
 
   const token = await getAuthToken();
-  if (!token) return;
 
   const api = new GraphGitHubAPI(token);
 
@@ -138,11 +138,10 @@ async function renderRepoGraph(owner: string, repo: string, api: GraphGitHubAPI)
 async function getDefaultBranch(owner: string, repo: string): Promise<string> {
   try {
     const token = await getAuthToken();
-    if (!token) return 'main';
 
     const resp = await fetch(
       `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
-      { headers: { Authorization: `token ${token}` } },
+      token ? { headers: { Authorization: `token ${token}` } } : undefined,
     );
     if (!resp.ok) return 'main';
     const data = await resp.json();
@@ -154,9 +153,8 @@ async function getDefaultBranch(owner: string, repo: string): Promise<string> {
 
 async function getAuthToken(): Promise<string | null> {
   try {
-    if (!chrome?.storage?.local) return null;
-    const result = await chrome.storage.local.get('github_token');
-    return result.github_token ?? null;
+    const token = await getGitHubToken();
+    return token || null;
   } catch {
     return null;
   }

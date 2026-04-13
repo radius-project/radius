@@ -54,6 +54,7 @@ export function renderGraph(options: RenderGraphOptions): cytoscape.Core {
       nodeSep: 60,
       rankSep: 80,
       edgeSep: 20,
+      padding: 48,
       animate: false,
     } as cytoscape.LayoutOptions,
     style: [
@@ -100,6 +101,19 @@ export function renderGraph(options: RenderGraphOptions): cytoscape.Core {
     autoungrabify: true,
     minZoom: 0.3,
     maxZoom: 3,
+  });
+
+  const fitGraph = () => {
+    cy.resize();
+    cy.fit(cy.elements(), 48);
+    cy.center();
+  };
+
+  // Cytoscape can initialize before the container has fully settled in the GitHub page layout.
+  // Re-fit after the first paint so the graph uses the available canvas instead of clustering in a corner.
+  requestAnimationFrame(() => {
+    fitGraph();
+    requestAnimationFrame(fitGraph);
   });
 
   // Bind node tap events for popup navigation.

@@ -4,6 +4,8 @@
 // - "Application graph" tab on repo root pages
 // Runs on github.com/{owner}/{repo} pages at document_idle.
 
+import { getGitHubToken } from '../shared/api.js';
+import { GraphGitHubAPI } from '../shared/github-api.js';
 import { initPRGraph } from './pr-graph.js';
 import { initRepoTab } from './repo-tab.js';
 import { initAppPage } from './app-page.js';
@@ -235,15 +237,12 @@ async function injectApplicationsSidebar(owner: string, repo: string): Promise<v
   if (document.getElementById('radius-applications-sidebar')) return;
   if (!chrome?.runtime?.id) return;
 
-  const appInfo = await chrome.runtime.sendMessage({
-    type: 'CHECK_APP',
-    owner,
-    repo,
-  }) as { exists: boolean; filename?: string } | null;
+  const token = await getGitHubToken();
+  const graphAPI = new GraphGitHubAPI(token || null);
+  const hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
+  if (!hasAppFile) return;
 
-  if (!appInfo?.exists) return;
-
-  const appFile = appInfo.filename ?? 'app.bicep';
+  const appFile = 'app.bicep';
   const appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
   const modeledAppURL = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/radius/app/${encodeURIComponent(appName)}`;
 
@@ -282,7 +281,14 @@ async function injectApplicationsSidebar(owner: string, repo: string): Promise<v
     </div>
   `;
 
-  sidebar.appendChild(widget);
+  const firstSidebarRow = sidebar.querySelector(':scope > .BorderGrid-row');
+  if (firstSidebarRow?.nextSibling) {
+    sidebar.insertBefore(widget, firstSidebarRow.nextSibling);
+  } else if (firstSidebarRow) {
+    sidebar.appendChild(widget);
+  } else {
+    sidebar.prepend(widget);
+  }
 
   try {
     const deployments = await chrome.runtime.sendMessage({
