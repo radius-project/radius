@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	v20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
