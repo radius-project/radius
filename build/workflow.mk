@@ -29,3 +29,12 @@ workflow-enable-all: ## Enable all workflows in the current repo
 .PHONY: workflow-delete-all-runs
 workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: This is a destructive operation and cannot be undone.
 	@bash $(WORKFLOW_SCRIPT) delete-all-runs
+
+ANALYZE_SCRIPT := ./hack/analyze-test-failures.sh
+
+.PHONY: analyze-test-failures
+analyze-test-failures: ## Analyze functional test failures for a PR. Usage: make analyze-test-failures [PR=number] [RUN_ID=id] [KEEP=true]
+	@bash $(ANALYZE_SCRIPT) \
+		$(if $(PR),--pr $(PR)) \
+		$(if $(RUN_ID),--run-id $(RUN_ID)) \
+		$(if $(filter true,$(KEEP)),--keep)
