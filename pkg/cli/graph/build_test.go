@@ -37,19 +37,22 @@ func TestBuildStaticGraph_ValidMultiResource(t *testing.T) {
 			"app": {
 				"type": "Applications.Core/applications@2023-10-01-preview",
 				"properties": {
-					"name": "myapp"
+					"name": "myapp",
+					"properties": {}
 				}
 			},
 			"frontend": {
 				"type": "Applications.Core/containers@2023-10-01-preview",
 				"properties": {
 					"name": "frontend",
-					"application": "[reference('app').id]",
-					"container": {"image": "myregistry/frontend:latest"},
-					"connections": {
-						"backend": {"source": "[resourceId('Applications.Core/containers', 'backend')]"}
-					},
-					"codeReference": "src/frontend/index.ts#L1"
+					"properties": {
+						"application": "[reference('app').id]",
+						"container": {"image": "myregistry/frontend:latest"},
+						"connections": {
+							"backend": {"source": "[resourceId('Applications.Core/containers', 'backend')]"}
+						},
+						"codeReference": "src/frontend/index.ts#L1"
+					}
 				},
 				"dependsOn": ["app"]
 			},
@@ -57,8 +60,10 @@ func TestBuildStaticGraph_ValidMultiResource(t *testing.T) {
 				"type": "Applications.Core/containers@2023-10-01-preview",
 				"properties": {
 					"name": "backend",
-					"application": "[reference('app').id]",
-					"container": {"image": "myregistry/backend:latest"}
+					"properties": {
+						"application": "[reference('app').id]",
+						"container": {"image": "myregistry/backend:latest"}
+					}
 				},
 				"dependsOn": ["app"]
 			}
@@ -117,11 +122,18 @@ func TestBuildStaticGraph_DependsOnEdgeExtraction(t *testing.T) {
 		"resources": {
 			"app": {
 				"type": "Applications.Core/applications@2023-10-01-preview",
-				"properties": {"name": "myapp"}
+				"properties": {"name": "myapp", "properties": {}}
 			},
 			"frontend": {
 				"type": "Applications.Core/containers@2023-10-01-preview",
-				"properties": {"name": "frontend"},
+				"properties": {
+					"name": "frontend",
+					"properties": {
+						"connections": {
+							"app": {"source": "[resourceId('Applications.Core/applications', 'myapp')]"}
+						}
+					}
+				},
 				"dependsOn": ["app"]
 			}
 		}
@@ -180,7 +192,9 @@ func TestBuildStaticGraph_CodeReferencePassthrough(t *testing.T) {
 				"type": "Applications.Datastores/redisCaches@2023-10-01-preview",
 				"properties": {
 					"name": "cache",
-					"codeReference": "src/cache/redis.ts#L10"
+					"properties": {
+						"codeReference": "src/cache/redis.ts#L10"
+					}
 				}
 			}
 		}

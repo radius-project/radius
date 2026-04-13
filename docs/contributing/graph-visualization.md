@@ -9,16 +9,16 @@ This document covers the graph visualization feature that renders interactive Ra
 Compiles a Bicep application definition into a static graph JSON artifact.
 
 ```bash
-# Basic usage
+# Write to local file (default)
 rad graph build --bicep app.bicep --output .radius/static/app.json
 
-# Custom paths
-rad graph build --bicep apps/myapp.bicep --output artifacts/graph.json
+# Commit to the radius-graph orphan branch (used by CI)
+rad graph build --bicep app.bicep --orphan-branch radius-graph --source-branch main
 ```
 
 **Prerequisites**: `bicep` CLI or `az bicep` must be available in PATH.
 
-**Output**: A JSON artifact at `.radius/static/app.json` containing the `ApplicationGraphResponse` with additional metadata (`codeReference`, `appDefinitionLine`, `diffHash`).
+**Output**: A `StaticGraphArtifact` JSON containing the `ApplicationGraphResponse` with additional metadata (`codeReference`, `appDefinitionLine`, `diffHash`). When `--orphan-branch` is used, the artifact is committed to `{source-branch}/app.json` on the orphan branch, keeping source branches clean.
 
 ### 2. Browser Extension Graph Features
 
@@ -65,8 +65,9 @@ jobs:
     uses: radius-project/radius/.github/workflows/__build-app-graph.yml@main
     with:
       app_file: app.bicep
-      artifact_path: .radius/static/app.json
 ```
+
+The workflow commits the graph artifact to the `radius-graph` orphan branch at `{source-branch}/app.json`, keeping source branches free of generated files.
 
 ## Schema Extension: `codeReference`
 

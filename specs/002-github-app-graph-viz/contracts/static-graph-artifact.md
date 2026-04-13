@@ -3,7 +3,7 @@
 **Version**: 1.0.0
 **Produced by**: CI workflow (`build-app-graph.yaml`)
 **Consumed by**: Browser extension (content script)
-**Location**: `.radius/static/app.json` in the repository
+**Location**: `{source-branch}/app.json` on the `radius-graph` orphan branch
 
 ## Schema
 

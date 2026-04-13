@@ -72,7 +72,7 @@ The design document defines the approach for building a static graph:
 
 | Graph type | Persisted where | Written when |
 |---|---|---|
-| Static graph | `.radius/static/app.json` on each branch | CI generates from Bicep on push and PR |
+| Static graph | `{source-branch}/app.json` on `radius-graph` orphan branch | CI generates from Bicep on push and PR |
 | Run-time graph | `graphs/<app>.json` on `radius-state` orphan branch | `rad shutdown` serializes after deploy |
 
 ### codeReference Property (from requirements spec)
@@ -146,7 +146,7 @@ Build a mechanism to construct an application graph from Bicep source files with
 - Resolve `resourceId()` expressions from connection source strings to identify connected resources
 - Output the graph in a JSON format compatible with (or extending) the existing `ApplicationGraphResponse` schema
 
-The static graph JSON should be persisted to `.radius/static/app.json` on each branch so that CI can regenerate it on push and the browser extension can fetch it via the GitHub API.
+The static graph JSON should be persisted to `{source-branch}/app.json` on the `radius-graph` orphan branch so that CI can regenerate it on push and the browser extension can fetch it via the GitHub API.
 
 Key implementation references:
 - Existing runtime graph computation: `pkg/corerp/frontend/controller/applications/graph_util.go`
@@ -166,7 +166,7 @@ Add an optional `codeReference` property to shared authorable Radius resource sc
 
 When a PR modifies an `app.bicep` (or equivalent Radius application definition file), the browser extension should:
 - Detect that the PR includes changes to the app definition
-- Fetch `.radius/static/app.json` from the base repo/base ref and head repo/head ref via the GitHub API
+- Fetch `{source-branch}/app.json` from the `radius-graph` orphan branch in the base repo/base ref and head repo/head ref via the GitHub API
 - Compare the two static graphs using precomputed comparison metadata
 - Compute the diff: which resources were added, modified, or removed
 - Render the diff visualization in the PR description area with color coding: green (added), yellow (modified), red (removed), default (unchanged)

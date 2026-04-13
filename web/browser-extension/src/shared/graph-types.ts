@@ -57,7 +57,7 @@ export interface ApplicationGraphResponse {
   resources: ApplicationGraphResource[];
 }
 
-/** The CI-generated static graph JSON artifact stored at `.radius/static/app.json`. */
+/** The CI-generated static graph JSON artifact stored on the radius-graph orphan branch. */
 export interface StaticGraphArtifact {
   /** Schema version (e.g., `1.0.0`). */
   version: string;

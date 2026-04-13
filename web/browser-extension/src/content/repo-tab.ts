@@ -7,7 +7,6 @@ import { renderGraph } from './graph-renderer.js';
 
 const TAB_ID = 'radius-graph-tab';
 const PANEL_ID = 'radius-graph-tab-panel';
-const ARTIFACT_PATH = '.radius/static/app.json';
 
 /**
  * Initialize the repo root "Application graph" tab.
@@ -97,7 +96,7 @@ async function renderRepoGraph(owner: string, repo: string, api: GraphGitHubAPI)
   try {
     // Determine the default branch.
     const defaultBranch = await getDefaultBranch(owner, repo);
-    const artifact = await api.fetchGraphArtifact(owner, repo, defaultBranch, ARTIFACT_PATH);
+    const artifact = await api.fetchGraphArtifact(owner, repo, defaultBranch);
 
     if (!artifact || artifact.application.resources.length === 0) {
       panel.innerHTML = `

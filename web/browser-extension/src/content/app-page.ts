@@ -1,12 +1,11 @@
 // Dedicated modeled app graph page.
 // Full-page graph container that renders the application graph from
-// .radius/static/app.json with interactive navigation popups.
+// the radius-graph orphan branch with interactive navigation popups.
 
 import { GraphGitHubAPI } from '../shared/github-api.js';
 import { renderGraph } from './graph-renderer.js';
 
 const PAGE_CONTAINER_ID = 'radius-app-graph-page';
-const ARTIFACT_PATH = '.radius/static/app.json';
 
 /**
  * Initialize the dedicated application graph page.
@@ -56,7 +55,7 @@ export async function initAppPage(owner: string, repo: string, _appName: string)
   try {
     // Get current branch from URL or default to main.
     const ref = getCurrentBranch(owner, repo) ?? await getDefaultBranch(owner, repo);
-    const artifact = await api.fetchGraphArtifact(owner, repo, ref, ARTIFACT_PATH);
+    const artifact = await api.fetchGraphArtifact(owner, repo, ref);
 
     if (!artifact || artifact.application.resources.length === 0) {
       graphWrapper.innerHTML = `

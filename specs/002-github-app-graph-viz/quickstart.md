@@ -74,9 +74,9 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
 ```
 
 2. Set up a thin consumer workflow that calls the Radius reusable workflow contract
-3. Push to `main` — CI generates `.radius/static/app.json`
+3. Push to `main` — CI generates `main/app.json` on the `radius-graph` orphan branch
 4. Create a branch, add a new resource, open a PR
-5. CI generates updated `.radius/static/app.json` on the PR branch or fork branch
+5. CI generates updated `{branch}/app.json` on the `radius-graph` orphan branch for the PR branch or fork branch
 6. View the PR page with the extension loaded — diff graph appears below the PR description
 
 ## Step 5: Test Repository Root Tab
@@ -112,5 +112,5 @@ cd web/browser-extension && npm run watch
 |-------|----------|
 | No graph appears | Check extension is loaded, authenticated, and CI has run |
 | "Waiting for CI to build" | Push a change to `app.bicep` to trigger CI |
-| Graph renders without diff colors | Ensure both base and head branches expose `.radius/static/app.json` and that `diffHash` changes for modified resources |
+| Graph renders without diff colors | Ensure both base and head branches have artifacts on the `radius-graph` orphan branch and that `diffHash` changes for modified resources |
 | "Source code" link missing | Add `codeReference` to the resource in `app.bicep` |

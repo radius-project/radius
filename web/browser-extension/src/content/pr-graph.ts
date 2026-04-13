@@ -8,7 +8,6 @@ import { computeGraphDiff } from './graph-diff.js';
 import { renderGraph, createDiffLegend } from './graph-renderer.js';
 
 const GRAPH_CONTAINER_ID = 'radius-pr-graph-container';
-const ARTIFACT_PATH = '.radius/static/app.json';
 
 /**
  * Initialize the PR graph visualization.
@@ -50,10 +49,10 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
     // Fetch PR details (base/head repos + refs).
     const prDetails = await api.fetchPRDetails(owner, repo, pullNumber);
 
-    // Fetch graph artifacts from both branches.
+    // Fetch graph artifacts from the orphan branch for both base and head source branches.
     const [baseArtifact, headArtifact] = await Promise.all([
-      api.fetchGraphArtifact(prDetails.baseOwner, prDetails.baseRepo, prDetails.baseRef, ARTIFACT_PATH),
-      api.fetchGraphArtifact(prDetails.headOwner, prDetails.headRepo, prDetails.headRef, ARTIFACT_PATH),
+      api.fetchGraphArtifact(prDetails.baseOwner, prDetails.baseRepo, prDetails.baseRef),
+      api.fetchGraphArtifact(prDetails.headOwner, prDetails.headRepo, prDetails.headRef),
     ]);
 
     // If neither branch has a graph artifact, show a waiting message.

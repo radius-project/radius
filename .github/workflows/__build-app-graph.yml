@@ -26,11 +26,11 @@ on:
         required: true
         type: string
         default: "app.bicep"
-      artifact_path:
-        description: "Path for the output graph artifact"
-        required: true
+      orphan_branch:
+        description: "Orphan branch name for storing graph artifacts (default: radius-graph)"
+        required: false
         type: string
-        default: ".radius/static/app.json"
+        default: "radius-graph"
       rad_version:
         description: "Version of the rad CLI to install (e.g., 'v0.40.0'). Defaults to latest."
         required: false
@@ -118,13 +118,8 @@ jobs:
 
       - name: Build static graph
         run: |
-          mkdir -p "$(dirname "${{ inputs.artifact_path }}")"
-          rad graph build --bicep "${{ inputs.app_file }}" --output "${{ inputs.artifact_path }}"
-
-      - name: Commit graph artifact
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ inputs.artifact_path }}"
-          git diff --cached --quiet || git commit -m "chore: update app graph artifact [skip ci]"
-          git push
+          SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          rad graph build \
+            --bicep "${{ inputs.app_file }}" \
+            --orphan-branch "${{ inputs.orphan_branch }}" \
+            --source-branch "$SOURCE_BRANCH"
