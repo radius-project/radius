@@ -31,7 +31,9 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 )
 
-// StaticGraphArtifact is the JSON envelope committed to .radius/static/app.json.
+// StaticGraphArtifact is the JSON envelope for the static graph artifact.
+// When using orphan branch storage, this is committed to {source-branch}/app.json
+// on the radius-graph orphan branch.
 type StaticGraphArtifact struct {
 	Version     string                                          `json:"version"`
 	GeneratedAt string                                          `json:"generatedAt"`
@@ -98,6 +100,7 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 		resourceID := resourceIDs[symbolicName]
 		resourceType := extractResourceType(res.Type)
 		resourceName := extractResourceName(res)
+		authorableProperties := extractAuthorableProperties(res)
 
 		graphResource := &corerpv20231001preview.ApplicationGraphResource{
 			ID:                to.Ptr(resourceID),
@@ -109,7 +112,7 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 		}
 
 		// Copy authorable codeReference from properties.
-		if codeRef, ok := res.Properties["codeReference"]; ok {
+		if codeRef, ok := authorableProperties["codeReference"]; ok {
 			if s, ok := codeRef.(string); ok {
 				graphResource.CodeReference = to.Ptr(s)
 			}
@@ -136,7 +139,7 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 		}
 
 		// Compute diff hash.
-		hash := ComputeDiffHash(res.Properties, res.DependsOn...)
+		hash := ComputeDiffHash(authorableProperties, res.DependsOn...)
 		graphResource.DiffHash = to.Ptr(hash)
 
 		resources = append(resources, graphResource)
@@ -160,6 +163,14 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 	}
 
 	return artifact, nil
+}
+
+func extractAuthorableProperties(res armResource) map[string]interface{} {
+	if nested, ok := res.Properties["properties"].(map[string]interface{}); ok {
+		return nested
+	}
+
+	return res.Properties
 }
 
 func normalizeSourceFilePath(bicepPath string) string {
@@ -241,7 +252,7 @@ func extractResourceName(res armResource) string {
 // extractConnections parses the properties.connections map and resolves
 // resourceId() expressions to full resource IDs.
 func extractConnections(res armResource, resourceIDs map[string]string) []*corerpv20231001preview.ApplicationGraphConnection {
-	connMap, ok := res.Properties["connections"]
+	connMap, ok := extractAuthorableProperties(res)["connections"]
 	if !ok {
 		return nil
 	}

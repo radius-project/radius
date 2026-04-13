@@ -136,7 +136,7 @@ After a deployment, a link is available to view the deployed application graph. 
 - What happens when the browser extension is not installed? The GitHub UI functions normally with no graph visualizations, tabs, or sidebar links visible.
 - What happens when the base branch and PR branch app definitions have no diff? The graph is rendered without any diff coloring (all resources shown in default style).
 - What happens when multiple app definition files exist in the repository? Only `app.bicep` at the repository root is recognized; other Bicep files are ignored. A future spec will implement a more flexible file discovery system.
-- What happens when the CI-generated graph artifact (`.radius/static/app.json`) is missing or not yet built for a branch? The extension displays a message: "Application graph not yet available — waiting for CI to build." No graph is rendered. The user can refresh the page after CI completes.
+- What happens when the CI-generated graph artifact (`{source-branch}/app.json` on the `radius-graph` orphan branch) is missing or not yet built for a branch? The extension displays a message: "Application graph not yet available — waiting for CI to build." No graph is rendered. The user can refresh the page after CI completes.
 
 ## Requirements *(mandatory)*
 
@@ -154,7 +154,7 @@ After a deployment, a link is available to view the deployed application graph. 
 - **FR-003**: System MUST resolve `resourceId()` expressions from connection source strings to identify connected resources in the graph.
 - **FR-004**: System MUST output the graph in a data format compatible with (or extending) the existing `ApplicationGraphResponse` schema.
 - **FR-004a**: The static graph artifact MUST include additive metadata needed for GitHub rendering, including app-definition location metadata and stable comparison metadata for modified-resource classification.
-- **FR-005**: The CI pipeline MUST persist the static graph JSON to `.radius/static/app.json` on each branch, regenerating it on every push. The browser extension MUST fetch this pre-built artifact via the GitHub Contents API rather than compiling Bicep itself.
+- **FR-005**: The CI pipeline MUST persist the static graph JSON to `{source-branch}/app.json` on the `radius-graph` orphan branch, regenerating it on every push. The browser extension MUST fetch this pre-built artifact via the GitHub Contents API rather than compiling Bicep itself.
 - **FR-005a**: Static graph generation logic MUST be shipped in a distributable Radius tool so it can run both locally and in consumer-repository CI without requiring those repositories to build the Radius source tree.
 
 #### `codeReference` Property
@@ -170,7 +170,7 @@ After a deployment, a link is available to view the deployed application graph. 
 #### PR Diff Visualization
 
 - **FR-011**: The browser extension MUST detect when a PR includes changes to a Radius app definition file.
-- **FR-012**: The browser extension MUST fetch the pre-built static graph JSON (`.radius/static/app.json`) from both the base branch and the PR branch via the GitHub Contents API.
+- **FR-012**: The browser extension MUST fetch the pre-built static graph JSON (`{source-branch}/app.json` on `radius-graph`) for both the base branch and the PR branch via the GitHub Contents API.
 - **FR-012a**: For pull requests from forks, the browser extension MUST fetch the base artifact from the base repository/ref and the PR artifact from the head repository/ref.
 - **FR-013**: The browser extension MUST load the pre-built static graphs for both versions and compute the diff to identify added, modified, and removed resources.
 - **FR-014**: The browser extension MUST render the diff visualization in the PR description area directly below the PR description text with color coding: green (added), yellow (modified), red (removed), default (unchanged).

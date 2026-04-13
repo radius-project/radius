@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0
 **File**: `radius/.github/workflows/__build-app-graph.yml` (reusable) plus a thin consumer wrapper workflow
-**Purpose**: Install a released `rad` binary, run `rad graph build`, and commit `.radius/static/app.json` on every push that changes `app.bicep`
+**Purpose**: Install a released `rad` binary, run `rad graph build`, and commit the graph artifact to the `radius-graph` orphan branch on every push that changes `app.bicep`
 
 ## Workflow Definition
 
@@ -22,7 +22,6 @@ jobs:
     uses: radius-project/radius/.github/workflows/__build-app-graph.yml@main
     with:
       app_file: app.bicep
-      artifact_path: .radius/static/app.json
 ```
 
 ```yaml
@@ -35,9 +34,10 @@ on:
       app_file:
         required: true
         type: string
-      artifact_path:
-        required: true
+      orphan_branch:
+        required: false
         type: string
+        default: radius-graph
 
 jobs:
   build-graph:
@@ -53,18 +53,13 @@ jobs:
           tar -xzf rad.tar.gz
           sudo mv rad /usr/local/bin/rad
 
-      - name: Build static graph
+      - name: Build static graph and commit to orphan branch
         run: |
-          mkdir -p .radius/static
-          rad graph build --bicep "${{ inputs.app_file }}" --output "${{ inputs.artifact_path }}"
-
-      - name: Commit graph artifact
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ inputs.artifact_path }}"
-          git diff --cached --quiet || git commit -m "chore: update app graph artifact [skip ci]"
-          git push
+          SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          rad graph build \
+            --bicep "${{ inputs.app_file }}" \
+            --orphan-branch "${{ inputs.orphan_branch }}" \
+            --source-branch "$SOURCE_BRANCH"
 ```
 
 ## Trigger Conditions
@@ -78,7 +73,7 @@ jobs:
 
 | Artifact | Path | Description |
 |----------|------|-------------|
-| Static graph JSON | `.radius/static/app.json` | Committed to the branch |
+| Static graph JSON | `{source-branch}/app.json` on `radius-graph` orphan branch | Committed to the orphan branch, never pollutes source branches |
 
 ## Concurrency
 

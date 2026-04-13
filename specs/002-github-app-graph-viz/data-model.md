@@ -100,7 +100,7 @@
 
 ---
 
-## Entity: StaticGraphArtifact (persisted as `.radius/static/app.json`)
+## Entity: StaticGraphArtifact (persisted as `{source-branch}/app.json` on `radius-graph`)
 
 **Description**: The CI-generated static graph JSON file stored in the repository. This is the `ApplicationGraphResponse` serialized to JSON with additional metadata.
 
