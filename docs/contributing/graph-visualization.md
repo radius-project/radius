@@ -47,7 +47,7 @@ Red borders = removed resources.
 
 ### 3. CI Workflow
 
-A reusable GitHub Actions workflow automates graph artifact generation. It prefers a released `rad` binary, falls back to building `rad` from the referenced Radius workflow source when that release does not yet include `rad graph build`, and installs the Bicep CLI before generating the graph artifact:
+A reusable GitHub Actions workflow automates graph artifact generation. It builds `rad` from the referenced Radius workflow source, installs the Bicep CLI, and then generates the graph artifact with the exact branch-specific implementation requested by the consumer repository:
 
 ```yaml
 # In your repository's .github/workflows/build-graph.yml

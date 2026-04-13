@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Reusable workflow: Build static application graph artifact.
-# Consumer repos call this workflow to run `rad graph build` using a released
-# CLI when available, or a CLI built from the referenced Radius workflow source
-# when the requested release does not yet include the graph command.
+# Consumer repos call this workflow to build `rad` from the referenced Radius
+# workflow source and run `rad graph build` with the exact branch-specific
+# implementation they requested.
 name: __build-app-graph
 
 on:
@@ -32,15 +32,10 @@ on:
         type: string
         default: "radius-graph"
       workflow_source_ref:
-        description: "Ref in radius-project/radius to use when checking out workflow source for fallback rad builds"
+        description: "Ref in radius-project/radius to use when checking out workflow source and building rad"
         required: false
         type: string
         default: "main"
-      rad_version:
-        description: "Version of the rad CLI to install (e.g., 'v0.40.0'). Defaults to latest."
-        required: false
-        type: string
-        default: "latest"
 
 concurrency:
   group: build-app-graph-${{ github.ref }}
@@ -62,44 +57,13 @@ jobs:
           ref: ${{ inputs.workflow_source_ref }}
           path: .radius-workflow-src
 
-      - name: Determine rad version
-        id: version
-        run: |
-          if [ "${{ inputs.rad_version }}" = "latest" ]; then
-            RAD_VERSION=$(curl -fsSL https://api.github.com/repos/radius-project/radius/releases/latest | jq -r '.tag_name')
-          else
-            RAD_VERSION="${{ inputs.rad_version }}"
-          fi
-          echo "version=$RAD_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Install released rad CLI
-        continue-on-error: true
-        run: |
-          RAD_VERSION="${{ steps.version.outputs.version }}"
-          curl -fsSL -o rad.tar.gz "https://github.com/radius-project/radius/releases/download/${RAD_VERSION}/rad-linux-amd64.tar.gz"
-          tar -xzf rad.tar.gz
-          sudo mv rad /usr/local/bin/rad
-          rm -f rad.tar.gz
-          rad version
-
-      - name: Check released rad graph support
-        id: released-rad
-        run: |
-          if command -v rad >/dev/null 2>&1 && rad graph build --help >/dev/null 2>&1; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Go
-        if: steps.released-rad.outputs.available != 'true'
         uses: actions/setup-go@v5
         with:
           go-version-file: .radius-workflow-src/go.mod
           cache-dependency-path: .radius-workflow-src/go.sum
 
       - name: Build rad CLI from workflow source
-        if: steps.released-rad.outputs.available != 'true'
         run: |
           cd .radius-workflow-src
           go build -o "$RUNNER_TEMP/rad" ./cmd/rad
