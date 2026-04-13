@@ -189,6 +189,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	if !r.Confirm {
+		if r.Force {
+			r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
+		}
+
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
@@ -200,10 +204,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.EnvironmentName = environmentID.Name()
 
 	progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", r.ApplicationName, r.EnvironmentName)
-
-	if r.Force {
-		r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
-	}
 
 	deleted, err := r.Delete.DeleteApplicationWithProgress(ctx, client, clients.DeleteOptions{
 		ApplicationNameOrID: r.ApplicationName,

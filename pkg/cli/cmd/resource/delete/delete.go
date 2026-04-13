@@ -173,6 +173,10 @@ func (r *Runner) Run(ctx context.Context) error {
 			promptMessage = fmt.Sprintf(deleteConfirmationWithApplication, r.ResourceName, r.FullyQualifiedResourceTypeName, applicationID.Name(), environmentID.Name())
 		}
 
+		if r.Force {
+			r.Output.LogInfo("WARNING: Force deleting a resource in a non-terminal state may leave orphaned external resources that require manual cleanup.")
+		}
+
 		confirmed, err := prompt.YesOrNoPrompt(promptMessage, prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
@@ -181,10 +185,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.Output.LogInfo("resource %q of type %q NOT deleted", r.ResourceName, r.FullyQualifiedResourceTypeName)
 			return nil
 		}
-	}
-
-	if r.Force {
-		r.Output.LogInfo("WARNING: Force deleting a resource in a non-terminal state may leave orphaned external resources that require manual cleanup.")
 	}
 
 	deleted, err := client.DeleteResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Force)

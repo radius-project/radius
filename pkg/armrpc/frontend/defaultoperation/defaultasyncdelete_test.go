@@ -53,6 +53,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, false, false, http.StatusAccepted},
 		{"async-force-delete-existing-resource-in-updating-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, false, true, http.StatusAccepted},
 		{"async-force-delete-existing-resource-in-accepted-state", "", v1.ProvisioningStateAccepted, nil, nil, nil, false, true, http.StatusAccepted},
+		{"async-force-delete-existing-resource-bad-etag", "\"incorrect-etag\"", v1.ProvisioningStateUpdating, nil, nil, nil, false, true, http.StatusPreconditionFailed},
 		{"async-force-delete-existing-resource-blocked-by-filter", "", v1.ProvisioningStateUpdating, nil, nil, nil, true, true, http.StatusConflict},
 	}
 
@@ -91,7 +92,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil && !tt.rejectedByFilter && (appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() || tt.force) {
+			if tt.getErr == nil && !tt.rejectedByFilter && tt.code != http.StatusPreconditionFailed && (appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() || tt.force) {
 				expectedOptions := statusmanager.QueueOperationOptions{
 					OperationTimeout: asyncOperationTimeout,
 					RetryAfter:       asyncOperationRetryAfter,
