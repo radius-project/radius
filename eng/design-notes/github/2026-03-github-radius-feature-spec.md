@@ -8,7 +8,7 @@ GitHub Radius is a prototype version of Radius directly integrated into GitHub r
 
 - Mock-up integration with the GitHub GUI
 
-GitHub Radius enables GitHub users to define applications and environments within their GitHub repository, and to deploy applications directly from the GitHub GUI to AWS, Azure. 
+GitHub Radius enables GitHub users to define applications and environments within their GitHub repository, and to deploy applications directly from the GitHub GUI to AWS and Azure.
 
 The GUI is built using a mock-up of the GitHub GUI. In the fullness of time, the GUI UX will also be implemented in the Radius Dashboard and Headlamp.
 
@@ -73,7 +73,7 @@ The following user journeys are out of scope for the initial prototype, but will
     - **Resource composition rules**. For each Resource Type, a set of rules that define how resources can be combined. For example, a web service can connect to a database, but not the reverse.
     - **Resource dependencies**. For each Resource Type, a set of rules that define required dependencies. For example, a Container requires there to be a container image, an OCI registry, and a Kubernetes cluster. A MySQL database requires there to be a virtual network.
     - **Naming conventions**. Guidance for naming the Bicep symbolic name and the actual resource name.
-    - **Secrets**. Defines how to property handle secrets and how to generate secret values.
+    - **Secrets**. Defines how to properly handle secrets and how to generate secret values.
 
     Radius then identifies the resources required by this application and outputs an `app.bicep` file in the  `.radius` directory.
 
@@ -151,7 +151,7 @@ The following user journeys are out of scope for the initial prototype, but will
 
     ```bash
     aws iam attach-role-policy \
-      --role-name radius-{owner}-{repo} \\
+      --role-name radius-{owner}-{repo} \
       --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
     ```
 
@@ -164,7 +164,7 @@ The following user journeys are out of scope for the initial prototype, but will
     When the user clicks Confirm authentication:
 
     - A GitHub environment is created in the repository
-    - Metadata is added to the environment, possible as an environment-level environment variable, including:
+    - Metadata is added to the environment, possibly as an environment-level variable, including:
       - AWS Account ID
       - AWS Region
       - AWS IAM Role ARN
@@ -176,13 +176,13 @@ The following user journeys are out of scope for the initial prototype, but will
 
 1. Radius examines the resources in app.bicep and the default recipes for each resource type. The user is presented with each required recipe parameter to set on the environment. In the case of todo-list-app:
 
-    - **Radius.Compute/containers** has a require parameter for the Kubernetes cluster and namespace
+    - **Radius.Compute/containers** has a required parameter for the Kubernetes cluster and namespace
     - **Radius.Compute/containerImages** has a required parameter for OCI registry URL
     - **Radius.Data/mySqlDatabases** has a required parameter for the VPC and list of subnets
 
     ![image12](2026-03-github-radius-feature-spec/image12.png)
 
-    Radius prepopulates the drop down boxes with valid values by making API calls to list relevant resources from the user's AWS account. For example, the list of EKS clusters is prepopulated for the user to select from (however namespace is left blank since there is no AWS API call to list Kubernetes namespaces).
+    Radius prepopulates the drop-down boxes with valid values by making API calls to list relevant resources from the user's AWS account. For example, the list of EKS clusters is prepopulated for the user to select from (however namespace is left blank since there is no AWS API call to list Kubernetes namespaces).
 
 1. The user returns to the GitHub repository.
 
