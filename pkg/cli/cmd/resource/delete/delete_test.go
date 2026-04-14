@@ -502,6 +502,48 @@ func Test_Run(t *testing.T) {
 				}
 				require.Equal(t, expected, outputSink.Writes)
 			})*/
+
+		t.Run("Success (force deleted)", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
+				Return(generated.GenericResource{
+					Properties: map[string]interface{}{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
+					},
+				}, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Applications.Core/containers", "test-container", true).
+				Return(true, nil).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      &workspaces.Workspace{},
+				FullyQualifiedResourceTypeName: "Applications.Core/containers",
+				ResourceName:                   "test-container",
+				Format:                         "table",
+				Confirm:                        true,
+				Force:                          true,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.LogOutput{
+					Format: "Resource deleted",
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
 	})
 
 }
