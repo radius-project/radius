@@ -188,11 +188,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !r.Confirm {
-		if r.Force {
-			r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
-		}
 
+	if r.Force {
+		r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
+	}
+
+	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err

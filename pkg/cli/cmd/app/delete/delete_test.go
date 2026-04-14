@@ -586,8 +586,11 @@ func Test_Delete(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		// Verify warning was logged and app was deleted
-		require.GreaterOrEqual(t, len(outputSink.Writes), 1)
+		// Verify warning was logged before the delete result
+		require.GreaterOrEqual(t, len(outputSink.Writes), 2)
+		warningOutput, ok := outputSink.Writes[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, warningOutput.Format, "WARNING")
 		lastOutput, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
 		require.True(t, ok)
 		require.Equal(t, "Application %s deleted successfully", lastOutput.Format)

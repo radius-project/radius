@@ -539,6 +539,9 @@ func Test_Run(t *testing.T) {
 
 			expected := []any{
 				output.LogOutput{
+					Format: "WARNING: Force deleting a resource in a non-terminal state may leave orphaned external resources that require manual cleanup.",
+				},
+				output.LogOutput{
 					Format: "Resource deleted",
 				},
 			}

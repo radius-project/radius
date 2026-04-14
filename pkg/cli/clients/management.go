@@ -1201,7 +1201,8 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateLocation(ctx context.C
 }
 
 // createApplicationClient creates an application resource client for the specified scope.
-// When force is true, a per-call policy is added that appends force=true to the request URL query string.
+// When no applicationResourceClientFactory is configured and force is true, a per-call policy is added
+// that appends force=true to the request URL query string.
 func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string, force ...bool) (applicationResourceClient, error) {
 	if amc.applicationResourceClientFactory != nil {
 		return amc.applicationResourceClientFactory(scope)
@@ -1392,8 +1393,10 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 
 // getGenericClient returns a generic resource client for the specified scope and resource type.
 // If apiVersions is empty, it uses the default version (2023-10-01-preview), else uses any version supported by the resource type.
-// When force is true, a per-call policy is added that appends force=true to the request URL query string.
-// This is used for force-deleting resources that are in a non-terminal provisioning state.
+// When no genericResourceClientFactory is configured and force is true, a per-call policy is added
+// that appends force=true to the request URL query string. This is used for force-deleting resources
+// that are in a non-terminal provisioning state. Factory-based configurations (used in tests) bypass
+// the force policy since mock clients do not exercise the HTTP pipeline.
 func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string, force bool) (client genericResourceClient, err error) {
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
