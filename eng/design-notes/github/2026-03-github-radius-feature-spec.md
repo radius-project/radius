@@ -147,15 +147,9 @@ The following user journeys are out of scope for the initial prototype, but will
     }
     ```
 
-    It then attaches the necessary IAM policies to the new role similar to:
+    It then attaches a customer-managed IAM policy to the new role similar to:
 
-    ```bash
-    aws iam attach-role-policy \
-      --role-name radius-{owner}-{repo} \
-      --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
-    ```
-
-    The set of IAM policies should be as minimal as possible but enough to enable creating all resources that Radius supports.
+    
 
 1. The user returns to the *Create an AWS environment* page. They enter the environment name, IAM role ARN, select the region, then click **Confirm authentication**.
 
