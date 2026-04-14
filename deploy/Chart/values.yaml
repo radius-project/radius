@@ -120,6 +120,13 @@ dynamicrp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  # Configure docker.enabled to mount the Docker socket into dynamic-rp.
+  # This enables recipes to use the Terraform docker provider for building
+  # and pushing container images. Requires Docker to be available on the host.
+  # Only supported on local dev clusters (kind, k3d, Docker Desktop).
+  docker:
+    enabled: false
+    socketPath: "/var/run/docker.sock"
 
 rp:
   image: applications-rp

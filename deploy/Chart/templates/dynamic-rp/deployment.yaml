@@ -172,6 +172,11 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        {{- if .Values.dynamicrp.docker.enabled }}
+        - name: docker-sock
+          mountPath: {{ .Values.dynamicrp.docker.socketPath }}
+          readOnly: true
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -204,6 +209,12 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        {{- if .Values.dynamicrp.docker.enabled }}
+        - name: docker-sock
+          hostPath:
+            path: {{ .Values.dynamicrp.docker.socketPath }}
+            type: Socket
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

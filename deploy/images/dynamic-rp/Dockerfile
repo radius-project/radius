@@ -1,14 +1,16 @@
-# Use Alpine image to enable Git installation for Terraform module downloads.
-# Switch to distroless when Terraform execution is moved to a separate container.
+# Use Alpine image to enable Git and Docker CLI installation.
+# Git is required for Terraform module downloads.
+# Docker CLI is required for Terraform docker provider (container image builds).
 FROM alpine:3.20
 
 ARG TARGETARCH
 
-# Install ca-certificates and Git (required for Terraform module downloads)
+# Install ca-certificates, Git, and Docker CLI
 # Create non-root user in a single RUN command to minimize layers
-RUN apk --no-cache add ca-certificates git && \
+RUN apk --no-cache add ca-certificates git docker-cli && \
     addgroup -g 65532 rpuser && \
-    adduser -u 65532 -G rpuser -s /bin/sh -D rpuser
+    adduser -u 65532 -G rpuser -s /bin/sh -D rpuser && \
+    addgroup rpuser docker 2>/dev/null || true
 
 WORKDIR /
 
