@@ -18,14 +18,22 @@ const DIFF_COLORS: Record<DiffStatus, string> = {
   added: '#1a7f37',    // --color-success-fg
   removed: '#cf222e',  // --color-danger-fg
   modified: '#9a6700', // --color-attention-fg
-  unchanged: '#656d76', // --color-neutral-emphasis
+  unchanged: '#57606a', // --color-fg-muted (darker for visibility)
 };
 
 const DIFF_BORDER_WIDTH: Record<DiffStatus, number> = {
   added: 3,
   removed: 3,
   modified: 3,
-  unchanged: 1,
+  unchanged: 2,
+};
+
+/** Subtle background tints per diff status so nodes aren't flat white. */
+const DIFF_BG_COLORS: Record<DiffStatus, string> = {
+  added: '#dafbe1',    // --color-success-subtle
+  removed: '#ffebe9',  // --color-danger-subtle
+  modified: '#fff8c5',  // --color-attention-subtle
+  unchanged: '#f6f8fa', // --color-canvas-subtle
 };
 
 export interface RenderGraphOptions {
@@ -62,27 +70,27 @@ export function renderGraph(options: RenderGraphOptions): cytoscape.Core {
         selector: 'node',
         style: {
           label: 'data(label)',
-          'text-valign': 'bottom',
+          'text-valign': 'center',
           'text-halign': 'center',
-          'text-margin-y': 8,
-          'font-size': '11px',
+          'font-size': '12px',
           'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
-          'background-color': '#ffffff',
+          color: '#1f2328',
+          'background-color': 'data(bgColor)',
           'border-color': 'data(borderColor)',
           'border-width': 'data(borderWidth)',
           shape: 'roundrectangle',
           width: 140,
-          height: 50,
+          height: 55,
           'text-wrap': 'wrap',
-          'text-max-width': '130px',
+          'text-max-width': '120px',
         },
       },
       {
         selector: 'edge',
         style: {
           width: 2,
-          'line-color': '#d0d7de',
-          'target-arrow-color': '#d0d7de',
+          'line-color': '#8c959f',
+          'target-arrow-color': '#8c959f',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
           'arrow-scale': 0.8,
@@ -169,6 +177,7 @@ function buildCytoscapeElements(
         label,
         borderColor: DIFF_COLORS[diffStatus],
         borderWidth: DIFF_BORDER_WIDTH[diffStatus],
+        bgColor: DIFF_BG_COLORS[diffStatus],
         diffStatus,
       },
     });

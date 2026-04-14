@@ -54,24 +54,35 @@ let lastInjectedPath = '';
 
 function injectGraphFeatures(): void {
   const path = window.location.pathname;
-  if (path === lastInjectedPath) return;
-  lastInjectedPath = path;
-
   const page = detectPage();
 
   switch (page.type) {
     case 'pr':
+      // PRs: skip if already injected for this path.
+      if (path === lastInjectedPath) return;
+      lastInjectedPath = path;
       if (page.pullNumber) {
         initPRGraph(page.owner, page.repo, page.pullNumber);
       }
       break;
     case 'repo-root':
+      // Repo root: allow retries until the tab is actually in the DOM.
+      // initRepoTab has its own duplicate and in-progress guards.
+      if (document.getElementById('radius-graph-tab')) {
+        lastInjectedPath = path;
+        return;
+      }
       initRepoTab(page.owner, page.repo);
       break;
     case 'app-page':
+      if (path === lastInjectedPath) return;
+      lastInjectedPath = path;
       if (page.appName) {
         initAppPage(page.owner, page.repo, page.appName);
       }
+      break;
+    default:
+      lastInjectedPath = path;
       break;
   }
 }
