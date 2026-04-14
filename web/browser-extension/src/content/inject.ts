@@ -105,6 +105,7 @@ const debouncedInject = debounce(() => {
 }, 300);
 
 
+
 function injectRadiusButton(): boolean {
   // Only inject on the repository main page (root or code tab).
   const path = window.location.pathname;
@@ -247,6 +248,7 @@ function injectRadiusButton(): boolean {
 async function injectApplicationsSidebar(owner: string, repo: string): Promise<void> {
   if (document.getElementById('radius-applications-sidebar')) return;
   if (!chrome?.runtime?.id) return;
+  if (!chrome?.runtime?.id) return;
 
   const token = await getGitHubToken();
   const graphAPI = new GraphGitHubAPI(token || null);
@@ -302,6 +304,7 @@ async function injectApplicationsSidebar(owner: string, repo: string): Promise<v
   }
 
   try {
+    if (!chrome?.runtime?.id) return;
     const deployments = await chrome.runtime.sendMessage({
       type: 'LIST_DEPLOYMENTS',
       owner,

@@ -51,6 +51,7 @@ function hideAllSections(): void {
   hide('status-section');
   hide('deploy-form');
   hide('deps-form');
+  hide('deps-form');
 }
 
 // --- Initialization ---
@@ -358,7 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showStep2();
   });
 
-});
+  });
 
 // --- Step navigation ---
 

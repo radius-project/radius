@@ -584,7 +584,7 @@ function delay(ms: number): Promise<void> {
 
 // Clear an expired token from storage so the sign-in flow appears on next load.
 async function clearExpiredToken(): Promise<void> {
-  await chrome.storage.local.remove(['radius_github_token', 'github_token']);
+  await chrome.storage.local.remove('radius_github_token');
 }
 
 // Encode a UTF-8 string to base64, handling characters outside the Latin1 range.
