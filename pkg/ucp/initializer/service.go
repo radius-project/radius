@@ -71,10 +71,10 @@ func (w *Service) Run(ctx context.Context) error {
 	backoff = retry.WithMaxDuration(2*time.Minute, backoff)
 
 	err := retry.Do(ctx, backoff, func(ctx context.Context) error {
-		registerErr := w.registerManifests(ctx, manifestDir)
-		if registerErr != nil {
-			logger.Info("Failed to register manifests, retrying...", "error", registerErr)
-			return retry.RetryableError(registerErr)
+		err := w.registerManifests(ctx, manifestDir)
+		if err != nil {
+			logger.Info("Failed to register manifests, retrying...", "error", err)
+			return retry.RetryableError(err)
 		}
 		return nil
 	})
