@@ -17,64 +17,20 @@ limitations under the License.
 package preview
 
 import (
-	"os"
-	"path/filepath"
-
-	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
 const (
-	confirmSetupApplicationPrompt   = "Setup application in the current directory?"
-	enterApplicationNamePrompt      = "Enter an application name"
-	enterApplicationNamePlaceholder = "Enter application name..."
+	confirmSetupApplicationPrompt = common.ConfirmSetupApplicationPrompt
+	enterApplicationNamePrompt    = common.EnterApplicationNamePrompt
 )
 
 func (r *Runner) enterApplicationOptions(options *initOptions) error {
-	var err error
-	options.Application.Scaffold, err = prompt.YesOrNoPrompt(confirmSetupApplicationPrompt, prompt.ConfirmYes, r.Prompter)
+	scaffold, name, err := common.EnterApplicationOptions(r.Prompter)
 	if err != nil {
 		return err
 	}
-
-	if !options.Application.Scaffold {
-		return nil
-	}
-
-	chooseDefault := func() (string, error) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-
-		return filepath.Base(wd), nil
-	}
-
-	options.Application.Name, err = r.enterApplicationName(chooseDefault)
-	if err != nil {
-		return err
-	}
-
+	options.Application.Scaffold = scaffold
+	options.Application.Name = name
 	return nil
-}
-
-func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (string, error) {
-	name, err := chooseDefault()
-	if err != nil {
-		return "", err
-	}
-
-	err = prompt.ValidateApplicationName(name)
-	if err == nil {
-		return name, nil
-	}
-
-	name, err = r.Prompter.GetTextInput(enterApplicationNamePrompt, prompt.TextInputOptions{
-		Placeholder: enterApplicationNamePlaceholder,
-		Validate:    prompt.ValidateApplicationName,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return name, nil
 }
