@@ -18,69 +18,31 @@ package radinit
 
 import (
 	"context"
-	"errors"
 
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
-	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
 const (
-	confirmCloudProviderBackNavigationSentinel = "[back]"
-	confirmCloudProviderPrompt                 = "Add cloud providers for cloud resources?"
-	confirmCloudProviderAdditionalPrompt       = "Add additional cloud providers for cloud resources?"
-	selectCloudProviderPrompt                  = "Select your cloud provider"
+	confirmCloudProviderBackNavigationSentinel = common.ConfirmCloudProviderBackNavigationSentinel
+	confirmCloudProviderPrompt                 = common.ConfirmCloudProviderPrompt
+	confirmCloudProviderAdditionalPrompt       = common.ConfirmCloudProviderAdditionalPrompt
+	selectCloudProviderPrompt                  = common.SelectCloudProviderPrompt
 )
 
 func (r *Runner) enterCloudProviderOptions(ctx context.Context, options *initOptions) error {
-	// When no flags are specified we don't want to ask about cloud providers.
-	if !r.Full {
-		return nil
-	}
-
-	// If we're creating an environment we can't change cloud providers.
-	if !options.Environment.Create {
-		return nil
-	}
-
-	addingCloudProvider, err := prompt.YesOrNoPrompt(confirmCloudProviderPrompt, prompt.ConfirmNo, r.Prompter)
+	result, err := common.EnterCloudProviderOptions(
+		r.Prompter,
+		r.Full,
+		options.Environment.Create,
+		func() (*azure.Provider, error) { return r.enterAzureCloudProvider(ctx, options) },
+		func() (*aws.Provider, error) { return r.enterAWSCloudProvider(ctx, options) },
+	)
 	if err != nil {
 		return err
 	}
-
-	for addingCloudProvider {
-		choices := []string{azure.ProviderDisplayName, aws.ProviderDisplayName, confirmCloudProviderBackNavigationSentinel}
-		cloudProvider, err := r.Prompter.GetListInput(choices, selectCloudProviderPrompt)
-		if err != nil {
-			return err
-		}
-
-		switch cloudProvider {
-		case azure.ProviderDisplayName:
-			provider, err := r.enterAzureCloudProvider(ctx, options)
-			if err != nil {
-				return err
-			}
-
-			options.CloudProviders.Azure = provider
-		case aws.ProviderDisplayName:
-			provider, err := r.enterAWSCloudProvider(ctx, options)
-			if err != nil {
-				return err
-			}
-
-			options.CloudProviders.AWS = provider
-		case confirmCloudProviderBackNavigationSentinel:
-			return nil
-		default:
-			return errors.New("unsupported Cloud Provider")
-		}
-
-		addingCloudProvider, err = prompt.YesOrNoPrompt(confirmCloudProviderAdditionalPrompt, prompt.ConfirmNo, r.Prompter)
-		if err != nil {
-			return err
-		}
-	}
-
+	options.CloudProviders.Azure = result.Azure
+	options.CloudProviders.AWS = result.AWS
 	return nil
 }
