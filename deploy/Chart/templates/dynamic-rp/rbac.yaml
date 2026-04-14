@@ -105,6 +105,21 @@ rules:
   - patch
   - update
   - watch
+
+# Batch resources for Recipes that create Kubernetes Jobs (e.g., containerImages build jobs).
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - jobs/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
