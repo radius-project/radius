@@ -17,75 +17,21 @@ limitations under the License.
 package preview
 
 import (
-	"sort"
-
-	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
 const (
-	selectClusterPrompt = "Select the kubeconfig context to install Radius into"
+	selectClusterPrompt = common.SelectClusterPrompt
 )
 
 func (r *Runner) enterClusterOptions(options *initOptions) error {
-	var err error
-	options.Cluster.Context, err = r.selectCluster()
+	result, err := common.EnterClusterOptions(r.KubernetesInterface, r.HelmInterface, r.Prompter, r.Full)
 	if err != nil {
 		return err
 	}
-
-	state, err := r.HelmInterface.CheckRadiusInstall(options.Cluster.Context)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Unable to verify Radius installation.")
-	}
-	options.Cluster.Install = !state.RadiusInstalled
-
-	if state.RadiusInstalled {
-		options.Cluster.Install = false
-		options.Cluster.Version = state.RadiusVersion
-	}
-
-	if options.Cluster.Install {
-		options.Cluster.Install = true
-		options.Cluster.Version = version.Version()
-		options.Cluster.Namespace = "radius-system"
-	}
-
+	options.Cluster.Install = result.Install
+	options.Cluster.Namespace = result.Namespace
+	options.Cluster.Context = result.Context
+	options.Cluster.Version = result.Version
 	return nil
-}
-
-func (r *Runner) selectCluster() (string, error) {
-	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
-	if err != nil {
-		return "", clierrors.MessageWithCause(err, "Failed to read Kubernetes config.")
-	}
-
-	if !r.Full {
-		return kubeContextList.CurrentContext, nil
-	}
-
-	choices := r.buildClusterList(kubeContextList)
-	cluster, err := r.Prompter.GetListInput(choices, selectClusterPrompt)
-	if err != nil {
-		return "", err
-	}
-
-	return cluster, nil
-}
-
-func (r *Runner) buildClusterList(config *api.Config) []string {
-	others := []string{}
-	for k := range config.Contexts {
-		if k != config.CurrentContext {
-			others = append(others, k)
-		}
-	}
-
-	sort.Strings(others)
-
-	choices := []string{config.CurrentContext}
-	choices = append(choices, others...)
-
-	return choices
 }
