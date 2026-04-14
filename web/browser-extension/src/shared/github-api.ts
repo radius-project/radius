@@ -30,7 +30,8 @@ export class GraphGitHubAPI {
    * Returns null if the file does not exist (404).
    */
   async getFileContents(owner: string, repo: string, path: string, ref: string): Promise<string | null> {
-    const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}`;
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`;
     const resp = await fetch(url, {
       headers: this.createHeaders({
         Accept: 'application/vnd.github.v3.raw',
@@ -47,7 +48,8 @@ export class GraphGitHubAPI {
    * Uses a HEAD request for efficiency.
    */
   async checkFileExists(owner: string, repo: string, path: string, ref?: string): Promise<boolean> {
-    let url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}`;
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    let url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`;
     if (ref) url += `?ref=${encodeURIComponent(ref)}`;
 
     const resp = await fetch(url, {

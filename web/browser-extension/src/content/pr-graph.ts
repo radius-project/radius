@@ -18,18 +18,41 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
   // Prevent duplicate injection.
   if (document.getElementById(GRAPH_CONTAINER_ID)) return;
 
+  console.debug('[Radius] initPRGraph called for', owner, repo, pullNumber);
+
+  // Find the injection point — below PR description.
+  // Try known GitHub DOM anchors in order of preference.
+  const discussionBucket = document.getElementById('discussion_bucket')
+    ?? document.querySelector('.js-discussion');
+  if (!discussionBucket) {
+    console.warn('[Radius] PR graph: could not find injection point (discussion_bucket)');
+    return;
+  }
+
   // Get the auth token from extension storage.
-  const token = await getAuthToken();
+  let token: string | null;
+  try {
+    token = await getAuthToken();
+  } catch (err) {
+    console.warn('[Radius] PR graph: failed to get auth token, proceeding without:', err);
+    token = null;
+  }
 
   const api = new GraphGitHubAPI(token);
 
   // Only render on PRs that change the repository-root app.bicep file.
-  const modifiesAppBicep = await api.pullRequestModifiesAppBicep(owner, repo, pullNumber);
-  if (!modifiesAppBicep) return;
+  let modifiesAppBicep: boolean;
+  try {
+    modifiesAppBicep = await api.pullRequestModifiesAppBicep(owner, repo, pullNumber);
+  } catch (err) {
+    console.error('[Radius] PR graph: failed to check PR files (possible rate limit):', err);
+    return;
+  }
 
-  // Find the injection point — below PR description.
-  const discussionBucket = document.getElementById('discussion_bucket');
-  if (!discussionBucket) return;
+  if (!modifiesAppBicep) {
+    console.debug('[Radius] PR graph: PR does not modify app.bicep, skipping');
+    return;
+  }
 
   // Create the graph container with loading state.
   const wrapper = document.createElement('div');
