@@ -82,7 +82,8 @@ func Test_GetClient_CachedClient(t *testing.T) {
 	require.Equal(t, 1, callCount)
 }
 
-func Test_GetClient_CachedError(t *testing.T) {
+func Test_GetClient_RetryAfterError(t *testing.T) {
+	mockClient := &database.MockClient{}
 	provider := FromOptions(Options{Provider: "Test"})
 
 	expectedErr := errors.New("oh noes!")
@@ -90,21 +91,31 @@ func Test_GetClient_CachedError(t *testing.T) {
 	callCount := 0
 	provider.factory = databaseClientFactoryFunc(func(ctx context.Context, options Options) (database.Client, error) {
 		callCount++
-		return nil, expectedErr
+		if callCount == 1 {
+			return nil, expectedErr
+		}
+		return mockClient, nil
 	})
 
+	// First call should fail
 	client, err := provider.GetClient(context.Background())
 	require.Error(t, err)
 	require.Equal(t, "failed to initialize database client: oh noes!", err.Error())
 	require.Nil(t, client)
 
-	// Do it twice to ensure the client is cached.
+	// Second call should retry and succeed
 	client, err = provider.GetClient(context.Background())
-	require.Error(t, err)
-	require.Equal(t, "failed to initialize database client: oh noes!", err.Error())
-	require.Nil(t, client)
+	require.NoError(t, err)
+	require.Same(t, mockClient, client)
 
-	require.Equal(t, 1, callCount)
+	require.Equal(t, 2, callCount)
+
+	// Third call should use cached successful result
+	client, err = provider.GetClient(context.Background())
+	require.NoError(t, err)
+	require.Same(t, mockClient, client)
+
+	require.Equal(t, 2, callCount)
 }
 
 func TestGetClient_UnsupportedProvider(t *testing.T) {

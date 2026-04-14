@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
@@ -29,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/sethvargo/go-retry"
 )
 
 // Service implements the hosting.Service interface for registering manifests.
@@ -64,6 +66,27 @@ func (w *Service) Run(ctx context.Context) error {
 	} else if err != nil {
 		return fmt.Errorf("error checking manifest directory: %w", err)
 	}
+
+	backoff := retry.NewExponential(1 * time.Second)
+	backoff = retry.WithMaxDuration(2*time.Minute, backoff)
+
+	err := retry.Do(ctx, backoff, func(ctx context.Context) error {
+		registerErr := w.registerManifests(ctx, manifestDir)
+		if registerErr != nil {
+			logger.Info("Failed to register manifests, retrying...", "error", registerErr)
+			return retry.RetryableError(registerErr)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to register manifests after retries: %w", err)
+	}
+
+	return nil
+}
+
+func (w *Service) registerManifests(ctx context.Context, manifestDir string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	dbClient, err := w.options.DatabaseProvider.GetClient(ctx)
 	if err != nil {

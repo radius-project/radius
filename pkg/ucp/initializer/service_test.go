@@ -18,12 +18,15 @@ package initializer
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/ucp"
@@ -212,6 +215,97 @@ types:
 		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
 		require.NoError(t, err)
 		require.NotNil(t, obj)
+	})
+
+	t.Run("retries on transient database error", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a temp directory with a test manifest
+		tempDir := t.TempDir()
+		manifestContent := `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  myType:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "test.yaml"), []byte(manifestContent), 0600)
+		require.NoError(t, err)
+
+		// Use a factory that fails twice then succeeds
+		callCount := 0
+		failingProvider := databaseprovider.FromOptions(databaseprovider.Options{Provider: "Test"})
+		failingProvider.SetFactory(func(ctx context.Context, options databaseprovider.Options) (database.Client, error) {
+			callCount++
+			if callCount <= 2 {
+				return nil, fmt.Errorf("transient error")
+			}
+			return inmemory.NewClient(), nil
+		})
+
+		svc := &Service{
+			options: &ucp.Options{
+				Config: &ucp.Config{
+					Initialization: ucp.InitializationConfig{
+						ManifestDirectory: tempDir,
+					},
+				},
+				DatabaseProvider: failingProvider,
+			},
+		}
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Factory should have been called 3 times (2 failures + 1 success)
+		assert.Equal(t, 3, callCount)
+	})
+
+	t.Run("returns error when context is cancelled during retry", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a temp directory with a test manifest
+		tempDir := t.TempDir()
+		manifestContent := `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  myType:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "test.yaml"), []byte(manifestContent), 0600)
+		require.NoError(t, err)
+
+		// Use a provider that always fails
+		alwaysFailProvider := databaseprovider.FromOptions(databaseprovider.Options{Provider: "Test"})
+		alwaysFailProvider.SetFactory(func(ctx context.Context, options databaseprovider.Options) (database.Client, error) {
+			return nil, fmt.Errorf("persistent error")
+		})
+
+		svc := &Service{
+			options: &ucp.Options{
+				Config: &ucp.Config{
+					Initialization: ucp.InitializationConfig{
+						ManifestDirectory: tempDir,
+					},
+				},
+				DatabaseProvider: alwaysFailProvider,
+			},
+		}
+
+		// Cancel context quickly to stop retries
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err = svc.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to register manifests after retries")
 	})
 }
 

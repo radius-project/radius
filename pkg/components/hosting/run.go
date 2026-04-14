@@ -30,12 +30,14 @@ import (
 func RunWithInterrupts(ctx context.Context, host *Host) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	stopped, serviceErrors := host.RunAsync(ctx)
 
 	exitCh := make(chan os.Signal, 2)
 	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)
 
+	var serviceErr error
 	select {
 	// Shutdown triggered
 	case <-exitCh:
@@ -43,13 +45,22 @@ func RunWithInterrupts(ctx context.Context, host *Host) error {
 		cancel()
 
 	// A service terminated with a failure. Shut down
-	case <-serviceErrors:
-		logger.Info("Error occurred - shutting down....")
+	case msg, ok := <-serviceErrors:
+		if ok && msg.Err != nil {
+			logger.Error(msg.Err, "Service failed, shutting down....", "service", msg.Name)
+			serviceErr = msg.Err
+		} else {
+			logger.Info("All services stopped, shutting down....")
+		}
 		cancel()
 	}
 
 	// Finished shutting down. An error returned here is a failure to terminate
 	// gracefully, so just crash if that happens.
 	err := <-stopped
-	return err
+	if err != nil {
+		return err
+	}
+
+	return serviceErr
 }
