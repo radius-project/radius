@@ -153,3 +153,28 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 
 	return merged, nil
 }
+
+// TargetKubeconfigEnvVar is the environment variable that specifies the path to
+// a kubeconfig file for the external target cluster. When set, Radius deploys
+// output Kubernetes resources (Deployments, Services, etc.) to this cluster
+// instead of the cluster where Radius is installed.
+const TargetKubeconfigEnvVar = "RADIUS_TARGET_KUBECONFIG"
+
+// NewTargetClientConfig returns a Kubernetes client config for the external
+// target cluster specified by RADIUS_TARGET_KUBECONFIG. Returns nil if the
+// env var is not set.
+func NewTargetClientConfig(options *ConfigOptions) (*rest.Config, error) {
+	targetPath := os.Getenv(TargetKubeconfigEnvVar)
+	if targetPath == "" {
+		return nil, nil
+	}
+
+	opts := buildConfigOptions(options)
+	opts.ConfigFilePath = targetPath
+
+	config, err := NewClientConfigFromLocal(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target cluster kubeconfig from %s: %w", targetPath, err)
+	}
+	return config, nil
+}

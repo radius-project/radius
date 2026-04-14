@@ -121,7 +121,7 @@
 
       <div class="step">
         <span class="step-number">1.</span>
-        <span>If you have not already for this repository, use the GitHub Radius CloudFormation template to add GitHub as a trusted OIDC Identity Provider and create a IAM role.</span>
+        <span>If you have not already done so for this repository, use the GitHub Radius CloudFormation template to add GitHub as a trusted OIDC Identity Provider and create an IAM role.</span>
       </div>
       <a href="https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?templateURL=https://radius-cfn-templates.s3.amazonaws.com/github-oidc-role.yaml" target="_blank" rel="noopener noreferrer" class="btn btn-outline create-link">
         Create trusted OIDC identity provider and IAM role
@@ -146,6 +146,12 @@
       <select id="aws-region">
         <!-- Populated by popup.ts -->
       </select>
+
+      <div class="step">
+        <span class="step-number">5.</span>
+        <label for="aws-k8s-cluster">EKS cluster name:</label>
+      </div>
+      <input type="text" id="aws-k8s-cluster" placeholder="my-eks-cluster" autocomplete="off" spellcheck="false">
 
       <button id="aws-submit" class="btn btn-primary btn-block">Confirm authentication</button>
     </div>
@@ -235,11 +241,6 @@
 
       <div class="step">
         <span class="step-number">1.</span>
-        <label for="deps-k8s-cluster">Kubernetes cluster:</label>
-      </div>
-      <input type="text" id="deps-k8s-cluster" placeholder="my-eks-cluster or my-aks-cluster" autocomplete="off" spellcheck="false">
-
-      <div class="step-sub">
         <label for="deps-k8s-namespace">Kubernetes namespace:</label>
       </div>
       <input type="text" id="deps-k8s-namespace" value="default" placeholder="default" autocomplete="off" spellcheck="false">
@@ -314,9 +315,6 @@
       <div id="status-icon" class="status-icon"></div>
       <div id="status-message" class="status-message"></div>
       <div id="status-details" class="status-details"></div>
-      <div id="status-actions" class="status-actions">
-        <button id="another-btn" class="btn btn-sm">Create Another</button>
-      </div>
     </div>
 
     <!-- Loading overlay -->

@@ -50,6 +50,7 @@ function hideAllSections(): void {
   hide('verify-section');
   hide('status-section');
   hide('deploy-form');
+  hide('deps-form');
 }
 
 // --- Initialization ---
@@ -261,7 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const anotherBtn = document.createElement('button');
       anotherBtn.className = 'btn btn-outline';
-      anotherBtn.textContent = 'Create Another App';
+      anotherBtn.textContent = 'Create Another Application';
       anotherBtn.addEventListener('click', () => showStep1());
 
       btnContainer.appendChild(envBtn);
@@ -286,7 +287,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!client) { showVerifyError('GitHub token not configured.'); return; }
 
       await client.saveDependencies(currentRepo.owner, currentRepo.repo, wizardEnvName, {
-        cluster: inputVal('deps-k8s-cluster'),
         namespace: inputVal('deps-k8s-namespace'),
         ociRegistry: inputVal('deps-oci-registry'),
         vpc: inputVal('deps-vpc'),
@@ -295,15 +295,62 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       hideLoading();
-      showDeployForm();
+      // Show success on a clean page.
+      hideAllSections();
+      hide('wizard-steps');
+      $('page-title').textContent = 'Setup with Radius';
+      $('status-section').className = 'status-section status-success';
+      $('status-icon').textContent = '';
+      $('status-message').textContent = 'Environment configured';
+      $('status-details').innerHTML = '';
+      const msg = document.createElement('p');
+      msg.textContent = `Environment "${wizardEnvName}" is ready with credentials verified and dependencies saved.`;
+      $('status-details').appendChild(msg);
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex; gap:8px; justify-content:center; margin-top:16px;';
+      const deployBtn = document.createElement('button');
+      deployBtn.className = 'btn btn-primary';
+      deployBtn.textContent = 'Deploy Application';
+      deployBtn.addEventListener('click', () => showDeployForm());
+      const anotherBtn = document.createElement('button');
+      anotherBtn.className = 'btn btn-outline';
+      anotherBtn.textContent = 'Create Another Environment';
+      anotherBtn.addEventListener('click', () => showStep2());
+      btnRow.appendChild(deployBtn);
+      btnRow.appendChild(anotherBtn);
+      $('status-details').appendChild(btnRow);
+      show('status-section');
     } catch (err) {
       showVerifyError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   });
 
-  // Dependencies form: skip to deploy.
+  // Dependencies form: skip to success.
   $('deps-skip').addEventListener('click', () => {
-    showDeployForm();
+    hideAllSections();
+    hide('wizard-steps');
+    $('page-title').textContent = 'Setup with Radius';
+    $('status-section').className = 'status-section status-success';
+    $('status-icon').textContent = '';
+    $('status-message').textContent = 'Environment configured';
+    $('status-details').innerHTML = '';
+    const msg2 = document.createElement('p');
+    msg2.textContent = `Environment "${wizardEnvName}" is ready with credentials verified.`;
+    $('status-details').appendChild(msg2);
+    const btnRow2 = document.createElement('div');
+    btnRow2.style.cssText = 'display:flex; gap:8px; justify-content:center; margin-top:16px;';
+    const deployBtn2 = document.createElement('button');
+    deployBtn2.className = 'btn btn-primary';
+    deployBtn2.textContent = 'Deploy Application';
+    deployBtn2.addEventListener('click', () => showDeployForm());
+    const anotherBtn2 = document.createElement('button');
+    anotherBtn2.className = 'btn btn-outline';
+    anotherBtn2.textContent = 'Create Another Environment';
+    anotherBtn2.addEventListener('click', () => showStep2());
+    btnRow2.appendChild(deployBtn2);
+    btnRow2.appendChild(anotherBtn2);
+    $('status-details').appendChild(btnRow2);
+    show('status-section');
   });
 
   // Deploy: trigger application deployment.
@@ -314,12 +361,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     showStep2();
   });
 
-  // Create another — reset wizard.
-  $('another-btn').addEventListener('click', () => {
-    wizardEnvName = '';
-    wizardAppFile = '';
-    showStep1();
-  });
 });
 
 // --- Step navigation ---
@@ -420,11 +461,13 @@ async function handleAWSVerify(): Promise<void> {
   const name = inputVal('aws-env-name');
   const roleARN = inputVal('aws-role-arn');
   const region = inputVal('aws-region');
+  const k8sCluster = inputVal('aws-k8s-cluster');
 
   if (!name) { showVerifyError('Environment name is required.'); return; }
   if (!roleARN) { showVerifyError('IAM Role ARN is required.'); return; }
   if (!validateARN(roleARN)) { showVerifyError('Invalid IAM Role ARN format. Expected: arn:aws:iam::ACCOUNT:role/NAME'); return; }
   if (!region) { showVerifyError('AWS Region is required.'); return; }
+  if (!k8sCluster) { showVerifyError('EKS cluster name is required.'); return; }
 
   // Extract account ID from the ARN (arn:aws:iam::ACCOUNT_ID:role/...).
   const accountID = extractAccountIDFromARN(roleARN);
@@ -443,6 +486,11 @@ async function handleAWSVerify(): Promise<void> {
       region,
       accountID,
     });
+
+    // Save the cluster name as a GitHub Environment variable.
+    if (k8sCluster) {
+      await client.setVariable(currentRepo.owner, currentRepo.repo, name, 'RADIUS_K8S_CLUSTER', k8sCluster);
+    }
 
     wizardEnvName = result.name;
 

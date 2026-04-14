@@ -180,6 +180,10 @@ Resources:
             Action:
               - eks:DescribeCluster
               - eks:ListClusters
+              - eks:CreateAccessEntry
+              - eks:AssociateAccessPolicy
+              - eks:DescribeAccessEntry
+              - eks:ListAccessEntries
             Resource: '*'
 
           # ECR — pull/push container images.
