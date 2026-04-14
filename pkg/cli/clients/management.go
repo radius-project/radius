@@ -1425,12 +1425,20 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
 }
 
-// forceDeletePolicy is a per-call pipeline policy that appends force=true to the request URL query string.
+// forceDeletePolicy is a per-call pipeline policy that appends force=true to DELETE request URL query strings.
 type forceDeletePolicy struct{}
 
 func (p *forceDeletePolicy) Do(req *policy.Request) (*http.Response, error) {
 	rawReq := req.Raw()
+	if rawReq.Method != http.MethodDelete {
+		return req.Next()
+	}
+
 	q := rawReq.URL.Query()
+	if _, ok := q["force"]; ok {
+		return req.Next()
+	}
+
 	q.Set("force", "true")
 	rawReq.URL.RawQuery = q.Encode()
 	return req.Next()
