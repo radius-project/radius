@@ -235,8 +235,8 @@
     <!-- Environment Dependencies (shown after environment creation) -->
     <div id="deps-form" class="form-section hidden">
       <div class="info-box">
-        <h3>Configure environment dependencies</h3>
-        <p>Choose from existing resources in your cloud account or enter values manually.</p>
+        <h3>Configure recipe parameters</h3>
+        <p>Set the container image registry and tag used by Radius for deployments.</p>
       </div>
 
       <div class="step">
@@ -247,29 +247,12 @@
 
       <div class="step">
         <span class="step-number">2.</span>
-        <label for="deps-oci-registry">OCI registry (optional):</label>
+        <label for="deps-app-image">Application image:</label>
       </div>
-      <input type="text" id="deps-oci-registry" placeholder="123456789012.dkr.ecr.us-west-2.amazonaws.com" autocomplete="off" spellcheck="false">
+      <input type="text" id="deps-app-image" placeholder="ghcr.io/myorg/myapp:latest" autocomplete="off" spellcheck="false">
 
-      <div class="step">
-        <span class="step-number">3.</span>
-        <label for="deps-vpc">VPC (optional, AWS only):</label>
-      </div>
-      <input type="text" id="deps-vpc" placeholder="vpc-0123456789abcdef0" autocomplete="off" spellcheck="false">
-
-      <div class="step-sub">
-        <label for="deps-subnets">Subnets (optional, comma-separated):</label>
-      </div>
-      <input type="text" id="deps-subnets" placeholder="subnet-abc123, subnet-def456" autocomplete="off" spellcheck="false">
-
-      <div class="step">
-        <span class="step-number">4.</span>
-        <label for="deps-resource-group">Resource group (optional, Azure only):</label>
-      </div>
-      <input type="text" id="deps-resource-group" placeholder="my-resource-group" autocomplete="off" spellcheck="false">
-
-      <button id="deps-submit" class="btn btn-primary btn-block">Save dependencies</button>
-      <button id="deps-skip" class="btn btn-outline btn-block" style="margin-top: 8px;">Skip — finish without dependencies</button>
+      <button id="deps-submit" class="btn btn-primary btn-block">Save recipe parameters</button>
+      <button id="deps-skip" class="btn btn-outline btn-block" style="margin-top: 8px;">Skip — finish without recipe parameters</button>
     </div>
 
     <!-- Deploy Application form -->

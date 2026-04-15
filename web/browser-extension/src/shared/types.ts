@@ -41,10 +41,7 @@ export interface ErrorResponse {
 export interface SaveDependenciesRequest {
   kubernetesCluster?: string;
   kubernetesNamespace?: string;
-  ociRegistry?: string;
-  vpc?: string;
-  subnets?: string;
-  resourceGroup?: string;
+  appImage?: string;
 }
 
 export interface DependenciesResponse {

@@ -288,10 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       await client.saveDependencies(currentRepo.owner, currentRepo.repo, wizardEnvName, {
         namespace: inputVal('deps-k8s-namespace'),
-        ociRegistry: inputVal('deps-oci-registry'),
-        vpc: inputVal('deps-vpc'),
-        subnets: inputVal('deps-subnets'),
-        resourceGroup: inputVal('deps-resource-group'),
+        appImage: inputVal('deps-app-image'),
       });
 
       hideLoading();

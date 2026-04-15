@@ -224,15 +224,12 @@ export class GitHubClient {
 
   async saveDependencies(
     owner: string, repo: string, envName: string,
-    deps: { cluster?: string; namespace?: string; ociRegistry?: string; vpc?: string; subnets?: string; resourceGroup?: string },
+    deps: { cluster?: string; namespace?: string; appImage?: string },
   ): Promise<string[]> {
     const vars: Record<string, string> = {};
     if (deps.cluster) vars['RADIUS_K8S_CLUSTER'] = deps.cluster;
     if (deps.namespace) vars['RADIUS_K8S_NAMESPACE'] = deps.namespace;
-    if (deps.ociRegistry) vars['RADIUS_OCI_REGISTRY'] = deps.ociRegistry;
-    if (deps.vpc) vars['RADIUS_VPC'] = deps.vpc;
-    if (deps.subnets) vars['RADIUS_SUBNETS'] = deps.subnets;
-    if (deps.resourceGroup) vars['RADIUS_RESOURCE_GROUP'] = deps.resourceGroup;
+    if (deps.appImage) vars['RADIUS_APP_IMAGE'] = deps.appImage;
 
     const set: string[] = [];
     for (const [key, value] of Object.entries(vars)) {
@@ -250,6 +247,23 @@ export class GitHubClient {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  private async getFileContent(owner: string, repo: string, path: string, branch: string): Promise<string | null> {
+    try {
+      const data = await this.get<{ content: string; encoding: string }>(
+        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
+      );
+      if (data.encoding === 'base64') {
+        // GitHub returns base64 with line wrapping — strip newlines before decoding.
+        const raw = data.content.replace(/[\r\n]/g, '');
+        const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+      return data.content;
+    } catch {
+      return null;
     }
   }
 
@@ -287,29 +301,32 @@ export class GitHubClient {
   async commitAllWorkflows(owner: string, repo: string): Promise<void> {
     const branch = await this.getDefaultBranch(owner, repo);
 
-    const verifyExists = await this.fileExists(
+    const verifyContent = await this.getFileContent(
       owner, repo, '.github/workflows/radius-verify-credentials.yml', branch,
     );
-    const deployExists = await this.fileExists(
+    const deployContent = await this.getFileContent(
       owner, repo, '.github/workflows/radius-deploy.yml', branch,
     );
 
-    if (verifyExists && deployExists) return;
-
-    if (!verifyExists) {
+    // Only commit workflows that are missing or have changed.
+    if (verifyContent !== VERIFY_WORKFLOW) {
       await this.commitFile(
         owner, repo,
         '.github/workflows/radius-verify-credentials.yml',
-        'radius: add verification and deploy workflows',
+        verifyContent === null
+          ? 'radius: add verification and deploy workflows'
+          : 'radius: update verification workflow',
         VERIFY_WORKFLOW, branch,
       );
     }
 
-    if (!deployExists) {
+    if (deployContent !== DEPLOY_WORKFLOW) {
       await this.commitFile(
         owner, repo,
         '.github/workflows/radius-deploy.yml',
-        'radius: add verification and deploy workflows',
+        deployContent === null
+          ? 'radius: add verification and deploy workflows'
+          : 'radius: update deploy workflow',
         DEPLOY_WORKFLOW, branch,
       );
     }
@@ -352,16 +369,22 @@ export class GitHubClient {
   ): Promise<VerificationResponse> {
     const branch = await this.getDefaultBranch(owner, repo);
 
-    // Ensure the verify workflow exists on the default branch.
-    // Ensure the verify workflow is up to date.
-    await this.commitFile(
-      owner, repo,
-      '.github/workflows/radius-verify-credentials.yml',
-      'radius: update verification workflow',
-      VERIFY_WORKFLOW, branch,
+    // Only commit the workflow if it's missing or has changed.
+    const existing = await this.getFileContent(
+      owner, repo, '.github/workflows/radius-verify-credentials.yml', branch,
     );
-    // Wait for GitHub to index the workflow.
-    await delay(3000);
+    if (existing !== VERIFY_WORKFLOW) {
+      await this.commitFile(
+        owner, repo,
+        '.github/workflows/radius-verify-credentials.yml',
+        existing === null
+          ? 'radius: add verification workflow'
+          : 'radius: update verification workflow',
+        VERIFY_WORKFLOW, branch,
+      );
+      // Wait for GitHub to index the workflow.
+      await delay(3000);
+    }
 
     // Trigger the workflow from the default branch.
     const payload = JSON.stringify({
@@ -423,15 +446,21 @@ export class GitHubClient {
   ): Promise<void> {
     const branch = await this.getDefaultBranch(owner, repo);
 
-    // Ensure the deploy workflow exists and is up to date.
-    // Always update the file to ensure the latest template is used.
-    await this.commitFile(
-      owner, repo,
-      '.github/workflows/radius-deploy.yml',
-      'radius: update deploy workflow',
-      DEPLOY_WORKFLOW, branch,
+    // Only commit the workflow if it's missing or has changed.
+    const existing = await this.getFileContent(
+      owner, repo, '.github/workflows/radius-deploy.yml', branch,
     );
-    await delay(3000);
+    if (existing !== DEPLOY_WORKFLOW) {
+      await this.commitFile(
+        owner, repo,
+        '.github/workflows/radius-deploy.yml',
+        existing === null
+          ? 'radius: add deploy workflow'
+          : 'radius: update deploy workflow',
+        DEPLOY_WORKFLOW, branch,
+      );
+      await delay(3000);
+    }
 
     // Derive app name from filename if not provided.
     if (!appName) {
@@ -692,7 +721,10 @@ jobs:
           aws eks associate-access-policy --cluster-name "$CLUSTER" --principal-arn "$ROLE_ARN" --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster --region "$REGION" 2>&1 || echo "Access policy may already be associated"
 
           echo "Testing EKS cluster connectivity..."
-          aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" --kubeconfig /tmp/test-eks
+          ENDPOINT=$(aws eks describe-cluster --name "$CLUSTER" --region "$REGION" --query 'cluster.endpoint' --output text)
+          CA_DATA=$(aws eks describe-cluster --name "$CLUSTER" --region "$REGION" --query 'cluster.certificateAuthority.data' --output text)
+          TOKEN=$(aws eks get-token --cluster-name "$CLUSTER" --region "$REGION" --output json | jq -r '.status.token')
+          printf 'apiVersion: v1\\nclusters:\\n- cluster:\\n    certificate-authority-data: %s\\n    server: %s\\n  name: eks\\ncontexts:\\n- context:\\n    cluster: eks\\n    user: eks-user\\n  name: eks\\ncurrent-context: eks\\nkind: Config\\nusers:\\n- name: eks-user\\n  user:\\n    token: %s\\n' "$CA_DATA" "$ENDPOINT" "$TOKEN" > /tmp/test-eks
           for i in $(seq 1 12); do
             if kubectl --kubeconfig /tmp/test-eks get nodes 2>&1; then
               echo "✅ EKS access configured."
@@ -736,15 +768,23 @@ on:
         description: 'Application name'
         required: false
         default: 'app'
+      image:
+        description: 'Container image for the application (e.g. ghcr.io/sk593/demo:latest)'
+        required: false
+        default: ''
 
 permissions:
   id-token: write
   contents: read
+  packages: write
 
 env:
   ENVIRONMENT: \${{ inputs.environment || 'dev' }}
   APP_FILE: \${{ inputs.app_file || 'app.bicep' }}
   APP_NAME: \${{ inputs.app_name || 'app' }}
+  APP_IMAGE: \${{ inputs.image || vars.RADIUS_APP_IMAGE || '' }}
+  RESOURCE_TYPES_CONTRIB_REPO: https://github.com/radius-project/resource-types-contrib.git
+  RESOURCE_TYPES_CONTRIB_REF: main
 
 jobs:
   deploy:
@@ -820,7 +860,10 @@ jobs:
 
       - name: Create ephemeral Radius control plane cluster
         run: |
-          k3d cluster create radius-cp --wait
+          k3d cluster create radius-cp \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "\${{ github.workspace }}/:/app/demo" \
+            --wait
           kubectl wait --for=condition=Ready node --all --timeout=120s
 
       - name: Install Radius CLI
@@ -828,24 +871,95 @@ jobs:
           wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | /bin/bash
           rad version
 
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
       - name: Install Radius on control plane
         run: |
-          INSTALL_ARGS="--set rp.publicEndpointOverride=localhost"
-          if [ -n "\${{ vars.RADIUS_IMAGE_REGISTRY }}" ]; then
-            INSTALL_ARGS="$INSTALL_ARGS --set global.imageRegistry=\${{ vars.RADIUS_IMAGE_REGISTRY }}"
-            # Pin deployment-engine and dashboard to the public registry since
-            # they are not built from this repo.
-            INSTALL_ARGS="$INSTALL_ARGS --set de.image=ghcr.io/radius-project/deployment-engine"
-            INSTALL_ARGS="$INSTALL_ARGS --set dashboard.image=ghcr.io/radius-project/dashboard"
-          fi
-          if [ -n "\${{ vars.RADIUS_IMAGE_TAG }}" ]; then
-            INSTALL_ARGS="$INSTALL_ARGS --set global.imageTag=\${{ vars.RADIUS_IMAGE_TAG }}"
-            # Keep DE and dashboard on the released version.
-            INSTALL_ARGS="$INSTALL_ARGS --set de.tag=latest"
-            INSTALL_ARGS="$INSTALL_ARGS --set dashboard.tag=latest"
-          fi
-          rad install kubernetes $INSTALL_ARGS
+          rad install kubernetes \\
+            --set rp.publicEndpointOverride=localhost \\
+            --set global.imageRegistry=ghcr.io/sk593 \\
+            --set global.imageTag=latest \\
+            --set de.image=ghcr.io/radius-project/deployment-engine \\
+            --set de.tag=latest \\
+            --set dashboard.image=ghcr.io/radius-project/dashboard \\
+            --set dashboard.tag=latest
           kubectl wait --for=condition=Available deployment --all -n radius-system --timeout=300s
+
+      - name: Patch dynamic-rp with Docker support
+        run: |
+          # Mount Docker socket, source directory, install docker-cli via init container,
+          # and run as root to access the socket
+          kubectl patch deployment dynamic-rp -n radius-system --type=json -p='[
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-sock", "hostPath": {"path": "/var/run/docker.sock", "type": "Socket"}}},
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-bin", "emptyDir": {}}},
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "app-source", "hostPath": {"path": "/app/demo", "type": "Directory"}}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "docker-sock", "mountPath": "/var/run/docker.sock"}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "docker-bin", "mountPath": "/usr/local/bin/docker", "subPath": "docker"}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "app-source", "mountPath": "/app/demo", "readOnly": true}},
+            {"op": "replace", "path": "/spec/template/spec/containers/0/securityContext",
+             "value": {"allowPrivilegeEscalation": false, "runAsUser": 0}},
+            {"op": "add", "path": "/spec/template/spec/initContainers/-",
+             "value": {
+               "name": "install-docker-cli",
+               "image": "docker:cli",
+               "command": ["cp", "/usr/local/bin/docker", "/out/docker"],
+               "volumeMounts": [{"name": "docker-bin", "mountPath": "/out"}]
+             }}
+          ]'
+          kubectl rollout status deployment/dynamic-rp -n radius-system --timeout=120s
+
+          # Wait for old pods to terminate, then get the running pod
+          sleep 10
+          kubectl delete pod -n radius-system -l app.kubernetes.io/name=dynamic-rp --field-selector=status.phase!=Running --ignore-not-found || true
+          kubectl wait --for=condition=Ready pod -n radius-system -l app.kubernetes.io/name=dynamic-rp --timeout=120s
+
+          # Verify docker and source are accessible
+          POD=$(kubectl get pods -n radius-system -l app.kubernetes.io/name=dynamic-rp --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n radius-system "$POD" -c dynamic-rp -- docker version
+          kubectl exec -n radius-system "$POD" -c dynamic-rp -- ls /app/demo/Dockerfile
+
+          # Create a Docker config secret for GHCR authentication so Terraform's Docker provider can push images.
+          DOCKER_CONFIG_JSON=$(echo -n '{"auths":{"ghcr.io":{"auth":"'$(echo -n "token:\${{ secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}')
+          kubectl create secret generic docker-config -n radius-system --from-literal=config.json="$DOCKER_CONFIG_JSON" --dry-run=client -o yaml | kubectl apply -f -
+
+          # Mount a writable emptyDir at /root/.docker and use an init container to copy
+          # the config.json from the secret. This way buildx can write to /root/.docker/buildx.
+          kubectl patch deployment dynamic-rp -n radius-system --type=json -p='[
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-config-secret", "secret": {"secretName": "docker-config"}}},
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-config", "emptyDir": {}}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "docker-config", "mountPath": "/root/.docker"}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/env/-",
+             "value": {"name": "DOCKER_CONFIG", "value": "/root/.docker"}},
+            {"op": "add", "path": "/spec/template/spec/initContainers/-",
+             "value": {
+               "name": "copy-docker-config",
+               "image": "busybox:latest",
+               "command": ["sh", "-c", "cp /secret/config.json /docker-config/config.json"],
+               "volumeMounts": [
+                 {"name": "docker-config-secret", "mountPath": "/secret", "readOnly": true},
+                 {"name": "docker-config", "mountPath": "/docker-config"}
+               ]
+             }}
+          ]'
+          kubectl rollout status deployment/dynamic-rp -n radius-system --timeout=120s
+          sleep 10
+          kubectl wait --for=condition=Ready pod -n radius-system -l app.kubernetes.io/name=dynamic-rp --timeout=120s
+
+          # Verify docker auth is available
+          POD=$(kubectl get pods -n radius-system -l app.kubernetes.io/name=dynamic-rp --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n radius-system "$POD" -c dynamic-rp -- cat /root/.docker/config.json
 
       - name: Configure external deployment target
         run: |
@@ -881,6 +995,11 @@ jobs:
             for deploy in applications-rp dynamic-rp; do
               kubectl patch deployment $deploy -n radius-system --type=json -p="$PATCH"
             done
+
+            # Set KUBE_CONFIG_PATH on dynamic-rp so Terraform's kubernetes provider deploys to the target cluster
+            kubectl patch deployment dynamic-rp -n radius-system --type=json -p='[
+              {"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"KUBE_CONFIG_PATH","value":"/etc/radius/target-kubeconfig/config"}}
+            ]'
           else
             # Secret updated — restart pods to pick up new token.
             kubectl rollout restart deployment/applications-rp -n radius-system
@@ -895,6 +1014,15 @@ jobs:
       - name: Configure Radius environment
         run: |
           NAMESPACE="\${{ vars.RADIUS_K8S_NAMESPACE || 'default' }}"
+
+          # Ensure namespace exists on target cluster before Radius deploys into it.
+          TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
+          if [ -f "$TARGET_KUBECONFIG" ]; then
+            echo "Ensuring namespace $NAMESPACE exists on target cluster..."
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$NAMESPACE" 2>/dev/null || \
+              kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$NAMESPACE"
+          fi
+
           rad workspace create kubernetes default
           rad group create default
           rad group switch default
@@ -914,11 +1042,76 @@ jobs:
       - name: Register AWS credentials with Radius
         if: \${{ vars.AWS_IAM_ROLE_ARN != '' }}
         run: |
-          rad credential register aws irsa \\
+          rad credential register aws irsa \
             --iam-role "\${{ vars.AWS_IAM_ROLE_ARN }}"
-          rad env update "$ENVIRONMENT" \\
-            --aws-region "\${{ vars.AWS_REGION }}" \\
+          rad env update "$ENVIRONMENT" \
+            --aws-region "\${{ vars.AWS_REGION }}" \
             --aws-account-id "\${{ vars.AWS_ACCOUNT_ID }}"
+
+      - name: Register resource types from resource-types-contrib
+        run: |
+          REPO_RAW="https://raw.githubusercontent.com/radius-project/resource-types-contrib/\${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
+          TYPES="Compute/containerImages/containerImages.yaml Compute/containers/containers.yaml Compute/persistentVolumes/persistentVolumes.yaml Compute/routes/routes.yaml Data/postgreSqlDatabases/postgreSqlDatabases.yaml Security/secrets/secrets.yaml"
+          for TYPE_YAML in $TYPES; do
+            echo "Registering $TYPE_YAML..."
+            curl -fsSL "$REPO_RAW/$TYPE_YAML" -o /tmp/type.yaml
+            rad resource-type create -f /tmp/type.yaml || \
+              (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f /tmp/type.yaml)
+          done
+          echo "✅ Resource types registered"
+
+      - name: Register terraform recipes from resource-types-contrib
+        run: |
+          REPO="\${{ env.RESOURCE_TYPES_CONTRIB_REPO }}"
+          REF="\${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Compute/containerImages \
+            --template-kind terraform \
+            --template-path "git::$REPO//Compute/containerImages/recipes/kubernetes/terraform?ref=$REF"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Compute/containers \
+            --template-kind terraform \
+            --template-path "git::$REPO//Compute/containers/recipes/kubernetes/terraform?ref=$REF"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Compute/persistentVolumes \
+            --template-kind terraform \
+            --template-path "git::$REPO//Compute/persistentVolumes/recipes/kubernetes/terraform?ref=$REF"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Compute/routes \
+            --template-kind terraform \
+            --template-path "git::$REPO//Compute/routes/recipes/kubernetes/terraform?ref=$REF"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Data/postgreSqlDatabases \
+            --template-kind terraform \
+            --template-path "git::$REPO//Data/postgreSqlDatabases/recipes/kubernetes/terraform?ref=$REF"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Security/secrets \
+            --template-kind terraform \
+            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF"
+
+      - name: Pre-create app namespace on target cluster
+        run: |
+          TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
+          if [ -f "$TARGET_KUBECONFIG" ]; then
+            # Parse the application name from the Bicep file to determine the namespace.
+            # Radius creates namespaces as <group>-<app>. Default group is "default".
+            BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+            APP_NS="default-$BICEP_APP_NAME"
+            echo "Creating namespace $APP_NS on target cluster..."
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS" || true
+          fi
 
       - name: Deploy application
         run: |
@@ -942,7 +1135,11 @@ jobs:
           fi
 
           echo "Deploying $APP_FILE to environment $ENVIRONMENT..."
-          rad deploy "$APP_FILE" --environment "$ENVIRONMENT" --parameters applicationName="$APP_NAME"
+          DEPLOY_PARAMS=""
+          if [ -n "$APP_IMAGE" ]; then
+            DEPLOY_PARAMS="--parameters image=$APP_IMAGE"
+          fi
+          rad deploy "$APP_FILE" --environment "$ENVIRONMENT" $DEPLOY_PARAMS
           echo ""
           echo "✅ Deployment complete."
 
