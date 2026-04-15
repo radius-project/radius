@@ -916,6 +916,8 @@ jobs:
              "value": {"name": "app-source", "mountPath": "/app/demo", "readOnly": true}},
             {"op": "replace", "path": "/spec/template/spec/containers/0/securityContext",
              "value": {"allowPrivilegeEscalation": false, "runAsUser": 0}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/resources",
+             "value": {"requests": {"memory": "512Mi", "cpu": "500m"}, "limits": {"memory": "2Gi", "cpu": "2"}}},
             {"op": "add", "path": "/spec/template/spec/initContainers/-",
              "value": {
                "name": "install-docker-cli",
@@ -1015,6 +1017,20 @@ jobs:
             kubectl rollout restart deployment/dynamic-rp -n radius-system
           fi
 
+          # Inject AWS session credentials into Radius pods so Terraform's AWS provider
+          # can create AWS resources. These come from the runner's OIDC exchange.
+          if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+            echo "Injecting AWS session credentials into Radius pods..."
+            for deploy in applications-rp dynamic-rp; do
+              kubectl patch deployment $deploy -n radius-system --type=json -p="[
+                {\\"op\\":\\"add\\",\\"path\\":\\"/spec/template/spec/containers/0/env/-\\",\\"value\\":{\\"name\\":\\"AWS_ACCESS_KEY_ID\\",\\"value\\":\\"$AWS_ACCESS_KEY_ID\\"}},
+                {\\"op\\":\\"add\\",\\"path\\":\\"/spec/template/spec/containers/0/env/-\\",\\"value\\":{\\"name\\":\\"AWS_SECRET_ACCESS_KEY\\",\\"value\\":\\"$AWS_SECRET_ACCESS_KEY\\"}},
+                {\\"op\\":\\"add\\",\\"path\\":\\"/spec/template/spec/containers/0/env/-\\",\\"value\\":{\\"name\\":\\"AWS_SESSION_TOKEN\\",\\"value\\":\\"$AWS_SESSION_TOKEN\\"}},
+                {\\"op\\":\\"add\\",\\"path\\":\\"/spec/template/spec/containers/0/env/-\\",\\"value\\":{\\"name\\":\\"AWS_REGION\\",\\"value\\":\\"\${{ vars.AWS_REGION }}\\"}}
+              ]"
+            done
+          fi
+
           echo "Waiting for rollouts..."
           kubectl rollout status deployment/applications-rp -n radius-system --timeout=300s
           kubectl rollout status deployment/dynamic-rp -n radius-system --timeout=300s
@@ -1051,8 +1067,9 @@ jobs:
       - name: Register AWS credentials with Radius
         if: \${{ vars.AWS_IAM_ROLE_ARN != '' }}
         run: |
-          rad credential register aws irsa \
-            --iam-role "\${{ vars.AWS_IAM_ROLE_ARN }}"
+          rad credential register aws access-key \
+            --access-key-id "$AWS_ACCESS_KEY_ID" \
+            --secret-access-key "$AWS_SECRET_ACCESS_KEY"
           rad env update "$ENVIRONMENT" \
             --aws-region "\${{ vars.AWS_REGION }}" \
             --aws-account-id "\${{ vars.AWS_ACCOUNT_ID }}"
@@ -1110,24 +1127,23 @@ jobs:
             --template-kind terraform \
             --template-path "git::https://github.com/Reshrahim/terraform.git//aws/mysql" \
             --parameters vpcId="\${{ vars.RADIUS_VPC_ID }}" \
-            --parameters subnetIds="\${{ vars.RADIUS_SUBNET_IDS }}"
+            --parameters 'subnetIds=\${{ vars.RADIUS_SUBNET_IDS }}'
 
           rad recipe register default \
             --environment "$ENVIRONMENT" \
             --resource-type Radius.Security/secrets \
-            --template-kind bicep \
-            --template-path "ghcr.io/reshrahim/recipes/secrets:1.0"
+            --template-kind terraform \
+            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF"
 
-      - name: Pre-create app namespace on target cluster
+      - name: Verify app namespace on target cluster
         run: |
           TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
           if [ -f "$TARGET_KUBECONFIG" ]; then
-            # Parse the application name from the Bicep file to determine the namespace.
-            # Radius creates namespaces as <group>-<app>. Default group is "default".
             BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
             APP_NS="default-$BICEP_APP_NAME"
-            echo "Creating namespace $APP_NS on target cluster..."
-            kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS" || true
+            echo "Ensuring namespace $APP_NS exists on target cluster..."
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$APP_NS" 2>/dev/null || \
+              kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS"
           fi
 
       - name: Deploy application
@@ -1167,6 +1183,49 @@ jobs:
         if: always()
         run: |
           rad app list || true
+
+      - name: List Kubernetes secrets on target cluster
+        if: always()
+        run: |
+          TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
+          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+          APP_NS="default-$BICEP_APP_NAME"
+          if [ -f "$TARGET_KUBECONFIG" ]; then
+            echo "=== Secrets in $APP_NS namespace ==="
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" get secrets -n "$APP_NS" -o wide 2>&1 || true
+            echo ""
+            echo "=== Secret details ==="
+            for secret in $(kubectl --kubeconfig "$TARGET_KUBECONFIG" get secrets -n "$APP_NS" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+              echo "--- $secret ---"
+              kubectl --kubeconfig "$TARGET_KUBECONFIG" get secret "$secret" -n "$APP_NS" -o jsonpath='{.data}' 2>&1 | jq -r 'to_entries[] | "\\(.key): \\(.value | @base64d)"' 2>&1 || true
+              echo ""
+            done
+          fi
+          echo "=== Secrets on k3d cluster ==="
+          kubectl get secrets -n "$APP_NS" -o wide 2>&1 || true
+
+      - name: Debug resource locations
+        if: always()
+        run: |
+          TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
+          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+          APP_NS="default-$BICEP_APP_NAME"
+          echo "=== All resources on EKS ($APP_NS) ==="
+          if [ -f "$TARGET_KUBECONFIG" ]; then
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" get all -n "$APP_NS" 2>&1 || true
+            echo ""
+            echo "=== All namespaces on EKS ==="
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespaces 2>&1 || true
+          fi
+          echo ""
+          echo "=== All resources on k3d ($APP_NS) ==="
+          kubectl get all -n "$APP_NS" 2>&1 || true
+          echo ""
+          echo "=== dynamic-rp env vars ==="
+          kubectl exec -n radius-system deploy/dynamic-rp -c dynamic-rp -- env 2>&1 | grep -E 'AWS_|KUBE_CONFIG|RADIUS_TARGET' || true
+          echo ""
+          echo "=== Terraform state secrets on k3d ==="
+          kubectl get secrets -n radius-system -l "app.kubernetes.io/managed-by=terraform" -o wide 2>&1 || true
 
       - name: Collect Radius logs
         if: always()

@@ -167,11 +167,18 @@ Resources:
               - cloudformation:DescribeType
             Resource: '*'
 
-          # EC2 — region discovery.
-          - Sid: EC2Regions
+          # EC2 — region discovery and VPC/networking for recipes.
+          - Sid: EC2Access
             Effect: Allow
             Action:
-              - ec2:DescribeRegions
+              - ec2:*
+            Resource: '*'
+
+          # RDS — manage database instances for recipes.
+          - Sid: RDSAccess
+            Effect: Allow
+            Action:
+              - rds:*
             Resource: '*'
 
           # EKS — access Kubernetes clusters for Radius deployments.

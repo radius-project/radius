@@ -108,6 +108,8 @@ type AWSAccessKeyCredentialProperties struct {
 	AccessKeyID string `json:"accessKeyId"`
 	// SecretAccessKey contains secret access key for iam.
 	SecretAccessKey string `json:"secretAccessKey,omitempty"`
+	// SessionToken contains the temporary session token for STS credentials.
+	SessionToken string `json:"sessionToken,omitempty"`
 }
 
 // AWSIRSACredentialProperties contains ucp AWS IRSA credential properties.

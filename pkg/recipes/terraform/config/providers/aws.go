@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -161,6 +162,15 @@ func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCred
 				credentials.AccessKeyCredential.AccessKeyID != "" && credentials.AccessKeyCredential.SecretAccessKey != "" {
 				config[awsAccessKeyParam] = credentials.AccessKeyCredential.AccessKeyID
 				config[awsSecretKeyParam] = credentials.AccessKeyCredential.SecretAccessKey
+				// Include session token if available in the credential or from the environment.
+				// This supports temporary STS credentials from OIDC exchanges (e.g., GitHub Actions).
+				sessionToken := credentials.AccessKeyCredential.SessionToken
+				if sessionToken == "" {
+					sessionToken = os.Getenv("AWS_SESSION_TOKEN")
+				}
+				if sessionToken != "" {
+					config["token"] = sessionToken
+				}
 			}
 
 		case ucp_datamodel.AWSIRSACredentialKind:
