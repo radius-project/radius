@@ -40,7 +40,7 @@
 ### CLI Changes
 
 - [ ] T013 Add flag constants `KubernetesTargetFlag`, `KubernetesClusterTypeFlag`, `KubernetesClusterNameFlag` to pkg/cli/cmd/commonflags/flags.go and register them in `AddKubernetesScopeFlags()`
-- [ ] T014 Update `rad env create` preview command in pkg/cli/cmd/env/create/preview/create.go to accept all provider flags (`--namespace`, `--aws-account-id`, `--aws-region`, `--azure-subscription-id`, `--azure-resource-group`, `--kubernetes-target`, `--kubernetes-cluster-type`, `--kubernetes-cluster-name`) and map them to `EnvironmentProperties.Providers` fields, following the pattern in `rad env update`
+- [ ] T014 Update `rad env create` preview command in pkg/cli/cmd/env/create/preview/create.go to accept all provider flags (`--kubernetes-namespace`, `--aws-account-id`, `--aws-region`, `--azure-subscription-id`, `--azure-resource-group`, `--kubernetes-target`, `--kubernetes-cluster-type`, `--kubernetes-cluster-name`) and map them to `EnvironmentProperties.Providers` fields, following the pattern in `rad env update`
 - [ ] T015 [P] Update `rad env update` preview command in pkg/cli/cmd/env/update/preview/update.go to accept and extract the new kubernetes flags, following the existing Azure/AWS flag extraction pattern
 - [ ] T016 [P] Update `formatKubernetesProperties()` in pkg/cli/cmd/env/show/preview/envproviders.go to display `target`, `clusterType`, `clusterName` fields when present
 - [ ] T017 Add unit tests for `rad env create` with all provider flags (AWS, Azure, Kubernetes) in pkg/cli/cmd/env/create/preview/create_test.go

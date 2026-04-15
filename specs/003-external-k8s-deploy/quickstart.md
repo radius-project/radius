@@ -7,8 +7,8 @@
 
 - A running Radius installation on a Kubernetes cluster
 - `rad` CLI configured and connected to the Radius installation
-- For EKS: AWS credentials registered (`rad credential register aws`) with `eks:DescribeCluster` permission
-- For AKS: Azure credentials registered (`rad credential register azure`) with `Azure Kubernetes Service Cluster User Role` and a Kubernetes RBAC role on the target cluster
+- For EKS: AWS credentials registered using `rad credential register aws access-key` or `rad credential register aws irsa`, with `eks:DescribeCluster` permission
+- For AKS: Azure credentials registered using `rad credential register azure sp` or `rad credential register azure wi`, with `Azure Kubernetes Service Cluster User Role` and a Kubernetes RBAC role on the target cluster
 - An external EKS or AKS cluster accessible from the Radius cluster's network
 
 ## Deploy to an External EKS Cluster

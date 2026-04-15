@@ -18,7 +18,7 @@ Enhance Radius to deploy recipe workloads (Terraform and Bicep) to external AKS 
 **Testing**: `go test` (unit), functional tests in `test/`
 **Target Platform**: Kubernetes (in-cluster), Linux containers
 **Project Type**: Control plane service (Go), API definitions (TypeSpec)
-**Performance Goals**: Kubeconfig acquisition adds <5s overhead per recipe execution (single API call per cloud provider)
+**Performance Goals**: Kubeconfig acquisition adds <5s overhead per recipe execution (a small number of API calls per cloud provider)
 **Constraints**: Token lifetime ~15 min (EKS), variable for AKS Entra ID tokens. Fresh token per execution, no caching.
 **Scale/Scope**: Affects 2 recipe engines (Terraform, Bicep), 1 API type (environments), 1 API version
 

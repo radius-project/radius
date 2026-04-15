@@ -36,7 +36,7 @@ The core token generation logic is ~15 lines using `sts.NewPresignClient` and `P
 Use `ListClusterUserCredentials` with exec format to extract cluster endpoint and CA cert, then acquire an Entra ID access token using the registered Azure service principal or workload identity credentials. Do not use `ListClusterAdminCredentials` since local accounts are disabled by default on AKS.
 
 ### Rationale
-Admin credentials (`listClusterAdminCredential`) fail on AKS clusters with local accounts disabled (the default). The user credential + Entra ID token flow is the standard production approach equivalent to `az aks get-credentials` + `kubelogin convert-kubeconfig --login spn`.
+Admin credentials (`ListClusterAdminCredentials`) fail on AKS clusters with local accounts disabled (the default). The user credential + Entra ID token flow is the standard production approach equivalent to `az aks get-credentials` + `kubelogin convert-kubeconfig --login spn`.
 
 ### Alternatives Considered
 - **Admin credentials**: Simpler but fails on default AKS configurations. Rejected.
