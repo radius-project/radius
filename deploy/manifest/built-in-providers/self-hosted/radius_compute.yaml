@@ -1,6 +1,6 @@
 namespace: Radius.Compute
 location:
-  global: "http://localhost:8082"
+  global: "http://dynamic-rp.radius-system:8082"
 types:
   containers:
     description: |
