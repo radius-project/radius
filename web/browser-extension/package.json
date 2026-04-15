@@ -16,6 +16,7 @@
     "typescript": "^5.4.0"
   },
   "dependencies": {
+    "blakejs": "^1.2.1",
     "cytoscape": "^3.29.0",
     "cytoscape-dagre": "^2.5.0",
     "tweetnacl": "^1.0.3"

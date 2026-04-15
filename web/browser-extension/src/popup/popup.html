@@ -251,6 +251,24 @@
       </div>
       <input type="text" id="deps-app-image" placeholder="ghcr.io/myorg/myapp:latest" autocomplete="off" spellcheck="false">
 
+      <div class="step">
+        <span class="step-number">3.</span>
+        <label for="deps-vpc-id">AWS VPC ID (for MySQL):</label>
+      </div>
+      <input type="text" id="deps-vpc-id" placeholder="vpc-0267a31d52ec74398" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">4.</span>
+        <label for="deps-subnet-ids">AWS Subnet IDs (comma-separated):</label>
+      </div>
+      <input type="text" id="deps-subnet-ids" placeholder="subnet-abc123,subnet-def456" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">5.</span>
+        <label for="deps-db-password">Database password:</label>
+      </div>
+      <input type="password" id="deps-db-password" placeholder="Enter database password" autocomplete="off" spellcheck="false">
+
       <button id="deps-submit" class="btn btn-primary btn-block">Save recipe parameters</button>
       <button id="deps-skip" class="btn btn-outline btn-block" style="margin-top: 8px;">Skip — finish without recipe parameters</button>
     </div>

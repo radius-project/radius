@@ -42,6 +42,9 @@ export interface SaveDependenciesRequest {
   kubernetesCluster?: string;
   kubernetesNamespace?: string;
   appImage?: string;
+  vpcId?: string;
+  subnetIds?: string;
+  dbPassword?: string;
 }
 
 export interface DependenciesResponse {

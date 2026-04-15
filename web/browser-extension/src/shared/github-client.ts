@@ -224,18 +224,31 @@ export class GitHubClient {
 
   async saveDependencies(
     owner: string, repo: string, envName: string,
-    deps: { cluster?: string; namespace?: string; appImage?: string },
+    deps: { cluster?: string; namespace?: string; appImage?: string; vpcId?: string; subnetIds?: string; dbPassword?: string },
   ): Promise<string[]> {
     const vars: Record<string, string> = {};
     if (deps.cluster) vars['RADIUS_K8S_CLUSTER'] = deps.cluster;
     if (deps.namespace) vars['RADIUS_K8S_NAMESPACE'] = deps.namespace;
     if (deps.appImage) vars['RADIUS_APP_IMAGE'] = deps.appImage;
+    if (deps.vpcId) vars['RADIUS_VPC_ID'] = deps.vpcId;
+    if (deps.subnetIds) {
+      // Convert comma-separated input to JSON array format: ["subnet-a","subnet-b"]
+      const ids = deps.subnetIds.split(',').map((s) => s.trim()).filter(Boolean);
+      vars['RADIUS_SUBNET_IDS'] = JSON.stringify(ids);
+    }
 
     const set: string[] = [];
     for (const [key, value] of Object.entries(vars)) {
       await this.setVariable(owner, repo, envName, key, value);
       set.push(key);
     }
+
+    // Store password as a secret, not a variable.
+    if (deps.dbPassword) {
+      await this.setSecret(owner, repo, envName, 'RADIUS_DB_PASSWORD', deps.dbPassword);
+      set.push('RADIUS_DB_PASSWORD');
+    }
+
     return set;
   }
 
@@ -600,40 +613,36 @@ function utf8ToBase64(str: string): string {
 // --- NaCl sealed box encryption for GitHub Secrets API ---
 
 async function encryptSecret(publicKeyB64: string, secret: string): Promise<string> {
-  // Decode the public key.
-  const publicKeyBytes = Uint8Array.from(atob(publicKeyB64), (c) => c.charCodeAt(0));
-  if (publicKeyBytes.length !== 32) {
-    throw new Error(`Public key must be 32 bytes, got ${publicKeyBytes.length}`);
-  }
-
-  // Use libsodium-wrappers for proper sealed box encryption.
-  // tweetnacl doesn't support sealed box natively, and the nonce derivation
-  // requires blake2b which tweetnacl doesn't include.
-  // Instead, use tweetnacl with the approach GitHub recommends:
-  // https://docs.github.com/en/rest/actions/secrets#create-or-update-a-repository-secret
+  // Pure JS sealed box: tweetnacl (box encryption) + blakejs (BLAKE2b nonce).
+  // This matches libsodium's crypto_box_seal without requiring WebAssembly.
   const nacl = await import('tweetnacl');
-  const encoder = new TextEncoder();
-  const messageBytes = encoder.encode(secret);
+  const blake = await import('blakejs');
 
-  // Generate an ephemeral keypair for the sealed box.
+  const publicKeyBytes = Uint8Array.from(atob(publicKeyB64), (c) => c.charCodeAt(0));
+  const messageBytes = new TextEncoder().encode(secret);
+
+  // Generate ephemeral keypair.
   const ephemeralKeys = nacl.default.box.keyPair();
 
-  // Derive nonce from ephemeral public key + recipient public key (first 24 bytes).
+  // Derive nonce using BLAKE2b(ephemeral_pk || recipient_pk, 24 bytes).
   // This matches libsodium's crypto_box_seal nonce derivation.
   const nonceInput = new Uint8Array(64);
   nonceInput.set(ephemeralKeys.publicKey, 0);
   nonceInput.set(publicKeyBytes, 32);
-  const nonceHash = await crypto.subtle.digest('SHA-512', nonceInput);
-  const nonce = new Uint8Array(nonceHash).slice(0, 24);
+  const nonce = blake.default.blake2b(nonceInput, undefined, 24);
 
   const encrypted = nacl.default.box(messageBytes, nonce, publicKeyBytes, ephemeralKeys.secretKey);
 
-  // Sealed box format: ephemeral_pk (32) + ciphertext (with MAC)
+  // Sealed box format: ephemeral_pk (32) + ciphertext (with MAC).
   const sealed = new Uint8Array(32 + encrypted.length);
   sealed.set(ephemeralKeys.publicKey, 0);
   sealed.set(encrypted, 32);
 
-  return btoa(String.fromCharCode(...sealed));
+  let binary = '';
+  for (const b of sealed) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary);
 }
 
 // --- Static workflow templates ---
@@ -1051,7 +1060,7 @@ jobs:
       - name: Register resource types from resource-types-contrib
         run: |
           REPO_RAW="https://raw.githubusercontent.com/radius-project/resource-types-contrib/\${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
-          TYPES="Compute/containerImages/containerImages.yaml Compute/containers/containers.yaml Compute/persistentVolumes/persistentVolumes.yaml Compute/routes/routes.yaml Data/postgreSqlDatabases/postgreSqlDatabases.yaml Security/secrets/secrets.yaml"
+          TYPES="Compute/containerImages/containerImages.yaml Compute/containers/containers.yaml Compute/persistentVolumes/persistentVolumes.yaml Compute/routes/routes.yaml Data/postgreSqlDatabases/postgreSqlDatabases.yaml Data/mySqlDatabases/mySqlDatabases.yaml Security/secrets/secrets.yaml"
           for TYPE_YAML in $TYPES; do
             echo "Registering $TYPE_YAML..."
             curl -fsSL "$REPO_RAW/$TYPE_YAML" -o /tmp/type.yaml
@@ -1097,9 +1106,17 @@ jobs:
 
           rad recipe register default \
             --environment "$ENVIRONMENT" \
-            --resource-type Radius.Security/secrets \
+            --resource-type Radius.Data/mySqlDatabases \
             --template-kind terraform \
-            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF"
+            --template-path "git::https://github.com/Reshrahim/terraform.git//aws/mysql" \
+            --parameters vpcId="\${{ vars.RADIUS_VPC_ID }}" \
+            --parameters subnetIds="\${{ vars.RADIUS_SUBNET_IDS }}"
+
+          rad recipe register default \
+            --environment "$ENVIRONMENT" \
+            --resource-type Radius.Security/secrets \
+            --template-kind bicep \
+            --template-path "ghcr.io/reshrahim/recipes/secrets:1.0"
 
       - name: Pre-create app namespace on target cluster
         run: |
@@ -1138,6 +1155,9 @@ jobs:
           DEPLOY_PARAMS=""
           if [ -n "$APP_IMAGE" ]; then
             DEPLOY_PARAMS="--parameters image=$APP_IMAGE"
+          fi
+          if [ -n "\${{ secrets.RADIUS_DB_PASSWORD }}" ]; then
+            DEPLOY_PARAMS="$DEPLOY_PARAMS --parameters password=\${{ secrets.RADIUS_DB_PASSWORD }}"
           fi
           rad deploy "$APP_FILE" --environment "$ENVIRONMENT" $DEPLOY_PARAMS
           echo ""

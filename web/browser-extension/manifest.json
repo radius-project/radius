@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Deploy with Radius",
+  "name": "Github Radius",
   "version": "0.1.0",
-  "description": "Add cloud deployment environments to GitHub repositories using Radius. Configure AWS and Azure OIDC credentials directly from GitHub.",
+  "description": "Adds Radius Deploy button to GitHub repositories for defining and deploying applications",
   "permissions": [
     "storage",
     "activeTab",
