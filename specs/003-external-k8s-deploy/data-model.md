@@ -108,17 +108,6 @@ type ProvidersKubernetes_v20250801preview struct {
 
 ### Internal Data Model — environment.go
 
-```go
-type ProvidersKubernetes struct {
-    Namespace   string `json:"namespace"`
-    Target      string `json:"target,omitempty"`
-    ClusterType string `json:"clusterType,omitempty"`
-    ClusterName string `json:"clusterName,omitempty"`
-}
-```
-
-### recipes.Configuration Extension
-
 The `Providers` struct in `pkg/corerp/datamodel/environment.go` needs a Kubernetes field:
 
 ```go
@@ -128,6 +117,18 @@ type Providers struct {
     Kubernetes ProvidersKubernetes `json:"kubernetes"` // NEW
 }
 ```
+
+```go
+type ProvidersKubernetes struct {
+    Namespace   string `json:"namespace"`
+    Target      string `json:"target,omitempty"`
+    ClusterType string `json:"clusterType,omitempty"`
+    ClusterName string `json:"clusterName,omitempty"`
+}
+```
+
+
+### recipes.Configuration Extension
 
 And `recipes.Configuration` in `pkg/recipes/types.go` — the `RuntimeConfiguration` already carries `Kubernetes.Namespace`. The external cluster info flows through `Configuration.Providers.Kubernetes`.
 

@@ -25,12 +25,12 @@ rad credential register aws access-key \
 
 ```bash
 rad env create my-eks-env \
-  --namespace my-app \
   --aws-account-id 123456789012 \
   --aws-region us-west-2 \
   --kubernetes-target external \
   --kubernetes-cluster-type eks \
-  --kubernetes-cluster-name my-eks-cluster
+  --kubernetes-cluster-name my-eks-cluster \
+  --kubernetes-namespace my-app 
 ```
 
 Or via Bicep:
@@ -78,12 +78,12 @@ rad credential register azure sp \
 
 ```bash
 rad env create my-aks-env \
-  --namespace my-app \
   --azure-subscription-id $AZURE_SUBSCRIPTION_ID \
   --azure-resource-group my-rg \
   --kubernetes-target external \
   --kubernetes-cluster-type aks \
-  --kubernetes-cluster-name my-aks-cluster
+  --kubernetes-cluster-name my-aks-cluster \
+  --kubernetes-namespace my-app
 ```
 
 Or via Bicep:
