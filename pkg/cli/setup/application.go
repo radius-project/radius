@@ -56,6 +56,8 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 	},
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
+		"radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:%s",
+		"radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:%s",
 		"aws": "br:biceptypes.azurecr.io/aws:%s"
 	}
 }`
@@ -114,5 +116,5 @@ func getVersionedBicepConfig() string {
 		tag = "latest"
 	}
 
-	return fmt.Sprintf(bicepConfigTemplate, tag, tag)
+	return fmt.Sprintf(bicepConfigTemplate, tag, tag, tag, tag)
 }

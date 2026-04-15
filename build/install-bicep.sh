@@ -48,6 +48,8 @@ cat <<EOF > $OUTPUT_DIR/bicepconfig.json
   },
   "extensions": {
     "radius": "br:biceptypes.azurecr.io/radius:${REL_CHANNEL}",
+    "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:${REL_CHANNEL}",
+    "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:${REL_CHANNEL}",
     "aws": "br:biceptypes.azurecr.io/aws:${REL_CHANNEL}"
   }
 }
