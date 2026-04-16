@@ -127,8 +127,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           await setGitHubToken(token);
           hide('device-flow');
           const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('step') === 'copilot') {
+          const step = urlParams.get('step');
+          if (step === 'copilot') {
             handleCopilotStep();
+          } else if (step === 'env') {
+            const provider = urlParams.get('provider');
+            if (provider === 'azure') {
+              currentProvider = 'azure';
+            }
+            showStep2();
+          } else if (step === 'deploy') {
+            showDeployStep();
           } else {
             showStep1();
           }
@@ -443,11 +452,11 @@ function showStep2(): void {
       const templateURL = 'https://radius-cfn-templates.s3.amazonaws.com/github-oidc-role.yaml';
       const params = new URLSearchParams({
         templateURL,
-        stackName: 'radius-oidc',
+        stackName: `radius-oidc-${currentRepo.repo}`,
         'param_GitHubOrg': currentRepo.owner,
         'param_GitHubRepo': currentRepo.repo,
         'param_RoleName': 'radius-deploy',
-        'param_CreateOIDCProvider': 'true',
+        'param_CreateOIDCProvider': 'false',
       });
       cfnLink.href = `https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?${params.toString()}`;
     }
@@ -688,11 +697,8 @@ async function handleDeploy(): Promise<void> {
     return;
   }
 
-  const appFile = inputVal('deploy-app-file');
-  const appName = inputVal('deploy-app-name');
   const envName = inputVal('deploy-env-name');
 
-  if (!appFile) { showFinalError('Application file is required.'); return; }
   if (!envName) { showFinalError('Environment name is required.'); return; }
 
   showLoading('Preparing deploy workflow...');
@@ -703,8 +709,8 @@ async function handleDeploy(): Promise<void> {
 
     showLoading('Triggering deployment...');
 
-    // Trigger the deploy workflow with the app file and name.
-    await client.triggerDeploy(currentRepo.owner, currentRepo.repo, envName, appFile, appName);
+    // Trigger the deploy workflow.
+    await client.triggerDeploy(currentRepo.owner, currentRepo.repo, envName);
 
     showLoading('Deployment triggered — waiting for status...');
 
@@ -779,7 +785,10 @@ async function handleDeploy(): Promise<void> {
     // Give the workflow a moment to start.
     setTimeout(poll, 5000);
   } catch (err) {
-    showFinalError(`Failed to deploy: ${err instanceof Error ? err.message : String(err)}`);
+    showFinalError(
+      `Failed to deploy: ${err instanceof Error ? err.message : String(err)}`,
+      () => handleDeploy(),
+    );
   }
 }
 
@@ -820,7 +829,7 @@ function showVerifyError(message: string, workflowURL?: string): void {
   show('verify-section');
 }
 
-function showFinalError(message: string): void {
+function showFinalError(message: string, retryFn?: () => void): void {
   hideLoading();
   hideAllSections();
   show('wizard-steps');
@@ -828,7 +837,16 @@ function showFinalError(message: string): void {
   $('status-section').className = 'status-section status-failure';
   $('status-icon').textContent = '';
   $('status-message').textContent = 'Error';
-  $('status-details').textContent = message;
+  $('status-details').innerHTML = escapeHTML(message);
+  if (retryFn) {
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'btn btn-primary';
+    retryBtn.textContent = 'Retry';
+    retryBtn.style.marginTop = '12px';
+    retryBtn.addEventListener('click', retryFn);
+    $('status-details').appendChild(document.createElement('br'));
+    $('status-details').appendChild(retryBtn);
+  }
   show('status-section');
 }
 

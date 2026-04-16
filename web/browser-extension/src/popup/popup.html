@@ -283,18 +283,12 @@
 
       <div class="step">
         <span class="step-number">1.</span>
-        <label for="deploy-app-file">Application file:</label>
+        <label>Application file:</label>
       </div>
-      <input type="text" id="deploy-app-file" value="app.bicep" placeholder="app.bicep" autocomplete="off" spellcheck="false">
+      <input type="text" value=".radius/app.bicep" readonly disabled style="opacity: 0.7; cursor: default;">
 
       <div class="step">
         <span class="step-number">2.</span>
-        <label for="deploy-app-name">Application name:</label>
-      </div>
-      <input type="text" id="deploy-app-name" value="app" placeholder="app" autocomplete="off" spellcheck="false">
-
-      <div class="step">
-        <span class="step-number">3.</span>
         <label for="deploy-env-name">Environment name:</label>
       </div>
       <input type="text" id="deploy-env-name" value="dev" placeholder="dev" autocomplete="off" spellcheck="false">

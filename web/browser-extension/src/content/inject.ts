@@ -458,8 +458,10 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
           `;
         }
       }
+    } else if (!hasApp) {
+      // API call failed (no token / not signed in) — keep the default dropdown.
     }
-    // If no app exists, the default "Define an Application" dropdown stays.
+    // If hasApp.exists === false, the default "Define an Application" dropdown stays.
   } catch {
     // Extension context may not be available — that's okay.
   }

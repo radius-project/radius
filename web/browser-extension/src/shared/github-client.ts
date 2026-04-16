@@ -530,7 +530,7 @@ export class GitHubClient {
   // --- Deploy ---
 
   async triggerDeploy(
-    owner: string, repo: string, envName: string, appFile = 'app.bicep', appName = '',
+    owner: string, repo: string, envName: string,
   ): Promise<void> {
     const branch = await this.getDefaultBranch(owner, repo);
 
@@ -550,11 +550,6 @@ export class GitHubClient {
       await delay(3000);
     }
 
-    // Derive app name from filename if not provided.
-    if (!appName) {
-      appName = appFile.replace(/\.bicep$/, '').replace(/.*\//, '');
-    }
-
     // Retry — GitHub may need a moment to index the workflow.
     let lastErr: Error | null = null;
     for (let i = 0; i < 10; i++) {
@@ -564,7 +559,7 @@ export class GitHubClient {
           `/repos/${owner}/${repo}/actions/workflows/radius-deploy.yml/dispatches`,
           JSON.stringify({
             ref: branch,
-            inputs: { environment: envName, app_file: appFile, app_name: appName },
+            inputs: { environment: envName },
           }),
         );
         return;
@@ -835,8 +830,10 @@ on:
     branches: [main]
     paths:
       - 'app.bicep'
+      - '.radius/app.bicep'
       - 'bicepconfig.json'
       - '*.bicep'
+      - '.radius/*.bicep'
       - '.github/workflows/radius-deploy.yml'
   workflow_dispatch:
     inputs:
@@ -844,14 +841,6 @@ on:
         description: 'GitHub Environment name'
         required: true
         default: 'dev'
-      app_file:
-        description: 'Bicep application file to deploy'
-        required: true
-        default: 'app.bicep'
-      app_name:
-        description: 'Application name'
-        required: false
-        default: 'app'
       image:
         description: 'Container image for the application (e.g. ghcr.io/sk593/demo:latest)'
         required: false
@@ -864,8 +853,7 @@ permissions:
 
 env:
   ENVIRONMENT: \${{ inputs.environment || 'dev' }}
-  APP_FILE: \${{ inputs.app_file || 'app.bicep' }}
-  APP_NAME: \${{ inputs.app_name || 'app' }}
+  APP_FILE: .radius/app.bicep
   APP_IMAGE: \${{ inputs.image || vars.RADIUS_APP_IMAGE || '' }}
   RESOURCE_TYPES_CONTRIB_REPO: https://github.com/radius-project/resource-types-contrib.git
   RESOURCE_TYPES_CONTRIB_REF: main
@@ -1218,7 +1206,10 @@ jobs:
         run: |
           TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
           if [ -f "$TARGET_KUBECONFIG" ]; then
-            BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+            BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
+            if [ -z "$BICEP_APP_NAME" ]; then
+              BICEP_APP_NAME="app"
+            fi
             APP_NS="default-$BICEP_APP_NAME"
             echo "Ensuring namespace $APP_NS exists on target cluster..."
             kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$APP_NS" 2>/dev/null || \
@@ -1286,7 +1277,8 @@ jobs:
         if: always()
         run: |
           TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
-          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
+          if [ -z "$BICEP_APP_NAME" ]; then BICEP_APP_NAME="app"; fi
           APP_NS="default-$BICEP_APP_NAME"
           if [ -f "$TARGET_KUBECONFIG" ]; then
             echo "=== Secrets in $APP_NS namespace ==="
@@ -1306,7 +1298,8 @@ jobs:
         if: always()
         run: |
           TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
-          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
+          if [ -z "$BICEP_APP_NAME" ]; then BICEP_APP_NAME="app"; fi
           APP_NS="default-$BICEP_APP_NAME"
           echo "=== All resources on EKS ($APP_NS) ==="
           if [ -f "$TARGET_KUBECONFIG" ]; then
@@ -1356,9 +1349,9 @@ name: Build Application Graph
 on:
   push:
     branches: [main]
-    paths: [app.bicep]
+    paths: [.radius/app.bicep]
   pull_request:
-    paths: [app.bicep]
+    paths: [.radius/app.bicep]
 
 permissions:
   contents: write
@@ -1367,7 +1360,7 @@ jobs:
   build-graph:
     uses: radius-project/radius/.github/workflows/__build-app-graph.yml@brooke-hamilton/merge-oidc-branch
     with:
-      app_file: app.bicep
+      app_file: .radius/app.bicep
       orphan_branch: radius-graph
       workflow_source_ref: brooke-hamilton/merge-oidc-branch
 `;
