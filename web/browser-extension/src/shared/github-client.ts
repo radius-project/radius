@@ -993,7 +993,7 @@ jobs:
           kubectl exec -n radius-system "$POD" -c dynamic-rp -- ls /app/demo/Dockerfile
 
           # Create a Docker config secret for GHCR authentication so Terraform's Docker provider can push images.
-          DOCKER_CONFIG_JSON=$(echo -n '{"auths":{"ghcr.io":{"auth":"'$(echo -n "token:\${{ secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}')
+          DOCKER_CONFIG_JSON=$(echo -n '{"auths":{"ghcr.io":{"auth":"'$(echo -n "\${{ github.actor }}:\${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}')
           kubectl create secret generic docker-config -n radius-system --from-literal=config.json="$DOCKER_CONFIG_JSON" --dry-run=client -o yaml | kubectl apply -f -
 
           # Mount a writable emptyDir at /root/.docker and use an init container to copy
