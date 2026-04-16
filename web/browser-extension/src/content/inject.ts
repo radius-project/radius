@@ -14,7 +14,7 @@ import { initAppPage } from './app-page.js';
 
 // URL for the Radius app modeling skill used by the "Define with Copilot" option.
 const COPILOT_SKILL_URL =
-  'https://raw.githubusercontent.com/radius-project/radius/main/.github/skills/app-modeling/SKILL.md';
+  'https://raw.githubusercontent.com/kachawla/radius/demo/.github/skills/app-modeling/SKILL.md';
 
 function buildCopilotUrl(owner: string, repo: string): string {
   const prompt = `Create an application definition.\n\nRead ${COPILOT_SKILL_URL}`;
