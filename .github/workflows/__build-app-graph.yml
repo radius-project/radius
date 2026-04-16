@@ -98,6 +98,11 @@ jobs:
           fi
           "$RUNNER_TEMP/radius-bicep/bicep" --help >/dev/null
 
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
       - name: Build static graph
         run: |
           SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
