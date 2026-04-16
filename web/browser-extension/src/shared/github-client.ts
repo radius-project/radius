@@ -1286,9 +1286,9 @@ permissions:
 
 jobs:
   build-graph:
-    uses: radius-project/radius/.github/workflows/__build-app-graph.yml@github-demo
+    uses: radius-project/radius/.github/workflows/__build-app-graph.yml@brooke-hamilton/merge-oidc-branch
     with:
       app_file: app.bicep
       orphan_branch: radius-graph
-      workflow_source_ref: github-demo
+      workflow_source_ref: brooke-hamilton/merge-oidc-branch
 `;
