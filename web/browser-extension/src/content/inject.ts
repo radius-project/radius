@@ -195,12 +195,13 @@ function injectRadiusButton(): boolean {
     const action = target.dataset.action;
     try {
       if (action === 'define-app-copilot') {
+        window.open(buildCopilotUrl(owner, repo), '_blank');
+        // Commit workflows in the background.
         if (chrome?.runtime?.id) {
           chrome.runtime.sendMessage({
-            type: 'OPEN_TAB',
+            type: 'COMMIT_WORKFLOWS',
             owner,
             repo,
-            step: 'copilot',
           }).catch(() => {});
         }
         return;
@@ -272,10 +273,14 @@ async function injectApplicationsSidebar(owner: string, repo: string): Promise<v
 
   const token = await getGitHubToken();
   const graphAPI = new GraphGitHubAPI(token || null);
-  const hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
+  let hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
+  let appFile = 'app.bicep';
+  if (!hasAppFile) {
+    hasAppFile = await graphAPI.checkFileExists(owner, repo, '.radius/app.bicep');
+    appFile = '.radius/app.bicep';
+  }
   if (!hasAppFile) return;
 
-  const appFile = 'app.bicep';
   const appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
   const modeledAppURL = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/radius/app/${encodeURIComponent(appName)}`;
 

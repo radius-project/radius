@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // --- Step navigation ---
 
 const COPILOT_SKILL_URL =
-  'https://raw.githubusercontent.com/radius-project/radius/main/.github/skills/app-modeling/SKILL.md';
+  'https://raw.githubusercontent.com/kachawla/radius/demo/.github/skills/app-modeling/SKILL.md';
 
 async function handleCopilotStep(): Promise<void> {
   if (!currentRepo) {

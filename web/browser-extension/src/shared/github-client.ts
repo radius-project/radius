@@ -314,49 +314,103 @@ export class GitHubClient {
   async commitAllWorkflows(owner: string, repo: string): Promise<void> {
     const branch = await this.getDefaultBranch(owner, repo);
 
+    const files: Array<{ path: string; content: string }> = [];
+
     const verifyContent = await this.getFileContent(
       owner, repo, '.github/workflows/radius-verify-credentials.yml', branch,
     );
+    if (verifyContent !== VERIFY_WORKFLOW) {
+      files.push({ path: '.github/workflows/radius-verify-credentials.yml', content: VERIFY_WORKFLOW });
+    }
+
     const deployContent = await this.getFileContent(
       owner, repo, '.github/workflows/radius-deploy.yml', branch,
     );
-
-    // Only commit workflows that are missing or have changed.
-    if (verifyContent !== VERIFY_WORKFLOW) {
-      await this.commitFile(
-        owner, repo,
-        '.github/workflows/radius-verify-credentials.yml',
-        verifyContent === null
-          ? 'radius: add verification and deploy workflows'
-          : 'radius: update verification workflow',
-        VERIFY_WORKFLOW, branch,
-      );
-    }
-
     if (deployContent !== DEPLOY_WORKFLOW) {
-      await this.commitFile(
-        owner, repo,
-        '.github/workflows/radius-deploy.yml',
-        deployContent === null
-          ? 'radius: add verification and deploy workflows'
-          : 'radius: update deploy workflow',
-        DEPLOY_WORKFLOW, branch,
-      );
+      files.push({ path: '.github/workflows/radius-deploy.yml', content: DEPLOY_WORKFLOW });
     }
 
     const graphContent = await this.getFileContent(
       owner, repo, '.github/workflows/build-app-graph.yml', branch,
     );
     if (graphContent !== BUILD_GRAPH_WORKFLOW) {
-      await this.commitFile(
-        owner, repo,
-        '.github/workflows/build-app-graph.yml',
-        graphContent === null
-          ? 'radius: add app graph workflow'
-          : 'radius: update app graph workflow',
-        BUILD_GRAPH_WORKFLOW, branch,
-      );
+      files.push({ path: '.github/workflows/build-app-graph.yml', content: BUILD_GRAPH_WORKFLOW });
     }
+
+    if (files.length === 0) return;
+
+    // Commit all changed workflows in a single commit using the Git Trees API.
+    await this.commitMultipleFiles(owner, repo, branch, 'radius: add/update workflows', files);
+  }
+
+  private async commitMultipleFiles(
+    owner: string, repo: string, branch: string,
+    message: string, files: Array<{ path: string; content: string }>,
+  ): Promise<void> {
+    // Get the current commit SHA for the branch.
+    const refData = await this.get<{ object: { sha: string } }>(
+      `/repos/${owner}/${repo}/git/ref/heads/${branch}`,
+    );
+    const baseCommitSha = refData.object.sha;
+
+    // Get the tree SHA of the base commit.
+    const commitData = await this.get<{ tree: { sha: string } }>(
+      `/repos/${owner}/${repo}/git/commits/${baseCommitSha}`,
+    );
+    const baseTreeSha = commitData.tree.sha;
+
+    // Create blobs for each file.
+    const treeItems = [];
+    for (const file of files) {
+      const blobData = await this.get<{ sha: string }>(
+        `/repos/${owner}/${repo}/git/blobs`,
+      ).catch(() => null);
+
+      // Create blob via POST.
+      const blobResp = await this.rawRequest(
+        'POST',
+        `/repos/${owner}/${repo}/git/blobs`,
+        JSON.stringify({ content: file.content, encoding: 'utf-8' }),
+      );
+      if (!blobResp.ok) throw new GitHubAPIError(blobResp.status, await blobResp.text());
+      const blob = await blobResp.json() as { sha: string };
+
+      treeItems.push({
+        path: file.path,
+        mode: '100644',
+        type: 'blob',
+        sha: blob.sha,
+      });
+    }
+
+    // Create a new tree.
+    const treeResp = await this.rawRequest(
+      'POST',
+      `/repos/${owner}/${repo}/git/trees`,
+      JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+    );
+    if (!treeResp.ok) throw new GitHubAPIError(treeResp.status, await treeResp.text());
+    const newTree = await treeResp.json() as { sha: string };
+
+    // Create a new commit.
+    const commitResp = await this.rawRequest(
+      'POST',
+      `/repos/${owner}/${repo}/git/commits`,
+      JSON.stringify({
+        message,
+        tree: newTree.sha,
+        parents: [baseCommitSha],
+      }),
+    );
+    if (!commitResp.ok) throw new GitHubAPIError(commitResp.status, await commitResp.text());
+    const newCommit = await commitResp.json() as { sha: string };
+
+    // Update the branch ref.
+    await this.request(
+      'PATCH',
+      `/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+      JSON.stringify({ sha: newCommit.sha }),
+    );
   }
 
   // --- Application file ---
@@ -385,8 +439,15 @@ export class GitHubClient {
     owner: string, repo: string, filename = 'app.bicep',
   ): Promise<{ filename: string; exists: boolean }> {
     const branch = await this.getDefaultBranch(owner, repo);
-    const exists = await this.fileExists(owner, repo, filename, branch);
-    return { filename, exists };
+    // Check root first, then .radius/ folder.
+    if (await this.fileExists(owner, repo, filename, branch)) {
+      return { filename, exists: true };
+    }
+    const radiusPath = `.radius/${filename}`;
+    if (await this.fileExists(owner, repo, radiusPath, branch)) {
+      return { filename: radiusPath, exists: true };
+    }
+    return { filename, exists: false };
   }
 
   // --- Verification ---
