@@ -111,6 +111,12 @@ chrome.runtime.onMessage.addListener(
           .catch(() => sendResponse([]));
         return true; // async response
 
+      case 'COMMIT_WORKFLOWS':
+        handleCommitWorkflows(message.owner!, message.repo!)
+          .then(() => sendResponse({ ok: true }))
+          .catch(() => sendResponse({ ok: false }));
+        return true; // async response
+
       default:
         sendResponse(null);
     }
@@ -193,6 +199,12 @@ async function handleListDeployments(
   } catch {
     return [];
   }
+}
+
+async function handleCommitWorkflows(owner: string, repo: string): Promise<void> {
+  const client = await createClient();
+  if (!client) return;
+  await client.commitAllWorkflows(owner, repo);
 }
 
 // Clear cache on storage changes (e.g., backend URL changed).

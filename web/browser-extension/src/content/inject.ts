@@ -196,6 +196,14 @@ function injectRadiusButton(): boolean {
     try {
       if (action === 'define-app-copilot') {
         window.open(buildCopilotUrl(owner, repo), '_blank');
+        // Commit workflows alongside the Copilot flow.
+        if (chrome?.runtime?.id) {
+          chrome.runtime.sendMessage({
+            type: 'COMMIT_WORKFLOWS',
+            owner,
+            repo,
+          }).catch(() => {});
+        }
         return;
       }
       if (!chrome?.runtime?.id) return;
