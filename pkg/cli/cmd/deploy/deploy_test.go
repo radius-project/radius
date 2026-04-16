@@ -1679,6 +1679,27 @@ func Test_addDeploymentErrorContext(t *testing.T) {
 			expectWrapped:  true,
 			expectContains: unsupportedAPIDocsURL,
 		},
+		{
+			name: "Response error with non-Azure provider-not-configured payload is returned as-is",
+			err: &azcore.ResponseError{
+				ErrorCode:  v1.CodeInvalid,
+				StatusCode: http.StatusBadRequest,
+				RawResponse: &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body: io.NopCloser(bytes.NewReader([]byte(
+						`{"error":{"code":"BadRequest","message":"provider kubernetes is not configured. Cannot support resource type applications.core/containers"}}`,
+					))),
+				},
+			},
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
 	}
 
 	for _, tt := range tests {
