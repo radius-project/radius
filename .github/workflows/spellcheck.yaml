@@ -83,7 +83,7 @@ jobs:
 
       - name: Post GitHub comment on failure
         if: failure()
-        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: spellcheck
           recreate: true
@@ -94,7 +94,7 @@ jobs:
             You can add new custom words to [.cspellignore](https://github.com/radius-project/radius/blob/main/.cspellignore).
 
       - name: Clear GitHub comment on success
-        uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         continue-on-error: true
         with:
           header: spellcheck
