@@ -55,6 +55,22 @@ func Test_Validate(t *testing.T) {
 				r := runner.(*Runner)
 				require.Equal(t, "testingenv", r.EnvironmentName)
 				require.Equal(t, "test-resource-group", r.ResourceGroupName)
+				require.Equal(t, "testingenv", r.Namespace)
+			},
+		},
+		{
+			Name:          "Create command with explicit namespace",
+			Input:         []string{"testingenv", "--kubernetes-namespace", "my-namespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "my-namespace", r.Namespace)
 			},
 		},
 		{
@@ -163,6 +179,7 @@ func Test_Run(t *testing.T) {
 			Workspace:               workspace,
 			EnvironmentName:         "testenv",
 			ResourceGroupName:       "test-resource-group",
+			Namespace:               "testenv",
 		}
 
 		expectedOutput := []any{
