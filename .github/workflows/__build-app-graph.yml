@@ -36,6 +36,11 @@ on:
         required: false
         type: string
         default: "main"
+      workflow_source_repo:
+        description: "Repository to checkout workflow source from (default: radius-project/radius)"
+        required: false
+        type: string
+        default: "radius-project/radius"
 
 concurrency:
   group: build-app-graph-${{ github.ref }}
@@ -53,7 +58,7 @@ jobs:
       - name: Checkout Radius workflow source
         uses: actions/checkout@v4
         with:
-          repository: radius-project/radius
+          repository: ${{ inputs.workflow_source_repo }}
           ref: ${{ inputs.workflow_source_ref }}
           path: .radius-workflow-src
 
