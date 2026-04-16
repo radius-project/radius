@@ -437,6 +437,20 @@ function showStep2(): void {
   $('page-title').textContent = 'Setup with Radius';
   if (currentProvider === 'aws') {
     show('aws-form');
+    // Populate the CloudFormation quick-create link with repo context.
+    if (currentRepo) {
+      const cfnLink = $('aws-cfn-link') as HTMLAnchorElement;
+      const templateURL = 'https://radius-cfn-templates.s3.amazonaws.com/github-oidc-role.yaml';
+      const params = new URLSearchParams({
+        templateURL,
+        stackName: 'radius-oidc',
+        'param_GitHubOrg': currentRepo.owner,
+        'param_GitHubRepo': currentRepo.repo,
+        'param_RoleName': 'radius-deploy',
+        'param_CreateOIDCProvider': 'true',
+      });
+      cfnLink.href = `https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?${params.toString()}`;
+    }
   } else {
     show('azure-form');
   }

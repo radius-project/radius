@@ -124,7 +124,7 @@
         <span class="step-number">1.</span>
         <span>If you have not already done so for this repository, use the GitHub Radius CloudFormation template to add GitHub as a trusted OIDC Identity Provider and create an IAM role.</span>
       </div>
-      <a href="https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?templateURL=https://radius-cfn-templates.s3.amazonaws.com/github-oidc-role.yaml" target="_blank" rel="noopener noreferrer" class="btn btn-outline create-link">
+      <a id="aws-cfn-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline create-link">
         Create trusted OIDC identity provider and IAM role
       </a>
 
@@ -248,9 +248,9 @@
 
       <div class="step">
         <span class="step-number">2.</span>
-        <label for="deps-app-image">Application image:</label>
+        <label for="deps-app-image">OCI registry:</label>
       </div>
-      <input type="text" id="deps-app-image" placeholder="ghcr.io/myorg/myapp:latest" autocomplete="off" spellcheck="false">
+      <input type="text" id="deps-app-image" placeholder="ghcr.io/myorg" autocomplete="off" spellcheck="false">
 
       <div class="step">
         <span class="step-number">3.</span>

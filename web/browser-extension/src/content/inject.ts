@@ -169,7 +169,7 @@ function injectRadiusButton(): boolean {
   // Initial state: prompt to define an application.
   dropdown.innerHTML = `
     <div class="radius-dropdown-hint">An application definition must be created prior to deploying.</div>
-    <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define with Copilot</button>
+    <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define an Application</button>
   `;
 
   btn.addEventListener('click', (e) => {
@@ -442,7 +442,7 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
           dropdown.innerHTML = `
             <button class="radius-dropdown-item radius-dropdown-deploy" data-action="deploy-app">▶ Deploy Application</button>
             <hr class="radius-dropdown-divider">
-            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define with Copilot</button>
+            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define an Application</button>
             <button class="radius-dropdown-item" data-action="create-env-aws">+ Create AWS environment</button>
             <button class="radius-dropdown-item" data-action="create-env-azure">+ Create Azure environment</button>
           `;
@@ -452,7 +452,7 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
         if (dropdown) {
           dropdown.innerHTML = `
             <div class="radius-dropdown-hint">You must connect to a cloud platform prior to deploying.</div>
-            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define with Copilot</button>
+            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define an Application</button>
             <button class="radius-dropdown-item" data-action="create-env-aws">+ Create AWS environment</button>
             <button class="radius-dropdown-item" data-action="create-env-azure">+ Create Azure environment</button>
           `;

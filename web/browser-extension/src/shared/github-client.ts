@@ -952,7 +952,7 @@ jobs:
 
       - name: Install Radius CLI
         run: |
-          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | /bin/bash
+          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | /bin/bash -s edge
           rad version
 
       - name: Install Terraform
@@ -1149,6 +1149,22 @@ jobs:
             --aws-region "\${{ vars.AWS_REGION }}" \
             --aws-account-id "\${{ vars.AWS_ACCOUNT_ID }}"
 
+      - name: Clone resource-types-contrib and register resource types
+        run: |
+          git clone --depth 1 --branch "\${{ env.RESOURCE_TYPES_CONTRIB_REF }}" "\${{ env.RESOURCE_TYPES_CONTRIB_REPO }}" /tmp/resource-types-contrib
+          for TYPE_YAML in \\
+            Compute/containerImages/containerImages.yaml \\
+            Data/mySqlDatabases/mySqlDatabases.yaml; do
+            if [ -f "/tmp/resource-types-contrib/$TYPE_YAML" ]; then
+              echo "Registering $TYPE_YAML..."
+              rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML" || \\
+                (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML")
+            else
+              echo "Skipping $TYPE_YAML (not found)"
+            fi
+          done
+          echo "✅ Resource types registered"
+
       - name: Register terraform recipes from resource-types-contrib
         run: |
           REPO="\${{ env.RESOURCE_TYPES_CONTRIB_REPO }}"
@@ -1213,13 +1229,15 @@ jobs:
         run: |
           cat > bicepconfig.json << 'EOF'
           {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true
+            },
             "extensions": {
               "radius": "br:biceptypes.azurecr.io/radius:latest",
-              "aws": "br:biceptypes.azurecr.io/aws:latest",
-              "secrets": "./secrets-extension.tgz",
-              "containerImages": "./containerImages-extension.tgz",
-              "containers": "./containers-extension.tgz",
-              "mySqlDatabases": "./mySqlDatabases-extension.tgz"
+              "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:latest",
+              "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
+              "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
+              "aws": "br:biceptypes.azurecr.io/aws:latest"
             }
           }
           EOF
