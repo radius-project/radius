@@ -155,6 +155,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       showStep2();
     } else if (requestedStep === 'deploy') {
       showDeployStep();
+    } else if (requestedStep === 'copilot') {
+      // Commit workflows then open Copilot.
+      handleCopilotStep();
     } else {
       showStep1();
     }
@@ -365,6 +368,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
 // --- Step navigation ---
+
+const COPILOT_SKILL_URL =
+  'https://raw.githubusercontent.com/radius-project/radius/main/.github/skills/app-modeling/SKILL.md';
+
+async function handleCopilotStep(): Promise<void> {
+  if (!currentRepo) {
+    showStep1();
+    return;
+  }
+  showLoading('Committing workflows and opening Copilot...');
+  try {
+    const client = await createClient();
+    if (!client) {
+      hideLoading();
+      showStep1();
+      return;
+    }
+    await client.commitAllWorkflows(currentRepo.owner, currentRepo.repo);
+    const prompt = `Create an application definition.\n\nRead ${COPILOT_SKILL_URL}`;
+    const copilotUrl = `https://github.com/copilot?repo=${encodeURIComponent(currentRepo.owner + '/' + currentRepo.repo)}&prompt=${encodeURIComponent(prompt)}`;
+    window.open(copilotUrl, '_blank');
+    hideLoading();
+    hideAllSections();
+    $('page-title').textContent = 'Setup with Radius';
+    $('status-section').className = 'status-section status-success';
+    $('status-icon').textContent = '';
+    $('status-message').textContent = 'Copilot opened';
+    $('status-details').textContent = 'Workflows committed and Copilot opened in a new tab. Define your application there, then come back to create an environment.';
+    show('status-section');
+  } catch (err) {
+    hideLoading();
+    showVerifyError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
 
 function showStep1(): void {
   hideAllSections();
