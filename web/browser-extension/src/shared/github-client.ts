@@ -1133,7 +1133,7 @@ jobs:
             --environment "$ENVIRONMENT" \
             --resource-type Radius.Security/secrets \
             --template-kind terraform \
-            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF"
+            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=update-secrets"
 
       - name: Verify app namespace on target cluster
         run: |

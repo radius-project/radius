@@ -88,6 +88,19 @@ export async function initPRGraph(owner: string, repo: string, pullNumber: numbe
       return;
     }
 
+    // If the head artifact is missing but base exists, the PR branch CI
+    // hasn't finished yet.  Without the head graph every base resource would
+    // be classified as "removed", which is misleading.  Show a waiting
+    // message instead.
+    if (!headArtifact && baseArtifact) {
+      wrapper.innerHTML = `
+        <div class="radius-graph-message">
+          Application graph for the PR branch is not yet available — waiting for CI to build.
+        </div>
+      `;
+      return;
+    }
+
     // Compute diff between base and head graphs.
     const baseGraph = baseArtifact?.application ?? null;
     const headGraph = headArtifact?.application ?? null;

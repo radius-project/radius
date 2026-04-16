@@ -12,6 +12,15 @@ import { initAppPage } from './app-page.js';
 
 // ── Page Detection ────────────────────────────────────────────
 
+// URL for the Radius app modeling skill used by the "Define with Copilot" option.
+const COPILOT_SKILL_URL =
+  'https://raw.githubusercontent.com/radius-project/radius/main/.github/skills/app-modeling/SKILL.md';
+
+function buildCopilotUrl(owner: string, repo: string): string {
+  const prompt = `Create an application definition.\n\nRead ${COPILOT_SKILL_URL}`;
+  return `https://github.com/copilot?repo=${encodeURIComponent(owner + '/' + repo)}&prompt=${encodeURIComponent(prompt)}`;
+}
+
 interface PageInfo {
   type: 'pr' | 'repo-root' | 'app-page' | 'other';
   owner: string;
@@ -160,7 +169,7 @@ function injectRadiusButton(): boolean {
   // Initial state: prompt to define an application.
   dropdown.innerHTML = `
     <div class="radius-dropdown-hint">An application definition must be created prior to deploying.</div>
-    <button class="radius-dropdown-item" data-action="define-app">+ Define an Application</button>
+    <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define with Copilot</button>
   `;
 
   btn.addEventListener('click', (e) => {
@@ -185,6 +194,10 @@ function injectRadiusButton(): boolean {
 
     const action = target.dataset.action;
     try {
+      if (action === 'define-app-copilot') {
+        window.open(buildCopilotUrl(owner, repo), '_blank');
+        return;
+      }
       if (!chrome?.runtime?.id) return;
       if (action === 'define-app') {
         chrome.runtime.sendMessage({
@@ -417,7 +430,7 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
           dropdown.innerHTML = `
             <button class="radius-dropdown-item radius-dropdown-deploy" data-action="deploy-app">▶ Deploy Application</button>
             <hr class="radius-dropdown-divider">
-            <button class="radius-dropdown-item" data-action="define-app">+ Define an Application</button>
+            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define with Copilot</button>
             <button class="radius-dropdown-item" data-action="create-env-aws">+ Create AWS environment</button>
             <button class="radius-dropdown-item" data-action="create-env-azure">+ Create Azure environment</button>
           `;
@@ -427,7 +440,7 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
         if (dropdown) {
           dropdown.innerHTML = `
             <div class="radius-dropdown-hint">You must connect to a cloud platform prior to deploying.</div>
-            <button class="radius-dropdown-item" data-action="define-app">+ Define an Application</button>
+            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define with Copilot</button>
             <button class="radius-dropdown-item" data-action="create-env-aws">+ Create AWS environment</button>
             <button class="radius-dropdown-item" data-action="create-env-azure">+ Create Azure environment</button>
           `;
