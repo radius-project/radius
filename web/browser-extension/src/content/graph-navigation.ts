@@ -108,6 +108,15 @@ export async function showGraphPopup(
   });
   popup.appendChild(closeBtn);
 
+  // Stop mouse events from propagating to Cytoscape's container so that
+  // link clicks are not intercepted.  Cytoscape's eventInContainer() walks
+  // the DOM tree and will capture events from any child of its container,
+  // calling preventDefault() on mousedown and firing a background-tap on
+  // mouseup that removes the popup before the browser's click event fires.
+  for (const eventType of ['mousedown', 'mouseup', 'touchstart', 'touchend', 'pointerdown', 'pointerup'] as const) {
+    popup.addEventListener(eventType, (e) => e.stopPropagation());
+  }
+
   container.appendChild(popup);
 
   // Close popup when clicking outside.

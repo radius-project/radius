@@ -281,7 +281,13 @@ async function injectApplicationsSidebar(owner: string, repo: string): Promise<v
   }
   if (!hasAppFile) return;
 
-  const appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
+  // Try to extract the application name from the bicep file's name property.
+  let appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
+  const bicepContent = await graphAPI.getFileContents(owner, repo, appFile);
+  if (bicepContent) {
+    const parsed = parseApplicationName(bicepContent);
+    if (parsed) appName = parsed;
+  }
   const modeledAppURL = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/radius/app/${encodeURIComponent(appName)}`;
 
   // Find the right sidebar on the repo page.
@@ -405,6 +411,52 @@ function escapeHTML(str: string): string {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+/**
+ * Parse the name property from an Applications.Core/applications resource in a bicep file.
+ * Returns the name string or null if not found.
+ *
+ * Looks for the resource header line, then scans subsequent lines for a
+ * top-level `name:` property (not indented inside a nested block).
+ */
+function parseApplicationName(bicepContent: string): string | null {
+  const lines = bicepContent.split('\n');
+  let inAppResource = false;
+  let braceDepth = 0;
+
+  for (const line of lines) {
+    if (!inAppResource) {
+      // Detect the resource declaration line.
+      if (/resource\s+\w+\s+'Applications\.Core\/applications@/.test(line)) {
+        inAppResource = true;
+        braceDepth = 0;
+        // Count braces on this line (the opening `{` is typically here).
+        for (const ch of line) {
+          if (ch === '{') braceDepth++;
+          if (ch === '}') braceDepth--;
+        }
+      }
+      continue;
+    }
+
+    // Inside the resource block — track brace depth.
+    for (const ch of line) {
+      if (ch === '{') braceDepth++;
+      if (ch === '}') braceDepth--;
+    }
+
+    // Only match `name` at the top level of the resource (depth 1).
+    if (braceDepth === 1) {
+      const nameMatch = line.match(/^\s*name\s*:\s*'([^']+)'/);
+      if (nameMatch) return nameMatch[1];
+    }
+
+    // Exited the resource block without finding name.
+    if (braceDepth <= 0) break;
+  }
+
+  return null;
 }
 
 async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: string): Promise<void> {
