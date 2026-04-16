@@ -51,9 +51,6 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 ` // Trailing newline intentional.
 
 	bicepConfigTemplate = `{
-	"experimentalFeaturesEnabled": {
-		"extensibility": true
-	},
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
 		"radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:%s",
