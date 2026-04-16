@@ -269,15 +269,15 @@ function injectRadiusButton(): boolean {
 async function injectApplicationsSidebar(owner: string, repo: string): Promise<void> {
   if (document.getElementById('radius-applications-sidebar')) return;
   if (!chrome?.runtime?.id) return;
-  if (!chrome?.runtime?.id) return;
 
   const token = await getGitHubToken();
   const graphAPI = new GraphGitHubAPI(token || null);
-  let hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
-  let appFile = 'app.bicep';
+  // Prefer .radius/app.bicep (canonical location) over root app.bicep (legacy).
+  let hasAppFile = await graphAPI.checkFileExists(owner, repo, '.radius/app.bicep');
+  let appFile = '.radius/app.bicep';
   if (!hasAppFile) {
-    hasAppFile = await graphAPI.checkFileExists(owner, repo, '.radius/app.bicep');
-    appFile = '.radius/app.bicep';
+    hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
+    appFile = 'app.bicep';
   }
   if (!hasAppFile) return;
 

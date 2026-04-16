@@ -37,7 +37,11 @@ async function doInitRepoTab(owner: string, repo: string): Promise<void> {
   const api = new GraphGitHubAPI(token);
 
   // Check if app.bicep exists in the repository.
-  const hasAppBicep = await api.checkFileExists(owner, repo, 'app.bicep');
+  // Prefer .radius/app.bicep (canonical location) over root app.bicep (legacy).
+  let hasAppBicep = await api.checkFileExists(owner, repo, '.radius/app.bicep');
+  if (!hasAppBicep) {
+    hasAppBicep = await api.checkFileExists(owner, repo, 'app.bicep');
+  }
   if (!hasAppBicep) return;
 
   // GitHub's repo overview renders a Primer UnderlineNav for file tabs:
@@ -52,26 +56,37 @@ async function doInitRepoTab(owner: string, repo: string): Promise<void> {
   );
   if (!tabList) return;
 
-  // Find the existing README tab item.
-  const readmeTabItem = tabList.querySelector('li');
-  const readmeTab = readmeTabItem?.querySelector('a');
-  if (!readmeTab || !readmeTabItem) return;
+  // Collect all existing tab items (README, Contributing, License, etc.).
+  const existingTabItems = Array.from(tabList.querySelectorAll('li'));
+  if (existingTabItems.length === 0) return;
 
-  // Find the README body. Walk from the nav up to find the markdown content.
+  // Use the first tab item as a template for class names.
+  const templateTabItem = existingTabItems[0];
+  const templateTabLink = templateTabItem.querySelector('a');
+  if (!templateTabLink) return;
+
+  // Collect all existing tab links so we can coordinate switching.
+  const existingTabLinks = existingTabItems
+    .map((li) => li.querySelector('a'))
+    .filter((a): a is HTMLAnchorElement => a !== null);
+
+  // Find the content body area. Walk from the nav up to find the markdown/content panel.
   const nav = tabList.closest('nav');
   const navParent = nav?.parentElement;
-  const readmeBody = navParent?.parentElement?.querySelector(
+  // GitHub renders the file content (README, Contributing, License) in a container
+  // that is a sibling of the nav's parent. Look for common content selectors.
+  const contentBody = navParent?.parentElement?.querySelector(
     '.markdown-body, [data-hpc]',
   )?.closest('div') as HTMLElement | null;
 
   // Create our "Application graph" tab item matching GitHub's Primer structure.
   const graphTabItem = document.createElement('li');
-  graphTabItem.className = readmeTabItem.className;
+  graphTabItem.className = templateTabItem.className;
 
   const graphTabLink = document.createElement('a');
   graphTabLink.id = TAB_ID;
   graphTabLink.href = '#';
-  graphTabLink.className = readmeTab.className;
+  graphTabLink.className = templateTabLink.className;
   graphTabLink.removeAttribute('aria-current');
   graphTabLink.innerHTML = `
     <span data-component="icon">
@@ -85,32 +100,47 @@ async function doInitRepoTab(owner: string, repo: string): Promise<void> {
   graphTabItem.appendChild(graphTabLink);
   tabList.appendChild(graphTabItem);
 
-  // Graph panel — hidden initially, inserted as a sibling of the README body.
+  // Graph panel — hidden initially, inserted as a sibling of the content body.
   const graphPanel = document.createElement('div');
   graphPanel.id = PANEL_ID;
   graphPanel.className = 'radius-graph-container';
   graphPanel.style.display = 'none';
-  if (readmeBody) {
-    readmeBody.insertAdjacentElement('afterend', graphPanel);
+  if (contentBody) {
+    contentBody.insertAdjacentElement('afterend', graphPanel);
   } else if (navParent?.parentElement) {
     navParent.parentElement.appendChild(graphPanel);
   }
 
   let graphLoaded = false;
 
-  readmeTab.addEventListener('click', (e) => {
-    e.preventDefault();
-    readmeTab.setAttribute('aria-current', 'page');
+  // Helper: deactivate all tabs and hide graph panel, then show file content.
+  function activateFileTab(activeLink: HTMLAnchorElement): void {
+    for (const link of existingTabLinks) {
+      link.removeAttribute('aria-current');
+    }
     graphTabLink.removeAttribute('aria-current');
-    if (readmeBody) readmeBody.style.display = '';
+    activeLink.setAttribute('aria-current', 'page');
+    if (contentBody) contentBody.style.display = '';
     graphPanel.style.display = 'none';
-  });
+  }
+
+  // Intercept clicks on ALL existing file tabs (README, Contributing, License, etc.)
+  // so that switching back from the graph tab restores the content panel.
+  for (const link of existingTabLinks) {
+    link.addEventListener('click', () => {
+      // Let GitHub's native handler run (don't preventDefault),
+      // but ensure graph panel hides and aria-current is correct.
+      activateFileTab(link);
+    });
+  }
 
   graphTabLink.addEventListener('click', async (e) => {
     e.preventDefault();
+    for (const link of existingTabLinks) {
+      link.removeAttribute('aria-current');
+    }
     graphTabLink.setAttribute('aria-current', 'page');
-    readmeTab.removeAttribute('aria-current');
-    if (readmeBody) readmeBody.style.display = 'none';
+    if (contentBody) contentBody.style.display = 'none';
     graphPanel.style.display = '';
 
     if (!graphLoaded) {

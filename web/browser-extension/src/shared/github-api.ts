@@ -86,9 +86,11 @@ export class GraphGitHubAPI {
   }
 
   /**
-   * Check whether a pull request modifies the repository-root app.bicep file.
+   * Check whether a pull request modifies the app.bicep file
+   * (at root or inside .radius/).
    */
   async pullRequestModifiesAppBicep(owner: string, repo: string, pullNumber: number): Promise<boolean> {
+    const appBicepPaths = ['.radius/app.bicep', 'app.bicep'];
     let page = 1;
 
     while (true) {
@@ -102,7 +104,7 @@ export class GraphGitHubAPI {
       if (!resp.ok) throw new Error(`GitHub API error: ${resp.status} ${resp.statusText}`);
 
       const files = (await resp.json()) as Array<{ filename?: string }>;
-      if (files.some((file) => file.filename === 'app.bicep')) {
+      if (files.some((file) => file.filename !== undefined && appBicepPaths.includes(file.filename))) {
         return true;
       }
 
