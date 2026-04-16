@@ -126,7 +126,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         onSuccess: async (token) => {
           await setGitHubToken(token);
           hide('device-flow');
-          showStep1();
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('step') === 'copilot') {
+            handleCopilotStep();
+          } else {
+            showStep1();
+          }
         },
         onError: (error) => {
           $('device-status').textContent = `Error: ${error}`;
@@ -187,13 +192,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (!clientId && !token) return;
     hide('settings-bar');
-    showStep1();
+
+    // If we came from the copilot flow, resume it after saving settings.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('step') === 'copilot') {
+      handleCopilotStep();
+    } else {
+      showStep1();
+    }
   });
 
   // Settings toggle.
   $('settings-toggle')?.addEventListener('click', () => {
     const bar = $('settings-bar');
     bar.classList.toggle('hidden');
+  });
+
+  // Reset button — clears all stored credentials and reloads.
+  $('reset-btn')?.addEventListener('click', async () => {
+    await chrome.storage.local.remove(['radius_github_token', 'radius_client_id', 'radius_app_slug']);
+    window.location.reload();
   });
 
   // Provider tabs.
