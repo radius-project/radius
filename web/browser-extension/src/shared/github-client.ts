@@ -1074,18 +1074,6 @@ jobs:
             --aws-region "\${{ vars.AWS_REGION }}" \
             --aws-account-id "\${{ vars.AWS_ACCOUNT_ID }}"
 
-      - name: Register resource types from resource-types-contrib
-        run: |
-          REPO_RAW="https://raw.githubusercontent.com/radius-project/resource-types-contrib/\${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
-          TYPES="Compute/containerImages/containerImages.yaml Compute/containers/containers.yaml Compute/persistentVolumes/persistentVolumes.yaml Compute/routes/routes.yaml Data/postgreSqlDatabases/postgreSqlDatabases.yaml Data/mySqlDatabases/mySqlDatabases.yaml Security/secrets/secrets.yaml"
-          for TYPE_YAML in $TYPES; do
-            echo "Registering $TYPE_YAML..."
-            curl -fsSL "$REPO_RAW/$TYPE_YAML" -o /tmp/type.yaml
-            rad resource-type create -f /tmp/type.yaml || \
-              (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f /tmp/type.yaml)
-          done
-          echo "✅ Resource types registered"
-
       - name: Register terraform recipes from resource-types-contrib
         run: |
           REPO="\${{ env.RESOURCE_TYPES_CONTRIB_REPO }}"
@@ -1145,6 +1133,23 @@ jobs:
             kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$APP_NS" 2>/dev/null || \
               kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS"
           fi
+
+      - name: Create bicepconfig for deployment
+        run: |
+          cat > bicepconfig.json << 'EOF'
+          {
+            "extensions": {
+              "radius": "br:biceptypes.azurecr.io/radius:latest",
+              "aws": "br:biceptypes.azurecr.io/aws:latest",
+              "secrets": "./secrets-extension.tgz",
+              "containerImages": "./containerImages-extension.tgz",
+              "containers": "./containers-extension.tgz",
+              "mySqlDatabases": "./mySqlDatabases-extension.tgz"
+            }
+          }
+          EOF
+          echo "bicepconfig.json created"
+          cat bicepconfig.json
 
       - name: Deploy application
         run: |
