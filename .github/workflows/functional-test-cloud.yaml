@@ -477,9 +477,6 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {
-              "extensibility": true
-            },
             "extensions": {
               "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
@@ -885,9 +882,6 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {
-              "extensibility": true
-            },
             "extensions": {
               "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
