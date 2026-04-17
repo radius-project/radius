@@ -29,6 +29,7 @@ type RecipeParameter struct {
 	Name         string `json:"name,omitempty"`
 	DefaultValue any    `json:"defaultValue,omitempty"`
 	Type         string `json:"type,omitempty"`
+	Value        any    `json:"value,omitempty"`
 	MaxValue     string `json:"maxValue,omitempty"`
 	MinValue     string `json:"minValue,omitempty"`
 }

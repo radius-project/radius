@@ -119,6 +119,7 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "throughput",
 				Type:         "float64",
+				Value:        "-",
 				MaxValue:     "800",
 				MinValue:     "-",
 				DefaultValue: "-",
@@ -126,6 +127,7 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "sku",
 				Type:         "string",
+				Value:        "-",
 				MaxValue:     "-",
 				MinValue:     "-",
 				DefaultValue: "-",
@@ -196,6 +198,7 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "throughput",
 				Type:         "float64",
+				Value:        "-",
 				MaxValue:     "800",
 				MinValue:     "-",
 				DefaultValue: "-",
@@ -203,6 +206,7 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "sku",
 				Type:         "string",
+				Value:        "-",
 				MaxValue:     "-",
 				MinValue:     "-",
 				DefaultValue: "-",
@@ -223,6 +227,75 @@ func Test_Run(t *testing.T) {
 			Format:            "table",
 			RecipeName:        "cosmosDB",
 			ResourceType:      datastoresrp.MongoDatabasesResourceType,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipe,
+				Options: common.RecipeFormat(),
+			},
+			output.LogOutput{
+				Format: "",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipeParams,
+				Options: common.RecipeParametersFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Show recipe with operator-configured parameter value - Success", func(t *testing.T) {
+		// Regression test for https://github.com/radius-project/radius/issues/9454
+		// The server merges operator-configured values into the parameters map.
+		// The CLI must surface them in the VALUE column.
+		ctrl := gomock.NewController(t)
+		envRecipe := v20231001preview.RecipeGetMetadataResponse{
+			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+			TemplatePath: new("ghcr.io/testpublicrecipe/bicep/modules/redis:v1"),
+			Parameters: map[string]any{
+				"location": map[string]any{
+					"type":  "string",
+					"value": "eastus",
+				},
+			},
+		}
+		recipe := types.EnvironmentRecipe{
+			Name:         "redis-prod",
+			ResourceType: datastoresrp.RedisCachesResourceType,
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/redis:v1",
+		}
+		recipeParams := []types.RecipeParameter{
+			{
+				Name:         "location",
+				Type:         "string",
+				Value:        "eastus",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "-",
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetRecipeMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(envRecipe, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			Format:            "table",
+			RecipeName:        "redis-prod",
+			ResourceType:      datastoresrp.RedisCachesResourceType,
 		}
 
 		err := runner.Run(context.Background())
@@ -273,6 +346,7 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "throughput",
 				Type:         "float64",
+				Value:        "-",
 				MaxValue:     "800",
 				MinValue:     "-",
 				DefaultValue: "-",
@@ -280,6 +354,7 @@ func Test_Run(t *testing.T) {
 			{
 				Name:         "sku",
 				Type:         "string",
+				Value:        "-",
 				MaxValue:     "-",
 				MinValue:     "-",
 				DefaultValue: "-",
