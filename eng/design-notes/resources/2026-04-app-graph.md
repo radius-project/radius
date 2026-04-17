@@ -60,7 +60,7 @@ Radius should provide a way to access all three kinds of graph.
 | Deployment Graph | An application graph constructed by querying the Radius control plane for the live resources of a deployed application. |
 | Simulated Deployment Graph | An application graph that represents what would be deployed if an application definition were applied to a specific environment. |
 | Graph Artifact | The serialized JSON file (`app.json`) containing a `StaticGraphArtifact` stored on the orphan branch. |
-| Orphan Branch | A Git branch with no common history to `main`, used to store graph artifacts (default: `radius-graph`). |
+| Orphan Branch | A Git branch with no common history to `main`, used to store graph artifacts (default: `radius-graph`). The same pattern is used by the [GitHub Actions Workspace](../2026-03-github-workspace-design.md) feature for state persistence (`radius-state` orphan branch). |
 | DiffHash | A stable BLAKE2b hash of a resource's review-relevant properties, used to detect modifications between branches. |
 | rootScope | The current UCP scope (e.g., `/planes/radius/local/resourceGroups/default`). |
 | codeReference | An optional resource property providing a repo-relative file path to the source code implementing the resource. |
@@ -515,13 +515,29 @@ The graph is constructed in-memory but must be persisted so it remains accessibl
 | Graph type | Persisted where | Written when |
 |---|---|---|
 | Static graph | `{branch}/app.json` on `radius-graph` orphan branch | CI runs `rad graph build` on push/PR |
-| Run-time graph | `graphs/{app}.json` on `radius-state` orphan branch | `rad shutdown` serializes after deploy (future) |
+| Run-time graph | `graphs/{app}.json` on `radius-state` orphan branch | `rad shutdown` serializes after deploy |
 
 **Why orphan branches?**
 - No interference with application code history.
 - GitHub Contents API provides easy access without local checkout.
 - Natural per-branch organization (`main/app.json`, `feature-branch/app.json`).
 - PR diff visualization naturally flows from comparing base vs head artifacts.
+- Zero additional infrastructure — git is already available with `actions/checkout` credentials.
+- Atomic commit+push semantics for consistent state.
+
+**Relationship to the GitHub Actions Workspace feature:**
+
+The orphan branch persistence pattern is shared with the [GitHub Actions Workspace](../2026-03-github-workspace-design.md) feature (`filesystem-state` branch). That feature uses a `radius-state` orphan branch to persist PostgreSQL database backups across ephemeral CI runs. The app graph feature uses a separate `radius-graph` orphan branch for graph artifacts. Both use the same underlying technique:
+
+- `git worktree add` in `/tmp/` for isolated operations
+- Sentinel files for lifecycle state (the workspace feature uses `.lock`, `.backup-ok`, `.deploy-lock`)
+- Atomic commit+push with the `GITHUB_TOKEN` from `actions/checkout`
+
+The `gitstate` package from the workspace feature (`pkg/cli/gitstate/`) provides reusable primitives for orphan branch management (create, checkout, commit, push) that the graph builder's orphan branch logic could adopt to avoid duplicating git plumbing code.
+
+**Run-time graph persistence via `rad shutdown`:**
+
+The `rad shutdown` command (from the `filesystem-state` branch) backs up PostgreSQL state and tears down the k3d cluster. A natural extension is to call `getGraph` for each deployed application during shutdown and write the graph JSON to the `radius-state` orphan branch alongside the SQL dumps. This would make run-time graphs available for visualization even after the cluster is destroyed — enabling the browser extension to show deployed infrastructure topology from the last known state.
 
 ---
 
@@ -678,7 +694,7 @@ The browser extension is tested manually:
 
 4. **`codeReference` adoption:** Who sets the `codeReference` property — the developer manually, or should tooling (e.g., Copilot skills) populate it automatically?
 
-5. **Run-time graph persistence:** The design mentions storing run-time graphs on a `radius-state` orphan branch via `rad shutdown`. Should this be implemented in this iteration or deferred?
+5. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
 6. **Cloud provider navigation:** For deployed graphs, clicking a resource should navigate to the cloud provider console (AWS, Azure). How should provider-specific URLs be constructed?
 
@@ -703,8 +719,10 @@ The browser extension is tested manually:
 | File in repo (e.g., `.radius/graph.json`) | Simple, visible in PRs | Clutters commit history, merge conflicts |
 | Orphan branch | Clean separation, no history interference | Requires git operations, less discoverable |
 | External storage (S3, Azure Blob) | Scalable | Extra infrastructure, auth complexity |
+| GitHub Actions cache | No extra infra | Unpredictable eviction (7-day TTL, LRU) |
+| GitHub Actions artifacts | Cross-run accessible | Retention limits, complex download logic |
 
-**Chosen approach:** Orphan branch. Clean separation from application code, natural per-branch organization, accessible via GitHub API.
+**Chosen approach:** Orphan branch. Clean separation from application code, natural per-branch organization, accessible via GitHub API. This is consistent with the `filesystem-state` branch's choice of orphan branches for PostgreSQL state persistence, validated by the same analysis (see [GitHub Actions Workspace](../2026-03-github-workspace-design.md) alternatives considered).
 
 ### Browser extension vs GitHub App/Action with Markdown
 
