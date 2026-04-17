@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=480, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http://localhost:* https://*; script-src 'self'">
+  <title>Setup with Radius</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <svg class="logo" viewBox="0 0 16 16" width="24" height="24">
+        <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      <h1 id="page-title">Setup with Radius</h1>
+    </header>
+
+    <!-- Settings bar -->
+    <div id="settings-bar" class="settings-bar hidden">
+      <label for="client-id">GitHub App Client ID</label>
+      <div class="input-row">
+        <input type="text" id="client-id" placeholder="Iv23li..." autocomplete="off" spellcheck="false">
+      </div>
+      <label for="api-key">GitHub Token (optional, skips sign-in)</label>
+      <div class="input-row">
+        <input type="password" id="api-key" placeholder="ghp_..." autocomplete="new-password" spellcheck="false">
+        <button id="save-settings" class="btn btn-sm">Save</button>
+      </div>
+    </div>
+
+    <!-- Setup required: configure Client ID first, then install + sign in -->
+    <div id="setup-required" class="notice hidden">
+      <h3>Get started with Radius</h3>
+
+      <div id="setup-client-id">
+        <p>Enter your GitHub App details to get started.</p>
+        <p class="status-text">Create a GitHub App at <a href="https://github.com/settings/apps/new" target="_blank" rel="noopener noreferrer">github.com/settings/apps</a> with Device Flow enabled.</p>
+        <label style="margin-top: 8px; display: block; font-size: 13px;">App slug (from the app URL)</label>
+        <div class="input-row" style="margin-top: 4px;">
+          <input type="text" id="setup-app-slug" placeholder="my-radius-app" autocomplete="off" spellcheck="false">
+        </div>
+        <label style="margin-top: 8px; display: block; font-size: 13px;">Client ID</label>
+        <div class="input-row" style="margin-top: 4px;">
+          <input type="text" id="setup-client-id-input" placeholder="Iv23li..." autocomplete="off" spellcheck="false">
+          <button id="setup-client-id-save" class="btn btn-primary btn-sm">Continue</button>
+        </div>
+      </div>
+
+      <div id="setup-steps" class="hidden">
+        <div id="setup-step-1" class="setup-step">
+          <p><strong>Step 1:</strong> Install the app on your GitHub account.</p>
+          <a id="install-app-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Install GitHub App</a>
+        </div>
+
+        <div id="setup-step-2" class="setup-step" style="margin-top: 16px;">
+          <p><strong>Step 2:</strong> Sign in to authorize the extension.</p>
+          <button id="github-sign-in" class="btn btn-primary">Sign in with GitHub</button>
+        </div>
+      </div>
+
+      <button id="show-settings" class="btn btn-outline btn-sm" style="margin-top: 12px;">Use token instead</button>
+    </div>
+
+    <!-- Device flow: show user code -->
+    <div id="device-flow" class="notice hidden">
+      <p>Enter this code on GitHub:</p>
+      <div id="device-code" class="device-code"></div>
+      <a id="device-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="margin-top: 8px;">Open GitHub</a>
+      <p id="device-status" class="status-text" style="margin-top: 8px;">Waiting for authorization...</p>
+    </div>
+
+    <!-- App not installed on this repo -->
+    <div id="app-not-installed" class="notice hidden">
+      <p>The Radius GitHub App is not installed on this repository.</p>
+      <a id="install-app-repo-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Install on this repository</a>
+    </div>
+
+    <!-- Repo context -->
+    <div id="repo-context" class="repo-context hidden">
+      <span id="repo-name" class="repo-name"></span>
+      <button id="settings-toggle" class="btn-icon" title="Settings">⚙</button>
+    </div>
+
+    <!-- Wizard step indicator -->
+    <div id="wizard-steps" class="wizard-steps hidden">
+      <div class="wizard-step active" data-step="1"><span class="wizard-step-num">1</span> Application</div>
+      <div class="wizard-step-divider"></div>
+      <div class="wizard-step" data-step="2"><span class="wizard-step-num">2</span> Environment</div>
+    </div>
+
+    <!-- Step 1: Define Application -->
+    <div id="app-form" class="form-section hidden">
+      <div class="info-box">
+        <h3>Define an Application</h3>
+        <p>An application definition must be created prior to deploying. Provide the Bicep file that defines the Radius application.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-number">1.</span>
+        <label for="app-bicep-file">Bicep application file:</label>
+      </div>
+      <input type="text" id="app-bicep-file" value="app.bicep" placeholder="app.bicep" autocomplete="off" spellcheck="false">
+
+      <button id="app-next" class="btn btn-primary btn-block">+ Define an Application</button>
+    </div>
+
+    <!-- Provider selector -->
+    <div id="provider-selector" class="tab-bar hidden">
+      <button class="tab active" data-provider="aws">AWS</button>
+      <button class="tab" data-provider="azure">Azure</button>
+    </div>
+
+    <!-- AWS Form -->
+    <div id="aws-form" class="form-section hidden">
+      <div class="info-box">
+        <h3>Create an AWS environment</h3>
+        <p>Creating an AWS environment enables deploying applications directly from the repository. To create an AWS environment:</p>
+      </div>
+
+      <div class="step">
+        <span class="step-number">1.</span>
+        <span>If you have not already done so for this repository, use the GitHub Radius CloudFormation template to add GitHub as a trusted OIDC Identity Provider and create an IAM role.</span>
+      </div>
+      <a href="https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?templateURL=https://radius-cfn-templates.s3.amazonaws.com/github-oidc-role.yaml" target="_blank" rel="noopener noreferrer" class="btn btn-outline create-link">
+        Create trusted OIDC identity provider and IAM role
+      </a>
+
+      <div class="step">
+        <span class="step-number">2.</span>
+        <label for="aws-env-name">Enter the environment name:</label>
+      </div>
+      <input type="text" id="aws-env-name" value="dev" placeholder="dev" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">3.</span>
+        <label for="aws-role-arn">Provide the IAM role ARN:</label>
+      </div>
+      <input type="text" id="aws-role-arn" placeholder="arn:aws:iam::123456789012:role/radius-deploy" autocomplete="off" spellcheck="false" class="sensitive-input">
+
+      <div class="step">
+        <span class="step-number">4.</span>
+        <label for="aws-region">Select the AWS region for the default dev environment:</label>
+      </div>
+      <select id="aws-region">
+        <!-- Populated by popup.ts -->
+      </select>
+
+      <div class="step">
+        <span class="step-number">5.</span>
+        <label for="aws-k8s-cluster">EKS cluster name:</label>
+      </div>
+      <input type="text" id="aws-k8s-cluster" placeholder="my-eks-cluster" autocomplete="off" spellcheck="false">
+
+      <button id="aws-submit" class="btn btn-primary btn-block">Confirm authentication</button>
+    </div>
+
+    <!-- Azure Form -->
+    <div id="azure-form" class="form-section hidden">
+      <div class="info-box">
+        <h3>Create an Azure environment</h3>
+        <p>Creating an Azure environment enables deploying applications directly from the repository.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-number">1.</span>
+        <span>If you need to create a new credential, set up a federated credential in the Azure portal.</span>
+      </div>
+      <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer" class="btn btn-outline create-link">
+        Open Azure AD App Registrations
+      </a>
+
+      <div class="step">
+        <span class="step-number">2.</span>
+        <label for="azure-env-name">Enter the environment name:</label>
+      </div>
+      <input type="text" id="azure-env-name" value="dev" placeholder="dev" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">3.</span>
+        <span>Select the authentication type:</span>
+      </div>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="azure-auth-type" value="WorkloadIdentity" checked>
+          <span>Workload Identity (OIDC) <em class="recommended">recommended</em></span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="azure-auth-type" value="ServicePrincipal">
+          <span>Service Principal</span>
+        </label>
+      </div>
+
+      <div class="step">
+        <span class="step-number">4.</span>
+        <label for="azure-tenant-id">Tenant ID:</label>
+      </div>
+      <input type="text" id="azure-tenant-id" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" spellcheck="false" class="sensitive-input">
+
+      <div class="step">
+        <span class="step-number">5.</span>
+        <label for="azure-client-id">Client ID:</label>
+      </div>
+      <input type="text" id="azure-client-id" placeholder="11111111-1111-1111-1111-111111111111" autocomplete="off" spellcheck="false" class="sensitive-input">
+
+      <div class="step">
+        <span class="step-number">6.</span>
+        <label for="azure-subscription-id">Subscription ID:</label>
+      </div>
+      <input type="text" id="azure-subscription-id" placeholder="22222222-2222-2222-2222-222222222222" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">7.</span>
+        <label for="azure-resource-group">Resource Group (optional):</label>
+      </div>
+      <input type="text" id="azure-resource-group" placeholder="my-resource-group" autocomplete="off" spellcheck="false">
+
+      <!-- Service Principal only -->
+      <div id="azure-sp-fields" class="hidden">
+        <div class="step">
+          <span class="step-number">8.</span>
+          <label for="azure-client-secret">Client Secret:</label>
+        </div>
+        <input type="password" id="azure-client-secret" placeholder="Enter client secret" autocomplete="new-password" spellcheck="false" class="sensitive-input">
+        <div class="security-note">
+          <svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A.75.75 0 017.25 7h1a.75.75 0 01.75.75v2.75h.25a.75.75 0 010 1.5h-2a.75.75 0 010-1.5h.25v-2h-.25a.75.75 0 01-.75-.75zM8 6a1 1 0 100-2 1 1 0 000 2z"/></svg>
+          <span>This secret will be encrypted and stored as a GitHub Environment secret. It is never stored by the extension.</span>
+        </div>
+      </div>
+
+      <button id="azure-submit" class="btn btn-primary btn-block">Confirm authentication</button>
+    </div>
+
+    <!-- Environment Dependencies (shown after environment creation) -->
+    <div id="deps-form" class="form-section hidden">
+      <div class="info-box">
+        <h3>Configure recipe parameters</h3>
+        <p>Set the container image registry and tag used by Radius for deployments.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-number">1.</span>
+        <label for="deps-k8s-namespace">Kubernetes namespace:</label>
+      </div>
+      <input type="text" id="deps-k8s-namespace" value="default" placeholder="default" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">2.</span>
+        <label for="deps-app-image">Application image:</label>
+      </div>
+      <input type="text" id="deps-app-image" placeholder="ghcr.io/myorg/myapp:latest" autocomplete="off" spellcheck="false">
+
+      <button id="deps-submit" class="btn btn-primary btn-block">Save recipe parameters</button>
+      <button id="deps-skip" class="btn btn-outline btn-block" style="margin-top: 8px;">Skip — finish without recipe parameters</button>
+    </div>
+
+    <!-- Deploy Application form -->
+    <div id="deploy-form" class="form-section hidden">
+      <div class="info-box">
+        <h3>Deploy Application</h3>
+        <p>Deploy the Bicep application to your Kubernetes cluster. The workflow creates an ephemeral k3d cluster for the Radius control plane and deploys resources to your configured EKS/AKS cluster.</p>
+      </div>
+
+      <div class="step">
+        <span class="step-number">1.</span>
+        <label for="deploy-app-file">Application file:</label>
+      </div>
+      <input type="text" id="deploy-app-file" value="app.bicep" placeholder="app.bicep" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">2.</span>
+        <label for="deploy-app-name">Application name:</label>
+      </div>
+      <input type="text" id="deploy-app-name" value="app" placeholder="app" autocomplete="off" spellcheck="false">
+
+      <div class="step">
+        <span class="step-number">3.</span>
+        <label for="deploy-env-name">Environment name:</label>
+      </div>
+      <input type="text" id="deploy-env-name" value="dev" placeholder="dev" autocomplete="off" spellcheck="false">
+
+      <button id="deploy-submit" class="btn btn-primary btn-block">Deploy Application</button>
+    </div>
+
+    <!-- Verification status (shown during/after step 1 verification) -->
+    <div id="verify-section" class="status-section hidden">
+      <div id="verify-icon" class="status-icon"></div>
+      <div id="verify-message" class="status-message"></div>
+      <div id="verify-details" class="status-details"></div>
+      <div id="verify-actions" class="status-actions hidden">
+        <button id="verify-retry" class="btn btn-outline">Retry</button>
+      </div>
+    </div>
+
+    <!-- Final status (shown after step 3) -->
+    <div id="status-section" class="status-section hidden">
+      <div id="status-icon" class="status-icon"></div>
+      <div id="status-message" class="status-message"></div>
+      <div id="status-details" class="status-details"></div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <span id="loading-text">Creating environment...</span>
+      <a id="loading-link" class="loading-link hidden" target="_blank" rel="noopener">View workflow run →</a>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
