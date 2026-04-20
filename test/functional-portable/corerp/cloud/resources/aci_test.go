@@ -34,7 +34,8 @@ import (
 )
 
 func Test_ACI(t *testing.T) {
-	t.Skip("Temporarily skipping due to transient Azure ManagedServiceIdentityNotFound issue.")
+	// Temporarily skipping due to transient Azure ManagedServiceIdentityNotFound issue.
+	t.Skip("https://github.com/radius-project/radius/issues/11708")
 	name := "aci-app"
 	containerResourceName := "frontend"
 	containerResourceName2 := "magpie"
