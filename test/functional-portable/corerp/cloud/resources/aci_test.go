@@ -34,6 +34,7 @@ import (
 )
 
 func Test_ACI(t *testing.T) {
+	t.Skip("Temporarily skipping due to transient Azure ManagedServiceIdentityNotFound issue.")
 	name := "aci-app"
 	containerResourceName := "frontend"
 	containerResourceName2 := "magpie"
