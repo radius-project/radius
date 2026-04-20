@@ -61,10 +61,8 @@ Radius should provide a way to access all three kinds of graph.
 | Simulated Deployment Graph | An application graph that represents what would be deployed if an application definition were applied to a specific environment. |
 | Graph Artifact | The serialized JSON file (`app.json`) containing a `StaticGraphArtifact` stored on the orphan branch. |
 | Orphan Branch | A Git branch with no common history to `main`, used to store graph artifacts (default: `radius-graph`). The same pattern is used by the [GitHub Actions Workspace](../2026-03-github-workspace-design.md) feature for state persistence (`radius-state` orphan branch). |
-| DiffHash | A stable BLAKE2b hash of a resource's review-relevant properties, used to detect modifications between branches. |
+| DiffHash | A stable hash of a resource's review-relevant properties, used to detect modifications between branches. |
 | rootScope | The current UCP scope (e.g., `/planes/radius/local/resourceGroups/default`). |
-| codeReference | An optional resource property providing a repo-relative file path to the source code implementing the resource. |
-| appDefinitionLine | The 1-based line number of the resource declaration in `app.bicep`, auto-detected during graph build. |
 
 ## Objectives
 
@@ -77,15 +75,15 @@ Radius should provide a way to access all three kinds of graph.
 * Identify a persistence mechanism since the graph should be available irrespective of the ephemeral nature of Radius control plane. The graph construction is still an in-memory operation.
 * Provide a CLI command (`rad graph build`) that constructs and outputs a static application graph from Bicep or compiled JSON application definition files.
 * Provide a CLI command (`rad app graph`) that outputs the run-time graph of a deployed application by calling the `getGraph` API.
-* Provide a browser extension that renders interactive application graph visualizations on GitHub repository pages and pull requests.
-* Provide a reusable CI workflow that automatically builds graph artifacts on push and PR events.
+* Provide a browser extension that renders interactive application graph visualizations on GitHub repository pages and pull requests. [Q: not to be committed to main]
+* Provide a reusable CI workflow that automatically builds graph artifacts on push and PR events. [Q: ok to retain this as part of traditional installs too?]
 
 ### Non-goals
 
 * Authorization / RBAC for viewing the graph — identified as a future capability dependent on Radius RBAC feature.
 * Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration.
-* Deployed application graph visualization in the browser extension (P1 — see feature spec).
-* Planned application graph visualization in the browser extension (P2 — see feature spec).
+* Deployed application graph visualization in the browser extension - rad app graph command already exists.
+* Planned application graph visualization in the browser extension - this requires further work to avail tf plan/ what-if to understand recipe's output resources. 
 
 ### User scenarios
 
@@ -113,7 +111,7 @@ rad graph build \
   --source-branch main
 ```
 
-**Sample Output:**
+**Sample Output:** #Q: Should we have the output match below? 
 ```
 Compiling app.bicep → /tmp/app.json
 Parsed 4 resources, 3 connections
@@ -154,7 +152,7 @@ rad app graph my-app --output json
 }
 ```
 
-### Browser Extension: Repository root
+### Browser Extension: Repository root 
 
 When a user with the extension installed navigates to `https://github.com/{owner}/{repo}`, the extension:
 1. Checks for `app.bicep` at the repository root.
@@ -200,6 +198,8 @@ The system consists of four components that work together:
                                                         └──────────────┘
 ```
 
+We will NOT merge Browser extension and  Cytoscape.js  into main for now.
+
 **Data Flow:**
 
 1. **Build time:** `rad graph build` compiles Bicep → ARM JSON → `StaticGraphArtifact` → commits to `radius-graph` orphan branch.
@@ -234,10 +234,13 @@ type StaticGraphArtifact struct {
 }
 ```
 
+`Version` field exists because, ApplicationGraphResponse is a server API response and does not include a version in itself. StaticGraphArtifact however lives on disk/orphan branch.
+
 The `ApplicationGraphResponse` reuses the existing API schema from `pkg/corerp/api/v20231001preview/`, extended with:
-- `diffHash` (`*string`) — BLAKE2b hash of review-relevant properties for diff classification.
-- `appDefinitionLine` (`*int32`) — 1-based line number in `app.bicep`.
+- `diffHash` (`*string`) — hash of elevant properties for diff classification.
+- `appDefinitionLine` (`*int32`) — line number in `app.bicep` wwhere the resource is defined
 - `codeReference` (`*string`) — repo-relative path to source code.
+
 
 ##### Build algorithm
 
@@ -247,8 +250,8 @@ The `ApplicationGraphResponse` reuses the existing API schema from `pkg/corerp/a
    - Extract `properties.connections` → resolve `resourceId()` expressions to target IDs.
    - Extract `dependsOn` → resolve symbolic references to target IDs.
    - Extract `properties.codeReference` if present.
-3. **Map source lines:** Scan `app.bicep` for `resource <name> '<type>' =` declarations, recording line numbers.
-4. **Compute diffHash:** For each resource, extract "authorable" properties (excluding `application`, `environment`, internal IDs), canonicalize as JSON, and hash with BLAKE2b including `dependsOn`.
+3. **Map source lines:** Scan `app.bicep` for `resource <name> '<type>' =` declarations, recording line numbers. Q: This might need a new approach if we are deep linking. Should we merge?
+4. **Compute diffHash:** For each resource, extract "authorable" properties (excluding `application`, `environment`, internal IDs), canonicalize as JSON, and hash  including `dependsOn`.
 5. **Add inbound connections:** For each outbound connection A→B, add a corresponding inbound connection B←A.
 6. **Sort:** Sort resources by ID for deterministic output.
 
@@ -264,7 +267,7 @@ func ComputeDiffHash(properties map[string]interface{}, dependsOn ...string) str
 ```
 
 The diffHash enables the browser extension to classify resources as modified vs unchanged without comparing all properties.
-
+========================================
 ##### Orphan branch commit
 
 After building the artifact, the CLI:
@@ -696,7 +699,7 @@ The browser extension is tested manually:
 
 5. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
-6. **Cloud provider navigation:** For deployed graphs, clicking a resource should navigate to the cloud provider console (AWS, Azure). How should provider-specific URLs be constructed?
+6. **Cloud provider navigation:** For deployed graphs, clicking a resource should navigate to the cloud provider console (AWS, Azure). How should provider-specific URLs be constructed? 
 
 ## Alternatives considered
 
