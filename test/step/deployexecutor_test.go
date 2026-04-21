@@ -28,6 +28,7 @@ import (
 )
 
 func Test_ExecuteWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
 
@@ -41,6 +42,7 @@ func Test_ExecuteWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
 }
 
 func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	transientErr := errors.New("ManagedServiceIdentityNotFound")
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
@@ -60,6 +62,7 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 }
 
 func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "transient"
@@ -76,6 +79,7 @@ func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 }
 
 func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
 
@@ -90,6 +94,7 @@ func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
 }
 
 func Test_ExecuteWithRetry_NoRetriesWithoutConfig(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep") // no WithRetry
 
@@ -103,6 +108,7 @@ func Test_ExecuteWithRetry_NoRetriesWithoutConfig(t *testing.T) {
 }
 
 func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	ctx, cancel := context.WithCancel(context.Background())
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 5*time.Second, func(error) bool { return true })
@@ -123,6 +129,7 @@ func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 }
 
 func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
+	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep")
 	d.MaxRetries = 3
