@@ -37,7 +37,7 @@ The following user journeys are out of scope for the initial prototype, but will
 
 ### Step 1: Discovery
 
-1. The user visits a public repository on GitHub and decides to deploy it to their AWS account. They see a Deploy button.
+1. The user visits a public repository on GitHub and decides to deploy it to their AWS account. They see a Deploy button, and Applications, Environments, and Deployments in the sidebar.
 
     ![image1](2026-03-github-radius-feature-spec/image1.png)
 
@@ -45,24 +45,54 @@ The following user journeys are out of scope for the initial prototype, but will
 
     ![image2](2026-03-github-radius-feature-spec/image2.png)
 
-1. The user creates a fork of the repository in their GitHub account.
+###  Step 2: Defining an application
 
-###  Step 2: Creating an AWS environment
-1. The user clicks Deploy and sees options for creating AWS, Azure, or Google Cloud environments. The user clicks **Create AWS environment**.
+1. The user clicks **Define an application**.
 
     ![image3](2026-03-github-radius-feature-spec/image3.png)
 
-1. A new window opens for creating an AWS environment.
+1. In the background, Copilot reads the Radius platform constitution. This is a markdown file which instructs Copilot on how to model cloud-native applications. The Radius platform constitution is maintained by the Radius team and cannot be customized for now. The constitution has the following sections:
+
+    - **Application architecture patterns**. A set of pre-defined architectural patterns. The purpose of these patterns is to prevent arbitrary architectures and ensure applications are composable using existing resource types. This will likely include:
+      - Stateless web/API service
+          - Stateful/database-backed application
+      - Event-driven application
+          - Batch job
+          - Streaming/real-time processing application
+    - **Resource types**. The set of resource types to use when constructing an application. The purpose is to standardize resource abstractions across cloud platforms. In the Radius constitution, this will likely be a link to a manifest of pre-defined Radius Resource Types.
+    - **Resource composition rules**. For each Resource Type, a set of rules that define how resources can be combined. For example, a web service can connect to a database, but not the reverse.
+    - **Resource dependencies**. For each Resource Type, a set of rules that define required dependencies. For example, a Container requires there to be a container image, an OCI registry, and a Kubernetes cluster. A MySQL database requires there to be a virtual network.
+    - **Naming conventions**. Guidance for naming the Bicep symbolic name and the actual resource name.
+    - **Secrets**. Defines how to properly handle secrets and how to generate secret values.
+    
+    Radius then identifies the resources required by this application and outputs an `app.bicep` file in the  `.radius` directory.
+    
+1. The user is taken to the application definition.
 
     ![image4](2026-03-github-radius-feature-spec/image4.png)
 
-1. The user clicks **Create trusted OIDC identity provider and IAM  role**. The AWS console opens in a new window. The user is  prompted to login to their account.
+1. The user can click on each resource and drill into the source code and the application definition.
 
     ![image5](2026-03-github-radius-feature-spec/image5.png)
 
-1. A CloudFormation stack is opened. The user reviews the stack then  clicks Create stack.
+1. The user clicks back to the main repository page.
+   
+###  Step 3: Creating an AWS environment
+1. The user clicks on Environments and sees options for creating AWS, Azure, or Google Cloud environments. The user clicks **Create AWS environment**.
 
     ![image6](2026-03-github-radius-feature-spec/image6.png)
+
+1. A new window opens for creating an AWS environment.
+
+    ![image7](2026-03-github-radius-feature-spec/image7.png)
+
+1. The user clicks **Create trusted OIDC identity provider and IAM  role**. The AWS console opens in a new window. The user is  prompted to login to their account.
+
+    ![image8](2026-03-github-radius-feature-spec/image8.png)
+
+1. A CloudFormation stack is opened. The user reviews the stack then  clicks Create stack.
+
+    ![image9](2026-03-github-radius-feature-spec/image9.png)
 
     This CloudFormation stack is stored in a Radius-maintained S3 bucket. It creates an IAM OIDC Identity Provider, similar to running this command:
 
@@ -108,7 +138,7 @@ The following user journeys are out of scope for the initial prototype, but will
 
 1. The user returns to the *Create an AWS environment* page. They enter the environment name, IAM role ARN, select the region, then click **Confirm authentication**.
 
-    ![image7](2026-03-github-radius-feature-spec/image7.png)
+    ![image10](2026-03-github-radius-feature-spec/image10.png)
 
     When the user clicks Confirm authentication:
 
@@ -121,7 +151,7 @@ The following user journeys are out of scope for the initial prototype, but will
 
 1. While the workflow is running, there is a visual indication that it is running in the background. Once complete the *Define environment dependencies >* button is enabled. The User clicks **Define environment dependencies >** button.
 
-###  Step 3: Defining environment dependencies
+###  Step 4: Defining environment dependencies
 
 1. Radius prompts the user for common environment dependencies. These dependencies should cover the majority of cloud-native applications. However, in the future, this will need to be made more extensible. Today, these include:
 
@@ -130,35 +160,35 @@ The following user journeys are out of scope for the initial prototype, but will
     - VPC: a dropdown box with the VPC in that account/region
     - Subnets: a dropdown box with the subnets available for the selected VPC
 
-    ![image8](2026-03-github-radius-feature-spec/image8.png)
-    
+    ![image11](2026-03-github-radius-feature-spec/image11.png)
+
     Radius prepopulates the drop-down boxes with valid values by making API calls to list relevant resources from the user's AWS account. For example, the list of EKS clusters is prepopulated for the user to select from (however namespace is left blank since there is no AWS API call to list Kubernetes namespaces).
 
 1. The user clicks **Create AWS Environment** then returns to the GitHub repository. In the background, a GitHub Environment is created with environment variables use to store the collected metadata.
 
-###  Step 4: Deployment
+1. The user is returned the main repository page.
 
-1. The user clicks **Deploy** again. The user sees that there is now a `dev` environment setup with their AWS account. The `dev` environment is decorated with a green checkmark to indicate the authentication and authorization has been tested.
+###  Step 5: Deployment
 
-    ![image9](2026-03-github-radius-feature-spec/image9.png)
-
-1. The user clicks the `dev` environment.
-
-    ![image10](2026-03-github-radius-feature-spec/image10.png)
-
-1. A Copilot agent is dispatched to define the application using the resource types built into Radius. The user is presented with the modeled application graph.
-
-    ![image11](2026-03-github-radius-feature-spec/image11.png)
-
-1. After the user tells Copilot yes to deploy, the user is redirected to the deployment dashboard and monitors the deployment. 
+1. The user clicks **Deploy** again and selects the todo-list-app application and dev environment then clicks **Deploy Application**.
 
     ![image12](2026-03-github-radius-feature-spec/image12.png)
 
-    Resources queued for deployment are marked in gray. Resources being deployed are yellow. Resources successfully deployed are green. Resources that failed to deploy are red.
-
-    When the user returns to the main repository page, they now see a deployment with the environment and timestamp under Deployments.
+1. The user is taken to the deployment status page. Resources queued for deployment are marked in gray. Resources being deployed are yellow. Resources successfully deployed are green. Resources that failed to deploy are red.
 
     ![image13](2026-03-github-radius-feature-spec/image13.png)
+
+1. Once a cloud resource has been deployed, they can click on it and see a deep link to the AWS console for that specific resource.
+
+    ![image14](2026-03-github-radius-feature-spec/image14.png)
+
+1. If there is an error, the user can click on the resource to see the deployment error.
+
+    ![image15](2026-03-github-radius-feature-spec/image15.png)
+
+1. When the user returns to the main repository page, they now see an application and environment defined, and the deployment in the sidebar.
+
+    ![image16](2026-03-github-radius-feature-spec/image16.png)
 
 
 ###  
