@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
@@ -34,8 +35,6 @@ import (
 )
 
 func Test_ACI(t *testing.T) {
-	// Temporarily skipping due to transient Azure ManagedServiceIdentityNotFound issue.
-	t.Skip("https://github.com/radius-project/radius/issues/11708")
 	name := "aci-app"
 	containerResourceName := "frontend"
 	containerResourceName2 := "magpie"
@@ -44,7 +43,7 @@ func Test_ACI(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:             step.NewDeployExecutor(template),
+			Executor:             step.NewDeployExecutor(template).WithRetry(1, 30*time.Second, isTransientAzureError),
 			SkipObjectValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -162,4 +161,25 @@ func verifyACIResourceLocations(ctx context.Context, t *testing.T, appName strin
 // e.g., "East US" -> "eastus", "West Europe" -> "westeurope"
 func normalizeLocation(location string) string {
 	return strings.ToLower(strings.ReplaceAll(location, " ", ""))
+}
+
+// isTransientAzureError returns true if the error is a known transient Azure error
+// that may succeed on retry.
+func isTransientAzureError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := err.Error()
+	transientErrors := []string{
+		"ManagedServiceIdentityNotFound",
+	}
+
+	for _, te := range transientErrors {
+		if strings.Contains(msg, te) {
+			return true
+		}
+	}
+
+	return false
 }
