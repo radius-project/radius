@@ -1,6 +1,6 @@
 # Application Graph Visualization
 
-* **Author**: Nithya Subramanian (@nithyatsu)
+* **Author**: Nithya Subramanian (@nithyatsu)..
 
 ## Overview
 
