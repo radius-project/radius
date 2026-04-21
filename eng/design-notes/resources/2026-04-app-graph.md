@@ -14,9 +14,9 @@ The application graph serves two key purposes:
 This design extends the application graph from a runtime-only, CLI-only tool to a **multi-modality visualization system** embedded directly in the GitHub developer workflow. The key additions are:
 
 * A **static application graph** built from Bicep definitions (no deployment required).
-* A **browser extension** that injects interactive graph visualizations into GitHub repository pages and pull requests.
 * A **CI/CD pipeline** that automatically builds graph artifacts on every push and PR.
 * A **diff visualization** that highlights added, removed, and modified resources when reviewing pull requests.
+* A **browser extension** that injects interactive graph visualizations into GitHub repository pages and pull requests.
 
 > **Feature Spec Reference:** [2026-04-github-app-graph-visualization-feature-spec](https://github.com/willtsai/radius/blob/app-graph-viz-gh-feature-spec/eng/design-notes/app-graph/2026-04-github-app-graph-visualization-feature-spec.md) by Will Tsai (@willtsai)
 
@@ -76,14 +76,13 @@ Radius should provide a way to access all three kinds of graph.
 * Provide a CLI command (`rad graph build`) that constructs and outputs a static application graph from Bicep or compiled JSON application definition files.
 * Provide a CLI command (`rad app graph`) that outputs the run-time graph of a deployed application by calling the `getGraph` API.
 * Provide a browser extension that renders interactive application graph visualizations on GitHub repository pages and pull requests. [Q: not to be committed to main]
-* Provide a reusable CI workflow that automatically builds graph artifacts on push and PR events. [Q: ok to retain this as part of traditional installs too?]
+* Provide a reusable CI workflow that automatically builds graph artifacts on push and PR events. 
 
 ### Non-goals
 
 * Authorization / RBAC for viewing the graph — identified as a future capability dependent on Radius RBAC feature.
-* Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration.
-* Deployed application graph visualization in the browser extension - rad app graph command already exists.
-* Planned application graph visualization in the browser extension - this requires further work to avail tf plan/ what-if to understand recipe's output resources. 
+* Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration. This also requires enhancing Radius to avail tf plan/ what-if to understand recipe's output resources without executing them. 
+* non-monorepo and multi-app repos.
 
 ### User scenarios
 
@@ -98,6 +97,8 @@ When a developer navigates to the repository root on GitHub, an "Application gra
 #### Scenario 3: Interactive navigation from graph to code
 
 A developer clicks on a node in the graph (e.g., "cache") and sees a popup with links to: (1) the source code file referenced by the `codeReference` property, and (2) the `app.bicep` line where the resource is declared.
+
+
 
 ## User Experience
 
@@ -124,6 +125,17 @@ The command:
 3. Detects source line mappings by scanning the Bicep file for `resource` declarations.
 4. Computes a `diffHash` for each resource based on review-relevant properties.
 5. Commits the resulting `StaticGraphArtifact` JSON to `{source-branch}/app.json` on the orphan branch.
+
+##### CLI flags
+
+| Flag | Description | Default |
+|------|-------------|--------|
+| `--bicep` | Path to Bicep application definition file | `app.bicep` |
+| `--output` | Path for the output graph artifact (local file mode) | `.radius/static/app.json` |
+| `--orphan-branch` | Commit the artifact to this git orphan branch instead of writing a local file | (none — local file mode) |
+| `--source-branch` | Source branch name used as the directory prefix on the orphan branch (required with `--orphan-branch`) | (none — required) |
+
+When `--orphan-branch` is omitted, the artifact is written locally to `--output`. When `--orphan-branch` is provided, `--source-branch` is required and the artifact is committed to `{source-branch}/app.json` on the orphan branch.
 
 ### CLI: `rad app graph` (existing)
 
@@ -250,7 +262,7 @@ The `ApplicationGraphResponse` reuses the existing API schema from `pkg/corerp/a
    - Extract `properties.connections` → resolve `resourceId()` expressions to target IDs.
    - Extract `dependsOn` → resolve symbolic references to target IDs.
    - Extract `properties.codeReference` if present.
-3. **Map source lines:** Scan `app.bicep` for `resource <name> '<type>' =` declarations, recording line numbers. Q: This might need a new approach if we are deep linking. Should we merge?
+3. **Map source lines:** Scan `app.bicep` for `resource <name> '<type>' =` declarations, recording line numbers. 
 4. **Compute diffHash:** For each resource, extract "authorable" properties (excluding `application`, `environment`, internal IDs), canonicalize as JSON, and hash  including `dependsOn`.
 5. **Add inbound connections:** For each outbound connection A→B, add a corresponding inbound connection B←A.
 6. **Sort:** Sort resources by ID for deterministic output.
@@ -276,13 +288,38 @@ After building the artifact, the CLI:
 3. Commits with author identity from git config.
 4. Pushes to origin.
 
-##### CLI flags
+##### Concurrent PR handling
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--bicep` | Path to Bicep application definition file | `app.bicep` |
-| `--orphan-branch` | Orphan branch name for storing artifacts | `radius-graph` |
-| `--source-branch` | Branch name to use as the artifact directory | Current branch |
+Multiple PRs can be open simultaneously, each writing to the same `radius-graph` orphan branch. Conflicts are avoided through:
+
+**1. Directory-per-branch isolation.** Each PR writes to its own directory on the orphan branch (`feature-a/app.json`, `feature-b/app.json`). Since different PRs use different `--source-branch` values, their artifacts never overwrite each other — they're in separate directories within the same branch.
+
+**2. GitHub Actions concurrency group.** The reusable workflow uses a concurrency group scoped to the triggering ref:
+
+```yaml
+concurrency:
+  group: build-app-graph-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. Builds for *different* PR branches run in parallel since their `github.ref` values differ.
+
+**3. Fetch-before-write in `gitstate`.** The `OpenOrCreate` function in `pkg/cli/gitstate/` always fetches the latest remote state before creating a worktree:
+
+```
+1. Fetch remote `radius-graph` branch → local tracking ref
+2. Sync local branch to match remote (fast-forward)
+3. Create a git worktree in /tmp/ for isolated file operations
+4. Write `{source-branch}/app.json`
+5. Commit and push
+```
+
+This fetch-then-push pattern means each build starts from the latest state. Since each PR writes to a different directory, the commits don't conflict — git can fast-forward.
+
+**Race condition risk:** If two PRs push at exactly the same time, one `git push` could fail with a non-fast-forward error. The current code does **not** retry — the push error is returned to the caller and the CI job fails. In practice this is rare because the concurrency group serializes builds per-branch, and different branches write to different directories. A future improvement could add a fetch-rebase-push retry loop.
+
+**Cleanup:** Stale directories for merged/closed PRs are not automatically cleaned up from the orphan branch. Over time, the orphan branch accumulates directories for old branches. This is a known gap — a periodic cleanup job or a post-merge hook could be added to prune stale directories.
+
 
 ---
 
@@ -330,7 +367,7 @@ jobs:
 
 ---
 
-#### Component 3: Browser Extension
+#### Component 3: Browser Extension 
 
 **Location:** `web/browser-extension/`
 
@@ -437,7 +474,59 @@ Authentication is optional for public repos but required for private repos and t
 
 #### Component 4: Graph JSON Schema
 
-The graph artifact uses a unified schema that represents both static and run-time graphs:
+The graph artifact uses a unified schema for both static and run-time graphs. See [Full schema reference](#full-schema-reference) and [Complete artifact example](#complete-artifact-example) below for the detailed schema and a worked example.
+
+##### Full schema reference
+
+The graph schema is defined in TypeSpec at `typespec/Applications.Core/applications.tsp` and generated into Go types at `pkg/corerp/api/v20231001preview/zz_generated_models.go`.
+
+**`ApplicationGraphResponse`** — top-level response from `getGraph` API and the `application` field in `StaticGraphArtifact`:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `resources` | `[]ApplicationGraphResource` | Yes | The resources in the application graph |
+
+**`ApplicationGraphResource`** — a single resource node in the graph:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | `string` | Yes | Full resource ID (e.g., `/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend`) |
+| `type` | `string` | Yes | Resource type (e.g., `Applications.Core/containers`) |
+| `name` | `string` | Yes | Resource name (e.g., `frontend`) |
+| `provisioningState` | `string` | Yes | Provisioning state. Always `"Succeeded"` for static graphs; actual state for run-time graphs |
+| `connections` | `[]ApplicationGraphConnection` | Yes | Connections to/from this resource (outbound and inbound) |
+| `outputResources` | `[]ApplicationGraphOutputResource` | Yes | Underlying infrastructure resources. Empty `[]` for static graphs; populated for run-time graphs |
+| `codeReference` | `string` | No | Repo-relative path to source code (e.g., `src/frontend/index.ts` or `src/cache/redis.ts#L10`). Format defined in feature spec |
+| `appDefinitionLine` | `int32` | No | 1-based line number of the `resource` declaration in `app.bicep`. Auto-detected by `rad graph build` |
+| `diffHash` | `string` | No | SHA-256 hash of review-relevant properties for diff classification (e.g., `sha256:883755ad...`) |
+
+**`ApplicationGraphConnection`** — a directed edge between resources:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | `string` | Yes | Resource ID of the connected resource |
+| `direction` | `string` | Yes | `"Outbound"` (this resource connects to target) or `"Inbound"` (target connects to this resource) |
+
+**`ApplicationGraphOutputResource`** — an underlying infrastructure resource (run-time only):
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | `string` | Yes | Resource ID of the infrastructure resource |
+| `type` | `string` | Yes | Resource type (e.g., `kubernetes: apps/Deployment`) |
+| `name` | `string` | Yes | Resource name |
+
+**`StaticGraphArtifact`** — the CLI-only JSON envelope written to disk or orphan branch (defined in `pkg/cli/graph/build.go`):
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `version` | `string` | Yes | Schema version (currently `"1.0.0"`) |
+| `generatedAt` | `string` | Yes | ISO 8601 timestamp of artifact generation |
+| `sourceFile` | `string` | Yes | Path to the Bicep source file (e.g., `app.bicep`) |
+| `application` | `ApplicationGraphResponse` | Yes | The graph data |
+
+##### Complete artifact example
+
+A full example of a `StaticGraphArtifact` for an application with a frontend container connected to a Redis cache, and an environment resource:
 
 ```json
 {
@@ -452,34 +541,69 @@ The graph artifact uses a unified schema that represents both static and run-tim
         "type": "Applications.Core/containers",
         "provisioningState": "Succeeded",
         "connections": [
-          { "id": "...", "direction": "Outbound" },
-          { "id": "...", "direction": "Inbound" }
+          {
+            "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/redisCaches/cache",
+            "direction": "Outbound"
+          }
         ],
         "outputResources": [],
-        "diffHash": "sha256:883755ad...",
+        "diffHash": "sha256:883755ad2f9e...",
         "appDefinitionLine": 23,
         "codeReference": "src/frontend/index.ts"
+      },
+      {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/redisCaches/cache",
+        "name": "cache",
+        "type": "Applications.Datastores/redisCaches",
+        "provisioningState": "Succeeded",
+        "connections": [
+          {
+            "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend",
+            "direction": "Inbound"
+          }
+        ],
+        "outputResources": [],
+        "diffHash": "sha256:b4e91c3d7a01...",
+        "appDefinitionLine": 45,
+        "codeReference": "src/cache/redis.ts#L10"
+      },
+      {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/default",
+        "name": "default",
+        "type": "Applications.Core/environments",
+        "provisioningState": "Succeeded",
+        "connections": [],
+        "outputResources": [],
+        "diffHash": "sha256:f7a20e8b6c55...",
+        "appDefinitionLine": 1
       }
     ]
   }
 }
 ```
 
-**Schema extensions over the existing `ApplicationGraphResponse`:**
+Key observations:
+- `frontend` has an **Outbound** connection to `cache`; `cache` has a corresponding **Inbound** connection from `frontend` (bidirectional edges).
+- `environment` has no `codeReference` — the source-code navigation link is omitted in the UI.
+- `outputResources` is empty for all static graph resources (populated only for run-time graphs).
+- Each resource has a unique `diffHash` computed from its review-relevant properties.
 
-| Field | Type | Graph type | Description |
-|-------|------|-----------|-------------|
-| `diffHash` | `*string` | Static | BLAKE2b hash for diff classification |
-| `appDefinitionLine` | `*int32` | Static | Line number in `app.bicep` |
-| `codeReference` | `*string` | Static | Repo-relative path to source code |
-| `provisioningState` | `string` | Both | Always `"Succeeded"` for static graphs |
-| `outputResources` | `[]OutputResource` | Run-time | Empty for static graphs |
+##### Schema differences: static vs run-time graph
+
+| Aspect | Static graph | Run-time graph |
+|--------|-------------|---------------|
+| `provisioningState` | Always `"Succeeded"` | Actual state (`Succeeded`, `Failed`, etc.) |
+| `outputResources` | Empty `[]` | Populated with infrastructure resources (e.g., K8s Deployments, Azure resources) |
+| `diffHash` | Set by `ComputeDiffHash()` | Not set (null) |
+| `appDefinitionLine` | Auto-detected from Bicep | Not set (null) |
+| `codeReference` | From Bicep `properties.codeReference` | Not set (null) |
+| Wrapped in | `StaticGraphArtifact` (with version, timestamp) | `ApplicationGraphResponse` (direct API response) |
 
 ##### Resource property selection
 
 The graph JSON includes properties for each resource node. There are three approaches considered:
 
-**Approach A: Include all properties (current behavior)**
+**Approach A: Include all properties (current behavior) [Preferred]**
 
 Dump every property from the resource's stored state into the graph node. All properties are read from the Radius control plane datastore.
 
@@ -507,7 +631,6 @@ Include all properties but add a `displayProperties` list for recommended render
 | Full data always available | Graph JSON size not reduced |
 | Display hints guide UI | Two sources of truth |
 
-**Proposed option:** For static graphs, Approach A is used with a filtered set: the build algorithm extracts only "authorable" properties (excluding `application`, `environment`, internal IDs) for the diffHash, while the graph JSON includes the fields needed for rendering (name, type, connections, diffHash, line number, codeReference).
 
 ---
 
@@ -521,6 +644,7 @@ The graph is constructed in-memory but must be persisted so it remains accessibl
 | Run-time graph | `graphs/{app}.json` on `radius-state` orphan branch | `rad shutdown` serializes after deploy |
 
 **Why orphan branches?**
+
 - No interference with application code history.
 - GitHub Contents API provides easy access without local checkout.
 - Natural per-branch organization (`main/app.json`, `feature-branch/app.json`).
@@ -642,11 +766,8 @@ See [Component 3: Browser Extension](#component-3-browser-extension) for full ar
 
 ### Extension testing
 
-The browser extension is tested manually:
-1. Build extension with `npm run build`.
-2. Load unpacked from `web/browser-extension/dist/`.
-3. Navigate to a repo with `app.bicep` and verify the "Application graph" tab renders.
-4. Open a PR modifying `app.bicep` and verify diff graph with correct colors.
+The browser extension is tested with these [detailed instructions](https://github.com/radius-project/radius/blob/6ab75a070d0bd48b82d7d5cc7fb4af89e99c7ed9/web/browser-extension/graph-extension-quickstart.md)
+
 
 ## Security
 
@@ -690,16 +811,14 @@ The browser extension is tested manually:
 ## Open Questions
 
 1. **Should `app.bicep` be required at the repo root?** The current implementation looks for `app.bicep` at the root. Should it support a configurable path (e.g., `.radius/app.bicep`)?
+   
+No, we should generate app graph diff view on the PR that adds the generated app.bicep
 
 2. **Polling for head artifact:** When a PR is opened and the head artifact hasn't been built yet, should the extension poll periodically and auto-render when the artifact appears, or require a manual page refresh?
 
-3. **Multiple applications per repo:** The current design assumes one `app.bicep` per repo. How should multi-application repos be handled?
+3. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
-4. **`codeReference` adoption:** Who sets the `codeReference` property — the developer manually, or should tooling (e.g., Copilot skills) populate it automatically?
-
-5. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
-
-6. **Cloud provider navigation:** For deployed graphs, clicking a resource should navigate to the cloud provider console (AWS, Azure). How should provider-specific URLs be constructed? 
+4. **Cloud provider navigation:** For deployed graphs, clicking a resource should navigate to the cloud provider console (AWS, Azure). How should provider-specific URLs be constructed? 
 
 ## Alternatives considered
 

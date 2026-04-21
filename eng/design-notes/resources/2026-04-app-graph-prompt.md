@@ -75,3 +75,15 @@ This file captures the iterative prompts and context used to develop and refine 
 | 2026-04-16 | Initial design doc created on `design-update-app-graph` branch |
 | 2026-04-17 | Updated with comprehensive details from `github-demo`, `filesystem-state`, and feature spec analysis |
 | 2026-04-20 | Identified BLAKE2b/SHA-256 mismatch — fixed in design doc. Created prompt file. Created `design-with-code` branch from `github-demo` with both design files. |
+| 2026-04-20 | Added full schema reference section (all types from TypeSpec), complete artifact example with frontend+cache+environment, and static vs run-time comparison table. Replaced abbreviated inline JSON example with link to new section. |
+| 2026-04-20 | Moved CLI flags table from Detailed Design to UX section. Added missing `--output` flag. Added explanation of local file vs orphan branch mode switching. Populated empty `2023-10-app-graph.md` with original content from archived `design-notes` repo. |
+| 2026-04-20 | Added "Concurrent PR handling" section documenting: directory-per-branch isolation, GitHub Actions concurrency group (`build-app-graph-${{ github.ref }}`), fetch-before-write in gitstate, race condition risk (no retry on push failure), and stale directory cleanup gap. |
+
+## Key Findings from Code/Spec Review
+
+- **Sample output in doc is aspirational**: The `rad graph build` output shown ("Parsed 4 resources...") doesn't match the actual code. Real output is just "Static graph artifact written to..." or "committed to...". Marked with `#Q` in doc.
+- **Two output modes**: Local file (default `--output .radius/static/app.json`) and orphan branch (`--orphan-branch` + `--source-branch`). The `--output` flag is now documented in the CLI flags table in the UX section.
+- **`rad app graph --dry-run` is not from Will's spec**: Will's feature spec defines "Planned app graph (P2)" as just "TBD". The `--dry-run` CLI syntax was invented in the design doc. 
+- **Will's spec has UX flows not fully captured**: dedicated app page (`/{owner}/{repo}/radius/app/{name}`), deployed graph status colors (grey/yellow/green/blue/red), cloud console navigation on click, error modal for failed resources, and Copilot-assisted workflow illustration.
+- **Diff colors match Will's spec**: Green=added, red=removed, yellow=modified originated from Will's feature spec. Design doc refined with Primer tokens.
+- **`codeReference` format**: Will's spec defines validation rules — repo-relative path, forward slashes, optional `#L<number>` anchor, no URL scheme/host/query/traversal. Code has a validator (`coderef-validator.ts`).
