@@ -123,9 +123,11 @@ func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, dep
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if attempt > 1 {
 			t.Logf("waiting %s before retry attempt %d/%d", d.RetryDelay, attempt, maxAttempts)
+			timer := time.NewTimer(d.RetryDelay)
 			select {
-			case <-time.After(d.RetryDelay):
+			case <-timer.C:
 			case <-ctx.Done():
+				timer.Stop()
 				lastErr = ctx.Err()
 			}
 			if ctx.Err() != nil {
