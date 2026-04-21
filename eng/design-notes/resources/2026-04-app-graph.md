@@ -75,14 +75,10 @@ Radius should provide a way to access all three kinds of graph.
 * Identify a persistence mechanism since the graph should be available irrespective of the ephemeral nature of Radius control plane. The graph construction is still an in-memory operation.
 * Provide a CLI command (`rad graph build`) that constructs and outputs a static application graph from Bicep or compiled JSON application definition files.
 * Provide a CLI command (`rad app graph`) that outputs the run-time graph of a deployed application by calling the `getGraph` API.
-* Provide a browser extension that renders interactive application graph visualizations on GitHub repository pages and pull requests. [Q: not to be committed to main]
-* Provide a reusable CI workflow that automatically builds graph artifacts on push and PR events. 
 
 ### Non-goals
 
-* Authorization / RBAC for viewing the graph — identified as a future capability dependent on Radius RBAC feature.
 * Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration. This also requires enhancing Radius to avail tf plan/ what-if to understand recipe's output resources without executing them. 
-* non-monorepo and multi-app repos.
 
 ### User scenarios
 
@@ -163,22 +159,6 @@ rad app graph my-app --output json
 }
 ```
 
-### Browser Extension: Repository root 
-
-When a user with the extension installed navigates to `https://github.com/{owner}/{repo}`, the extension:
-1. Checks for `app.bicep` at the repository root.
-2. Fetches `main/app.json` from the `radius-graph` orphan branch.
-3. Injects an "Application graph" tab beside the README tab.
-4. Renders an interactive DAG using Cytoscape.js with dagre layout.
-
-### Browser Extension: Pull request view
-
-When a user navigates to a PR that modifies `app.bicep`, the extension:
-1. Fetches both `{base-branch}/app.json` and `{head-branch}/app.json` from the orphan branch.
-2. Computes the diff using `computeGraphDiff()`.
-3. Renders a color-coded graph below the PR description with a legend.
-4. Shows a "waiting for CI" message if the head artifact hasn't been built yet.
-
 ## Design
 
 ### High Level Design
@@ -209,7 +189,7 @@ The system consists of four components that work together:
                                                         └──────────────┘
 ```
 
-We will NOT merge Browser extension and  Cytoscape.js  into main for now.
+We will NOT merge Workflows,  Browser extension and  Cytoscape.js  into main for now.
 
 **Data Flow:**
 
@@ -220,7 +200,7 @@ We will NOT merge Browser extension and  Cytoscape.js  into main for now.
 
 ### Detailed Design
 
-#### Component 1: Static Graph Builder (`rad graph build`)
+#### Static Graph Builder (`rad graph build`)
 
 **Location:** `pkg/cli/graph/`
 
@@ -308,156 +288,7 @@ This fetch-then-push pattern means each build starts from the latest state. Sinc
 
 ---
 
-#### Component 2: CI/CD Integration (Reusable Workflow)
-
-**Location:** `.github/workflows/__build-app-graph.yml`
-
-A `workflow_call` workflow that consumer repos invoke via a small wrapper workflow. It:
-
-1. Checks out the consumer repo.
-2. Checks out the Radius repo (for building `rad` and installing Bicep).
-3. Builds `rad` from source with `go build ./cmd/rad`.
-4. Installs the Bicep CLI via `build/install-bicep.sh`.
-5. Runs `rad graph build` with the configured flags.
-
-##### Consumer workflow example
-
-```yaml
-# .github/workflows/build-app-graph.yml
-name: Build Application Graph
-on:
-  push:
-    branches: [main]
-    paths: [app.bicep]
-  pull_request:
-    paths: [app.bicep]
-permissions:
-  contents: write
-jobs:
-  build-graph:
-    uses: radius-project/radius/.github/workflows/__build-app-graph.yml@main
-    with:
-      app_file: app.bicep
-      orphan_branch: radius-graph
-      workflow_source_ref: main
-```
-
-##### Workflow inputs
-
-| Input | Description | Default |
-|-------|-------------|---------|
-| `app_file` | Path to Bicep file | `app.bicep` |
-| `orphan_branch` | Orphan branch name | `radius-graph` |
-| `workflow_source_ref` | Ref in radius-project/radius to build rad from | `main` |
-
----
-
-#### Component 3: Browser Extension 
-
-**Location:** `web/browser-extension/`
-
-A Chrome/Edge browser extension that injects graph visualizations into GitHub pages. Built with TypeScript and bundled with esbuild.
-
-##### Architecture
-
-```
-web/browser-extension/
-├── src/
-│   ├── background/          # Service worker for extension lifecycle
-│   │   └── service-worker.ts
-│   ├── content/             # Content scripts injected into GitHub pages
-│   │   ├── inject.ts        # Entry point — detects page type, dispatches
-│   │   ├── repo-tab.ts      # Injects "Application graph" tab on repo root
-│   │   ├── pr-graph.ts      # PR diff graph orchestrator
-│   │   ├── app-page.ts      # Dedicated app graph page
-│   │   ├── graph-renderer.ts # Cytoscape.js rendering with dagre layout
-│   │   ├── graph-diff.ts    # Diff computation (added/removed/modified/unchanged)
-│   │   └── graph-navigation.ts # Node click popups with code links
-│   ├── popup/               # Extension popup UI (setup, auth, settings)
-│   │   ├── popup.html
-│   │   ├── popup.ts
-│   │   └── popup.css
-│   ├── shared/              # Shared utilities
-│   │   ├── api.ts           # Token storage, GitHub client factory
-│   │   ├── github-api.ts    # GraphGitHubAPI class (fetch artifacts, PR details)
-│   │   ├── graph-types.ts   # TypeScript types mirroring Go schema
-│   │   ├── device-flow.ts   # GitHub App device flow authentication
-│   │   └── types.ts         # General types
-│   └── styles/
-│       └── graph.css        # Primer-aligned styling for graphs, popups, legend
-├── dist/                    # Built extension (load unpacked from here)
-├── manifest.json            # Extension manifest (permissions, content scripts)
-├── esbuild.config.mjs       # Build configuration
-└── package.json
-```
-
-##### Content script: Page detection (`inject.ts`)
-
-The content script runs on all `github.com` pages. It:
-1. Parses the URL to extract `owner`, `repo`, `pullNumber`.
-2. Checks if `app.bicep` exists at the repo root (via GitHub API).
-3. Dispatches to the appropriate handler:
-   - Repo root → `repo-tab.ts` (Application graph tab)
-   - PR page → `pr-graph.ts` (diff graph)
-   - Dedicated app page → `app-page.ts`
-
-##### Graph rendering (`graph-renderer.ts`)
-
-Uses **Cytoscape.js** with the **cytoscape-dagre** layout plugin for directed acyclic graph rendering.
-
-**Diff color scheme (Primer-aligned):**
-
-| Status | Border color | Background color | Border width |
-|--------|-------------|-----------------|-------------|
-| Added | `#1a7f37` (success) | `#dafbe1` (success-subtle) | 3px |
-| Removed | `#cf222e` (danger) | `#ffebe9` (danger-subtle) | 3px |
-| Modified | `#9a6700` (attention) | `#fff8c5` (attention-subtle) | 3px |
-| Unchanged | `#57606a` (muted) | `#f6f8fa` (canvas-subtle) | 2px |
-
-Each node displays the resource name and short type. Edges represent outbound connections, rendered as directed bezier curves with arrow markers.
-
-##### Diff computation (`graph-diff.ts`)
-
-```typescript
-function computeGraphDiff(
-  base: ApplicationGraphResponse | null,
-  head: ApplicationGraphResponse | null
-): GraphDiff {
-  // Build ID→resource maps for both base and head
-  // For each head resource:
-  //   - Not in base → added
-  //   - In base but diffHash differs → modified
-  //   - In base with same diffHash → unchanged
-  // For each base resource:
-  //   - Not in head → removed
-}
-```
-
-The PR graph displays all head resources plus removed resources from the base, applying diff status colors to each node.
-
-**Edge case:** If `headArtifact` is null (PR CI hasn't completed yet), the extension shows a "waiting for CI" message instead of rendering a misleading all-red graph.
-
-##### Node interaction (`graph-navigation.ts`)
-
-Clicking a node shows a popup with:
-- Resource name and type
-- Diff status badge
-- Link to `app.bicep` at the resource's `appDefinitionLine`
-- Link to source code via `codeReference` (if provided)
-
-On PRs, links point to the PR diff view for modified resources and to the repo file view for unchanged resources.
-
-##### Authentication
-
-The extension supports two authentication methods:
-1. **GitHub App Device Flow** — User creates a GitHub App, enters Client ID and app slug, then authorizes via device flow. Token stored in `chrome.storage.local`.
-2. **Personal Access Token** — User pastes a PAT directly in settings. Simpler but less secure.
-
-Authentication is optional for public repos but required for private repos and to avoid API rate limits.
-
----
-
-#### Component 4: Graph JSON Schema
+#### Graph JSON Schema
 
 The graph artifact uses a unified schema for both static and run-time graphs. See [Full schema reference](#full-schema-reference) and [Complete artifact example](#complete-artifact-example) below for the detailed schema and a worked example.
 
@@ -573,22 +404,12 @@ Key observations:
 - `outputResources` is empty for all static graph resources (populated only for run-time graphs).
 - Each resource has a unique `diffHash` computed from its review-relevant properties.
 
-##### Schema differences: static vs run-time graph
-
-| Aspect | Static graph | Run-time graph |
-|--------|-------------|---------------|
-| `provisioningState` | Always `"Succeeded"` | Actual state (`Succeeded`, `Failed`, etc.) |
-| `outputResources` | Empty `[]` | Populated with infrastructure resources (e.g., K8s Deployments, Azure resources) |
-| `diffHash` | Set by `ComputeDiffHash()` | Not set (null) |
-| `appDefinitionLine` | Auto-detected from Bicep | Not set (null) |
-| `codeReference` | From Bicep `properties.codeReference` | Not set (null) |
-| Wrapped in | `StaticGraphArtifact` (with version, timestamp) | `ApplicationGraphResponse` (direct API response) |
 
 ##### Resource property selection
 
 The graph JSON includes properties for each resource node. There are three approaches considered:
 
-**Approach A: Include all properties (current behavior) [Preferred]**
+**Approach A: Include all properties (current behavior) [Preferred, current implementation]**
 
 Dump every property from the resource's stored state into the graph node. All properties are read from the Radius control plane datastore.
 
@@ -751,15 +572,10 @@ The browser extension is tested with these [detailed instructions](https://githu
 
 ## Open Questions
 
-1. **Should `app.bicep` be required at the repo root?** The current implementation looks for `app.bicep` at the root. Should it support a configurable path (e.g., `.radius/app.bicep`)?
-   
-No, we should generate app graph diff view on the PR that adds the generated app.bicep
 
-2. **Polling for head artifact:** When a PR is opened and the head artifact hasn't been built yet, should the extension poll periodically and auto-render when the artifact appears, or require a manual page refresh?
+1. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
-3. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
-
-4. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. If one control plane modifies the application, the others don't know — their stored state and `getGraph` output become stale.
+2. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. If one control plane modifies the application, the others don't know — their stored state and `getGraph` output become stale.
 
    Note that the static graph (`rad graph build`) is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. Only the run-time graph (from `getGraph`) is affected by this problem.
 
@@ -793,15 +609,6 @@ No, we should generate app graph diff view on the PR that adds the generated app
 
 **Chosen approach:** Orphan branch. Clean separation from application code, natural per-branch organization, accessible via GitHub API. This is consistent with the `filesystem-state` branch's choice of orphan branches for PostgreSQL state persistence, validated by the same analysis (see [GitHub Actions Workspace](../2026-03-github-workspace-design.md) alternatives considered).
 
-### Browser extension vs GitHub App/Action with Markdown
-
-| Option | Pros | Cons |
-|--------|------|------|
-| Browser extension | Rich interactive UI, real-time rendering | Requires user installation |
-| GitHub Action generating Markdown/SVG | No installation needed | Static images, no interactivity, PR comment clutter |
-| GitHub App with checks API | Native GitHub integration | Limited rendering capabilities |
-
-**Chosen approach:** Browser extension with Cytoscape.js for rich, interactive visualizations with click-to-navigate capabilities.
 
 ## Design Review Notes
 
