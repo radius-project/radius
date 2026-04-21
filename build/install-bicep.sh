@@ -43,9 +43,6 @@ fi
 mkdir -p "$OUTPUT_DIR"
 cat <<EOF > $OUTPUT_DIR/bicepconfig.json
 {
-  "experimentalFeaturesEnabled": {
-    "extensibility": true
-  },
   "extensions": {
     "radius": "br:biceptypes.azurecr.io/radius:${REL_CHANNEL}",
     "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:${REL_CHANNEL}",
