@@ -92,7 +92,7 @@ A developer modifies `app.bicep` to add a new Redis cache and connect it to an e
 
 #### Scenario 2: Repository root architecture diagram
 
-When a developer navigates to the repository root on GitHub, an "Application graph" tab appears next to the README tab. Clicking it shows the current application topology for the `main` branch — always up to date because CI rebuilds it on every merge.
+When a developer navigates to the repository root on GitHub, an "Application graph" tab appears next to the README tab (in the README file eventually; tab is because of using browser extensions). Clicking it shows the current application topology for the `main` branch — always up to date because CI rebuilds it on every merge.
 
 #### Scenario 3: Interactive navigation from graph to code
 
@@ -111,8 +111,7 @@ rad graph build \
   --orphan-branch radius-graph \
   --source-branch main
 ```
-
-**Sample Output:** #Q: Should we have the output match below? 
+**Sample Output**
 ```
 Compiling app.bicep → /tmp/app.json
 Parsed 4 resources, 3 connections
@@ -123,7 +122,7 @@ The command:
 1. Invokes `bicep build` to compile `app.bicep` to ARM JSON.
 2. Parses resources, connections, `dependsOn`, and `codeReference` from the JSON.
 3. Detects source line mappings by scanning the Bicep file for `resource` declarations.
-4. Computes a `diffHash` for each resource based on review-relevant properties.
+4. Computes a `diffHash` for each resource based on relevant properties.
 5. Commits the resulting `StaticGraphArtifact` JSON to `{source-branch}/app.json` on the orphan branch.
 
 ##### CLI flags
@@ -135,7 +134,7 @@ The command:
 | `--orphan-branch` | Commit the artifact to this git orphan branch instead of writing a local file | (none — local file mode) |
 | `--source-branch` | Source branch name used as the directory prefix on the orphan branch (required with `--orphan-branch`) | (none — required) |
 
-When `--orphan-branch` is omitted, the artifact is written locally to `--output`. When `--orphan-branch` is provided, `--source-branch` is required and the artifact is committed to `{source-branch}/app.json` on the orphan branch.
+When `--orphan-branch` is omitted, the artifact is written locally to `--output`. When `--orphan-branch` is provided, `--source-branch` is required and the artifact is committed to `{source-branch}/app.json` on the orphan branch. This means each branch gets its own directory — for example, CI for a PR from `feature-add-redis` writes to `feature-add-redis/app.json`, while a merge to `main` writes to `main/app.json`. The browser extension uses these directory names to fetch the correct base and head artifacts for diff comparison.
 
 ### CLI: `rad app graph` (existing)
 
@@ -304,14 +303,14 @@ concurrency:
 
 This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. Builds for *different* PR branches run in parallel since their `github.ref` values differ.
 
-**3. Fetch-before-write in `gitstate`.** The `OpenOrCreate` function in `pkg/cli/gitstate/` always fetches the latest remote state before creating a worktree:
+**3. Always start from latest state.** Before writing anything, the CLI downloads the most recent version of the `radius-graph` branch from GitHub. This ensures it has all artifacts written by other PRs. Then it:
 
 ```
-1. Fetch remote `radius-graph` branch → local tracking ref
-2. Sync local branch to match remote (fast-forward)
-3. Create a git worktree in /tmp/ for isolated file operations
-4. Write `{source-branch}/app.json`
-5. Commit and push
+1. Download the latest `radius-graph` branch from GitHub
+2. Update the local copy to match
+3. Open the branch in a temporary folder (so it doesn't interfere with the code files)
+4. Write the new `{source-branch}/app.json` into that folder
+5. Save and upload the changes back to GitHub
 ```
 
 This fetch-then-push pattern means each build starts from the latest state. Since each PR writes to a different directory, the commits don't conflict — git can fast-forward.
