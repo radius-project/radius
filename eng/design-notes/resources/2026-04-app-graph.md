@@ -235,23 +235,9 @@ The CLI compiles Bicep to ARM JSON via `bicep build`, then parses the JSON. This
 
 ##### Key types
 
-```go
-// StaticGraphArtifact is the JSON envelope for the graph artifact.
-type StaticGraphArtifact struct {
-    Version     string                         `json:"version"`
-    GeneratedAt string                         `json:"generatedAt"`
-    SourceFile  string                         `json:"sourceFile"`
-    Application ApplicationGraphResponse       `json:"application"`
-}
-```
+The static graph artifact uses `StaticGraphArtifact` as its JSON envelope, wrapping the existing `ApplicationGraphResponse` API type extended with three optional fields (`diffHash`, `appDefinitionLine`, `codeReference`). The `Version` field exists on `StaticGraphArtifact` (not `ApplicationGraphResponse`) because the API response is versioned by its URL (`v20231001preview`), while the file artifact needs its own schema version.
 
-`Version` field exists because, ApplicationGraphResponse is a server API response and does not include a version in itself. StaticGraphArtifact however lives on disk/orphan branch.
-
-The `ApplicationGraphResponse` reuses the existing API schema from `pkg/corerp/api/v20231001preview/`, extended with:
-- `diffHash` (`*string`) — hash of elevant properties for diff classification.
-- `appDefinitionLine` (`*int32`) — line number in `app.bicep` wwhere the resource is defined
-- `codeReference` (`*string`) — repo-relative path to source code.
-
+See [Full schema reference](#full-schema-reference) for the complete type definitions, field descriptions, and a [worked example](#complete-artifact-example).
 
 ##### Build algorithm
 
@@ -667,69 +653,25 @@ The `rad shutdown` command (from the `filesystem-state` branch) backs up Postgre
 
 ---
 
-### Server-side support
+### API design and server-side support
 
-No server-side changes are required for the static graph feature. The existing `getGraph` API on `Applications.Core/applications` continues to serve the run-time graph.
+No REST API changes or server-side changes are required for this iteration. The existing `getGraph` custom action on `Applications.Core/applications` continues to serve the run-time graph unchanged. Future work may add `diffHash`, `appDefinitionLine`, and `codeReference` to the server-side `ApplicationGraphResponse` TypeSpec definition.
 
-Future work may add the `diffHash`, `appDefinitionLine`, and `codeReference` fields to the server-side `ApplicationGraphResponse` TypeSpec definition to enable a unified schema.
-
-### API design
-
-#### REST API changes
-
-No REST API changes for this iteration. The `getGraph` custom action remains unchanged.
-
-#### Graph artifact schema (new)
-
-The `StaticGraphArtifact` type is defined in `pkg/cli/graph/build.go` and mirrored in `web/browser-extension/src/shared/graph-types.ts`. See [Component 4: Graph JSON Schema](#component-4-graph-json-schema) above for the full schema.
+The new `StaticGraphArtifact` type is CLI-only, defined in `pkg/cli/graph/build.go` and mirrored in `web/browser-extension/src/shared/graph-types.ts`. See [Full schema reference](#full-schema-reference) for the complete type definitions.
 
 ### CLI Design
 
-#### New command: `rad graph build`
-
-```
-rad graph build [flags]
-
-Flags:
-  --bicep string           Path to the Bicep application definition file (default "app.bicep")
-  --orphan-branch string   Orphan branch name for storing graph artifacts (default "radius-graph")
-  --source-branch string   Branch name to use as the artifact directory (default: current branch)
-```
-
-#### Existing command: `rad app graph`
-
-No changes. Continues to display the run-time graph via the `getGraph` API.
+See [User Experience > CLI: `rad graph build`](#cli-rad-graph-build) for the full command description, sample I/O, and flags. The existing `rad app graph` command is unchanged.
 
 ### Implementation Details
 
-#### UCP
-
-No changes.
-
-#### Bicep
-
-The Bicep CLI is used as-is (`bicep build`). No custom Bicep parsing.
-
-#### Core RP
-
-No changes for this iteration. Future work: add `diffHash`, `appDefinitionLine`, `codeReference` to the `ApplicationGraphResource` TypeSpec model.
-
-#### CLI (`pkg/cli/graph/`)
-
-New package with the following files:
-
-| File | Purpose |
-|------|---------|
-| `build.go` | `BuildStaticGraph()` — main algorithm, ARM JSON parsing, resource/connection extraction |
-| `diffhash.go` | `ComputeDiffHash()` — BLAKE2b hashing of authorable properties |
-| `orphan.go` | Git operations for creating/updating the orphan branch |
-| `cmd.go` | Cobra command setup for `rad graph build` |
-| `build_test.go` | Unit tests for graph building |
-| `diffhash_test.go` | Unit tests for hash stability, determinism |
-
-#### Browser Extension (`web/browser-extension/`)
-
-See [Component 3: Browser Extension](#component-3-browser-extension) for full architecture.
+| Component | Changes |
+|---|---|
+| **UCP** | No changes |
+| **Bicep** | Used as-is (`bicep build`). No custom Bicep parsing |
+| **Core RP** | No changes. Future: add `diffHash`, `appDefinitionLine`, `codeReference` to `ApplicationGraphResource` TypeSpec model |
+| **CLI** (`pkg/cli/graph/`) | New package — see [Static Graph Builder](#component-1-static-graph-builder-rad-graph-build) for file listing and algorithm |
+| **Browser Extension** (`web/browser-extension/`) | New — see [Browser Extension](#component-3-browser-extension) for architecture |
 
 ### Error Handling
 
