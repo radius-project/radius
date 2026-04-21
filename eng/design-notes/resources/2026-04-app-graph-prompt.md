@@ -78,6 +78,7 @@ This file captures the iterative prompts and context used to develop and refine 
 | 2026-04-20 | Added full schema reference section (all types from TypeSpec), complete artifact example with frontend+cache+environment, and static vs run-time comparison table. Replaced abbreviated inline JSON example with link to new section. |
 | 2026-04-20 | Moved CLI flags table from Detailed Design to UX section. Added missing `--output` flag. Added explanation of local file vs orphan branch mode switching. Populated empty `2023-10-app-graph.md` with original content from archived `design-notes` repo. |
 | 2026-04-20 | Added "Concurrent PR handling" section documenting: directory-per-branch isolation, GitHub Actions concurrency group (`build-app-graph-${{ github.ref }}`), fetch-before-write in gitstate, race condition risk (no retry on push failure), and stale directory cleanup gap. |
+| 2026-04-21 | Restructured doc to eliminate duplication while following the [design template](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-design-template.md). Consolidated: Key types → references Full schema reference; CLI Design → references UX section; Implementation Details → compact table referencing Component sections; Server-side support + API design → merged into single section. No content removed — 860→802 lines. |
 
 ## Key Findings from Code/Spec Review
 
