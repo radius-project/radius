@@ -77,8 +77,8 @@ The following user journeys are out of scope for the initial prototype, but will
 
 1. The user clicks back to the main repository page.
    
-###  Step 3: Creating an AWS environment
-1. The user clicks on Environments and sees options for creating AWS, Azure, or Google Cloud environments. The user clicks **Create AWS environment**.
+###  Step 3: Defining an AWS environment
+1. The user clicks on Environments and sees options for creating AWS, Azure, or Google Cloud environments. The user clicks **Define an AWS environment**.
 
     ![image6](2026-03-github-radius-feature-spec/image6.png)
 
