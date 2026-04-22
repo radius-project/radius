@@ -594,7 +594,7 @@ Possible approaches to drift:
 
 **Approach 2: Application-level "last modified" metadata.** Add `lastModifiedAt` (UTC timestamp) and `lastModifiedBy` (control plane identifier, e.g., cluster name) as properties on the Application resource itself. When `getGraph` is called, the control plane compares its stored `lastModifiedAt` with the value on the Application resource to detect whether another instance has made changes since the last deployment. This does not prevent staleness but makes it detectable. However, it requires support for synchronizing/ refreshing state.
 
-**Drift detection and refresh (future direction).** Today, comparable products already maintain state and offer drift detection:
+**Drift detection and refresh** Today, comparable products already maintain state and offer drift detection:
 - **Pulumi** — [Drift Detection and Remediation](https://www.pulumi.com/blog/drift-detection/) via `pulumi refresh` (manual) or scheduled drift detection in Pulumi Cloud (automated).
   
 - **Terraform** — [Health Assessments with Drift Detection](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/health#drift-detection) in HCP Terraform, plus `terraform plan -refresh-only` in the open-source CLI.
