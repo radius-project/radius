@@ -573,7 +573,6 @@ The browser extension is tested with these [detailed instructions](https://githu
 
 ## Open Questions
 
-
 1. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
 2. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed potentially by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. In addition, users can use cloud provider cli/ portals to change the configuration to suit their needs. If an instance of control plane or an  user modifies the resources of the  application, then Radius's stored state and `getGraph` output become stale.
@@ -584,20 +583,20 @@ Only the run-time graph (from `getGraph`) is affected by this problem.
 
 Possible approaches to drift:
 
-1. **Single-writer enforcement.** Add a constraint that an application can only be deployed by one control plane at a time — essentially an ownership claim. A second control plane attempting to deploy the same application would receive an error. This avoids the stale-data problem entirely by preventing it, but limits flexibility for multi-environment workflows. We can use the same fields that approach 2 proposes to detect if the app is managed by another control plane to report error. However, this will lead to bad user experience. For consider an Operator who wants to apply a minor tweak to a resource's property while navigating the AWS/ Azure portal. The user will be forced to use `rad deploy`` for it. 
+**Approach 1: Single-writer enforcement.** Add a constraint that only one control plane can deploy a given application at a time — essentially an ownership claim. A second control plane attempting to deploy the same application would receive an error. This avoids the stale-data problem entirely by preventing it, but limits flexibility for multi-environment workflows. The detection mechanism can reuse the same metadata fields proposed in Approach 2 (`lastModifiedBy`) to identify whether another control plane currently owns the application. However, this leads to a poor user experience: an operator who wants to apply a minor tweak to a resource property via the AWS or Azure portal would be forced to use `rad deploy` instead.
 
-2. **Application-level "last modified" metadata.** Add `lastModifiedAt` (timestamp) and `lastModifiedBy` (control plane identifier, e.g., cluster name) as properties on the Application resource itself. When `getGraph` is called, the control plane can compare its stored `lastModifiedAt` with the value on the Application resource to detect if another instance has made changes since it last deployed. This doesn't prevent the staleness but makes it detectable. However, 
-we need support for synchronizing the states across these multiple radius instances. 
-   
-Today, comparable products like Terraform, Pulumi do have states and ability to detect drift. 
-https://www.pulumi.com/blog/drift-detection/
-https://developer.hashicorp.com/terraform/cloud-docs/workspaces/health#drift-detection
+**Approach 2: Application-level "last modified" metadata.** Add `lastModifiedAt` (UTC timestamp) and `lastModifiedBy` (control plane identifier, e.g., cluster name) as properties on the Application resource itself. When `getGraph` is called, the control plane compares its stored `lastModifiedAt` with the value on the Application resource to detect whether another instance has made changes since the last deployment. This does not prevent staleness but makes it detectable. However, it requires support for synchronizing state across multiple Radius instances.
 
-Similar to their approaches,we could offer rad commands that are able to detect drift and apply a refresh. At a high level, this would involve
+**Drift detection and refresh (future direction).** Today, comparable products already maintain state and offer drift detection:
+- **Pulumi** — [Drift Detection and Remediation](https://www.pulumi.com/blog/drift-detection/) via `pulumi refresh` (manual) or scheduled drift detection in Pulumi Cloud (automated).
+  
+- **Terraform** — [Health Assessments with Drift Detection](https://developer.hashicorp.com/terraform/cloud-docs/workspaces/health#drift-detection) in HCP Terraform, plus `terraform plan -refresh-only` in the open-source CLI.
 
-1. querying the application resource and getting the last modified time (which should be in UTC) and by who and if that is newer, we supply another rad command to refresh the local state files. This convers only concurrent updates by mutiple radius instances.
+Drawing from these approaches, Radius could offer `rad` commands to detect drift and apply a refresh. At a high level, this would involve:
 
-2. querying each resource of the application and if the app definition has changed, enable updating the state based on the actual deployment's properties.
+1. Query the Application resource for its `lastModifiedAt` (UTC) and `lastModifiedBy`. If a newer timestamp from a different control plane is found, offer a `rad` command to refresh the local state. This addresses concurrent updates by multiple Radius instances.
+
+2. Query each resource of the application against its actual cloud provider state. If the deployed properties differ from what Radius has recorded, enable updating the stored state to match the actual deployment. This addresses changes made directly through cloud provider consoles or CLIs.
 
 ## Alternatives considered
 
