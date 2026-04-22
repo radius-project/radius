@@ -7,3 +7,31 @@ APP VERSION: {{ .Chart.AppVersion }}
   kubectl --namespace {{ $.Release.Namespace }} get pods -l "app.kubernetes.io/part-of=radius"
 
 Visit https://docs.radapp.io to start Radius.
+
+{{- if and .Values.dynamicrp.buildkit.enabled (eq .Values.dynamicrp.buildkit.psaMode "restricted") }}
+{{- if not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version) }}
+
+WARNING: dynamicrp.buildkit.psaMode is "restricted" but this cluster
+is running Kubernetes {{ .Capabilities.KubeVersion.Version }}, which
+predates user-namespace support (added in 1.30, stable in 1.33). The
+buildkitd sidecar will fail to start.
+
+Reinstall with:
+
+  helm upgrade --install radius ... \
+    --set dynamicrp.buildkit.psaMode=baseline
+
+The "baseline" mode runs the same buildkitd image with Unconfined
+seccomp/AppArmor profiles. Your namespace must permit PSA "baseline".
+{{- end }}
+{{- end }}
+{{- if and .Values.dynamicrp.buildkit.enabled (not .Values.dynamicrp.buildkit.credentialsSecret) }}
+
+NOTE: dynamicrp.buildkit.credentialsSecret is unset. The Radius.Compute/containerImages
+recipe will not be able to authenticate with your registry. Create a
+Secret containing a Docker config.json and pass its name via:
+
+  --set dynamicrp.buildkit.credentialsSecret=<secret-name>
+
+See the resource type README for instructions.
+{{- end }}

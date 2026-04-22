@@ -120,6 +120,32 @@ dynamicrp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  # buildkit configures an in-Pod rootless BuildKit sidecar that
+  # serves the Radius.Compute/containerImages resource type. The
+  # sidecar exposes a unix socket that the dynamic-rp container
+  # talks to via DOCKER_HOST. No host Docker socket is mounted; no
+  # privileged containers are created.
+  buildkit:
+    # Set false to skip provisioning the sidecar. Disabling saves
+    # ~50 MiB of resident memory but makes Radius.Compute/containerImages
+    # unusable.
+    enabled: true
+    # Pod-security-admission profile the sidecar is configured for.
+    #   restricted (default): uses Kubernetes user namespaces
+    #     (hostUsers=false). Requires Kubernetes >= 1.30 with the
+    #     UserNamespacesSupport feature gate enabled (stable in 1.33).
+    #   baseline: uses Unconfined seccomp/AppArmor profiles plus
+    #     --oci-worker-no-process-sandbox. Compatible with PSA baseline
+    #     and clusters older than 1.30.
+    psaMode: restricted
+    # Pinned rootless BuildKit image. Match a tested upstream tag.
+    image: "moby/buildkit:v0.13.2-rootless"
+    # Name of a Kubernetes Secret in the release namespace whose
+    # `config.json` key holds Docker-config-format registry
+    # credentials. The Secret is mounted into the dynamic-rp
+    # container at $HOME/.docker/config.json. Leave empty to skip
+    # the mount (recipe pushes will then fail to authenticate).
+    credentialsSecret: ""
 
 rp:
   image: applications-rp
