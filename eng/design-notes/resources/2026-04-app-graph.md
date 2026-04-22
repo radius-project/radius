@@ -400,11 +400,11 @@ A full example of a `StaticGraphArtifact` for an application with a frontend con
 ```
 
 Key observations:
+
 - `frontend` has an **Outbound** connection to `cache`; `cache` has a corresponding **Inbound** connection from `frontend` (bidirectional edges).
 - `environment` has no `codeReference` — the source-code navigation link is omitted in the UI.
 - `outputResources` is empty for all static graph resources (populated only for run-time graphs).
 - Each resource has a unique `diffHash` computed from its review-relevant properties.
-
 
 ##### Resource property selection
 
