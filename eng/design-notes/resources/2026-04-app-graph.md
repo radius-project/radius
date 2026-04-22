@@ -1,6 +1,6 @@
 # Application Graph Visualization
 
-* **Author**: Nithya Subramanian (@nithyatsu)..
+* **Author**: Nithya Subramanian (@nithyatsu)
 
 ## Overview
 
@@ -74,11 +74,11 @@ Radius should provide a way to access all three kinds of graph.
   * Review the server-side API (`getGraph` custom action on `Applications.Core/applications|Radius.Core/applications`) that returns the run-time application graph for a deployed application, based on schema decisions.
 * Identify a persistence mechanism since the graph should be available irrespective of the ephemeral nature of Radius control plane. The graph construction is still an in-memory operation.
 * Provide a CLI command (`rad graph build`) that constructs and outputs a static application graph from Bicep or compiled JSON application definition files.
-* Provide a CLI command (`rad app graph`) that outputs the run-time graph of a deployed application by calling the `getGraph` API.
+* Review the CLI command (`rad app graph`) that outputs the run-time graph of a deployed application by calling the `getGraph` API.
 
 ### Non-goals
 
-* Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration. This also requires enhancing Radius to avail tf plan/ what-if to understand recipe's output resources without executing them. 
+* Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration. This also requires enhancing Radius to avail tf plan/ what-if to understand recipe's output resources without executing them.
 
 ### User scenarios
 
@@ -88,7 +88,7 @@ A developer modifies `app.bicep` to add a new Redis cache and connect it to an e
 
 #### Scenario 2: Repository root architecture diagram
 
-When a developer navigates to the repository root on GitHub, an "Application graph" tab appears next to the README tab (in the README file eventually; tab is because of using browser extensions). Clicking it shows the current application topology for the `main` branch — always up to date because CI rebuilds it on every merge.
+When a developer navigates to the repository root on GitHub, an "Application graph" tab appears next to the README tab (in the README file eventually; tab is because of using browser extensions, will change based on the UI stack we would choose). Clicking it shows the current application topology for the `main` branch — always up to date because CI rebuilds it on every merge.
 
 #### Scenario 3: Interactive navigation from graph to code
 
@@ -130,7 +130,7 @@ The command:
 | `--orphan-branch` | Commit the artifact to this git orphan branch instead of writing a local file | (none — local file mode) |
 | `--source-branch` | Source branch name used as the directory prefix on the orphan branch (required with `--orphan-branch`) | (none — required) |
 
-When `--orphan-branch` is omitted, the artifact is written locally to `--output`. When `--orphan-branch` is provided, `--source-branch` is required and the artifact is committed to `{source-branch}/app.json` on the orphan branch. This means each branch gets its own directory — for example, CI for a PR from `feature-add-redis` writes to `feature-add-redis/app.json`, while a merge to `main` writes to `main/app.json`. The browser extension uses these directory names to fetch the correct base and head artifacts for diff comparison.
+When `--orphan-branch` is omitted, the artifact is written locally to `--output`. When `--orphan-branch` is provided, `--source-branch` is required and the artifact is committed to `{source-branch}/app.json` on the orphan branch. This means each branch gets its own directory — for example, CI for a PR from `feature-add-redis` writes to `feature-add-redis/app.json`, while a merge to `main` writes to `main/app.json`. The browser extension/ UI layers above use these directory names to fetch the correct base and head artifacts for diff comparison.
 
 ### CLI: `rad app graph` (existing)
 
@@ -215,7 +215,7 @@ The CLI compiles Bicep to ARM JSON via `bicep build`, then parses the JSON. This
 
 ##### Key types
 
-The static graph artifact uses `StaticGraphArtifact` as its JSON envelope, wrapping the existing `ApplicationGraphResponse` API type extended with three optional fields (`diffHash`, `appDefinitionLine`, `codeReference`). The `Version` field exists on `StaticGraphArtifact` (not `ApplicationGraphResponse`) because the API response is versioned by its URL (`v20231001preview`), while the file artifact needs its own schema version.
+The static graph artifact uses `StaticGraphArtifact` as its JSON envelope, wrapping the existing `ApplicationGraphResponse` API type extended with three optional fields (`diffHash`, `appDefinitionLine`, `codeReference`). The `Version` field exists on `StaticGraphArtifact` (not `ApplicationGraphResponse`) because the API response is versioned by its URL (`v20231001preview`), while the file artifact needs its own schema version. `StaticGraphArtifact` is a `cli-only` datamodel, since the new fields are all relevant for code/ static analysis and do not involve a API call. 
 
 See [Full schema reference](#full-schema-reference) for the complete type definitions, field descriptions, and a [worked example](#complete-artifact-example).
 
@@ -228,7 +228,7 @@ See [Full schema reference](#full-schema-reference) for the complete type defini
    - Extract `dependsOn` → resolve symbolic references to target IDs.
    - Extract `properties.codeReference` if present.
 3. **Map source lines:** Scan `app.bicep` for `resource <name> '<type>' =` declarations, recording line numbers. 
-4. **Compute diffHash:** For each resource, extract "authorable" properties (excluding `application`, `environment`, internal IDs), canonicalize as JSON, and hash  including `dependsOn`.
+4. **Compute diffHash:** For each resource, extract only the review-relevant properties (`connections`, `container`, `ports`, `routes`, `resources`, `recipe`, `resourceProvisioning`) using an allowlist, canonicalize as sorted JSON, and hash with SHA-256 including `dependsOn`. Properties not in the allowlist (e.g., `application`, `environment`, `name`, `type`) are ignored — new properties added to resource types in the future won't affect diffs unless explicitly added to the allowlist.
 5. **Add inbound connections:** For each outbound connection A→B, add a corresponding inbound connection B←A.
 6. **Sort:** Sort resources by ID for deterministic output.
 
@@ -243,11 +243,12 @@ func ComputeDiffHash(properties map[string]interface{}, dependsOn ...string) str
 }
 ```
 
-The diffHash enables the browser extension to classify resources as modified vs unchanged without comparing all properties.
-========================================
+The diffHash enables the browser extension(UI component) to classify resources as modified vs unchanged without comparing all properties.
+
 ##### Orphan branch commit
 
 After building the artifact, the CLI:
+
 1. Creates or checks out the orphan branch (default: `radius-graph`).
 2. Writes `{source-branch}/app.json`.
 3. Commits with author identity from git config.
@@ -590,6 +591,7 @@ The browser extension is tested with these [detailed instructions](https://githu
 **Option considered:** Parse `.bicep` files directly in Go to extract resources and connections.
 
 **Rejected because:**
+
 - Requires a Bicep parser in Go (none exists; Bicep is C#/.NET).
 - Must handle Bicep's full expression language (interpolation, conditionals, loops).
 - Cannot handle Bicep modules without recursive resolution.
