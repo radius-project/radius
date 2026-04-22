@@ -576,13 +576,28 @@ The browser extension is tested with these [detailed instructions](https://githu
 
 1. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
-2. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. If one control plane modifies the application, the others don't know — their stored state and `getGraph` output become stale.
+2. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed potentially by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. In addition, users can use cloud provider cli/ portals to change the configuration to suit their needs. If an instance of control plane or an  user modifies the resources of the  application, then Radius's stored state and `getGraph` output become stale.
 
-   Note that the static graph (`rad graph build`) is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. Only the run-time graph (from `getGraph`) is affected by this problem.
+Note that the static graph (`rad graph build`) is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. It depicts the app graph as inferred from the  code. 
 
-   Possible approaches:
-   1. **Application-level "last modified" metadata.** Add `lastModifiedAt` (timestamp) and `lastModifiedBy` (control plane identifier, e.g., cluster name) as properties on the Application resource itself. When `getGraph` is called, the control plane can compare its stored `lastModifiedAt` with the value on the Application resource to detect if another instance has made changes since it last deployed. This doesn't prevent the staleness but makes it detectable.
-   2. **Single-writer enforcement.** Add a constraint that an application can only be deployed by one control plane at a time — essentially an ownership claim. A second control plane attempting to deploy the same application would receive an error. This avoids the stale-data problem entirely by preventing it, but limits flexibility for multi-environment workflows.
+Only the run-time graph (from `getGraph`) is affected by this problem.
+
+Possible approaches to drift:
+
+1. **Single-writer enforcement.** Add a constraint that an application can only be deployed by one control plane at a time — essentially an ownership claim. A second control plane attempting to deploy the same application would receive an error. This avoids the stale-data problem entirely by preventing it, but limits flexibility for multi-environment workflows. We can use the same fields that approach 2 proposes to detect if the app is managed by another control plane to report error. However, this will lead to bad user experience. For consider an Operator who wants to apply a minor tweak to a resource's property while navigating the AWS/ Azure portal. The user will be forced to use `rad deploy`` for it. 
+
+2. **Application-level "last modified" metadata.** Add `lastModifiedAt` (timestamp) and `lastModifiedBy` (control plane identifier, e.g., cluster name) as properties on the Application resource itself. When `getGraph` is called, the control plane can compare its stored `lastModifiedAt` with the value on the Application resource to detect if another instance has made changes since it last deployed. This doesn't prevent the staleness but makes it detectable. However, 
+we need support for synchronizing the states across these multiple radius instances. 
+   
+Today, comparable products like Terraform, Pulumi do have states and ability to detect drift. 
+https://www.pulumi.com/blog/drift-detection/
+https://developer.hashicorp.com/terraform/cloud-docs/workspaces/health#drift-detection
+
+Similar to their approaches,we could offer rad commands that are able to detect drift and apply a refresh. At a high level, this would involve
+
+1. querying the application resource and getting the last modified time (which should be in UTC) and by who and if that is newer, we supply another rad command to refresh the local state files. This convers only concurrent updates by mutiple radius instances.
+
+2. querying each resource of the application and if the app definition has changed, enable updating the state based on the actual deployment's properties.
 
 ## Alternatives considered
 
