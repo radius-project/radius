@@ -11,12 +11,14 @@ The application graph serves two key purposes:
 1. **Deployment and configuration** — Radius uses the graph to understand resource dependencies, enabling it to orchestrate deployment and inject configuration automatically.
 2. **Visualization** — The graph gives users an intuitive, topology-based view of their application rather than a flat list of resources.
 
-This design extends the application graph from a runtime-only, CLI-only tool to a **multi-modality visualization system** embedded directly in the GitHub developer workflow. The key additions are:
+This design extends the application graph from a runtime-only, CLI-only tool to a **multi-modality visualization system** which can be embedded directly in the GitHub developer workflow. The key additions are:
 
-* A **static application graph** built from Bicep definitions (no deployment required).
+* A **static application graph** built from Bicep definitions (no deployment required). This is the core Radius enhancement.
 * A **CI/CD pipeline** that automatically builds graph artifacts on every push and PR.
 * A **diff visualization** that highlights added, removed, and modified resources when reviewing pull requests.
-* A **browser extension** that injects interactive graph visualizations into GitHub repository pages and pull requests.
+* A **browser extension** that injects interactive graph visualizations into GitHub repository pages and pull requests. 
+
+For these, static application graph is a core Radius feature to be built.
 
 > **Feature Spec Reference:** [2026-04-github-app-graph-visualization-feature-spec](https://github.com/willtsai/radius/blob/app-graph-viz-gh-feature-spec/eng/design-notes/app-graph/2026-04-github-app-graph-visualization-feature-spec.md) by Will Tsai (@willtsai)
 
@@ -189,14 +191,14 @@ The system consists of four components that work together:
                                                         └──────────────┘
 ```
 
-We will NOT merge Workflows,  Browser extension and  Cytoscape.js  into main for now.
+We will merge Workflows,  Browser extension and  Cytoscape.js  into another repository. 
 
 **Data Flow:**
 
-1. **Build time:** `rad graph build` compiles Bicep → ARM JSON → `StaticGraphArtifact` → commits to `radius-graph` orphan branch.
-2. **CI time:** The reusable workflow `__build-app-graph.yml` runs `rad graph build` on push/PR events.
-3. **View time:** The browser extension fetches the artifact via GitHub Contents API and renders it client-side.
-4. **Diff time:** On PRs, the extension fetches both base and head artifacts, diffs them by resource ID and `diffHash`, and color-codes nodes.
+1. `rad graph build` compiles Bicep → ARM JSON → `StaticGraphArtifact` → commits to `radius-graph` orphan branch.
+2. The reusable workflow `__build-app-graph.yml` runs `rad graph build` on push/PR events.
+3. The browser extension fetches the artifact via GitHub Contents API and renders it client-side.
+4. On PRs, the extension fetches both base and head artifacts, diffs them by resource ID and `diffHash`, and color-codes nodes.
 
 ### Detailed Design
 
@@ -213,9 +215,21 @@ The CLI compiles Bicep to ARM JSON via `bicep build`, then parses the JSON. This
 3. Provides two edge sources: `connections` (application-level) and `dependsOn` (deployment ordering).
 4. The Bicep CLI is already a prerequisite for `rad deploy`.
 
-##### Key types
+##### Schema
 
 The static graph artifact uses `StaticGraphArtifact` as its JSON envelope, wrapping the existing `ApplicationGraphResponse` API type extended with three optional fields (`diffHash`, `appDefinitionLine`, `codeReference`). The `Version` field exists on `StaticGraphArtifact` (not `ApplicationGraphResponse`) because the API response is versioned by its URL (`v20231001preview`), while the file artifact needs its own schema version. `StaticGraphArtifact` is a `cli-only` datamodel, since the new fields are all relevant for code/ static analysis and do not involve a API call. 
+
+```go
+/ StaticGraphArtifact is the JSON envelope for the static graph artifact.
+// When using orphan branch storage, this is committed to {source-branch}/app.json
+// on the radius-graph orphan branch.
+type StaticGraphArtifact struct {
+	Version     string                                          `json:"version"`
+	GeneratedAt string                                          `json:"generatedAt"`
+	SourceFile  string                                          `json:"sourceFile"`
+	Application corerpv20231001preview.ApplicationGraphResponse `json:"application"`
+}
+```
 
 See [Full schema reference](#full-schema-reference) for the complete type definitions, field descriptions, and a [worked example](#complete-artifact-example).
 
@@ -285,13 +299,6 @@ This fetch-then-push pattern means each build starts from the latest state. Sinc
 **Race condition risk:** If two PRs push at exactly the same time, one `git push` could fail with a non-fast-forward error. The current code does **not** retry — the push error is returned to the caller and the CI job fails. In practice this is rare because the concurrency group serializes builds per-branch, and different branches write to different directories. A future improvement could add a fetch-rebase-push retry loop.
 
 **Cleanup:** Stale directories for merged/closed PRs are not automatically cleaned up from the orphan branch. Over time, the orphan branch accumulates directories for old branches. This is a known gap — a periodic cleanup job or a post-merge hook could be added to prune stale directories.
-
-
----
-
-#### Graph JSON Schema
-
-The graph artifact uses a unified schema for both static and run-time graphs. See [Full schema reference](#full-schema-reference) and [Complete artifact example](#complete-artifact-example) below for the detailed schema and a worked example.
 
 ##### Full schema reference
 
@@ -594,7 +601,7 @@ Possible approaches to drift:
 
 Drawing from these approaches, Radius could offer `rad` commands to detect drift and apply a refresh. At a high level, this would involve:
 
-1. Query the Application resource for its `lastModifiedAt` (UTC) and `lastModifiedBy`. If a newer timestamp from a different control plane is found, offer a `rad` command to refresh the local state. This addresses concurrent updates by multiple Radius instances.
+1. Query the Application resource for its `lastModifiedAt` (UTC) and `lastModifiedBy`. If a newer timestamp from a different control plane is found, offer a `rad` command to refresh the local state. This addresses concurrent updates by multiple Radius instances, but doesn not detect drifts induced by users.
 
 2. Query each resource of the application against its actual cloud provider state. If the deployed properties differ from what Radius has recorded, enable updating the stored state to match the actual deployment. This addresses changes made directly through cloud provider consoles or CLIs.
 
