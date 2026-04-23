@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -1297,38 +1296,10 @@ func setAzureResourceGroups(client *azure.MockClient, subscriptionID string, gro
 		Times(1)
 }
 
-func setAzureCheckResourceGroupExistence(client *azure.MockClient, subscriptionID string, resourceGroupName string, exists bool) {
-	client.EXPECT().
-		CheckResourceGroupExistence(gomock.Any(), subscriptionID, resourceGroupName).
-		Return(exists, nil).
-		Times(1)
-}
-
-func setAzureCreateOrUpdateResourceGroup(client *azure.MockClient, subscriptionID string, resourceGroupName string, location string) {
-	client.EXPECT().
-		CreateOrUpdateResourceGroup(gomock.Any(), subscriptionID, resourceGroupName, location).
-		Return(nil).
-		Times(1)
-}
-
-func setAzureLocations(client *azure.MockClient, subscriptionID string, locations []armsubscriptions.Location) {
-	client.EXPECT().
-		Locations(gomock.Any(), subscriptionID).
-		Return(locations, nil).
-		Times(1)
-}
-
 func setAzureSubscriptionConfirmPrompt(prompter *prompt.MockInterface, subscriptionName string, choice string) {
 	prompter.EXPECT().
 		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAzureSubscriptionPromptFmt, subscriptionName)).
 		Return(choice, nil).
-		Times(1)
-}
-
-func setAzureSubsubscriptionPrompt(prompter *prompt.MockInterface, names []string, name string) {
-	prompter.EXPECT().
-		GetListInput(names, selectAzureSubscriptionPrompt).
-		Return(name, nil).
 		Times(1)
 }
 
@@ -1343,20 +1314,6 @@ func setAzureResourceGroupPrompt(prompter *prompt.MockInterface, names []string,
 	prompter.EXPECT().
 		GetListInput(names, selectAzureResourceGroupPrompt).
 		Return(name, nil).
-		Times(1)
-}
-
-func setAzureResourceGroupNamePrompt(prompter *prompt.MockInterface, name string) {
-	prompter.EXPECT().
-		GetTextInput(enterAzureResourceGroupNamePrompt, gomock.Any()).
-		Return(name, nil).
-		Times(1)
-}
-
-func setSelectAzureResourceGroupLocationPrompt(prompter *prompt.MockInterface, locations []string, location string) {
-	prompter.EXPECT().
-		GetListInput(locations, selectAzureResourceGroupLocationPrompt).
-		Return(location, nil).
 		Times(1)
 }
 
