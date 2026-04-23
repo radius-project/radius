@@ -29,7 +29,7 @@ jobs:
           auto-issue-dry-run: "true"
           auto-issue-min-confidence: "90"
           auto-issue-min-members: "2"
-          auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump"
+          auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump,DepGroupUpdate"
           auto-close-flaky: "true"
           assign-copilot: "false"
           github-token: ${{ secrets.GITHUB_TOKEN }}
