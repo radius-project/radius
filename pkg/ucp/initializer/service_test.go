@@ -307,6 +307,106 @@ types:
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to register manifests after retries")
 	})
+
+	t.Run("skips subdirectories in manifest directory", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+
+		// Create a subdirectory - should be skipped
+		err := os.Mkdir(filepath.Join(tempDir, "subdir"), 0o700)
+		require.NoError(t, err)
+
+		// Create a valid manifest file
+		manifestContent := `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  myType:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		err = os.WriteFile(filepath.Join(tempDir, "test.yaml"), []byte(manifestContent), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify only the file manifest was registered, not the subdirectory
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
+		require.NoError(t, err)
+		require.NotNil(t, obj)
+	})
+
+	t.Run("registers multiple manifest files", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		manifestContent1 := `
+namespace: Provider.One
+location:
+  global: "http://localhost:9090"
+types:
+  typeOne:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		manifestContent2 := `
+namespace: Provider.Two
+location:
+  global: "http://localhost:9091"
+types:
+  typeTwo:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "provider1.yaml"), []byte(manifestContent1), 0600)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "provider2.yaml"), []byte(manifestContent2), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify both providers were registered
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Provider.One")
+		require.NoError(t, err)
+		require.NotNil(t, obj)
+
+		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Provider.Two")
+		require.NoError(t, err)
+		require.NotNil(t, obj)
+	})
+
+	t.Run("returns error for invalid manifest content", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		err := os.WriteFile(filepath.Join(tempDir, "bad.yaml"), []byte("not: valid: manifest: content:"), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+
+		// Cancel context quickly since retries will keep failing
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err = svc.Run(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to register manifests after retries")
+	})
 }
 
 func Test_saveResource(t *testing.T) {
