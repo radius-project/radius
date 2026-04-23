@@ -31,5 +31,5 @@ jobs:
           auto-issue-min-members: "2"
           auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump,DepGroupUpdate"
           auto-close-flaky: "true"
-          assign-copilot: "false"
+          assign-copilot: "true"
           github-token: ${{ secrets.GITHUB_TOKEN }}
