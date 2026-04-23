@@ -33,31 +33,3 @@ jobs:
           auto-close-flaky: "true"
           assign-copilot: "false"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-name: C9K CI Failure Report
-
-on:
-  schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  issues: write
-  actions: read
-
-jobs:
-  report:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: sylvainsf/causinator9000@v1.9.0
-        with:
-          repo: ${{ github.repository }}
-          hours: '48'
-          auto-issue: 'true'
-          auto-issue-dry-run: 'true'
-          auto-issue-min-confidence: '90'
-          auto-issue-min-members: '2'
-          auto-issue-classes: 'CodeChange,BrokenTestRun,DepMajorBump'
-          auto-close-flaky: 'true'
-          assign-copilot: 'false'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
