@@ -24,9 +24,20 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # Group k8s.io and controller-runtime together so they are always
+      # bumped in the same PR. These packages share tight version coupling
+      # and bumping k8s.io without a compatible controller-runtime release
+      # will break the build (see controller-runtime replace in go.mod).
+      kubernetes:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/controller-runtime"
       go-dependencies:
         patterns:
           - "*"
+        exclude-patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/controller-runtime"
 
   - package-ecosystem: devcontainers
     directory: /
