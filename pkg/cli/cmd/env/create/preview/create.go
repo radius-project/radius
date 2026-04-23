@@ -133,7 +133,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad env create` command.
+// Run runs the `rad env create --preview` command.
 //
 // Run creates a new Radius.Core environment with the default recipe pack
 func (r *Runner) Run(ctx context.Context) error {
