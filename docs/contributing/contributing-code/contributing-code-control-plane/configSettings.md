@@ -2,9 +2,9 @@
 
 ## Summary
 
-Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the `Applications.Core RP` but configurations can also be set to run `Portable Resources' Providers` for private preview and dev/test purposes. 
+Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the `Applications.Core RP` but configurations can also be set to run `Portable Resources' Providers` for private preview and dev/test purposes.
 
-If you wanted to locally run Radius with specific configurations, `yaml` files can be created and stored in the `cmd` folder for the corresponding UCP or resource provider. 
+If you wanted to locally run Radius with specific configurations, `yaml` files can be created and stored in the `cmd` folder for the corresponding UCP or resource provider.
 
 ![Local Config](./configExamples/localConfig.png)
 
@@ -15,8 +15,8 @@ If you wanted to run Radius on Kubernetes with specific configurations, `yaml` f
 
 ## Config File Schema
 
-The following properties can be specified in configuration for all services: 
-| Key | Description | Example | 
+The following properties can be specified in configuration for all services:
+| Key | Description | Example |
 |-----|-------------|---------|
 | environment | Environment name and its role location | [**See below**](#environment) |
 | identity | AAD APP authentication for the resource provider | [**See below**](#identity) |
@@ -29,14 +29,14 @@ The following properties can be specified in configuration for all services:
 
 -----
 
-The following are properties that can be specified for the `Applications.Core RP` and `Portable Resources`: 
+The following are properties that can be specified for the `Applications.Core RP` and `Portable Resources`:
 | Key | Description | Example |
 |-----|-------------|---------|
 | ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
 
 ----
 
-The following are properties that can be specified for UCP: 
+The following are properties that can be specified for UCP:
 | Key | Description | Example |
 |-----|-------------|---------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
@@ -48,13 +48,13 @@ The following are properties that can be specified for UCP:
 ### environment
 | Key | Description | Example |
 |-----|-------------|---------|
-| name | The name of the environment | `Dev` | 
+| name | The name of the environment | `Dev` |
 | location | The role location of the environment | `West US` |
 
 ### identity
 | Key | Description | Example |
 |-----|-------------|---------|
-| clientId | Client ID of the Azure AAD App  | `your-client-ID` | 
+| clientId | Client ID of the Azure AAD App  | `your-client-ID` |
 | instance | The identity provider instance | `https://login.windows.net` |
 | tenantId | Tenant ID of the Azure AAD App | `your-tenant-ID` |
 | armEndpoint | ARM endpoint | `https://management.azure.com:443` |
@@ -64,32 +64,32 @@ The following are properties that can be specified for UCP:
 ### databaseProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of database provider | `apiServer` | 
+| provider | The type of database provider | `apiServer` |
 | apiServer | Object containing properties for Kubernetes APIServer database | [**See below**](#apiserver) |
 | etcd | Object containing properties for ETCD database | [**See below**](#etcd)|
 
 ### queueProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of queue provider | `apiServer` | 
+| provider | The type of queue provider | `apiServer` |
 | apiServer |  Object containing properties for Kubernetes APIServer queue | [**See below**](#apiserver) |
 | inMemoryQueue | Object containing properties for InMemory Queue client | |
 
 ### secretProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of secret provider | `etcd` or `kubernetes` | 
-| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
+| provider | The type of secret provider | `etcd` or `kubernetes` |
+| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |
 
 ### server
-| Key | Description | Example | 
+| Key | Description | Example |
 |-----|-------------|---------|
 | host | Domain name of the server | `0.0.0.0` |
 | port | HTTP port | `8080` |
 | pathBase | HTTPRequest PathBase | `""` |
 | authType | The environment authentication type (e.g. client certificate, etc) |`ClientCertificate` |
 | armMetadataEndpoint | Endpoint that provides the client certification | `https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01` |
-| enableArmAuth | If set, the ARM client authentifictaion is performed (must be `true`/`false`) | `true` |
+| enableArmAuth | If set, the ARM client authentication is performed (must be `true`/`false`) | `true` |
 
 ### workerServer
 | Key | Description | Example |
@@ -134,13 +134,13 @@ ucp:
 ### secretProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of secret provider | `etcd` | 
-| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
+| provider | The type of secret provider | `etcd` |
+| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |
 
 ### plane
 | Key | Description | Example |
 |-----|-------------|---------|
-| id | The ID of the UCP plane | `/planes/radius/local` | 
+| id | The ID of the UCP plane | `/planes/radius/local` |
 | type | The type of UCP plane | `System.Radius/planes` |
 | name | The name of the UCP plane | `ucp` |
 | properties | The properties specified on the plane | [**See below**](#properties) |
@@ -172,9 +172,9 @@ ucp:
 |-----|-------------|---------|
 | authMethod | The method of authentication | `UCPCredential` using UCP Credential APIs, `Default` using environment variable |
 
-## Example configuration files 
+## Example configuration files
 
-See the configuration files in `cmd/<service>/*.yaml` for examples of configuration files. 
+See the configuration files in `cmd/<service>/*.yaml` for examples of configuration files.
 
 ## Environment Variables
 
@@ -191,7 +191,7 @@ Unlike the `rad` CLI or other infrastructure, all of the supported settings for 
 Many of the optional settings are booleans, which apply the following logic:
 
 - `true` enables the setting. This value is compared *case-insensitively*, so `True` would also be accepted.
-- ANY other value disables the setting. 
+- ANY other value disables the setting.
 
 Enum values are compared *case-insensitively*.
 
@@ -219,7 +219,7 @@ The RP can connect to ARM using credentials from one of three different sources 
 - Managed Identity (used when deployed)
 - CLI authentication (used in local development)
 
-Our detection logic mirrors what the newer Azure Go SDKs do. Since we require the use of the old-style SDKs we also perform the same logic. The environment variables we use to read these settings are the **standard set** used by all Azure tools. eg: `AZURE_CLIENT_ID` is the standard environment variable supported by all Azure tools. 
+Our detection logic mirrors what the newer Azure Go SDKs do. Since we require the use of the old-style SDKs we also perform the same logic. The environment variables we use to read these settings are the **standard set** used by all Azure tools. eg: `AZURE_CLIENT_ID` is the standard environment variable supported by all Azure tools.
 
 ### Kubernetes
 

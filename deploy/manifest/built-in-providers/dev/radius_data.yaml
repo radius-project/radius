@@ -1,0 +1,99 @@
+namespace: Radius.Data
+location:
+  global: "http://localhost:8082"
+types:
+  mySqlDatabases:
+    description: |
+      The Radius.Data/mySqlDatabases Resource Type deploys a MySQL database. To deploy a new MySQL database, first add a secret resource with the database credentials to the application definition Bicep file, then add a mySqlDatabases resource referencing the secret name.
+      ```
+      resource mysql 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
+        name: 'mysql'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          secretName: dbCredentials.name
+        }
+      }
+      
+      resource dbCredentials 'Radius.Security/secrets@2025-08-01-preview' = {
+        name: 'db-creds'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          data: {
+            USERNAME: {
+              value: 'admin'
+            }
+            PASSWORD: {
+              # From password parameter passed in via CLI
+              value: password
+            }
+          }
+        }
+      }
+      ```
+
+      When deploying the application definition, provide the database password value as a parameter. It is recommended to use a password generator such as `openssl` or equivalent. For example, `rad deploy app.bicep -p password=$(openssl rand -hex 16)`.
+
+      To connect your container to the database, create a connection from the Container resource to the database as shown below. 
+      ```
+      resource myApplication 'Radius.Core/Applications@2025-08-01-preview' = { ... }
+
+      resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          container: {
+            image: 'frontend:1.25'
+            ports: {
+              web: {
+                containerPort: 8080
+              }
+            }
+          }
+          connections: {
+            mysqldb: {
+              source: database.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the container for all properties from the database. The environment variables are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example, the connection name is `mysqldb` so the environment variables will be:
+ 
+      - CONNECTION_MYSQLDB_DATABASE
+      - CONNECTION_MYSQLDB_HOST
+      - CONNECTION_MYSQLDB_PORT
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius EnvironmentID. Typically set by the rad CLI. Typically value should be `environment`"
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            database:
+              type: string
+              description: "(Optional) The name of the database. Defaults to `mysql_db` if not provided."
+            secretName:
+              type: string
+              description: "(Required) The name of the secret containing the database credentials."
+            version:
+              type: string
+              enum: ['5.7', '8.0', '8.4']
+              description: "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified." 
+            host:
+              type: string
+              description: "(Read-only) The host name used to connect to the database."
+              readOnly: true
+            port:
+              type: integer
+              description: "(Read-only) The port number used to connect to the database."
+              readOnly: true
+          required: [environment,secretName]
