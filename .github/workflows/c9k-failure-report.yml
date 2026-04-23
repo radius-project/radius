@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Generate CI failure report
-        uses: sylvainsf/causinator9000@5be8cf7dfbb78394eb7f6f2c97e2a9a5ab95deef # v1.9.0
+        uses: sylvainsf/causinator9000@e3f8b80056e36cd55cf85c7c44c5e4bdaa876c04 # v2.0.0
         with:
           repo: ${{ github.repository }}
           hours: "48"
@@ -29,7 +29,7 @@ jobs:
           auto-issue-dry-run: "true"
           auto-issue-min-confidence: "90"
           auto-issue-min-members: "2"
-          auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump"
+          auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump,DepGroupUpdate"
           auto-close-flaky: "true"
           assign-copilot: "false"
           github-token: ${{ secrets.GITHUB_TOKEN }}
