@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # This script installs the latest version of the Bicep CLI 
 # and creates a configuration file for Bicep with the specified release channel.
 # This is used to build the Bicep container image, and is called automatically
@@ -11,6 +13,15 @@
 REL_CHANNEL=$1
 OUTPUT_DIR=$2
 ARCH=$3
+TMP_BICEP=""
+
+cleanup() {
+  if [[ -n "${TMP_BICEP}" && -f "${TMP_BICEP}" ]]; then
+    rm -f "${TMP_BICEP}"
+  fi
+}
+
+trap cleanup EXIT
 
 if [ -z "$REL_CHANNEL" ]; then
   echo "Release channel is required. Please provide it as the first argument."
@@ -43,11 +54,11 @@ fi
 mkdir -p "$OUTPUT_DIR"
 cat <<EOF > $OUTPUT_DIR/bicepconfig.json
 {
+  "experimentalFeaturesEnabled": {
+    "extensibility": true
+  },
   "extensions": {
     "radius": "br:biceptypes.azurecr.io/radius:${REL_CHANNEL}",
-    "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:${REL_CHANNEL}",
-    "radiusData": "br:biceptypes.azurecr.io/radiusdata:${REL_CHANNEL}",
-    "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:${REL_CHANNEL}",
     "aws": "br:biceptypes.azurecr.io/aws:${REL_CHANNEL}"
   }
 }
@@ -64,12 +75,26 @@ if [ -f "$OUTPUT_DIR/bicep" ]; then
   echo "Bicep CLI already exists at $OUTPUT_DIR/bicep, skipping download."
 else
   echo "Downloading Bicep CLI..."
-  if ! curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-$BICEP_ARCH; then
+  TMP_BICEP=$(mktemp)
+
+  if ! curl --fail --show-error --location \
+    --retry 5 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --output "$TMP_BICEP" \
+    "https://github.com/Azure/bicep/releases/latest/download/bicep-linux-$BICEP_ARCH"; then
     echo "Failed to download Bicep CLI. Please check your internet connection or the URL."
     exit 1
   fi
 
-  chmod +x bicep
-  mv bicep "$OUTPUT_DIR"/bicep
+  chmod +x "$TMP_BICEP"
+
+  if ! "$TMP_BICEP" --help >/dev/null 2>&1; then
+    echo "Downloaded Bicep CLI is invalid or incomplete."
+    exit 1
+  fi
+
+  mv "$TMP_BICEP" "$OUTPUT_DIR"/bicep
+  TMP_BICEP=""
   echo "Bicep CLI installed successfully at $OUTPUT_DIR/bicep"
 fi

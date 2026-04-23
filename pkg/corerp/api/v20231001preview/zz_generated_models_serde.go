@@ -7,8 +7,9 @@ package v20231001preview
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"reflect"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 )
 
 // MarshalJSON implements the json.Marshaller interface for type ACIRuntimeProperties.
@@ -113,6 +114,9 @@ func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "outputResources", a.OutputResources)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "type", a.Type)
+	populate(objectMap, "codeReference", a.CodeReference)
+	populate(objectMap, "appDefinitionLine", a.AppDefinitionLine)
+	populate(objectMap, "diffHash", a.DiffHash)
 	return json.Marshal(objectMap)
 }
 
@@ -142,6 +146,15 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "type":
 			err = unpopulate(val, "Type", &a.Type)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &a.CodeReference)
+			delete(rawMsg, key)
+		case "appDefinitionLine":
+			err = unpopulate(val, "AppDefinitionLine", &a.AppDefinitionLine)
+			delete(rawMsg, key)
+		case "diffHash":
+			err = unpopulate(val, "DiffHash", &a.DiffHash)
 			delete(rawMsg, key)
 		}
 		if err != nil {

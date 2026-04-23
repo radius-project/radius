@@ -1,0 +1,88 @@
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Reusable workflow: Build static application graph artifact.
+# Consumer repos call this workflow to build `rad` from the referenced Radius
+# workflow source and run `rad graph build` with the exact branch-specific
+# implementation they requested.
+name: __build-app-graph
+
+on:
+  workflow_call:
+    inputs:
+      app_file:
+        description: "Path to the Bicep application definition file"
+        required: true
+        type: string
+        default: "app.bicep"
+      orphan_branch:
+        description: "Orphan branch name for storing graph artifacts (default: radius-graph)"
+        required: false
+        type: string
+        default: "radius-graph"
+      workflow_source_ref:
+        description: "Ref in radius-project/radius to use when checking out workflow source and building rad"
+        required: false
+        type: string
+        default: "main"
+
+concurrency:
+  group: build-app-graph-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-graph:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Radius workflow source
+        uses: actions/checkout@v4
+        with:
+          repository: radius-project/radius
+          ref: ${{ inputs.workflow_source_ref }}
+          path: .radius-workflow-src
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .radius-workflow-src/go.mod
+          cache-dependency-path: .radius-workflow-src/go.sum
+
+      - name: Build rad CLI from workflow source
+        run: |
+          cd .radius-workflow-src
+          go build -o "$RUNNER_TEMP/rad" ./cmd/rad
+          sudo mv "$RUNNER_TEMP/rad" /usr/local/bin/rad
+          rad graph build --help >/dev/null
+
+      - name: Install Bicep CLI
+        run: |
+          ./.radius-workflow-src/build/install-bicep.sh edge "$RUNNER_TEMP/radius-bicep" amd64
+          echo "$RUNNER_TEMP/radius-bicep" >> "$GITHUB_PATH"
+          if [ ! -f bicepconfig.json ]; then
+            cp "$RUNNER_TEMP/radius-bicep/bicepconfig.json" ./bicepconfig.json
+          fi
+          "$RUNNER_TEMP/radius-bicep/bicep" --help >/dev/null
+
+      - name: Build static graph
+        run: |
+          SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          rad graph build \
+            --bicep "${{ inputs.app_file }}" \
+            --orphan-branch "${{ inputs.orphan_branch }}" \
+            --source-branch "$SOURCE_BRANCH"
