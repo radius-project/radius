@@ -160,14 +160,17 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		cd, err := utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
-		if err != nil {
-			return err
+		envClientFactory := r.RadiusCoreClientFactory
+		if envClientFactory == nil {
+			envClientFactory, err = utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+			if err != nil {
+				return err
+			}
 		}
 
-		envClient := cd.NewEnvironmentsClient()
+		envClient := envClientFactory.NewEnvironmentsClient()
 
-		resp, err := envClient.Get(ctx, *env, &corerpv20250801.EnvironmentsClientGetOptions{})
+		resp, err := envClient.Get(ctx, ID.Name(), &corerpv20250801.EnvironmentsClientGetOptions{})
 		if clients.Is404Error(err) {
 			continue
 		} else if err != nil {
@@ -183,7 +186,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			}
 		}
 
-		_, err = envClient.CreateOrUpdate(ctx, *env, res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+		_, err = envClient.CreateOrUpdate(ctx, ID.Name(), res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to update environment %s.", *env)
 		}
