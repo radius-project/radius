@@ -185,6 +185,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("Successfully created environment %q in resource group %q with default Kubernetes recipe packs.", r.EnvironmentName, r.ResourceGroupName)
+	r.Output.LogInfo("Successfully created environment %q in resource group %q with default recipe pack.", r.EnvironmentName, r.ResourceGroupName)
 	return nil
 }

@@ -218,7 +218,7 @@ func (m *summaryModel) View() string {
 		}
 
 		if options.Recipes.DefaultRecipePack {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default kubernetes recipe pack")))
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default recipe pack")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
@@ -337,7 +337,7 @@ func (m *progressModel) View() string {
 		}
 
 		if options.Recipes.DefaultRecipePack {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default kubernetes recipe pack")))
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("default recipe pack")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
