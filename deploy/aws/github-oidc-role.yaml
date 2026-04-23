@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Creates a GitHub Actions OIDC Identity Provider and an IAM role that GitHub
+  Actions workflows can assume via OIDC token exchange for Radius deployments.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: GitHub Repository
+        Parameters:
+          - GitHubOrg
+          - GitHubRepo
+      - Label:
+          default: IAM Role Configuration
+        Parameters:
+          - RoleName
+          - PermissionsBoundary
+      - Label:
+          default: OIDC Provider
+        Parameters:
+          - CreateOIDCProvider
+    ParameterLabels:
+      GitHubOrg:
+        default: GitHub organization or user
+      GitHubRepo:
+        default: GitHub repository name
+      RoleName:
+        default: IAM role name
+      CreateOIDCProvider:
+        default: Create OIDC Identity Provider
+      PermissionsBoundary:
+        default: Permissions boundary ARN (optional)
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: >
+      The GitHub organization or user that owns the repository
+      (e.g. "radius-project").
+    AllowedPattern: '^[a-zA-Z0-9._-]+$'
+    ConstraintDescription: Must be a valid GitHub owner name.
+
+  GitHubRepo:
+    Type: String
+    Description: >
+      The GitHub repository name (e.g. "my-app"). The OIDC trust is scoped to
+      this repository.
+    AllowedPattern: '^[a-zA-Z0-9._-]+$'
+    ConstraintDescription: Must be a valid GitHub repository name.
+
+  RoleName:
+    Type: String
+    Default: radius-deploy
+    Description: >
+      Name for the IAM role that GitHub Actions will assume.
+    AllowedPattern: '^[a-zA-Z0-9+=,.@_-]+$'
+    ConstraintDescription: Must be a valid IAM role name.
+    MaxLength: 64
+
+  CreateOIDCProvider:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Whether to create the GitHub OIDC Identity Provider. Only one provider
+      per account is needed. Set to "true" only if this is the first time
+      configuring GitHub Actions OIDC in this AWS account.
+
+  PermissionsBoundary:
+    Type: String
+    Default: ''
+    Description: >
+      Optional ARN of an IAM permissions boundary to attach to the role.
+
+Conditions:
+  ShouldCreateOIDCProvider: !Equals [!Ref CreateOIDCProvider, 'true']
+  HasPermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, '']]
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        # GitHub's OIDC provider thumbprint — AWS validates this automatically
+        # for providers using HTTPS endpoints.
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+      Tags:
+        - Key: ManagedBy
+          Value: Radius
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: !Sub 'IAM role for GitHub Actions OIDC - ${GitHubOrg}/${GitHubRepo}. Managed by Radius.'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - ShouldCreateOIDCProvider
+                - !Ref GitHubOIDCProvider
+                - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                # Allow any environment or branch in this repo.
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${GitHubRepo}:*
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      Tags:
+        - Key: ManagedBy
+          Value: Radius
+        - Key: GitHubOrg
+          Value: !Ref GitHubOrg
+        - Key: GitHubRepo
+          Value: !Ref GitHubRepo
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  # Permissions for Radius deployments.
+  RadiusDeployPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub ${RoleName}-radius-deploy
+      Description: !Sub 'Permissions for Radius deployments from ${GitHubOrg}/${GitHubRepo}.'
+      Roles:
+        - !Ref GitHubActionsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # STS — verify identity.
+          - Sid: STSIdentity
+            Effect: Allow
+            Action:
+              - sts:GetCallerIdentity
+            Resource: '*'
+
+          # CloudControl API — Radius manages AWS resources through this.
+          - Sid: CloudControlAccess
+            Effect: Allow
+            Action:
+              - cloudcontrol:CreateResource
+              - cloudcontrol:GetResource
+              - cloudcontrol:UpdateResource
+              - cloudcontrol:DeleteResource
+              - cloudcontrol:ListResources
+              - cloudcontrol:GetResourceRequestStatus
+              - cloudcontrol:CancelResourceRequest
+              - cloudcontrol:ListResourceRequests
+            Resource: '*'
+
+          # CloudFormation — resource type schema lookups.
+          - Sid: CloudFormationSchema
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeType
+            Resource: '*'
+
+          # EC2 — region discovery and VPC/networking for recipes.
+          - Sid: EC2Access
+            Effect: Allow
+            Action:
+              - ec2:*
+            Resource: '*'
+
+          # RDS — manage database instances for recipes.
+          - Sid: RDSAccess
+            Effect: Allow
+            Action:
+              - rds:*
+            Resource: '*'
+
+          # EKS — access Kubernetes clusters for Radius deployments.
+          - Sid: EKSAccess
+            Effect: Allow
+            Action:
+              - eks:DescribeCluster
+              - eks:ListClusters
+              - eks:CreateAccessEntry
+              - eks:AssociateAccessPolicy
+              - eks:DescribeAccessEntry
+              - eks:ListAccessEntries
+            Resource: '*'
+
+          # ECR — pull/push container images.
+          - Sid: ECRAccess
+            Effect: Allow
+            Action:
+              - ecr:GetAuthorizationToken
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:PutImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+              - ecr:CreateRepository
+              - ecr:DescribeRepositories
+            Resource: '*'
+
+Outputs:
+  RoleARN:
+    Description: >
+      The ARN of the IAM role. Use this value as the "Role ARN" when
+      configuring the Radius AWS environment.
+    Value: !GetAtt GitHubActionsRole.Arn
+
+  OIDCProviderARN:
+    Description: The ARN of the GitHub OIDC Identity Provider.
+    Value: !If
+      - ShouldCreateOIDCProvider
+      - !Ref GitHubOIDCProvider
+      - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com

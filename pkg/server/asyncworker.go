@@ -99,7 +99,23 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize kubernetes clients: %w", err)
 	}
 
-	appModel, err := model.NewApplicationModel(w.options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient, k8s.DynamicClient)
+	// Check for an external target cluster. When RADIUS_TARGET_KUBECONFIG is set,
+	// output Kubernetes resources (Deployments, Services, etc.) are deployed to
+	// the target cluster instead of the cluster where Radius is installed.
+	outputK8s := k8s
+	targetConfig, err := kubeutil.NewTargetClientConfig(nil)
+	if err != nil {
+		return fmt.Errorf("failed to initialize target cluster config: %w", err)
+	}
+	if targetConfig != nil {
+		targetClients, err := kubeutil.NewClients(targetConfig)
+		if err != nil {
+			return fmt.Errorf("failed to initialize target cluster clients: %w", err)
+		}
+		outputK8s = targetClients
+	}
+
+	appModel, err := model.NewApplicationModel(w.options.Arm, outputK8s.RuntimeClient, outputK8s.ClientSet, outputK8s.DiscoveryClient, outputK8s.DynamicClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
