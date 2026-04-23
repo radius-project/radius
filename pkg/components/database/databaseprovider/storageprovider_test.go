@@ -189,7 +189,6 @@ func TestGetClient_ConcurrentAccess(t *testing.T) {
 	callCount := 0
 	provider.factory = databaseClientFactoryFunc(func(ctx context.Context, options Options) (database.Client, error) {
 		callCount++
-		// Simulate slow initialization
 		return mockClient, nil
 	})
 

@@ -328,7 +328,7 @@ types:
       "2025-01-01":
         schema: {}
 `
-		err = os.WriteFile(filepath.Join(tempDir, "test.yaml"), []byte(manifestContent), 0600)
+		err = os.WriteFile(filepath.Join(tempDir, "test.yaml"), []byte(manifestContent), 0o600)
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)
@@ -368,9 +368,9 @@ types:
       "2025-01-01":
         schema: {}
 `
-		err := os.WriteFile(filepath.Join(tempDir, "provider1.yaml"), []byte(manifestContent1), 0600)
+		err := os.WriteFile(filepath.Join(tempDir, "provider1.yaml"), []byte(manifestContent1), 0o600)
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tempDir, "provider2.yaml"), []byte(manifestContent2), 0600)
+		err = os.WriteFile(filepath.Join(tempDir, "provider2.yaml"), []byte(manifestContent2), 0o600)
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)
@@ -394,7 +394,7 @@ types:
 		t.Parallel()
 
 		tempDir := t.TempDir()
-		err := os.WriteFile(filepath.Join(tempDir, "bad.yaml"), []byte("not: valid: manifest: content:"), 0600)
+		err := os.WriteFile(filepath.Join(tempDir, "bad.yaml"), []byte("not: valid: manifest: content:"), 0o600)
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)

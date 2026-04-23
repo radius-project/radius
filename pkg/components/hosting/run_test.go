@@ -102,7 +102,7 @@ func Test_RunWithInterrupts_ShutdownTimeout_ReturnsError(t *testing.T) {
 			// A service that never terminates - will cause shutdown timeout
 			NewFuncService("stuck", func(c context.Context) error {
 				<-c.Done()
-				time.Sleep(time.Second * 30)
+				time.Sleep(time.Millisecond * 100)
 				return nil
 			}),
 		},
