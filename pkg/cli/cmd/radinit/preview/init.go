@@ -52,16 +52,16 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Aliases: []string{"init"},
 		Short:   "Initialize Radius",
 		Long: `
-Interactively install the Radius control-plane and setup an environment.
+Interactively install the Radius control-plane and setup a Radius.Core environment.
 
-If an environment already exists, 'rad init' will prompt the user to use the existing environment or create a new one.
+If an environment already exists, 'rad init --preview' will prompt the user to use the existing environment or create a new one. 
 
-By default, 'rad init' will optimize for a developer-focused environment with an environment named "default" and Recipes that support prototyping, development and testing using lightweight containers. These environments are great for building and testing your application.
+By default, 'rad init --preview' will optimize for a developer-focused environment with an environment named "default" and a default recipe pack that support prototyping, development and testing kubernetes resources. These environments are great for building and testing your application.
 
-Specifying the '--full' flag will cause 'rad init' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
+Specifying the '--full' flag will cause 'rad init --preview --full' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
 `,
 		Example: `
-## Create a new development environment named "default" using Radius.Core
+## Create a new Radius.Core environment named "default" which includes a default recipe pack for prototyping, development, and testing Kubernetes resources.
 rad init --preview
 
 ## Prompt the user for all available options to create a new environment
