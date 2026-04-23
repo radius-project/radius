@@ -168,7 +168,7 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 				"Applications.Datastores/redisCaches": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
 					RecipeLocation: new("https://github.com/example/recipes/redis-cache.bicep"),
-					Parameters: map[string]any{
+					RecipeParameters: map[string]any{
 						"tier": "basic",
 					},
 				},
@@ -198,7 +198,7 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 				"Applications.Datastores/redisCaches": {
 					RecipeKind:     "bicep",
 					RecipeLocation: "https://github.com/example/recipes/redis-cache.bicep",
-					Parameters: map[string]any{
+					RecipeParameters: map[string]any{
 						"tier": "basic",
 					},
 				},
@@ -227,7 +227,7 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 				"Applications.Datastores/redisCaches": {
 					RecipeKind:     to.Ptr(v20250801preview.RecipeKindBicep),
 					RecipeLocation: new("https://github.com/example/recipes/redis-cache.bicep"),
-					Parameters: map[string]any{
+					RecipeParameters: map[string]any{
 						"tier": "basic",
 					},
 					PlainHTTP: new(false),

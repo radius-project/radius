@@ -95,10 +95,10 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 	for key, recipe := range recipes {
 		if recipe != nil {
 			result[key] = &datamodel.RecipeDefinition{
-				RecipeKind:     toRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: to.String(recipe.RecipeLocation),
-				Parameters:     recipe.Parameters,
-				PlainHTTP:      to.Bool(recipe.PlainHTTP),
+				RecipeKind:       toRecipeKindDataModel(recipe.RecipeKind),
+				RecipeLocation:   to.String(recipe.RecipeLocation),
+				RecipeParameters: recipe.RecipeParameters,
+				PlainHTTP:        to.Bool(recipe.PlainHTTP),
 			}
 		}
 	}
@@ -114,10 +114,10 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 	for key, recipe := range recipes {
 		if recipe != nil {
 			result[key] = &RecipeDefinition{
-				RecipeKind:     fromRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: new(recipe.RecipeLocation),
-				Parameters:     recipe.Parameters,
-				PlainHTTP:      new(recipe.PlainHTTP),
+				RecipeKind:       fromRecipeKindDataModel(recipe.RecipeKind),
+				RecipeLocation:   new(recipe.RecipeLocation),
+				RecipeParameters: recipe.RecipeParameters,
+				PlainHTTP:        new(recipe.PlainHTTP),
 			}
 		}
 	}

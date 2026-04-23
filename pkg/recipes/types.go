@@ -156,8 +156,8 @@ type RecipeDefinition struct {
 	RecipeKind string
 	// RecipeLocation represents URL or path to the recipe source
 	RecipeLocation string
-	// Parameters represents parameters to pass to the recipe
-	Parameters map[string]any
+	// RecipeParameters represents parameters to pass to the recipe
+	RecipeParameters map[string]any
 	// PlainHTTP connects to the location using HTTP (not-HTTPS)
 	PlainHTTP bool
 }

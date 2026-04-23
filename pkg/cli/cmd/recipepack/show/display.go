@@ -60,8 +60,8 @@ func (r *Runner) display(recipePack v20250801preview.RecipePackResource) error {
 		r.Output.LogInfo("   Kind: %s", kind)
 		r.Output.LogInfo("   Location: %s", location)
 
-		if len(definition.Parameters) > 0 {
-			formatted, err := formatRecipeParameters(definition.Parameters)
+		if len(definition.RecipeParameters) > 0 {
+			formatted, err := formatRecipeParameters(definition.RecipeParameters)
 			if err != nil {
 				return fmt.Errorf("format recipe parameters: %w", err)
 			}

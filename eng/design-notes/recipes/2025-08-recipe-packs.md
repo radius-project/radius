@@ -104,7 +104,7 @@ recipes:
   - resourceType: "Radius.Compute/containers@2025-05-01-preview"   
     recipeKind: "bicep"
     recipeLocation: "oci://ghcr.io/my-org/recipes/core/aci-container:1.2.0"
-    parameters:
+    recipeParameters:
       cpu: "1.0"
       memoryInGB: "2.0"
       environmentVariables:
@@ -114,12 +114,12 @@ recipes:
   - resourceType: "Radius.Compute/gateways@2025-05-01-preview"
     recipeKind: "bicep"
     recipeLocation: "oci://ghcr.io/my-org/recipes/core/aci-gateway:1.1.0"
-    parameters:
+    recipeParameters:
       sku: "Standard_v2"
   - resourceType: "Radius.Security/secrets@2025-05-01-preview"
     recipeKind: "bicep"
     recipeLocation: "oci://ghcr.io/my-org/recipes/azure/keyvault-secretstore:1.0.0"
-    parameters:
+    recipeParameters:
       skuName: "premium"
 ```
 
@@ -209,7 +209,7 @@ recipeLocation: string;
 recipeDigest?: string; 
 
 @doc("Parameters to pass to the recipe")
-parameters?: Record<unknown>; 
+recipeParameters?: Record<unknown>; 
 } 
 
 @doc("The type of recipe") 
@@ -281,7 +281,7 @@ resource computeRecipePack 'Radius.Core/recipePacks@2026-01-01-preview' = {
         recipeKind: 'terraform'
         recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
         recipeDigest: 'sha256:4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5'
-        parameters: {
+        recipeParameters: {
           allowPlatformOptions: true
           anIntegerParam: 1
         }
@@ -327,7 +327,7 @@ curl -X PUT \
           "Applications.Datastores/sqlDatabases": {
             "recipeKind": "terraform",
             "recipeLocation": "https://github.com/example/recipes/sql-database",
-            "parameters": {
+            "recipeParameters": {
               "size": "small",
               "backup": false
             }
@@ -335,7 +335,7 @@ curl -X PUT \
           "Applications.Datastores/redisCaches": {
             "recipeKind": "bicep",
             "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep",
-            "parameters": {
+            "recipeParameters": {
               "tier": "basic"
             }
           }
@@ -356,14 +356,14 @@ CREATE response:
     "provisioningState": "Succeeded",
     "recipes": {
       "Applications.Datastores/redisCaches": {
-        "parameters": {
+        "recipeParameters": {
           "tier": "basic"
         },
         "recipeKind": "bicep",
         "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep"
       },
       "Applications.Datastores/sqlDatabases": {
-        "parameters": {
+        "recipeParameters": {
           "backup": false,
           "size": "small"
         },
@@ -405,14 +405,14 @@ READ response:
     "provisioningState": "Succeeded",
     "recipes": {
       "Applications.Datastores/redisCaches": {
-        "parameters": {
+        "recipeParameters": {
           "tier": "basic"
         },
         "recipeKind": "bicep",
         "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep"
       },
       "Applications.Datastores/sqlDatabases": {
-        "parameters": {
+        "recipeParameters": {
           "backup": false,
           "size": "small"
         },
@@ -526,7 +526,7 @@ resource computeRecipePack 'Radius.Core/recipePacks@2025-05-01-preview' = {
       'Radius.Compute/containers': {
         recipeKind: 'terraform'
         recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
-        parameters: {
+        recipeParameters: {
           allowPlatformOptions: true
         }
       }
