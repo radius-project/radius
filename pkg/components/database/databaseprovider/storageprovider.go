@@ -71,6 +71,12 @@ func FromClient(client database.Client) *DatabaseProvider {
 	return &DatabaseProvider{result: result{client: client}}
 }
 
+// SetFactory overrides the factory function used to create database clients.
+// This is intended for testing to simulate transient errors or other conditions.
+func (p *DatabaseProvider) SetFactory(factory func(ctx context.Context, options Options) (database.Client, error)) {
+	p.factory = databaseClientFactoryFunc(factory)
+}
+
 // GetClient returns a database client for the given resource type.
 func (p *DatabaseProvider) GetClient(ctx context.Context) (database.Client, error) {
 	// Guarantee single initialization.
@@ -78,11 +84,10 @@ func (p *DatabaseProvider) GetClient(ctx context.Context) (database.Client, erro
 	result := p.result
 	p.init.RUnlock()
 
-	if result.client == nil && result.err == nil {
+	if result.client == nil {
 		result = p.initialize(ctx)
 	}
 
-	// Invariant, either result.err is set or result.client is set.
 	if result.err != nil {
 		return nil, result.err
 	}
@@ -98,14 +103,12 @@ func (p *DatabaseProvider) initialize(ctx context.Context) result {
 	p.init.Lock()
 	defer p.init.Unlock()
 
-	// Invariant: p.result is set when this function exits.
-	// Invariant: p.result.client is nil or p.result.err is nil when this function exits.
 	// Invariant: p.result is returned to the caller, so they don't need to retake the lock.
 
 	// Note: this is a double-checked locking pattern.
 	//
 	// It's possible that result was set by another goroutine before we acquired the lock.
-	if p.result.client != nil || p.result.err != nil {
+	if p.result.client != nil {
 		return p.result
 	}
 
@@ -115,6 +118,7 @@ func (p *DatabaseProvider) initialize(ctx context.Context) result {
 	if factory == nil {
 		fn, ok := databaseClientFactory[p.options.Provider]
 		if !ok {
+			// Configuration errors are permanent and should be cached.
 			p.result = result{nil, fmt.Errorf("unsupported database provider: %s", p.options.Provider)}
 			return p.result
 		}
@@ -124,11 +128,11 @@ func (p *DatabaseProvider) initialize(ctx context.Context) result {
 
 	client, err := factory(ctx, p.options)
 	if err != nil {
-		p.result = result{nil, fmt.Errorf("failed to initialize database client: %w", err)}
-		return p.result
+		// Don't cache transient errors - allow callers to retry.
+		return result{nil, fmt.Errorf("failed to initialize database client: %w", err)}
 	} else if client == nil {
-		p.result = result{nil, fmt.Errorf("failed to initialize database client: provider returned nil")}
-		return p.result
+		// Don't cache transient errors - allow callers to retry.
+		return result{nil, fmt.Errorf("failed to initialize database client: provider returned nil")}
 	}
 
 	p.result = result{client, nil}
