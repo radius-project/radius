@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
@@ -33,9 +33,4 @@ func (r *Runner) enterApplicationOptions(options *initOptions) error {
 	options.Application.Scaffold = scaffold
 	options.Application.Name = name
 	return nil
-}
-
-// enterApplicationName delegates to common.EnterApplicationName.
-func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (string, error) {
-	return common.EnterApplicationName(r.Prompter, chooseDefault)
 }

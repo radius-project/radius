@@ -14,28 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
 const (
-	confirmSetupApplicationPrompt = common.ConfirmSetupApplicationPrompt
-	enterApplicationNamePrompt    = common.EnterApplicationNamePrompt
+	selectClusterPrompt = common.SelectClusterPrompt
 )
 
-func (r *Runner) enterApplicationOptions(options *initOptions) error {
-	scaffold, name, err := common.EnterApplicationOptions(r.Prompter)
+func (r *Runner) enterClusterOptions(options *initOptions) error {
+	result, err := common.EnterClusterOptions(r.KubernetesInterface, r.HelmInterface, r.Prompter, r.Full)
 	if err != nil {
 		return err
 	}
-	options.Application.Scaffold = scaffold
-	options.Application.Name = name
+	options.Cluster.Install = result.Install
+	options.Cluster.Namespace = result.Namespace
+	options.Cluster.Context = result.Context
+	options.Cluster.Version = result.Version
 	return nil
-}
-
-// enterApplicationName delegates to common.EnterApplicationName.
-func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (string, error) {
-	return common.EnterApplicationName(r.Prompter, chooseDefault)
 }
