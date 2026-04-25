@@ -282,7 +282,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		}
 
 		// Reconcile parameters from recipe pack and environment-level recipe parameters
-		parameters := reconcileRecipeParameters(recipeDefinition.Parameters, envDatamodel.Properties.RecipeParameters, resource.Type())
+		parameters := reconcileRecipeParameters(recipeDefinition.RecipeParameters, envDatamodel.Properties.RecipeParameters, resource.Type())
 
 		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
@@ -328,7 +328,7 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 				return &recipes.RecipeDefinition{
 					RecipeKind:     string(*definition.RecipeKind),
 					RecipeLocation: string(*definition.RecipeLocation),
-					Parameters:     definition.Parameters,
+					RecipeParameters: definition.RecipeParameters,
 					PlainHTTP:      plainHTTP,
 				}, nil
 			}

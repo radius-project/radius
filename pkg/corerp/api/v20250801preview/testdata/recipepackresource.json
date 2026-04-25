@@ -17,7 +17,7 @@
       "Applications.Core/containers": {
         "recipeKind": "Bicep",
         "recipeLocation": "br:ghcr.io/radius-project/recipes/kubernetes-container:latest",
-        "parameters": {
+        "recipeParameters": {
           "port": 8080,
           "replicas": 3
         },
@@ -26,7 +26,7 @@
       "Applications.Dapr/stateStores": {
         "recipeKind": "Terraform",
         "recipeLocation": "oci://ghcr.io/radius-project/recipes/terraform/redis:latest",
-        "parameters": {
+        "recipeParameters": {
           "size": "small"
         },
         "plainHTTP": true
