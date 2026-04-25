@@ -48,6 +48,12 @@ type EnvironmentProperties_v20250801preview struct {
 	// Providers contains cloud provider configuration for the environment.
 	Providers *Providers_v20250801preview `json:"providers,omitempty"`
 
+	// TerraformConfig is the resource ID of a Radius.Core/terraformConfigs resource.
+	TerraformConfig string `json:"terraformConfig,omitempty"`
+
+	// BicepConfig is the resource ID of a Radius.Core/bicepConfigs resource.
+	BicepConfig string `json:"bicepConfig,omitempty"`
+
 	// Simulated indicates if this is a simulated environment.
 	Simulated bool `json:"simulated,omitempty"`
 }
