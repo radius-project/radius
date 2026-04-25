@@ -58,6 +58,7 @@ Applications deployed to an environment will inherit the container runtime, conf
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddKubernetesNamespaceFlag(cmd)
 
 	return cmd, runner
 }
@@ -69,6 +70,7 @@ type Runner struct {
 	Workspace               *workspaces.Workspace
 	EnvironmentName         string
 	ResourceGroupName       string
+	Namespace               string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 	ConfigFileInterface     framework.ConfigFileInterface
 	ConnectionFactory       connections.Factory
@@ -102,6 +104,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
+	}
+
+	r.Namespace, err = cmd.Flags().GetString(commonflags.KubernetesNamespaceFlag)
+	if err != nil {
+		return err
+	} else if r.Namespace == "" {
+		r.Namespace = r.EnvironmentName
 	}
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
@@ -144,8 +153,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Radius Core Environment...")
 
 	resource := &corerpv20250801.EnvironmentResource{
-		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &corerpv20250801.EnvironmentProperties{},
+		Location: to.Ptr(v1.LocationGlobal),
+		Properties: &corerpv20250801.EnvironmentProperties{
+			Providers: &corerpv20250801.Providers{
+				Kubernetes: &corerpv20250801.ProvidersKubernetes{
+					Namespace: to.Ptr(r.Namespace),
+				},
+			},
+		},
 	}
 
 	_, err := r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.EnvironmentName, *resource, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
