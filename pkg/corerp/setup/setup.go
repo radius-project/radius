@@ -303,5 +303,15 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		},
 	})
 
+	_ = ns.AddResource("terraformConfigs", &builder.ResourceOption[*datamodel.TerraformConfig, datamodel.TerraformConfig]{
+		RequestConverter:  converter.TerraformConfigDataModelFromVersioned,
+		ResponseConverter: converter.TerraformConfigDataModelToVersioned,
+	})
+
+	_ = ns.AddResource("bicepConfigs", &builder.ResourceOption[*datamodel.BicepConfig, datamodel.BicepConfig]{
+		RequestConverter:  converter.BicepConfigDataModelFromVersioned,
+		ResponseConverter: converter.BicepConfigDataModelToVersioned,
+	})
+
 	return ns
 }
