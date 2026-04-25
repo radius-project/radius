@@ -111,7 +111,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+			DeleteApplication(gomock.Any(), "test-app", false).
 			Return(true, nil).
 			Times(1)
 
@@ -169,7 +169,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+			DeleteApplication(gomock.Any(), "test-app", false).
 			Return(true, nil).
 			Times(1)
 
@@ -205,13 +205,46 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			DeleteApplication(gomock.Any(), "test-app").
+			DeleteApplication(gomock.Any(), "test-app", false).
 			Return(true, nil).
 			Times(1)
 
 		options := clients.DeleteOptions{
 			ApplicationNameOrID: "test-app",
 			ProgressText:        "Deleting application...",
+		}
+
+		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		require.NoError(t, err)
+		require.True(t, deleted)
+	})
+
+	t.Run("Success: Force flag is passed through to DeleteApplication", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		appManagementClient.EXPECT().
+			ListResourcesInApplication(gomock.Any(), "test-app").
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(corerp.ApplicationResource{}, fmt.Errorf("not found")).
+			Times(1)
+
+		// Verify that DeleteApplication is called with force=true
+		appManagementClient.EXPECT().
+			DeleteApplication(gomock.Any(), "test-app", true).
+			Return(true, nil).
+			Times(1)
+
+		options := clients.DeleteOptions{
+			ApplicationNameOrID: "test-app",
+			ProgressText:        "Deleting application...",
+			Force:               true,
 		}
 
 		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)

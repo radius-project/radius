@@ -531,4 +531,68 @@ func Test_Delete(t *testing.T) {
 
 		require.Equal(t, expected, outputSink.Writes)
 	})
+
+	t.Run("Success: Force Delete Application", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+				},
+			}, nil).
+			Times(1)
+
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+					Force:               true,
+				},
+			).
+			Return(true, nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Delete:            deleteMock,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
+			Confirm:           true,
+			Force:             true,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify warning was logged before the delete result
+		require.GreaterOrEqual(t, len(outputSink.Writes), 2)
+		warningOutput, ok := outputSink.Writes[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, warningOutput.Format, "WARNING")
+		lastOutput, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
+		require.True(t, ok)
+		require.Equal(t, "Application %s deleted successfully", lastOutput.Format)
+	})
 }
