@@ -245,3 +245,56 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 }
+
+func Test_GetResourceTypeSchema_AdditionalProperties(t *testing.T) {
+	schema := map[string]any{
+		"properties": map[string]any{
+			"data": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"encoding": map[string]any{
+							"type":        "string",
+							"description": "Content encoding of the value.",
+						},
+						"value": map[string]any{
+							"type":        "string",
+							"description": "The secret value.",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := GetResourceTypeSchema(schema)
+
+	require.Equal(t, map[string]FieldSchema{
+		"data": {
+			Name:        "data",
+			Type:        "object",
+			Description: "",
+			IsRequired:  false,
+			IsReadOnly:  false,
+			Properties: map[string]FieldSchema{
+				"encoding": {
+					Name:        "encoding",
+					Type:        "string",
+					Description: "Content encoding of the value.",
+					IsRequired:  false,
+					IsReadOnly:  false,
+					Properties:  map[string]FieldSchema{},
+				},
+				"value": {
+					Name:        "value",
+					Type:        "string",
+					Description: "The secret value.",
+					IsRequired:  false,
+					IsReadOnly:  false,
+					Properties:  map[string]FieldSchema{},
+				},
+			},
+		},
+	}, result)
+}
