@@ -161,6 +161,77 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 	Type *string
 }
 
+// BicepConfigProperties - Bicep configuration properties.
+type BicepConfigProperties struct {
+	// Authentication information used to access private Bicep registries, which is a map of registry hostname to secret config
+	// that contains credential information.
+	Authentication map[string]*BicepRegistrySecretConfig
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Environments that reference this Bicep configuration.
+	ReferencedBy []*string
+}
+
+// BicepConfigResource - The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+type BicepConfigResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *BicepConfigProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// BicepConfigResourceListResult - The response of a BicepConfigResource list operation.
+type BicepConfigResourceListResult struct {
+	// REQUIRED; The BicepConfigResource items on this page
+	Value []*BicepConfigResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// BicepConfigResourceUpdate - The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+type BicepConfigResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// BicepRegistrySecretConfig - Registry Secret Configuration used to authenticate to private Bicep registries.
+type BicepRegistrySecretConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
+	// registry. The keys in the secret store depend on the type.
+	Secret *string
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.
@@ -178,6 +249,9 @@ func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { retur
 
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
+	// Resource ID of a Radius.Core/bicepConfigs resource providing Bicep recipe settings.
+	BicepConfig *string
+
 	// Cloud provider configuration for the environment.
 	Providers *Providers
 
@@ -189,6 +263,9 @@ type EnvironmentProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+
+	// Resource ID of a Radius.Core/terraformConfigs resource providing Terraform recipe settings.
+	TerraformConfig *string
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -556,6 +633,123 @@ type SystemData struct {
 
 	// The type of identity that last modified the resource.
 	LastModifiedByType *CreatedByType
+}
+
+// TerraformAuthConfig - Authentication information used to access private Terraform module sources. Supported module sources:
+// Git.
+type TerraformAuthConfig struct {
+	// Authentication information used to access private Terraform modules from Git repository sources.
+	Git *TerraformGitAuthConfig
+}
+
+// TerraformConfigProperties - Terraform configuration properties.
+type TerraformConfigProperties struct {
+	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
+	Authentication *TerraformAuthConfig
+
+	// Environment variables injected during Terraform recipe execution.
+	Env map[string]*string
+
+	// Secret-backed environment variables injected during Terraform recipe execution. The secrets are stored in Applications.Core/SecretStores
+	// resource.
+	EnvSecrets map[string]*TerraformSecretReference
+
+	// Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and
+	// other APIs. For more information, please see:
+	// https://developer.hashicorp.com/terraform/language/providers/configuration.
+	Providers map[string][]*TerraformProviderConfigProperties
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Environments that reference this Terraform configuration.
+	ReferencedBy []*string
+}
+
+// TerraformConfigResource - The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
+type TerraformConfigResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *TerraformConfigProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// TerraformConfigResourceListResult - The response of a TerraformConfigResource list operation.
+type TerraformConfigResourceListResult struct {
+	// REQUIRED; The TerraformConfigResource items on this page
+	Value []*TerraformConfigResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// TerraformConfigResourceUpdate - The Terraform configuration resource, providing reusable Terraform recipe settings for
+// environments.
+type TerraformConfigResourceUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// TerraformGitAuthConfig - Authentication information used to access private Terraform modules from Git repository sources.
+type TerraformGitAuthConfig struct {
+	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
+	Pat map[string]*TerraformSecretConfig
+}
+
+// TerraformProviderConfigProperties - Configuration for a Terraform provider, including credentials and other settings needed
+// for recipe execution.
+type TerraformProviderConfigProperties struct {
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]any
+
+	// Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
+	// resource.
+	Secrets map[string]*TerraformSecretReference
+}
+
+// TerraformSecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
+type TerraformSecretConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
+	// store must have a secret named 'pat', containing the PAT value. A secret named
+	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
+	Secret *string
+}
+
+// TerraformSecretReference - A reference to a secret stored in an Applications.Core/SecretStore resource.
+type TerraformSecretReference struct {
+	// REQUIRED; The key for the secret in the secret store.
+	Key *string
+
+	// REQUIRED; The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
+	Source *string
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
