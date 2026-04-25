@@ -30,6 +30,21 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if and .Values.dynamicrp.buildkit.enabled (eq .Values.dynamicrp.buildkit.psaMode "restricted") }}
+      # User namespaces let the rootless BuildKit sidecar satisfy
+      # PodSecurityAdmission "restricted" without Unconfined profiles.
+      # Requires Kubernetes >= 1.30 with the UserNamespacesSupport
+      # feature gate enabled (stable in 1.33).
+      hostUsers: false
+      {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # fsGroup makes shared emptyDir volumes (notably the BuildKit
+      # unix socket directory) group-owned by GID 65532 so the
+      # dynamic-rp container (UID/GID 65532) can dial a socket
+      # created by the buildkitd sidecar (UID 1000).
+      securityContext:
+        fsGroup: 65532
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
@@ -145,6 +160,15 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        # Recipes use this to dial the buildkitd sidecar.
+        - name: DOCKER_HOST
+          value: "unix:///run/buildkit/buildkit.sock"
+        # Make `pathexpand("~")` deterministic in the recipe runner so
+        # the kreuzwerker/docker provider finds the mounted credentials.
+        - name: HOME
+          value: "/home/rpuser"
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
@@ -172,6 +196,17 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        # Shared with the buildkitd sidecar; holds the unix socket.
+        - name: buildkit-run
+          mountPath: /run/buildkit
+        {{- if .Values.dynamicrp.buildkit.credentialsSecret }}
+        # Docker config provides registry credentials to the recipe.
+        - name: buildkit-credentials
+          mountPath: /home/rpuser/.docker
+          readOnly: true
+        {{- end }}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -185,6 +220,56 @@ spec:
         {{- if .Values.dynamicrp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # Rootless BuildKit sidecar. Serves the unix socket that the
+      # dynamic-rp recipe runner talks to via DOCKER_HOST. No host
+      # paths, no privileged container, no extra capabilities.
+      #
+      # The sidecar runs as UID 1000 (the rootless image's default
+      # `user` account); we pass `--group 65532` so the unix socket
+      # is group-owned by the dynamic-rp container's GID, and the
+      # Pod-level `fsGroup: 65532` ensures the shared emptyDir is
+      # group-writable.
+      - name: buildkitd
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        args:
+        - --addr
+        - unix:///run/buildkit/buildkit.sock
+        - --group
+        - "65532"
+        {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
+        - --oci-worker-no-process-sandbox
+        {{- end }}
+        readinessProbe:
+          exec:
+            command: ["buildctl", "debug", "workers"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["buildctl", "debug", "workers"]
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
+          # On clusters without user namespaces, BuildKit's rootless
+          # mode needs unconfined seccomp/AppArmor to drop into the
+          # nested user namespace. PSA `baseline` permits this; PSA
+          # `restricted` does not.
+          seccompProfile:
+            type: Unconfined
+          appArmorProfile:
+            type: Unconfined
+          {{- end }}
+        volumeMounts:
+        - name: buildkit-run
+          mountPath: /run/buildkit
+        - name: buildkit-state
+          mountPath: /home/user/.local/share/buildkit
+      {{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -204,6 +289,18 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        - name: buildkit-run
+          emptyDir: {}
+        - name: buildkit-state
+          emptyDir: {}
+        {{- if .Values.dynamicrp.buildkit.credentialsSecret }}
+        - name: buildkit-credentials
+          secret:
+            secretName: {{ .Values.dynamicrp.buildkit.credentialsSecret }}
+            defaultMode: 0400
+        {{- end }}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:
