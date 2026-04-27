@@ -60,3 +60,8 @@ flow, and change-safety guidance for a specific component.
 When working on files that match the patterns defined in instruction files (e.g., `*.sh`, `.github/workflows/*.yml`), Copilot will automatically apply the relevant guidelines from the corresponding instruction file.
 
 For general development queries, Copilot will use standard best practices and conventions appropriate for the technology or task at hand.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

@@ -1036,7 +1036,9 @@ jobs:
           az group delete \
             --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
-            --yes --verbose
+            --yes \
+            --verbose \
+            --no-wait
 
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).

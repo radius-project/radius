@@ -42,10 +42,10 @@ OPTIONS:
 EXAMPLES:
   # Check task prerequisites (plan.md required)
   .\check-prerequisites.ps1 -Json
-
+  
   # Check implementation prerequisites (plan.md + tasks.md required)
   .\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
-
+  
   # Get feature paths only (no validation)
   .\check-prerequisites.ps1 -PathsOnly
 
@@ -59,8 +59,8 @@ EXAMPLES:
 # Get feature paths and validate branch
 $paths = Get-FeaturePathsEnv
 
-if (-not (Test-FeatureBranch -Branch $paths.CURRENT_BRANCH -HasGit:$paths.HAS_GIT)) {
-    exit 1
+if (-not (Test-FeatureBranch -Branch $paths.CURRENT_BRANCH -HasGit:$paths.HAS_GIT)) { 
+    exit 1 
 }
 
 # If paths-only mode, output paths and exit (support combined -Json -PathsOnly)
@@ -74,8 +74,7 @@ if ($PathsOnly) {
             IMPL_PLAN    = $paths.IMPL_PLAN
             TASKS        = $paths.TASKS
         } | ConvertTo-Json -Compress
-    }
-    else {
+    } else {
         Write-Output "REPO_ROOT: $($paths.REPO_ROOT)"
         Write-Output "BRANCH: $($paths.CURRENT_BRANCH)"
         Write-Output "FEATURE_DIR: $($paths.FEATURE_DIR)"
@@ -114,36 +113,35 @@ if (Test-Path $paths.RESEARCH) { $docs += 'research.md' }
 if (Test-Path $paths.DATA_MODEL) { $docs += 'data-model.md' }
 
 # Check contracts directory (only if it exists and has files)
-if ((Test-Path $paths.CONTRACTS_DIR) -and (Get-ChildItem -Path $paths.CONTRACTS_DIR -ErrorAction SilentlyContinue | Select-Object -First 1)) {
-    $docs += 'contracts/'
+if ((Test-Path $paths.CONTRACTS_DIR) -and (Get-ChildItem -Path $paths.CONTRACTS_DIR -ErrorAction SilentlyContinue | Select-Object -First 1)) { 
+    $docs += 'contracts/' 
 }
 
 if (Test-Path $paths.QUICKSTART) { $docs += 'quickstart.md' }
 
 # Include tasks.md if requested and it exists
-if ($IncludeTasks -and (Test-Path $paths.TASKS)) {
-    $docs += 'tasks.md'
+if ($IncludeTasks -and (Test-Path $paths.TASKS)) { 
+    $docs += 'tasks.md' 
 }
 
 # Output results
 if ($Json) {
     # JSON output
-    [PSCustomObject]@{
-        FEATURE_DIR    = $paths.FEATURE_DIR
-        AVAILABLE_DOCS = $docs
+    [PSCustomObject]@{ 
+        FEATURE_DIR = $paths.FEATURE_DIR
+        AVAILABLE_DOCS = $docs 
     } | ConvertTo-Json -Compress
-}
-else {
+} else {
     # Text output
     Write-Output "FEATURE_DIR:$($paths.FEATURE_DIR)"
     Write-Output "AVAILABLE_DOCS:"
-
+    
     # Show status of each potential document
     Test-FileExists -Path $paths.RESEARCH -Description 'research.md' | Out-Null
     Test-FileExists -Path $paths.DATA_MODEL -Description 'data-model.md' | Out-Null
     Test-DirHasFiles -Path $paths.CONTRACTS_DIR -Description 'contracts/' | Out-Null
     Test-FileExists -Path $paths.QUICKSTART -Description 'quickstart.md' | Out-Null
-
+    
     if ($IncludeTasks) {
         Test-FileExists -Path $paths.TASKS -Description 'tasks.md' | Out-Null
     }
