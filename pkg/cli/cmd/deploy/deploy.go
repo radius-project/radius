@@ -17,11 +17,16 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -46,6 +51,7 @@ import (
 const (
 	appCoreProviderName    = "Applications.Core"
 	radiusCoreProviderName = "Radius.Core"
+	unsupportedAPIDocsURL  = "https://docs.radapp.io/reference/api/"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
@@ -343,7 +349,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Providers:         r.Providers,
 	})
 	if err != nil {
-		return err
+		return addDeploymentErrorContext(err, template)
 	}
 
 	return nil
@@ -697,4 +703,86 @@ func (r *Runner) configureProviders() error {
 	}
 
 	return nil
+}
+
+func addDeploymentErrorContext(err error, template map[string]any) error {
+	if !isUnsupportedRadiusAPIVersionError(err, template) {
+		return err
+	}
+
+	return clierrors.MessageWithCause(err,
+		"Deployment failed (incorrect or unsupported API version). Please verify that each resource uses a supported API version. For more information, please reference the documentation: %s",
+		unsupportedAPIDocsURL)
+}
+
+// providerNotConfiguredPrefix is the exact error message prefix returned by the Deployment Engine
+// when a resource type is routed to a provider that is not configured. See deploymentprocessor.go.
+const providerNotConfiguredPrefix = "provider "
+
+// providerNotConfiguredSuffix is the middle portion of the Deployment Engine error after the provider name.
+const providerNotConfiguredSuffix = " is not configured. cannot support resource type "
+
+func isUnsupportedRadiusAPIVersionError(err error, template map[string]any) bool {
+	if !bicep.HasOnlyRadiusResourceTypes(template) {
+		return false
+	}
+
+	errorDetails, ok := extractDeploymentEngineErrorDetails(err)
+	if !ok {
+		return false
+	}
+
+	if errorDetails.Code != v1.CodeInvalid {
+		return false
+	}
+
+	return isProviderNotConfiguredError(errorDetails.Message)
+}
+
+// isProviderNotConfiguredError checks whether the error message matches the exact pattern
+// "provider <name> is not configured. Cannot support resource type <type>" returned by the Deployment Engine,
+// and only treats it as the unsupported Radius API version case when the provider is Azure.
+func isProviderNotConfiguredError(message string) bool {
+	lower := strings.ToLower(message)
+	if !strings.HasPrefix(lower, providerNotConfiguredPrefix) {
+		return false
+	}
+
+	providerStart := len(providerNotConfiguredPrefix)
+	providerEnd := strings.Index(lower[providerStart:], providerNotConfiguredSuffix)
+	if providerEnd < 0 {
+		return false
+	}
+
+	providerName := lower[providerStart : providerStart+providerEnd]
+	return providerName == "azure"
+}
+
+func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
+	var clientErr *v1.ErrClientRP
+	if errors.As(err, &clientErr) {
+		return &v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}, true
+	}
+
+	var responseErr *azcore.ResponseError
+	if !errors.As(err, &responseErr) || responseErr.RawResponse == nil || responseErr.RawResponse.Body == nil {
+		return nil, false
+	}
+
+	originalBody := responseErr.RawResponse.Body
+	body, readErr := io.ReadAll(originalBody)
+	if readErr != nil {
+		return nil, false
+	}
+	if closeErr := originalBody.Close(); closeErr != nil {
+		return nil, false
+	}
+	responseErr.RawResponse.Body = io.NopCloser(bytes.NewReader(body))
+
+	var errorResponse v1.ErrorResponse
+	if unmarshalErr := json.Unmarshal(body, &errorResponse); unmarshalErr != nil || errorResponse.Error == nil {
+		return nil, false
+	}
+
+	return errorResponse.Error, true
 }
