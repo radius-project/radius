@@ -84,9 +84,10 @@ func Test_Run(t *testing.T) {
 			fmt.Fprintf(&logBuffer, format+"\n", args...)
 		}
 
+		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
-			Output:                           &output.MockOutput{},
+			Output:                           outputSink,
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
@@ -100,5 +101,13 @@ func Test_Run(t *testing.T) {
 		logOutput := logBuffer.String()
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", resourceProviderData.Namespace, expectedResourceType))
 		require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", resourceProviderData.Namespace, expectedResourceType, expectedAPIVersion))
+
+		expected := []any{
+			output.LogOutput{
+				Format: "resourceprovider/%s created",
+				Params: []any{resourceProviderData.Namespace},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
 	})
 }

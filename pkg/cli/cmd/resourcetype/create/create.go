@@ -32,9 +32,7 @@ import (
 )
 
 const (
-	defaultPlaneName              = "local"
-	msgNoResourceTypeNameProvided = "No resource type name provided. Creating all resource types in the manifest."
-	msgAllResourceTypesCreated    = "All resource types in the manifest created successfully"
+	defaultPlaneName = "local"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -149,7 +147,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.ResourceTypeName == "" {
-		r.Output.LogInfo(msgNoResourceTypeNameProvided)
 		return r.registerTypes(ctx, nil) // Register all types
 	}
 
@@ -184,11 +181,11 @@ func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
 		}
 	}
 
-	// Provide appropriate success message
+	// Output a single concise success line
 	if len(typesToRegister) == 1 {
-		// Single type - success message already logged by RegisterType
+		r.Output.LogInfo("resourcetype/%s/%s created", r.ResourceProvider.Namespace, typesToRegister[0])
 	} else {
-		r.Output.LogInfo(msgAllResourceTypesCreated)
+		r.Output.LogInfo("resourcetype/%s created", r.ResourceProvider.Namespace)
 	}
 
 	return nil

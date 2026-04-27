@@ -167,14 +167,8 @@ func Test_Run(t *testing.T) {
 
 		expectedOutput := []any{
 			output.LogOutput{
-				Format: "Creating Radius Core Environment...",
-			},
-			output.LogOutput{
-				Format: "Successfully created environment %q in resource group %q",
-				Params: []any{
-					"testenv",
-					"test-resource-group",
-				},
+				Format: "environment/%s created",
+				Params: []any{"testenv"},
 			},
 		}
 

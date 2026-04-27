@@ -22,7 +22,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -131,17 +130,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("")
-
-	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceProviderTableFormat())
-	if err != nil {
-		return err
-	}
+	r.Output.LogInfo("resourceprovider/%s created", r.ResourceProvider.Namespace)
 
 	return nil
 }

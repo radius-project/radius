@@ -96,6 +96,15 @@ func Test_Run(t *testing.T) {
 		// Verify RegisterType was called (should see specific log messages)
 		logOutput := logBuffer.String()
 		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
+
+		// Verify the single concise output line
+		expected := []any{
+			output.LogOutput{
+				Format: "resourcetype/%s/%s created",
+				Params: []any{resourceProviderData.Namespace, "testResources"},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
 	})
 
 	t.Run("No resource type name provided - registers entire manifest", func(t *testing.T) {
@@ -129,11 +138,13 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify the correct log message is output
-		expectedLog := output.LogOutput{
-			Format: "No resource type name provided. Creating all resource types in the manifest.",
-			Params: nil,
+		expected := []any{
+			output.LogOutput{
+				Format: "resourcetype/%s created",
+				Params: []any{resourceProviderData.Namespace},
+			},
 		}
-		require.Contains(t, outputSink.Writes, expectedLog, "Expected log message for no resource type name provided")
+		require.Equal(t, expected, outputSink.Writes, "Expected single concise log message for all resource types created")
 
 		// Verify RegisterResourceProvider was called
 		logOutput := logBuffer.String()

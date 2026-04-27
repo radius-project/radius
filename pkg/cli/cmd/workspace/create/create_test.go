@@ -161,6 +161,15 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{
+				Format: "workspace/%s created",
+				Params: []any{"defaultWorkspace"},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+
 	})
 
 }

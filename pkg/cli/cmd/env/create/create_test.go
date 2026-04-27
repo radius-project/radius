@@ -188,14 +188,8 @@ func Test_Run(t *testing.T) {
 
 		expectedOutput := []any{
 			output.LogOutput{
-				Format: "Creating Environment...",
-			},
-			output.LogOutput{
-				Format: "Successfully created environment %q in resource group %q",
-				Params: []any{
-					"default",
-					"test-group",
-				},
+				Format: "environment/%s created",
+				Params: []any{"default"},
 			},
 		}
 
@@ -247,16 +241,10 @@ func Test_Run(t *testing.T) {
 			ConfigFileInterface: configFileInterface,
 		}
 
-		expectedOutput := []any{
-			output.LogOutput{
-				Format: "Creating Environment...",
-			},
-		}
-
 		err := runner.Run(context.Background())
 		require.Error(t, err)
 		require.Equal(t, expectedError, err)
-		require.Equal(t, expectedOutput, outputSink.Writes)
+		require.Empty(t, outputSink.Writes)
 	})
 }
 

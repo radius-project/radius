@@ -116,11 +116,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "creating resource group %q in workspace %q...\n",
-				Params: []any{"testrg", "kind-kind"},
-			},
-			output.LogOutput{
-				Format: "resource group %q created",
+				Format: "resourcegroup/%s created",
 				Params: []any{"testrg"},
 			},
 		}
