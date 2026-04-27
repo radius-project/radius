@@ -20,7 +20,7 @@ package config
 // next to code.
 type DirectoryConfig struct {
 	// Filepath is the filepath that was used to the read the configuration. This is
-	// not stored in the file, and set by the configuration system for diagnotic purposes.
+	// not stored in the file, and set by the configuration system for diagnostic purposes.
 	Filepath string `yaml:"-"`
 
 	// Workspace contains settings that affect the behavior of the current workspace.
