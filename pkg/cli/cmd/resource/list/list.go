@@ -57,9 +57,6 @@ rad resource list Applications.Core/gateways
 
 # list all resources of a specified type in an application
 rad resource list Applications.Core/containers --application icecream-store
-
-# list all resources of a specified type in an application (shorthand flag)
-rad resource list Applications.Core/containers -a icecream-store
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -172,7 +169,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		_, err = client.GetApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
-			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
+			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '--application'.", r.ApplicationName, r.Workspace.Name)
 		} else if err != nil {
 			return err
 		}
