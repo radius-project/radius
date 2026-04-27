@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -371,7 +370,7 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 
 // RequireWorkspace reads the workspace name from the command flags, retrieves the workspace from the configuration, and
 // returns it, or a fallback workspace if none is found. It also handles any errors that may occur during the process.
-func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.DirectoryConfig) (*workspaces.Workspace, error) {
+func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Workspace, error) {
 	name, err := cmd.Flags().GetString("workspace")
 	if err != nil {
 		return nil, err
@@ -391,10 +390,6 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.Direct
 	// Lets use the fallback configuration.
 	if ws == nil {
 		ws = workspaces.MakeFallbackWorkspace()
-	}
-
-	if dc != nil {
-		ws.DirectoryConfig = *dc
 	}
 
 	return ws, nil

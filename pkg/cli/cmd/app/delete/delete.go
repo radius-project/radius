@@ -107,7 +107,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the workspace, scope, application name, and confirm flag from the command line arguments and
 // request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

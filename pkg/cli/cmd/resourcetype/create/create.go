@@ -108,7 +108,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	resourceTypeName := cli.ReadResourceTypeNameArgs(cmd, args)
 	r.ResourceTypeName = resourceTypeName
 
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
