@@ -68,6 +68,15 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Delete Command with confirm and positional arg",
+			Input:         []string{"--yes", "test-application"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadConfigWithWorkspace(t),
+			},
+		},
+		{
 			Name:          "Delete Command with no application - invalid",
 			Input:         []string{},
 			ExpectedValid: false,

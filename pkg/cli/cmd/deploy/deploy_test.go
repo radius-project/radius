@@ -92,7 +92,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad deploy - app not specified",
+			Name:          "rad deploy - valid without application name",
 			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
