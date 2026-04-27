@@ -1,0 +1,62 @@
+{{- if eq .Values.global.networkPolicy.enabled true }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ucp
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ucp
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from all Radius components (controller, DE, RPs)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: radius
+      ports:
+        - protocol: TCP
+          port: 9443
+    # Allow aggregated API traffic from the Kubernetes API server
+    - from:
+{{ include "radius.networkPolicy.kubernetesApiServerCidrs" . | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 9443
+    {{- if eq .Values.global.prometheus.enabled true }}
+    # Allow Prometheus metrics scraping
+    - from:
+{{ include "radius.networkPolicy.prometheusPeers" . | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.global.prometheus.port }}
+    {{- end }}
+  egress:
+    # Allow egress to all Radius components in the namespace
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: radius
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow egress to Kubernetes API server
+    - to:
+{{ include "radius.networkPolicy.kubernetesApiServerCidrs" . | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+{{- end }}

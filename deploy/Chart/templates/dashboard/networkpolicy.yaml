@@ -1,0 +1,47 @@
+{{- if and (eq .Values.global.networkPolicy.enabled true) (eq .Values.dashboard.enabled true) }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dashboard
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: dashboard
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from any source (user-facing dashboard)
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.dashboard.containerPort }}
+    {{- if eq .Values.global.prometheus.enabled true }}
+    # Allow Prometheus metrics scraping
+    - from:
+{{ include "radius.networkPolicy.prometheusPeers" . | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.global.prometheus.port }}
+    {{- end }}
+  egress:
+    # Allow egress to UCP for API calls
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+      ports:
+        - protocol: TCP
+          port: 9443
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

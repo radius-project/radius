@@ -1,0 +1,212 @@
+suite: test network policies
+templates:
+  - ucp/networkpolicy.yaml
+  - controller/networkpolicy.yaml
+  - rp/networkpolicy.yaml
+  - dynamic-rp/networkpolicy.yaml
+  - de/networkpolicy.yaml
+  - dashboard/networkpolicy.yaml
+  - database/networkpolicy.yaml
+tests:
+  - it: should not create any NetworkPolicy when networkPolicy is disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: ucp/networkpolicy.yaml
+      - hasDocuments:
+          count: 0
+        template: controller/networkpolicy.yaml
+      - hasDocuments:
+          count: 0
+        template: rp/networkpolicy.yaml
+      - hasDocuments:
+          count: 0
+        template: dynamic-rp/networkpolicy.yaml
+      - hasDocuments:
+          count: 0
+        template: de/networkpolicy.yaml
+      - hasDocuments:
+          count: 0
+        template: dashboard/networkpolicy.yaml
+      - hasDocuments:
+          count: 0
+        template: database/networkpolicy.yaml
+
+  - it: should create NetworkPolicies for all components when enabled
+    set:
+      global.networkPolicy.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: ucp/networkpolicy.yaml
+      - hasDocuments:
+          count: 1
+        template: controller/networkpolicy.yaml
+      - hasDocuments:
+          count: 1
+        template: rp/networkpolicy.yaml
+      - hasDocuments:
+          count: 1
+        template: dynamic-rp/networkpolicy.yaml
+      - hasDocuments:
+          count: 1
+        template: de/networkpolicy.yaml
+      - hasDocuments:
+          count: 1
+        template: dashboard/networkpolicy.yaml
+
+  - it: should create database NetworkPolicy only when both networkPolicy and database are enabled
+    set:
+      global.networkPolicy.enabled: true
+      database.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: database/networkpolicy.yaml
+      - isKind:
+          of: NetworkPolicy
+        template: database/networkpolicy.yaml
+
+  - it: should not create database NetworkPolicy when database is disabled
+    set:
+      global.networkPolicy.enabled: true
+      database.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: database/networkpolicy.yaml
+
+  - it: UCP NetworkPolicy should have correct pod selector and ports
+    set:
+      global.networkPolicy.enabled: true
+    template: ucp/networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: metadata.name
+          value: ucp
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: ucp
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+      - contains:
+          path: spec.policyTypes
+          content: Egress
+      - equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels
+          value:
+            app.kubernetes.io/part-of: radius
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 9443
+      - equal:
+          path: spec.ingress[1].from[0].ipBlock.cidr
+          value: 0.0.0.0/0
+      - equal:
+          path: spec.egress[2].to[0].ipBlock.cidr
+          value: 0.0.0.0/0
+
+  - it: bicep-de NetworkPolicy should restrict ingress to UCP only
+    set:
+      global.networkPolicy.enabled: true
+    template: de/networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: metadata.name
+          value: bicep-de
+      - equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: ucp
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 6443
+
+  - it: should include Prometheus metrics ingress when metrics are enabled
+    set:
+      global.networkPolicy.enabled: true
+      global.prometheus.enabled: true
+      global.prometheus.port: 9090
+    template: de/networkpolicy.yaml
+    asserts:
+      - equal:
+          path: spec.ingress[1].ports[0].port
+          value: 6443
+      - equal:
+          path: spec.ingress[1].from[0].podSelector.matchLabels["app.kubernetes.io/name"]
+          value: prometheus
+
+  - it: should not include Prometheus port when metrics are disabled
+    set:
+      global.networkPolicy.enabled: true
+      global.prometheus.enabled: false
+    template: de/networkpolicy.yaml
+    asserts:
+      - lengthEqual:
+          path: spec.ingress
+          count: 1
+
+  - it: controller NetworkPolicy should render custom Kubernetes API server CIDRs
+    set:
+      global.networkPolicy.enabled: true
+      global.networkPolicy.kubernetesApiServerCidrs:
+        - 10.0.0.0/24
+        - 10.0.1.0/24
+    template: controller/networkpolicy.yaml
+    asserts:
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 10.0.0.0/24
+      - equal:
+          path: spec.ingress[0].from[1].ipBlock.cidr
+          value: 10.0.1.0/24
+      - equal:
+          path: spec.egress[2].to[0].ipBlock.cidr
+          value: 10.0.0.0/24
+      - equal:
+          path: spec.egress[2].to[1].ipBlock.cidr
+          value: 10.0.1.0/24
+
+  - it: dashboard NetworkPolicy should not be created when dashboard is disabled
+    set:
+      global.networkPolicy.enabled: true
+      dashboard.enabled: false
+    template: dashboard/networkpolicy.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: all NetworkPolicies should have the radius part-of label
+    set:
+      global.networkPolicy.enabled: true
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        template: ucp/networkpolicy.yaml
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        template: controller/networkpolicy.yaml
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        template: rp/networkpolicy.yaml
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        template: dynamic-rp/networkpolicy.yaml
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        template: de/networkpolicy.yaml
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: radius
+        template: dashboard/networkpolicy.yaml

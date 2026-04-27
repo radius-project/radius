@@ -1,0 +1,60 @@
+{{- if eq .Values.global.networkPolicy.enabled true }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dynamic-rp
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/name: dynamic-rp
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: dynamic-rp
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from UCP only
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ucp
+      ports:
+        - protocol: TCP
+          port: 8082
+    {{- if eq .Values.global.prometheus.enabled true }}
+    # Allow Prometheus metrics scraping
+    - from:
+{{ include "radius.networkPolicy.prometheusPeers" . | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.global.prometheus.port }}
+    {{- end }}
+  egress:
+    # Allow egress to Radius components in the namespace (UCP, database)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: radius
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow egress to Kubernetes API server, external cloud APIs,
+    # and Terraform binary downloads
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+        - protocol: TCP
+          port: 80
+{{- end }}
