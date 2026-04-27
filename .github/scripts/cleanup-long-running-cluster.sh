@@ -32,17 +32,42 @@ fi
 
 # Delete all test resources in resources without proxy resource.
 if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
-    echo "delete all resources in resources.ucp.dev"
+    if [[ -n "$SKIP_RESOURCE_FILE" && -f "$SKIP_RESOURCE_FILE" ]]; then
+        echo "delete resources in resources.ucp.dev except entries in skip-resource-list"
+    else
+        echo "no skip-resource-list available; delete only scope.* resources in resources.ucp.dev"
+    fi
     resources=$(kubectl get resources.ucp.dev -n radius-system --no-headers -o custom-columns=":metadata.name")
     for r in $resources; do
-        # Skip resources if they're either scope.* or listed in skip resource file
-        if [[ $r == scope.local.* || $r == scope.aws.* || -z "$r" ]]; then
+        if [[ -z "$r" ]]; then
+            continue
+        fi
+
+        # Always skip built-in plane scopes.
+        if [[ $r == scope.local.* || $r == scope.aws.* ]]; then
             echo "skip deletion: $r"
-        elif [ -n "$SKIP_RESOURCE_FILE" ] && [ -f "$SKIP_RESOURCE_FILE" ] && grep -q "$r" "$SKIP_RESOURCE_FILE"; then
-            echo "Skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"    
-        else
-            echo "deleting resource: $r"
+            continue
+        fi
+
+        # If a skip-resource file is available, use it to protect system resources.
+        if [ -n "$SKIP_RESOURCE_FILE" ] && [ -f "$SKIP_RESOURCE_FILE" ]; then
+            if grep -F -x -q -- "$r" "$SKIP_RESOURCE_FILE"; then
+                echo "skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"
+            else
+                echo "deleting resource: $r"
+                kubectl delete resources.ucp.dev "$r" -n radius-system --ignore-not-found=true --wait=false
+            fi
+            continue
+        fi
+
+        # No skip-resource file: only delete scope entries (test resource groups).
+        # Non-scope resources (resource.*) may include system-critical entries
+        # that must not be deleted without a valid skip list.
+        if [[ $r == scope.* ]]; then
+            echo "deleting resource: $r (no skip list, scope entry)"
             kubectl delete resources.ucp.dev "$r" -n radius-system --ignore-not-found=true --wait=false
+        else
+            echo "skip deletion: $r (no skip list available, preserving non-scope resource)"
         fi
     done
 fi

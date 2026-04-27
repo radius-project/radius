@@ -665,13 +665,13 @@ The work done here will be to read, decipher values and secrets and environment 
 We're breaking down the effort into smaller units in order to enable parallel work and faster delivery of this feature within a sprint.
 The user stories created are as follows:
 The numbers indicate sequential order of work that can be done. Having said that, work for numbers 1 and 2 are going ahead in parallel and we will resolve conflicts as PRs get merged.
-1. Update Provider DataModel, TypeSpec, Convertor, json examples
-1. Update Environment Variables DataModel, TypeSpec, Convertor, json examples
+1. Update Provider DataModel, TypeSpec, Converter, json examples
+1. Update Environment Variables DataModel, TypeSpec, Converter, json examples
 1. Documentation
 2. Build Provider Config (minus secrets)
 2. Process, update environment variables - minus secrets
 3. Functional Tests
-4. Update Secret DataModel, TypeSpec, Convertor, json examples
+4. Update Secret DataModel, TypeSpec, Converter, json examples
 4. Secret processing - Providers + Environment Variables
 
 The objective is to deliver within a sprint. We will create unit tests for each task mentioned above as it is completed and test functionality.

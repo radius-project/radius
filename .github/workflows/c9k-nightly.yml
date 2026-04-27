@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: c9k-nightly
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # Every day at 6am UTC
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Lookback window in hours"
+        required: false
+        default: "24"
+
+permissions: {}
+
+jobs:
+  ci-failure-report:
+    # Only run on the main repository, not forks
+    if: github.repository == 'radius-project/radius'
+    timeout-minutes: 30
+    permissions:
+      issues: write
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate CI failure report
+        uses: sylvainsf/causinator9000@ff3e97fcf74f2dd23dc56cf5ddd10f9e1c127eeb # v2.1.0
+        with:
+          hours: ${{ github.event.inputs.hours || '24' }}
+          min-confidence: "50"
+          create-issue: "true"
+          issue-label: "c9k-nightly"

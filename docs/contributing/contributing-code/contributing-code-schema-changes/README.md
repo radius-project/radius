@@ -31,7 +31,7 @@ In order to update or create a new schema follow these steps:
         autorest pkg/corerp/api/README.md --tag=link-2023-10-01-preview
         ```
 
-        The autotrest configuration file (_i.e README.md_) is generally found in `pkg/<NAMESPACE>/api/` directory and has details on which tag to use.
+        The autorest configuration file (_i.e README.md_) is generally found in `pkg/<NAMESPACE>/api/` directory and has details on which tag to use.
     </details>
 1. Add any necessary changes to the Radius resource provider to support the newly added types.
 1. Add any necessary tests, as needed.
@@ -59,7 +59,7 @@ If you would like to test that your schema changes are compilable in a Bicep tem
 
 Note: Alternatively, if you already have the Radius CLI installed, you can choose to use the Bicep binary that is installed as part of Radius. The Bicep binary gets downloaded to `./.rad/bin/bicep`. You can use this file path instead.
 
-## Step 2: Create a file directory  
+## Step 2: Create a file directory
 
 1. Create a file directory in your location of choice. Keep the directory path handy for the next steps.
 
@@ -84,9 +84,6 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
 
     ```json
     {
-        "experimentalFeaturesEnabled": {
-            "extensibility": true
-        },
         "extensions": {
             "radius": "<file-path>",
             "aws": "br:biceptypes.azurecr.io/aws:latest"

@@ -232,7 +232,7 @@ This design covers the removal of imperative provisioning code, Bicep-based prov
 
 > NOTE: This design builds upon the existing designs for Radius UDTs in order to provide extensible provisioning for multiple platforms. 
 
-The recommended development option builds upon existing designs for Radius UDTs in order to provide extensible provisioning to multiple platforms. We could provide ACI and other platform support, as well as an alternate recipe-based Kubernetes provisining path without making any changes to Radius. However, the plan includes removing the core resource types and the associated provisioning logic is a meaningful change, as is the provisioning logic that must be implemented in Bicep. We also believe we can provide reusable components in Bicep.
+The recommended development option builds upon existing designs for Radius UDTs in order to provide extensible provisioning to multiple platforms. We could provide ACI and other platform support, as well as an alternate recipe-based Kubernetes provisioning path without making any changes to Radius. However, the plan includes removing the core resource types and the associated provisioning logic is a meaningful change, as is the provisioning logic that must be implemented in Bicep. We also believe we can provide reusable components in Bicep.
 
 ### Bicep Language Features for Recipe Extensibility
 
