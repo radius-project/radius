@@ -24,8 +24,6 @@ import "github.com/radius-project/radius/pkg/cli/config"
 //
 // - be stored in per-user config (~/.rad/config.yaml) OR
 //
-// - be stored in the user's working directory `$pwd/.rad/rad.yaml` OR
-//
 // - may represent the rad CLI's fallback configuration when no configuration is present
 type Workspace struct {
 	// Source indicates how the workspace was loaded.
