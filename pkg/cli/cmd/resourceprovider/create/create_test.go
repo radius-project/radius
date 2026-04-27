@@ -104,7 +104,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "resourceprovider/%s created",
+				Format: "resource-provider/%s created",
 				Params: []any{resourceProviderData.Namespace},
 			},
 		}

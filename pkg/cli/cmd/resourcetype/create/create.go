@@ -183,7 +183,7 @@ func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
 
 	// Output a concise success line per registered type
 	for _, typeName := range typesToRegister {
-		r.Output.LogInfo("resourcetype/%s/%s created", r.ResourceProvider.Namespace, typeName)
+		r.Output.LogInfo("resource-type/%s/%s created", r.ResourceProvider.Namespace, typeName)
 	}
 
 	return nil

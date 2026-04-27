@@ -130,7 +130,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("resourceprovider/%s created", r.ResourceProvider.Namespace)
+	r.Output.LogInfo("resource-provider/%s created", r.ResourceProvider.Namespace)
 
 	return nil
 }

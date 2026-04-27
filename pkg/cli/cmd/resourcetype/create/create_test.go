@@ -101,7 +101,7 @@ func Test_Run(t *testing.T) {
 		// Verify the single concise output line
 		expected := []any{
 			output.LogOutput{
-				Format: "resourcetype/%s/%s created",
+				Format: "resource-type/%s/%s created",
 				Params: []any{resourceProviderData.Namespace, "testResources"},
 			},
 		}
@@ -138,7 +138,7 @@ func Test_Run(t *testing.T) {
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 
-		// Verify one "resourcetype/%s/%s created" line per type (order is non-deterministic)
+		// Verify one "resource-type/%s/%s created" line per type (order is non-deterministic)
 		require.Len(t, outputSink.Writes, 2)
 		actualLines := make([]string, len(outputSink.Writes))
 		for i, w := range outputSink.Writes {
@@ -147,8 +147,8 @@ func Test_Run(t *testing.T) {
 		}
 		sort.Strings(actualLines)
 		expectedLines := []string{
-			fmt.Sprintf("resourcetype/%s/%s created", resourceProviderData.Namespace, "prodResources"),
-			fmt.Sprintf("resourcetype/%s/%s created", resourceProviderData.Namespace, "testResources"),
+			fmt.Sprintf("resource-type/%s/%s created", resourceProviderData.Namespace, "prodResources"),
+			fmt.Sprintf("resource-type/%s/%s created", resourceProviderData.Namespace, "testResources"),
 		}
 		require.Equal(t, expectedLines, actualLines, "Expected one created line per resource type")
 

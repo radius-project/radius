@@ -126,7 +126,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("resourcegroup/%s created", r.UCPResourceGroupName)
+	r.Output.LogInfo("resource-group/%s created", r.UCPResourceGroupName)
 	return nil
 
 }

@@ -116,7 +116,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "resourcegroup/%s created",
+				Format: "resource-group/%s created",
 				Params: []any{"testrg"},
 			},
 		}
