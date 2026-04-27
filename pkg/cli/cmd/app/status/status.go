@@ -38,12 +38,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show Radius Application status",
-		Long:  `Show Radius Application status, such as public endpoints and resource count. Shows details for the user's default application (if configured) by default.`,
+		Long:  `Show Radius Application status, such as public endpoints and resource count.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Show status of current application
-rad app status
-
 # Show status of specified application
 rad app status my-app
 

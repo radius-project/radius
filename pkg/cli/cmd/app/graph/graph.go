@@ -28,9 +28,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `Shows the application graph for an application.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Show graph for current application
-rad app graph
-
 # Show graph for specified application
 rad app graph my-application`,
 		RunE: framework.RunCommand(runner),

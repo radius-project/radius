@@ -169,20 +169,14 @@ func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) 
 //
 // - '--application' flag
 // - first positional arg
-// - workspace default application
-// - directory config application
 //
 
-// RequireApplicationArgs checks if an application name is provided as an argument, and if not, checks if a default
-// application is set in the workspace. If no application name is provided, it returns an error.
+// RequireApplicationArgs checks if an application name is provided as an argument or via the '--application' flag.
+// If no application name is provided, it returns an error.
 func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
 	applicationName, err := ReadApplicationNameArgs(cmd, args)
 	if err != nil {
 		return "", err
-	}
-
-	if applicationName == "" {
-		applicationName = workspace.DirectoryConfig.Workspace.Application
 	}
 
 	if applicationName == "" {
@@ -193,24 +187,16 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 	return applicationName, nil
 }
 
-// ReadApplicationName reads the application name from the following sources in priority order and returns
+// ReadApplicationName reads the application name from the '--application' flag and returns
 // the empty string if no application is set.
 //
-// - '--application' flag
-// - workspace default application
-// - directory config application
-//
 
-// ReadApplicationName reads the application name from the command line flag and, if not provided, from the workspace
-// configuration. It returns an error if the flag is not set correctly.
+// ReadApplicationName reads the application name from the command line flag.
+// It returns an error if the flag is not set correctly.
 func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
 	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return "", err
-	}
-
-	if applicationName == "" {
-		applicationName = workspace.DirectoryConfig.Workspace.Application
 	}
 
 	return applicationName, nil
