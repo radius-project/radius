@@ -16,7 +16,7 @@ The items below are illustrative examples based on the current-state assessment.
 | `radius-schema-changes` | `radius/` | `contributing-code-schema-changes/` | Multi-tool pipeline (TypeSpec → Swagger → Go); error-prone |
 | `radius-run-controlplane` | `radius/` | `running-controlplane-locally.md` | Orchestrates multiple processes; Radius-specific |
 | `radius-debug-components` | `radius/` | `radius-os-processes-debugging.md` | Non-obvious process topology |
-| `contrib-add-resource-type` | `resource-types-contrib/` | `contributing-resource-types-recipes.md` | Custom YAML + recipe scaffold; entirely project-specific |
+| `radius-contrib-add-resource-type` | `resource-types-contrib/` | `contributing-resource-types-recipes.md` | Custom YAML + recipe scaffold; entirely project-specific |
 
 ### Skills backlog (defer until friction emerges)
 
@@ -37,7 +37,7 @@ Deferred: `python.instructions.md` (few scripts), `csharp.instructions.md` (low-
 
 ### Missing repo infrastructure
 
-`dashboard/`, `docs/`, `resource-types-contrib/`, `bicep-types-aws/` each need: `copilot-instructions.md`, instructions, and `copilot-setup-steps.yml`.
+`dashboard/`, `docs/`, `resource-types-contrib/`, `bicep-types-aws/` each need: `.github/copilot-instructions.md`, instructions, and `copilot-setup-steps.yml`.
 
 ### Alignment issues
 

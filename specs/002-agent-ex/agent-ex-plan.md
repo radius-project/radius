@@ -9,7 +9,7 @@ This document describes the implementation mechanics for delivering the capabili
 
 | Artifact | `radius/` | `dashboard/` | `docs/` | `resource-types-contrib/` | `bicep-types-aws/` |
 |---|---|---|---|---|---|
-| `copilot-instructions.md` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `.github/copilot-instructions.md` | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `.github/instructions/` | ✅ (7) | ❌ | ❌ | ❌ | ❌ |
 | `.github/skills/` | ✅ (5) | ❌ | ❌ | ❌ | ❌ |
 | `.github/agents/` | ✅ (1) | ❌ | ❌ | ❌ | ❌ |
@@ -113,7 +113,7 @@ Create instructions listed in the Gaps section. Each file < 2K tokens. Only Radi
 
 **Validation**:
 
-- Deterministic: Each instruction file < 200 lines. `applyTo` patterns match intended file types (test with `glob` matching). No overlap with linter-enforced rules.
+- Deterministic: Each new instruction file added in this phase < 200 lines. Existing `radius/` instruction files are out of scope for this check until separately refactored. `applyTo` patterns match intended file types (test with `glob` matching). No overlap with linter-enforced rules.
 - Prompts: Open a file matching the `applyTo` pattern and ask the agent to write new code in that file. Verify the output follows the conventions in the instruction (e.g., TypeSpec naming, YAML schema structure).
 
 ---
@@ -124,8 +124,8 @@ Create instructions listed in the Gaps section. Each file < 2K tokens. Only Radi
 
 Each repo gets a `copilot-instructions.md` covering: repo purpose, tech stack, available skills/instructions/agents/prompts, link to `CONTRIBUTING.md`.
 
-- [ ] New: `dashboard/`, `docs/`, `resource-types-contrib/`, `bicep-types-aws/`
-- [ ] Update: `radius/` (reflect new skill inventory)
+- [ ] New: `dashboard/.github/copilot-instructions.md`, `docs/.github/copilot-instructions.md`, `resource-types-contrib/.github/copilot-instructions.md`, `bicep-types-aws/.github/copilot-instructions.md`
+- [ ] Update: `radius/.github/copilot-instructions.md` (reflect new skill inventory)
 
 **Validation**:
 
@@ -158,25 +158,30 @@ Create an automated agent that runs weekly, analyzes Copilot Agent session logs,
 
 **How it works**:
 
-1. **Log collection**: A scheduled GitHub Actions workflow gathers Copilot Agent session logs. Sources include:
-   - VS Code debug logs (`$VSCODE_TARGET_SESSION_LOG` paths) committed/uploaded as CI artifacts from cloud agent runs
-   - GitHub Copilot audit log API (organization-level, if available)
-   - Copilot coding agent run logs from GitHub Issues/PRs (visible in PR comments and check runs)
-   - Any manually captured session logs stored in `.copilot-tracking/logs/`
+1. **Log collection**: A scheduled GitHub Actions workflow gathers **only the minimum telemetry required** to identify skill gaps. Prefer structured or aggregated signals (task type, invoked skill, failure category, duration, tool/install retries, success/failure outcome) over raw session transcripts. Sources may include:
 
-2. **Analysis agent**: The workflow invokes an LLM-backed analysis step (via GitHub Models or a Copilot agent prompt) that reviews the collected logs and evaluates:
-   - **Add signals**: Repeated agent failures on the same workflow, trial-and-error tool installation, questions the agent couldn't answer, multi-step tasks where the agent lost its way
-   - **Edit signals**: Skills that were invoked but produced incorrect or outdated guidance, instructions the agent ignored or misapplied, workflows where the agent succeeded but took unnecessary detours
-   - **Remove signals**: Skills that were never invoked over the review window, instructions with zero file-pattern matches in recent sessions, context that duplicates what the model already knows (wasted token budget)
+   - VS Code debug logs (`$VSCODE_TARGET_SESSION_LOG` paths) from cloud agent runs, but only after redaction/scrubbing and only when structured summaries are insufficient
+   - GitHub Copilot audit log API (organization-level, if available), restricted to fields needed for usage metrics and trend analysis
+   - Copilot coding agent run logs from GitHub Issues/PRs (visible in PR comments and check runs), summarized into structured signals instead of storing raw conversational content
+   - Any manually captured session logs stored in `.copilot-tracking/logs/`, which must be treated as sensitive input and sanitized before any upload, retention, or analysis
 
-3. **Output**: The agent files a GitHub Issue per repo with a structured recommendation report:
+   **Required safeguards**:
+
+      - **Redaction/scrubbing first**: Strip or mask secrets, tokens, credentials, cookies, connection strings, environment variable values, file contents, prompts, and any other sensitive repository or CI data before logs are uploaded, persisted, or analyzed.
+      - **No raw transcripts by default**: Do not centralize full session transcripts unless explicitly justified for a narrowly scoped investigation; when needed, keep them ephemeral, encrypted, and access-restricted.
+      - **Least-privilege access**: Store artifacts in a location with maintainer-only access, minimal workflow permissions, and short retention periods; analysis jobs should read only sanitized artifacts.
+      - **Validation gate**: Add a “no secrets in logs” validation step that fails the workflow if sensitive material is detected after scrubbing and before artifact upload, model analysis, or issue creation.
+
+1. **Analysis agent**: The workflow invokes an LLM-backed analysis step (via GitHub Models or a Copilot agent prompt) that reviews the sanitized structured signals and approved redacted artifacts, and evaluates:
+
+1. **Output**: The agent files a GitHub Issue per repo with a structured recommendation report:
    - Skills to add (with justification from log evidence)
    - Skills to edit (with specific problems observed)
    - Skills to remove (with usage metrics showing disuse)
    - Instructions to adjust (coverage gaps or overlaps)
    - Context budget impact estimate (tokens saved/added)
 
-4. **Human-in-the-loop**: Recommendations are issues, not auto-applied changes. A maintainer reviews, triages, and either implements or closes with rationale. No automated changes to skills without review.
+1. **Human-in-the-loop**: Recommendations are issues, not auto-applied changes. A maintainer reviews, triages, and either implements or closes with rationale. No automated changes to skills without review.
 
 **Implementation**:
 
@@ -209,17 +214,17 @@ Each phase is implemented through Spec Kit. Before starting a phase, use `@radiu
 
 ## Naming Conventions
 
-All skills, agents, and prompts use a `radius.` prefix so they are visually distinct from built-in and third-party items in VS Code chat completions.
+All skills, agents, and prompts use a `radius-` prefix so they are visually distinct from built-in and third-party items in VS Code chat completions.
 
 | Artifact | Pattern | Example | Appears in chat as |
 |---|---|---|---|
 | Skill | `radius-<repo>-<verb>-<noun>/` | `radius-core-schema-changes/` | Listed by description in skill picker |
 | Instruction | `<technology>.instructions.md` | `typescript.instructions.md` | N/A (auto-applied, not user-facing) |
 | Agent | `radius-<name>.agent.md` | `radius-resource-type-contributor.agent.md` | `@radius-resource-type-contributor` |
-| Prompt | `radius.<repo>.<action>.prompt.md` | `radius.contrib.add-resource-type.prompt.md` | `/radius.contrib.add-resource-type` |
+| Prompt | `radius-<repo>-<action>.prompt.md` | `radius-contrib-add-resource-type.prompt.md` | `/radius-contrib-add-resource-type` |
 | Lifecycle workflow | `skill-lifecycle-review.yml` | `.github/workflows/skill-lifecycle-review.yml` | N/A (scheduled, not user-facing) |
 
-**Why `radius.` / `radius-`**: Chat UIs show agents as `@name` and prompts as `/name`. Without a namespace prefix, `@docs-contributor` or `/add-resource-type` could collide with extensions or other projects. The prefix groups all Radius items together in alphabetical lists and makes them immediately recognizable.
+**Why `radius-`**: Chat UIs show agents as `@name` and prompts as `/name`. Without a namespace prefix, `@docs-contributor` or `/add-resource-type` could collide with extensions or other projects. The prefix groups all Radius items together in alphabetical lists and makes them immediately recognizable.
 
 **Repo short names**: `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
 
