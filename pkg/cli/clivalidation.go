@@ -181,7 +181,7 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 
 	if applicationName == "" {
 		return "", fmt.Errorf("no application name provided, " +
-			"pass in an application name with '--application'")
+			"pass in an application name with '-a/--application'")
 	}
 
 	return applicationName, nil
