@@ -85,7 +85,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 			return nil, err
 		}
 
-		return getConfigurationV20250801(envV20250801)
+		return getConfigurationV20250801(ctx, envV20250801, e.ArmClientOptions)
 	}
 
 }
@@ -146,7 +146,7 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	return &config, nil
 }
 
-func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource) (*recipes.Configuration, error) {
+func getConfigurationV20250801(ctx context.Context, environment *v20250801preview.EnvironmentResource, armOptions *arm.ClientOptions) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
@@ -188,6 +188,45 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 
 	if envDatamodel.Properties.Simulated {
 		config.Simulated = true
+	}
+
+	// Resolve TerraformConfig resource if referenced.
+	if envDatamodel.Properties.TerraformConfig != "" {
+		tfConfig, err := util.FetchTerraformConfig(ctx, envDatamodel.Properties.TerraformConfig, armOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch terraformConfig %q: %w", envDatamodel.Properties.TerraformConfig, err)
+		}
+
+		tfDM, err := tfConfig.ConvertTo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert terraformConfig: %w", err)
+		}
+
+		tfProps := tfDM.(*datamodel.TerraformConfig).Properties
+		config.RecipeConfig.Terraform = datamodel.TerraformConfigProperties{
+			Authentication: tfProps.Authentication,
+			Providers:      tfProps.Providers,
+		}
+		config.RecipeConfig.Env = tfProps.Env
+		config.RecipeConfig.EnvSecrets = tfProps.EnvSecrets
+	}
+
+	// Resolve BicepConfig resource if referenced.
+	if envDatamodel.Properties.BicepConfig != "" {
+		bcConfig, err := util.FetchBicepConfig(ctx, envDatamodel.Properties.BicepConfig, armOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch bicepConfig %q: %w", envDatamodel.Properties.BicepConfig, err)
+		}
+
+		bcDM, err := bcConfig.ConvertTo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert bicepConfig: %w", err)
+		}
+
+		bcProps := bcDM.(*datamodel.BicepConfig).Properties
+		config.RecipeConfig.Bicep = datamodel.BicepConfigProperties{
+			Authentication: bcProps.Authentication,
+		}
 	}
 
 	return &config, nil

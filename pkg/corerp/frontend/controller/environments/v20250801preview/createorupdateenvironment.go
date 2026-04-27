@@ -103,6 +103,28 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		return resp, err
 	}
 
+	// Validate referenced config resources exist.
+	if newResource.Properties.TerraformConfig != "" {
+		tfID, parseErr := resources.Parse(newResource.Properties.TerraformConfig)
+		if parseErr != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid terraformConfig resource ID: %s", newResource.Properties.TerraformConfig)), nil
+		}
+		_, _, err = e.GetResource(ctx, tfID)
+		if err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Referenced terraformConfig resource %q does not exist.", newResource.Properties.TerraformConfig)), nil
+		}
+	}
+	if newResource.Properties.BicepConfig != "" {
+		bcID, parseErr := resources.Parse(newResource.Properties.BicepConfig)
+		if parseErr != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid bicepConfig resource ID: %s", newResource.Properties.BicepConfig)), nil
+		}
+		_, _, err = e.GetResource(ctx, bcID)
+		if err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Referenced bicepConfig resource %q does not exist.", newResource.Properties.BicepConfig)), nil
+		}
+	}
+
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
