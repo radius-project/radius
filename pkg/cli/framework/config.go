@@ -21,15 +21,13 @@ import (
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
 )
 
 type ConfigHolder struct {
-	ConfigFilePath  string
-	Config          *viper.Viper
-	DirectoryConfig *config.DirectoryConfig
+	ConfigFilePath string
+	Config         *viper.Viper
 }
 
 type contextKey string

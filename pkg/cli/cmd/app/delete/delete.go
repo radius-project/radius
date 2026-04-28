@@ -54,11 +54,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Delete Radius Application",
 		Long:  "Delete the specified Radius Application deployed in the default environment",
 		Example: `
-# Delete current application
-rad app delete
-
-# Delete current application and bypass confirmation prompt
-rad app delete --yes
+# Delete specified application and bypass confirmation prompt
+rad app delete --yes --application my-app
 
 # Delete specified application
 rad app delete my-app
@@ -110,7 +107,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the workspace, scope, application name, and confirm flag from the command line arguments and
 // request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

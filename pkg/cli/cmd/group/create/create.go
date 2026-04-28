@@ -87,7 +87,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks if the given command and arguments are valid, and if so, sets the resource group name and workspace in the
 // Runner struct. It returns an error if the resource group name is invalid or if the workspace or resource group cannot be found.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

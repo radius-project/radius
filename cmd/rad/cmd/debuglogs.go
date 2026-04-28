@@ -56,7 +56,7 @@ func init() {
 }
 
 func debugLogs(cmd *cobra.Command, args []string) error {
-	w, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
+	w, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
 	}

@@ -28,9 +28,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `Shows the application graph for an application.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Show graph for current application
-rad app graph
-
 # Show graph for specified application
 rad app graph my-application`,
 		RunE: framework.RunCommand(runner),
@@ -66,7 +63,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad app graph` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

@@ -85,7 +85,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate makes sure the default workspace or the one specified using command flags is valid, and sets the workspace to this value.
 // It also sets the output format to table by default or to the one specified using command flags.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
