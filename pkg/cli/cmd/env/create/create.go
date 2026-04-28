@@ -18,6 +18,7 @@ package create
 
 import (
 	"context"
+	"fmt"
 
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -38,11 +39,16 @@ import (
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
+const (
+	azureScopeTemplate = "/subscriptions/%s/resourceGroups/%s"
+	awsScopeTemplate   = "/planes/aws/aws/accounts/%s/regions/%s"
+)
+
 // NewCommand creates an instance of the command and runner for the `rad env create` command.
 //
 
 // NewCommand creates a new Cobra command and a Runner object to handle the command's logic, and adds flags to the command
-// for environment name, workspace, resource group, and namespace.
+// for environment name, workspace, resource group, namespace, and cloud provider configuration.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -52,15 +58,34 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long: `Create a new Radius Environment
 Radius Environments are prepared "landing zones" for Radius Applications.
 Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
-		Args:    cobra.ExactArgs(1),
-		Example: `rad env create myenv`,
-		RunE:    framework.RunCommand(runner),
+		Args: cobra.ExactArgs(1),
+		Example: `
+## Create environment with default namespace
+rad env create myenv
+
+## Create environment with a specific namespace
+rad env create myenv --namespace mynamespace
+
+## Create environment with Azure cloud provider
+rad env create myenv --azure-subscription-id **** --azure-resource-group myrg
+
+## Create environment with AWS cloud provider
+rad env create myenv --aws-region us-west-2 --aws-account-id *****
+`,
+		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
+	commonflags.AddAzureSubscriptionFlag(cmd)
+	commonflags.AddAzureResourceGroupFlag(cmd)
+	cmd.MarkFlagsRequiredTogether(commonflags.AzureSubscriptionIdFlag, commonflags.AzureResourceGroupFlag)
+	commonflags.AddAWSRegionFlag(cmd)
+	commonflags.AddAWSAccountFlag(cmd)
+	cmd.MarkFlagsRequiredTogether(commonflags.AWSRegionFlag, commonflags.AWSAccountIdFlag)
+	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }
@@ -77,6 +102,8 @@ type Runner struct {
 	ConfigFileInterface framework.ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	NamespaceInterface  namespace.Interface
+
+	providers *corerp.Providers
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -94,8 +121,8 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate runs validation for the `rad env create` command.
 //
 
-// Validate checks if the workspace, environment name, scope, namespace, resource group name, and namespace
-// interface are valid and returns an error if any of them are not.
+// Validate checks if the workspace, environment name, scope, namespace, resource group name, namespace
+// interface, and cloud provider flags are valid and returns an error if any of them are not.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -141,27 +168,80 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Initialize providers
+	r.providers = &corerp.Providers{
+		Azure: &corerp.ProvidersAzure{},
+		Aws:   &corerp.ProvidersAws{},
+	}
+
+	// Validate Azure scope components
+	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
+		azureSubId, err := cli.RequireAzureSubscriptionId(cmd)
+		if err != nil {
+			return err
+		}
+
+		azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
+		if err != nil {
+			return err
+		}
+
+		r.providers.Azure.Scope = new(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
+	}
+
+	// Validate AWS scope components
+	if cmd.Flags().Changed(commonflags.AWSRegionFlag) || cmd.Flags().Changed(commonflags.AWSAccountIdFlag) {
+		awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
+		if err != nil {
+			return err
+		}
+
+		awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
+		if err != nil {
+			return err
+		}
+
+		r.providers.Aws.Scope = new(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
+	}
+
 	return nil
 }
 
 // Run runs the `rad env create` command.
 //
 
-// Run creates an environment in the specified resource group using the provided environment name and namespace, and
-// returns an error if unsuccessful.
+// Run creates an environment in the specified resource group using the provided environment name, namespace,
+// and cloud provider configuration, and returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	resource := &corerp.EnvironmentResource{
-		Location: to.Ptr(v1.LocationGlobal),
-		Properties: &corerp.EnvironmentProperties{
-			Compute: &corerp.KubernetesCompute{
-				Namespace: new(r.Namespace),
-			},
+	properties := &corerp.EnvironmentProperties{
+		Compute: &corerp.KubernetesCompute{
+			Namespace: new(r.Namespace),
 		},
+	}
+
+	// Set providers if any were configured.
+	if r.providers != nil {
+		hasAzure := r.providers.Azure != nil && r.providers.Azure.Scope != nil
+		hasAws := r.providers.Aws != nil && r.providers.Aws.Scope != nil
+		if hasAzure || hasAws {
+			properties.Providers = &corerp.Providers{}
+			if hasAzure {
+				properties.Providers.Azure = r.providers.Azure
+			}
+			if hasAws {
+				properties.Providers.Aws = r.providers.Aws
+			}
+		}
+	}
+
+	resource := &corerp.EnvironmentResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: properties,
 	}
 
 	err = client.CreateOrUpdateEnvironment(ctx, r.EnvironmentName, resource)

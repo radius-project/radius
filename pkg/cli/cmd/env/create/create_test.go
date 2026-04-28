@@ -141,6 +141,74 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
+		{
+			Name:          "Create command with Azure provider flags",
+			Input:         []string{"testingenv", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Azure)
+				require.NotNil(t, r.providers.Azure.Scope)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testResourceGroup", *r.providers.Azure.Scope)
+			},
+		},
+		{
+			Name:          "Create command with AWS provider flags",
+			Input:         []string{"testingenv", "--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Aws)
+				require.NotNil(t, r.providers.Aws.Scope)
+				require.Equal(t, "/planes/aws/aws/accounts/testAWSAccount/regions/us-west-2", *r.providers.Aws.Scope)
+			},
+		},
+		{
+			Name:          "Create command with invalid Azure subscription ID",
+			Input:         []string{"testingenv", "--azure-subscription-id", "subscriptionName", "--azure-resource-group", "testResourceGroup"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+		},
+		{
+			Name:          "Create command with both providers set",
+			Input:         []string{"testingenv", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup", "--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Azure.Scope)
+				require.NotNil(t, r.providers.Aws.Scope)
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -191,6 +259,74 @@ func Test_Run(t *testing.T) {
 				Format: "Applications.Core/environments/%s created",
 				Params: []any{
 					"default",
+				},
+			},
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, expectedOutput, outputSink.Writes)
+	})
+
+	t.Run("Success with providers", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+		namespaceClient := namespace.NewMockInterface(ctrl)
+		testProviders := &corerp.Providers{
+			Azure: &corerp.ProvidersAzure{
+				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
+			},
+			Aws: &corerp.ProvidersAws{
+				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
+			},
+		}
+		testEnvProperties := &corerp.EnvironmentProperties{
+			Compute: &corerp.KubernetesCompute{
+				Namespace: new("default"),
+			},
+			Providers: testProviders,
+		}
+		appManagementClient.EXPECT().
+			CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: testEnvProperties,
+			}).
+			Return(nil).Times(1)
+
+		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+		outputSink := &output.MockOutput{}
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "defaultWorkspace",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+
+		runner := &Runner{
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			Output:              outputSink,
+			Workspace:           workspace,
+			EnvironmentName:     "default",
+			Namespace:           "default",
+			NamespaceInterface:  namespaceClient,
+			ConfigFileInterface: configFileInterface,
+			ResourceGroupName:   "test-group",
+			providers:           testProviders,
+		}
+
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Creating Environment...",
+			},
+			output.LogOutput{
+				Format: "Successfully created environment %q in resource group %q",
+				Params: []any{
+					"default",
+					"test-group",
 				},
 			},
 		}
