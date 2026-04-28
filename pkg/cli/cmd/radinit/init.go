@@ -293,7 +293,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		err = setup.ScaffoldApplication(wd, r.Options.Application.Name)
+		err = setup.ScaffoldApplication(wd)
 		if err != nil {
 			return err
 		}

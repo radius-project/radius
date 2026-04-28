@@ -101,7 +101,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate takes in a command and a slice of strings and sets the workspace, scope, environment name, confirmation and output
 // format of the runner based on the command and the strings. It returns an error if any of these values cannot be set.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

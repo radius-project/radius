@@ -97,7 +97,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks if the workspace, environment name, scope, namespace, resource group name, and namespace
 // interface are valid and returns an error if any of them are not.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
