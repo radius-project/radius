@@ -300,7 +300,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// present so that they know it was preserved and not overwritten.
 	if bicepConfigExisted {
 		bicepConfigPath := filepath.Join(wd, "bicepconfig.json")
-		r.Output.LogInfo("Warning: An existing bicepconfig.json was found at %s. The file was not modified. If you encounter issues, ensure it includes the Radius Bicep extensions.", bicepConfigPath)
+		r.Output.LogInfo("Warning: An existing bicepconfig.json was found at %s. It was preserved and not modified. Ensure it contains the Radius Bicep extensions (radius, radiusCompute, radiusData, radiusSecurity, aws); otherwise Bicep authoring may fail.", bicepConfigPath)
 	}
 
 	return nil
