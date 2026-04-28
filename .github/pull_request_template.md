@@ -15,6 +15,7 @@ If you are making a bug fix or functionality change to Radius and do not have an
 - This pull request fixes a bug in Radius and has an approved issue (issue link required).
 - This pull request adds or changes features of Radius and has an approved issue (issue link required).
 - This pull request is a minor refactor, code cleanup, test improvement, or other maintenance task and doesn't change the functionality of Radius (issue link optional).
+- This pull request is a design document and only includes files in the eng/design-notes directory.
 
 <!--
 
@@ -36,18 +37,18 @@ For details on how this works and why it's required.
 - An overview of proposed schema changes is included in a linked GitHub issue.
     - [ ] Yes <!-- TaskRadio schema -->
     - [ ] Not applicable <!-- TaskRadio schema -->
-- A design document PR is created in the [design-notes repository](https://github.com/radius-project/design-notes/), if new APIs are being introduced.
+- A design document PR is created in the eng/design-notes directory, if new APIs are being introduced.
     - [ ] Yes <!-- TaskRadio design-pr -->
     - [ ] Not applicable <!-- TaskRadio design-pr -->
 - The design document has been reviewed and approved by Radius maintainers/approvers.
     - [ ] Yes <!-- TaskRadio design-review -->
     - [ ] Not applicable <!-- TaskRadio design-review -->
-- A PR for the [samples repository](https://github.com/radius-project/samples) is created, if existing samples are affected by the changes in this PR.
-    - [ ] Yes <!-- TaskRadio samples-pr -->
-    - [ ] Not applicable <!-- TaskRadio samples-pr -->
+- A PR for [resource-types-contrib](https://github.com/radius-project/resource-types-contrib/) is created, if resource types or recipes are affected by the changes in this PR.
+    - [ ] Yes <!-- TaskRadio recipes-pr -->
+    - [ ] Not applicable <!-- TaskRadio recipes-pr -->
+- A PR for [dashboard](https://github.com/radius-project/dashboard/) is created, if the Radius Dashboard is affected by the changes in this PR.
+    - [ ] Yes <!-- TaskRadio recipes-pr -->
+    - [ ] Not applicable <!-- TaskRadio recipes-pr -->
 - A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
     - [ ] Yes <!-- TaskRadio docs-pr -->
     - [ ] Not applicable <!-- TaskRadio docs-pr -->
-- A PR for the [recipes repository](https://github.com/radius-project/recipes) is created, if existing recipes are affected by the changes in this PR.
-    - [ ] Yes <!-- TaskRadio recipes-pr -->
-    - [ ] Not applicable <!-- TaskRadio recipes-pr -->
