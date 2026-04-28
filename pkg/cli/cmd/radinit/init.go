@@ -252,6 +252,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
+		// Silence helm install log messages while the bubbletea progress UI
+		// owns stdout. Concurrent writes from output.LogInfo would corrupt
+		// the in-place rendering of the progress display.
+		clusterOptions.Logger = func(format string, v ...any) {}
+
 		err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to install Radius.")
