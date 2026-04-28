@@ -54,7 +54,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Delete Radius Application",
 		Long:  "Delete the specified Radius Application deployed in the default environment",
 		Example: `
-# Delete current application and bypass confirmation prompt
+# Delete specified application and bypass confirmation prompt
 rad app delete --yes --application my-app
 
 # Delete specified application

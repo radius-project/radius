@@ -190,7 +190,7 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 // the empty string if no application is set.
 //
 
-// ReadApplicationName reads the application name from the command line flag.
+// ReadApplicationName reads the application name from the command line.
 // It returns an error if the flag is not set correctly.
 func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
 	applicationName, err := cmd.Flags().GetString("application")
