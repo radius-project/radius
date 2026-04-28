@@ -87,7 +87,6 @@ type Runner struct {
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
 	ResourceTypeName                 string
-	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
@@ -95,9 +94,6 @@ func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
-		Logger: func(format string, args ...any) {
-			output.LogInfo(format, args...)
-		},
 	}
 }
 
@@ -156,7 +152,7 @@ func (r *Runner) Run(ctx context.Context) error {
 // registerTypes registers the specified resource types (or all types if typeNames is nil)
 func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
 	// Always ensure the resource provider exists first
-	err := manifest.EnsureResourceProviderExists(ctx, r.UCPClientFactory, defaultPlaneName, *r.ResourceProvider, r.Logger)
+	err := manifest.EnsureResourceProviderExists(ctx, r.UCPClientFactory, defaultPlaneName, *r.ResourceProvider, nil)
 	if err != nil {
 		return err
 	}
@@ -175,7 +171,7 @@ func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
 
 	// Register each type individually using the unified approach
 	for _, typeName := range typesToRegister {
-		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, r.Logger)
+		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, nil)
 		if err != nil {
 			return err
 		}

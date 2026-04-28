@@ -17,7 +17,6 @@ limitations under the License.
 package create
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -74,11 +73,6 @@ func Test_Run(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		var logBuffer bytes.Buffer
-		logger := func(format string, args ...any) {
-			fmt.Fprintf(&logBuffer, format+"\n", args...)
-		}
-
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
@@ -86,17 +80,12 @@ func Test_Run(t *testing.T) {
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
-			Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 			ResourceTypeName:                 "testResources",
 		}
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
-
-		// Verify RegisterType was called (should see specific log messages)
-		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
 
 		// Verify the single concise output line
 		expected := []any{
@@ -118,11 +107,6 @@ func Test_Run(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		var logBuffer bytes.Buffer
-		logger := func(format string, args ...any) {
-			fmt.Fprintf(&logBuffer, format+"\n", args...)
-		}
-
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
@@ -130,7 +114,6 @@ func Test_Run(t *testing.T) {
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
-			Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 			ResourceTypeName:                 "", // Empty resource type name
 		}
@@ -151,11 +134,6 @@ func Test_Run(t *testing.T) {
 			fmt.Sprintf("resource-type/%s/%s created", resourceProviderData.Namespace, "testResources"),
 		}
 		require.Equal(t, expectedLines, actualLines, "Expected one created line per resource type")
-
-		// Verify RegisterResourceProvider was called
-		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "prodResources"))
 	})
 
 	t.Run("Resource provider does not exist - registers resource provider with single type", func(t *testing.T) {
@@ -170,11 +148,6 @@ func Test_Run(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNotFoundError)
 		require.NoError(t, err)
 
-		var logBuffer bytes.Buffer
-		logger := func(format string, args ...any) {
-			fmt.Fprintf(&logBuffer, format+"\n", args...)
-		}
-
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
@@ -182,17 +155,11 @@ func Test_Run(t *testing.T) {
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
-			Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 			ResourceTypeName:                 expectedResourceType,
 		}
 
 		_ = runner.Run(context.Background())
-
-		// Verify RegisterResourceProvider was called with only the specified resource type
-		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "testResources"))
-		require.NotContains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", runner.ResourceProvider.Namespace, "prodResources"))
 	})
 	t.Run("Get Resource provider Internal Error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -206,18 +173,12 @@ func Test_Run(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerInternalError)
 		require.NoError(t, err)
 
-		var logBuffer bytes.Buffer
-		logger := func(format string, args ...any) {
-			fmt.Fprintf(&logBuffer, format+"\n", args...)
-		}
-
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
 			Output:                           &output.MockOutput{},
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
-			Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 			ResourceTypeName:                 expectedResourceType,
 		}
