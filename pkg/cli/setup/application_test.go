@@ -66,3 +66,28 @@ func Test_ScaffoldBicepConfig_DoesNotCreateAppBicep(t *testing.T) {
 
 	require.NoFileExists(t, filepath.Join(directory, "app.bicep"))
 }
+
+func Test_ScaffoldBicepConfig_WriteFileError(t *testing.T) {
+	// Pointing at a non-existent parent directory makes os.WriteFile fail
+	// while os.Stat returns IsNotExist, which exercises the WriteFile
+	// error branch in ScaffoldBicepConfig.
+	directory := filepath.Join(t.TempDir(), "does-not-exist")
+
+	existed, err := ScaffoldBicepConfig(directory)
+	require.Error(t, err)
+	require.False(t, existed)
+}
+
+func Test_ScaffoldBicepConfig_StatError(t *testing.T) {
+	// Create a regular file and use it as the "directory" argument. The
+	// resulting Stat call on "<file>/bicepconfig.json" returns ENOTDIR
+	// (which is not IsNotExist), exercising the third branch of
+	// ScaffoldBicepConfig where Stat returns a non-NotExist error.
+	parent := t.TempDir()
+	notADir := filepath.Join(parent, "not-a-dir")
+	require.NoError(t, os.WriteFile(notADir, []byte("file"), 0644))
+
+	existed, err := ScaffoldBicepConfig(notADir)
+	require.Error(t, err)
+	require.False(t, existed)
+}

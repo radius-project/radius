@@ -1079,6 +1079,66 @@ func Test_Run_WarnsWhenBicepConfigAlreadyExists(t *testing.T) {
 	require.Equal(t, []any{existingPath}, logMsg.Params)
 }
 
+func Test_Run_InstallRadiusError(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Chdir(tempDir)
+
+	ctrl := gomock.NewController(t)
+
+	helmInterface := helm.NewMockInterface(ctrl)
+	helmInterface.EXPECT().
+		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+		Return(errors.New("boom")).
+		Times(1)
+
+	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+	configFileInterface.EXPECT().
+		ConfigFromContext(context.Background()).
+		Return(nil).
+		Times(1)
+
+	prompter := prompt.NewMockInterface(ctrl)
+	// Run starts a showProgress goroutine that calls RunProgram. On the
+	// install-failure path Run returns early without waiting for the
+	// goroutine, so RunProgram may or may not have been invoked by the
+	// time the test ends. Allow either.
+	prompter.EXPECT().
+		RunProgram(gomock.Any()).
+		DoAndReturn(func(program *tea.Program) (tea.Model, error) {
+			program.Kill()
+			return &progressModel{}, nil
+		}).
+		AnyTimes()
+
+	options := initOptions{
+		Cluster: clusterOptions{
+			Install: true,
+			Context: "kind-kind",
+		},
+		Environment: environmentOptions{
+			Create: false,
+			Name:   "default",
+		},
+	}
+
+	runner := &Runner{
+		ConnectionFactory:   &connections.MockFactory{},
+		ConfigFileInterface: configFileInterface,
+		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+		HelmInterface:       helmInterface,
+		Output:              &output.MockOutput{},
+		Prompter:            prompter,
+		Options:             &options,
+		Workspace: &workspaces.Workspace{
+			Name: "default",
+		},
+	}
+
+	err := runner.Run(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed to install Radius.")
+}
+
 func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *corerp.Providers {
 	providers := &corerp.Providers{}
 	if azureProvider != nil {
