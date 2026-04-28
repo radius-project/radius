@@ -95,4 +95,26 @@ func Test_Run(t *testing.T) {
 			},
 		}, outputSink.Writes)
 	})
+
+	t.Run("Failure: RegisterFile returns error", func(t *testing.T) {
+		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
+		require.NoError(t, err)
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerInternalError)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			UCPClientFactory:                 clientFactory,
+			Output:                           outputSink,
+			Workspace:                        &workspaces.Workspace{},
+			ResourceProvider:                 resourceProviderData,
+			Format:                           "table",
+			ResourceProviderManifestFilePath: "testdata/valid.yaml",
+		}
+
+		err = runner.Run(context.Background())
+		require.Error(t, err)
+		require.Empty(t, outputSink.Writes)
+	})
 }

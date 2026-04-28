@@ -529,4 +529,66 @@ func Test_Delete(t *testing.T) {
 
 		require.Equal(t, expected, outputSink.Writes)
 	})
+
+	t.Run("Success: Delete Returns False (already gone)", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		deleteMock := delete.NewMockInterface(ctrl)
+
+		appManagementClient.EXPECT().
+			GetApplication(gomock.Any(), "test-app").
+			Return(v20231001preview.ApplicationResource{
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
+				},
+			}, nil).
+			Times(1)
+
+		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
+		deleteMock.EXPECT().
+			DeleteApplicationWithProgress(
+				gomock.Any(),
+				appManagementClient,
+				clients.DeleteOptions{
+					ApplicationNameOrID: "test-app",
+					ProgressText:        progressText,
+				},
+			).
+			Return(false, nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:        "kind-kind",
+			Scope:       "/planes/radius/local/resourceGroups/test-group",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Delete:            deleteMock,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			ApplicationName:   "test-app",
+			EnvironmentName:   "default",
+			Confirm:           true,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{
+				Format: "Applications.Core/applications/%s not found",
+				Params: []any{"test-app"},
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
+	})
 }
