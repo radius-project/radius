@@ -61,8 +61,7 @@ This command updates the configuration of an environment for properties that are
 		
 Properties that can be updated include:
 - providers (Azure, AWS)
-		  
-All other properties require the environment to be deleted and recreated.
+- namespace
 `,
 		Args: cobra.ExactArgs(1),
 		Example: `
@@ -77,12 +76,16 @@ rad env update myenv --clear-azure
 
 ## Remove AWS cloud provider
 rad env update myenv --clear-aws
+
+## Update the Kubernetes namespace
+rad env update myenv --namespace mynamespace
 `,
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddNamespaceFlag(cmd)
 	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	commonflags.AddAzureScopeFlags(cmd)
@@ -102,6 +105,7 @@ type Runner struct {
 	Output            output.Interface
 
 	EnvName       string
+	Namespace     string
 	clearEnvAzure bool
 	clearEnvAws   bool
 	providers     *corerp.Providers
@@ -185,6 +189,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	r.Namespace, err = cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -226,6 +235,17 @@ func (r *Runner) Run(ctx context.Context) error {
 			env.Properties.Providers = &corerp.Providers{}
 		}
 		env.Properties.Providers.Aws = r.providers.Aws
+	}
+
+	// Update namespace if user provided one.
+	if r.Namespace != "" {
+		if compute, ok := env.Properties.Compute.(*corerp.KubernetesCompute); ok {
+			compute.Namespace = new(r.Namespace)
+		} else {
+			env.Properties.Compute = &corerp.KubernetesCompute{
+				Namespace: new(r.Namespace),
+			}
+		}
 	}
 
 	r.Output.LogInfo("Updating Environment...")
