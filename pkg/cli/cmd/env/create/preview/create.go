@@ -88,7 +88,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks if the workspace, environment name, scope, and resource group exist and returns an error if any of them are invalid or missing.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

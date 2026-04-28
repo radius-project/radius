@@ -82,7 +82,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // fields in the Runner struct if they are valid. If any of the arguments are invalid, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
