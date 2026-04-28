@@ -103,7 +103,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks if the required workspace, resource group and confirmation flag are present and sets them in
 // the Runner struct if they are. It returns an error if any of these are not present.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

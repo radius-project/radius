@@ -30,7 +30,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -99,17 +98,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad deploy - app set by directory config",
+			Name:          "rad deploy - valid without application name",
 			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
-				DirectoryConfig: &config.DirectoryConfig{
-					Workspace: config.DirectoryWorkspaceConfig{
-						Application: "my-app",
-					},
-				},
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().

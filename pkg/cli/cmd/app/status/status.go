@@ -38,12 +38,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show Radius Application status",
-		Long:  `Show Radius Application status, such as public endpoints and resource count. Shows details for the user's default application (if configured) by default.`,
+		Long:  `Show Radius Application status, such as public endpoints and resource count.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Show status of current application
-rad app status
-
 # Show status of specified application
 rad app status my-app
 
@@ -87,7 +84,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Runner.Validate checks the workspace, scope, application name and output format from the command line arguments and
 // request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

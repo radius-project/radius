@@ -83,7 +83,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the request object for a workspace, scope, recipe pack name, and output format, and sets the
 // corresponding fields in the Runner struct if they are found. If any of these fields are not found, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
