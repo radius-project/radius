@@ -46,7 +46,7 @@ func ScaffoldBicepConfig(directory string) (existed bool, err error) {
 	if os.IsNotExist(err) {
 		err = os.WriteFile(bicepConfigFilepath, []byte(getVersionedBicepConfig()), 0644)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("write bicep config file %q: %w", bicepConfigFilepath, err)
 		}
 		return false, nil
 	} else if err != nil {

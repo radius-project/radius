@@ -48,10 +48,10 @@ type ClusterOptions struct {
 	Logger func(format string, v ...any)
 }
 
-// logf returns a non-nil logger function. If c.Logger is set it is used,
-// otherwise the global output.LogInfo is used. This allows callers that own
-// stdout (e.g. an interactive progress UI) to silence helm install/upgrade
-// messages without affecting non-interactive callers.
+// logf logs via c.Logger when it is set; otherwise it uses the global
+// output.LogInfo. This allows callers that own stdout (e.g. an interactive
+// progress UI) to silence helm install/upgrade messages without affecting
+// non-interactive callers.
 func (c *ClusterOptions) logf(format string, v ...any) {
 	if c.Logger != nil {
 		c.Logger(format, v...)
