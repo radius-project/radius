@@ -47,8 +47,7 @@ const (
 	summaryEnvironmentCreateRecipePackyFmt        = summaryIndent + "Recipe pack: %s\n"
 	summaryEnvironmentExistingHeadingFmt          = "Use existing environment %s\n"
 	summaryApplicationHeadingIcon                 = "🚧 "
-	summaryApplicationScaffoldHeadingFmt          = "Scaffold application %s\n"
-	summaryApplicationScaffoldFile                = summaryIndent + "Create %s\n"
+	summaryBicepConfigHeadingFmt                  = "Create %s\n"
 	summaryConfigurationHeadingIcon               = "📋 "
 	summaryConfigurationUpdateHeading             = "Update local configuration\n"
 	progressHeading                               = "Initializing Radius. This may take a minute or two...\n\n"
@@ -250,12 +249,8 @@ func (m *summaryModel) View() string {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
 	}
 
-	if options.Application.Scaffold {
-		message.WriteString(summaryApplicationHeadingIcon)
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight("app.bicep")))
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight("bicepconfig.json")))
-	}
+	message.WriteString(summaryApplicationHeadingIcon)
+	message.WriteString(fmt.Sprintf(summaryBicepConfigHeadingFmt, highlight("bicepconfig.json")))
 
 	message.WriteString(summaryConfigurationHeadingIcon)
 	message.WriteString(summaryConfigurationUpdateHeading)
@@ -392,10 +387,8 @@ func (m *progressModel) View() string {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
 	}
 
-	if options.Application.Scaffold {
-		m.writeProgressIcon(message, m.progress.ApplicationComplete, &waiting)
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-	}
+	m.writeProgressIcon(message, m.progress.ApplicationComplete, &waiting)
+	message.WriteString(fmt.Sprintf(summaryBicepConfigHeadingFmt, highlight("bicepconfig.json")))
 
 	m.writeProgressIcon(message, m.progress.ConfigComplete, &waiting)
 	message.WriteString(summaryConfigurationUpdateHeading)

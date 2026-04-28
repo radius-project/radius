@@ -124,6 +124,7 @@ func Test_summaryModel(t *testing.T) {
 			"\n" +
 			"🔧 Use existing Radius test-version install on test-context\n" +
 			"🌏 Use existing environment test-environment\n" +
+			"🚧 Create bicepconfig.json\n" +
 			"📋 Update local configuration\n" +
 			"\n" +
 			"(press enter to confirm or esc to restart)\n\r"
@@ -144,7 +145,6 @@ func Test_summaryModel(t *testing.T) {
 			},
 			CloudProviders: cloudProviderOptions{},
 			Recipes:        recipePackOptions{},
-			Application:    applicationOptions{},
 		}
 
 		expected := "\rYou've selected the following:\n" +
@@ -153,6 +153,7 @@ func Test_summaryModel(t *testing.T) {
 			"   - Kubernetes cluster: test-context\n" +
 			"   - Kubernetes namespace: \n" +
 			"🌏 Use existing environment test-environment\n" +
+			"🚧 Create bicepconfig.json\n" +
 			"📋 Update local configuration\n" +
 			"\n" +
 			"(press enter to confirm or esc to restart)\n\r"
