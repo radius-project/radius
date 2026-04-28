@@ -17,9 +17,7 @@ limitations under the License.
 package create
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -73,32 +71,28 @@ func Test_Run(t *testing.T) {
 		resourceProviderData, err := manifest.ReadFile("testdata/valid.yaml")
 		require.NoError(t, err)
 
-		expectedResourceType := "testResources"
-		expectedAPIVersion := "2025-01-01-preview"
-
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		var logBuffer bytes.Buffer
-		logger := func(format string, args ...any) {
-			fmt.Fprintf(&logBuffer, format+"\n", args...)
-		}
+		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
 			UCPClientFactory:                 clientFactory,
-			Output:                           &output.MockOutput{},
+			Output:                           outputSink,
 			Workspace:                        &workspaces.Workspace{},
 			ResourceProvider:                 resourceProviderData,
 			Format:                           "table",
-			Logger:                           logger,
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 		}
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 
-		logOutput := logBuffer.String()
-		require.Contains(t, logOutput, fmt.Sprintf("Creating resource type %s/%s", resourceProviderData.Namespace, expectedResourceType))
-		require.Contains(t, logOutput, fmt.Sprintf("Creating API Version %s/%s@%s", resourceProviderData.Namespace, expectedResourceType, expectedAPIVersion))
+		require.Equal(t, []any{
+			output.LogOutput{
+				Format: "System.Resources/resourceProviders/%s created",
+				Params: []any{resourceProviderData.Namespace},
+			},
+		}, outputSink.Writes)
 	})
 }

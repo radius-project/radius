@@ -171,7 +171,7 @@ func Test_Delete(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application %s deleted successfully",
+				Format: "Applications.Core/applications/%s deleted",
 				Params: []any{"test-app"},
 			},
 		}
@@ -240,7 +240,7 @@ func Test_Delete(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application %s deleted successfully",
+				Format: "Applications.Core/applications/%s deleted",
 				Params: []any{"test-app"},
 			},
 		}
@@ -354,7 +354,7 @@ func Test_Delete(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application '%s' does not exist or has already been deleted.",
+				Format: "Applications.Core/applications/%s not found",
 				Params: []any{"test-app"},
 			},
 		}
@@ -522,7 +522,7 @@ func Test_Delete(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application '%s' does not exist or has already been deleted.",
+				Format: "Applications.Core/applications/%s not found",
 				Params: []any{"test-app"},
 			},
 		}

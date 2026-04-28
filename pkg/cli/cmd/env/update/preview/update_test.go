@@ -108,19 +108,7 @@ func Test_Run(t *testing.T) {
 			serverFactory: test_client_factory.WithEnvironmentServerNoError,
 			expectedOutput: []any{
 				output.LogOutput{
-					Format: "Updating Environment...",
-				},
-				output.FormattedOutput{
-					Format: "table",
-					Obj: environmentForDisplay{
-						Name:        "test-env",
-						RecipePacks: 3,
-						Providers:   3,
-					},
-					Options: environmentFormat(),
-				},
-				output.LogOutput{
-					Format: "Successfully updated environment %q.",
+					Format: "Radius.Core/environments/%s updated",
 					Params: []any{"test-env"},
 				},
 			},

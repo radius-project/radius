@@ -145,7 +145,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	environmentID, applicationID, err := r.extractEnvironmentAndApplicationIDs(ctx, client)
 	if clients.Is404Error(err) {
-		r.Output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", r.ResourceName, r.FullyQualifiedResourceTypeName)
+		r.Output.LogInfo("%s/%s not found", r.FullyQualifiedResourceTypeName, r.ResourceName)
 		return nil
 	} else if err != nil {
 		return err
@@ -167,7 +167,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 		if !confirmed {
-			r.Output.LogInfo("resource %q of type %q NOT deleted", r.ResourceName, r.FullyQualifiedResourceTypeName)
 			return nil
 		}
 	}
@@ -178,9 +177,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if deleted {
-		r.Output.LogInfo("Resource deleted")
+		r.Output.LogInfo("%s/%s deleted", r.FullyQualifiedResourceTypeName, r.ResourceName)
 	} else {
-		r.Output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", r.ResourceName, r.FullyQualifiedResourceTypeName)
+		r.Output.LogInfo("%s/%s not found", r.FullyQualifiedResourceTypeName, r.ResourceName)
 	}
 
 	return nil

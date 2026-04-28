@@ -141,8 +141,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	r.Output.LogInfo("Creating Radius Core Environment...")
-
 	resource := &corerpv20250801.EnvironmentResource{
 		Location:   to.Ptr(v1.LocationGlobal),
 		Properties: &corerpv20250801.EnvironmentProperties{},
@@ -153,7 +151,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.ResourceGroupName)
+	r.Output.LogInfo("Radius.Core/environments/%s created", r.EnvironmentName)
 
 	return nil
 }
