@@ -46,7 +46,7 @@ const (
 	summaryEnvironmentCreateAzureCloudProviderFmt = summaryIndent + "Azure: subscription %s and resource group %s\n"
 	summaryEnvironmentCreateRecipePackyFmt        = summaryIndent + "Recipe pack: %s\n"
 	summaryEnvironmentExistingHeadingFmt          = "Use existing environment %s\n"
-	summaryApplicationHeadingIcon                 = "🚧 "
+	summaryBicepConfigHeadingIcon                 = "🚧 "
 	summaryBicepConfigHeadingFmt                  = "Create %s\n"
 	summaryConfigurationHeadingIcon               = "📋 "
 	summaryConfigurationUpdateHeading             = "Update local configuration\n"
@@ -115,7 +115,7 @@ func (r *Runner) showProgress(ctx context.Context, options *initOptions, progres
 type progressMsg struct {
 	InstallComplete     bool
 	EnvironmentComplete bool
-	ApplicationComplete bool
+	BicepConfigComplete bool
 	ConfigComplete      bool
 }
 
@@ -249,7 +249,7 @@ func (m *summaryModel) View() string {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
 	}
 
-	message.WriteString(summaryApplicationHeadingIcon)
+	message.WriteString(summaryBicepConfigHeadingIcon)
 	message.WriteString(fmt.Sprintf(summaryBicepConfigHeadingFmt, highlight("bicepconfig.json")))
 
 	message.WriteString(summaryConfigurationHeadingIcon)
@@ -387,7 +387,7 @@ func (m *progressModel) View() string {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
 	}
 
-	m.writeProgressIcon(message, m.progress.ApplicationComplete, &waiting)
+	m.writeProgressIcon(message, m.progress.BicepConfigComplete, &waiting)
 	message.WriteString(fmt.Sprintf(summaryBicepConfigHeadingFmt, highlight("bicepconfig.json")))
 
 	m.writeProgressIcon(message, m.progress.ConfigComplete, &waiting)
@@ -402,7 +402,7 @@ func (m *progressModel) View() string {
 }
 
 func (m *progressModel) isComplete() bool {
-	return m.progress.InstallComplete && m.progress.EnvironmentComplete && m.progress.ApplicationComplete && m.progress.ConfigComplete
+	return m.progress.InstallComplete && m.progress.EnvironmentComplete && m.progress.BicepConfigComplete && m.progress.ConfigComplete
 }
 
 // writeProgressIcon writes the correct icon for the progress step depending on the current step.

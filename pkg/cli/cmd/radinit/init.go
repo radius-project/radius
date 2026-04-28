@@ -285,7 +285,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	progress.ApplicationComplete = true
+	progress.BicepConfigComplete = true
 	progressChan <- progress
 
 	err = r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
