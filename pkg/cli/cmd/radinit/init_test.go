@@ -1137,6 +1137,9 @@ func Test_Run_InstallRadiusError(t *testing.T) {
 	err := runner.Run(context.Background())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Failed to install Radius.")
+	// The underlying cause from InstallRadius should be preserved by
+	// clierrors.MessageWithCause.
+	require.Contains(t, err.Error(), "boom")
 }
 
 func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *corerp.Providers {
