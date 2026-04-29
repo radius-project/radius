@@ -134,6 +134,12 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
+	// Apply provider_installation rules from the Radius.Core terraformConfig (if any).
+	// Applications.Core leaves this nil, so this is a no-op for the legacy path.
+	if err = e.applyTerraformCLIConfig(tf, options); err != nil {
+		return err
+	}
+
 	// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
 	// If the state file source has been deleted or wasn't created due to a failure during apply then
 	// terraform initialization will fail due to missing backend source.
@@ -227,6 +233,19 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 		}
 	}
 
+	// Render a .terraformrc for provider_installation rules and point Terraform at it.
+	// This is populated only by the Radius.Core path; Applications.Core leaves it nil.
+	if recipeConfig.Terraform.ProviderInstallation != nil {
+		rcPath, err := writeTerraformCLIConfig(tf.WorkingDir(), recipeConfig.Terraform.ProviderInstallation)
+		if err != nil {
+			return err
+		}
+		if rcPath != "" {
+			envVarUpdate = true
+			envVars[envTFCLIConfigFile] = rcPath
+		}
+	}
+
 	// Set the environment variables for the Terraform process
 	if envVarUpdate {
 		if err := tf.SetEnv(envVars); err != nil {
@@ -234,6 +253,39 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 		}
 	}
 
+	return nil
+}
+
+// applyTerraformCLIConfig writes a .terraformrc file derived from the
+// provider_installation rules in options.EnvConfig (if any) and configures the
+// Terraform CLI to use it via TF_CLI_CONFIG_FILE.
+//
+// This path is used by Delete (and indirectly by Deploy via setEnvironmentVariables)
+// to ensure terraform init can resolve providers from a network mirror. When
+// ProviderInstallation is nil, this is a no-op.
+func (e executor) applyTerraformCLIConfig(tf *tfexec.Terraform, options Options) error {
+	if options.EnvConfig == nil {
+		return nil
+	}
+	pi := options.EnvConfig.RecipeConfig.Terraform.ProviderInstallation
+	if pi == nil {
+		return nil
+	}
+
+	rcPath, err := writeTerraformCLIConfig(tf.WorkingDir(), pi)
+	if err != nil {
+		return err
+	}
+	if rcPath == "" {
+		return nil
+	}
+
+	// tf.SetEnv replaces the entire env, so seed from the current process env first.
+	envVars := splitEnvVar(os.Environ())
+	envVars[envTFCLIConfigFile] = rcPath
+	if err := tf.SetEnv(envVars); err != nil {
+		return fmt.Errorf("failed to set environment variables: %w", err)
+	}
 	return nil
 }
 
