@@ -203,12 +203,34 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 		}
 
 		tfProps := tfDM.(*datamodel.TerraformConfig).Properties
-		config.RecipeConfig.Terraform = datamodel.TerraformConfigProperties{
-			Authentication: tfProps.Authentication,
-			Providers:      tfProps.Providers,
+
+		// Map terraformrc.credentials into the legacy Authentication.Git.PAT shape
+		// that the existing Terraform driver expects for private module source auth.
+		if len(tfProps.Terraformrc.Credentials) > 0 {
+			config.RecipeConfig.Terraform.Authentication = datamodel.AuthConfig{
+				Git: datamodel.GitAuthConfig{
+					PAT: make(map[string]datamodel.SecretConfig),
+				},
+			}
+			for host, cred := range tfProps.Terraformrc.Credentials {
+				config.RecipeConfig.Terraform.Authentication.Git.PAT[host] = datamodel.SecretConfig{
+					Secret: cred.Secret,
+				}
+			}
 		}
-		config.RecipeConfig.Env = tfProps.Env
-		config.RecipeConfig.EnvSecrets = tfProps.EnvSecrets
+
+		// Map env vars into the legacy shape.
+		if len(tfProps.Env) > 0 {
+			config.RecipeConfig.Env = datamodel.EnvironmentVariables{
+				AdditionalProperties: tfProps.Env,
+			}
+		}
+
+		// Map provider_installation through to the shared driver. The driver writes a
+		// .terraformrc and points Terraform at it via TF_CLI_CONFIG_FILE when this is set.
+		if tfProps.Terraformrc.ProviderInstallation != nil {
+			config.RecipeConfig.Terraform.ProviderInstallation = tfProps.Terraformrc.ProviderInstallation
+		}
 	}
 
 	// Resolve BicepConfig resource if referenced.
@@ -224,8 +246,16 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 		}
 
 		bcProps := bcDM.(*datamodel.BicepConfig).Properties
-		config.RecipeConfig.Bicep = datamodel.BicepConfigProperties{
-			Authentication: bcProps.Authentication,
+
+		// Map the new structured auth into the legacy BicepConfigProperties shape.
+		if bcProps.RegistryAuthentication != nil && bcProps.RegistryAuthentication.BasicAuthSecretId != "" {
+			config.RecipeConfig.Bicep = datamodel.BicepConfigProperties{
+				Authentication: map[string]datamodel.RegistrySecretConfig{
+					"default": {
+						Secret: bcProps.RegistryAuthentication.BasicAuthSecretId,
+					},
+				},
+			}
 		}
 	}
 

@@ -55,14 +55,40 @@ model BicepConfigProperties {
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Authentication information used to access private Bicep registries, which is a map of registry hostname to secret config that contains credential information.")
-  authentication?: Record<BicepRegistrySecretConfig>;
+  @doc("Registry authentication configuration for accessing private Bicep registries.")
+  registryAuthentication?: BicepRegistryAuthentication;
 }
 
-@doc("Registry Secret Configuration used to authenticate to private Bicep registries.")
-model BicepRegistrySecretConfig {
-  @doc("The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry. The keys in the secret store depend on the type.")
-  secret?: string;
+@doc("Authentication configuration for private Bicep registries.")
+model BicepRegistryAuthentication {
+  @doc("The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.")
+  authenticationMethod?: BicepAuthenticationMethod;
+
+  @doc("The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod is 'BasicAuth'.")
+  basicAuthSecretId?: string;
+
+  @doc("Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.")
+  azureWiClientId?: string;
+
+  @doc("Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'.")
+  azureWiTenantId?: string;
+
+  @doc("AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'.")
+  awsIamRoleArn?: string;
+}
+
+@doc("Supported authentication methods for private Bicep registries.")
+union BicepAuthenticationMethod {
+  string,
+
+  @doc("Username/password authentication.")
+  BasicAuth: "BasicAuth",
+
+  @doc("Azure Workload Identity authentication.")
+  AzureWI: "AzureWI",
+
+  @doc("AWS IAM Roles for Service Accounts authentication.")
+  AwsIrsa: "AwsIrsa",
 }
 
 @armResourceOperations

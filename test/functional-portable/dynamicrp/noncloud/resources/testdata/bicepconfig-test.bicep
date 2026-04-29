@@ -7,8 +7,9 @@ resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
   name: 'test-bicep-config'
   location: 'global'
   properties: {
-    // No private registry auth configured; validates CRUD and environment reference.
-    // Private registry auth tests require cloud infrastructure and belong in the cloud test suite.
+    registryAuthentication: {
+      authenticationMethod: 'BasicAuth'
+    }
   }
 }
 

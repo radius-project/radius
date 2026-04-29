@@ -37,10 +37,27 @@ func (r *BicepConfig) ResourceTypeName() string {
 
 // BicepConfigResourceProperties represents the properties of the Bicep config resource.
 type BicepConfigResourceProperties struct {
-	// Authentication holds the information used to access private Bicep registries,
-	// which is a map of registry hostname to secret config.
-	Authentication map[string]RegistrySecretConfig `json:"authentication,omitempty"`
+	// RegistryAuthentication holds authentication configuration for private Bicep registries.
+	RegistryAuthentication *BicepRegistryAuthentication `json:"registryAuthentication,omitempty"`
 
 	// ReferencedBy is a list of environment IDs that reference this config.
 	ReferencedBy []string `json:"referencedBy,omitempty"`
+}
+
+// BicepRegistryAuthentication holds authentication configuration for private Bicep registries.
+type BicepRegistryAuthentication struct {
+	// AuthenticationMethod is the method to use (BasicAuth, AzureWI, AwsIrsa).
+	AuthenticationMethod string `json:"authenticationMethod,omitempty"`
+
+	// BasicAuthSecretId is the ID of a SecretStore with username/password for BasicAuth.
+	BasicAuthSecretId string `json:"basicAuthSecretId,omitempty"`
+
+	// AzureWiClientId is the Azure Workload Identity client ID.
+	AzureWiClientId string `json:"azureWiClientId,omitempty"`
+
+	// AzureWiTenantId is the Azure Workload Identity tenant ID.
+	AzureWiTenantId string `json:"azureWiTenantId,omitempty"`
+
+	// AwsIamRoleArn is the AWS IAM Role ARN for IRSA.
+	AwsIamRoleArn string `json:"awsIamRoleArn,omitempty"`
 }

@@ -3,7 +3,7 @@
 ## Summary
 
 Add `Radius.Core/terraformConfig` and `Radius.Core/bicepConfig` as standalone
-ARM resources. Environments reference them by resource ID. This lets platform
+Radius resources. Environments reference them by resource ID. This lets platform
 teams define private registry authentication, provider configuration, and
 environment variables once and share them across multiple environments.
 
@@ -23,7 +23,7 @@ one.
 
 ### New resources
 
-Two new ARM resources in the `Radius.Core` namespace:
+Two new resources in the `Radius.Core` namespace:
 
 ```
 Radius.Core/terraformConfig   (CRUD, resource-group scoped)
@@ -48,8 +48,12 @@ model EnvironmentProperties {
 
 ### TerraformConfig shape
 
-Identical to today's `Applications.Core/environments.recipeConfig.terraform`
-plus the top-level `env`/`envSecrets` fields, lifted into a standalone resource.
+Follows the schema from the [feature spec](https://github.com/radius-project/design-notes/pull/107).
+The `terraformrc` property is a like-for-like representation of the Terraform CLI
+configuration file (`.terraformrc`). The `env` property holds non-sensitive
+environment variables injected during recipe execution. Provider secrets and
+`envSecrets` are not carried forward from the legacy `recipeConfig`; those use
+cases are handled by recipe parameters instead.
 
 ```typespec
 model TerraformConfigResource
@@ -62,30 +66,31 @@ model TerraformConfigResource
 
 model TerraformConfigProperties {
   provisioningState?: ProvisioningState;
+  referencedBy?: string[];
 
-  @doc("Authentication for private Terraform module sources (Git PAT).")
-  authentication?: AuthConfig;
-
-  @doc("Custom Terraform provider configuration.")
-  providers?: Record<Array<ProviderConfigProperties>>;
+  @doc("Terraform CLI configuration file (.terraformrc) settings.")
+  terraformrc?: TerraformrcConfig;
 
   @doc("Environment variables injected during Terraform recipe execution.")
   env?: Record<string>;
+}
 
-  @doc("Secret-backed environment variables injected during Terraform recipe execution.")
-  envSecrets?: Record<SecretReference>;
+model TerraformrcConfig {
+  providerInstallation?: TerraformProviderInstallation;
+  credentials?: Record<TerraformCredentialConfig>;
 }
 ```
 
-Sub-types (`AuthConfig`, `GitAuthConfig`, `SecretConfig`, `ProviderConfigProperties`,
-`SecretReference`) are structurally identical to those already defined in
-`Applications.Core`. They will be defined in the `Radius.Core` namespace to
-avoid cross-namespace imports.
+Sub-types: `TerraformProviderInstallation` (networkMirror, direct with
+include/exclude), `TerraformProviderMirror` (url, include, exclude),
+`TerraformProviderDirect` (include, exclude), `TerraformCredentialConfig`
+(secret ID).
 
 ### BicepConfig shape
 
-Identical to today's `Applications.Core/environments.recipeConfig.bicep`, lifted
-into a standalone resource.
+Follows the schema from the feature spec. Uses a structured `registryAuthentication`
+property supporting three authentication methods (BasicAuth, AzureWI, AwsIrsa)
+with first-class properties for non-secret identity values.
 
 ```typespec
 model BicepConfigResource
@@ -98,9 +103,18 @@ model BicepConfigResource
 
 model BicepConfigProperties {
   provisioningState?: ProvisioningState;
+  referencedBy?: string[];
 
-  @doc("Authentication for private Bicep registries. Map of registry hostname to secret config.")
-  authentication?: Record<RegistrySecretConfig>;
+  @doc("Registry authentication configuration for private Bicep registries.")
+  registryAuthentication?: BicepRegistryAuthentication;
+}
+
+model BicepRegistryAuthentication {
+  authenticationMethod?: BicepAuthenticationMethod;  // "BasicAuth" | "AzureWI" | "AwsIrsa"
+  basicAuthSecretId?: string;   // SecretStore ID for username/password
+  azureWiClientId?: string;     // Azure Workload Identity client ID
+  azureWiTenantId?: string;     // Azure Workload Identity tenant ID
+  awsIamRoleArn?: string;       // AWS IAM Role ARN for IRSA
 }
 ```
 
@@ -156,29 +170,26 @@ any exist. This follows the same pattern used by RecipePacks.
 resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
   name: 'corp-terraform'
   properties: {
-    authentication: {
-      git: {
-        pat: {
-          'dev.azure.com': {
-            secret: tfPatSecret.id
-          }
+    terraformrc: {
+      providerInstallation: {
+        networkMirror: {
+          url: 'https://mirror.corp.example.com/terraform/providers'
+          include: ['*']
+          exclude: ['hashicorp/azurerm']
+        }
+        direct: {
+          exclude: ['hashicorp/azurerm']
+        }
+      }
+      credentials: {
+        'app.terraform.io': {
+          secret: tfcTokenSecret.id
         }
       }
     }
-    providers: {
-      datadog: [
-        {
-          secrets: {
-            api_key: {
-              source: datadogSecret.id
-              key: 'apiKey'
-            }
-          }
-        }
-      ]
-    }
     env: {
       TF_LOG: 'WARN'
+      TF_REGISTRY_CLIENT_TIMEOUT: '15'
     }
   }
 }
@@ -186,10 +197,9 @@ resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
 resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
   name: 'corp-bicep'
   properties: {
-    authentication: {
-      'myregistry.azurecr.io': {
-        secret: acrSecret.id
-      }
+    registryAuthentication: {
+      authenticationMethod: 'BasicAuth'
+      basicAuthSecretId: acrSecret.id
     }
   }
 }
@@ -239,6 +249,8 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 | Backend config (S3, AzureRM state stores) | Deferred | Separate concern, not required for private registries. |
 | Migration tooling for `Applications.Core` `recipeConfig` | Not needed | `Applications.Core/environments` continues working as-is. |
 | `terraformSettings` / `bicepSettings` as designed in design-notes #117 | Replaced | This design achieves the same reusability goal with less complexity. |
+| Legacy `providers` on TerraformConfig | Not carried forward | Per spec, provider secrets should flow via recipe parameters. |
+| Legacy `envSecrets` on TerraformConfig | Not carried forward | Per spec, replaced with recipe parameters. |
 
 ## Compatibility
 
@@ -257,9 +269,11 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
   in TypeSpec under `typespec/Radius.Core/`.
 - Add `terraformConfig` and `bicepConfig` optional string fields to
   `Radius.Core/environments`.
-- Define the sub-types (`AuthConfig`, `GitAuthConfig`, `SecretConfig`,
-  `ProviderConfigProperties`, `SecretReference`, `RegistrySecretConfig`) in the
-  `Radius.Core` namespace.
+- `TerraformConfig`: `terraformrc` (providerInstallation, credentials) + `env`.
+  No `providers`, no `envSecrets` (those are legacy; use recipe parameters).
+- `BicepConfig`: `registryAuthentication` with `authenticationMethod` enum
+  (BasicAuth, AzureWI, AwsIrsa), `basicAuthSecretId`, `azureWiClientId`,
+  `azureWiTenantId`, `awsIamRoleArn`.
 - Regenerate SDKs.
 
 ### Task 2: Datamodel + converters
@@ -288,9 +302,9 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 
 ### Task 5: Functional tests
 
-- Deploy a Terraform recipe from a private Git module source via
-  `Radius.Core/environments` with `terraformConfig.authentication.git.pat`.
-- Deploy a Bicep recipe from a private OCI registry via
-  `Radius.Core/environments` with `bicepConfig.authentication`.
+- Deploy a Terraform recipe with env vars via `Radius.Core/environments` with
+  `terraformConfig.env`.
+- Deploy a `Radius.Core/bicepConfigs` resource with `registryAuthentication`
+  and validate CRUD + environment reference wiring.
 - Verify delete protection: attempt to delete a config resource while
   referenced by an environment, expect 409.

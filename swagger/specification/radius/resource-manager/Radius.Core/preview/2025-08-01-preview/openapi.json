@@ -1474,6 +1474,36 @@
       ],
       "x-ms-discriminator-value": "aci"
     },
+    "BicepAuthenticationMethod": {
+      "type": "string",
+      "description": "Supported authentication methods for private Bicep registries.",
+      "enum": [
+        "BasicAuth",
+        "AzureWI",
+        "AwsIrsa"
+      ],
+      "x-ms-enum": {
+        "name": "BicepAuthenticationMethod",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "BasicAuth",
+            "value": "BasicAuth",
+            "description": "Username/password authentication."
+          },
+          {
+            "name": "AzureWI",
+            "value": "AzureWI",
+            "description": "Azure Workload Identity authentication."
+          },
+          {
+            "name": "AwsIrsa",
+            "value": "AwsIrsa",
+            "description": "AWS IAM Roles for Service Accounts authentication."
+          }
+        ]
+      }
+    },
     "BicepConfigProperties": {
       "type": "object",
       "description": "Bicep configuration properties.",
@@ -1491,12 +1521,9 @@
           },
           "readOnly": true
         },
-        "authentication": {
-          "type": "object",
-          "description": "Authentication information used to access private Bicep registries, which is a map of registry hostname to secret config that contains credential information.",
-          "additionalProperties": {
-            "$ref": "#/definitions/BicepRegistrySecretConfig"
-          }
+        "registryAuthentication": {
+          "$ref": "#/definitions/BicepRegistryAuthentication",
+          "description": "Registry authentication configuration for accessing private Bicep registries."
         }
       }
     },
@@ -1553,13 +1580,29 @@
         }
       ]
     },
-    "BicepRegistrySecretConfig": {
+    "BicepRegistryAuthentication": {
       "type": "object",
-      "description": "Registry Secret Configuration used to authenticate to private Bicep registries.",
+      "description": "Authentication configuration for private Bicep registries.",
       "properties": {
-        "secret": {
+        "authenticationMethod": {
+          "$ref": "#/definitions/BicepAuthenticationMethod",
+          "description": "The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa."
+        },
+        "basicAuthSecretId": {
           "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry. The keys in the secret store depend on the type."
+          "description": "The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod is 'BasicAuth'."
+        },
+        "azureWiClientId": {
+          "type": "string",
+          "description": "Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'."
+        },
+        "azureWiTenantId": {
+          "type": "string",
+          "description": "Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'."
+        },
+        "awsIamRoleArn": {
+          "type": "string",
+          "description": "AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'."
         }
       }
     },
@@ -2122,16 +2165,6 @@
         }
       }
     },
-    "TerraformAuthConfig": {
-      "type": "object",
-      "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git.",
-      "properties": {
-        "git": {
-          "$ref": "#/definitions/TerraformGitAuthConfig",
-          "description": "Authentication information used to access private Terraform modules from Git repository sources."
-        }
-      }
-    },
     "TerraformConfigProperties": {
       "type": "object",
       "description": "Terraform configuration properties.",
@@ -2149,32 +2182,15 @@
           },
           "readOnly": true
         },
-        "authentication": {
-          "$ref": "#/definitions/TerraformAuthConfig",
-          "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
-        },
-        "providers": {
-          "type": "object",
-          "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.",
-          "additionalProperties": {
-            "items": {
-              "$ref": "#/definitions/TerraformProviderConfigProperties"
-            },
-            "type": "array"
-          }
+        "terraformrc": {
+          "$ref": "#/definitions/TerraformrcConfig",
+          "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
         },
         "env": {
           "type": "object",
           "description": "Environment variables injected during Terraform recipe execution.",
           "additionalProperties": {
             "type": "string"
-          }
-        },
-        "envSecrets": {
-          "type": "object",
-          "description": "Secret-backed environment variables injected during Terraform recipe execution. The secrets are stored in Applications.Core/SecretStores resource.",
-          "additionalProperties": {
-            "$ref": "#/definitions/TerraformSecretReference"
           }
         }
       }
@@ -2232,65 +2248,90 @@
         }
       ]
     },
-    "TerraformGitAuthConfig": {
+    "TerraformCredentialConfig": {
       "type": "object",
-      "description": "Authentication information used to access private Terraform modules from Git repository sources.",
-      "properties": {
-        "pat": {
-          "type": "object",
-          "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
-          "additionalProperties": {
-            "$ref": "#/definitions/TerraformSecretConfig"
-          }
-        }
-      }
-    },
-    "TerraformProviderConfigProperties": {
-      "type": "object",
-      "description": "Configuration for a Terraform provider, including credentials and other settings needed for recipe execution.",
-      "properties": {
-        "secrets": {
-          "type": "object",
-          "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.",
-          "additionalProperties": {
-            "$ref": "#/definitions/TerraformSecretReference"
-          }
-        }
-      },
-      "allOf": [
-        {
-          "type": "object",
-          "additionalProperties": {}
-        }
-      ]
-    },
-    "TerraformSecretConfig": {
-      "type": "object",
-      "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms.",
+      "description": "Credential configuration for a Terraform registry or module source host.",
       "properties": {
         "secret": {
           "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified."
+          "description": "The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token'."
         }
       }
     },
-    "TerraformSecretReference": {
+    "TerraformProviderDirect": {
       "type": "object",
-      "description": "A reference to a secret stored in an Applications.Core/SecretStore resource.",
+      "description": "Direct provider installation configuration.",
       "properties": {
-        "source": {
-          "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
+        "include": {
+          "type": "array",
+          "description": "Provider address patterns to include for direct installation.",
+          "items": {
+            "type": "string"
+          }
         },
-        "key": {
-          "type": "string",
-          "description": "The key for the secret in the secret store."
+        "exclude": {
+          "type": "array",
+          "description": "Provider address patterns to exclude from direct installation.",
+          "items": {
+            "type": "string"
+          }
         }
-      },
-      "required": [
-        "source",
-        "key"
-      ]
+      }
+    },
+    "TerraformProviderInstallation": {
+      "type": "object",
+      "description": "Provider installation configuration for Terraform CLI.",
+      "properties": {
+        "networkMirror": {
+          "$ref": "#/definitions/TerraformProviderMirror",
+          "description": "Network mirror configuration for downloading providers."
+        },
+        "direct": {
+          "$ref": "#/definitions/TerraformProviderDirect",
+          "description": "Direct provider installation configuration."
+        }
+      }
+    },
+    "TerraformProviderMirror": {
+      "type": "object",
+      "description": "Network mirror configuration for Terraform providers.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The URL of the provider mirror."
+        },
+        "include": {
+          "type": "array",
+          "description": "Provider address patterns to include from this mirror.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Provider address patterns to exclude from this mirror.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TerraformrcConfig": {
+      "type": "object",
+      "description": "Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details.",
+      "properties": {
+        "providerInstallation": {
+          "$ref": "#/definitions/TerraformProviderInstallation",
+          "description": "Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads."
+        },
+        "credentials": {
+          "type": "object",
+          "description": "Credentials for authenticating to private Terraform registries and module sources. Map of hostname to credential configuration.",
+          "additionalProperties": {
+            "$ref": "#/definitions/TerraformCredentialConfig"
+          }
+        }
+      }
     }
   },
   "parameters": {

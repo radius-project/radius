@@ -163,9 +163,8 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 
 // BicepConfigProperties - Bicep configuration properties.
 type BicepConfigProperties struct {
-	// Authentication information used to access private Bicep registries, which is a map of registry hostname to secret config
-	// that contains credential information.
-	Authentication map[string]*BicepRegistrySecretConfig
+	// Registry authentication configuration for accessing private Bicep registries.
+	RegistryAuthentication *BicepRegistryAuthentication
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -225,11 +224,23 @@ type BicepConfigResourceUpdate struct {
 	Type *string
 }
 
-// BicepRegistrySecretConfig - Registry Secret Configuration used to authenticate to private Bicep registries.
-type BicepRegistrySecretConfig struct {
-	// The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container
-	// registry. The keys in the secret store depend on the type.
-	Secret *string
+// BicepRegistryAuthentication - Authentication configuration for private Bicep registries.
+type BicepRegistryAuthentication struct {
+	// The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.
+	AuthenticationMethod *BicepAuthenticationMethod
+
+	// AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'.
+	AwsIamRoleArn *string
+
+	// Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.
+	AzureWiClientID *string
+
+	// Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'.
+	AzureWiTenantID *string
+
+	// The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod
+	// is 'BasicAuth'.
+	BasicAuthSecretID *string
 }
 
 // EnvironmentCompute - Represents backing compute resource
@@ -635,29 +646,13 @@ type SystemData struct {
 	LastModifiedByType *CreatedByType
 }
 
-// TerraformAuthConfig - Authentication information used to access private Terraform module sources. Supported module sources:
-// Git.
-type TerraformAuthConfig struct {
-	// Authentication information used to access private Terraform modules from Git repository sources.
-	Git *TerraformGitAuthConfig
-}
-
 // TerraformConfigProperties - Terraform configuration properties.
 type TerraformConfigProperties struct {
-	// Authentication information used to access private Terraform module sources. Supported module sources: Git.
-	Authentication *TerraformAuthConfig
-
 	// Environment variables injected during Terraform recipe execution.
 	Env map[string]*string
 
-	// Secret-backed environment variables injected during Terraform recipe execution. The secrets are stored in Applications.Core/SecretStores
-	// resource.
-	EnvSecrets map[string]*TerraformSecretReference
-
-	// Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and
-	// other APIs. For more information, please see:
-	// https://developer.hashicorp.com/terraform/language/providers/configuration.
-	Providers map[string][]*TerraformProviderConfigProperties
+	// Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc).
+	Terraformrc *TerraformrcConfig
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -718,38 +713,51 @@ type TerraformConfigResourceUpdate struct {
 	Type *string
 }
 
-// TerraformGitAuthConfig - Authentication information used to access private Terraform modules from Git repository sources.
-type TerraformGitAuthConfig struct {
-	// Personal Access Token (PAT) configuration used to authenticate to Git platforms.
-	Pat map[string]*TerraformSecretConfig
-}
-
-// TerraformProviderConfigProperties - Configuration for a Terraform provider, including credentials and other settings needed
-// for recipe execution.
-type TerraformProviderConfigProperties struct {
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]any
-
-	// Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores
-	// resource.
-	Secrets map[string]*TerraformSecretReference
-}
-
-// TerraformSecretConfig - Personal Access Token (PAT) configuration used to authenticate to Git platforms.
-type TerraformSecretConfig struct {
-	// The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret
-	// store must have a secret named 'pat', containing the PAT value. A secret named
-	// 'username' is optional, containing the username associated with the pat. By default no username is specified.
+// TerraformCredentialConfig - Credential configuration for a Terraform registry or module source host.
+type TerraformCredentialConfig struct {
+	// The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret
+	// named 'token'.
 	Secret *string
 }
 
-// TerraformSecretReference - A reference to a secret stored in an Applications.Core/SecretStore resource.
-type TerraformSecretReference struct {
-	// REQUIRED; The key for the secret in the secret store.
-	Key *string
+// TerraformProviderDirect - Direct provider installation configuration.
+type TerraformProviderDirect struct {
+	// Provider address patterns to exclude from direct installation.
+	Exclude []*string
 
-	// REQUIRED; The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.
-	Source *string
+	// Provider address patterns to include for direct installation.
+	Include []*string
+}
+
+// TerraformProviderInstallation - Provider installation configuration for Terraform CLI.
+type TerraformProviderInstallation struct {
+	// Direct provider installation configuration.
+	Direct *TerraformProviderDirect
+
+	// Network mirror configuration for downloading providers.
+	NetworkMirror *TerraformProviderMirror
+}
+
+// TerraformProviderMirror - Network mirror configuration for Terraform providers.
+type TerraformProviderMirror struct {
+	// Provider address patterns to exclude from this mirror.
+	Exclude []*string
+
+	// Provider address patterns to include from this mirror.
+	Include []*string
+
+	// The URL of the provider mirror.
+	URL *string
+}
+
+// TerraformrcConfig - Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config
+// for details.
+type TerraformrcConfig struct {
+	// Credentials for authenticating to private Terraform registries and module sources. Map of hostname to credential configuration.
+	Credentials map[string]*TerraformCredentialConfig
+
+	// Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads.
+	ProviderInstallation *TerraformProviderInstallation
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'

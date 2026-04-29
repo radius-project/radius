@@ -42,22 +42,12 @@ func (src *TerraformConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 		Properties: datamodel.TerraformConfigResourceProperties{},
 	}
 
-	if src.Properties.Authentication != nil {
-		converted.Properties.Authentication = toTerraformAuthConfigDataModel(src.Properties.Authentication)
-	}
-
-	if src.Properties.Providers != nil {
-		converted.Properties.Providers = toTerraformProvidersDataModel(src.Properties.Providers)
+	if src.Properties.Terraformrc != nil {
+		converted.Properties.Terraformrc = toTerraformrcDataModel(src.Properties.Terraformrc)
 	}
 
 	if src.Properties.Env != nil {
-		converted.Properties.Env = datamodel.EnvironmentVariables{
-			AdditionalProperties: to.StringMap(src.Properties.Env),
-		}
-	}
-
-	if src.Properties.EnvSecrets != nil {
-		converted.Properties.EnvSecrets = toTerraformSecretReferencesDataModel(src.Properties.EnvSecrets)
+		converted.Properties.Env = to.StringMap(src.Properties.Env)
 	}
 
 	if src.Properties.ReferencedBy != nil {
@@ -84,20 +74,10 @@ func (dst *TerraformConfigResource) ConvertFrom(src v1.DataModelInterface) error
 		ProvisioningState: fromProvisioningStateDataModel(tc.InternalMetadata.AsyncProvisioningState),
 	}
 
-	if tc.Properties.Authentication.Git.PAT != nil {
-		dst.Properties.Authentication = fromTerraformAuthConfigDataModel(tc.Properties.Authentication)
-	}
+	dst.Properties.Terraformrc = fromTerraformrcDataModel(tc.Properties.Terraformrc)
 
-	if tc.Properties.Providers != nil {
-		dst.Properties.Providers = fromTerraformProvidersDataModel(tc.Properties.Providers)
-	}
-
-	if tc.Properties.Env.AdditionalProperties != nil {
-		dst.Properties.Env = *to.StringMapPtr(tc.Properties.Env.AdditionalProperties)
-	}
-
-	if tc.Properties.EnvSecrets != nil {
-		dst.Properties.EnvSecrets = fromTerraformSecretReferencesDataModel(tc.Properties.EnvSecrets)
+	if tc.Properties.Env != nil {
+		dst.Properties.Env = *to.StringMapPtr(tc.Properties.Env)
 	}
 
 	if len(tc.Properties.ReferencedBy) > 0 {
@@ -107,114 +87,69 @@ func (dst *TerraformConfigResource) ConvertFrom(src v1.DataModelInterface) error
 	return nil
 }
 
-func toTerraformAuthConfigDataModel(src *TerraformAuthConfig) datamodel.AuthConfig {
-	result := datamodel.AuthConfig{}
-	if src.Git != nil && src.Git.Pat != nil {
-		result.Git = datamodel.GitAuthConfig{
-			PAT: make(map[string]datamodel.SecretConfig),
+func toTerraformrcDataModel(src *TerraformrcConfig) datamodel.TerraformrcConfig {
+	result := datamodel.TerraformrcConfig{}
+
+	if src.ProviderInstallation != nil {
+		result.ProviderInstallation = &datamodel.TerraformProviderInstallation{}
+		if src.ProviderInstallation.NetworkMirror != nil {
+			result.ProviderInstallation.NetworkMirror = &datamodel.TerraformProviderMirror{
+				URL:     to.String(src.ProviderInstallation.NetworkMirror.URL),
+				Include: to.StringArray(src.ProviderInstallation.NetworkMirror.Include),
+						Exclude: to.StringArray(src.ProviderInstallation.NetworkMirror.Exclude),
+			}
 		}
-		for host, cfg := range src.Git.Pat {
-			result.Git.PAT[host] = datamodel.SecretConfig{
-				Secret: to.String(cfg.Secret),
+		if src.ProviderInstallation.Direct != nil {
+			result.ProviderInstallation.Direct = &datamodel.TerraformProviderDirect{
+				Include: to.StringArray(src.ProviderInstallation.Direct.Include),
+						Exclude: to.StringArray(src.ProviderInstallation.Direct.Exclude),
 			}
 		}
 	}
+
+	if src.Credentials != nil {
+		result.Credentials = make(map[string]datamodel.TerraformCredentialConfig)
+		for host, cfg := range src.Credentials {
+			if cfg != nil {
+				result.Credentials[host] = datamodel.TerraformCredentialConfig{
+					Secret: to.String(cfg.Secret),
+				}
+			}
+		}
+	}
+
 	return result
 }
 
-func fromTerraformAuthConfigDataModel(src datamodel.AuthConfig) *TerraformAuthConfig {
-	result := &TerraformAuthConfig{}
-	if len(src.Git.PAT) > 0 {
-		result.Git = &TerraformGitAuthConfig{
-			Pat: make(map[string]*TerraformSecretConfig),
+func fromTerraformrcDataModel(src datamodel.TerraformrcConfig) *TerraformrcConfig {
+	result := &TerraformrcConfig{}
+
+	if src.ProviderInstallation != nil {
+		result.ProviderInstallation = &TerraformProviderInstallation{}
+		if src.ProviderInstallation.NetworkMirror != nil {
+			result.ProviderInstallation.NetworkMirror = &TerraformProviderMirror{
+				URL:     &src.ProviderInstallation.NetworkMirror.URL,
+				Include: to.ArrayofStringPtrs(src.ProviderInstallation.NetworkMirror.Include),
+				Exclude: to.ArrayofStringPtrs(src.ProviderInstallation.NetworkMirror.Exclude),
+			}
 		}
-		for host, cfg := range src.Git.PAT {
+		if src.ProviderInstallation.Direct != nil {
+			result.ProviderInstallation.Direct = &TerraformProviderDirect{
+				Include: to.ArrayofStringPtrs(src.ProviderInstallation.Direct.Include),
+				Exclude: to.ArrayofStringPtrs(src.ProviderInstallation.Direct.Exclude),
+			}
+		}
+	}
+
+	if len(src.Credentials) > 0 {
+		result.Credentials = make(map[string]*TerraformCredentialConfig)
+		for host, cfg := range src.Credentials {
 			s := cfg.Secret
-			result.Git.Pat[host] = &TerraformSecretConfig{
+			result.Credentials[host] = &TerraformCredentialConfig{
 				Secret: &s,
 			}
 		}
 	}
-	return result
-}
 
-func toTerraformProvidersDataModel(src map[string][]*TerraformProviderConfigProperties) map[string][]datamodel.ProviderConfigProperties {
-	result := make(map[string][]datamodel.ProviderConfigProperties)
-	for name, configs := range src {
-		var dmConfigs []datamodel.ProviderConfigProperties
-		for _, cfg := range configs {
-			if cfg == nil {
-				continue
-			}
-			dmCfg := datamodel.ProviderConfigProperties{
-				AdditionalProperties: cfg.AdditionalProperties,
-			}
-			if cfg.Secrets != nil {
-				dmCfg.Secrets = make(map[string]datamodel.SecretReference)
-				for k, v := range cfg.Secrets {
-					if v != nil {
-						dmCfg.Secrets[k] = datamodel.SecretReference{
-							Source: to.String(v.Source),
-							Key:    to.String(v.Key),
-						}
-					}
-				}
-			}
-			dmConfigs = append(dmConfigs, dmCfg)
-		}
-		result[name] = dmConfigs
-	}
-	return result
-}
-
-func fromTerraformProvidersDataModel(src map[string][]datamodel.ProviderConfigProperties) map[string][]*TerraformProviderConfigProperties {
-	result := make(map[string][]*TerraformProviderConfigProperties)
-	for name, configs := range src {
-		var apiConfigs []*TerraformProviderConfigProperties
-		for _, cfg := range configs {
-			apiCfg := &TerraformProviderConfigProperties{
-				AdditionalProperties: cfg.AdditionalProperties,
-			}
-			if cfg.Secrets != nil {
-				apiCfg.Secrets = make(map[string]*TerraformSecretReference)
-				for k, v := range cfg.Secrets {
-					s := v.Source
-					key := v.Key
-					apiCfg.Secrets[k] = &TerraformSecretReference{
-						Source: &s,
-						Key:    &key,
-					}
-				}
-			}
-			apiConfigs = append(apiConfigs, apiCfg)
-		}
-		result[name] = apiConfigs
-	}
-	return result
-}
-
-func toTerraformSecretReferencesDataModel(src map[string]*TerraformSecretReference) map[string]datamodel.SecretReference {
-	result := make(map[string]datamodel.SecretReference)
-	for k, v := range src {
-		if v != nil {
-			result[k] = datamodel.SecretReference{
-				Source: to.String(v.Source),
-				Key:    to.String(v.Key),
-			}
-		}
-	}
-	return result
-}
-
-func fromTerraformSecretReferencesDataModel(src map[string]datamodel.SecretReference) map[string]*TerraformSecretReference {
-	result := make(map[string]*TerraformSecretReference)
-	for k, v := range src {
-		s := v.Source
-		key := v.Key
-		result[k] = &TerraformSecretReference{
-			Source: &s,
-			Key:    &key,
-		}
-	}
 	return result
 }

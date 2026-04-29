@@ -42,8 +42,8 @@ func (src *BicepConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 		Properties: datamodel.BicepConfigResourceProperties{},
 	}
 
-	if src.Properties.Authentication != nil {
-		converted.Properties.Authentication = toBicepAuthDataModel(src.Properties.Authentication)
+	if src.Properties.RegistryAuthentication != nil {
+		converted.Properties.RegistryAuthentication = toBicepRegistryAuthDataModel(src.Properties.RegistryAuthentication)
 	}
 
 	if src.Properties.ReferencedBy != nil {
@@ -70,8 +70,8 @@ func (dst *BicepConfigResource) ConvertFrom(src v1.DataModelInterface) error {
 		ProvisioningState: fromProvisioningStateDataModel(bc.InternalMetadata.AsyncProvisioningState),
 	}
 
-	if bc.Properties.Authentication != nil {
-		dst.Properties.Authentication = fromBicepAuthDataModel(bc.Properties.Authentication)
+	if bc.Properties.RegistryAuthentication != nil {
+		dst.Properties.RegistryAuthentication = fromBicepRegistryAuthDataModel(bc.Properties.RegistryAuthentication)
 	}
 
 	if len(bc.Properties.ReferencedBy) > 0 {
@@ -81,25 +81,36 @@ func (dst *BicepConfigResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toBicepAuthDataModel(src map[string]*BicepRegistrySecretConfig) map[string]datamodel.RegistrySecretConfig {
-	result := make(map[string]datamodel.RegistrySecretConfig)
-	for host, cfg := range src {
-		if cfg != nil {
-			result[host] = datamodel.RegistrySecretConfig{
-				Secret: to.String(cfg.Secret),
-			}
-		}
+func toBicepRegistryAuthDataModel(src *BicepRegistryAuthentication) *datamodel.BicepRegistryAuthentication {
+	result := &datamodel.BicepRegistryAuthentication{
+		BasicAuthSecretId: to.String(src.BasicAuthSecretID),
+		AzureWiClientId:   to.String(src.AzureWiClientID),
+		AzureWiTenantId:   to.String(src.AzureWiTenantID),
+		AwsIamRoleArn:     to.String(src.AwsIamRoleArn),
+	}
+	if src.AuthenticationMethod != nil {
+		result.AuthenticationMethod = string(*src.AuthenticationMethod)
 	}
 	return result
 }
 
-func fromBicepAuthDataModel(src map[string]datamodel.RegistrySecretConfig) map[string]*BicepRegistrySecretConfig {
-	result := make(map[string]*BicepRegistrySecretConfig)
-	for host, cfg := range src {
-		s := cfg.Secret
-		result[host] = &BicepRegistrySecretConfig{
-			Secret: &s,
-		}
+func fromBicepRegistryAuthDataModel(src *datamodel.BicepRegistryAuthentication) *BicepRegistryAuthentication {
+	result := &BicepRegistryAuthentication{}
+	if src.AuthenticationMethod != "" {
+		method := BicepAuthenticationMethod(src.AuthenticationMethod)
+		result.AuthenticationMethod = &method
+	}
+	if src.BasicAuthSecretId != "" {
+		result.BasicAuthSecretID = &src.BasicAuthSecretId
+	}
+	if src.AzureWiClientId != "" {
+		result.AzureWiClientID = &src.AzureWiClientId
+	}
+	if src.AzureWiTenantId != "" {
+		result.AzureWiTenantID = &src.AzureWiTenantId
+	}
+	if src.AwsIamRoleArn != "" {
+		result.AwsIamRoleArn = &src.AwsIamRoleArn
 	}
 	return result
 }

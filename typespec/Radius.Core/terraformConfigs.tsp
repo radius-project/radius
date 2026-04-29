@@ -55,52 +55,56 @@ model TerraformConfigProperties {
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
-  authentication?: TerraformAuthConfig;
-
-  @doc("Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration.")
-  providers?: Record<Array<TerraformProviderConfigProperties>>;
+  @doc("Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc).")
+  terraformrc?: TerraformrcConfig;
 
   @doc("Environment variables injected during Terraform recipe execution.")
   env?: Record<string>;
-
-  @doc("Secret-backed environment variables injected during Terraform recipe execution. The secrets are stored in Applications.Core/SecretStores resource.")
-  envSecrets?: Record<TerraformSecretReference>;
 }
 
-@doc("Authentication information used to access private Terraform module sources. Supported module sources: Git.")
-model TerraformAuthConfig {
-  @doc("Authentication information used to access private Terraform modules from Git repository sources.")
-  git?: TerraformGitAuthConfig;
+@doc("Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details.")
+model TerraformrcConfig {
+  @doc("Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads.")
+  providerInstallation?: TerraformProviderInstallation;
+
+  @doc("Credentials for authenticating to private Terraform registries and module sources. Map of hostname to credential configuration.")
+  credentials?: Record<TerraformCredentialConfig>;
 }
 
-@doc("Authentication information used to access private Terraform modules from Git repository sources.")
-model TerraformGitAuthConfig {
-  @doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
-  pat?: Record<TerraformSecretConfig>;
+@doc("Provider installation configuration for Terraform CLI.")
+model TerraformProviderInstallation {
+  @doc("Network mirror configuration for downloading providers.")
+  networkMirror?: TerraformProviderMirror;
+
+  @doc("Direct provider installation configuration.")
+  direct?: TerraformProviderDirect;
 }
 
-@doc("Personal Access Token (PAT) configuration used to authenticate to Git platforms.")
-model TerraformSecretConfig {
-  @doc("The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified.")
+@doc("Network mirror configuration for Terraform providers.")
+model TerraformProviderMirror {
+  @doc("The URL of the provider mirror.")
+  url?: string;
+
+  @doc("Provider address patterns to include from this mirror.")
+  include?: string[];
+
+  @doc("Provider address patterns to exclude from this mirror.")
+  exclude?: string[];
+}
+
+@doc("Direct provider installation configuration.")
+model TerraformProviderDirect {
+  @doc("Provider address patterns to include for direct installation.")
+  include?: string[];
+
+  @doc("Provider address patterns to exclude from direct installation.")
+  exclude?: string[];
+}
+
+@doc("Credential configuration for a Terraform registry or module source host.")
+model TerraformCredentialConfig {
+  @doc("The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token'.")
   secret?: string;
-}
-
-// ProviderConfigProperties allows to get the additional properties and secrets. To ensure that `additionalProperties` is true, we need to extend `Record<unknown>`.
-#suppress "@azure-tools/typespec-azure-core/bad-record-type"
-@doc("Configuration for a Terraform provider, including credentials and other settings needed for recipe execution.")
-model TerraformProviderConfigProperties extends Record<unknown> {
-  @doc("Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource.")
-  secrets?: Record<TerraformSecretReference>;
-}
-
-@doc("A reference to a secret stored in an Applications.Core/SecretStore resource.")
-model TerraformSecretReference {
-  @doc("The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution.")
-  source: string;
-
-  @doc("The key for the secret in the secret store.")
-  key: string;
 }
 
 @armResourceOperations

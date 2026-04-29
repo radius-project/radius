@@ -37,18 +37,49 @@ func (r *TerraformConfig) ResourceTypeName() string {
 
 // TerraformConfigResourceProperties represents the properties of the Terraform config resource.
 type TerraformConfigResourceProperties struct {
-	// Authentication information used to access private Terraform module sources.
-	Authentication AuthConfig `json:"authentication"`
-
-	// Providers specifies the Terraform provider configurations.
-	Providers map[string][]ProviderConfigProperties `json:"providers,omitempty"`
+	// Terraformrc contains Terraform CLI configuration file (.terraformrc) settings.
+	Terraformrc TerraformrcConfig `json:"terraformrc,omitempty"`
 
 	// Env specifies the environment variables to be set during Terraform recipe execution.
-	Env EnvironmentVariables `json:"env"`
-
-	// EnvSecrets represents the secret-backed environment variables for recipe execution.
-	EnvSecrets map[string]SecretReference `json:"envSecrets,omitempty"`
+	Env map[string]string `json:"env,omitempty"`
 
 	// ReferencedBy is a list of environment IDs that reference this config.
 	ReferencedBy []string `json:"referencedBy,omitempty"`
+}
+
+// TerraformrcConfig represents .terraformrc settings.
+type TerraformrcConfig struct {
+	// ProviderInstallation configures provider mirror and direct installation.
+	ProviderInstallation *TerraformProviderInstallation `json:"providerInstallation,omitempty"`
+
+	// Credentials maps registry/module hostnames to credential configuration.
+	Credentials map[string]TerraformCredentialConfig `json:"credentials,omitempty"`
+}
+
+// TerraformProviderInstallation configures how Terraform resolves providers.
+type TerraformProviderInstallation struct {
+	// NetworkMirror configures a network mirror for provider downloads.
+	NetworkMirror *TerraformProviderMirror `json:"networkMirror,omitempty"`
+
+	// Direct configures direct provider installation.
+	Direct *TerraformProviderDirect `json:"direct,omitempty"`
+}
+
+// TerraformProviderMirror configures a network mirror for Terraform providers.
+type TerraformProviderMirror struct {
+	URL     string   `json:"url,omitempty"`
+	Include []string `json:"include,omitempty"`
+	Exclude []string `json:"exclude,omitempty"`
+}
+
+// TerraformProviderDirect configures direct provider installation.
+type TerraformProviderDirect struct {
+	Include []string `json:"include,omitempty"`
+	Exclude []string `json:"exclude,omitempty"`
+}
+
+// TerraformCredentialConfig holds credential information for a Terraform registry host.
+type TerraformCredentialConfig struct {
+	// Secret is the ID of a SecretStore containing the authentication token.
+	Secret string `json:"secret,omitempty"`
 }
