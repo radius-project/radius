@@ -129,7 +129,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -160,7 +160,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -196,7 +196,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -227,7 +227,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -258,7 +258,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -293,7 +293,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -328,7 +328,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -363,7 +363,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -398,7 +398,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -431,7 +431,7 @@ func Test_Validate(t *testing.T) {
 				setScaffoldApplicationPromptYes(mocks.Prompter)
 				setApplicationNamePrompt(mocks.Prompter, "valid")
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -649,7 +649,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfimed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{

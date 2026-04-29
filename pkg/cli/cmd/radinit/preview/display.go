@@ -77,7 +77,7 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 	}
 
 	switch model.(*summaryModel).result {
-	case resultConfimed:
+	case resultConfirmed:
 		return true, nil
 	case resultCanceled:
 		return false, nil
@@ -89,12 +89,23 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 }
 
 func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
-	model := NewProgessModel(*options)
+	model := NewProgressModel(*options)
 	program := tea.NewProgram(model, tea.WithContext(ctx))
 
 	go func() {
-		for msg := range progressChan {
-			program.Send(msg)
+		for {
+			select {
+			case <-ctx.Done():
+				program.Send(tea.Quit)
+				return
+			case msg, ok := <-progressChan:
+				if !ok {
+					program.Send(tea.Quit)
+					return
+				}
+
+				program.Send(msg)
+			}
 		}
 
 		program.Send(tea.Quit)
@@ -118,9 +129,9 @@ type progressMsg struct {
 type summaryResult string
 
 const (
-	resultConfimed = "confirmed"
-	resultCanceled = "canceled"
-	resultQuit     = "quit"
+	resultConfirmed = "confirmed"
+	resultCanceled  = "canceled"
+	resultQuit      = "quit"
 )
 
 var _ tea.Model = &summaryModel{}
@@ -160,7 +171,7 @@ func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.Type == tea.KeyEnter {
 			copy := *m
-			copy.result = resultConfimed
+			copy.result = resultConfirmed
 			return &copy, tea.Quit
 		}
 	}
@@ -242,7 +253,7 @@ func (m *summaryModel) View() string {
 
 var _ tea.Model = &progressModel{}
 
-func NewProgessModel(options initOptions) tea.Model {
+func NewProgressModel(options initOptions) tea.Model {
 	return &progressModel{
 		options: options,
 		spinner: spinner.New(spinner.WithSpinner(progressSpinner)),

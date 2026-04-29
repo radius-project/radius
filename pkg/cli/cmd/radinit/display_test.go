@@ -71,7 +71,7 @@ func Test_summaryModel(t *testing.T) {
 	}
 
 	t.Run("Result: Confirm", func(t *testing.T) {
-		resultTest(t, resultConfimed, tea.KeyEnter)
+		resultTest(t, resultConfirmed, tea.KeyEnter)
 	})
 
 	t.Run("Result: Cancel", func(t *testing.T) {
@@ -104,7 +104,7 @@ func Test_summaryModel(t *testing.T) {
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
 		model = tm.FinalModel(t).(*summaryModel)
-		assert.Equal(t, summaryResult(resultConfimed), model.result)
+		assert.Equal(t, summaryResult(resultConfirmed), model.result)
 	}
 
 	t.Run("View: existing options", func(t *testing.T) {
