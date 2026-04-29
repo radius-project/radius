@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -198,7 +197,7 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 		return nil, err
 	}
 
-	environments, err := client.ListEnvironmentsAll(ctx)
+	environments, err := client.ListRadiusCoreEnvironmentsAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +229,7 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 	return &name, nil
 }
 
-func (r *Runner) buildExistingEnvironmentList(existing []corerp.EnvironmentResource) []string {
+func (r *Runner) buildExistingEnvironmentList(existing []corerpv20250801.EnvironmentResource) []string {
 	others := []string{}
 	defaultExists := false
 	for _, env := range existing {

@@ -39,18 +39,19 @@ import (
 )
 
 type UCPApplicationsManagementClient struct {
-	RootScope                        string
-	ClientOptions                    *arm.ClientOptions
-	genericResourceClientFactory     func(scope string, resourceType string) (genericResourceClient, error)
-	applicationResourceClientFactory func(scope string) (applicationResourceClient, error)
-	environmentResourceClientFactory func(scope string) (environmentResourceClient, error)
-	recipePackResourceClientFactory  func(scope string) (recipePackResourceClient, error)
-	resourceGroupClientFactory       func() (resourceGroupClient, error)
-	resourceProviderClientFactory    func() (resourceProviderClient, error)
-	resourceTypeClientFactory        func() (resourceTypeClient, error)
-	apiVersionClientFactory          func() (apiVersionClient, error)
-	locationClientFactory            func() (locationClient, error)
-	capture                          func(ctx context.Context, capture **http.Response) context.Context
+	RootScope                                  string
+	ClientOptions                              *arm.ClientOptions
+	genericResourceClientFactory               func(scope string, resourceType string) (genericResourceClient, error)
+	applicationResourceClientFactory           func(scope string) (applicationResourceClient, error)
+	environmentResourceClientFactory           func(scope string) (environmentResourceClient, error)
+	recipePackResourceClientFactory            func(scope string) (recipePackResourceClient, error)
+	radiusCoreEnvironmentResourceClientFactory func(scope string) (radiusCoreEnvironmentResourceClient, error)
+	resourceGroupClientFactory                 func() (resourceGroupClient, error)
+	resourceProviderClientFactory              func() (resourceProviderClient, error)
+	resourceTypeClientFactory                  func() (resourceTypeClient, error)
+	apiVersionClientFactory                    func() (apiVersionClient, error)
+	locationClientFactory                      func() (locationClient, error)
+	capture                                    func(ctx context.Context, capture **http.Response) context.Context
 }
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
@@ -509,6 +510,46 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return []corerpv20231001.EnvironmentResource{}, err
+		}
+
+		for _, environment := range page.EnvironmentResourceListResult.Value {
+			environments = append(environments, *environment)
+		}
+	}
+
+	return environments, nil
+}
+
+// ListRadiusCoreEnvironmentsAll queries the plane scope for all Radius.Core environment resources
+// across all resource groups and returns them as a slice. It mirrors ListEnvironmentsAll, but
+// targets Radius.Core/environments (v20250801preview) instead of Applications.Core/environments
+// (v20231001preview).
+func (amc *UCPApplicationsManagementClient) ListRadiusCoreEnvironmentsAll(ctx context.Context) ([]corerpv20250801.EnvironmentResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return []corerpv20250801.EnvironmentResource{}, err
+	}
+
+	// Query at plane scope, not resource group scope. We don't enforce the exact structure of the scope, so handle both cases.
+	//
+	// - /planes/radius/local
+	// - /planes/radius/local/resourceGroups/my-group
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
+		scope = scope.Truncate()
+	}
+
+	// Generated client doesn't like the leading '/' in the scope.
+	client, err := amc.createRadiusCoreEnvironmentClient(scope.String())
+	if err != nil {
+		return []corerpv20250801.EnvironmentResource{}, err
+	}
+
+	environments := []corerpv20250801.EnvironmentResource{}
+	pager := client.NewListByScopePager(&corerpv20250801.EnvironmentsClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return []corerpv20250801.EnvironmentResource{}, err
 		}
 
 		for _, environment := range page.EnvironmentResourceListResult.Value {
@@ -1221,6 +1262,15 @@ func (amc *UCPApplicationsManagementClient) createEnvironmentClient(scope string
 	}
 
 	return amc.environmentResourceClientFactory(scope)
+}
+
+func (amc *UCPApplicationsManagementClient) createRadiusCoreEnvironmentClient(scope string) (radiusCoreEnvironmentResourceClient, error) {
+	if amc.radiusCoreEnvironmentResourceClientFactory == nil {
+		// Generated client doesn't like the leading '/' in the scope.
+		return corerpv20250801.NewEnvironmentsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.radiusCoreEnvironmentResourceClientFactory(scope)
 }
 
 func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, resourceType string, apiVersion ...string) (genericResourceClient, error) {
