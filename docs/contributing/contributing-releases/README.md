@@ -103,15 +103,17 @@ When starting the release process, first create an RC release. If validation fai
 
 ### Step 1: Start a Teams release thread
 
-Before performing any release actions, start a new thread in the team's Microsoft Teams channel dedicated to releases. Title the thread with the target final release version for the entire release cycle (for example, use "Release v0.56.0", not "Release v0.56.0-rc1"). Use this same thread throughout the entire release lifecycle, including all RCs and the final release:
+Before performing any release actions, start and join a meeting in the team's Microsoft Teams channel dedicated to releases. Title the thread with the target final release version for the entire release cycle (for example, use "Release v0.56.0", not "Release v0.56.0-rc1").
+
+Turn on transcription for the meeting. Recording is not necessary. Verbally announce each step as you perform it, and post updates in the thread with the same information. This creates a detailed timeline of the release process that can be reviewed later for improvements and serves as a record of the release.
+
+Use this same thread throughout the entire release lifecycle, including all RCs and the final release:
 
 - **Log every action** as you perform it, including which step you are on, what commands you ran, and the result (success or failure).
 - **Log any issues** encountered during the release, including error messages, failed workflows, and the resolution.
 - **Announce completion** of the release in the thread once all steps are finished and validation passes.
 
 This detailed release log helps the team improve future releases by reviewing the overall timeline, identifying inefficiencies, errors, or bottlenecks, and preserving institutional knowledge about the release process.
-
-> **Important**: Timestamp your updates and include links to workflow runs, PRs, and GitHub Releases as you go. This makes the thread a self-contained record of the release.
 
 ### Step 2: Tag the Deployment Engine
 
