@@ -29,9 +29,10 @@ export class GraphGitHubAPI {
    * Fetch raw file contents from a specific branch.
    * Returns null if the file does not exist (404).
    */
-  async getFileContents(owner: string, repo: string, path: string, ref: string): Promise<string | null> {
+  async getFileContents(owner: string, repo: string, path: string, ref?: string): Promise<string | null> {
     const encodedPath = path.split('/').map(encodeURIComponent).join('/');
-    const url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`;
+    let url = `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`;
+    if (ref) url += `?ref=${encodeURIComponent(ref)}`;
     const resp = await fetch(url, {
       headers: this.createHeaders({
         Accept: 'application/vnd.github.v3.raw',
@@ -86,9 +87,11 @@ export class GraphGitHubAPI {
   }
 
   /**
-   * Check whether a pull request modifies the repository-root app.bicep file.
+   * Check whether a pull request modifies the app.bicep file
+   * (at root or inside .radius/).
    */
   async pullRequestModifiesAppBicep(owner: string, repo: string, pullNumber: number): Promise<boolean> {
+    const appBicepPaths = ['.radius/app.bicep', 'app.bicep'];
     let page = 1;
 
     while (true) {
@@ -102,7 +105,7 @@ export class GraphGitHubAPI {
       if (!resp.ok) throw new Error(`GitHub API error: ${resp.status} ${resp.statusText}`);
 
       const files = (await resp.json()) as Array<{ filename?: string }>;
-      if (files.some((file) => file.filename === 'app.bicep')) {
+      if (files.some((file) => file.filename !== undefined && appBicepPaths.includes(file.filename))) {
         return true;
       }
 

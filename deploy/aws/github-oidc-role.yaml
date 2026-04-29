@@ -127,6 +127,8 @@ Resources:
           Value: !Ref GitHubOrg
         - Key: GitHubRepo
           Value: !Ref GitHubRepo
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
   # Permissions for Radius deployments.
   RadiusDeployPolicy:

@@ -314,35 +314,103 @@ export class GitHubClient {
   async commitAllWorkflows(owner: string, repo: string): Promise<void> {
     const branch = await this.getDefaultBranch(owner, repo);
 
+    const files: Array<{ path: string; content: string }> = [];
+
     const verifyContent = await this.getFileContent(
       owner, repo, '.github/workflows/radius-verify-credentials.yml', branch,
     );
+    if (verifyContent !== VERIFY_WORKFLOW) {
+      files.push({ path: '.github/workflows/radius-verify-credentials.yml', content: VERIFY_WORKFLOW });
+    }
+
     const deployContent = await this.getFileContent(
       owner, repo, '.github/workflows/radius-deploy.yml', branch,
     );
-
-    // Only commit workflows that are missing or have changed.
-    if (verifyContent !== VERIFY_WORKFLOW) {
-      await this.commitFile(
-        owner, repo,
-        '.github/workflows/radius-verify-credentials.yml',
-        verifyContent === null
-          ? 'radius: add verification and deploy workflows'
-          : 'radius: update verification workflow',
-        VERIFY_WORKFLOW, branch,
-      );
-    }
-
     if (deployContent !== DEPLOY_WORKFLOW) {
-      await this.commitFile(
-        owner, repo,
-        '.github/workflows/radius-deploy.yml',
-        deployContent === null
-          ? 'radius: add verification and deploy workflows'
-          : 'radius: update deploy workflow',
-        DEPLOY_WORKFLOW, branch,
-      );
+      files.push({ path: '.github/workflows/radius-deploy.yml', content: DEPLOY_WORKFLOW });
     }
+
+    const graphContent = await this.getFileContent(
+      owner, repo, '.github/workflows/build-app-graph.yml', branch,
+    );
+    if (graphContent !== BUILD_GRAPH_WORKFLOW) {
+      files.push({ path: '.github/workflows/build-app-graph.yml', content: BUILD_GRAPH_WORKFLOW });
+    }
+
+    if (files.length === 0) return;
+
+    // Commit all changed workflows in a single commit using the Git Trees API.
+    await this.commitMultipleFiles(owner, repo, branch, 'radius: add/update workflows', files);
+  }
+
+  private async commitMultipleFiles(
+    owner: string, repo: string, branch: string,
+    message: string, files: Array<{ path: string; content: string }>,
+  ): Promise<void> {
+    // Get the current commit SHA for the branch.
+    const refData = await this.get<{ object: { sha: string } }>(
+      `/repos/${owner}/${repo}/git/ref/heads/${branch}`,
+    );
+    const baseCommitSha = refData.object.sha;
+
+    // Get the tree SHA of the base commit.
+    const commitData = await this.get<{ tree: { sha: string } }>(
+      `/repos/${owner}/${repo}/git/commits/${baseCommitSha}`,
+    );
+    const baseTreeSha = commitData.tree.sha;
+
+    // Create blobs for each file.
+    const treeItems = [];
+    for (const file of files) {
+      const blobData = await this.get<{ sha: string }>(
+        `/repos/${owner}/${repo}/git/blobs`,
+      ).catch(() => null);
+
+      // Create blob via POST.
+      const blobResp = await this.rawRequest(
+        'POST',
+        `/repos/${owner}/${repo}/git/blobs`,
+        JSON.stringify({ content: file.content, encoding: 'utf-8' }),
+      );
+      if (!blobResp.ok) throw new GitHubAPIError(blobResp.status, await blobResp.text());
+      const blob = await blobResp.json() as { sha: string };
+
+      treeItems.push({
+        path: file.path,
+        mode: '100644',
+        type: 'blob',
+        sha: blob.sha,
+      });
+    }
+
+    // Create a new tree.
+    const treeResp = await this.rawRequest(
+      'POST',
+      `/repos/${owner}/${repo}/git/trees`,
+      JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+    );
+    if (!treeResp.ok) throw new GitHubAPIError(treeResp.status, await treeResp.text());
+    const newTree = await treeResp.json() as { sha: string };
+
+    // Create a new commit.
+    const commitResp = await this.rawRequest(
+      'POST',
+      `/repos/${owner}/${repo}/git/commits`,
+      JSON.stringify({
+        message,
+        tree: newTree.sha,
+        parents: [baseCommitSha],
+      }),
+    );
+    if (!commitResp.ok) throw new GitHubAPIError(commitResp.status, await commitResp.text());
+    const newCommit = await commitResp.json() as { sha: string };
+
+    // Update the branch ref.
+    await this.request(
+      'PATCH',
+      `/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+      JSON.stringify({ sha: newCommit.sha }),
+    );
   }
 
   // --- Application file ---
@@ -371,8 +439,15 @@ export class GitHubClient {
     owner: string, repo: string, filename = 'app.bicep',
   ): Promise<{ filename: string; exists: boolean }> {
     const branch = await this.getDefaultBranch(owner, repo);
-    const exists = await this.fileExists(owner, repo, filename, branch);
-    return { filename, exists };
+    // Check root first, then .radius/ folder.
+    if (await this.fileExists(owner, repo, filename, branch)) {
+      return { filename, exists: true };
+    }
+    const radiusPath = `.radius/${filename}`;
+    if (await this.fileExists(owner, repo, radiusPath, branch)) {
+      return { filename: radiusPath, exists: true };
+    }
+    return { filename, exists: false };
   }
 
   // --- Verification ---
@@ -455,7 +530,7 @@ export class GitHubClient {
   // --- Deploy ---
 
   async triggerDeploy(
-    owner: string, repo: string, envName: string, appFile = 'app.bicep', appName = '',
+    owner: string, repo: string, envName: string,
   ): Promise<void> {
     const branch = await this.getDefaultBranch(owner, repo);
 
@@ -475,11 +550,6 @@ export class GitHubClient {
       await delay(3000);
     }
 
-    // Derive app name from filename if not provided.
-    if (!appName) {
-      appName = appFile.replace(/\.bicep$/, '').replace(/.*\//, '');
-    }
-
     // Retry — GitHub may need a moment to index the workflow.
     let lastErr: Error | null = null;
     for (let i = 0; i < 10; i++) {
@@ -489,7 +559,7 @@ export class GitHubClient {
           `/repos/${owner}/${repo}/actions/workflows/radius-deploy.yml/dispatches`,
           JSON.stringify({
             ref: branch,
-            inputs: { environment: envName, app_file: appFile, app_name: appName },
+            inputs: { environment: envName },
           }),
         );
         return;
@@ -756,27 +826,12 @@ const DEPLOY_WORKFLOW = `# This workflow is auto-generated by Radius to deploy a
 name: Radius - Deploy Application
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'app.bicep'
-      - 'bicepconfig.json'
-      - '*.bicep'
-      - '.github/workflows/radius-deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
         description: 'GitHub Environment name'
         required: true
         default: 'dev'
-      app_file:
-        description: 'Bicep application file to deploy'
-        required: true
-        default: 'app.bicep'
-      app_name:
-        description: 'Application name'
-        required: false
-        default: 'app'
       image:
         description: 'Container image for the application (e.g. ghcr.io/sk593/demo:latest)'
         required: false
@@ -789,8 +844,7 @@ permissions:
 
 env:
   ENVIRONMENT: \${{ inputs.environment || 'dev' }}
-  APP_FILE: \${{ inputs.app_file || 'app.bicep' }}
-  APP_NAME: \${{ inputs.app_name || 'app' }}
+  APP_FILE: .radius/app.bicep
   APP_IMAGE: \${{ inputs.image || vars.RADIUS_APP_IMAGE || '' }}
   RESOURCE_TYPES_CONTRIB_REPO: https://github.com/radius-project/resource-types-contrib.git
   RESOURCE_TYPES_CONTRIB_REF: main
@@ -939,7 +993,7 @@ jobs:
           kubectl exec -n radius-system "$POD" -c dynamic-rp -- ls /app/demo/Dockerfile
 
           # Create a Docker config secret for GHCR authentication so Terraform's Docker provider can push images.
-          DOCKER_CONFIG_JSON=$(echo -n '{"auths":{"ghcr.io":{"auth":"'$(echo -n "token:\${{ secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}')
+          DOCKER_CONFIG_JSON=$(echo -n '{"auths":{"ghcr.io":{"auth":"'$(echo -n "\${{ github.actor }}:\${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}')
           kubectl create secret generic docker-config -n radius-system --from-literal=config.json="$DOCKER_CONFIG_JSON" --dry-run=client -o yaml | kubectl apply -f -
 
           # Mount a writable emptyDir at /root/.docker and use an init container to copy
@@ -1074,15 +1128,19 @@ jobs:
             --aws-region "\${{ vars.AWS_REGION }}" \
             --aws-account-id "\${{ vars.AWS_ACCOUNT_ID }}"
 
-      - name: Register resource types from resource-types-contrib
+      - name: Clone resource-types-contrib and register resource types
         run: |
-          REPO_RAW="https://raw.githubusercontent.com/radius-project/resource-types-contrib/\${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
-          TYPES="Compute/containerImages/containerImages.yaml Compute/containers/containers.yaml Compute/persistentVolumes/persistentVolumes.yaml Compute/routes/routes.yaml Data/postgreSqlDatabases/postgreSqlDatabases.yaml Data/mySqlDatabases/mySqlDatabases.yaml Security/secrets/secrets.yaml"
-          for TYPE_YAML in $TYPES; do
-            echo "Registering $TYPE_YAML..."
-            curl -fsSL "$REPO_RAW/$TYPE_YAML" -o /tmp/type.yaml
-            rad resource-type create -f /tmp/type.yaml || \
-              (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f /tmp/type.yaml)
+          git clone --depth 1 --branch "\${{ env.RESOURCE_TYPES_CONTRIB_REF }}" "\${{ env.RESOURCE_TYPES_CONTRIB_REPO }}" /tmp/resource-types-contrib
+          for TYPE_YAML in \\
+            Compute/containerImages/containerImages.yaml \\
+            Data/mySqlDatabases/mySqlDatabases.yaml; do
+            if [ -f "/tmp/resource-types-contrib/$TYPE_YAML" ]; then
+              echo "Registering $TYPE_YAML..."
+              rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML" || \\
+                (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML")
+            else
+              echo "Skipping $TYPE_YAML (not found)"
+            fi
           done
           echo "✅ Resource types registered"
 
@@ -1133,18 +1191,40 @@ jobs:
             --environment "$ENVIRONMENT" \
             --resource-type Radius.Security/secrets \
             --template-kind terraform \
-            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF"
+            --template-path "git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=update-secrets"
 
       - name: Verify app namespace on target cluster
         run: |
           TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
           if [ -f "$TARGET_KUBECONFIG" ]; then
-            BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
+            BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
+            if [ -z "$BICEP_APP_NAME" ]; then
+              BICEP_APP_NAME="app"
+            fi
             APP_NS="default-$BICEP_APP_NAME"
             echo "Ensuring namespace $APP_NS exists on target cluster..."
             kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$APP_NS" 2>/dev/null || \
               kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS"
           fi
+
+      - name: Create bicepconfig for deployment
+        run: |
+          cat > bicepconfig.json << 'EOF'
+          {
+            "experimentalFeaturesEnabled": {
+              "extensibility": true
+            },
+            "extensions": {
+              "radius": "br:biceptypes.azurecr.io/radius:latest",
+              "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:latest",
+              "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
+              "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
+              "aws": "br:biceptypes.azurecr.io/aws:latest"
+            }
+          }
+          EOF
+          echo "bicepconfig.json created"
+          cat bicepconfig.json
 
       - name: Deploy application
         run: |
@@ -1184,63 +1264,18 @@ jobs:
         run: |
           rad app list || true
 
-      - name: List Kubernetes secrets on target cluster
-        if: always()
-        run: |
-          TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
-          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
-          APP_NS="default-$BICEP_APP_NAME"
-          if [ -f "$TARGET_KUBECONFIG" ]; then
-            echo "=== Secrets in $APP_NS namespace ==="
-            kubectl --kubeconfig "$TARGET_KUBECONFIG" get secrets -n "$APP_NS" -o wide 2>&1 || true
-            echo ""
-            echo "=== Secret details ==="
-            for secret in $(kubectl --kubeconfig "$TARGET_KUBECONFIG" get secrets -n "$APP_NS" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
-              echo "--- $secret ---"
-              kubectl --kubeconfig "$TARGET_KUBECONFIG" get secret "$secret" -n "$APP_NS" -o jsonpath='{.data}' 2>&1 | jq -r 'to_entries[] | "\\(.key): \\(.value | @base64d)"' 2>&1 || true
-              echo ""
-            done
-          fi
-          echo "=== Secrets on k3d cluster ==="
-          kubectl get secrets -n "$APP_NS" -o wide 2>&1 || true
-
-      - name: Debug resource locations
-        if: always()
-        run: |
-          TARGET_KUBECONFIG="$HOME/.kube/target-cluster"
-          BICEP_APP_NAME=$(grep -oP "name:\\s*'\\K[^']+" "$APP_FILE" | head -1 || echo "$APP_NAME")
-          APP_NS="default-$BICEP_APP_NAME"
-          echo "=== All resources on EKS ($APP_NS) ==="
-          if [ -f "$TARGET_KUBECONFIG" ]; then
-            kubectl --kubeconfig "$TARGET_KUBECONFIG" get all -n "$APP_NS" 2>&1 || true
-            echo ""
-            echo "=== All namespaces on EKS ==="
-            kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespaces 2>&1 || true
-          fi
-          echo ""
-          echo "=== All resources on k3d ($APP_NS) ==="
-          kubectl get all -n "$APP_NS" 2>&1 || true
-          echo ""
-          echo "=== dynamic-rp env vars ==="
-          kubectl exec -n radius-system deploy/dynamic-rp -c dynamic-rp -- env 2>&1 | grep -E 'AWS_|KUBE_CONFIG|RADIUS_TARGET' || true
-          echo ""
-          echo "=== Terraform state secrets on k3d ==="
-          kubectl get secrets -n radius-system -l "app.kubernetes.io/managed-by=terraform" -o wide 2>&1 || true
-
       - name: Collect Radius logs
-        if: always()
+        if: failure()
         run: |
           mkdir -p /tmp/radius-logs
           for deploy in applications-rp dynamic-rp bicep-de controller ucpd; do
-            echo "=== $deploy ===" >> /tmp/radius-logs/pods.txt
             kubectl logs -n radius-system -l app.kubernetes.io/name=$deploy --tail=200 >> /tmp/radius-logs/$deploy.log 2>&1 || true
-            kubectl describe pods -n radius-system -l app.kubernetes.io/name=$deploy >> /tmp/radius-logs/$deploy-describe.txt 2>&1 || true
           done
           kubectl get pods -n radius-system -o wide >> /tmp/radius-logs/pods.txt 2>&1 || true
           kubectl get events -n radius-system --sort-by=.lastTimestamp >> /tmp/radius-logs/events.txt 2>&1 || true
 
       - name: Upload Radius logs
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: radius-logs
@@ -1250,4 +1285,26 @@ jobs:
       - name: Cleanup control plane cluster
         if: always()
         run: k3d cluster delete radius-cp || true
+`;
+
+const BUILD_GRAPH_WORKFLOW = `# This workflow is auto-generated by Radius to build the application graph.
+name: Build Application Graph
+
+on:
+  push:
+    branches: [main]
+    paths: [.radius/app.bicep]
+  pull_request:
+    paths: [.radius/app.bicep]
+
+permissions:
+  contents: write
+
+jobs:
+  build-graph:
+    uses: radius-project/radius/.github/workflows/__build-app-graph.yml@brooke-hamilton/merge-oidc-branch
+    with:
+      app_file: .radius/app.bicep
+      orphan_branch: radius-graph
+      workflow_source_ref: brooke-hamilton/merge-oidc-branch
 `;

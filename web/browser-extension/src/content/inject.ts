@@ -12,6 +12,15 @@ import { initAppPage } from './app-page.js';
 
 // ── Page Detection ────────────────────────────────────────────
 
+// URL for the Radius app modeling skill used by the "Define with Copilot" option.
+const COPILOT_SKILL_URL =
+  'https://raw.githubusercontent.com/kachawla/radius/demo/.github/skills/app-modeling/SKILL.md';
+
+function buildCopilotUrl(owner: string, repo: string): string {
+  const prompt = `Create an application definition.\n\nRead ${COPILOT_SKILL_URL}`;
+  return `https://github.com/copilot?repo=${encodeURIComponent(owner + '/' + repo)}&prompt=${encodeURIComponent(prompt)}`;
+}
+
 interface PageInfo {
   type: 'pr' | 'repo-root' | 'app-page' | 'other';
   owner: string;
@@ -160,7 +169,7 @@ function injectRadiusButton(): boolean {
   // Initial state: prompt to define an application.
   dropdown.innerHTML = `
     <div class="radius-dropdown-hint">An application definition must be created prior to deploying.</div>
-    <button class="radius-dropdown-item" data-action="define-app">+ Define an Application</button>
+    <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define an Application</button>
   `;
 
   btn.addEventListener('click', (e) => {
@@ -185,6 +194,18 @@ function injectRadiusButton(): boolean {
 
     const action = target.dataset.action;
     try {
+      if (action === 'define-app-copilot') {
+        window.open(buildCopilotUrl(owner, repo), '_blank');
+        // Commit workflows in the background.
+        if (chrome?.runtime?.id) {
+          chrome.runtime.sendMessage({
+            type: 'COMMIT_WORKFLOWS',
+            owner,
+            repo,
+          }).catch(() => {});
+        }
+        return;
+      }
       if (!chrome?.runtime?.id) return;
       if (action === 'define-app') {
         chrome.runtime.sendMessage({
@@ -248,15 +269,25 @@ function injectRadiusButton(): boolean {
 async function injectApplicationsSidebar(owner: string, repo: string): Promise<void> {
   if (document.getElementById('radius-applications-sidebar')) return;
   if (!chrome?.runtime?.id) return;
-  if (!chrome?.runtime?.id) return;
 
   const token = await getGitHubToken();
   const graphAPI = new GraphGitHubAPI(token || null);
-  const hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
+  // Prefer .radius/app.bicep (canonical location) over root app.bicep (legacy).
+  let hasAppFile = await graphAPI.checkFileExists(owner, repo, '.radius/app.bicep');
+  let appFile = '.radius/app.bicep';
+  if (!hasAppFile) {
+    hasAppFile = await graphAPI.checkFileExists(owner, repo, 'app.bicep');
+    appFile = 'app.bicep';
+  }
   if (!hasAppFile) return;
 
-  const appFile = 'app.bicep';
-  const appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
+  // Try to extract the application name from the bicep file's name property.
+  let appName = appFile.replace(/\.bicep$/, '').replace(/^.*\//, '');
+  const bicepContent = await graphAPI.getFileContents(owner, repo, appFile);
+  if (bicepContent) {
+    const parsed = parseApplicationName(bicepContent);
+    if (parsed) appName = parsed;
+  }
   const modeledAppURL = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/radius/app/${encodeURIComponent(appName)}`;
 
   // Find the right sidebar on the repo page.
@@ -382,6 +413,52 @@ function escapeHTML(str: string): string {
   return div.innerHTML;
 }
 
+/**
+ * Parse the name property from an Applications.Core/applications resource in a bicep file.
+ * Returns the name string or null if not found.
+ *
+ * Looks for the resource header line, then scans subsequent lines for a
+ * top-level `name:` property (not indented inside a nested block).
+ */
+function parseApplicationName(bicepContent: string): string | null {
+  const lines = bicepContent.split('\n');
+  let inAppResource = false;
+  let braceDepth = 0;
+
+  for (const line of lines) {
+    if (!inAppResource) {
+      // Detect the resource declaration line.
+      if (/resource\s+\w+\s+'Applications\.Core\/applications@/.test(line)) {
+        inAppResource = true;
+        braceDepth = 0;
+        // Count braces on this line (the opening `{` is typically here).
+        for (const ch of line) {
+          if (ch === '{') braceDepth++;
+          if (ch === '}') braceDepth--;
+        }
+      }
+      continue;
+    }
+
+    // Inside the resource block — track brace depth.
+    for (const ch of line) {
+      if (ch === '{') braceDepth++;
+      if (ch === '}') braceDepth--;
+    }
+
+    // Only match `name` at the top level of the resource (depth 1).
+    if (braceDepth === 1) {
+      const nameMatch = line.match(/^\s*name\s*:\s*'([^']+)'/);
+      if (nameMatch) return nameMatch[1];
+    }
+
+    // Exited the resource block without finding name.
+    if (braceDepth <= 0) break;
+  }
+
+  return null;
+}
+
 async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: string): Promise<void> {
   try {
     if (!chrome?.runtime?.id) return;
@@ -417,7 +494,7 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
           dropdown.innerHTML = `
             <button class="radius-dropdown-item radius-dropdown-deploy" data-action="deploy-app">▶ Deploy Application</button>
             <hr class="radius-dropdown-divider">
-            <button class="radius-dropdown-item" data-action="define-app">+ Define an Application</button>
+            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define an Application</button>
             <button class="radius-dropdown-item" data-action="create-env-aws">+ Create AWS environment</button>
             <button class="radius-dropdown-item" data-action="create-env-azure">+ Create Azure environment</button>
           `;
@@ -427,14 +504,16 @@ async function checkEnvironmentStatus(btn: HTMLElement, owner: string, repo: str
         if (dropdown) {
           dropdown.innerHTML = `
             <div class="radius-dropdown-hint">You must connect to a cloud platform prior to deploying.</div>
-            <button class="radius-dropdown-item" data-action="define-app">+ Define an Application</button>
+            <button class="radius-dropdown-item" data-action="define-app-copilot">+ Define an Application</button>
             <button class="radius-dropdown-item" data-action="create-env-aws">+ Create AWS environment</button>
             <button class="radius-dropdown-item" data-action="create-env-azure">+ Create Azure environment</button>
           `;
         }
       }
+    } else if (!hasApp) {
+      // API call failed (no token / not signed in) — keep the default dropdown.
     }
-    // If no app exists, the default "Define an Application" dropdown stays.
+    // If hasApp.exists === false, the default "Define an Application" dropdown stays.
   } catch {
     // Extension context may not be available — that's okay.
   }
