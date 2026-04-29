@@ -49,6 +49,10 @@ type environmentOptions struct {
 	Create    bool
 	Name      string
 	Namespace string
+	// ResourceGroup is the name of the resource group that contains (or will contain) the environment.
+	// For an existing environment this is parsed from the environment's resource ID. For a new
+	// environment this defaults to the environment name.
+	ResourceGroup string
 }
 
 // cloudProviderOptions holds all of the options that will be used to initialize cloud providers.
@@ -120,7 +124,7 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		workspace.Name = ws.Name
 	}
 
-	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", options.Environment.Name, options.Environment.Name)
-	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
+	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", options.Environment.ResourceGroup, options.Environment.Name)
+	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.ResourceGroup)
 	return &options, workspace, nil
 }

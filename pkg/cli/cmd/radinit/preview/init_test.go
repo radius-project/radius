@@ -180,6 +180,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
@@ -215,6 +216,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
@@ -245,6 +247,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
@@ -416,6 +419,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
 						Name: to.Ptr("cool-existing-env"),
 					},
 				})
@@ -483,6 +487,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - this will be chosen automatically
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/myenv/providers/Radius.Core/environments/myenv"),
 						Name: to.Ptr("myenv"),
 					},
 				})
@@ -507,6 +512,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - this will be chosen automatically
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default"),
 						Name: to.Ptr("default"),
 					},
 				})
@@ -530,9 +536,11 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - user has to choose
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/dev/providers/Radius.Core/environments/dev"),
 						Name: to.Ptr("dev"),
 					},
 					{
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/prod/providers/Radius.Core/environments/prod"),
 						Name: to.Ptr("prod"),
 					},
 				})

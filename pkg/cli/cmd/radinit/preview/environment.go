@@ -30,6 +30,8 @@ import (
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 const (
@@ -164,15 +166,23 @@ func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspa
 	options.Environment.Create = true
 	if !options.Cluster.Install {
 		// If Radius is already installed then look for an existing environment first.
-		name, err := r.selectExistingEnvironment(ctx, workspace)
+		existing, err := r.selectExistingEnvironment(ctx, workspace)
 		if err != nil {
 			return err
 		}
 
 		// For an existing environment we won't make changes, so we're done gathering options.
-		if name != nil {
-			options.Environment.Name = *name
+		if existing != nil {
+			options.Environment.Name = *existing.Name
 			options.Environment.Create = false
+
+			// Derive the resource group from the existing environment's resource ID so we
+			// don't assume the resource group name matches the environment name.
+			id, err := resources.ParseResource(*existing.ID)
+			if err != nil {
+				return err
+			}
+			options.Environment.ResourceGroup = id.FindScope(resources_radius.ScopeResourceGroups)
 			return nil
 		}
 	}
@@ -188,10 +198,13 @@ func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspa
 		return err
 	}
 
+	// For a newly-created environment we put it in a resource group whose name matches the environment name.
+	options.Environment.ResourceGroup = options.Environment.Name
+
 	return nil
 }
 
-func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *workspaces.Workspace) (*string, error) {
+func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *workspaces.Workspace) (*corerpv20250801.EnvironmentResource, error) {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *workspace)
 	if err != nil {
 		return nil, err
@@ -209,9 +222,9 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 
 	// Without any flags we take the default without asking if it's an option.
 	if !r.Full {
-		for _, env := range environments {
+		for i, env := range environments {
 			if strings.EqualFold(defaultEnvironmentName, *env.Name) {
-				return env.Name, nil
+				return &environments[i], nil
 			}
 		}
 	}
@@ -226,7 +239,13 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 		return nil, nil
 	}
 
-	return &name, nil
+	for i, env := range environments {
+		if env.Name != nil && *env.Name == name {
+			return &environments[i], nil
+		}
+	}
+
+	return nil, nil
 }
 
 func (r *Runner) buildExistingEnvironmentList(existing []corerpv20250801.EnvironmentResource) []string {
