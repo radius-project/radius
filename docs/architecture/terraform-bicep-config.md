@@ -150,19 +150,20 @@ graph LR
 1. Platform team deploys `terraformConfig` and/or `bicepConfig` resources.
 2. Platform team deploys an `environment` referencing them by resource ID.
 3. Environment controller validates the referenced config resources exist
-   (PUT-time validation).
-4. At recipe execution time, the recipe driver resolves the config resource,
-   populates `recipes.Configuration.RecipeConfig`, and proceeds exactly as the
-   existing `Applications.Core` code path does today.
-5. Secret references (`SecretReference` with `source` + `key`) are resolved at
+   at PUT time and returns `400 Bad Request` if not.
+4. At recipe execution time, the configuration loader fetches the referenced
+   config resources and populates `recipes.Configuration.RecipeConfig`. The
+   loader bridges the new schema into the existing `RecipeConfig` shape so the
+   shared Terraform and Bicep drivers consume it through the same path the
+   legacy `Applications.Core` `recipeConfig` flow uses.
+5. When `terraformrc.providerInstallation` is set, the Terraform driver
+   renders a `.terraformrc` in the working directory and points Terraform at
+   it via `TF_CLI_CONFIG_FILE` for both Deploy and Delete. The field is
+   optional; the legacy `Applications.Core` path leaves it nil and behavior is
+   unchanged.
+6. Secret references (`SecretReference` with `source` + `key`) are resolved at
    execution time by the driver, same as the legacy path. No secrets are
    persisted in the config resources.
-
-### Delete protection
-
-Config resources cannot be deleted while referenced by an environment. The
-delete controller checks for active references and returns `409 Conflict` if
-any exist. This follows the same pattern used by RecipePacks.
 
 ### Example usage
 
@@ -255,56 +256,63 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 ## Compatibility
 
 - `Applications.Core/environments` with `recipeConfig` is unchanged and
-  continues to work.
+  continues to work. The legacy datamodel types (`AuthConfig`, `GitAuthConfig`,
+  `ProviderConfigProperties`, etc.) are untouched.
 - `Radius.Core/environments` is new; there is no migration concern.
-- The Terraform and Bicep recipe drivers already consume
-  `recipes.Configuration.RecipeConfig`. The only new code is populating that
-  struct from the config resource instead of from inline environment fields.
+- The shared Terraform and Bicep recipe drivers already consume
+  `recipes.Configuration.RecipeConfig`. The new resources populate that struct
+  through the same internal shape, so the drivers do not need to know which
+  namespace the environment came from.
+- A new optional `ProviderInstallation` field was added to the shared
+  `TerraformConfigProperties` datamodel. The `Applications.Core` path leaves
+  it nil, so the Terraform driver behavior is unchanged for existing users.
 
-## Implementation plan
+## Code map
 
-### Task 1: TypeSpec + codegen
+- `typespec/Radius.Core/terraformConfigs.tsp`,
+  `typespec/Radius.Core/bicepConfigs.tsp` — resource definitions.
+- `typespec/Radius.Core/environments.tsp` — adds `terraformConfig?` and
+  `bicepConfig?` properties.
+- `swagger/specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json`
+  and `pkg/corerp/api/v20250801preview/zz_generated_*` — regenerated SDK.
+- `pkg/corerp/datamodel/terraformconfig.go`,
+  `pkg/corerp/datamodel/bicepconfig.go` — datamodels.
+- `pkg/corerp/api/v20250801preview/terraformconfig_conversion.go`,
+  `bicepconfig_conversion.go` — bidirectional converters.
+- `pkg/corerp/datamodel/converter/terraformconfig_converter.go`,
+  `bicepconfig_converter.go` — versioned converter wiring.
+- `pkg/corerp/setup/setup.go` — registers CRUD routes for both resources.
+- `pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go` —
+  PUT-time validation of referenced config IDs.
+- `pkg/recipes/configloader/environment.go` — resolves config resources and
+  bridges them into the shared `RecipeConfig` shape.
+- `pkg/corerp/datamodel/recipe_types.go` — adds optional `ProviderInstallation`
+  to `TerraformConfigProperties` for the shared driver.
+- `pkg/recipes/terraform/cliconfig.go` — renders `.terraformrc` from
+  `provider_installation`.
+- `pkg/recipes/terraform/execute.go` — wires the `.terraformrc` writer into
+  Deploy and Delete via `TF_CLI_CONFIG_FILE`.
+- `test/functional-portable/dynamicrp/noncloud/resources/terraformconfig_bicepconfig_test.go` —
+  functional tests for CRUD wiring and the combined Terraform+Bicep flow.
 
-- Define `Radius.Core/terraformConfig` and `Radius.Core/bicepConfig` resources
-  in TypeSpec under `typespec/Radius.Core/`.
-- Add `terraformConfig` and `bicepConfig` optional string fields to
-  `Radius.Core/environments`.
-- `TerraformConfig`: `terraformrc` (providerInstallation, credentials) + `env`.
-  No `providers`, no `envSecrets` (those are legacy; use recipe parameters).
-- `BicepConfig`: `registryAuthentication` with `authenticationMethod` enum
-  (BasicAuth, AzureWI, AwsIrsa), `basicAuthSecretId`, `azureWiClientId`,
-  `azureWiTenantId`, `awsIamRoleArn`.
-- Regenerate SDKs.
+## Status and known limitations
 
-### Task 2: Datamodel + converters
+The schema and CRUD plumbing are in place; the loader bridges the new shape
+into the existing `RecipeConfig` consumed by the shared drivers. The following
+are exposed in the schema or implied by the design but not yet wired end to
+end, and are tracked as follow-ups:
 
-- Add Go datamodel structs for `TerraformConfigResource` and
-  `BicepConfigResource`.
-- Implement bidirectional API-to-datamodel converters.
-- Unit tests for all conversions.
-
-### Task 3: REST controllers
-
-- Standard CRUD controllers for both config resources.
-- Delete-guard filter: reject delete if any environment references the config
-  (query environments by `terraformConfig` / `bicepConfig` field).
-- Register routes.
-- Unit tests.
-
-### Task 4: Environment controller wiring
-
-- On environment create/update, validate that referenced config resource IDs
-  exist (return 400 if not).
-- At recipe execution time, resolve the config resource and populate
-  `recipes.Configuration.RecipeConfig` using the same field mapping the legacy
-  `Applications.Core` path uses.
-- Unit tests for the resolution path.
-
-### Task 5: Functional tests
-
-- Deploy a Terraform recipe with env vars via `Radius.Core/environments` with
-  `terraformConfig.env`.
-- Deploy a `Radius.Core/bicepConfigs` resource with `registryAuthentication`
-  and validate CRUD + environment reference wiring.
-- Verify delete protection: attempt to delete a config resource while
-  referenced by an environment, expect 409.
+- **Delete protection.** Config resources can currently be deleted while still
+  referenced by an environment. The intended behavior is to return
+  `409 Conflict` if any environment references the config (the same pattern
+  used by RecipePacks).
+- **`referencedBy`.** The read-only `referencedBy: string[]` property is in
+  the schema but not populated by any controller.
+- **Bicep `AzureWI` / `AwsIrsa`.** The `BicepRegistryAuthentication` schema
+  accepts all three authentication methods, but the loader only threads
+  `BasicAuth` (via `basicAuthSecretId`) into the existing Bicep driver shape.
+  Identity-based methods are no-ops until corresponding driver work lands.
+- **Terraform `credentials` for OCI/registry hosts.** `terraformrc.credentials`
+  is mapped into the legacy `Authentication.Git.PAT` map so existing Git-based
+  module source auth continues to work. A native `credentials "hostname" {}`
+  block in the rendered `.terraformrc` is a follow-up.
