@@ -143,3 +143,78 @@ func Test_BicepConfig_CRUD(t *testing.T) {
 	})
 	test.Test(t)
 }
+
+// Test_TerraformConfig_BicepConfig_Combined deploys an environment that references
+// both a Radius.Core/terraformConfigs resource (with terraformrc.providerInstallation
+// and env vars) and a Radius.Core/bicepConfigs resource. It runs a Terraform recipe
+// end-to-end to prove that:
+//
+//  1. The environment controller validates and resolves both config refs.
+//  2. The recipe driver renders a .terraformrc from providerInstallation and points
+//     Terraform at it via TF_CLI_CONFIG_FILE without breaking provider resolution.
+//  3. Env vars from terraformConfig.env are propagated into the Terraform process.
+//
+// The test uses providerInstallation.direct (the default behavior — fetch all
+// providers from the registry) so it does not require a network mirror in the
+// test cluster.
+func Test_TerraformConfig_BicepConfig_Combined(t *testing.T) {
+	template := "testdata/tfbicep-combined-test.bicep"
+	appName := "tfbicep-combined-app"
+	appNamespace := "tfbicep-combined-ns"
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// Create the Kubernetes namespace (Radius.Core requires pre-existing namespaces).
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: appNamespace,
+					},
+				}, metav1.CreateOptions{})
+				if err != nil && !strings.Contains(err.Error(), "already exists") {
+					require.NoError(t, err)
+				}
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+		{
+			// Deploy: terraformConfig + bicepConfig + recipePack + environment + app + extender (Terraform recipe).
+			Executor:                               step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
+			SkipObjectValidation:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "tfbicep-combined-tfconfig",
+						Type: "radius.core/terraformconfigs",
+					},
+					{
+						Name: "tfbicep-combined-bicepconfig",
+						Type: "radius.core/bicepconfigs",
+					},
+					{
+						Name: "tfbicep-combined-recipe-pack",
+						Type: "radius.core/recipepacks",
+					},
+					{
+						Name: "tfbicep-combined-env",
+						Type: "radius.core/environments",
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "tfbicep-combined-extender",
+						Type: validation.ExtendersResource,
+						App:  appName,
+					},
+				},
+			},
+		},
+	})
+	test.Test(t)
+}
