@@ -175,7 +175,7 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 
 	installStartTime := time.Now()
 	execPath, err := installer.Ensure(ctx, []src.Source{
-		&releases.ExactVersion{Product: product.Terraform, Version: version.Must(version.NewVersion("1.14.3"))},
+		&releases.ExactVersion{Product: product.Terraform, Version: version.Must(version.NewVersion("1.14.9"))},
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
