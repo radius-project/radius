@@ -179,8 +179,25 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
+	tfConfig, err := getTerraformConfig(ctx, tf.WorkingDir(), options)
 	if err != nil {
+		return nil, err
+	}
+
+	// Pre-compute the recipe context and include it in the module config before downloading.
+	// Terraform validates required module arguments during "terraform get".
+	recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+	if err != nil {
+		return nil, err
+	}
+	if options.ResourceRecipe != nil {
+		recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+	}
+	if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
+		return nil, err
+	}
+
+	if err := tfConfig.Save(ctx, tf.WorkingDir()); err != nil {
 		return nil, err
 	}
 
@@ -260,9 +277,35 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
+	// Pre-compute the recipe context and include it in the module config before downloading.
+	// Terraform validates required module arguments during "terraform get", so the context
+	// must be present in the config before the module is downloaded.
+	// After download and inspection, the context will be removed if the module does not declare it.
+	recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+	if err != nil {
+		return "", err
+	}
+	if options.ResourceRecipe != nil {
+		recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+	}
+	if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
+		return "", err
+	}
+
+	// Save the config with recipe context included before downloading the module.
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
+		return "", err
+	}
+
 	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
 		return "", err
+	}
+
+	// After inspection, remove the recipe context if the module does not declare the context variable.
+	// Terraform will reject unexpected arguments during init/apply.
+	if !loadedModule.ContextVarExists {
+		tfConfig.RemoveRecipeContext(options.EnvRecipe.Name)
 	}
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
@@ -292,26 +335,6 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		}
 	}
 
-	// Add recipe context parameter to the generated Terraform config's module parameters.
-	// This should only be added if the recipe context variable is declared in the downloaded module.
-	if loadedModule.ContextVarExists {
-		logger.Info("Adding recipe context module result")
-
-		// Create the recipe context object to be passed to the recipe deployment
-		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
-		if err != nil {
-			return "", err
-		}
-
-		//update the recipe context with connected resources properties
-		if options.ResourceRecipe != nil {
-			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
-		}
-
-		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
-			return "", err
-		}
-	}
 	if loadedModule.ResultOutputExists {
 		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
 			return "", err
@@ -343,12 +366,6 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	// Create Terraform configuration containing module information with the given recipe parameters.
 	tfConfig, err := config.New(ctx, localModuleName, options.EnvRecipe, options.ResourceRecipe)
 	if err != nil {
-		return nil, err
-	}
-
-	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
-	// Terraform Get command uses this config file to download module from the source specified in the config.
-	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return nil, err
 	}
 

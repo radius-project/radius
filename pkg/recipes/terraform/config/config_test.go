@@ -302,6 +302,44 @@ func Test_AddRecipeContext(t *testing.T) {
 	}
 }
 
+func Test_RemoveRecipeContext(t *testing.T) {
+	ctx := testcontext.New(t)
+
+	envdef := &recipes.EnvironmentDefinition{
+		Name:            testRecipeName,
+		TemplatePath:    testTemplatePath,
+		TemplateVersion: testTemplateVersion,
+		Parameters:      envParams,
+	}
+	metadata := &recipes.ResourceMetadata{
+		Name:       testRecipeName,
+		Parameters: resourceParams,
+	}
+
+	tfconfig, err := New(context.Background(), testRecipeName, envdef, metadata)
+	require.NoError(t, err)
+
+	// Add recipe context
+	err = tfconfig.AddRecipeContext(ctx, testRecipeName, getTestRecipeContext())
+	require.NoError(t, err)
+
+	// Verify context is present
+	mod := tfconfig.Module[testRecipeName]
+	_, hasContext := mod[recipecontext.RecipeContextParamKey]
+	require.True(t, hasContext)
+
+	// Remove recipe context
+	tfconfig.RemoveRecipeContext(testRecipeName)
+
+	// Verify context is removed
+	_, hasContext = mod[recipecontext.RecipeContextParamKey]
+	require.False(t, hasContext)
+
+	// Verify other params are still present
+	_, hasSource := mod[moduleSourceKey]
+	require.True(t, hasSource)
+}
+
 func Test_AddProviders(t *testing.T) {
 	mProvider, ucpConfiguredProviders, mBackend := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()

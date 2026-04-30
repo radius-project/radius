@@ -199,6 +199,14 @@ func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName str
 	return nil
 }
 
+// RemoveRecipeContext removes the recipe context parameter from the module configuration.
+// This is used when the downloaded module does not declare a context variable.
+func (cfg *TerraformConfig) RemoveRecipeContext(moduleName string) {
+	if mod, ok := cfg.Module[moduleName]; ok {
+		delete(mod, recipecontext.RecipeContextParamKey)
+	}
+}
+
 // newModuleConfig creates a new TFModuleConfig object with the given module source and version
 // and also populates RecipeParams in TF module config. If same parameter key exists across params
 // then the last map specified gets precedence.
