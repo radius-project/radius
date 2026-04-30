@@ -53,7 +53,8 @@ else
 endif
 
 # Linker flags: https://cmake.org/cmake/help/latest/envvar/LDFLAGS.html.
-LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.chartVersion=$(CHART_VERSION)"
+TERRAFORM_VERSION := $(shell cat .terraform-version)
+LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.chartVersion=$(CHART_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/recipes/terraform.terraformVersion=$(TERRAFORM_VERSION)"
 
 # Combination of flags into GOARGS.
 GOARGS := -v -gcflags $(GCFLAGS) -ldflags $(LDFLAGS)
