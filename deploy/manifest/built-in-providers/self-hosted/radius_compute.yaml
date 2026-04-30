@@ -727,3 +727,110 @@ types:
               enum: [ReadWriteOnce, ReadOnlyMany, ReadWriteMany]
               description: (Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.
           required: [environment, sizeInGib]
+  containerImages:
+    description: |
+      The Radius.Compute/containerImages Resource Type builds a container image from source and pushes it to a container registry. It is always part of a Radius Application.
+
+      This resource type is designed for local development workflows where the source code is available on the Kubernetes node filesystem (e.g., via kind `extraMounts` or k3d `-v` flags). It uses BuildKit to build and push the image.
+
+      To build and push a container image, add a containerImages resource to your application definition Bicep file:
+
+        extension radius
+        extension containerImages
+
+        param environment string
+
+        resource myApp 'Radius.Core/applications@2025-08-01-preview' = {
+          name: 'myApp'
+          properties: {
+            environment: environment
+          }
+        }
+
+        resource myImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
+          name: 'myImage'
+          properties: {
+            environment: environment
+            application: myApp.id
+            image: 'ghcr.io/myorg/myapp:latest'
+            build: {
+              context: '/app/src/myapp'
+            }
+          }
+        }
+
+      Registry credentials are configured by the platform engineer when registering the recipe. Developers do not need to manage credentials.
+
+      To reference the built image in a Container resource:
+
+        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+          name: 'myContainer'
+          properties: {
+            environment: environment
+            application: myApp.id
+            containers: {
+              app: {
+                image: myImage.properties.image
+                ports: {
+                  web: {
+                    containerPort: 3000
+                  }
+                }
+              }
+            }
+          }
+        }
+
+      Prerequisites:
+
+      1. The Kubernetes cluster must have the source directory available on the node. For kind, use `extraMounts`. For k3d, use `-v` flags.
+
+      2. Registry credentials must be configured as recipe parameters when registering the recipe:
+
+        rad recipe register default --resource-type Radius.Compute/containerImages --template-kind terraform --template-path git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform --parameters ghcr_username=USERNAME --parameters ghcr_token=PAT
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
+            application:
+              type: string
+              description: (Required) The Radius Application ID. `myApplication.id` for example.
+            image:
+              type: string
+              description: (Required) The full container image reference including registry, repository, and tag. `ghcr.io/myorg/myapp:latest` for example. Must be lowercase.
+            build:
+              type: object
+              description: (Required) Build configuration for the container image.
+              properties:
+                context:
+                  type: string
+                  description: (Required) The path to the build context directory on the Kubernetes node. This must be a path available on the node, for example via kind extraMounts or k3d volume flags. `/app/src/myapp` for example.
+                dockerfile:
+                  type: string
+                  description: (Optional) The path to the Dockerfile relative to the build context. If not specified, `Dockerfile` is assumed.
+              required:
+                - context
+            registry:
+              type: object
+              description: (Optional) Registry authentication overrides. If not specified, the recipe uses credentials configured by the platform engineer as recipe parameters.
+              properties:
+                server:
+                  type: string
+                  description: (Optional) The registry server address. If not specified, `ghcr.io` is assumed.
+                username:
+                  type: string
+                  description: (Optional) The registry username.
+                token:
+                  type: string
+                  description: (Optional) The registry token or PAT.
+                  x-radius-sensitive: true
+          required:
+            - environment
+            - application
+            - image
+            - build

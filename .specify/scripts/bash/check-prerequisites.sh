@@ -29,20 +29,20 @@ PATHS_ONLY=false
 
 for arg in "$@"; do
     case "$arg" in
-    --json)
-        JSON_MODE=true
-        ;;
-    --require-tasks)
-        REQUIRE_TASKS=true
-        ;;
-    --include-tasks)
-        INCLUDE_TASKS=true
-        ;;
-    --paths-only)
-        PATHS_ONLY=true
-        ;;
-    --help | -h)
-        cat <<'EOF'
+        --json)
+            JSON_MODE=true
+            ;;
+        --require-tasks)
+            REQUIRE_TASKS=true
+            ;;
+        --include-tasks)
+            INCLUDE_TASKS=true
+            ;;
+        --paths-only)
+            PATHS_ONLY=true
+            ;;
+        --help|-h)
+            cat << 'EOF'
 Usage: check-prerequisites.sh [OPTIONS]
 
 Consolidated prerequisite checking for Spec-Driven Development workflow.
@@ -65,12 +65,12 @@ EXAMPLES:
   ./check-prerequisites.sh --paths-only
   
 EOF
-        exit 0
-        ;;
-    *)
-        echo "ERROR: Unknown option '$arg'. Use --help for usage information." >&2
-        exit 1
-        ;;
+            exit 0
+            ;;
+        *)
+            echo "ERROR: Unknown option '$arg'. Use --help for usage information." >&2
+            exit 1
+            ;;
     esac
 done
 
@@ -79,10 +79,7 @@ SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 # Get feature paths and validate branch
-_paths_output=$(get_feature_paths) || {
-    echo "ERROR: Failed to resolve feature paths" >&2
-    exit 1
-}
+_paths_output=$(get_feature_paths) || { echo "ERROR: Failed to resolve feature paths" >&2; exit 1; }
 eval "$_paths_output"
 unset _paths_output
 check_feature_branch "$CURRENT_BRANCH" "$HAS_GIT" || exit 1
@@ -171,7 +168,7 @@ if $JSON_MODE; then
         if [[ ${#docs[@]} -eq 0 ]]; then
             json_docs="[]"
         else
-            json_docs=$(printf '"%s",' "${docs[@]}")
+            json_docs=$(for d in "${docs[@]}"; do printf '"%s",' "$(json_escape "$d")"; done)
             json_docs="[${json_docs%,}]"
         fi
         printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s}\n' "$(json_escape "$FEATURE_DIR")" "$json_docs"
@@ -180,13 +177,13 @@ else
     # Text output
     echo "FEATURE_DIR:$FEATURE_DIR"
     echo "AVAILABLE_DOCS:"
-
+    
     # Show status of each potential document
     check_file "$RESEARCH" "research.md"
     check_file "$DATA_MODEL" "data-model.md"
     check_dir "$CONTRACTS_DIR" "contracts/"
     check_file "$QUICKSTART" "quickstart.md"
-
+    
     if $INCLUDE_TASKS; then
         check_file "$TASKS" "tasks.md"
     fi

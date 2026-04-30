@@ -100,6 +100,46 @@ verify_manifests_registered() {
     echo "Manifest verification complete."
 }
 
+# Actively verify that resource types are registered and the Radius API is
+# able to serve requests. Unlike verify_manifests_registered (which reads
+# historical pod logs), this makes a live API call.
+# Returns: 0 = healthy, 1 = provider missing, 2 = query failed
+verify_resource_types_available() {
+    echo ""
+    echo "Verifying resource types are available..."
+
+    # Ensure a workspace exists so rad CLI can reach the cluster.
+    local workspace_output workspace_exit_code
+    workspace_output=$(rad workspace create kubernetes --force 2>&1) &&
+        workspace_exit_code=0 || workspace_exit_code=$?
+
+    if [[ ${workspace_exit_code} -ne 0 ]]; then
+        echo "ERROR: Failed to create Radius Kubernetes workspace (exit code: ${workspace_exit_code})."
+        echo "rad workspace create output: ${workspace_output}"
+        return 2
+    fi
+
+    # List registered resource providers. Applications.Core must be present
+    # for environment/container operations to work.
+    local output exit_code
+    output=$(rad resource-provider list 2>&1) && exit_code=0 || exit_code=$?
+
+    if [[ ${exit_code} -ne 0 ]]; then
+        echo "ERROR: Failed to query registered resource providers (exit code: ${exit_code})."
+        echo "rad resource-provider list output: ${output}"
+        return 2
+    fi
+
+    if echo "${output}" | grep -Fq "Applications.Core"; then
+        echo "Resource types are available (Applications.Core provider found)."
+        return 0
+    fi
+
+    echo "ERROR: Applications.Core resource provider is NOT registered."
+    echo "rad resource-provider list output: ${output}"
+    return 1
+}
+
 # Save the list of Radius UCP resources to skip-delete-resources-list.txt
 # This file is used by the cleanup job to avoid deleting Radius-managed resources.
 save_skip_resources_list() {
@@ -196,7 +236,37 @@ main() {
         install_radius
     elif [[ "${cp_version}" == "${cli_version}" ]]; then
         echo ""
-        echo "Radius control plane version matches CLI version (${cli_version}). No action needed."
+        echo "Radius control plane version matches CLI version (${cli_version}). Skipping install/upgrade."
+
+        # Verify resource types with retry for transient failures.
+        local check_result=0
+        verify_resource_types_available || check_result=$?
+
+        if [[ ${check_result} -eq 2 ]]; then
+            # Query failed (connectivity/auth issue). Retry once after a brief wait
+            # before taking destructive action.
+            echo ""
+            echo "Resource type query failed. Retrying in 30 seconds..."
+            sleep 30
+            check_result=0
+            verify_resource_types_available || check_result=$?
+        fi
+
+        if [[ ${check_result} -eq 0 ]]; then
+            save_skip_resources_list
+        elif [[ ${check_result} -eq 1 ]]; then
+            echo ""
+            echo "Resource types missing despite matching versions. Reinstalling Radius..."
+            if ! rad uninstall kubernetes --purge --yes; then
+                echo "Warning: Uninstall failed, continuing with install attempt..."
+            fi
+            install_radius
+        else
+            echo ""
+            echo "ERROR: Unable to verify resource types after retry."
+            echo "This may indicate a connectivity or authentication issue."
+            exit 1
+        fi
     else
         echo ""
         echo "Version mismatch detected. Attempting upgrade from ${cp_version} to ${cli_version}..."

@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/delete"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -41,20 +40,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
-		{
-			Name:          "Delete Command with default application",
-			Input:         []string{},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
-				DirectoryConfig: &config.DirectoryConfig{
-					Workspace: config.DirectoryWorkspaceConfig{
-						Application: "test-application",
-					},
-				},
-			},
-		},
 		{
 			Name:          "Delete Command with flag",
 			Input:         []string{"-a", "test-application"},
@@ -75,16 +60,29 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Delete Command with confirm",
-			Input:         []string{"--yes"},
+			Input:         []string{"--yes", "-a", "test-application"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadConfigWithWorkspace(t),
-				DirectoryConfig: &config.DirectoryConfig{
-					Workspace: config.DirectoryWorkspaceConfig{
-						Application: "test-application",
-					},
-				},
+			},
+		},
+		{
+			Name:          "Delete Command with confirm and positional arg",
+			Input:         []string{"--yes", "test-application"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadConfigWithWorkspace(t),
+			},
+		},
+		{
+			Name:          "Delete Command with no application - invalid",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadConfigWithWorkspace(t),
 			},
 		},
 		{

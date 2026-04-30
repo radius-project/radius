@@ -57,7 +57,7 @@ jobs:
           ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
 
       - name: Create issue for failing purge aws test resources run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         if: failure()
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}

@@ -38,7 +38,7 @@ jobs:
 
       - name: Filter
         id: filter
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           json: true
           escape_json: false
@@ -55,7 +55,7 @@ jobs:
 
       - name: Set matrix
         id: set-matrix
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { default: script } = await import(
@@ -94,13 +94,13 @@ jobs:
 
       - name: Setup Node
         if: matrix.language == 'javascript'
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: .node-version
 
       - name: Initialize CodeQL
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/init@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
         with:
           config-file: .github/configs/.codeql.yml
           languages: ${{ matrix.language }}
@@ -108,7 +108,7 @@ jobs:
 
       - name: Auto build
         if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/autobuild@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
         with:
           working-directory: ${{ matrix.working-directory }}
 
@@ -127,14 +127,14 @@ jobs:
 
       - name: Upload GoSec result
         if: ${{ always() && matrix.language == 'custom-gosec' }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
         with:
           sarif_file: gosec-results.sarif
           wait-for-processing: true
 
       - name: Perform CodeQL Analysis
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/analyze@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
         id: codeql-analyze
         with:
           category: /language:${{matrix.language}}
@@ -143,7 +143,7 @@ jobs:
 
       - name: Upload CodeQL result
         if: ${{ always() && !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
         with:
           sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true

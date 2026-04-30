@@ -70,7 +70,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the preview list command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

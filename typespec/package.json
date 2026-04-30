@@ -6,9 +6,9 @@
   "author": "Radius Authors",
   "type": "module",
   "dependencies": {
-    "@azure-tools/typespec-autorest": "^0.66.2",
-    "@azure-tools/typespec-azure-core": "^0.66.1",
-    "@azure-tools/typespec-azure-resource-manager": "^0.66.1",
+    "@azure-tools/typespec-autorest": "^0.67.0",
+    "@azure-tools/typespec-azure-core": "^0.67.1",
+    "@azure-tools/typespec-azure-resource-manager": "^0.67.1",
     "@typespec/compiler": "^1.11.0",
     "@typespec/http": "^1.11.0",
     "@typespec/openapi": "^1.11.0",

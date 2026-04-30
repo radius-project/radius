@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: c9k-failure-report
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # Every 6 hours
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ci-failure-report:
+    # Only run on the main repository, not forks
+    if: github.repository == 'radius-project/radius'
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Generate CI failure report
+        uses: sylvainsf/causinator9000@ff3e97fcf74f2dd23dc56cf5ddd10f9e1c127eeb # v2.1.0
+        with:
+          repo: ${{ github.repository }}
+          hours: "48"
+          auto-issue: "true"
+          auto-issue-dry-run: "false"
+          auto-issue-min-confidence: "90"
+          auto-issue-min-members: "2"
+          auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump,DepGroupUpdate"
+          auto-close-flaky: "true"
+          assign-copilot: "true"
+          github-token: ${{ secrets.GITHUB_TOKEN }}

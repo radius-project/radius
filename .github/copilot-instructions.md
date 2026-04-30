@@ -45,8 +45,23 @@ These skills are available for specific Radius tasks under the `.github/skills/`
 - **[Install Radius from Custom Images](skills/radius-install-custom/SKILL.md)** - Install Radius on Kubernetes from custom-built images
 - **[Contributing Docs Updater](skills/contributing-docs-updater/SKILL.md)** - Update, create, review, and find gaps in contributor documentation
 
+## Architecture Documentation
+
+An index of living architecture documents is maintained at
+[docs/architecture/README.md](../docs/architecture/README.md).
+
+Consult this index before answering questions about how a service or subsystem
+works, or before generating new architecture diagrams. Each document in that
+folder is code-grounded and covers entry points, key packages, a representative
+flow, and change-safety guidance for a specific component.
+
 ## How to Use
 
 When working on files that match the patterns defined in instruction files (e.g., `*.sh`, `.github/workflows/*.yml`), Copilot will automatically apply the relevant guidelines from the corresponding instruction file.
 
 For general development queries, Copilot will use standard best practices and conventions appropriate for the technology or task at hand.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

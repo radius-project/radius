@@ -1,9 +1,12 @@
 {
-	"experimentalFeaturesEnabled": {
-		"extensibility": true
-	},
-	"extensions": {
-		"radius": "br:biceptypes.azurecr.io/radius:latest",
-		"aws": "br:biceptypes.azurecr.io/aws:latest"
-	}
+  "experimentalFeaturesEnabled": {
+    "extensibility": true
+  },
+  "extensions": {
+    "radius": "br:biceptypes.azurecr.io/radius:latest",
+    "radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:latest",
+    "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
+    "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
+    "aws": "br:biceptypes.azurecr.io/aws:latest"
+  }
 }

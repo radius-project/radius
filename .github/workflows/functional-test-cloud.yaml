@@ -91,22 +91,72 @@ env:
   RADIUS_QPS_AND_BURST: "800"
 
 jobs:
-  # Approval gate for external contributors. This job uses GitHub Environment protection
-  # to require manual approval before running tests on PRs from non-members.
-  # - Org members (OWNER, MEMBER, COLLABORATOR): Tests run immediately
-  # - Dependabot: Tests run immediately
-  # - External contributors: Requires approval via GitHub UI button
-  approval-gate:
-    name: Approval Gate
+  # Trust check for pull_request_target events. Determines whether the PR author
+  # is a trusted contributor (org member or same-repo push) or an external contributor.
+  #
+  # Trust is determined by:
+  #   1. Same-repo PR (head repo == base repo): trusted (only users with write access
+  #      can push branches to the repo).
+  #   2. Fork PR + org member: trusted (checked via GitHub API using app token).
+  #   3. Fork PR + non-member: external (requires approval).
+  #
+  # NOTE: We do NOT rely on github.event.pull_request.author_association because
+  # webhook payloads report incorrect values for org members with private
+  # membership visibility (returns CONTRIBUTOR instead of MEMBER).
+  check-trust:
+    name: Check Trust
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # Only run for external contributors on pull_request_target events.
-    # Trusted users (dependabot, org members) skip this job entirely.
-    # External contributors require approval via 'external-contributor-approval' environment.
+    if: github.event_name == 'pull_request_target'
+    outputs:
+      is-external: ${{ steps.check.outputs.is-external }}
+    permissions: {}
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          app-id: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-members: read
+
+      - name: Determine trust level
+        id: check
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          ORG: ${{ github.repository_owner }}
+        run: |
+          # Same-repo PRs are always trusted (requires write access to push branches)
+          if [ "${HEAD_REPO}" = "${BASE_REPO}" ]; then
+            echo "Same-repo PR from ${PR_AUTHOR} — trusted"
+            echo "is-external=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Fork PR: check if the author is an org member via GitHub API.
+          # Uses app token which can read org membership regardless of visibility settings.
+          # gh api returns exit code 0 for 204 (member) and non-zero for 404/302 (not a member).
+          if gh api "orgs/${ORG}/members/${PR_AUTHOR}" --silent 2>/dev/null; then
+            echo "Fork PR from org member ${PR_AUTHOR} — trusted"
+            echo "is-external=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Fork PR from ${PR_AUTHOR} — external"
+            echo "is-external=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+  # Approval gate for external contributors. Uses GitHub Environment protection
+  # to require manual approval before running tests on PRs from non-members.
+  approval-gate:
+    name: Approval Gate
+    needs: [check-trust]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     if: |
-      github.event_name == 'pull_request_target' &&
-      github.actor != 'dependabot[bot]' &&
-      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+      needs.check-trust.outputs.is-external == 'true'
     environment: external-contributor-approval
     permissions: {}
     steps:
@@ -115,12 +165,17 @@ jobs:
 
   setup:
     name: Setup
-    needs: [approval-gate]
-    # Run for all events. For PRs, approval-gate either succeeds (external contributors approved)
-    # or is skipped (trusted users like org members and dependabot).
+    needs: [check-trust, approval-gate]
+    # Run for all events. For PRs:
+    #   - check-trust determines if the author is external
+    #   - approval-gate runs only for external contributors and requires manual approval
+    #   - If check-trust or approval-gate are skipped (non-PR events), setup proceeds
+    # For pull_request_target, require approval-gate to be 'success' or 'skipped' — block
+    # on 'cancelled' (rejected approval) to prevent running PR code with secrets.
     if: |
-      always() &&
-      (github.event_name != 'pull_request_target' || needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
+      !cancelled() &&
+      (needs.check-trust.result == 'success' || needs.check-trust.result == 'skipped') &&
+      (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
       (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -146,6 +201,9 @@ jobs:
           echo "Event Name: ${{ github.event_name }}"
           echo "Actor: ${{ github.actor }}"
           echo "Author Association: ${{ github.event.pull_request.author_association }}"
+          echo "PR Head Repo: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "PR Base Repo: ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "Is Fork: ${{ github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}"
 
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -257,7 +315,7 @@ jobs:
     steps:
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -278,7 +336,7 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -325,7 +383,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -344,13 +402,13 @@ jobs:
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -361,7 +419,7 @@ jobs:
           message: |
             :white_check_mark: Container images build succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -372,7 +430,7 @@ jobs:
           message: |
             :x: Container images build failed
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -384,7 +442,7 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: .node-version
 
@@ -419,9 +477,6 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {
-              "extensibility": true
-            },
             "extensions": {
               "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
@@ -443,7 +498,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -454,7 +509,7 @@ jobs:
           message: |
             :white_check_mark: Recipe publishing succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -476,7 +531,7 @@ jobs:
     steps:
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -525,7 +580,7 @@ jobs:
     steps:
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -594,7 +649,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
@@ -711,7 +766,7 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -804,7 +859,7 @@ jobs:
           rad credential register aws irsa \
             --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -827,9 +882,6 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {
-              "extensibility": true
-            },
             "extensions": {
               "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
@@ -915,7 +967,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -937,14 +989,14 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
           path: recipes/pod-logs
           if-no-files-found: error
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -955,7 +1007,7 @@ jobs:
           message: |
             :white_check_mark: ${{ matrix.name }} functional tests succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -966,7 +1018,7 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
-      - uses: marocchino/sticky-pull-request-comment@d4d6b0936434b21bc8345ad45a440c5f7d2c40ff # v3.0.3
+      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: cancelled() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -984,7 +1036,9 @@ jobs:
           az group delete \
             --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
-            --yes --verbose
+            --yes \
+            --verbose \
+            --no-wait
 
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).
@@ -1000,7 +1054,7 @@ jobs:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
       - name: Get GitHub app token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         id: get_installation_token
         with:
           app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
@@ -1049,7 +1103,7 @@ jobs:
     if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
