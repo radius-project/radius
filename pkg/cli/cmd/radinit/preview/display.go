@@ -107,8 +107,6 @@ func (r *Runner) showProgress(ctx context.Context, options *initOptions, progres
 				program.Send(msg)
 			}
 		}
-
-		program.Send(tea.Quit)
 	}()
 
 	_, err := r.Prompter.RunProgram(program)
