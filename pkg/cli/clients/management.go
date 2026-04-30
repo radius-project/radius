@@ -1208,13 +1208,10 @@ func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string
 		return amc.applicationResourceClientFactory(scope)
 	}
 
+	forceEnabled := len(force) > 0 && force[0]
 	clientOptions := amc.ClientOptions
-	if len(force) > 0 && force[0] {
-		opts := *amc.ClientOptions
-		opts.PerCallPolicies = append(
-			append([]policy.Policy{}, opts.PerCallPolicies...),
-			&forceDeletePolicy{},
-		)
+	if forceEnabled {
+		opts := withForceDeletePolicy(*amc.ClientOptions)
 		clientOptions = &opts
 	}
 
@@ -1412,10 +1409,7 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	clientOptions := *amc.ClientOptions
 
 	if force {
-		clientOptions.PerCallPolicies = append(
-			append([]policy.Policy{}, clientOptions.PerCallPolicies...),
-			&forceDeletePolicy{},
-		)
+		clientOptions = withForceDeletePolicy(clientOptions)
 	}
 
 	if len(apiVersions) != 0 {
@@ -1423,6 +1417,15 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	}
 
 	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
+}
+
+// withForceDeletePolicy returns a copy of opts with forceDeletePolicy appended to PerCallPolicies.
+func withForceDeletePolicy(opts arm.ClientOptions) arm.ClientOptions {
+	opts.PerCallPolicies = append(
+		append([]policy.Policy{}, opts.PerCallPolicies...),
+		&forceDeletePolicy{},
+	)
+	return opts
 }
 
 // forceDeletePolicy is a per-call pipeline policy that appends force=true to DELETE request URL query strings.
