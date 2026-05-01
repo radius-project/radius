@@ -293,6 +293,13 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 				rp_frontend.PrepareRadiusResource[*datamodel.Application_v20250801preview],
 			},
 		},
+		Custom: map[string]builder.Operation[datamodel.Application_v20250801preview]{
+			"getGraph": {
+				APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
+					return app_ctrl.NewGetGraphV20250801preview(opt, *recipeControllerConfig.UCPConnection)
+				},
+			},
+		},
 	})
 
 	return ns
