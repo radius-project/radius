@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -66,4 +67,18 @@ func TestGetGraphRun_20231001Preview(t *testing.T) {
 		require.Equal(t, 404, w.Result().StatusCode)
 		require.NoError(t, err)
 	})
+}
+
+func TestComputeGraphResponse_InvalidEnvironmentID(t *testing.T) {
+	conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+	require.NoError(t, err)
+
+	applicationID, err := resources.Parse("/planes/radius/local/resourceGroups/default/providers/Applications.Core/applications/myapp")
+	require.NoError(t, err)
+
+	// An empty/invalid environment ID string must surface as a parse error from
+	// resources.Parse and not a panic or a successful response.
+	resp, err := ComputeGraphResponse(context.Background(), applicationID, "not-a-valid-resource-id", conn)
+	require.Error(t, err)
+	require.Nil(t, resp)
 }
