@@ -40,6 +40,7 @@ const (
 // returns it wrapped in an OK rest.Response. It is shared by the Applications.Core and Radius.Core
 // implementations of the getGraph custom action.
 func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, environmentIDString string, connection sdk.Connection) (rest.Response, error) {
+    // An application **MUST** have an environment id
 	environmentID, err := resources.Parse(environmentIDString)
 	if err != nil {
 		return nil, err

@@ -68,6 +68,5 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	// An application **MUST** have an environment id.
 	return app_ctrl.ComputeGraphResponse(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
 }
