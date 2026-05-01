@@ -93,7 +93,7 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "valid create command with correct options but non existing env",
 			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -104,6 +104,7 @@ func Test_Validate(t *testing.T) {
 				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{RadiusInstalled: true}, nil).Times(1)
 
 				// Resource group exists but environment does not
+				// (workspace create now logs a warning instead of failing)
 				mocks.ApplicationManagementClient.EXPECT().GetResourceGroup(gomock.Any(), "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
 				mocks.ApplicationManagementClient.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("environment does not exist")).Times(1)
 			},

@@ -195,7 +195,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 		_, err = client.GetEnvironment(cmd.Context(), env)
 		if err != nil {
-			return clierrors.Message("The environment %q does not exist. Run `rad env create` try again.", r.Workspace.Environment)
+			// For Radius Core environments created with `rad env create --preview`,
+			// the validation client may not be able to query them. Log a warning
+			// instead of failing, matching the workaround of creating the workspace
+			// without --environment.
+			r.Output.LogInfo("Warning: environment %q could not be verified: %v. The workspace will be created but may not be valid if the environment does not exist.", r.Workspace.Environment, err)
 		}
 	}
 
