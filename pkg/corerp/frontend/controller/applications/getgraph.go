@@ -36,6 +36,41 @@ const (
 	planeName   = "local"
 )
 
+// ComputeGraphResponse computes the application graph for the given application and environment IDs and
+// returns it wrapped in an OK rest.Response. It is shared by the Applications.Core and Radius.Core
+// implementations of the getGraph custom action.
+func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, environmentIDString string, connection sdk.Connection) (rest.Response, error) {
+	environmentID, err := resources.Parse(environmentIDString)
+	if err != nil {
+		return nil, err
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+
+	ucpApplicationsManagementClient := &clients.UCPApplicationsManagementClient{
+		RootScope:     radiusPlane + planeName,
+		ClientOptions: clientOptions,
+	}
+
+	resourceTypes, err := ucpApplicationsManagementClient.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, resourceTypes, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	environmentResources, err := listAllResourcesByEnvironment(ctx, environmentID, resourceTypes, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	graph := computeGraph(applicationResources, environmentResources)
+	return rest.NewOKResponse(graph), nil
+}
+
 var _ ctrl.Controller = (*GetGraph)(nil)
 
 // GetGraph is the controller implementation to get application graph.
@@ -71,33 +106,5 @@ func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 	// An application **MUST** have an environment id
-	environmentID, err := resources.Parse(applicationResource.Properties.Environment)
-	if err != nil {
-		return nil, err
-	}
-
-	clientOptions := sdk.NewClientOptions(ctrl.connection)
-
-	ucpApplicationsManagementClient := &clients.UCPApplicationsManagementClient{
-		RootScope:     radiusPlane + planeName,
-		ClientOptions: clientOptions,
-	}
-
-	resourceTypes, err := ucpApplicationsManagementClient.ListAllResourceTypesNames(ctx, "local")
-	if err != nil {
-		return nil, err
-	}
-
-	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, resourceTypes, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	environmentResources, err := listAllResourcesByEnvironment(ctx, environmentID, resourceTypes, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	graph := computeGraph(applicationResources, environmentResources)
-	return rest.NewOKResponse(graph), nil
+	return ComputeGraphResponse(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
 }

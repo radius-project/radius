@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package applications
+package v20250801preview
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func TestGetGraphRun_20250801Preview(t *testing.T) {
 		conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
 		require.NoError(t, err)
 
-		ctl, err := NewGetGraphV20250801preview(opts, conn)
+		ctl, err := NewGetGraphv20250801preview(opts, conn)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -64,6 +64,5 @@ func TestGetGraphRun_20250801Preview(t *testing.T) {
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
 		require.Equal(t, 404, w.Result().StatusCode)
-		require.NoError(t, err)
 	})
 }

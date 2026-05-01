@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
+	app_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications/v20250801preview"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
 	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments/v20250801preview"
@@ -296,7 +297,7 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		Custom: map[string]builder.Operation[datamodel.Application_v20250801preview]{
 			"getGraph": {
 				APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
-					return app_ctrl.NewGetGraphV20250801preview(opt, *recipeControllerConfig.UCPConnection)
+					return app_v20250801_ctrl.NewGetGraphv20250801preview(opt, *recipeControllerConfig.UCPConnection)
 				},
 			},
 		},
