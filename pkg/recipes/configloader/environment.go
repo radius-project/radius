@@ -213,9 +213,7 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 				},
 			}
 			for host, cred := range tfProps.Terraformrc.Credentials {
-				config.RecipeConfig.Terraform.Authentication.Git.PAT[host] = datamodel.SecretConfig{
-					Secret: cred.Secret,
-				}
+				config.RecipeConfig.Terraform.Authentication.Git.PAT[host] = datamodel.SecretConfig(cred)
 			}
 		}
 
