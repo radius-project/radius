@@ -83,7 +83,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // name, scope, and environment ID for the Runner struct. If the requested environment is already set as the default
 // environment, it logs a message. If an error occurs, it is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

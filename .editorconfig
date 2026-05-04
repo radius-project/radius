@@ -11,6 +11,9 @@ indent_size = 2
 [*.{go,mod}]
 indent_style = tab
 
+[*.{tsv}]
+indent_style = tab
+
 [*.md]
 indent_size = unset
 
@@ -30,3 +33,12 @@ binary_next_line = true         # shfmt: -bn
 switch_case_indent = true       # shfmt: -ci
 space_redirects = true          # shfmt: -sr
 keep_padding = true             # shfmt: -kp
+
+[Makefile]
+indent_style = tab
+
+[**/node_modules/**]
+ignore = true
+
+[**/.venv/**]
+ignore = true
