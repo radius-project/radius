@@ -282,6 +282,13 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 - `pkg/corerp/datamodel/converter/terraformconfig_converter.go`,
   `bicepconfig_converter.go` — versioned converter wiring.
 - `pkg/corerp/setup/setup.go` — registers CRUD routes for both resources.
+- `pkg/corerp/setup/operations.go` — RBAC operation entries
+  (read/write/delete) for both resource types.
+- `deploy/manifest/built-in-providers/{self-hosted,dev}/radius_core.yaml` —
+  UCP manifest entries that register the resource types at install time. UCP
+  loads these manifests on startup; without an entry here the corerp REST
+  routes exist but UCP rejects requests with `BadRequest: resource type not
+  found`.
 - `pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go` —
   PUT-time validation of referenced config IDs.
 - `pkg/recipes/configloader/environment.go` — resolves config resources and
