@@ -101,7 +101,21 @@ All release types follow the same pattern: changes merge to `main` first, then c
 
 When starting the release process, first create an RC release. If validation fails, create additional RCs (incrementing the RC number) until validation passes.
 
-### Step 1: Tag the Deployment Engine
+### Step 1: Start a Teams release thread
+
+Before performing any release actions, start and join a meeting in the team's Microsoft Teams channel dedicated to releases. Title the thread with the target final release version for the entire release cycle (for example, use "Release v0.56.0", not "Release v0.56.0-rc1").
+
+Turn on transcription for the meeting. Recording is not necessary. Verbally announce each step as you perform it, and post updates in the thread with the same information. This creates a detailed timeline of the release process that can be reviewed later for improvements and serves as a record of the release.
+
+Use this same thread throughout the entire release lifecycle, including all RCs and the final release:
+
+- **Log every action** as you perform it, including which step you are on, what commands you ran, and the result (success or failure).
+- **Log any issues** encountered during the release, including error messages, failed workflows, and the resolution.
+- **Announce completion** of the release in the thread once all steps are finished and validation passes.
+
+This detailed release log helps the team improve future releases by reviewing the overall timeline, identifying inefficiencies, errors, or bottlenecks, and preserving institutional knowledge about the release process.
+
+### Step 2: Tag the Deployment Engine
 
 Run the following in a local clone of the [Deployment Engine repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z-rcN` with the RC version (e.g., `v0.56.0-rc1`):
 
@@ -114,7 +128,7 @@ git push origin vX.Y.Z-rcN
 
 > **Note**: This manual tagging step is a temporary workaround. Ideally the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) would handle this, but GPG signing is not yet configured there. See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
 
-### Step 2: Update versions.yaml
+### Step 3: Update versions.yaml
 
 Create a branch from `main` in the `radius-project/radius` repo:
 
@@ -137,7 +151,7 @@ deprecated:
     version: 'v0.54.0'
 ```
 
-### Step 3: Merge to main
+### Step 4: Merge to main
 
 Push the branch and create a PR against `main`:
 
@@ -147,12 +161,12 @@ git push origin <USERNAME>/release-X.Y.0-rcN
 
 After approval, merge the PR to `main`.
 
-### Step 4: Verify the automated release
+### Step 5: Verify the automated release
 
 After merging, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on `main`.
 
 - **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rcN` tag. The tag push then triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
-- **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 6](#step-6-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 5 for now and return to verify after completing Step 6.
+- **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 7](#step-7-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 6 for now and return to verify after completing Step 7.
 
 Monitor and verify:
 
@@ -160,11 +174,11 @@ Monitor and verify:
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
 3. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-### Step 5: Publish Bicep recipes
+### Step 6: Publish Bicep recipes
 
 In the `radius-project/resource-types-contrib` repo, manually run the [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) workflow. Enter the RC version number without the `v` prefix as the release version (e.g., `0.56.0-rc1`).
 
-### Step 6: Cherry-pick additional changes (subsequent RCs only)
+### Step 7: Cherry-pick additional changes (subsequent RCs only)
 
 > **Skip this step for the first RC.** The release branch was just created from `main` and already contains all changes.
 
@@ -186,9 +200,9 @@ Push and create a PR targeting the release branch:
 git push origin <USERNAME>/cherry-pick-rcN-to-release-branch
 ```
 
-After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag. Return to [Step 4](#step-4-verify-the-automated-release) to verify the release completed successfully.
+After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag. Return to [Step 5](#step-5-verify-the-automated-release) to verify the release completed successfully.
 
-### Step 7: Run validation workflows
+### Step 8: Run validation workflows
 
 1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc1`).
 
@@ -204,7 +218,7 @@ After approval, merge the PR. This triggers the release automation on the releas
 
    > Run this only after the upmerge PR has been merged to `edge`. If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
-### Step 8: Assess results
+### Step 9: Assess results
 
 If all validation workflows pass, proceed to [creating the final release](#creating-the-final-release).
 
@@ -214,7 +228,11 @@ If validation fails, fix the issues on `main`, then create a new RC (increment t
 
 The final release is built from the **last validated RC** on the release branch. The only change needed is a single cherry-pick that bumps the version and adds release notes. This ensures the final release contains exactly the same code as the validated RC.
 
-### Step 1: Tag the Deployment Engine
+### Step 1: Update the Teams release thread
+
+Post an update in the Teams release thread (started during the [RC release](#step-1-start-a-teams-release-thread)) indicating that the final release process is beginning. Continue logging every action, result, and issue in this thread throughout the final release steps.
+
+### Step 2: Tag the Deployment Engine
 
 Run the following in a local clone of the [Deployment Engine repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z` with the final version (e.g., `v0.56.0`):
 
@@ -225,9 +243,9 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-> **Note**: Same temporary workaround as for [RC releases](#step-1-tag-the-deployment-engine). See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
+> **Note**: Same temporary workaround as for [RC releases](#step-2-tag-the-deployment-engine). See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
 
-### Step 2: Update versions.yaml and create release notes
+### Step 3: Update versions.yaml and create release notes
 
 Create a branch from `main`:
 
@@ -251,11 +269,11 @@ git checkout -b <USERNAME>/final-release-X.Y.0
 
 > The PR will be squash-merged into a single commit on `main`, which is the commit you will cherry-pick to the release branch.
 
-### Step 3: Merge to main
+### Step 4: Merge to main
 
 After approval, squash-merge the PR.
 
-### Step 4: Cherry-pick to the release branch
+### Step 5: Cherry-pick to the release branch
 
 Cherry-pick the squash-merged commit (version bump + release notes) onto the release branch.
 
@@ -276,7 +294,7 @@ git push origin <USERNAME>/final-release-X.Y.0-cherry-pick
 
 After approval, merge the PR.
 
-### Step 5: Verify the automated release
+### Step 6: Verify the automated release
 
 After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the final version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed.
 
@@ -286,17 +304,17 @@ Monitor and verify:
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-### Step 6: Publish Bicep recipes
+### Step 7: Publish Bicep recipes
 
 In the `radius-project/resource-types-contrib` repo, manually run the [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) workflow. Enter the final version number without the `v` prefix as the release version (e.g., `0.56.0`).
 
-### Step 7: Publish docs and samples
+### Step 8: Publish docs and samples
 
 1. In `radius-project/docs`, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
 2. In `radius-project/samples`, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
-### Step 8: Run validation workflows
+### Step 9: Run validation workflows
 
 1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the final version number without the `v` prefix as the version (e.g., `0.56.0`).
 
@@ -304,19 +322,23 @@ In the `radius-project/resource-types-contrib` repo, manually run the [Publish B
 
    > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
-If all workflows pass, the release is complete.
+If all workflows pass, the release is complete. Post a final update in the Teams release thread announcing the successful release and summarizing the timeline.
 
 ## Patching
 
 Use this process to fix a bug in an already-released version.
 
-> **Note**: If the patch includes a fix to the [Deployment Engine](https://github.com/azure-octo/deployment-engine), you must also tag the Deployment Engine with the patch version (e.g., `vX.Y.Z`) before proceeding, following the same process as in the [RC](#step-1-tag-the-deployment-engine) and [Final release](#step-1-tag-the-deployment-engine-1) sections.
+> **Note**: If the patch includes a fix to the [Deployment Engine](https://github.com/azure-octo/deployment-engine), you must also tag the Deployment Engine with the patch version (e.g., `vX.Y.Z`) before proceeding, following the same process as in the [RC](#step-2-tag-the-deployment-engine) and [Final release](#step-2-tag-the-deployment-engine-1) sections.
 
-### Step 1: Merge the fix to main
+### Step 1: Start a Teams release thread
+
+Start a new thread in the team's Microsoft Teams release channel titled with the patch version (e.g., "Patch Release v0.56.1"). As with RC and final releases, log every action, result, and issue in this thread throughout the patch release process.
+
+### Step 2: Merge the fix to main
 
 Open a PR with the bug fix targeting `main`. After approval, merge it.
 
-### Step 2: Update versions.yaml and create patch release notes
+### Step 3: Update versions.yaml and create patch release notes
 
 Create a branch from `main`:
 
@@ -337,7 +359,7 @@ git push origin <USERNAME>/patch-X.Y.Z
 
 After maintainer approval, merge the PR.
 
-### Step 3: Cherry-pick to the release branch
+### Step 4: Cherry-pick to the release branch
 
 Cherry-pick the bug fix, the `versions.yaml` update, and the patch release notes onto the release branch:
 
@@ -359,7 +381,7 @@ git push origin <USERNAME>/patch-X.Y.Z-cherry-pick
 
 After approval, merge the PR.
 
-### Step 4: Verify the automated release
+### Step 5: Verify the automated release
 
 After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the patch version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed.
 
@@ -369,7 +391,7 @@ Monitor and verify:
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-### Step 5: Run validation workflows
+### Step 6: Run validation workflows
 
 1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the patch version number without the `v` prefix as the version (e.g., `0.56.1`).
 
@@ -377,4 +399,4 @@ Monitor and verify:
 
    > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
-If all workflows pass, the patch release is complete.
+If all workflows pass, the patch release is complete. Post a final update in the Teams release thread announcing the successful patch and summarizing the timeline.
