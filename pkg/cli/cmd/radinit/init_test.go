@@ -1493,7 +1493,7 @@ func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, clien
 func setConfirmOption(prompter *prompt.MockInterface, choice summaryResult) {
 	prompter.EXPECT().
 		RunProgram(gomock.Any()).
-		Return(&summaryModel{result: choice}, nil).
+		Return(&summaryModel{Result: choice}, nil).
 		Times(1)
 }
 

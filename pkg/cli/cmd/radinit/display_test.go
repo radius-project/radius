@@ -25,6 +25,7 @@ import (
 	"github.com/acarl005/stripansi"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,7 @@ func Test_summaryModel(t *testing.T) {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
 			normalized = stripansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
-			return strings.Contains(normalized, strings.Trim(summaryFooter, "\n"))
+			return strings.Contains(normalized, strings.Trim(common.SummaryFooter, "\n"))
 		}, teatest.WithDuration(waitTimeout))
 
 		return normalized
@@ -48,7 +49,7 @@ func Test_summaryModel(t *testing.T) {
 	resultTest := func(t *testing.T, expected summaryResult, key tea.KeyType) {
 		options := initOptions{}
 		model := &summaryModel{
-			options: options,
+			Options: toDisplayOptions(&options),
 		}
 		tm := teatest.NewTestModel(t, model)
 
@@ -67,7 +68,7 @@ func Test_summaryModel(t *testing.T) {
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
 		model = tm.FinalModel(t).(*summaryModel)
-		require.Equal(t, expected, model.result)
+		require.Equal(t, expected, model.Result)
 	}
 
 	t.Run("Result: Confirm", func(t *testing.T) {
@@ -84,7 +85,7 @@ func Test_summaryModel(t *testing.T) {
 
 	viewTest := func(t *testing.T, options initOptions, expected string) {
 		model := &summaryModel{
-			options: options,
+			Options: toDisplayOptions(&options),
 		}
 		tm := teatest.NewTestModel(t, model)
 
@@ -104,7 +105,7 @@ func Test_summaryModel(t *testing.T) {
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
 		model = tm.FinalModel(t).(*summaryModel)
-		assert.Equal(t, summaryResult(resultConfirmed), model.result)
+		assert.Equal(t, summaryResult(resultConfirmed), model.Result)
 	}
 
 	t.Run("View: existing options", func(t *testing.T) {
