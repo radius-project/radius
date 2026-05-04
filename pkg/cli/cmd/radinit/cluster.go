@@ -21,10 +21,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-const (
-	selectClusterPrompt = common.SelectClusterPrompt
-)
-
 func (r *Runner) enterClusterOptions(options *initOptions) error {
 	result, err := common.EnterClusterOptions(r.KubernetesInterface, r.HelmInterface, r.Prompter, r.Full)
 	if err != nil {

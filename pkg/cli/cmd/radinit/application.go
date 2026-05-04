@@ -20,11 +20,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
-const (
-	confirmSetupApplicationPrompt = common.ConfirmSetupApplicationPrompt
-	enterApplicationNamePrompt    = common.EnterApplicationNamePrompt
-)
-
 func (r *Runner) enterApplicationOptions(options *initOptions) error {
 	scaffold, name, err := common.EnterApplicationOptions(r.Prompter)
 	if err != nil {
