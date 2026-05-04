@@ -46,9 +46,9 @@ func Test_summaryModel(t *testing.T) {
 		return normalized
 	}
 
-	resultTest := func(t *testing.T, expected summaryResult, key tea.KeyType) {
+	resultTest := func(t *testing.T, expected common.SummaryResult, key tea.KeyType) {
 		options := initOptions{}
-		model := &summaryModel{
+		model := &common.SummaryModel{
 			Options: toDisplayOptions(&options),
 		}
 		tm := teatest.NewTestModel(t, model)
@@ -67,24 +67,24 @@ func Test_summaryModel(t *testing.T) {
 		// FinalModel only returns once the program has finished running or when it times out.
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
-		model = tm.FinalModel(t).(*summaryModel)
+		model = tm.FinalModel(t).(*common.SummaryModel)
 		require.Equal(t, expected, model.Result)
 	}
 
 	t.Run("Result: Confirm", func(t *testing.T) {
-		resultTest(t, resultConfirmed, tea.KeyEnter)
+		resultTest(t, common.ResultConfirmed, tea.KeyEnter)
 	})
 
 	t.Run("Result: Cancel", func(t *testing.T) {
-		resultTest(t, resultCanceled, tea.KeyEscape)
+		resultTest(t, common.ResultCanceled, tea.KeyEscape)
 	})
 
 	t.Run("Result: Quit", func(t *testing.T) {
-		resultTest(t, resultQuit, tea.KeyCtrlC)
+		resultTest(t, common.ResultQuit, tea.KeyCtrlC)
 	})
 
 	viewTest := func(t *testing.T, options initOptions, expected string) {
-		model := &summaryModel{
+		model := &common.SummaryModel{
 			Options: toDisplayOptions(&options),
 		}
 		tm := teatest.NewTestModel(t, model)
@@ -104,8 +104,8 @@ func Test_summaryModel(t *testing.T) {
 		// FinalModel only returns once the program has finished running or when it times out.
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
-		model = tm.FinalModel(t).(*summaryModel)
-		assert.Equal(t, summaryResult(resultConfirmed), model.Result)
+		model = tm.FinalModel(t).(*common.SummaryModel)
+		assert.Equal(t, common.SummaryResult(common.ResultConfirmed), model.Result)
 	}
 
 	t.Run("View: existing options", func(t *testing.T) {

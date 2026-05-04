@@ -130,7 +130,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -161,7 +161,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -197,7 +197,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -228,7 +228,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -259,7 +259,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -294,7 +294,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -329,7 +329,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -364,7 +364,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -399,7 +399,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -432,7 +432,7 @@ func Test_Validate(t *testing.T) {
 				setScaffoldApplicationPromptYes(mocks.Prompter)
 				setApplicationNamePrompt(mocks.Prompter, "valid")
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -650,7 +650,7 @@ func Test_Validate(t *testing.T) {
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, resultConfirmed)
+				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
 		{
@@ -1416,10 +1416,10 @@ func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, clien
 	setAzureWorkloadIdentityTenantIDPrompt(prompter, provider.WorkloadIdentity.TenantID)
 }
 
-func setConfirmOption(prompter *prompt.MockInterface, choice summaryResult) {
+func setConfirmOption(prompter *prompt.MockInterface, choice common.SummaryResult) {
 	prompter.EXPECT().
 		RunProgram(gomock.Any()).
-		Return(&summaryModel{Result: choice}, nil).
+		Return(&common.SummaryModel{Result: choice}, nil).
 		Times(1)
 }
 
@@ -1428,7 +1428,7 @@ func setProgressHandler(prompter *prompt.MockInterface) {
 		RunProgram(gomock.Any()).
 		DoAndReturn(func(program *tea.Program) (tea.Model, error) {
 			program.Kill() // Quit the program immediately
-			return &progressModel{}, nil
+			return &common.ProgressModel{}, nil
 		}).
 		Times(1)
 }

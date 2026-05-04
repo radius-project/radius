@@ -22,21 +22,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
-// Type aliases that let the rest of the radinit package keep using its
-// existing lower-case names. The implementations live in the common package.
-type (
-	progressMsg   = common.ProgressMsg
-	summaryModel  = common.SummaryModel
-	progressModel = common.ProgressModel
-	summaryResult = common.SummaryResult
-)
-
-const (
-	resultConfirmed = common.ResultConfirmed
-	resultCanceled  = common.ResultCanceled
-	resultQuit      = common.ResultQuit
-)
-
 // confirmOptions shows a summary of the user's selections and prompts for confirmation.
 func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool, error) {
 	return common.ConfirmOptions(ctx, r.Prompter, toDisplayOptions(options))
@@ -45,7 +30,7 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 // showProgress shows an updating progress display while the user's selections are being applied.
 //
 // This function should be called from a goroutine while installation proceeds in the background.
-func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
+func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan common.ProgressMsg) error {
 	return common.ShowProgress(ctx, r.Prompter, toDisplayOptions(options), progressChan)
 }
 

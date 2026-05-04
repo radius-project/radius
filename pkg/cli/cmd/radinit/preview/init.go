@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -189,10 +190,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
 	// Use this channel to send progress updates to the UI.
-	progressChan := make(chan progressMsg)
+	progressChan := make(chan common.ProgressMsg)
 	defer close(progressChan)
 	progressCompleteChan := make(chan error)
-	progress := progressMsg{}
+	progress := common.ProgressMsg{}
 
 	go func() {
 		// Show dynamic UI.
