@@ -3,7 +3,25 @@
 
 This plan describes **how** to deliver the capabilities defined in [agent-ex-features.md](agent-ex-features.md).
 
-The plan has one north star: **a single, durable knowledge base that humans read directly and every supported agent (GitHub Copilot in VS Code, GitHub Copilot CLI, GitHub Copilot Cloud Agent, and Claude Code) can also read.** Tool-specific UX layers are thin conveniences that link back to that knowledge base. We never hide a capability behind a single tool, and adding support for a new tool is itself a documented capability (see [features.md, Section 5.3](agent-ex-features.md#53-add-a-new-capability-to-the-agent-ex-system)).
+The plan has one north star: **a single, durable knowledge base that humans read directly and every supported agent (GitHub Copilot in VS Code, GitHub Copilot CLI, GitHub Copilot Cloud Agent, and Claude Code) can also read.** Tool-specific UX layers are thin conveniences that link back to that knowledge base. We never hide a capability behind a single tool, and adding support for a new tool is itself a documented capability (see [agent-ex-features.md, Section 5.3](agent-ex-features.md#53-add-a-new-capability-to-the-agent-ex-system)).
+
+---
+
+## Summary
+
+The plan, in order:
+
+1. [**Phase 0 — Meta-tooling**](#phase-0--meta-tooling-foundation). Build the factory first: templates, naming conventions, authoring skills, an "add a capability" agent mode, docs-drift code-review instructions.
+2. [**Phase 1 — `AGENTS.md`**](#phase-1--single-entry-point-for-every-agent). One entry point per repo. `.github/copilot-instructions.md` is a symlink to it.
+3. [**Phase 2 — Cloud Agent bootstrap**](#phase-2--cloud-agent-bootstrap). `copilot-setup-steps.yml` + shared dev-container post-create script.
+4. [**Phase 3 — Contributing docs**](#phase-3--contributing-docs) · [**Phase 4 — Architecture docs**](#phase-4--architecture-docs-grounded-in-code) · [**Phase 5 — Coding instructions**](#phase-5--coding-instructions-project-specific-only). Run in parallel. Audit, fill gaps, trim to project-specific only.
+5. [**Phase 6 — Per-workflow conveniences**](#phase-6--per-workflow-copilot-conveniences). Skills, prompts, custom agents — only where justified.
+6. [**Phase 7 — Continuous improvement**](#phase-7--continuous-improvement-loop). Weekly log-signal analysis + weekly docs-drift review.
+
+Cross-cutting:
+
+- [**Multi-repo rollout**](#4-multi-repo-rollout): `radius/` lands each phase first; satellites follow with a slimmer version.
+- [**CI gates**](#6-ci-gates-deterministic-run-on-every-pr): deterministic only (size budgets, symlink, link check, `actionlint`, capability-index). Docs drift is not a blocking gate.
 
 ---
 
@@ -18,7 +36,7 @@ The four supported AI tools read different files. The plan must work for all of 
 | `CONTRIBUTING.md`, `docs/**` (linked from above) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `.github/instructions/*.instructions.md` (path-scoped instructions) | ✅ | ✅ | ✅ | — | ✅ | via `.claude/rules/` |
 | `.github/skills/*/SKILL.md` (Agent Skills open standard) | ✅ | ✅ | ✅ | — | — | via `.claude/skills/` |
-| `.github/agents/*.md` (custom agents) | ✅ | ✅ | ✅ | — | — | via `.claude/agents/` |
+| `.github/agents/*.agent.md` (custom agents) | ✅ | ✅ | ✅ | — | — | via `.claude/agents/` |
 | `.github/prompts/*.prompt.md` | ✅ | — | — | — | — | — |
 | `copilot-setup-steps.yml` | — | ✅ | — | — | — | — |
 
@@ -26,7 +44,7 @@ Sources:
 
 - GitHub's [Support for different types of custom instructions](https://docs.github.com/en/copilot/reference/custom-instructions-support).
 - GitHub's [About agent skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) — the Agent Skills open standard supports `.github/skills`, `.claude/skills`, or `.agents/skills` and works with Copilot Cloud Agent, Copilot CLI, and agent mode in VS Code.
-- GitHub's [About custom agents](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-custom-agents) — custom agents at `.github/agents/<name>.md` work with Copilot Cloud Agent, Copilot CLI, and VS Code.
+- GitHub's [About custom agents](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-custom-agents) — custom agents at `.github/agents/<name>.agent.md` work with Copilot Cloud Agent, Copilot CLI, and VS Code.
 - Anthropic's [Create custom subagents](https://code.claude.com/docs/en/sub-agents) — Claude Code custom agents ("subagents") live at `.claude/agents/<name>.md`. Same Markdown-with-YAML-frontmatter shape as Copilot's, but with partially incompatible frontmatter fields, so a symlink doesn't work.
 - Anthropic's [How Claude remembers your project](https://code.claude.com/docs/en/memory) — Claude Code falls back to `AGENTS.md` when no `CLAUDE.md` is present.
 
@@ -35,7 +53,7 @@ Sources:
 - Repo-wide guidance lives **once** in `AGENTS.md`. `.github/copilot-instructions.md` is a real OS symlink to it so the entire Copilot family (including the GitHub.com surfaces) resolves to the same content; Claude Code reads `AGENTS.md` via fallback.
 - Path-scoped instructions, skills, and custom agents are read by every Copilot agent surface (VS Code, Cloud Agent, CLI). Claude Code has its own equivalents at parallel paths (`.claude/rules/`, `.claude/skills/`, `.claude/agents/`) with partially incompatible frontmatter, so symlinks don't work. We treat the `.github/...` versions as canonical for our Copilot-first workflow and defer the Claude mirrors until we adopt each surface broadly enough to justify a generator.
 - Prompts remain VS Code-only chrome.
-- Adding support for a new AI tool follows the [features.md, Section 5.3](agent-ex-features.md#53-add-a-new-capability-to-the-agent-ex-system) "add a capability" workflow.
+- Adding support for a new AI tool follows the [agent-ex-features.md, Section 5.3](agent-ex-features.md#53-add-a-new-capability-to-the-agent-ex-system) "add a capability" workflow.
 
 ---
 
@@ -45,7 +63,7 @@ A single rule governs every file we add:
 
 > **Capability lives in docs. Tool-specific UX is just a wrapper. Wrappers link to docs.**
 
-And a corollary that governs the [features list](agent-ex-features.md):
+And a corollary that governs the [agent-ex-features.md capability list](agent-ex-features.md):
 
 > **Every leaf capability is backed by one primary contributor doc under `CONTRIBUTING.md` or `docs/contributing/`.** That doc is the contributor's entry point for the capability; it may link out to architecture docs or sibling contributor docs for depth. A skill, prompt, or custom agent is optional; the primary doc is not. Parent (umbrella) capabilities are the union of their sub-capability rows. The mapping lives in the capability index in `docs/contributing/README.md` (built in Phase 3).
 
@@ -65,7 +83,7 @@ Concretely:
 
 ## 3. Phases
 
-Each phase unlocks visible capability and ships with a verification step. Phase 0 builds the meta-tooling that every later phase uses (and that capability #5 in [features.md](agent-ex-features.md) calls out as foundational: the system maintains itself). Phase 1 uses Phase 0's `AGENTS.md` template; Phase 2 is independent of Phase 0 and could even run first. Phases 3, 4, and 5 each depend only on Phase 0 and can run concurrently. Phase 6 depends on Phase 3 (so skills, prompts, and custom agents have backing docs to link to). Phase 7 depends on 3–6 living long enough to generate signal.
+Each phase unlocks visible capability and ships with a verification step. Phase 0 builds the meta-tooling that every later phase uses (and that capability #5 in [agent-ex-features.md](agent-ex-features.md) calls out as foundational: the system maintains itself). Phase 1 uses Phase 0's `AGENTS.md` template; Phase 2 is independent of Phase 0 and could even run first. Phases 3, 4, and 5 each depend only on Phase 0 and can run concurrently. Phase 6 depends on Phase 3 (so skills, prompts, and custom agents have backing docs to link to). Phase 7 depends on 3–6 living long enough to generate signal.
 
 All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contrib/`, `bicep-types-aws/`) move through each phase in parallel; the work in satellite repos is smaller because there is less existing surface area.
 
@@ -75,12 +93,12 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 **Unlocks**: A working factory for everything that follows. Templates, conventions, code-review instructions that flag missing doc updates, and the agents that draft new docs and add new capabilities all exist before the rest of the system is built. Every later artifact — including `AGENTS.md` itself — is produced through the meta-tooling rather than reverse-engineered into shape.
 
-**Why first**: this is the embodiment of the "system maintains itself" principle. The conventions and templates are cheap to write (just Markdown), they bootstrap from existing well-formed examples in `radius/` (e.g., [docs/contributing/contributing-code/running-controlplane-locally.md](../../docs/contributing/contributing-code/running-controlplane-locally.md), [docs/architecture/ucp.md](../../docs/architecture/ucp.md)), and they make every later phase consistent. Catching drift from day one means the freshly cleaned docs from Phase 3 cannot rot silently while the rest of the plan executes.
+**Why first**: this is the embodiment of the "system maintains itself" principle. The conventions and templates are cheap to write (just Markdown), they bootstrap from existing well-formed examples in `radius/` (e.g., [docs/contributing/contributing-code/contributing-code-control-plane/running-controlplane-locally.md](../../docs/contributing/contributing-code/contributing-code-control-plane/running-controlplane-locally.md), [docs/architecture/ucp.md](../../docs/architecture/ucp.md)), and they make every later phase consistent. Catching drift from day one means the freshly cleaned docs from Phase 3 cannot rot silently while the rest of the plan executes.
 
 **Deliverables (in `radius/` only; satellite repos pick up each Phase 0 artifact when they reach the phase that needs it: the `AGENTS.md` template in Phase 1, the contributing- and architecture-doc format templates and the capability-index pattern in Phase 3, the docs-drift addition to `code-review.instructions.md` in Phase 5, and any skills or custom agents that prove useful in Phase 6)**:
 
 - **Convention and template docs** under `docs/contributing/`:
-  - `contributing-agent-assets.md` — file-strategy rule ([Section 2](#2-file-strategy-the-rule)), file-size budgets, CI gates ([Section 6](#6-ci-gates-deterministic-run-on-every-pr)), naming conventions ([Section 5](#5-naming-conventions)), and templates for `AGENTS.md`, instructions, skills, prompts, and agent modes.
+  - `contributing-agent-assets.md` — file-strategy rule ([Section 2](#2-file-strategy)), file-size budgets, CI gates ([Section 6](#6-ci-gates-deterministic-run-on-every-pr)), naming conventions ([Section 5](#5-naming-conventions)), and templates for `AGENTS.md`, instructions, skills, prompts, and agent modes.
   - `authoring-contributing-docs.md` — standard format for contributing docs (Purpose → Prerequisites → Steps → Verification → Troubleshooting) and architecture docs (Entry points → Packages → Flow → Change-safety), with one annotated example of each.
   - `extending-agent-ex.md` — the "add a new capability" decision tree (doc only? instruction? skill? prompt? custom agent?), the live files to update (the primary contributing doc, the capability index in `docs/contributing/README.md`, `AGENTS.md` if a new top-level link is needed, and any optional wrappers), validation steps, and a repo-onboarding checklist. The planning docs `agent-ex-features.md` and `agent-ex-plan.md` are not in this list — they describe the original buildout and are not edited by ongoing capability work.
 - **Skills and a custom agent** that automate the above (Copilot agent surfaces — VS Code, Cloud Agent, CLI; the docs above let any other tool do the same thing manually):
@@ -148,7 +166,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 - Audit every doc under `CONTRIBUTING.md` and `docs/contributing/`. Every doc follows one format: **Purpose → Prerequisites → Steps → Verification → Troubleshooting**.
 - Verify each doc against current code: build commands, file paths, command flags.
-- Fill the gaps surfaced by the [features list](agent-ex-features.md):
+- Fill the gaps surfaced by the [agent-ex-features.md capability list](agent-ex-features.md):
   - `radius/`: TypeSpec → Swagger → Go pipeline; full test matrix; local dev environment setup.
   - `dashboard/`: prerequisites, build, test, plugin development.
   - `docs/`: local contributor guide (currently external link only).
@@ -172,8 +190,8 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 **Deliverables**:
 
-- Inventory every major subsystem per repo (control plane, UCP, dynamic RP, deployment engine, CLI, dashboard plugins, AWS type pipeline, recipes, etc.).
-- Each subsystem has a doc under `docs/architecture/<name>.md` with:
+- **Subsystem audit (first step, gates the rest of the phase)**: inventory every major subsystem per repo (control plane, UCP, dynamic RP, deployment engine, CLI, dashboard plugins, AWS type pipeline, recipes, etc.) and compare against the existing `docs/architecture/` contents. The audit produces the concrete list of architecture docs to create, expand, or leave alone — without it, the rest of Phase 4 has no defined scope. Capture the inventory in the PR that opens Phase 4.
+- Each subsystem identified by the audit gets a doc under `docs/architecture/<name>.md` with:
   - Entry points (file + symbol)
   - Key packages and their responsibilities
   - One representative end-to-end flow (sequence diagram in Mermaid)
@@ -214,7 +232,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 **Rules**:
 
-- A new skill, prompt, or custom agent is only justified if it satisfies at least two of: project-specific, multi-step/non-obvious, frequently repeated, error-prone without guidance. Matches Design Principle 6 in [features.md](agent-ex-features.md#design-principles).
+- A new skill, prompt, or custom agent is only justified if it satisfies at least two of: project-specific, multi-step/non-obvious, frequently repeated, error-prone without guidance. Matches Design Principle 6 in [agent-ex-features.md](agent-ex-features.md#design-principles).
 - Every skill/prompt/agent file links to its backing contributing or architecture doc, and contains no information that isn't also in that doc.
 
 **Deliverables**:
@@ -225,7 +243,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
   - Add `radius-run-controlplane` and `radius-debug-components` if the Phase 3 audit confirms the docs alone aren't sufficient.
 - `resource-types-contrib/`:
   - `radius-contrib-add-resource-type` skill (YAML + recipe scaffold).
-  - `radius-contrib-add-recipe` prompt.
+  - `radius.contrib.add-recipe` prompt.
   - `radius-resource-type-contributor` agent mode.
 - `dashboard/`: `radius-dashboard-developer` agent mode. No skills until friction is observed.
 - `docs/`: `radius-docs-contributor` agent mode. No skills until friction is observed.
@@ -286,17 +304,19 @@ Each phase runs in all five repos in parallel. The radius/ repo is the "referenc
 
 ## 5. Naming conventions
 
-Same `radius-` prefix everywhere so chat completions group cleanly and don't collide with extensions.
+Skills and agents use a `radius-` prefix; prompts use a `radius.` prefix (matching the repo's existing prompts). The shared `radius` namespace keeps chat completions grouped cleanly and avoids collisions with extensions.
 
 | Artifact | Pattern | Example | Appears in chat as |
 |---|---|---|---|
-| Skill | `radius-<repo>-<verb>-<noun>/SKILL.md` | `radius-core-schema-changes/` | listed in skill picker |
+| Skill | `radius-<verb>-<noun>/SKILL.md` (add `<repo>` segment when ambiguous across repos) | `radius-build-cli/`, `radius-contrib-add-resource-type/` | listed in skill picker |
 | Instruction | `<technology>.instructions.md` | `typespec.instructions.md` | auto-applied |
 | Agent | `radius-<name>.agent.md` | `radius-resource-type-contributor.agent.md` | `@radius-resource-type-contributor` |
-| Prompt | `radius-<repo>-<action>.prompt.md` | `radius-contrib-add-resource-type.prompt.md` | `/radius-contrib-add-resource-type` |
+| Prompt | `radius.<action>.prompt.md` (add `<repo>` segment when ambiguous across repos) | `radius.create-pr.prompt.md`, `radius.contrib.add-recipe.prompt.md` | `/radius.create-pr`, `/radius.contrib.add-recipe` |
 | Lifecycle workflow | `skill-lifecycle-review.yml` | `.github/workflows/skill-lifecycle-review.yml` | scheduled |
 
-Repo short names: `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
+The `<repo>` segment is optional. Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (e.g., `radius-contrib-add-resource-type` lives in `resource-types-contrib/` and disambiguates from any future `radius-add-resource-type` work in `radius/`). Existing skills (`radius-build-cli`, `radius-build-images`, `radius-install-custom`, `architecture-documenter`, `contributing-docs-updater`) and prompts (`radius.create-pr`, `radius.code-review`) keep their current names; no rename migration is planned.
+
+Repo short names (used when the `<repo>` segment is needed): `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
 
 ---
 
@@ -319,10 +339,10 @@ Docs drift is **not** a blocking CI gate. It is handled in two places: (1) Phase
 
 ## 7. Authoring and extension guides
 
-These docs are the home of all meta-tooling. They are created in **Phase 0** so that every later phase — including Phase 1's `AGENTS.md` — uses them rather than reinventing conventions. They are what makes the agent-ex system extensible by any contributor and what gives concrete shape to the "the system maintains itself" principle in [features.md](agent-ex-features.md).
+These docs are the home of all meta-tooling. They are created in **Phase 0** so that every later phase — including Phase 1's `AGENTS.md` — uses them rather than reinventing conventions. They are what makes the agent-ex system extensible by any contributor and what gives concrete shape to the "the system maintains itself" principle in [agent-ex-features.md](agent-ex-features.md).
 
 - **`docs/contributing/contributing-agent-assets.md`** — the conventions doc:
-  - The file-strategy rule from [Section 2](#2-file-strategy-the-rule).
+  - The file-strategy rule from [Section 2](#2-file-strategy).
   - File-size budgets and the CI gates from [Section 6](#6-ci-gates-deterministic-run-on-every-pr).
   - Naming conventions from [Section 5](#5-naming-conventions).
   - Templates for `AGENTS.md`, instructions, skills, prompts, and agents.

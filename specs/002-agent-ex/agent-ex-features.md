@@ -36,10 +36,10 @@ This initiative covers these Radius repositories:
 - [ ] Contributing docs are accurate, current, and follow a single template
 - [ ] Architecture docs cover every major subsystem and are grounded in real code references
 - [ ] Cloud Agent can bootstrap and work in any repo out of the box (`copilot-setup-steps.yml`)
-- [ ] Every leaf capability in the table above maps to exactly one primary backing contributor doc, surfaced through a capability index in `docs/contributing/README.md`
+- [ ] Every leaf capability in the [Capabilities](#capabilities) table maps to exactly one primary backing contributor doc, surfaced through a capability index in `docs/contributing/README.md`
 - [ ] Every skill, custom agent, and VS Code prompt links to a backing doc that any other tool can read
 - [ ] Any contributor can ask an agent to draft a new contributing or architecture doc and get a usable first draft
-- [ ] Code changes that affect documented workflows are flagged by CI before merge so docs don't drift
+- [ ] Code changes that affect documented workflows are flagged in code review (Copilot Code Review and the docs-drift code-review instructions) so docs don't drift; any drift that slips through is caught by the scheduled `docs-drift-review.yml` workflow
 - [ ] Adding a new capability to the agent-ex system itself is a documented, contributor-runnable workflow
 - [ ] The skill lifecycle agent detects and recommends improvements from real usage data
 
@@ -78,7 +78,7 @@ An agent can pick up an issue, build the project, implement a change, test it, a
 
 #### 1.1 Set up a development environment
 
-An agent (local or cloud) can bootstrap a working environment in any Radius repo without trial-and-error tool installation. Dev containers and [`copilot-setup-steps.yml`](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/customize-the-agent-environment#customizing-copilots-development-environment-with-copilot-setup-steps) will give agents the same turnkey setup humans get. These do not exist yet — see Phase 0 in [agent-ex-plan.md](agent-ex-plan.md).
+An agent (local or cloud) can bootstrap a working environment in any Radius repo without trial-and-error tool installation. Dev containers and [`copilot-setup-steps.yml`](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/customize-the-agent-environment#customizing-copilots-development-environment-with-copilot-setup-steps) will give agents the same turnkey setup humans get. These do not exist yet — see Phase 2 in [agent-ex-plan.md](agent-ex-plan.md).
 
 **Validation**: "Build this project and run the unit tests." — the agent succeeds without manual intervention in any repo.
 
