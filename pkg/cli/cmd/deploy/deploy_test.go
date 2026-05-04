@@ -17,11 +17,17 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -1565,4 +1571,177 @@ func Test_ConfigureProviders(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_addDeploymentErrorContext(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		template       map[string]any
+		expectWrapped  bool
+		expectContains string
+	}{
+		{
+			name: "Non-Azure error is returned as-is",
+			err:  fmt.Errorf("connection refused"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Azure error with only Radius types is wrapped",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped:  true,
+			expectContains: "Deployment failed (incorrect or unsupported API version)",
+		},
+		{
+			name: "Non-Azure provider-not-configured error is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider kubernetes is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Exact deployment engine error with Azure types is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type microsoft.storage/storageAccounts"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Exact deployment engine error with mixed types is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+					},
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name:          "Exact deployment engine error with empty template is returned as-is",
+			err:           v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
+			template:      map[string]any{},
+			expectWrapped: false,
+		},
+		{
+			name: "Response error with deployment engine payload is wrapped",
+			err: &azcore.ResponseError{
+				ErrorCode:  v1.CodeInvalid,
+				StatusCode: http.StatusBadRequest,
+				RawResponse: &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body: io.NopCloser(bytes.NewReader([]byte(
+						`{"error":{"code":"BadRequest","message":"provider azure is not configured. Cannot support resource type radius.core/applications"}}`,
+					))),
+				},
+			},
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped:  true,
+			expectContains: unsupportedAPIDocsURL,
+		},
+		{
+			name: "Response error with non-Azure provider-not-configured payload is returned as-is",
+			err: &azcore.ResponseError{
+				ErrorCode:  v1.CodeInvalid,
+				StatusCode: http.StatusBadRequest,
+				RawResponse: &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body: io.NopCloser(bytes.NewReader([]byte(
+						`{"error":{"code":"BadRequest","message":"provider kubernetes is not configured. Cannot support resource type applications.core/containers"}}`,
+					))),
+				},
+			},
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := addDeploymentErrorContext(tt.err, tt.template)
+			if tt.expectWrapped {
+				require.NotEqual(t, tt.err, result)
+				require.Contains(t, result.Error(), tt.expectContains)
+				// The original error should be preserved as the cause
+				require.Contains(t, result.Error(), strings.TrimSpace(tt.err.Error()))
+			} else {
+				require.Equal(t, tt.err, result)
+			}
+		})
+	}
+}
+
+type trackingReadCloser struct {
+	*bytes.Reader
+	closed bool
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closed = true
+	return nil
+}
+
+func Test_extractDeploymentEngineErrorDetails_closesAndResetsBody(t *testing.T) {
+	body := []byte(`{"error":{"code":"BadRequest","message":"provider azure is not configured. Cannot support resource type radius.core/applications"}}`)
+	tracker := &trackingReadCloser{Reader: bytes.NewReader(body)}
+	responseErr := &azcore.ResponseError{
+		ErrorCode:  v1.CodeInvalid,
+		StatusCode: http.StatusBadRequest,
+		RawResponse: &http.Response{
+			StatusCode: http.StatusBadRequest,
+			Body:       tracker,
+		},
+	}
+
+	details, ok := extractDeploymentEngineErrorDetails(responseErr)
+
+	require.True(t, ok)
+	require.NotNil(t, details)
+	require.Equal(t, v1.CodeInvalid, details.Code)
+	require.Equal(t, "provider azure is not configured. Cannot support resource type radius.core/applications", details.Message)
+	require.True(t, tracker.closed)
+
+	resetBody, readErr := io.ReadAll(responseErr.RawResponse.Body)
+	require.NoError(t, readErr)
+	require.Equal(t, body, resetBody)
 }
