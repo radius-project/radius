@@ -56,7 +56,7 @@ Interactively install the Radius control-plane and setup a Radius.Core environme
 
 If an environment already exists, 'rad init --preview' will prompt the user to use the existing environment or create a new one. 
 
-By default, 'rad init --preview' will optimize for a developer-focused environment with an environment named "default" and a default recipe pack that support prototyping, development and testing kubernetes resources. These environments are great for building and testing your application.
+By default, 'rad init --preview' will optimize for a developer-focused environment with an environment named "default" and a default recipe pack that includes recipes to support prototyping, development and testing in Kubernetes. These environments are great for building and testing your application.
 
 Specifying the '--full' flag will cause 'rad init --preview --full' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
 `,
