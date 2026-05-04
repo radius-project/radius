@@ -18,7 +18,6 @@ package radinit
 
 import (
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func (r *Runner) enterClusterOptions(options *initOptions) error {
@@ -31,13 +30,4 @@ func (r *Runner) enterClusterOptions(options *initOptions) error {
 	options.Cluster.Context = result.Context
 	options.Cluster.Version = result.Version
 	return nil
-}
-
-func (r *Runner) selectCluster() (string, error) {
-	return common.SelectCluster(r.KubernetesInterface, r.Prompter, r.Full)
-}
-
-// buildClusterList delegates to common.BuildClusterList.
-func (r *Runner) buildClusterList(config *api.Config) []string {
-	return common.BuildClusterList(config)
 }

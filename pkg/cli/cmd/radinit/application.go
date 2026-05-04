@@ -29,8 +29,3 @@ func (r *Runner) enterApplicationOptions(options *initOptions) error {
 	options.Application.Name = name
 	return nil
 }
-
-// enterApplicationName delegates to common.EnterApplicationName.
-func (r *Runner) enterApplicationName(chooseDefault func() (string, error)) (string, error) {
-	return common.EnterApplicationName(r.Prompter, chooseDefault)
-}
