@@ -46,10 +46,6 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 }
 ` // Trailing newline intentional.
 
-	radYamlTemplate = `workspace:
-  application: %q
-` // Trailing newline intentional.
-
 	bicepConfigTemplate = `{
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
@@ -61,24 +57,12 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 }`
 )
 
-// ScaffoldApplication creates a working sample application in the provided directory
-// along with configuration for the application name.
-func ScaffoldApplication(directory string, name string) error {
-	// Create .rad in the working directory
-	err := os.Mkdir(filepath.Join(directory, ".rad"), 0755)
-	if os.IsExist(err) {
-		// This is fine
-	} else if err != nil {
-		return err
-	}
-
+// ScaffoldApplication creates a working sample application in the provided directory.
+func ScaffoldApplication(directory string) error {
 	// We NEVER overwrite app.bicep or the bicepconfig.json if it exists. We assume the user might have changed it, and don't
 	// want them to lose their content.
-	//
-	// On the other hand, we ALWAYS overwrite rad.yaml if it exists. We assume that the reason why
-	// the user is running `rad init` is to populate it.
 	appBicepFilepath := filepath.Join(directory, "app.bicep")
-	_, err = os.Stat(appBicepFilepath)
+	_, err := os.Stat(appBicepFilepath)
 	if os.IsNotExist(err) {
 		err = os.WriteFile(appBicepFilepath, []byte(appBicepTemplate), 0644)
 		if err != nil {
@@ -96,12 +80,6 @@ func ScaffoldApplication(directory string, name string) error {
 			return err
 		}
 	} else if err != nil {
-		return err
-	}
-
-	radYamlFilepath := filepath.Join(directory, ".rad", "rad.yaml")
-	err = os.WriteFile(radYamlFilepath, fmt.Appendf(nil, radYamlTemplate, name), 0644)
-	if err != nil {
 		return err
 	}
 

@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	deploycmd "github.com/radius-project/radius/pkg/cli/cmd/deploy"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -82,17 +81,12 @@ func Test_Validate(t *testing.T) {
 		},
 
 		{
-			Name:          "rad run - app set by directory config",
+			Name:          "rad run - app is required when not set by flag - invalid",
 			Input:         []string{"app.bicep", "-e", "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod"},
-			ExpectedValid: true,
+			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
-				DirectoryConfig: &config.DirectoryConfig{
-					Workspace: config.DirectoryWorkspaceConfig{
-						Application: "my-app",
-					},
-				},
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().

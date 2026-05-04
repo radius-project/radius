@@ -1,26 +1,57 @@
+# Code Owners for github.com/radius-project/radius
+# Generated from template - do not edit directly
+
 # General maintainers and approvers for the entire repository
 * @radius-project/maintainers-radius @radius-project/approvers-radius
 
-# Ownership for dependency-related files. Allow the on-call team to approve dependency version updates (e.g., from Dependabot, Snyk PRs)
-# Files in the root directory
-**/go.mod @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-**/go.sum @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Dependency files - on-call can also approve these (Dependabot, etc.)
 
-# Devcontainer files
-.devcontainer/**    @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Node.js
+**/package.json           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/package-lock.json      @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/pnpm-lock.yaml         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/yarn.lock              @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.nvmrc                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.npmrc                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.node-version          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/tsconfig.json          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/tsconfig.*.json        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/*.tsconfig.json        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
-# Allows on-call members to respond to changes in .github
-.github/workflows/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-.github/workflows/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Go
+**/go.mod                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.sum                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.work                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.work.sum            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.go-version            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
-# GitHub configs
-.github/*.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-.github/*.yml   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# .NET
+**/*.csproj               @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/*.sln                  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/nuget.config           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/global.json            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
-# Dockerfile
-test/*/Dockerfile          @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-deploy/images/*/Dockerfile @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-# node.js npm and pnpm configuration
-/.node-version   @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-**/package.json    @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
-**/pnpm-lock.yaml  @radius-project/on-call @radius-project/maintainers-radius @radius-project/approvers-radius
+# Python
+**/requirements.txt       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/pyproject.toml         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/uv.lock                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/poetry.lock            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Pipfile                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Pipfile.lock           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.python-version        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
+# Rust
+**/Cargo.toml             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Cargo.lock             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
+# Bicep
+**/bicepconfig.json       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
+# Container files
+**/Dockerfile             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/*.Dockerfile           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.devcontainer/*.json   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
+# GitHub workflows
+.github/workflows/*.yml   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+.github/workflows/*.yaml  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call

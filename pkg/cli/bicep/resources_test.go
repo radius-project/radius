@@ -302,3 +302,235 @@ func Test_ContainsEnvironmentResource(t *testing.T) {
 	}
 }
 
+func Test_ExtractResourceTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		template map[string]any
+		expected []ResourceTypeEntry
+	}{
+		{
+			name:     "Nil template",
+			template: nil,
+			expected: nil,
+		},
+		{
+			name:     "Empty template",
+			template: map[string]any{},
+			expected: nil,
+		},
+		{
+			name: "Template with no resources field",
+			template: map[string]any{
+				"parameters": map[string]any{},
+			},
+			expected: nil,
+		},
+		{
+			name: "Template with single resource",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2025-08-01-preview",
+						"name": "my-app",
+					},
+				},
+			},
+			expected: []ResourceTypeEntry{
+				{
+					FullType:   "Radius.Core/applications@2025-08-01-preview",
+					Type:       "Radius.Core/applications",
+					APIVersion: "2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Template with resource missing API version",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications",
+						"name": "my-app",
+					},
+				},
+			},
+			expected: []ResourceTypeEntry{
+				{
+					FullType:   "Radius.Core/applications",
+					Type:       "Radius.Core/applications",
+					APIVersion: "",
+				},
+			},
+		},
+		{
+			name: "Template with invalid resource format",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": "not a map",
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Template with resource missing type",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"name": "my-app",
+					},
+				},
+			},
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractResourceTypes(tt.template)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func Test_IsRadiusResourceType(t *testing.T) {
+	tests := []struct {
+		name         string
+		resourceType string
+		expected     bool
+	}{
+		{
+			name:         "Applications.Core type",
+			resourceType: "Applications.Core/applications",
+			expected:     true,
+		},
+		{
+			name:         "Radius.Core type",
+			resourceType: "Radius.Core/environments",
+			expected:     true,
+		},
+		{
+			name:         "Applications.Dapr type",
+			resourceType: "Applications.Dapr/pubSubBrokers",
+			expected:     true,
+		},
+		{
+			name:         "Applications wildcard namespace",
+			resourceType: "Applications.Networking/gateways",
+			expected:     true,
+		},
+		{
+			name:         "Applications.Datastores type",
+			resourceType: "Applications.Datastores/redisCaches",
+			expected:     true,
+		},
+		{
+			name:         "Applications.Messaging type",
+			resourceType: "Applications.Messaging/rabbitMQQueues",
+			expected:     true,
+		},
+		{
+			name:         "Case insensitive match",
+			resourceType: "applications.core/containers",
+			expected:     true,
+		},
+		{
+			name:         "Azure type",
+			resourceType: "Microsoft.Storage/storageAccounts",
+			expected:     false,
+		},
+		{
+			name:         "AWS type",
+			resourceType: "AWS.S3/Bucket",
+			expected:     false,
+		},
+		{
+			name:         "Empty string",
+			resourceType: "",
+			expected:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsRadiusResourceType(tt.resourceType)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func Test_HasOnlyRadiusResourceTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		template map[string]any
+		expected bool
+	}{
+		{
+			name:     "Nil template",
+			template: nil,
+			expected: false,
+		},
+		{
+			name: "Empty resources",
+			template: map[string]any{
+				"resources": map[string]any{},
+			},
+			expected: false,
+		},
+		{
+			name: "Only Radius types",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2025-08-01-preview",
+					},
+					"env": map[string]any{
+						"type": "Applications.Core/environments@2023-10-01-preview",
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Mixed Radius and Azure types",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+					},
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Only Azure types",
+			template: map[string]any{
+				"resources": map[string]any{
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Radius type with wrong API version",
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := HasOnlyRadiusResourceTypes(tt.template)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
