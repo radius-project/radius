@@ -96,13 +96,13 @@ func toTerraformrcDataModel(src *TerraformrcConfig) datamodel.TerraformrcConfig 
 			result.ProviderInstallation.NetworkMirror = &datamodel.TerraformProviderMirror{
 				URL:     to.String(src.ProviderInstallation.NetworkMirror.URL),
 				Include: to.StringArray(src.ProviderInstallation.NetworkMirror.Include),
-						Exclude: to.StringArray(src.ProviderInstallation.NetworkMirror.Exclude),
+				Exclude: to.StringArray(src.ProviderInstallation.NetworkMirror.Exclude),
 			}
 		}
 		if src.ProviderInstallation.Direct != nil {
 			result.ProviderInstallation.Direct = &datamodel.TerraformProviderDirect{
 				Include: to.StringArray(src.ProviderInstallation.Direct.Include),
-						Exclude: to.StringArray(src.ProviderInstallation.Direct.Exclude),
+				Exclude: to.StringArray(src.ProviderInstallation.Direct.Exclude),
 			}
 		}
 	}
