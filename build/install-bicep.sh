@@ -62,7 +62,6 @@ fi
 # Bicep CLI version. Pinned because Bicep v0.43+ tightened
 # ContainerRegistryClientFactory.ThrowIfRegistryNotTrusted to reject br:localhost:5000/... targets,
 # breaking publish-extension to local registries used by our CI and local dev workflows.
-# TODO: unpin once allowedUntrustedRegistries is configured in the test bicepconfig.json.
 BICEP_VER="v0.42.1"
 
 # Check if bicep binary already exists in the target location

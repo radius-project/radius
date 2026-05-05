@@ -89,7 +89,6 @@ env:
   RADIUS_QPS_AND_BURST: "800"
   # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
   # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
-  # TODO: unpin once allowedUntrustedRegistries is configured in the test bicepconfig.json.
   BICEP_VER: v0.42.1
 
 jobs:
