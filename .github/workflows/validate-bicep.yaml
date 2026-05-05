@@ -33,10 +33,10 @@ env:
   LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
-  # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
+  # Bicep CLI pinned: v0.43+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
   # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
   # TODO: unpin once allowedUntrustedRegistries is configured in the test bicepconfig.json.
-  BICEP_VER: v0.39.30
+  BICEP_VER: v0.42.1
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
