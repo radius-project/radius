@@ -163,8 +163,9 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 
 // BicepConfigProperties - Bicep configuration properties.
 type BicepConfigProperties struct {
-	// Registry authentication configuration for accessing private Bicep registries.
-	RegistryAuthentication *BicepRegistryAuthentication
+	// Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver
+	// looks up credentials by the host parsed from the recipe template path.
+	RegistryAuthentications map[string]*BicepRegistryAuthentication
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -224,7 +225,8 @@ type BicepConfigResourceUpdate struct {
 	Type *string
 }
 
-// BicepRegistryAuthentication - Authentication configuration for private Bicep registries.
+// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. When authenticationMethod
+// is BasicAuth, basicAuthSecretId is required; the controller rejects configs that omit it.
 type BicepRegistryAuthentication struct {
 	// The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.
 	AuthenticationMethod *BicepAuthenticationMethod
@@ -753,7 +755,10 @@ type TerraformProviderMirror struct {
 // TerraformrcConfig - Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config
 // for details.
 type TerraformrcConfig struct {
-	// Credentials for authenticating to private Terraform registries and module sources. Map of hostname to credential configuration.
+	// Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname
+	// to credential configuration. Rendered as native credentials "hostname" {}
+	// blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources;
+	// Git auth is a separate mechanism.
 	Credentials map[string]*TerraformCredentialConfig
 
 	// Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads.

@@ -55,11 +55,11 @@ model BicepConfigProperties {
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Registry authentication configuration for accessing private Bicep registries.")
-  registryAuthentication?: BicepRegistryAuthentication;
+  @doc("Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path.")
+  registryAuthentications?: Record<BicepRegistryAuthentication>;
 }
 
-@doc("Authentication configuration for private Bicep registries.")
+@doc("Authentication configuration for a single private Bicep registry. When `authenticationMethod` is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.")
 model BicepRegistryAuthentication {
   @doc("The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.")
   authenticationMethod?: BicepAuthenticationMethod;

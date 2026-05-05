@@ -42,8 +42,14 @@ func (src *BicepConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 		Properties: datamodel.BicepConfigResourceProperties{},
 	}
 
-	if src.Properties.RegistryAuthentication != nil {
-		converted.Properties.RegistryAuthentication = toBicepRegistryAuthDataModel(src.Properties.RegistryAuthentication)
+	if len(src.Properties.RegistryAuthentications) > 0 {
+		converted.Properties.RegistryAuthentications = make(map[string]datamodel.BicepRegistryAuthentication, len(src.Properties.RegistryAuthentications))
+		for host, auth := range src.Properties.RegistryAuthentications {
+			if auth == nil {
+				continue
+			}
+			converted.Properties.RegistryAuthentications[host] = toBicepRegistryAuthDataModel(auth)
+		}
 	}
 
 	if src.Properties.ReferencedBy != nil {
@@ -70,8 +76,12 @@ func (dst *BicepConfigResource) ConvertFrom(src v1.DataModelInterface) error {
 		ProvisioningState: fromProvisioningStateDataModel(bc.InternalMetadata.AsyncProvisioningState),
 	}
 
-	if bc.Properties.RegistryAuthentication != nil {
-		dst.Properties.RegistryAuthentication = fromBicepRegistryAuthDataModel(bc.Properties.RegistryAuthentication)
+	if len(bc.Properties.RegistryAuthentications) > 0 {
+		dst.Properties.RegistryAuthentications = make(map[string]*BicepRegistryAuthentication, len(bc.Properties.RegistryAuthentications))
+		for host, auth := range bc.Properties.RegistryAuthentications {
+			authCopy := auth
+			dst.Properties.RegistryAuthentications[host] = fromBicepRegistryAuthDataModel(&authCopy)
+		}
 	}
 
 	if len(bc.Properties.ReferencedBy) > 0 {
@@ -81,8 +91,8 @@ func (dst *BicepConfigResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toBicepRegistryAuthDataModel(src *BicepRegistryAuthentication) *datamodel.BicepRegistryAuthentication {
-	result := &datamodel.BicepRegistryAuthentication{
+func toBicepRegistryAuthDataModel(src *BicepRegistryAuthentication) datamodel.BicepRegistryAuthentication {
+	result := datamodel.BicepRegistryAuthentication{
 		BasicAuthSecretId: to.String(src.BasicAuthSecretID),
 		AzureWiClientId:   to.String(src.AzureWiClientID),
 		AzureWiTenantId:   to.String(src.AzureWiTenantID),

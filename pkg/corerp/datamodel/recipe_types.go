@@ -46,6 +46,15 @@ type TerraformConfigProperties struct {
 	// and points Terraform at it via TF_CLI_CONFIG_FILE. Populated only by the Radius.Core path; the legacy
 	// Applications.Core path leaves this nil for backward compatibility.
 	ProviderInstallation *TerraformProviderInstallation `json:"providerInstallation,omitempty"`
+
+	// Credentials maps registry hostname to credential configuration for HTTP-based
+	// Terraform registry auth (e.g. app.terraform.io). Each referenced secret store must
+	// expose a `token` key. The Terraform driver renders these as native
+	// `credentials "host" {}` blocks in the generated .terraformrc. Populated only by
+	// the Radius.Core path; the legacy Applications.Core path leaves this nil.
+	//
+	// The element type is declared in terraformconfig.go.
+	Credentials map[string]TerraformCredentialConfig `json:"credentials,omitempty"`
 }
 
 // BicepConfigProperties - Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe

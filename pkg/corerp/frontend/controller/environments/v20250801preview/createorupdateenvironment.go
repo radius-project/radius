@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -103,25 +104,15 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		return resp, err
 	}
 
-	// Validate referenced config resources exist.
+	// Validate referenced config resources exist and are of the correct type.
 	if newResource.Properties.TerraformConfig != "" {
-		tfID, parseErr := resources.Parse(newResource.Properties.TerraformConfig)
-		if parseErr != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid terraformConfig resource ID: %s", newResource.Properties.TerraformConfig)), nil
-		}
-		_, _, err = e.GetResource(ctx, tfID)
-		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Referenced terraformConfig resource %q does not exist.", newResource.Properties.TerraformConfig)), nil
+		if resp := validateConfigRef(ctx, e, newResource.Properties.TerraformConfig, datamodel.TerraformConfigResourceType, "terraformConfig"); resp != nil {
+			return resp, nil
 		}
 	}
 	if newResource.Properties.BicepConfig != "" {
-		bcID, parseErr := resources.Parse(newResource.Properties.BicepConfig)
-		if parseErr != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid bicepConfig resource ID: %s", newResource.Properties.BicepConfig)), nil
-		}
-		_, _, err = e.GetResource(ctx, bcID)
-		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Referenced bicepConfig resource %q does not exist.", newResource.Properties.BicepConfig)), nil
+		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepConfig, datamodel.BicepConfigResourceType, "bicepConfig"); resp != nil {
+			return resp, nil
 		}
 	}
 
@@ -170,4 +161,32 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) validateRecipePacks(ctx cont
 	}
 
 	return nil, nil
+}
+
+// validateConfigRef checks that the referenced resource ID parses, has the
+// expected resource type, and exists. It returns a populated rest.Response on
+// validation failure or nil on success. propertyName is the user-facing field
+// label used in error messages (e.g. "terraformConfig").
+//
+// Without the type check, any existing resource ID (a recipe pack, an
+// application, etc.) would silently pass and the loader would fail at recipe
+// execution time with a confusing error.
+func validateConfigRef(
+	ctx context.Context,
+	e *CreateOrUpdateEnvironmentv20250801preview,
+	resourceID string,
+	expectedType string,
+	propertyName string,
+) rest.Response {
+	id, parseErr := resources.Parse(resourceID)
+	if parseErr != nil {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Invalid %s resource ID: %s", propertyName, resourceID))
+	}
+	if !strings.EqualFold(id.Type(), expectedType) {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q has type %q; expected %q.", propertyName, resourceID, id.Type(), expectedType))
+	}
+	if _, _, err := e.GetResource(ctx, id); err != nil {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q does not exist.", propertyName, resourceID))
+	}
+	return nil
 }

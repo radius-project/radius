@@ -37,8 +37,10 @@ func (r *BicepConfig) ResourceTypeName() string {
 
 // BicepConfigResourceProperties represents the properties of the Bicep config resource.
 type BicepConfigResourceProperties struct {
-	// RegistryAuthentication holds authentication configuration for private Bicep registries.
-	RegistryAuthentication *BicepRegistryAuthentication `json:"registryAuthentication,omitempty"`
+	// RegistryAuthentications maps registry hostname (e.g. "corp.acr.io") to its
+	// authentication configuration. The Bicep driver looks up credentials by the
+	// host parsed from the recipe template path.
+	RegistryAuthentications map[string]BicepRegistryAuthentication `json:"registryAuthentications,omitempty"`
 
 	// ReferencedBy is a list of environment IDs that reference this config.
 	ReferencedBy []string `json:"referencedBy,omitempty"`

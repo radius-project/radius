@@ -204,16 +204,17 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 
 		tfProps := tfDM.(*datamodel.TerraformConfig).Properties
 
-		// Map terraformrc.credentials into the legacy Authentication.Git.PAT shape
-		// that the existing Terraform driver expects for private module source auth.
+		// Pass terraformrc.credentials through to the shared driver. The driver
+		// renders these as native `credentials "host" {}` blocks in the generated
+		// .terraformrc and resolves the `token` value from the referenced secret
+		// store at execution time. We deliberately do NOT bridge into the legacy
+		// `Authentication.Git.PAT` map here: that path is for git-based module
+		// source authentication (key=`pat`), a different mechanism than HTTP
+		// registry credentials (key=`token`).
 		if len(tfProps.Terraformrc.Credentials) > 0 {
-			config.RecipeConfig.Terraform.Authentication = datamodel.AuthConfig{
-				Git: datamodel.GitAuthConfig{
-					PAT: make(map[string]datamodel.SecretConfig),
-				},
-			}
+			config.RecipeConfig.Terraform.Credentials = make(map[string]datamodel.TerraformCredentialConfig, len(tfProps.Terraformrc.Credentials))
 			for host, cred := range tfProps.Terraformrc.Credentials {
-				config.RecipeConfig.Terraform.Authentication.Git.PAT[host] = datamodel.SecretConfig(cred)
+				config.RecipeConfig.Terraform.Credentials[host] = cred
 			}
 		}
 
@@ -245,14 +246,25 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 
 		bcProps := bcDM.(*datamodel.BicepConfig).Properties
 
-		// Map the new structured auth into the legacy BicepConfigProperties shape.
-		if bcProps.RegistryAuthentication != nil && bcProps.RegistryAuthentication.BasicAuthSecretId != "" {
-			config.RecipeConfig.Bicep = datamodel.BicepConfigProperties{
-				Authentication: map[string]datamodel.RegistrySecretConfig{
-					"default": {
-						Secret: bcProps.RegistryAuthentication.BasicAuthSecretId,
-					},
-				},
+		// Map the new host-keyed map into the legacy BicepConfigProperties shape.
+		// The Bicep driver looks up credentials by the host parsed from the recipe
+		// template path, so the map key (registry hostname) is what matters.
+		// Only BasicAuth is wired today; AzureWI and AwsIrsa are accepted by the
+		// schema but not yet threaded into the driver (see follow-up).
+		if len(bcProps.RegistryAuthentications) > 0 {
+			authMap := make(map[string]datamodel.RegistrySecretConfig, len(bcProps.RegistryAuthentications))
+			for host, auth := range bcProps.RegistryAuthentications {
+				if auth.BasicAuthSecretId == "" {
+					continue
+				}
+				authMap[host] = datamodel.RegistrySecretConfig{
+					Secret: auth.BasicAuthSecretId,
+				}
+			}
+			if len(authMap) > 0 {
+				config.RecipeConfig.Bicep = datamodel.BicepConfigProperties{
+					Authentication: authMap,
+				}
 			}
 		}
 	}

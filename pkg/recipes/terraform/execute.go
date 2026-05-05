@@ -233,10 +233,16 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 		}
 	}
 
-	// Render a .terraformrc for provider_installation rules and point Terraform at it.
-	// This is populated only by the Radius.Core path; Applications.Core leaves it nil.
-	if recipeConfig.Terraform.ProviderInstallation != nil {
-		rcPath, err := writeTerraformCLIConfig(tf.WorkingDir(), recipeConfig.Terraform.ProviderInstallation)
+	// Render a .terraformrc for provider_installation rules and credentials, and
+	// point Terraform at it. Both inputs are populated only by the Radius.Core
+	// path; Applications.Core leaves them nil/empty so this is a no-op there.
+	if recipeConfig.Terraform.ProviderInstallation != nil || len(recipeConfig.Terraform.Credentials) > 0 {
+		rcPath, err := writeTerraformCLIConfig(
+			tf.WorkingDir(),
+			recipeConfig.Terraform.ProviderInstallation,
+			recipeConfig.Terraform.Credentials,
+			options.Secrets,
+		)
 		if err != nil {
 			return err
 		}
@@ -257,22 +263,24 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 }
 
 // applyTerraformCLIConfig writes a .terraformrc file derived from the
-// provider_installation rules in options.EnvConfig (if any) and configures the
-// Terraform CLI to use it via TF_CLI_CONFIG_FILE.
+// provider_installation rules and credentials in options.EnvConfig (if any) and
+// configures the Terraform CLI to use it via TF_CLI_CONFIG_FILE.
 //
 // This path is used by Delete (and indirectly by Deploy via setEnvironmentVariables)
-// to ensure terraform init can resolve providers from a network mirror. When
-// ProviderInstallation is nil, this is a no-op.
+// to ensure terraform init can resolve providers from a network mirror and
+// authenticate to private registries. When neither input is populated, this is
+// a no-op.
 func (e executor) applyTerraformCLIConfig(tf *tfexec.Terraform, options Options) error {
 	if options.EnvConfig == nil {
 		return nil
 	}
 	pi := options.EnvConfig.RecipeConfig.Terraform.ProviderInstallation
-	if pi == nil {
+	creds := options.EnvConfig.RecipeConfig.Terraform.Credentials
+	if pi == nil && len(creds) == 0 {
 		return nil
 	}
 
-	rcPath, err := writeTerraformCLIConfig(tf.WorkingDir(), pi)
+	rcPath, err := writeTerraformCLIConfig(tf.WorkingDir(), pi, creds, options.Secrets)
 	if err != nil {
 		return err
 	}

@@ -49,16 +49,16 @@
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/44"
     },
     "Radius.Core/bicepConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/65"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/66"
     },
     "Radius.Core/environments@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/88"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/89"
     },
     "Radius.Core/recipePacks@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/110"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/111"
     },
     "Radius.Core/terraformConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/137"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/138"
     }
   },
   "resourceFunctions": {},

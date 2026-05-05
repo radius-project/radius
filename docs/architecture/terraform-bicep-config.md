@@ -49,11 +49,17 @@ model EnvironmentProperties {
 ### TerraformConfig shape
 
 Follows the schema from the [feature spec](https://github.com/radius-project/design-notes/pull/107).
-The `terraformrc` property is a like-for-like representation of the Terraform CLI
-configuration file (`.terraformrc`). The `env` property holds non-sensitive
-environment variables injected during recipe execution. Provider secrets and
-`envSecrets` are not carried forward from the legacy `recipeConfig`; those use
-cases are handled by recipe parameters instead.
+The `terraformrc` property holds **structured properties that Radius uses to
+generate a `.terraformrc` file at recipe execution time**. Radius does not
+read, merge, or otherwise consume any user-authored `.terraformrc`; the
+resource is the single source of truth for Terraform CLI configuration.
+The `env` property holds non-sensitive environment variables injected during
+recipe execution. Provider secrets and `envSecrets` are not carried forward
+from the legacy `recipeConfig`; those use cases are handled by recipe
+parameters instead.
+
+See [Why generate, not consume](#why-generate-not-consume) below for the
+rationale.
 
 ```typespec
 model TerraformConfigResource
@@ -86,6 +92,29 @@ include/exclude), `TerraformProviderMirror` (url, include, exclude),
 `TerraformProviderDirect` (include, exclude), `TerraformCredentialConfig`
 (secret ID).
 
+### Why generate, not consume
+
+Radius does not accept user-authored `.terraformrc` content. Instead, the
+user expresses intent through typed properties on `terraformConfig`, and
+Radius renders the file. This:
+
+- Avoids parsing, validating, or migrating arbitrary HCL the user might author.
+- Sidesteps OS-specific filename conventions (`.terraformrc` on Linux/macOS,
+  `terraform.rc` on Windows): Radius writes the file under a name and at a
+  path of its own choosing, then sets `TF_CLI_CONFIG_FILE` to the absolute
+  path so Terraform reads exactly that file and ignores its default lookup
+  chain (`~/.terraformrc`, `$HOME/.terraformrc`, `%APPDATA%\terraform.rc`).
+- Keeps secret references typed and resolvable through Radius (vs. opaque
+  strings inside a user file).
+- Lets us add or constrain knobs by evolving the schema, not by
+  reinterpreting Terraform's grammar.
+
+If a property the user needs is not yet in the schema, the path forward is
+to extend the schema, not to bypass it. Possible future additions (out of
+scope for this design) include a `rawTerraformrc?: string` field for opaque
+content or a `terraformrcSecretId?: string` reference if the content needs
+to carry secrets.
+
 ### BicepConfig shape
 
 Follows the schema from the feature spec. Uses a structured `registryAuthentication`
@@ -105,16 +134,16 @@ model BicepConfigProperties {
   provisioningState?: ProvisioningState;
   referencedBy?: string[];
 
-  @doc("Registry authentication configuration for private Bicep registries.")
-  registryAuthentication?: BicepRegistryAuthentication;
+  @doc("Authentication for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io').")
+  registryAuthentications?: Record<BicepRegistryAuthentication>;
 }
 
 model BicepRegistryAuthentication {
   authenticationMethod?: BicepAuthenticationMethod;  // "BasicAuth" | "AzureWI" | "AwsIrsa"
-  basicAuthSecretId?: string;   // SecretStore ID for username/password
-  azureWiClientId?: string;     // Azure Workload Identity client ID
-  azureWiTenantId?: string;     // Azure Workload Identity tenant ID
-  awsIamRoleArn?: string;       // AWS IAM Role ARN for IRSA
+  basicAuthSecretId?: string;   // SecretStore ID for username/password (required for BasicAuth)
+  azureWiClientId?: string;     // Azure Workload Identity client ID (required for AzureWI)
+  azureWiTenantId?: string;     // Azure Workload Identity tenant ID (required for AzureWI)
+  awsIamRoleArn?: string;       // AWS IAM Role ARN for IRSA (required for AwsIrsa)
 }
 ```
 
@@ -157,10 +186,13 @@ graph LR
    shared Terraform and Bicep drivers consume it through the same path the
    legacy `Applications.Core` `recipeConfig` flow uses.
 5. When `terraformrc.providerInstallation` is set, the Terraform driver
-   renders a `.terraformrc` in the working directory and points Terraform at
-   it via `TF_CLI_CONFIG_FILE` for both Deploy and Delete. The field is
-   optional; the legacy `Applications.Core` path leaves it nil and behavior is
-   unchanged.
+   renders a `.terraformrc` in the working directory and sets
+   `TF_CLI_CONFIG_FILE` to the absolute path of that file for both Deploy
+   and Delete. `TF_CLI_CONFIG_FILE` overrides Terraform's default
+   config-file lookup chain, so any pre-existing `.terraformrc` /
+   `terraform.rc` files on disk are intentionally bypassed. The field is
+   optional; the legacy `Applications.Core` path leaves it nil and behavior
+   is unchanged.
 6. Secret references (`SecretReference` with `source` + `key`) are resolved at
    execution time by the driver, same as the legacy path. No secrets are
    persisted in the config resources.
@@ -198,9 +230,11 @@ resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
 resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
   name: 'corp-bicep'
   properties: {
-    registryAuthentication: {
-      authenticationMethod: 'BasicAuth'
-      basicAuthSecretId: acrSecret.id
+    registryAuthentications: {
+      'corp.acr.example.io': {
+        authenticationMethod: 'BasicAuth'
+        basicAuthSecretId: acrSecret.id
+      }
     }
   }
 }
@@ -296,9 +330,18 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 - `pkg/corerp/datamodel/recipe_types.go` — adds optional `ProviderInstallation`
   to `TerraformConfigProperties` for the shared driver.
 - `pkg/recipes/terraform/cliconfig.go` — renders `.terraformrc` from
-  `provider_installation`.
+  `provider_installation` and from `credentials` (native HCL `credentials
+  "host" { token = ... }` blocks; secret values are resolved from the
+  fetched-secret map at execution time).
 - `pkg/recipes/terraform/execute.go` — wires the `.terraformrc` writer into
   Deploy and Delete via `TF_CLI_CONFIG_FILE`.
+- `pkg/recipes/driver/terraform/terraform.go` — `FindSecretIDs` reports
+  credentials secret stores (with the `token` key) so the engine fetches them
+  before the driver runs.
+- `pkg/corerp/frontend/controller/bicepconfigs/validator.go` — enforces the
+  conditional-required-field rule that, for example, `BasicAuth` requires
+  `basicAuthSecretId`. TypeSpec cannot express this without a discriminated
+  union restructure, so it lives here.
 - `test/functional-portable/dynamicrp/noncloud/resources/terraformconfig_bicepconfig_test.go` —
   functional tests for CRUD wiring and the combined Terraform+Bicep flow.
 
@@ -316,10 +359,14 @@ end, and are tracked as follow-ups:
 - **`referencedBy`.** The read-only `referencedBy: string[]` property is in
   the schema but not populated by any controller.
 - **Bicep `AzureWI` / `AwsIrsa`.** The `BicepRegistryAuthentication` schema
-  accepts all three authentication methods, but the loader only threads
+  accepts all three authentication methods, and the controller validates that
+  the relevant identity fields are present, but the loader only threads
   `BasicAuth` (via `basicAuthSecretId`) into the existing Bicep driver shape.
-  Identity-based methods are no-ops until corresponding driver work lands.
-- **Terraform `credentials` for OCI/registry hosts.** `terraformrc.credentials`
-  is mapped into the legacy `Authentication.Git.PAT` map so existing Git-based
-  module source auth continues to work. A native `credentials "hostname" {}`
-  block in the rendered `.terraformrc` is a follow-up.
+  Identity-based methods are accepted by the API but are no-ops at recipe
+  execution time until corresponding driver work lands.
+- **Git-based Terraform module source auth from `Radius.Core/environments`.**
+  `terraformrc.credentials` is for HTTP-based Terraform CLI registry auth
+  (rendered as native `credentials "host" {}` blocks with a `token` value);
+  it does not cover Git module source PAT authentication, which today is
+  available only via the legacy `Applications.Core` `recipeConfig` path. A
+  separate property on `terraformConfig` for Git auth is a follow-up.

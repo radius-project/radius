@@ -22,10 +22,11 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriteTerraformCLIConfig(t *testing.T) {
+func TestWriteTerraformCLIConfig_ProviderInstallation(t *testing.T) {
 	tests := []struct {
 		name         string
 		input        *datamodel.TerraformProviderInstallation
@@ -69,7 +70,7 @@ func TestWriteTerraformCLIConfig(t *testing.T) {
 				`include = ["*"]`,
 				`exclude = ["hashicorp/azurerm"]`,
 			},
-			wantAbsent: []string{"direct {"},
+			wantAbsent: []string{"direct {", "credentials "},
 		},
 		{
 			name: "direct only with exclude",
@@ -120,7 +121,7 @@ func TestWriteTerraformCLIConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			workingDir := t.TempDir()
-			path, err := writeTerraformCLIConfig(workingDir, tc.input)
+			path, err := writeTerraformCLIConfig(workingDir, tc.input, nil, nil)
 			require.NoError(t, err)
 
 			if !tc.wantPathSet {
@@ -154,6 +155,134 @@ func TestWriteTerraformCLIConfig_BadDir(t *testing.T) {
 	_, err := writeTerraformCLIConfig("/nonexistent/path/that/does/not/exist",
 		&datamodel.TerraformProviderInstallation{
 			NetworkMirror: &datamodel.TerraformProviderMirror{URL: "https://mirror/"},
-		})
+		}, nil, nil)
 	require.Error(t, err)
+}
+
+func TestWriteTerraformCLIConfig_Credentials(t *testing.T) {
+	const (
+		secretA = "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/secretStores/tf-cloud"
+		secretB = "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/secretStores/corp-registry"
+	)
+
+	tests := []struct {
+		name         string
+		creds        map[string]datamodel.TerraformCredentialConfig
+		secrets      map[string]recipes.SecretData
+		wantErr      string
+		wantContains []string
+	}{
+		{
+			name: "single credentials block",
+			creds: map[string]datamodel.TerraformCredentialConfig{
+				"app.terraform.io": {Secret: secretA},
+			},
+			secrets: map[string]recipes.SecretData{
+				secretA: {Type: "generic", Data: map[string]string{"token": "tfc-token-value"}},
+			},
+			wantContains: []string{
+				`credentials "app.terraform.io" {`,
+				`token = "tfc-token-value"`,
+			},
+		},
+		{
+			name: "two credentials blocks rendered in deterministic (sorted) order",
+			creds: map[string]datamodel.TerraformCredentialConfig{
+				"app.terraform.io":    {Secret: secretA},
+				"reg.corp.example.io": {Secret: secretB},
+			},
+			secrets: map[string]recipes.SecretData{
+				secretA: {Type: "generic", Data: map[string]string{"token": "tfc-token"}},
+				secretB: {Type: "generic", Data: map[string]string{"token": "corp-token"}},
+			},
+			wantContains: []string{
+				`credentials "app.terraform.io" {`,
+				`credentials "reg.corp.example.io" {`,
+			},
+		},
+		{
+			name: "credential with empty secret reference fails",
+			creds: map[string]datamodel.TerraformCredentialConfig{
+				"app.terraform.io": {Secret: ""},
+			},
+			wantErr: "no secret reference",
+		},
+		{
+			name: "credential with missing secret data fails",
+			creds: map[string]datamodel.TerraformCredentialConfig{
+				"app.terraform.io": {Secret: secretA},
+			},
+			secrets: map[string]recipes.SecretData{},
+			wantErr: "no secret data was fetched",
+		},
+		{
+			name: "credential with missing token key fails",
+			creds: map[string]datamodel.TerraformCredentialConfig{
+				"app.terraform.io": {Secret: secretA},
+			},
+			secrets: map[string]recipes.SecretData{
+				secretA: {Type: "generic", Data: map[string]string{"pat": "wrong-key"}},
+			},
+			wantErr: `missing the "token" key`,
+		},
+		{
+			name: "token with embedded quote is escaped",
+			creds: map[string]datamodel.TerraformCredentialConfig{
+				"app.terraform.io": {Secret: secretA},
+			},
+			secrets: map[string]recipes.SecretData{
+				secretA: {Type: "generic", Data: map[string]string{"token": `tok"with"quotes`}},
+			},
+			wantContains: []string{`token = "tok\"with\"quotes"`},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			path, err := writeTerraformCLIConfig(workingDir, nil, tc.creds, tc.secrets)
+			if tc.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, path)
+
+			body, err := os.ReadFile(path)
+			require.NoError(t, err)
+			for _, want := range tc.wantContains {
+				require.Contains(t, string(body), want)
+			}
+
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+			require.Equal(t, terraformCLIConfigFileMode, info.Mode().Perm())
+		})
+	}
+}
+
+func TestWriteTerraformCLIConfig_BothBlocks(t *testing.T) {
+	const secretID = "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/secretStores/tf-cloud"
+
+	pi := &datamodel.TerraformProviderInstallation{
+		NetworkMirror: &datamodel.TerraformProviderMirror{URL: "https://mirror/"},
+	}
+	creds := map[string]datamodel.TerraformCredentialConfig{
+		"app.terraform.io": {Secret: secretID},
+	}
+	secrets := map[string]recipes.SecretData{
+		secretID: {Type: "generic", Data: map[string]string{"token": "tok"}},
+	}
+
+	workingDir := t.TempDir()
+	path, err := writeTerraformCLIConfig(workingDir, pi, creds, secrets)
+	require.NoError(t, err)
+	require.NotEmpty(t, path)
+
+	body, err := os.ReadFile(path)
+	require.NoError(t, err)
+	s := string(body)
+	require.Contains(t, s, `provider_installation {`)
+	require.Contains(t, s, `credentials "app.terraform.io" {`)
 }

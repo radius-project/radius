@@ -3,12 +3,30 @@ extension radius
 @description('Name of the Radius Application.')
 param appName string
 
+// SecretStore providing the username/password for BasicAuth registry access.
+// The values are placeholders since this test exercises CRUD wiring and
+// environment reference validation, not an actual private registry pull.
+resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'bicepconfig-test-secret'
+  location: 'global'
+  properties: {
+    type: 'generic'
+    data: {
+      username: { value: 'test-user' }
+      password: { value: 'test-pass' }
+    }
+  }
+}
+
 resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
   name: 'test-bicep-config'
   location: 'global'
   properties: {
-    registryAuthentication: {
-      authenticationMethod: 'BasicAuth'
+    registryAuthentications: {
+      'corp.acr.example.io': {
+        authenticationMethod: 'BasicAuth'
+        basicAuthSecretId: registrySecret.id
+      }
     }
   }
 }

@@ -39,12 +39,29 @@ resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
   }
 }
 
+// SecretStore providing username/password for the BasicAuth registry config.
+// Placeholder values; the test exercises CRUD wiring, not a real registry pull.
+resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+  name: 'tfbicep-combined-registry-secret'
+  location: 'global'
+  properties: {
+    type: 'generic'
+    data: {
+      username: { value: 'test-user' }
+      password: { value: 'test-pass' }
+    }
+  }
+}
+
 resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
   name: 'tfbicep-combined-bicepconfig'
   location: 'global'
   properties: {
-    registryAuthentication: {
-      authenticationMethod: 'BasicAuth'
+    registryAuthentications: {
+      'corp.acr.example.io': {
+        authenticationMethod: 'BasicAuth'
+        basicAuthSecretId: registrySecret.id
+      }
     }
   }
 }

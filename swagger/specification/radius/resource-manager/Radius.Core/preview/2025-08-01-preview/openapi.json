@@ -1521,9 +1521,12 @@
           },
           "readOnly": true
         },
-        "registryAuthentication": {
-          "$ref": "#/definitions/BicepRegistryAuthentication",
-          "description": "Registry authentication configuration for accessing private Bicep registries."
+        "registryAuthentications": {
+          "type": "object",
+          "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path.",
+          "additionalProperties": {
+            "$ref": "#/definitions/BicepRegistryAuthentication"
+          }
         }
       }
     },
@@ -1582,7 +1585,7 @@
     },
     "BicepRegistryAuthentication": {
       "type": "object",
-      "description": "Authentication configuration for private Bicep registries.",
+      "description": "Authentication configuration for a single private Bicep registry. When `authenticationMethod` is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.",
       "properties": {
         "authenticationMethod": {
           "$ref": "#/definitions/BicepAuthenticationMethod",
@@ -2326,7 +2329,7 @@
         },
         "credentials": {
           "type": "object",
-          "description": "Credentials for authenticating to private Terraform registries and module sources. Map of hostname to credential configuration.",
+          "description": "Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism.",
           "additionalProperties": {
             "$ref": "#/definitions/TerraformCredentialConfig"
           }

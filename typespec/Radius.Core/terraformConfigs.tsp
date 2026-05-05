@@ -67,7 +67,7 @@ model TerraformrcConfig {
   @doc("Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads.")
   providerInstallation?: TerraformProviderInstallation;
 
-  @doc("Credentials for authenticating to private Terraform registries and module sources. Map of hostname to credential configuration.")
+  @doc("Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism.")
   credentials?: Record<TerraformCredentialConfig>;
 }
 

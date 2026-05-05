@@ -398,7 +398,7 @@ func (b BicepConfigProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "provisioningState", b.ProvisioningState)
 	populate(objectMap, "referencedBy", b.ReferencedBy)
-	populate(objectMap, "registryAuthentication", b.RegistryAuthentication)
+	populate(objectMap, "registryAuthentications", b.RegistryAuthentications)
 	return json.Marshal(objectMap)
 }
 
@@ -417,8 +417,8 @@ func (b *BicepConfigProperties) UnmarshalJSON(data []byte) error {
 		case "referencedBy":
 			err = unpopulate(val, "ReferencedBy", &b.ReferencedBy)
 			delete(rawMsg, key)
-		case "registryAuthentication":
-			err = unpopulate(val, "RegistryAuthentication", &b.RegistryAuthentication)
+		case "registryAuthentications":
+			err = unpopulate(val, "RegistryAuthentications", &b.RegistryAuthentications)
 			delete(rawMsg, key)
 		}
 		if err != nil {

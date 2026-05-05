@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	app_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications/v20250801preview"
+	bc_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/bicepconfigs"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
 	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments/v20250801preview"
@@ -311,6 +312,17 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 	_ = ns.AddResource("bicepConfigs", &builder.ResourceOption[*datamodel.BicepConfig, datamodel.BicepConfig]{
 		RequestConverter:  converter.BicepConfigDataModelFromVersioned,
 		ResponseConverter: converter.BicepConfigDataModelToVersioned,
+
+		Put: builder.Operation[datamodel.BicepConfig]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.BicepConfig]{
+				bc_ctrl.ValidateRequest,
+			},
+		},
+		Patch: builder.Operation[datamodel.BicepConfig]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.BicepConfig]{
+				bc_ctrl.ValidateRequest,
+			},
+		},
 	})
 
 	return ns

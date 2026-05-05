@@ -125,6 +125,10 @@ func Test_BicepConfig_CRUD(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
+						Name: "bicepconfig-test-secret",
+						Type: validation.SecretStoresResource,
+					},
+					{
 						Name: "test-bicep-config",
 						Type: "radius.core/bicepconfigs",
 					},
@@ -186,6 +190,10 @@ func Test_TerraformConfig_BicepConfig_Combined(t *testing.T) {
 			SkipKubernetesOutputResourceValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
+					{
+						Name: "tfbicep-combined-registry-secret",
+						Type: validation.SecretStoresResource,
+					},
 					{
 						Name: "tfbicep-combined-tfconfig",
 						Type: "radius.core/terraformconfigs",
