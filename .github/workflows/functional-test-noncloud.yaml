@@ -87,10 +87,10 @@ env:
   GIT_HTTP_PASSWORD: not-a-secret-password
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
-  # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
+  # Bicep CLI pinned: v0.43+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
   # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
   # TODO: unpin once allowedUntrustedRegistries is configured in the test bicepconfig.json.
-  BICEP_VER: v0.39.30
+  BICEP_VER: v0.42.1
 
 jobs:
   changes:
