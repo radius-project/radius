@@ -67,6 +67,10 @@ func RecipeParametersFormat() output.FormatterOptions {
 				JSONPath: "{ .DefaultValue }",
 			},
 			{
+				Heading:  "VALUE",
+				JSONPath: "{ .Value }",
+			},
+			{
 				Heading:  "MIN",
 				JSONPath: "{ .MinValue }",
 			},

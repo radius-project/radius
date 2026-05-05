@@ -5,12 +5,23 @@
 *.{cmd,[cC][mM][dD]} text eol=crlf
 *.{bat,[bB][aA][tT]} text eol=crlf
 
-# Images are binary
-*.png binary
+# Common files
+*.pdf binary
+
+# Image files
+*.gif binary
+*.tif binary
+*.ico binary
 *.jpg binary
 *.jpeg binary
-*.gif binary
-*.ico binary
+*.png binary
+
+# Microsoft Office documents
+*.pptx binary
+*.potx binary
+*.docx binary
+*.dotx binary
+*.vsdx binary
 
 # Lock files are generated and should ignore line endings
 devcontainer-lock.json -text linguist-generated=true
