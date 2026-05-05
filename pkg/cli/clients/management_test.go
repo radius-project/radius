@@ -29,6 +29,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
@@ -1359,6 +1360,75 @@ func Test_Environment(t *testing.T) {
 		deleted, err := client.DeleteEnvironment(context.Background(), testResourceID)
 		require.NoError(t, err)
 		require.True(t, deleted)
+	})
+}
+
+func Test_RadiusCoreEnvironment(t *testing.T) {
+	t.Parallel()
+	createClient := func(wrapped radiusCoreEnvironmentResourceClient) *UCPApplicationsManagementClient {
+		return &UCPApplicationsManagementClient{
+			RootScope: testScope,
+			radiusCoreEnvironmentResourceClientFactory: func(scope string) (radiusCoreEnvironmentResourceClient, error) {
+				return wrapped, nil
+			},
+			capture: testCapture,
+		}
+	}
+
+	testResourceType := "Radius.Core/environments"
+
+	listPages := []corerpv20250801.EnvironmentsClientListByScopeResponse{
+		{
+			EnvironmentResourceListResult: corerpv20250801.EnvironmentResourceListResult{
+				Value: []*corerpv20250801.EnvironmentResource{
+					{
+						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test1"),
+						Name:     to.Ptr("test1"),
+						Type:     &testResourceType,
+						Location: to.Ptr(v1.LocationGlobal),
+					},
+					{
+						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test2"),
+						Name:     to.Ptr("test2"),
+						Type:     &testResourceType,
+						Location: to.Ptr(v1.LocationGlobal),
+					},
+				},
+				NextLink: to.Ptr("0"),
+			},
+		},
+		{
+			EnvironmentResourceListResult: corerpv20250801.EnvironmentResourceListResult{
+				Value: []*corerpv20250801.EnvironmentResource{
+					{
+						ID:       to.Ptr(testScope + "/providers/" + testResourceType + "/" + "test3"),
+						Name:     to.Ptr("test3"),
+						Type:     &testResourceType,
+						Location: to.Ptr(v1.LocationGlobal),
+					},
+				},
+				NextLink: to.Ptr("1"),
+			},
+		},
+	}
+
+	t.Run("ListRadiusCoreEnvironmentsAll", func(t *testing.T) {
+		mock := NewMockradiusCoreEnvironmentResourceClient(gomock.NewController(t))
+		client := createClient(mock)
+
+		mock.EXPECT().
+			NewListByScopePager(gomock.Any()).
+			Return(pager(listPages))
+
+		expected := []corerpv20250801.EnvironmentResource{
+			*listPages[0].Value[0],
+			*listPages[0].Value[1],
+			*listPages[1].Value[0],
+		}
+
+		resources, err := client.ListRadiusCoreEnvironmentsAll(context.Background())
+		require.NoError(t, err)
+		require.Equal(t, expected, resources)
 	})
 }
 

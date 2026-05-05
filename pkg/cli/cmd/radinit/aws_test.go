@@ -24,6 +24,7 @@ import (
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/stretchr/testify/require"
@@ -64,7 +65,7 @@ func Test_enterAWSCloudProvider_AccessKey(t *testing.T) {
 		AccountID:      "account-id",
 	}
 	require.Equal(t, expected, provider)
-	require.Equal(t, []any{output.LogOutput{Format: awsAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+	require.Equal(t, []any{output.LogOutput{Format: common.AWSAccessKeysCreateInstructionFmt}}, outputSink.Writes)
 }
 
 func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
@@ -99,5 +100,5 @@ func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
 		AccountID:      "account-id",
 	}
 	require.Equal(t, expected, provider)
-	require.Equal(t, []any{output.LogOutput{Format: awsAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+	require.Equal(t, []any{output.LogOutput{Format: common.AWSAccessKeysCreateInstructionFmt}}, outputSink.Writes)
 }

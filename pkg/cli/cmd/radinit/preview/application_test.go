@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"testing"
@@ -36,7 +36,7 @@ func Test_enterApplicationOptions(t *testing.T) {
 		err := runner.enterApplicationOptions(&options)
 		require.NoError(t, err)
 
-		require.Equal(t, applicationOptions{Scaffold: true, Name: "radinit"}, options.Application)
+		require.Equal(t, applicationOptions{Scaffold: true, Name: "preview"}, options.Application)
 	})
 	t.Run("create application: No", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

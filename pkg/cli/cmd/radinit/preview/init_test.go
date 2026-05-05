@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"context"
@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -45,8 +44,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
@@ -117,7 +118,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Use default env name and namespace
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -178,9 +179,10 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("cool-existing-env"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, selectExistingEnvironmentCreateSentinel)
@@ -213,9 +215,10 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("cool-existing-env"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -243,19 +246,10 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("cool-existing-env"),
-						Properties: &corerp.EnvironmentProperties{
-							Providers: &corerp.Providers{
-								Azure: &corerp.ProvidersAzure{
-									Scope: new("/subscriptions/123/resourceGroups/cool-rg"),
-								},
-								Aws: &corerp.ProvidersAws{
-									Scope: new("/planes/aws/aws/accounts/123/regions/us-west-2"),
-								},
-							},
-						},
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -283,7 +277,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Choose default name and namespace
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -318,7 +312,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Choose default name and namespace
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -353,7 +347,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Choose default name and namespace
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -388,7 +382,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Choose default name and namespace
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -424,9 +418,10 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("cool-existing-env"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -454,7 +449,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
@@ -491,9 +486,10 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - this will be chosen automatically
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("myenv"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/myenv/providers/Radius.Core/environments/myenv"),
+						Name: to.Ptr("myenv"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "myenv")
@@ -515,9 +511,10 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - this will be chosen automatically
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("default"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default"),
+						Name: to.Ptr("default"),
 					},
 				})
 				// No application
@@ -538,12 +535,14 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// Configure an existing environment - user has to choose
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
 					{
-						Name: new("dev"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/dev/providers/Radius.Core/environments/dev"),
+						Name: to.Ptr("dev"),
 					},
 					{
-						Name: new("prod"),
+						ID:   to.Ptr("/planes/radius/local/resourceGroups/prod/providers/Radius.Core/environments/prod"),
+						Name: to.Ptr("prod"),
 					},
 				})
 
@@ -596,7 +595,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// User cancels from environment name prompt
 				initEnvNamePromptError(mocks.Prompter)
@@ -617,7 +616,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Choose default name and cancel out of namespace prompt
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -638,7 +637,7 @@ func Test_Validate(t *testing.T) {
 				initKubeContextWithKind(mocks.Prompter)
 				initHelmMockRadiusInstalled(mocks.Helm)
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// Choose default name and namespace
 				initEnvNamePrompt(mocks.Prompter, "default")
@@ -682,7 +681,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
@@ -702,7 +701,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
@@ -722,7 +721,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
@@ -742,7 +741,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
@@ -762,7 +761,7 @@ func Test_Validate(t *testing.T) {
 				initHelmMockRadiusInstalled(mocks.Helm)
 
 				// No existing environment, users will be prompted to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
 				// No application
 				setScaffoldApplicationPromptNo(mocks.Prompter)
@@ -792,7 +791,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: new("ghcr.io/radius-project/dev/redis:latest"),
+						TemplatePath: to.Ptr("ghcr.io/radius-project/dev/redis:latest"),
 					},
 				},
 			},
@@ -946,30 +945,12 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			appManagementClient.EXPECT().
 				CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
 				Return(nil).
-				Times(1)
+				Times(2)
 
-			devRecipeClient := NewMockDevRecipeClient(ctrl)
-			if !tc.full {
-				devRecipeClient.EXPECT().
-					GetDevRecipes(context.Background()).
-					Return(tc.recipes, nil).
-					Times(1)
-			}
-
-			testEnvProperties := &corerp.EnvironmentProperties{
-				Compute: &corerp.KubernetesCompute{
-					Namespace: new("defaultNamespace"),
-				},
-				Providers: buildProviders(tc.azureProvider, tc.awsProvider),
-				Recipes:   tc.recipes,
-			}
-			appManagementClient.EXPECT().
-				CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
-					Location:   to.Ptr(v1.LocationGlobal),
-					Properties: testEnvProperties,
-				}).
-				Return(nil).
-				Times(1)
+			// Create a RadiusCoreClientFactory for testing
+			rootScope := "/planes/radius/local/resourceGroups/default"
+			radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil)
+			require.NoError(t, err)
 
 			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
 			if tc.azureProvider != nil {
@@ -988,8 +969,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 								Storage: &ucp.CredentialStorageProperties{
 									Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 								},
-								AccessKeyID:     new(tc.awsProvider.AccessKey.AccessKeyID),
-								SecretAccessKey: new(tc.awsProvider.AccessKey.SecretAccessKey),
+								AccessKeyID:     to.Ptr(tc.awsProvider.AccessKey.AccessKeyID),
+								SecretAccessKey: to.Ptr(tc.awsProvider.AccessKey.SecretAccessKey),
 							},
 						}).
 						Return(nil).
@@ -1003,7 +984,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 								Storage: &ucp.CredentialStorageProperties{
 									Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 								},
-								RoleARN: new(tc.awsProvider.IRSA.RoleARN),
+								RoleARN: to.Ptr(tc.awsProvider.IRSA.RoleARN),
 							},
 						}).
 						Return(nil).
@@ -1057,7 +1038,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					AWS:   tc.awsProvider,
 				},
 				Recipes: recipePackOptions{
-					DevRecipes: !tc.full,
+					DefaultRecipePack: !tc.full,
 				},
 				Application: applicationOptions{
 					Scaffold: false,
@@ -1069,21 +1050,23 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					ApplicationsManagementClient: appManagementClient,
 					CredentialManagementClient:   credentialManagementClient,
 				},
-				ConfigFileInterface: configFileInterface,
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				HelmInterface:       helmInterface,
-				Output:              outputSink,
-				Prompter:            prompter,
-				DevRecipeClient:     devRecipeClient,
-				Options:             &options,
+				ConfigFileInterface:       configFileInterface,
+				ConfigHolder:              &framework.ConfigHolder{ConfigFilePath: "filePath"},
+				HelmInterface:             helmInterface,
+				Output:                    outputSink,
+				Prompter:                  prompter,
+				RadiusCoreClientFactory:   radiusCoreClientFactory,
+				DefaultScopeClientFactory: radiusCoreClientFactory,
+				Options:                   &options,
 				Workspace: &workspaces.Workspace{
-					Name: "default",
+					Name:  "default",
+					Scope: "/planes/radius/local/resourceGroups/default",
 				},
 				Set:     tc.set,
 				SetFile: tc.setFile,
 			}
 
-			err := runner.Run(context.Background())
+			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
 			if len(tc.expectedOutput) == 0 {
@@ -1093,21 +1076,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 		})
 	}
-}
-
-func buildProviders(azureProvider *azure.Provider, awsProvider *aws.Provider) *corerp.Providers {
-	providers := &corerp.Providers{}
-	if azureProvider != nil {
-		providers.Azure = &corerp.ProvidersAzure{
-			Scope: new(fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", azureProvider.SubscriptionID, azureProvider.ResourceGroup)),
-		}
-	}
-	if awsProvider != nil {
-		providers.Aws = &corerp.ProvidersAws{
-			Scope: new(fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s", awsProvider.AccountID, awsProvider.Region)),
-		}
-	}
-	return providers
 }
 
 func initGetKubeContextSuccess(kubernestesMock *kubernetes.MockInterface) {
@@ -1182,7 +1150,7 @@ type cloudProviderPromptMatcher struct {
 }
 
 // Matches implements gomock.Matcher
-func (*cloudProviderPromptMatcher) Matches(x any) bool {
+func (*cloudProviderPromptMatcher) Matches(x interface{}) bool {
 	return x == confirmCloudProviderPrompt || x == confirmCloudProviderAdditionalPrompt
 }
 
@@ -1223,9 +1191,9 @@ func initHelmMockRadiusNotInstalled(helmMock *helm.MockInterface) {
 		Return(helm.InstallState{RadiusInstalled: false}, nil).Times(1)
 }
 
-func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClient, environments []corerp.EnvironmentResource) {
+func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClient, environments []corerpv20250801.EnvironmentResource) {
 	clientMock.EXPECT().
-		ListEnvironmentsAll(gomock.Any()).
+		ListRadiusCoreEnvironmentsAll(gomock.Any()).
 		Return(environments, nil).Times(1)
 }
 
@@ -1328,38 +1296,10 @@ func setAzureResourceGroups(client *azure.MockClient, subscriptionID string, gro
 		Times(1)
 }
 
-func setAzureCheckResourceGroupExistence(client *azure.MockClient, subscriptionID string, resourceGroupName string, exists bool) {
-	client.EXPECT().
-		CheckResourceGroupExistence(gomock.Any(), subscriptionID, resourceGroupName).
-		Return(exists, nil).
-		Times(1)
-}
-
-func setAzureCreateOrUpdateResourceGroup(client *azure.MockClient, subscriptionID string, resourceGroupName string, location string) {
-	client.EXPECT().
-		CreateOrUpdateResourceGroup(gomock.Any(), subscriptionID, resourceGroupName, location).
-		Return(nil).
-		Times(1)
-}
-
-func setAzureLocations(client *azure.MockClient, subscriptionID string, locations []armsubscriptions.Location) {
-	client.EXPECT().
-		Locations(gomock.Any(), subscriptionID).
-		Return(locations, nil).
-		Times(1)
-}
-
 func setAzureSubscriptionConfirmPrompt(prompter *prompt.MockInterface, subscriptionName string, choice string) {
 	prompter.EXPECT().
 		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(common.ConfirmAzureSubscriptionPromptFmt, subscriptionName)).
 		Return(choice, nil).
-		Times(1)
-}
-
-func setAzureSubsubscriptionPrompt(prompter *prompt.MockInterface, names []string, name string) {
-	prompter.EXPECT().
-		GetListInput(names, common.SelectAzureSubscriptionPrompt).
-		Return(name, nil).
 		Times(1)
 }
 
@@ -1374,20 +1314,6 @@ func setAzureResourceGroupPrompt(prompter *prompt.MockInterface, names []string,
 	prompter.EXPECT().
 		GetListInput(names, common.SelectAzureResourceGroupPrompt).
 		Return(name, nil).
-		Times(1)
-}
-
-func setAzureResourceGroupNamePrompt(prompter *prompt.MockInterface, name string) {
-	prompter.EXPECT().
-		GetTextInput(common.EnterAzureResourceGroupNamePrompt, gomock.Any()).
-		Return(name, nil).
-		Times(1)
-}
-
-func setSelectAzureResourceGroupLocationPrompt(prompter *prompt.MockInterface, locations []string, location string) {
-	prompter.EXPECT().
-		GetListInput(locations, common.SelectAzureResourceGroupLocationPrompt).
-		Return(location, nil).
 		Times(1)
 }
 
@@ -1453,7 +1379,7 @@ func setAzureCloudProviderServicePrincipal(prompter *prompt.MockInterface, clien
 		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
 	}
 	subscriptions.Default = &subscriptions.Subscriptions[0]
-	resourceGroups := []armresources.ResourceGroup{{Name: new(provider.ResourceGroup)}}
+	resourceGroups := []armresources.ResourceGroup{{Name: to.Ptr(provider.ResourceGroup)}}
 
 	setAzureSubscriptions(client, subscriptions)
 	setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
@@ -1475,7 +1401,7 @@ func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, clien
 		Subscriptions: []azure.Subscription{{ID: provider.SubscriptionID, Name: "test-subscription"}},
 	}
 	subscriptions.Default = &subscriptions.Subscriptions[0]
-	resourceGroups := []armresources.ResourceGroup{{Name: new(provider.ResourceGroup)}}
+	resourceGroups := []armresources.ResourceGroup{{Name: to.Ptr(provider.ResourceGroup)}}
 
 	setAzureSubscriptions(client, subscriptions)
 	setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
@@ -1509,8 +1435,8 @@ func setProgressHandler(prompter *prompt.MockInterface) {
 
 func getMockAWSRegions() []ec2_types.Region {
 	return []ec2_types.Region{
-		{RegionName: new("test-region")},
-		{RegionName: new("test-region-2")},
+		{RegionName: to.Ptr("test-region")},
+		{RegionName: to.Ptr("test-region-2")},
 	}
 }
 

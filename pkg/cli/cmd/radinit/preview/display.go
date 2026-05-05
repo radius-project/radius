@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
@@ -38,13 +39,13 @@ func (r *Runner) showProgress(ctx context.Context, options *initOptions, progres
 // DisplayOptions consumed by the shared summary and progress views.
 func toDisplayOptions(options *initOptions) common.DisplayOptions {
 	recipePackLabel := ""
-	if options.Recipes.DevRecipes {
-		recipePackLabel = "local-dev"
+	if options.Recipes.DefaultRecipePack {
+		recipePackLabel = "default recipe pack"
 	}
 
 	var scaffoldFiles []string
 	if options.Application.Scaffold {
-		scaffoldFiles = []string{"app.bicep", "bicepconfig.json"}
+		scaffoldFiles = []string{"app.bicep", "bicepconfig.json", filepath.Join(".rad", "rad.yaml")}
 	}
 
 	return common.DisplayOptions{
