@@ -18,13 +18,18 @@ package v20250801preview
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -65,4 +70,87 @@ func TestGetGraphRun_20250801Preview(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 404, w.Result().StatusCode)
 	})
+}
+
+// TestGetGraphRun_20250801Preview_DatabaseError covers the GetResource error path (line ~65)
+// where the database client returns a non-NotFound error and the controller propagates it.
+func TestGetGraphRun_20250801Preview_DatabaseError(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	databaseClient := database.NewMockClient(mctrl)
+	req, err := rpctest.NewHTTPRequestWithContent(
+		context.Background(),
+		v1.OperationPost.HTTPMethod(),
+		"http://localhost:8080/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/myapp/getGraph?api-version=2025-08-01-preview", nil)
+	require.NoError(t, err)
+
+	databaseClient.
+		EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(nil, errors.New("boom"))
+
+	ctx := rpctest.NewARMRequestContext(req)
+	conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+	require.NoError(t, err)
+
+	ctl, err := NewGetGraphv20250801preview(ctrl.Options{DatabaseClient: databaseClient}, conn)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	resp, err := ctl.Run(ctx, w, req)
+	require.Error(t, err)
+	require.Nil(t, resp)
+}
+
+// TestGetGraphRun_20250801Preview_ComputeGraphSuccess covers the success path through Run into
+// app_ctrl.ComputeGraphResponse (line ~71) by serving an empty UCP resource-providers list from
+// an httptest server, which yields an empty graph.
+func TestGetGraphRun_20250801Preview_ComputeGraphSuccess(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/planes/radius/local/providers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	const appIDStr = "/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/myapp"
+	const envIDStr = "/planes/radius/local/resourcegroups/default/providers/Radius.Core/environments/myenv"
+
+	databaseClient := database.NewMockClient(mctrl)
+	databaseClient.
+		EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(rpctest.FakeStoreObject(&datamodel.Application_v20250801preview{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{ID: appIDStr},
+			},
+			Properties: datamodel.ApplicationProperties_v20250801preview{
+				BasicResourceProperties: rpv1.BasicResourceProperties{Environment: envIDStr},
+			},
+		}), nil)
+
+	req, err := rpctest.NewHTTPRequestWithContent(
+		context.Background(),
+		v1.OperationPost.HTTPMethod(),
+		"http://localhost:8080"+appIDStr+"/getGraph?api-version=2025-08-01-preview", nil)
+	require.NoError(t, err)
+
+	ctx := rpctest.NewARMRequestContext(req)
+	conn, err := sdk.NewDirectConnection(server.URL)
+	require.NoError(t, err)
+
+	ctl, err := NewGetGraphv20250801preview(ctrl.Options{DatabaseClient: databaseClient}, conn)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	resp, err := ctl.Run(ctx, w, req)
+	require.NoError(t, err)
+	_, ok := resp.(*rest.OKResponse)
+	require.True(t, ok, "expected an OK response, got %T", resp)
 }
