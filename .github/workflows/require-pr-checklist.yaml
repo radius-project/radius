@@ -16,6 +16,6 @@ jobs:
       pull-requests: write
     if: github.event.pull_request.user.login != 'dependabot[bot]' # Skip for Dependabot PRs
     steps:
-      - uses: mheap/require-checklist-action@46d2ca1a0f90144bd081fd13a80b1dc581759365 # v2.5.0
+      - uses: mheap/require-checklist-action@9c8100a52aa9726d4648e61aa92415f6c843c990 # v2.6.1
         with:
           requireChecklist: true # If this is true and there are no checklists detected or not filled out, the action will fail
