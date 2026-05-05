@@ -39,6 +39,9 @@ var radiusNamespacePatterns = []string{
 type TemplateInspectionResult struct {
 	// ContainsEnvironmentResource indicates whether the template contains an environment resource.
 	ContainsEnvironmentResource bool
+
+	// EnvironmentResources contains the list of environment resources found in the template.
+	EnvironmentResources []map[string]any
 }
 
 // ResourceTypeEntry represents a parsed resource type from a compiled Bicep/ARM template.
@@ -169,6 +172,11 @@ func InspectTemplateResources(template map[string]any) TemplateInspectionResult 
 			strings.HasPrefix(resourceTypeLower, legacyEnvironmentResourceType) {
 			result.ContainsEnvironmentResource = true
 		}
+
+		// add Radius.Core environment resources to the result list
+		if strings.HasPrefix(resourceTypeLower, environmentResourceType) {
+			result.EnvironmentResources = append(result.EnvironmentResources, resource)
+		}
 	}
 
 	return result
@@ -181,4 +189,10 @@ func InspectTemplateResources(template map[string]any) TemplateInspectionResult 
 // {"resources": {"resourceName": {"type": "Applications.Core/environments@2023-10-01-preview", ...}}}
 func ContainsEnvironmentResource(template map[string]any) bool {
 	return InspectTemplateResources(template).ContainsEnvironmentResource
+}
+
+// GetEnvironmentResources inspects the compiled Radius Bicep template's resources and returns
+// all environment resources found as maps.
+func GetEnvironmentResources(template map[string]any) []map[string]any {
+	return InspectTemplateResources(template).EnvironmentResources
 }

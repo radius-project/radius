@@ -35,7 +35,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient
+//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient,radiusCoreEnvironmentResourceClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
@@ -105,4 +105,12 @@ type recipePackResourceClient interface {
 	Delete(ctx context.Context, recipePackName string, options *corerpv20250801.RecipePacksClientDeleteOptions) (corerpv20250801.RecipePacksClientDeleteResponse, error)
 	Get(ctx context.Context, recipePackName string, options *corerpv20250801.RecipePacksClientGetOptions) (corerpv20250801.RecipePacksClientGetResponse, error)
 	NewListByScopePager(options *corerpv20250801.RecipePacksClientListByScopeOptions) *runtime.Pager[corerpv20250801.RecipePacksClientListByScopeResponse]
+}
+
+// radiusCoreEnvironmentResourceClient is an interface for mocking the generated SDK client for Radius.Core/environments resources.
+type radiusCoreEnvironmentResourceClient interface {
+	CreateOrUpdate(ctx context.Context, environmentName string, resource corerpv20250801.EnvironmentResource, options *corerpv20250801.EnvironmentsClientCreateOrUpdateOptions) (corerpv20250801.EnvironmentsClientCreateOrUpdateResponse, error)
+	Delete(ctx context.Context, environmentName string, options *corerpv20250801.EnvironmentsClientDeleteOptions) (corerpv20250801.EnvironmentsClientDeleteResponse, error)
+	Get(ctx context.Context, environmentName string, options *corerpv20250801.EnvironmentsClientGetOptions) (corerpv20250801.EnvironmentsClientGetResponse, error)
+	NewListByScopePager(options *corerpv20250801.EnvironmentsClientListByScopeOptions) *runtime.Pager[corerpv20250801.EnvironmentsClientListByScopeResponse]
 }
