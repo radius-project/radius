@@ -75,7 +75,7 @@ When `providers.kubernetes.target` is omitted or set to `current`, Radius behave
 
 ### Session 2026-04-14
 
-- Q: Should direct Kubernetes resource management by Radius (e.g., Applications.Core/containers) also target the external cluster, or only recipe execution? → A: External-cluster targeting is for recipes and recipe-owned resource lifecycle operations only; direct management by non-recipe Radius resource providers (for example, `Applications.Core/*`) stays on the local cluster.
+- Q: Should direct Kubernetes resource management by Radius (e.g., Applications.Core/containers) also target the external cluster, or only recipe execution? → A: External-cluster targeting is for recipes and recipe-owned resource lifecycle operations only; direct management by non-recipe Radius resource providers (for example, `Applications.Core/*`, `Radius.Core/*`) stays on the local cluster.
 - Q: Should Radius cache the dynamically-obtained kubeconfig or obtain a fresh one per recipe execution? → A: Fresh kubeconfig per recipe execution (no caching).
 - Q: Should the external kubeconfig be passed to Terraform via a temp file (`config_path`) or inline credentials (`host`, `token`, `cluster_ca_certificate`)? → A: Inline credentials in the Terraform provider block.
 - Q: Should Radius use AKS admin credentials or user credentials to obtain the kubeconfig? → A: User credentials (`ListClusterUserCredentials`) with Entra ID (AAD) authentication using the registered Azure service principal or workload identity. Local admin accounts are disabled by default on AKS, so admin credentials are not reliable.
