@@ -114,6 +114,84 @@ func TestComputeGraphResponse_UCPProvidersError(t *testing.T) {
 	require.Nil(t, resp)
 }
 
+// TestComputeGraphResponse_ListByApplicationError covers lines 62-63: the error-propagation path
+// from listAllResourcesByApplication when getAPIVersionForResourceType fails.
+func TestComputeGraphResponse_ListByApplicationError(t *testing.T) {
+	mux := http.NewServeMux()
+	// Return a provider with one resource type so the list is non-empty.
+	mux.HandleFunc("/planes/radius/local/providers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"value":[{"name":"Applications.Core","resourceTypes":{"containers":{"apiVersions":{},"defaultApiVersion":"2023-10-01-preview"}}}]}`))
+	})
+	// GetProviderSummary for the resource type returns a 500 so listAllResourcesByApplication fails.
+	mux.HandleFunc("/planes/radius/local/providers/Applications.Core", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "provider error", http.StatusInternalServerError)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	conn, err := sdk.NewDirectConnection(server.URL)
+	require.NoError(t, err)
+
+	applicationID, err := resources.Parse("/planes/radius/local/resourceGroups/app-rg/providers/Applications.Core/applications/myapp")
+	require.NoError(t, err)
+
+	resp, err := ComputeGraphResponse(
+		context.Background(),
+		applicationID,
+		"/planes/radius/local/resourceGroups/env-rg/providers/Applications.Core/environments/myenv",
+		conn,
+	)
+	require.Error(t, err)
+	require.Nil(t, resp)
+}
+
+// TestComputeGraphResponse_ListByEnvironmentError covers lines 67-68: the error-propagation path
+// from listAllResourcesByEnvironment when the environment-scoped resource listing fails.
+func TestComputeGraphResponse_ListByEnvironmentError(t *testing.T) {
+	mux := http.NewServeMux()
+	// Return a provider with one resource type.
+	mux.HandleFunc("/planes/radius/local/providers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"value":[{"name":"Applications.Core","resourceTypes":{"containers":{"apiVersions":{"2023-10-01-preview":{}},"defaultApiVersion":"2023-10-01-preview"}}}]}`))
+	})
+	// GetProviderSummary succeeds with a valid API version.
+	mux.HandleFunc("/planes/radius/local/providers/Applications.Core", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"name":"Applications.Core","resourceTypes":{"containers":{"apiVersions":{"2023-10-01-preview":{}},"defaultApiVersion":"2023-10-01-preview"}}}`))
+	})
+	// Application-scoped listing succeeds (empty list).
+	mux.HandleFunc("/planes/radius/local/resourceGroups/app-rg/providers/Applications.Core/containers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	})
+	// Environment-scoped listing fails.
+	mux.HandleFunc("/planes/radius/local/resourceGroups/env-rg/providers/Applications.Core/containers", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "env listing error", http.StatusInternalServerError)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	conn, err := sdk.NewDirectConnection(server.URL)
+	require.NoError(t, err)
+
+	applicationID, err := resources.Parse("/planes/radius/local/resourceGroups/app-rg/providers/Applications.Core/applications/myapp")
+	require.NoError(t, err)
+
+	resp, err := ComputeGraphResponse(
+		context.Background(),
+		applicationID,
+		"/planes/radius/local/resourceGroups/env-rg/providers/Applications.Core/environments/myenv",
+		conn,
+	)
+	require.Error(t, err)
+	require.Nil(t, resp)
+}
+
 // TestGetGraphRun_DatabaseError covers the error path from GetResource (line ~104) where the
 // database client returns a non-NotFound error and the controller propagates it.
 func TestGetGraphRun_DatabaseError(t *testing.T) {
