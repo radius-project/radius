@@ -18,6 +18,7 @@ package applications
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -41,9 +42,9 @@ const (
 // implementations of the getGraph custom action.
 func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, environmentIDString string, connection sdk.Connection) (rest.Response, error) {
 	// An application **MUST** have an environment id
-	environmentID, err := resources.Parse(environmentIDString)
+	environmentID, err := resources.ParseResource(environmentIDString)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse environment ID %q: %w", environmentIDString, err)
 	}
 
 	clientOptions := sdk.NewClientOptions(connection)
