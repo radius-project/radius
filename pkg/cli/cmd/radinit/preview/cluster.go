@@ -14,25 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
-	"context"
-
-	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
-func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptions) (*azure.Provider, error) {
-	provider, err := common.EnterAzureCloudProvider(ctx, r.Prompter, r.Output, r.azureClient)
+func (r *Runner) enterClusterOptions(options *initOptions) error {
+	result, err := common.EnterClusterOptions(r.KubernetesInterface, r.HelmInterface, r.Prompter, r.Full)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	if provider.CredentialKind == azure.AzureCredentialKindWorkloadIdentity {
-		// Set the value for the Helm chart.
-		options.SetValues = append(options.SetValues, "global.azureWorkloadIdentity.enabled=true")
-	}
-
-	return provider, nil
+	options.Cluster.Install = result.Install
+	options.Cluster.Namespace = result.Namespace
+	options.Cluster.Context = result.Context
+	options.Cluster.Version = result.Version
+	return nil
 }

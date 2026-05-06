@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package radinit
+package preview
 
 import (
 	"context"
 
-	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
-func (r *Runner) enterAzureCloudProvider(ctx context.Context, options *initOptions) (*azure.Provider, error) {
-	provider, err := common.EnterAzureCloudProvider(ctx, r.Prompter, r.Output, r.azureClient)
+func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
+	provider, err := common.EnterAWSCloudProvider(ctx, r.Prompter, r.Output, r.awsClient)
 	if err != nil {
 		return nil, err
 	}
 
-	if provider.CredentialKind == azure.AzureCredentialKindWorkloadIdentity {
+	if provider.CredentialKind == aws.AWSCredentialKindIRSA {
 		// Set the value for the Helm chart.
-		options.SetValues = append(options.SetValues, "global.azureWorkloadIdentity.enabled=true")
+		options.SetValues = append(options.SetValues, "global.aws.irsa.enabled=true")
 	}
 
 	return provider, nil
