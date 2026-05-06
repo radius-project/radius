@@ -71,7 +71,7 @@ A new user installs the CLI, points `kubectl` at their cluster, and runs `rad in
 
 **Why this priority**: This is the entry point for every new user. The combination of "no workspace concept" and "no required config file write" is the defining shape of the new UX.
 
-**Independent Test**: Run `rad init` on a fresh machine, then run `rad env show` with no flags. Confirm that the environment named `default` from the resource group named `default` is shown \u2014 verifying that `rad init` created both, that the literal-`default` fallback resolved both keys without any `defaults:` block being written, and that no user-facing output mentioned \"workspace\".
+**Independent Test**: Run `rad init` on a fresh machine, then run `rad env show` with no flags. Confirm that the environment named `default` from the resource group named `default` is shown — verifying that `rad init` created both, that the literal-`default` fallback resolved both keys without any `defaults:` block being written, and that no user-facing output mentioned "workspace".
 
 **Acceptance Scenarios**:
 
