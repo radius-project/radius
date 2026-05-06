@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -77,6 +78,9 @@ rad env update myenv --kubernetes-namespace mynamespace
 
 ## Remove Kubernetes cloud provider (preview)
 rad env update myenv --clear-kubernetes
+
+## Set recipe packs to environment (--preview)
+rad env update myenv --recipe-packs pack1,pack2
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -206,12 +210,37 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.recipePacks, err = cmd.Flags().GetStringSlice("recipe-packs")
+	recipePacks, err := cmd.Flags().GetStringSlice("recipe-packs")
 	if err != nil {
 		return err
 	}
 
+	r.recipePacks = normalizeRecipePacks(recipePacks)
+
 	return nil
+}
+
+// normalizeRecipePacks splits comma-separated values, trims whitespace, and
+// removes empty entries and duplicates while preserving the first-seen order.
+// Deduplication avoids redundant referencedBy sync work and prevents server-side
+// recipe pack conflict validation from failing on repeated entries.
+func normalizeRecipePacks(recipepacks []string) []string {
+	seen := map[string]struct{}{}
+	result := []string{}
+	for _, value := range recipepacks {
+		for _, p := range strings.Split(value, ",") {
+			trimmed := strings.TrimSpace(p)
+			if trimmed == "" {
+				continue
+			}
+			if _, ok := seen[trimmed]; ok {
+				continue
+			}
+			seen[trimmed] = struct{}{}
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 // Run runs the `rad env update` preview command.
@@ -274,43 +303,53 @@ func (r *Runner) Run(ctx context.Context) error {
 		env.Properties.Providers.Kubernetes = r.providers.Kubernetes
 	}
 
-	// replace recipe packs if any are specified
+	newRecipePacks := []*string{}
+
+	// Update recipe packs if specified: replace the environment's recipe pack list,
+	// keeping referencedBy on each recipe pack in sync.
 	if len(r.recipePacks) > 0 {
 		if len(env.Properties.RecipePacks) > 0 {
 			r.Output.LogInfo("WARNING: The existing recipe pack list will be replaced with the specified packs.")
 		}
 
-		// Create a new list to replace the existing recipe packs
-		newRecipePacks := []*string{}
+		envID := *env.ID
 
+		// Resolve all new recipe packs to full IDs.
 		for _, recipePack := range r.recipePacks {
-			ID, err := resources.Parse(recipePack)
-			rClientFactory := r.RadiusCoreClientFactory
+			var rClientFactory *corerpv20250801.ClientFactory
+			recipePackID, err := resources.Parse(recipePack)
+			// If the provided recipe pack value is an ID, parse its scope.
 			if err == nil {
-				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipePackID.RootScope())
 				if err != nil {
 					return err
 				}
-
 			} else {
+				rClientFactory = r.RadiusCoreClientFactory
 				scopeID, err := resources.ParseScope(r.Workspace.Scope)
 				if err != nil {
 					return err
 				}
 
-				ID = scopeID.Append(resources.TypeSegment{
+				recipePackID = scopeID.Append(resources.TypeSegment{
 					Type: "Radius.Core/recipePacks",
 					Name: recipePack,
 				})
 			}
 
 			cfclient := rClientFactory.NewRecipePacksClient()
-			_, err = cfclient.Get(ctx, ID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+
+			_, err = cfclient.Get(ctx, recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
 			if err != nil {
 				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
 			}
 
-			newRecipePacks = append(newRecipePacks, to.Ptr(ID.String()))
+			newRecipePacks = append(newRecipePacks, to.Ptr(recipePackID.String()))
+		}
+
+		err := syncRecipePackReferences(ctx, envID, env.Properties.RecipePacks, newRecipePacks, r.Workspace, r.RadiusCoreClientFactory)
+		if err != nil {
+			return err
 		}
 
 		// Replace the entire recipe packs list
@@ -353,4 +392,198 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Successfully updated environment %q.", r.EnvironmentName)
 
 	return nil
+}
+
+// syncRecipePackReferences updates the referencedBy field on recipe packs to reflect
+// a new environment-to-pack assignment. When an environment is updated with a new list of recipe packs,
+//
+//	this function removes the environment from the referencedBy list of recipe packs being removed,
+//
+// and adds the environment to the referencedBy list of newly added recipe packs.
+func syncRecipePackReferences(ctx context.Context, envID string, oldPackIDs []*string, newPackIDs []*string, workspace *workspaces.Workspace, defaultFactory *corerpv20250801.ClientFactory) error {
+	oldPackIDSet := makePackIDSet(oldPackIDs)
+	newPackIDSet := makePackIDSet(newPackIDs)
+	packIDsToAdd := packIDsOnlyInFirst(newPackIDs, oldPackIDSet)
+	packIDsToRemove := packIDsOnlyInFirst(oldPackIDs, newPackIDSet)
+	clientsByScope := map[string]*corerpv20250801.RecipePacksClient{}
+
+	// Remove this environment from referencedBy for packs being dropped.
+	for _, oldPackIDStr := range packIDsToRemove {
+		err := removeEnvReferenceFromRecipePack(ctx, envID, oldPackIDStr, workspace, defaultFactory, clientsByScope)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Add this environment to referencedBy for newly added packs.
+	for _, newPackIDStr := range packIDsToAdd {
+		err := addEnvReferenceToRecipePack(ctx, envID, newPackIDStr, workspace, defaultFactory, clientsByScope)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func makePackIDSet(packIDs []*string) map[string]struct{} {
+	result := map[string]struct{}{}
+	for _, packID := range packIDs {
+		if packID == nil {
+			continue
+		}
+
+		result[*packID] = struct{}{}
+	}
+
+	return result
+}
+
+func packIDsOnlyInFirst(first []*string, secondSet map[string]struct{}) []string {
+	result := []string{}
+	for _, packID := range first {
+		if packID == nil {
+			continue
+		}
+
+		if _, exists := secondSet[*packID]; exists {
+			continue
+		}
+
+		result = append(result, *packID)
+	}
+
+	return result
+}
+
+func getRecipePacksClientForScope(
+	ctx context.Context,
+	rootScope string,
+	workspace *workspaces.Workspace,
+	defaultFactory *corerpv20250801.ClientFactory,
+	clientsByScope map[string]*corerpv20250801.RecipePacksClient,
+) (*corerpv20250801.RecipePacksClient, error) {
+	if client, ok := clientsByScope[rootScope]; ok {
+		return client, nil
+	}
+
+	factory := defaultFactory
+	if rootScope != workspace.Scope {
+		var err error
+		factory, err = cmd.InitializeRadiusCoreClientFactory(ctx, workspace, rootScope)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	client := factory.NewRecipePacksClient()
+	clientsByScope[rootScope] = client
+
+	return client, nil
+}
+
+func removeEnvReferenceFromRecipePack(
+	ctx context.Context,
+	envID string,
+	packID string,
+	workspace *workspaces.Workspace,
+	defaultFactory *corerpv20250801.ClientFactory,
+	clientsByScope map[string]*corerpv20250801.RecipePacksClient,
+) error {
+	resourceID, err := resources.Parse(packID)
+	if err != nil {
+		return err
+	}
+
+	packClient, err := getRecipePacksClientForScope(ctx, resourceID.RootScope(), workspace, defaultFactory, clientsByScope)
+	if err != nil {
+		return err
+	}
+
+	packResp, err := packClient.Get(ctx, resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	if clients.Is404Error(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	pack := packResp.RecipePackResource
+	pack.SystemData = nil
+	if pack.Properties == nil {
+		pack.Properties = &corerpv20250801.RecipePackProperties{}
+	}
+
+	pack.Properties.ReferencedBy = removeReference(pack.Properties.ReferencedBy, envID)
+
+	_, err = packClient.CreateOrUpdate(ctx, resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
+	}
+
+	return nil
+}
+
+func addEnvReferenceToRecipePack(
+	ctx context.Context,
+	envID string,
+	packID string,
+	workspace *workspaces.Workspace,
+	defaultFactory *corerpv20250801.ClientFactory,
+	clientsByScope map[string]*corerpv20250801.RecipePacksClient,
+) error {
+	resourceID, err := resources.Parse(packID)
+	if err != nil {
+		return err
+	}
+
+	packClient, err := getRecipePacksClientForScope(ctx, resourceID.RootScope(), workspace, defaultFactory, clientsByScope)
+	if err != nil {
+		return err
+	}
+
+	packResp, err := packClient.Get(ctx, resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	if clients.Is404Error(err) {
+		return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", resourceID.String())
+	}
+	if err != nil {
+		return err
+	}
+
+	pack := packResp.RecipePackResource
+	pack.SystemData = nil
+	if pack.Properties == nil {
+		pack.Properties = &corerpv20250801.RecipePackProperties{}
+	}
+
+	if !refExists(pack.Properties.ReferencedBy, envID) {
+		pack.Properties.ReferencedBy = append(pack.Properties.ReferencedBy, &envID)
+	}
+
+	_, err = packClient.CreateOrUpdate(ctx, resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
+	}
+
+	return nil
+}
+
+func removeReference(environmentRefs []*string, id string) []*string {
+	result := []*string{}
+	for _, ref := range environmentRefs {
+		if ref != nil && *ref != id {
+			result = append(result, ref)
+		}
+	}
+
+	return result
+}
+
+func refExists(environmentRefs []*string, id string) bool {
+	for _, r := range environmentRefs {
+		if r != nil && *r == id {
+			return true
+		}
+	}
+	return false
 }
