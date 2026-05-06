@@ -55,6 +55,6 @@ func Test_RecipeParametersFormat(t *testing.T) {
 	err := output.Write(output.FormatTable, obj, buffer, RecipeParametersFormat())
 	require.NoError(t, err)
 
-	expected := "PARAMETER  TYPE       DEFAULT VALUE  MIN       MAX\ntest       test-type  1              4         3\n"
+	expected := "PARAMETER  TYPE       DEFAULT VALUE  VALUE     MIN       MAX\ntest       test-type  1              null      4         3\n"
 	require.Equal(t, expected, buffer.String())
 }

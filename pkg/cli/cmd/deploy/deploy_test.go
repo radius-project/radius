@@ -17,17 +17,24 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -896,6 +903,301 @@ func Test_Run(t *testing.T) {
 	})
 }
 
+const radiusCoreEnvironmentsType = "Radius.Core/environments@2025-08-01-preview"
+
+// buildEnvResource creates a Radius.Core/environments resource entry for use in test templates.
+// If recipePacks is nil, the environment will have no recipePacks field.
+func buildEnvResource(name string, recipePacks []any) map[string]any {
+	innerProps := map[string]any{}
+	if recipePacks != nil {
+		innerProps["recipePacks"] = recipePacks
+	}
+	return map[string]any{
+		"type": radiusCoreEnvironmentsType,
+		"properties": map[string]any{
+			"name":       name,
+			"properties": innerProps,
+		},
+	}
+}
+
+// getRecipePacks navigates a template resource entry and returns the recipePacks slice.
+// It returns (packs, true) when the key exists and is a []any, or (nil, false) otherwise.
+func getRecipePacks(t *testing.T, template map[string]any, resourceKey string) ([]any, bool) {
+	t.Helper()
+	envRes := template["resources"].(map[string]any)[resourceKey].(map[string]any)
+	outerProps := envRes["properties"].(map[string]any)
+	innerProps := outerProps["properties"].(map[string]any)
+	packs, ok := innerProps["recipePacks"].([]any)
+	return packs, ok
+}
+
+func Test_setupRecipePacks(t *testing.T) {
+	scope := "/planes/radius/local/resourceGroups/test-group"
+
+	t.Run("injects default recipe pack into template", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory — GET succeeds (pack already exists).
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		// Verify that the default recipe pack was injected.
+		packs, ok := getRecipePacks(t, template, "env")
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
+	})
+
+	t.Run("skips when environment has existing packs", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Since packs are already set, no changes should be made.
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", []any{existingPackID}),
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		packs, _ := getRecipePacks(t, template, "env")
+		// Only the original pack — no default pack added
+		require.Len(t, packs, 1)
+		require.Equal(t, existingPackID, packs[0])
+	})
+
+	t.Run("no-op when template has no environment resource", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"app": map[string]any{
+					"type": "Radius.Core/applications@2025-08-01-preview",
+				},
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+	})
+
+	t.Run("no-op for Applications.Core environment", func(t *testing.T) {
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			Output: &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": map[string]any{
+					"type": "Applications.Core/environments@2023-10-01-preview",
+				},
+			},
+		}
+
+		// Should be a no-op since we only handle Radius.Core environments
+		err := runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+	})
+
+	t.Run("injects packs only for environment without packs in mixed template", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		// Only one env needs packs, so only one EnsureDefaultResourceGroup call.
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerUniqueTypes,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		existingPackID := scope + "/providers/Radius.Core/recipePacks/custom-pack"
+
+		// Two environments: envWithPacks already has a pack, envWithout has none.
+		template := map[string]any{
+			"resources": map[string]any{
+				"envWithPacks": buildEnvResource("envWithPacks", []any{existingPackID}),
+				"envWithout":   buildEnvResource("envWithout", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		// envWithPacks should be untouched — still just 1 pack.
+		wpPacks, _ := getRecipePacks(t, template, "envWithPacks")
+		require.Len(t, wpPacks, 1, "envWithPacks should keep its original pack only")
+		require.Equal(t, existingPackID, wpPacks[0])
+
+		// envWithout should have received the default pack.
+		woPacks, ok := getRecipePacks(t, template, "envWithout")
+		require.True(t, ok, "expected recipePacks on envWithout")
+		require.Len(t, woPacks, 1, "envWithout should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), woPacks[0])
+	})
+
+	t.Run("creates default pack when not found in default scope", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory returns 404 on GET (packs don't exist yet)
+		// but succeeds on CreateOrUpdate.
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.NoError(t, err)
+
+		packs, ok := getRecipePacks(t, template, "env")
+		require.True(t, ok)
+		require.Len(t, packs, 1, "should have the default recipe pack")
+		require.Equal(t, recipepack.DefaultRecipePackID(), packs[0])
+	})
+
+	t.Run("returns error when default scope GET fails with non-404", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Default scope factory returns 500 on GET (unexpected error).
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			test_client_factory.WithRecipePackServerInternalError,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err = runner.setupRecipePack(context.Background(), template)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
+	})
+
+	t.Run("returns error when CreateOrUpdateResourceGroup fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(fmt.Errorf("resource group creation failed")).
+			Times(1)
+
+		runner := &Runner{
+			Workspace: &workspaces.Workspace{
+				Scope: scope,
+			},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:            &output.MockOutput{},
+		}
+
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": buildEnvResource("myenv", nil),
+			},
+		}
+
+		err := runner.setupRecipePack(context.Background(), template)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "resource group creation failed")
+	})
+}
+
 func Test_injectAutomaticParameters(t *testing.T) {
 	template := map[string]any{
 		"parameters": map[string]any{
@@ -1565,4 +1867,177 @@ func Test_ConfigureProviders(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_addDeploymentErrorContext(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		template       map[string]any
+		expectWrapped  bool
+		expectContains string
+	}{
+		{
+			name: "Non-Azure error is returned as-is",
+			err:  fmt.Errorf("connection refused"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Azure error with only Radius types is wrapped",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped:  true,
+			expectContains: "Deployment failed (incorrect or unsupported API version)",
+		},
+		{
+			name: "Non-Azure provider-not-configured error is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider kubernetes is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Exact deployment engine error with Azure types is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type microsoft.storage/storageAccounts"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name: "Exact deployment engine error with mixed types is returned as-is",
+			err:  v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+					},
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2021-01-01",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+		{
+			name:          "Exact deployment engine error with empty template is returned as-is",
+			err:           v1.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type applications.core/containers"),
+			template:      map[string]any{},
+			expectWrapped: false,
+		},
+		{
+			name: "Response error with deployment engine payload is wrapped",
+			err: &azcore.ResponseError{
+				ErrorCode:  v1.CodeInvalid,
+				StatusCode: http.StatusBadRequest,
+				RawResponse: &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body: io.NopCloser(bytes.NewReader([]byte(
+						`{"error":{"code":"BadRequest","message":"provider azure is not configured. Cannot support resource type radius.core/applications"}}`,
+					))),
+				},
+			},
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped:  true,
+			expectContains: unsupportedAPIDocsURL,
+		},
+		{
+			name: "Response error with non-Azure provider-not-configured payload is returned as-is",
+			err: &azcore.ResponseError{
+				ErrorCode:  v1.CodeInvalid,
+				StatusCode: http.StatusBadRequest,
+				RawResponse: &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body: io.NopCloser(bytes.NewReader([]byte(
+						`{"error":{"code":"BadRequest","message":"provider kubernetes is not configured. Cannot support resource type applications.core/containers"}}`,
+					))),
+				},
+			},
+			template: map[string]any{
+				"resources": map[string]any{
+					"app": map[string]any{
+						"type": "Radius.Core/applications@2023-10-01-preview",
+					},
+				},
+			},
+			expectWrapped: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := addDeploymentErrorContext(tt.err, tt.template)
+			if tt.expectWrapped {
+				require.NotEqual(t, tt.err, result)
+				require.Contains(t, result.Error(), tt.expectContains)
+				// The original error should be preserved as the cause
+				require.Contains(t, result.Error(), strings.TrimSpace(tt.err.Error()))
+			} else {
+				require.Equal(t, tt.err, result)
+			}
+		})
+	}
+}
+
+type trackingReadCloser struct {
+	*bytes.Reader
+	closed bool
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closed = true
+	return nil
+}
+
+func Test_extractDeploymentEngineErrorDetails_closesAndResetsBody(t *testing.T) {
+	body := []byte(`{"error":{"code":"BadRequest","message":"provider azure is not configured. Cannot support resource type radius.core/applications"}}`)
+	tracker := &trackingReadCloser{Reader: bytes.NewReader(body)}
+	responseErr := &azcore.ResponseError{
+		ErrorCode:  v1.CodeInvalid,
+		StatusCode: http.StatusBadRequest,
+		RawResponse: &http.Response{
+			StatusCode: http.StatusBadRequest,
+			Body:       tracker,
+		},
+	}
+
+	details, ok := extractDeploymentEngineErrorDetails(responseErr)
+
+	require.True(t, ok)
+	require.NotNil(t, details)
+	require.Equal(t, v1.CodeInvalid, details.Code)
+	require.Equal(t, "provider azure is not configured. Cannot support resource type radius.core/applications", details.Message)
+	require.True(t, tracker.closed)
+
+	resetBody, readErr := io.ReadAll(responseErr.RawResponse.Body)
+	require.NoError(t, readErr)
+	require.Equal(t, body, resetBody)
 }
