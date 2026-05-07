@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/hashicorp/go-version"
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
@@ -174,10 +175,7 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 
 	installStartTime := time.Now()
 	execPath, err := installer.Ensure(ctx, []src.Source{
-		&releases.LatestVersion{
-			Product:    product.Terraform,
-			InstallDir: globalDir,
-		},
+		&releases.ExactVersion{Product: product.Terraform, Version: version.Must(version.NewVersion(terraformVersion))},
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,

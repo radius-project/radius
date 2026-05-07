@@ -203,6 +203,9 @@ type ApplicationsManagementClient interface {
 	// ListEnvironmentsAll lists all environments across resource groups.
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 
+	// ListRadiusCoreEnvironmentsAll lists all Radius.Core environments across resource groups.
+	ListRadiusCoreEnvironmentsAll(ctx context.Context) ([]radiuscore.EnvironmentResource, error)
+
 	// ListRecipePacksInResourceGroup lists all recipe packs in the configured scope (assumes configured scope is a resource group).
 	ListRecipePacksInResourceGroup(ctx context.Context) ([]radiuscore.RecipePackResource, error)
 

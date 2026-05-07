@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func Test_enterClusterOptions(t *testing.T) {
@@ -43,33 +42,4 @@ func Test_enterClusterOptions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "kind-kind", options.Cluster.Context)
 	require.Equal(t, true, options.Cluster.Install)
-}
-
-func Test_selectCluster(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	prompter := prompt.NewMockInterface(ctrl)
-	k8s := kubernetes.NewMockInterface(ctrl)
-	runner := Runner{Prompter: prompter, KubernetesInterface: k8s, Full: true}
-
-	initGetKubeContextSuccess(k8s)
-	initKubeContextWithKind(prompter)
-
-	name, err := runner.selectCluster()
-	require.NoError(t, err)
-	require.Equal(t, "kind-kind", name)
-}
-
-func Test_buildClusterList(t *testing.T) {
-	config := &api.Config{
-		CurrentContext: "c-test-cluster",
-		Contexts: map[string]*api.Context{
-			"b-test-cluster": {},
-			"a-test-cluster": {},
-			"c-test-cluster": {},
-		},
-	}
-	runner := Runner{Full: true}
-
-	names := runner.buildClusterList(config)
-	require.Equal(t, []string{"c-test-cluster", "a-test-cluster", "b-test-cluster"}, names)
 }
