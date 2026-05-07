@@ -30,7 +30,7 @@ Radius currently supports a single type of application graph — the **run-time 
 
 This design proposes extending Radius to support three kinds of application graph:
 
-#### 1. Static application graph
+#### 1. Modeled application graph
 
 A graph constructed from application definitions authored in Bicep files (or their compiled JSON output), **without** deploying the application. This is useful for:
 
@@ -39,7 +39,7 @@ A graph constructed from application definitions authored in Bicep files (or the
 
 **Limitation:** Because the concrete infrastructure resources depend on the recipe bound to each resource type — which in turn depends on the target Radius environment — the static graph cannot include infrastructure-level details.
 
-#### 2. Run-time application graph (deployment graph)
+#### 2. Deployed application graph (deployment graph)
 
 The graph of a **live, deployed** application, as described above. This is the only graph type supported today.
 
@@ -51,7 +51,7 @@ A graph that shows what the concrete infrastructure resources and their dependen
 rad app graph -e env-id --dry-run
 ```
 
-Radius should provide a way to access all three kinds of graph.
+Radius should provide commands to access all three kinds of graph.
 
 ## Terms and definitions
 
@@ -80,7 +80,7 @@ Radius should provide a way to access all three kinds of graph.
 
 ### Non-goals
 
-* Simulated deployment graph (dry-run) — identified as a future capability but out of scope for this iteration. This also requires enhancing Radius to avail tf plan/ what-if to understand recipe's output resources without executing them.
+* Simulated deployment graph (dry-run) — identified as a fast follow capability but out of scope for this iteration. This also requires enhancing Radius to avail tf plan/ what-if to understand recipe's output resources without executing them.
 
 ### User scenarios
 
@@ -90,12 +90,19 @@ A developer modifies `app.bicep` to add a new Redis cache and connect it to an e
 
 #### Scenario 2: Repository root architecture diagram
 
-When a developer navigates to the repository root on GitHub, an "Application graph" tab appears next to the README tab (in the README file eventually; tab is because of using browser extensions, will change based on the UI stack we would choose). Clicking it shows the current application topology for the `main` branch — always up to date because CI rebuilds it on every merge.
+When a developer navigates to the repository root on GitHub, an "Application graph" tab appears next to the README tab. Clicking it shows the current application topology for the `main` branch — always up to date because CI rebuilds it on every merge.
 
 #### Scenario 3: Interactive navigation from graph to code
 
 A developer clicks on a node in the graph (e.g., "cache") and sees a popup with links to: (1) the source code file referenced by the `codeReference` property, and (2) the `app.bicep` line where the resource is declared.
 
+#### Scenario 4: Deployed graph
+
+Once the user deploys an application, The repository should link to the deployed app graph, along with the details for each "concrete" resource.
+
+**Note**:
+
+All the above scenarios are UI-based. To enable these user experiences through visualizations, Radius will be enhanced to support commands that produce [the three graph command variations](#proposed-graph-types). However, the methods to invoke these commands, visualization libraries, and rendering effects are not part of core Radius.
 
 
 ## User Experience
