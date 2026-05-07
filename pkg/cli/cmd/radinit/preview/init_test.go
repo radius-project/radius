@@ -127,9 +127,6 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -157,9 +154,6 @@ func Test_Validate(t *testing.T) {
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
@@ -194,9 +188,6 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -225,9 +216,6 @@ func Test_Validate(t *testing.T) {
 
 				// No need to choose env settings since we're using existing
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -255,9 +243,6 @@ func Test_Validate(t *testing.T) {
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
 
 				// No need to choose env settings since we're using existing
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
@@ -291,9 +276,6 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -325,9 +307,6 @@ func Test_Validate(t *testing.T) {
 
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
@@ -361,9 +340,6 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -396,42 +372,6 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
-			},
-		},
-		{
-			Name:          "Initialize --full with existing environment create application - initial appname is invalid",
-			Input:         []string{"--full"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         config,
-			},
-			CreateTempDirectory: "in.valid", // Invalid app name
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Radius is already installed, no reinstall
-				initGetKubeContextSuccess(mocks.Kubernetes)
-				initKubeContextWithKind(mocks.Prompter)
-				initHelmMockRadiusInstalled(mocks.Helm)
-
-				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
-					{
-						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
-						Name: to.Ptr("cool-existing-env"),
-					},
-				})
-				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
-
-				// No need to choose env settings since we're using existing
-
-				// Create Application
-				setScaffoldApplicationPromptYes(mocks.Prompter)
-				setApplicationNamePrompt(mocks.Prompter, "valid")
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -451,8 +391,6 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -468,8 +406,6 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initHelmMockRadiusNotInstalled(mocks.Helm)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -493,8 +429,6 @@ func Test_Validate(t *testing.T) {
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "myenv")
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -517,8 +451,6 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("default"),
 					},
 				})
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -549,8 +481,6 @@ func Test_Validate(t *testing.T) {
 				// prompt the user since there's no 'default'
 				initExistingEnvironmentSelection(mocks.Prompter, "prod")
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -647,9 +577,6 @@ func Test_Validate(t *testing.T) {
 				initAddCloudProviderPromptYes(mocks.Prompter)
 				initSelectCloudProvider(mocks.Prompter, confirmCloudProviderBackNavigationSentinel)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -683,8 +610,6 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -703,8 +628,6 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -723,8 +646,6 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -743,8 +664,6 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -763,8 +682,6 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 	}
@@ -934,6 +851,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+
 			ctrl := gomock.NewController(t)
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			configFileInterface.EXPECT().
@@ -1039,9 +958,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				},
 				Recipes: recipePackOptions{
 					DefaultRecipePack: !tc.full,
-				},
-				Application: applicationOptions{
-					Scaffold: false,
 				},
 			}
 
@@ -1201,24 +1117,6 @@ func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice str
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectExistingEnvironmentPrompt).
 		Return(choice, nil).Times(1)
-}
-
-func setScaffoldApplicationPromptNo(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.ConfirmSetupApplicationPrompt).
-		Return(prompt.ConfirmNo, nil).Times(1)
-}
-
-func setScaffoldApplicationPromptYes(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.ConfirmSetupApplicationPrompt).
-		Return(prompt.ConfirmYes, nil).Times(1)
-}
-
-func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName string) {
-	prompter.EXPECT().
-		GetTextInput(common.EnterApplicationNamePrompt, gomock.Any()).
-		Return(applicationName, nil).Times(1)
 }
 
 func setAWSRegionPrompt(prompter *prompt.MockInterface, regions []string, region string) {

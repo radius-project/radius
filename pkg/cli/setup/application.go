@@ -25,27 +25,6 @@ import (
 )
 
 const (
-	appBicepTemplate = `extension radius
-
-@description('The Radius Application ID. Injected automatically by the rad CLI.')
-param application string
-
-resource demo 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'demo'
-  properties: {
-    application: application
-    container: {
-      image: 'ghcr.io/radius-project/samples/demo:latest'
-      ports: {
-        web: {
-          containerPort: 3000
-        }
-      }
-    }
-  }
-}
-` // Trailing newline intentional.
-
 	bicepConfigTemplate = `{
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
@@ -56,29 +35,6 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 	}
 }`
 )
-
-// ScaffoldApplication creates a working sample application in the provided directory.
-//
-// This is used by `rad init --preview` to scaffold an example app.bicep alongside
-// the bicepconfig.json. The default `rad init` flow only creates bicepconfig.json
-// (see ScaffoldBicepConfig).
-func ScaffoldApplication(directory string) error {
-	// We NEVER overwrite app.bicep or the bicepconfig.json if it exists. We assume the user might have changed it, and don't
-	// want them to lose their content.
-	appBicepFilepath := filepath.Join(directory, "app.bicep")
-	_, err := os.Stat(appBicepFilepath)
-	if os.IsNotExist(err) {
-		err = os.WriteFile(appBicepFilepath, []byte(appBicepTemplate), 0644)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-
-	_, err = ScaffoldBicepConfig(directory)
-	return err
-}
 
 // ScaffoldBicepConfig creates a bicepconfig.json file in the provided directory if one does not already exist.
 // It returns existed=true if a bicepconfig.json was already present (in which case the file is not modified).

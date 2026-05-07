@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
@@ -37,7 +38,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -231,38 +231,21 @@ func (r *Runner) Run(ctx context.Context) error {
 	progress.EnvironmentComplete = true
 	progressChan <- progress
 
-	if r.Options.Application.Scaffold {
-		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-		if err != nil {
-			return err
-		}
-
-		// Initialize the application resource if it's not found.
-		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, &corerp.ApplicationResource{
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &corerp.ApplicationProperties{
-				Environment: &r.Workspace.Environment,
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		// Scaffold application files in the current directory
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-
-		err = setup.ScaffoldApplication(wd)
-		if err != nil {
-			return err
-		}
+	// Always scaffold a bicepconfig.json in the current directory so that users have the
+	// required Bicep configuration to author Radius applications.
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
 	}
-	progress.ApplicationComplete = true
+
+	bicepConfigExisted, err := setup.ScaffoldBicepConfig(wd)
+	if err != nil {
+		return err
+	}
+	progress.BicepConfigComplete = true
 	progressChan <- progress
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
+	err = r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -273,6 +256,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	err = <-progressCompleteChan
 	if err != nil {
 		return err
+	}
+
+	// Warn the user (after the progress UI has finished) if a bicepconfig.json was already
+	// present so that they know it was preserved and not overwritten.
+	if bicepConfigExisted {
+		bicepConfigPath := filepath.Join(wd, "bicepconfig.json")
+		r.Output.LogInfo("Warning: An existing bicepconfig.json was found at %s. It was preserved and not modified. Ensure it contains the Radius Bicep extensions (radius, radiusCompute, radiusData, radiusSecurity, aws); otherwise Bicep authoring may fail.", bicepConfigPath)
 	}
 
 	return nil
