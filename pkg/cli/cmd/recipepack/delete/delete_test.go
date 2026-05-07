@@ -163,7 +163,6 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, capturedEnv.Properties.RecipePacks)
 
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -199,7 +198,6 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -249,7 +247,6 @@ func Test_Run(t *testing.T) {
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -461,7 +458,6 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackNotFound, Params: []any{packName}},
 		}, outputSink.Writes)
 	})

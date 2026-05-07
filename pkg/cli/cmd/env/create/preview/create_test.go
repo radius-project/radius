@@ -196,10 +196,11 @@ func Test_Run(t *testing.T) {
 					"testenv",
 				},
 			},
+		}
 
-    err := runner.Run(context.Background())
+		err = runner.Run(context.Background())
 		require.NoError(t, err)
-    require.Equal(t, expectedOutput, outputSink.Writes)
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
 
 	t.Run("creates default recipe pack when not found", func(t *testing.T) {

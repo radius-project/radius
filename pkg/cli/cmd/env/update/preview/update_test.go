@@ -307,6 +307,7 @@ func Test_Run(t *testing.T) {
 				},
 				output.LogOutput{
 					Format: "Radius.Core/environments/%s updated",
+					Params: []any{"test-env"},
 				},
 			},
 		},

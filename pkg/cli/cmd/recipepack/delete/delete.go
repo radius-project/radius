@@ -38,9 +38,10 @@ import (
 )
 
 const (
-	deleteConfirmationMsg = "Are you sure you want to delete recipe pack '%s'?"
-	msgRecipePackDeleted  = "Radius.Core/recipePacks/%s deleted"
-	msgRecipePackNotFound = "Radius.Core/recipePacks/%s not found"
+	deleteConfirmationMsg   = "Are you sure you want to delete recipe pack '%s'?"
+	msgRecipePackDeleted    = "Radius.Core/recipePacks/%s deleted"
+	msgRecipePackNotDeleted = "Radius.Core/recipePacks/%s not deleted"
+	msgRecipePackNotFound   = "Radius.Core/recipePacks/%s not found"
 )
 
 // NewCommand creates a new Cobra command for deleting a recipe pack.
@@ -137,6 +138,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		if !confirmed {
+			r.Output.LogInfo(msgRecipePackNotDeleted, r.RecipePackName)
 			return nil
 		}
 	}
