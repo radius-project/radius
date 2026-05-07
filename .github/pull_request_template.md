@@ -35,5 +35,5 @@ Please verify that the PR meets the following requirements, where applicable:
     - [ ] Yes
     - [ ] Not applicable
 - A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
-    - [ ] Yes <!-- TaskRadio docs-pr -->
-    - [ ] Not applicable <!-- TaskRadio docs-pr -->
+    - [ ] Yes
+    - [ ] Not applicable
