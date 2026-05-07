@@ -19,6 +19,7 @@ package delete
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -154,36 +155,57 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envs := recipePack.Properties.ReferencedBy
 
+	if recipePack.ID == nil {
+		return fmt.Errorf("recipe pack %q is missing a resource ID", r.RecipePackName)
+	}
+	deletedPackID := *recipePack.ID
+
+	// Cache ClientFactory per root scope so we initialize at most once per scope
+	// even when the referenced environments span multiple root scopes.
+	factoriesByScope := map[string]*corerpv20250801.ClientFactory{}
+	if r.RadiusCoreClientFactory != nil {
+		factoriesByScope[r.Workspace.Scope] = r.RadiusCoreClientFactory
+	}
+
 	for _, env := range envs {
 		ID, err := resources.Parse(*env)
 		if err != nil {
 			return err
 		}
 
-		cd, err := utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
-		if err != nil {
-			return err
+		envClientFactory, ok := factoriesByScope[ID.RootScope()]
+		if !ok {
+			envClientFactory, err = utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+			if err != nil {
+				return err
+			}
+			factoriesByScope[ID.RootScope()] = envClientFactory
 		}
 
-		envClient := cd.NewEnvironmentsClient()
+		envClient := envClientFactory.NewEnvironmentsClient()
 
-		resp, err := envClient.Get(ctx, *env, &corerpv20250801.EnvironmentsClientGetOptions{})
+		resp, err := envClient.Get(ctx, ID.Name(), &corerpv20250801.EnvironmentsClientGetOptions{})
 		if clients.Is404Error(err) {
 			continue
 		} else if err != nil {
-			return err
+			return clierrors.MessageWithCause(err, "An error occurred while retrieving environment %q referencing this recipe pack.", ID.String())
 		}
 
 		res := resp.EnvironmentResource
 		res.SystemData = nil
-		for i, rp := range res.Properties.RecipePacks {
-			if *rp == *recipePack.ID {
-				res.Properties.RecipePacks = append(res.Properties.RecipePacks[:i], res.Properties.RecipePacks[i+1:]...)
-				break
+
+		// Build a new list of recipe packs, excluding the one being deleted.
+		// Match by full resource ID (case-insensitive) so we never remove a
+		// same-named pack that lives in a different scope/resource group.
+		newRecipePacks := []*string{}
+		for _, rp := range res.Properties.RecipePacks {
+			if rp == nil || !strings.EqualFold(*rp, deletedPackID) {
+				newRecipePacks = append(newRecipePacks, rp)
 			}
 		}
+		res.Properties.RecipePacks = newRecipePacks
 
-		_, err = envClient.CreateOrUpdate(ctx, *env, res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+		_, err = envClient.CreateOrUpdate(ctx, ID.Name(), res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to update environment %s.", *env)
 		}
@@ -195,7 +217,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.Output.LogInfo(msgRecipePackNotFound, r.RecipePackName)
 			return nil
 		}
-		return fmt.Errorf("failed to delete resource group %s: %w", r.RecipePackName, err)
+		return fmt.Errorf("failed to delete recipe pack %q: %w", r.RecipePackName, err)
 	}
 
 	if deleted {

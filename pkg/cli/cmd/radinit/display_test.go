@@ -25,6 +25,7 @@ import (
 	"github.com/acarl005/stripansi"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,16 +40,16 @@ func Test_summaryModel(t *testing.T) {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
 			normalized = stripansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
-			return strings.Contains(normalized, strings.Trim(summaryFooter, "\n"))
+			return strings.Contains(normalized, strings.Trim(common.SummaryFooter, "\n"))
 		}, teatest.WithDuration(waitTimeout))
 
 		return normalized
 	}
 
-	resultTest := func(t *testing.T, expected summaryResult, key tea.KeyType) {
+	resultTest := func(t *testing.T, expected common.SummaryResult, key tea.KeyType) {
 		options := initOptions{}
-		model := &summaryModel{
-			options: options,
+		model := &common.SummaryModel{
+			Options: toDisplayOptions(&options),
 		}
 		tm := teatest.NewTestModel(t, model)
 
@@ -66,25 +67,25 @@ func Test_summaryModel(t *testing.T) {
 		// FinalModel only returns once the program has finished running or when it times out.
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
-		model = tm.FinalModel(t).(*summaryModel)
-		require.Equal(t, expected, model.result)
+		model = tm.FinalModel(t).(*common.SummaryModel)
+		require.Equal(t, expected, model.Result)
 	}
 
 	t.Run("Result: Confirm", func(t *testing.T) {
-		resultTest(t, resultConfimed, tea.KeyEnter)
+		resultTest(t, common.ResultConfirmed, tea.KeyEnter)
 	})
 
 	t.Run("Result: Cancel", func(t *testing.T) {
-		resultTest(t, resultCanceled, tea.KeyEscape)
+		resultTest(t, common.ResultCanceled, tea.KeyEscape)
 	})
 
 	t.Run("Result: Quit", func(t *testing.T) {
-		resultTest(t, resultQuit, tea.KeyCtrlC)
+		resultTest(t, common.ResultQuit, tea.KeyCtrlC)
 	})
 
 	viewTest := func(t *testing.T, options initOptions, expected string) {
-		model := &summaryModel{
-			options: options,
+		model := &common.SummaryModel{
+			Options: toDisplayOptions(&options),
 		}
 		tm := teatest.NewTestModel(t, model)
 
@@ -103,8 +104,8 @@ func Test_summaryModel(t *testing.T) {
 		// FinalModel only returns once the program has finished running or when it times out.
 		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
 		// That is why we call tm.Quit() before tm.FinalModel().
-		model = tm.FinalModel(t).(*summaryModel)
-		assert.Equal(t, summaryResult(resultConfimed), model.result)
+		model = tm.FinalModel(t).(*common.SummaryModel)
+		assert.Equal(t, common.SummaryResult(common.ResultConfirmed), model.Result)
 	}
 
 	t.Run("View: existing options", func(t *testing.T) {
