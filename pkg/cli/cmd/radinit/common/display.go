@@ -48,9 +48,6 @@ const (
 	SummaryEnvironmentCreateAzureCloudProviderFmt = SummaryIndent + "Azure: subscription %s and resource group %s\n"
 	SummaryEnvironmentCreateRecipePackyFmt        = SummaryIndent + "Recipe pack: %s\n"
 	SummaryEnvironmentExistingHeadingFmt          = "Use existing environment %s\n"
-	SummaryApplicationHeadingIcon                 = "🚧 "
-	SummaryApplicationScaffoldHeadingFmt          = "Scaffold application %s\n"
-	SummaryApplicationScaffoldFile                = SummaryIndent + "Create %s\n"
 	SummaryBicepConfigHeadingIcon                 = "🚧 "
 	SummaryBicepConfigCreateHeadingFmt            = "Create %s\n"
 	SummaryConfigurationHeadingIcon               = "📋 "
@@ -78,7 +75,6 @@ type DisplayOptions struct {
 	Cluster        ClusterDisplay
 	Environment    EnvironmentDisplay
 	CloudProviders CloudProvidersDisplay
-	Application    ApplicationDisplay
 	BicepConfig    BicepConfigDisplay
 
 	// RecipePackLabel is the label of the recipe pack to display in the summary.
@@ -107,14 +103,6 @@ type CloudProvidersDisplay struct {
 	AWS   *aws.Provider
 }
 
-// ApplicationDisplay holds the application fields rendered by the summary and progress views.
-type ApplicationDisplay struct {
-	Scaffold bool
-	Name     string
-	// ScaffoldFiles are the files to list under the scaffold application heading.
-	ScaffoldFiles []string
-}
-
 // BicepConfigDisplay holds the bicepconfig.json fields rendered by the summary
 // and progress views. When Files is non-empty a dedicated step is shown that
 // reports the bicepconfig.json files that will be created.
@@ -126,7 +114,6 @@ type BicepConfigDisplay struct {
 type ProgressMsg struct {
 	InstallComplete     bool
 	EnvironmentComplete bool
-	ApplicationComplete bool
 	BicepConfigComplete bool
 	ConfigComplete      bool
 }
@@ -262,14 +249,6 @@ func (m *SummaryModel) View() string {
 	message.WriteString(SummaryEnvironmentHeadingIcon)
 	writeEnvironmentSummary(message, options)
 
-	if options.Application.Scaffold {
-		message.WriteString(SummaryApplicationHeadingIcon)
-		message.WriteString(fmt.Sprintf(SummaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-		for _, file := range options.Application.ScaffoldFiles {
-			message.WriteString(fmt.Sprintf(SummaryApplicationScaffoldFile, highlight(file)))
-		}
-	}
-
 	for _, file := range options.BicepConfig.Files {
 		message.WriteString(SummaryBicepConfigHeadingIcon)
 		message.WriteString(fmt.Sprintf(SummaryBicepConfigCreateHeadingFmt, highlight(file)))
@@ -361,11 +340,6 @@ func (m *ProgressModel) View() string {
 	m.writeProgressIcon(message, m.Progress.EnvironmentComplete, &waiting)
 	writeEnvironmentSummary(message, options)
 
-	if options.Application.Scaffold {
-		m.writeProgressIcon(message, m.Progress.ApplicationComplete, &waiting)
-		message.WriteString(fmt.Sprintf(SummaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-	}
-
 	if len(options.BicepConfig.Files) > 0 {
 		m.writeProgressIcon(message, m.Progress.BicepConfigComplete, &waiting)
 		message.WriteString(fmt.Sprintf(SummaryBicepConfigCreateHeadingFmt, highlight(options.BicepConfig.Files[0])))
@@ -383,9 +357,6 @@ func (m *ProgressModel) View() string {
 
 func (m *ProgressModel) isComplete() bool {
 	if !m.Progress.InstallComplete || !m.Progress.EnvironmentComplete || !m.Progress.ConfigComplete {
-		return false
-	}
-	if m.Options.Application.Scaffold && !m.Progress.ApplicationComplete {
 		return false
 	}
 	if len(m.Options.BicepConfig.Files) > 0 && !m.Progress.BicepConfigComplete {

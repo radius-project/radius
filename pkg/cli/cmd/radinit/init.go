@@ -225,7 +225,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 
 // Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud
-// providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
+// providers, scaffolds a bicepconfig.json, and updates the config file, all while displaying progress updates to the UI.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
