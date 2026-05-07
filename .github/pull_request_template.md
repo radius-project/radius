@@ -37,18 +37,18 @@ For details on how this works and why it's required.
 - An overview of proposed schema changes is included in a linked GitHub issue.
     - [ ] Yes <!-- TaskRadio schema -->
     - [ ] Not applicable <!-- TaskRadio schema -->
-- A design document PR is created in the eng/design-notes directory, if new APIs are being introduced.
+- A design document is added or updated under `eng/design-notes/` in this repository, if new APIs are being introduced.
     - [ ] Yes <!-- TaskRadio design-pr -->
     - [ ] Not applicable <!-- TaskRadio design-pr -->
 - The design document has been reviewed and approved by Radius maintainers/approvers.
     - [ ] Yes <!-- TaskRadio design-review -->
     - [ ] Not applicable <!-- TaskRadio design-review -->
 - A PR for [resource-types-contrib](https://github.com/radius-project/resource-types-contrib/) is created, if resource types or recipes are affected by the changes in this PR.
-    - [ ] Yes <!-- TaskRadio recipes-pr -->
-    - [ ] Not applicable <!-- TaskRadio recipes-pr -->
+    - [ ] Yes <!-- TaskRadio resource-types-pr -->
+    - [ ] Not applicable <!-- TaskRadio resource-types-pr -->
 - A PR for [dashboard](https://github.com/radius-project/dashboard/) is created, if the Radius Dashboard is affected by the changes in this PR.
-    - [ ] Yes <!-- TaskRadio recipes-pr -->
-    - [ ] Not applicable <!-- TaskRadio recipes-pr -->
+    - [ ] Yes <!-- TaskRadio dashboard-pr -->
+    - [ ] Not applicable <!-- TaskRadio dashboard-pr -->
 - A PR for the [documentation repository](https://github.com/radius-project/docs) is created, if the changes in this PR affect the documentation or any user facing updates are made.
     - [ ] Yes <!-- TaskRadio docs-pr -->
     - [ ] Not applicable <!-- TaskRadio docs-pr -->
