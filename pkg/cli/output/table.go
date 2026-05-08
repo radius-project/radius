@@ -22,6 +22,8 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/term"
 	"k8s.io/client-go/util/jsonpath"
@@ -118,14 +120,14 @@ func (f *TableFormatter) formatWithWidth(obj any, writer io.Writer, options Form
 	numCols := len(headings)
 	slots := make([]int, numCols)
 	for i, h := range headings {
-		if w := len(h) + TablePadSize; w > slots[i] {
+		if w := utf8.RuneCountInString(h) + TablePadSize; w > slots[i] {
 			slots[i] = w
 		}
 	}
 	for _, cells := range cellLines {
 		for i, lines := range cells {
 			for _, line := range lines {
-				if w := len(line) + TablePadSize; w > slots[i] {
+				if w := utf8.RuneCountInString(line) + TablePadSize; w > slots[i] {
 					slots[i] = w
 				}
 			}
@@ -220,54 +222,86 @@ func (f *TableFormatter) formatWithWidth(obj any, writer io.Writer, options Form
 }
 
 // padRight returns s padded with trailing spaces so that the resulting string is at least
-// width characters long. If s is already wider than width, s is returned unchanged.
+// width runes long. If s is already wider than width, s is returned unchanged.
 func padRight(s string, width int) string {
-	if len(s) >= width {
+	n := utf8.RuneCountInString(s)
+	if n >= width {
 		return s
 	}
-	return s + strings.Repeat(" ", width-len(s))
+	return s + strings.Repeat(" ", width-n)
 }
 
-// wordWrap wraps s into lines no wider than width characters, breaking on whitespace where
-// possible. Words longer than width are broken mid-word. An empty input returns a single
-// empty line so that callers can iterate the result without special-casing empty cells.
+// wordWrap wraps s into lines no wider than width runes, breaking on whitespace where
+// possible. Words longer than width are broken mid-word on rune boundaries (never inside
+// a UTF-8 sequence). Internal whitespace runs are preserved within a line; trailing
+// whitespace at a wrap boundary is dropped. An empty input returns a single empty line.
 func wordWrap(s string, width int) []string {
-	if width <= 0 {
-		return []string{s}
-	}
-	if len(s) <= width {
+	if width <= 0 || utf8.RuneCountInString(s) <= width {
 		return []string{s}
 	}
 
+	runes := []rune(s)
 	var lines []string
-	current := ""
-	for _, word := range strings.Fields(s) {
-		// Break words that are themselves longer than the column width.
-		for len(word) > width {
-			if current != "" {
-				lines = append(lines, current)
-				current = ""
+	var current []rune
+	i := 0
+	for i < len(runes) {
+		// Collect the next non-whitespace word.
+		j := i
+		for j < len(runes) && !unicode.IsSpace(runes[j]) {
+			j++
+		}
+		word := runes[i:j]
+
+		// Collect the whitespace that follows the word.
+		k := j
+		for k < len(runes) && unicode.IsSpace(runes[k]) {
+			k++
+		}
+		space := runes[j:k]
+		i = k
+
+		// Place the word, breaking it across lines if it is itself longer than width.
+		if len(word) > width {
+			if len(current) > 0 {
+				lines = append(lines, string(trimTrailingSpace(current)))
+				current = current[:0]
 			}
-			lines = append(lines, word[:width])
-			word = word[width:]
+			for len(word) > width {
+				lines = append(lines, string(word[:width]))
+				word = word[width:]
+			}
+			current = append(current, word...)
+		} else if len(current)+len(word) <= width {
+			current = append(current, word...)
+		} else {
+			lines = append(lines, string(trimTrailingSpace(current)))
+			current = append(current[:0], word...)
 		}
-		switch {
-		case current == "":
-			current = word
-		case len(current)+1+len(word) <= width:
-			current += " " + word
-		default:
-			lines = append(lines, current)
-			current = word
+
+		// Append the trailing whitespace if it still fits on the current line; otherwise
+		// drop it at the wrap boundary so we don't emit lines with trailing spaces.
+		if len(space) > 0 {
+			if len(current)+len(space) <= width {
+				current = append(current, space...)
+			} else {
+				lines = append(lines, string(trimTrailingSpace(current)))
+				current = current[:0]
+			}
 		}
 	}
-	if current != "" {
-		lines = append(lines, current)
-	}
-	if len(lines) == 0 {
-		lines = []string{""}
+	if len(current) > 0 || len(lines) == 0 {
+		lines = append(lines, string(trimTrailingSpace(current)))
 	}
 	return lines
+}
+
+// trimTrailingSpace returns runes with any trailing Unicode whitespace removed.
+func trimTrailingSpace(runes []rune) []rune {
+	end := len(runes)
+	for end > 0 && unicode.IsSpace(runes[end-1]) {
+		end--
+	}
+	return runes[:end]
 }
 
 var _ Formatter = (*TableFormatter)(nil)

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
 )
@@ -225,6 +226,54 @@ func Test_Table_WrapsLongUnbreakableWord(t *testing.T) {
 		"url       https://example.com/very/long/\n" +
 		"          path/that/has/no/spaces/at/all\n" +
 		"          /and/exceeds/the/width\n"
+	require.Equal(t, expected, buffer.String())
+}
+
+// Test_Table_AlignsAndWrapsUnicode verifies that column alignment and word wrapping use
+// rune counts rather than byte lengths so multi-byte UTF-8 content stays aligned and is
+// never split in the middle of a rune.
+func Test_Table_AlignsAndWrapsUnicode(t *testing.T) {
+	obj := []any{
+		wrappableInput{
+			// Multi-byte runes in NAME ensure padding uses rune width, not byte length.
+			Name: "café",
+			// A description that mixes ASCII and multi-byte runes and exceeds width.
+			Description: "naïve façade — emoji 🚀🚀🚀 and more text that should wrap nicely",
+		},
+	}
+
+	formatter := &TableFormatter{}
+	buffer := &bytes.Buffer{}
+	err := formatter.formatWithWidth(obj, buffer, wrappableInputOptions, 40)
+	require.NoError(t, err)
+
+	// First column slot is max(len("NAME")+pad, minWidth) = 10. Last column has 30 runes
+	// available. The wrap should occur on whitespace boundaries and never produce invalid
+	// UTF-8.
+	expected := "NAME      DESCRIPTION\n" +
+		"café      naïve façade — emoji 🚀🚀🚀 and\n" +
+		"          more text that should wrap\n" +
+		"          nicely\n"
+	require.Equal(t, expected, buffer.String())
+	require.True(t, utf8.ValidString(buffer.String()), "output must be valid UTF-8")
+}
+
+// Test_Table_PreservesInternalWhitespace verifies that whitespace inside a cell that fits
+// on a line is preserved (only trailing whitespace at a wrap boundary is dropped).
+func Test_Table_PreservesInternalWhitespace(t *testing.T) {
+	obj := []any{
+		wrappableInput{
+			Name:        "row",
+			Description: "a   b   c",
+		},
+	}
+	formatter := &TableFormatter{}
+	buffer := &bytes.Buffer{}
+	err := formatter.formatWithWidth(obj, buffer, wrappableInputOptions, 40)
+	require.NoError(t, err)
+
+	expected := "NAME      DESCRIPTION\n" +
+		"row       a   b   c\n"
 	require.Equal(t, expected, buffer.String())
 }
 
