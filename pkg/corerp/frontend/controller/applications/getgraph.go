@@ -40,11 +40,11 @@ const (
 // ComputeGraphResponse computes the application graph for the given application and environment IDs and
 // returns it wrapped in an OK rest.Response. It is shared by the Applications.Core and Radius.Core
 // implementations of the getGraph custom action.
-func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, environmentIDString string, connection sdk.Connection) (rest.Response, error) {
+func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (rest.Response, error) {
 	// An application **MUST** have an environment id
-	environmentID, err := resources.ParseResource(environmentIDString)
+	parsedEnvironmentID, err := resources.ParseResource(environmentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse environment ID %q: %w", environmentIDString, err)
+		return nil, fmt.Errorf("failed to parse environment ID %q: %w", environmentID, err)
 	}
 
 	clientOptions := sdk.NewClientOptions(connection)
@@ -64,7 +64,7 @@ func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, envir
 		return nil, err
 	}
 
-	environmentResources, err := listAllResourcesByEnvironment(ctx, environmentID, resourceTypes, clientOptions)
+	environmentResources, err := listAllResourcesByEnvironment(ctx, parsedEnvironmentID, resourceTypes, clientOptions)
 	if err != nil {
 		return nil, err
 	}
