@@ -449,7 +449,7 @@ You can also use the generated TypeSpec / OpenAPI clients from [pkg/sdk](../../p
 
 ### What the Radius Cluster Connection Is *Not*
 
-- **It is not the same as a UCP cloud credential.** A UCP credential authorises Radius → cloud (outbound). The Kubernetes connection authorises caller → Radius (inbound).
+- **It is not the same as a UCP cloud credential.** A UCP credential authorizes Radius → cloud (outbound). The Kubernetes connection authorizes caller → Radius (inbound).
 - **It does not require Radius to be on the same cluster as the user's workload.** Radius can run on cluster A and target deployments to clouds B and C; the operator just needs a kubeconfig for cluster A.
 - **Radius adds no extra bearer token of its own.** Aggregated APIService calls travel inside the API server's existing auth pipeline; UCP receives them already authenticated.
 
