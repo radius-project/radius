@@ -127,7 +127,7 @@ func Test_GenerateSecretSuffix_empty_appid(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	resourceRecipe.ApplicationID = ""
 	hasher := sha1.New()
-	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, "", resourceRecipe.ResourceID))))
+	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s", envName, resourceRecipe.ResourceID))))
 	require.NoError(t, err)
 	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
 	secret, err := generateSecretSuffix(&resourceRecipe)
