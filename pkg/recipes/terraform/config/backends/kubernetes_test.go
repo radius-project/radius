@@ -123,6 +123,18 @@ func Test_GenerateSecretSuffix_invalid_appid(t *testing.T) {
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
 
+func Test_GenerateSecretSuffix_empty_appid(t *testing.T) {
+	_, resourceRecipe := getTestInputs()
+	resourceRecipe.ApplicationID = ""
+	hasher := sha1.New()
+	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s", envName, resourceRecipe.ResourceID))))
+	require.NoError(t, err)
+	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
+	secret, err := generateSecretSuffix(&resourceRecipe)
+	require.NoError(t, err)
+	require.Equal(t, expSecret, secret)
+}
+
 func Test_ValidateBackendExists(t *testing.T) {
 	clientset := fake.NewClientset()
 	secret := &v1.Secret{
