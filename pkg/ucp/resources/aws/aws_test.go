@@ -68,6 +68,12 @@ func Test_ToUCPResourceID(t *testing.T) {
 		require.Equal(t, expectedID, ucpID)
 	})
 
+	t.Run("s3 bucket arn with empty account", func(t *testing.T) {
+		arn := "arn:aws:s3:::my-bucket-name"
+		_, err := ToUCPResourceID(arn)
+		require.EqualError(t, err, "\"arn:aws:s3:::my-bucket-name\" is not convertible to a UCP resource ID because the ARN does not contain an account")
+	})
+
 	t.Run("invalid arn", func(t *testing.T) {
 		arn := "arn:aws:ec2:us-east-2:179022619019"
 		_, err := ToUCPResourceID(arn)

@@ -416,9 +416,12 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
 					awsResourceID, err := awsresources.ToUCPResourceID(arn)
 					if err != nil {
-						return []string{}, err
+						// Some AWS resources (e.g., S3 buckets) have ARNs that cannot be converted to UCP resource IDs.
+						// These are logged and skipped, similar to Azure non-ARM resources.
+						logger.Info("AWS resource ARN is not convertible to UCP resource ID and is not added to recipe output", "ARN", arn, "error", err.Error())
+					} else {
+						recipeResources = append(recipeResources, awsResourceID)
 					}
-					recipeResources = append(recipeResources, awsResourceID)
 				}
 			}
 		default:

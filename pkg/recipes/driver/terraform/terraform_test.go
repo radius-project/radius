@@ -584,7 +584,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 		},
 		{
-			desc: "invalid AWS ARN",
+			desc: "invalid AWS ARN - gracefully skipped",
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{
 					Outputs: map[string]*tfjson.StateOutput{
@@ -610,8 +610,56 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					},
 				},
 			},
-			expectedResponse: &recipes.RecipeOutput{},
-			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+				Values:    map[string]any{},
+				Secrets:   map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			desc: "AWS ARN with empty account (S3 bucket) - gracefully skipped",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:s3:::my-bucket-name",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+				Values:    map[string]any{},
+				Secrets:   map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+			expectedErr: nil,
 		},
 		{
 			desc: "kubernetes manifest type with no apiVersion information",
