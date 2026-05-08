@@ -358,6 +358,13 @@ jobs:
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Re-login to Azure before functional tests
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
       - name: Run functional tests
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
