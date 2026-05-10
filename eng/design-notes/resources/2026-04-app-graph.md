@@ -13,18 +13,16 @@ The application graph serves two key purposes:
 
 This design extends the application graph from a runtime-only, CLI-only tool to a **multi-modality visualization system** which can be embedded directly in the GitHub developer workflow. The key additions are:
 
-* A **static application graph** built from Bicep definitions (no deployment required). This is the core Radius enhancement.
+* A **modeled/planned application graphs** built from Bicep definitions (no deployment required). This is the core Radius enhancement.
 * A **CI/CD pipeline** that automatically builds graph artifacts on every push and PR.
 * A **diff visualization** that highlights added, removed, and modified resources when reviewing pull requests.
 * A **browser extension** that injects interactive graph visualizations into GitHub repository pages and pull requests. 
-
-For these, static application graph is a core Radius feature to be built.
 
 > **Feature Spec Reference:** [2026-04-github-app-graph-visualization-feature-spec](https://github.com/willtsai/radius/blob/app-graph-viz-gh-feature-spec/eng/design-notes/app-graph/2026-04-github-app-graph-visualization-feature-spec.md) by Will Tsai (@willtsai)
 
 ### What exists today
 
-Radius currently supports a single type of application graph — the **run-time deployment graph** — via the `rad app graph` CLI command. This command calls a Radius API that queries the control plane for all deployed resources, constructs edges based on the `connections` property of each resource, and returns the serialized graph. See [Radius App Graph](2023-10-app-graph.md) for details on how the API builds this graph. Because it reflects live infrastructure, this graph is only available after an application has been deployed.
+Radius currently supports a single type of application graph — the **deployment graph** — via the `rad app graph` CLI command. This command calls a Radius API that queries the control plane for all deployed resources, constructs edges based on the `connections` property of each resource, and returns the serialized graph. See [Radius App Graph](2023-10-app-graph.md) for details on how the API builds this graph. Because it reflects live infrastructure, this graph is only available after an application has been deployed.
 
 ### Proposed graph types
 
@@ -37,7 +35,7 @@ A graph constructed from application definitions authored in Bicep files (or the
 * Visualizing application architecture from source code checked into a repository.
 * Highlighting infrastructure changes introduced by a Pull Request.
 
-**Limitation:** Because the concrete infrastructure resources depend on the recipe bound to each resource type — which in turn depends on the target Radius environment — the static graph cannot include infrastructure-level details.
+**Limitation:** Because the concrete infrastructure resources depend on the recipe bound to each resource type — which in turn depends on the target Radius environment — the modeled graph cannot include infrastructure-level details.
 
 #### 2. Deployed application graph (deployment graph)
 
@@ -45,26 +43,11 @@ The graph of a **live, deployed** application, as described above. This is the o
 
 #### 3. Simulated deployment graph
 
-A graph that shows what the concrete infrastructure resources and their dependencies **would be** if an application definition were deployed against a specific environment, without actually deploying it. This could be surfaced via a command such as:
-
-```sh
-rad app graph -e env-id --dry-run
-```
-
-Radius should provide commands to access all three kinds of graph.
+A graph that shows what the concrete infrastructure resources and their dependencies **would be** if an application definition were deployed against a specific environment, without actually deploying it. 
 
 ## Terms and definitions
 
-| Term | Definition |
-|---|---|
-| Application Graph | A directed graph representing an application as its constituent resources and the relationships between them. |
-| Static Application Graph | An application graph inferred from a Bicep template or its compiled JSON output, without deploying the application. |
-| Deployment Graph | An application graph constructed by querying the Radius control plane for the live resources of a deployed application. |
-| Simulated Deployment Graph | An application graph that represents what would be deployed if an application definition were applied to a specific environment. |
-| Graph Artifact | The serialized JSON file (`app.json`) containing a `StaticGraphArtifact` stored on the orphan branch. |
-| Orphan Branch | A Git branch with no common history to `main`, used to store graph artifacts (default: `radius-graph`). The same pattern is used by the [GitHub Actions Workspace](../2026-03-github-workspace-design.md) feature for state persistence (`radius-state` orphan branch). |
-| DiffHash | A stable hash of a resource's review-relevant properties, used to detect modifications between branches. |
-| rootScope | The current UCP scope (e.g., `/planes/radius/local/resourceGroups/default`). |
+
 
 ## Objectives
 
@@ -75,13 +58,14 @@ Radius should provide commands to access all three kinds of graph.
 * Define a graph schema that is flexible and extensible enough to represent static, run-time, and simulated deployment graphs.
   * Review the server-side API (`getGraph` custom action on `Applications.Core/applications|Radius.Core/applications`) that returns the run-time application graph for a deployed application, based on schema decisions.
 * Identify a persistence mechanism since the graph should be available irrespective of the ephemeral nature of Radius control plane. The graph construction is still an in-memory operation.
-* Provide a CLI command (`rad graph build`) that constructs and outputs a static application graph from Bicep or compiled JSON application definition files.
-* Review the CLI command (`rad app graph`) that outputs the run-time graph of a deployed application by calling the `getGraph` API.
+* Provide CLI commands that enables users to access these graphs
 
 ### Non-goals
 
 * Graph display specifics
 * Workflow specifics
+
+While these are essential for repo-radius work, they are not part of core Radius. 
 
 ### User scenarios
 
@@ -111,59 +95,30 @@ The system consists of four components that work together:
 
 Users/Agents:
 
-1. Developer authors/modifies app.bicep. This could be through UI Buttons and/or Agents that create the PR on user's behalf.                
-2. Developer/Agent pushes branch and opens PR   
+Developer authors/modifies app.bicep. This could be through UI Buttons and/or Agents that create the PR on user's behalf.                
+1. Developer/Agent pushes branch and opens PR   
+2. Developer/Agent merges the new app deifintion to main
 
 Radius: 
 
-1. Supports required rad graph commands 
+Supports required rad graph commands. The commands are context aware and can determine whether they are being run in repo-radius mode. If so, 
+they commit the graph artifact to an orphan branch as app-graph.json. If not, they output to a local file.
 
 GH workflow:
 
-1. Runs rad graph build 
-2. Handles persistence - commits the graph artifact to orphan branch as <branch-name>/app-graph.json. Orphan branch for the graph artifact is 'radius-graph'. 
+1. Runs the appropriate rad graph command based on the event.
 3. Handles concurrency. 
 
-Browser extension reads artifact 
+Browser extension:
 
 1. Reads the app-graph.json commited to orphan branches 
 2. Parse and render using Cytoscape.
 
 We will merge Workflows,  Browser extension and Graph renderer cytoscape.js java scripts into the github-extension repository. Radius changes will be merged into the Radius repository.
 
-```mermaid
-flowchart LR
-    subgraph Source["Consumer repo"]
-        Bicep[["app.bicep<br/>(source)"]]
-    end
+![Component diagram](2026-04-app-graph-components.svg)
 
-    subgraph CI["GitHub Actions runner"]
-        RadCLI["rad graph build<br/>(CLI)"]
-        ARM[("ARM JSON<br/>(parsed)")]
-        Workflow["Reusable workflow<br/>(checkout + commit + push)"]
-    end
-
-    subgraph Persistence["GitHub repo state"]
-        Orphan[("radius-graph<br/>orphan branch<br/>{branch}/app-graph.json")]
-    end
-
-    subgraph Client["Browser"]
-        Extension["Browser extension<br/>(content script)"]
-        Cyto["Cytoscape.js<br/>(rendered graph)"]
-    end
-
-    Bicep -->|"bicep build"| RadCLI
-    RadCLI -->|"emits"| ARM
-    ARM -->|"local file"| Workflow
-    Workflow -->|"git commit + push"| Orphan
-    Orphan -->|"GitHub Contents API"| Extension
-    Extension -->|"render"| Cyto
-
-    classDef artifact fill:#eef,stroke:#557,stroke-width:1px;
-    classDef service fill:#efe,stroke:#575,stroke-width:1px;
-    class Bicep,ARM,Orphan artifact;
-    class RadCLI,Workflow,Extension,Cyto service;
-```
+> Source files: [2026-04-app-graph-components.svg](2026-04-app-graph-components.svg) (rendered above) and [2026-04-app-graph-components.excalidraw](2026-04-app-graph-components.excalidraw) (editable in the Excalidraw VS Code plugin).
 
 ### Detailed Design
 
@@ -177,9 +132,10 @@ rad app graph [my-application]
 ```
 
 We will enhance the above command to 
-- commit the output to orphan branch, if [running for repo-radius]().
+- commit the output to orphan branch, if [running for repo-radius](link to repo-radius doc). 
 - support modeled and simulated graphs.
 
+When a rad deploy is called as part of repo radius, there could also be a call to rad app graph [app-name] and persist that to radius-graph.
 
 #####  Accessing modeled graph
 
@@ -197,16 +153,27 @@ The command:
 2. Parses resources, connections, `dependsOn`, and `codeReference` from the JSON.
 3. Detects source line mappings by scanning the Bicep file for `resource` declarations.
 4. Computes a `diffHash` for each resource based on relevant properties.
-5. Commits the resulting `StaticGraphArtifact` JSON to `{source-branch}/app-graph.json` on the orphan branch, if it is run in the context of a github runner (repo radius). Otherwise writes `StaticGraphArtifact` JSON to `app-graph.json` in current directory.
+5. Commits the resulting `StaticGraphArtifact` JSON to `{source-branch}/deployments/app-graph.json` on the orphan `radius-graph` branch, if it is run in the context of a github runner (repo radius). Otherwise writes `StaticGraphArtifact` JSON to `app-graph.json` in current directory.
 
 #####  Accessing planned graph
+
+This is richer than modeled graph, main difference being recipe outputs are available.
+These details are at a high level and require further research/experimentation.
 
 ```
 #Show a dry-run of  app.bicep if deployed using recipes in environment env in group grp
 rad app graph --bicep [app.bicep] -e env [-g grp]
 ```
+The command 
 
-There are 2 potential approaches to how this command can be implemented. (These details are at a high level and require further research/experimentation)
+1. Invokes `bicep build` to compile `app.bicep` to ARM JSON.
+2. Parses resources, connections, `dependsOn`, and `codeReference` from the JSON.
+3. Detects source line mappings by scanning the Bicep file for `resource` declarations.
+4. Computes a `diffHash` for each resource based on relevant properties.
+5. Resolves resources craeted by recipes.
+6. Commits the resulting `StaticGraphArtifact` JSON to `{source-branch}/scopename-envname/app-graph.json` on the orphan `radius-graph` branch, if it is run in the context of a github runner (repo radius). Otherwise writes `StaticGraphArtifact` JSON to `app-graph.json` in current directory.
+
+There are 2 potential approaches to how the recipe resources command can be resolved:
 
 #### static inferences
 
@@ -214,28 +181,21 @@ There are 2 potential approaches to how this command can be implemented. (These 
 2. Parses resources, connections, `dependsOn`, and `codeReference` from the JSON.
 3. For each of the resources, resolves recipe that will be used based on provided environment information
 4. Run `bicep build` on recipe or [`terraform graph`](https://developer.hashicorp.com/terraform/cli/commands/graph) on recipe to gather as much detail as possible statically
-5. Integrate back to the main static graph through "outputResources" field. 
+5. Integrate back to the StaticGraphArtifact through "outputResources" field. 
+6. Commit to orphan branch
 
-#### simulated inferences
+#### simulated inferences [prefered]
 
-Radius currently supports a simulated environment. At a high level, this makes an entry in Radius datastore for each reasource, identical to what a `rad deploy` does. But the deployment status is used to indicate the resources have not been deployed yet. The simulated environment also does not do a dryn-run on the recipes. 
-We could choose to reuse this idea and enhance it so that we populate outputResources using dryrun ebilities of bicep and terraform.
+Radius currently supports a simulated environment. At a high level, this makes an entry in Radius datastore for each reasource, identical to what a `rad deploy` does. But the deployment status is used to indicate the resources have not been deployed yet. The simulated environment also does not do a dry-run on the recipes. 
+We could choose to reuse this idea and enhance it so that we populate outputResources using dry-run abilities of bicep and terraform.
 
-
-#### Git dependency
-
-
-
-**Location:** `pkg/cli/graph/`
 
 ##### Implementation approach
 
-The CLI compiles Bicep to ARM JSON via `bicep build`, then parses the JSON. This is preferred over parsing Bicep directly because:
+#### Git dependency
 
-1. No custom Bicep parser needed — ARM JSON is trivially parsed with `encoding/json`.
-2. Handles all Bicep features (modules, conditionals, loops, parameters).
-3. Provides two edge sources: `connections` (application-level) and `dependsOn` (deployment ordering).
-4. The Bicep CLI is already a prerequisite for `rad deploy`.
+While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Gitea. Further, If we use workflows to own orphan branch + graph data handling these funcrionalities will not be tested as part of core Radius. Therefore, we are handling git interactions 
+through a new package in Radius (pkg/cli/gitstate/).  
 
 ##### Schema
 
@@ -253,20 +213,6 @@ type StaticGraphArtifact struct {
 }
 ```
 
-See [Full schema reference](#full-schema-reference) for the complete type definitions, field descriptions, and a [worked example](#complete-artifact-example).
-
-##### Build algorithm
-
-1. **Compile:** Invoke `bicep build app.bicep --stdout` → ARM JSON.
-2. **Parse resources:** Iterate `resources` map in ARM JSON. For each resource:
-   - Construct a full resource ID from type and name.
-   - Extract `properties.connections` → resolve `resourceId()` expressions to target IDs.
-   - Extract `dependsOn` → resolve symbolic references to target IDs.
-   - Extract `properties.codeReference` if present.
-3. **Map source lines:** Scan `app.bicep` for `resource <name> '<type>' =` declarations, recording line numbers. 
-4. **Compute diffHash:** For each resource, extract only the review-relevant properties (`connections`, `container`, `ports`, `routes`, `resources`, `recipe`, `resourceProvisioning`) using an allowlist, canonicalize as sorted JSON, and hash with SHA-256 including `dependsOn`. Properties not in the allowlist (e.g., `application`, `environment`, `name`, `type`) are ignored — new properties added to resource types in the future won't affect diffs unless explicitly added to the allowlist.
-5. **Add inbound connections:** For each outbound connection A→B, add a corresponding inbound connection B←A.
-6. **Sort:** Sort resources by ID for deterministic output.
 
 ##### DiffHash computation
 
@@ -283,16 +229,7 @@ The diffHash enables the browser extension(UI component) to classify resources a
 
 #### Workflow 
 
-The workflow will be responsible for installing rad cli, running the rad graph command on appropritate events (merge to main, PR against main from a fork). In addition, it also handles these topics:
-
-##### Orphan branch commit
-
-After building the artifact, the CLI:
-
-1. Creates or checks out the orphan branch (`radius-graph` for main branch).
-2. Writes `{source-branch}/app.json`.
-3. Commits with author identity from git config.
-4. Pushes to origin.
+The workflow will be responsible for installing rad cli, running the rad graph command on appropritate events (merge to main, PR against main from a fork). 
 
 ##### Concurrent PR handling
 
@@ -308,25 +245,12 @@ concurrency:
   cancel-in-progress: true
 ```
 
-This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. Builds for *different* PR branches run in parallel since their `github.ref` values differ.
+This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. 
 
-**3. Always start from latest state.** Before writing anything, the CLI downloads the most recent version of the `radius-graph` branch from GitHub. This ensures it has all artifacts written by other PRs. Then it:
-
-```
-1. Download the latest `radius-graph` branch from GitHub
-2. Update the local copy to match
-3. Open the branch in a temporary folder (so it doesn't interfere with the code files)
-4. Write the new `{source-branch}/app-graph.json` into that folder
-5. Save and upload the changes back to GitHub
-```
-
-This fetch-then-push pattern means each build starts from the latest state of main branch. Since each PR writes to a different directory, the commits don't conflict — git can fast-forward.
-
-**Cleanup:** Stale directories for merged/closed PRs should be automatically cleaned up from the orphan branch. 
 
 ##### Complete artifact example
 
-A full example of a `StaticGraphArtifact` for an application with a frontend container connected to a Redis cache, and an environment resource:
+A full example of a `StaticGraphArtifact` for an application with a frontend container connected to a Redis cache:
 
 ```json
 {
@@ -339,7 +263,7 @@ A full example of a `StaticGraphArtifact` for an application with a frontend con
         "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend",
         "name": "frontend",
         "type": "Applications.Core/containers",
-        "provisioningState": "Succeeded",
+        "provisioningState": "NotSpecified", 
         "connections": [
           {
             "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/redisCaches/cache",
@@ -367,16 +291,6 @@ A full example of a `StaticGraphArtifact` for an application with a frontend con
         "appDefinitionLine": 45,
         "codeReference": "src/cache/redis.ts#L10"
       },
-      {
-        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/environments/default",
-        "name": "default",
-        "type": "Applications.Core/environments",
-        "provisioningState": "Succeeded",
-        "connections": [],
-        "outputResources": [],
-        "diffHash": "sha256:f7a20e8b6c55...",
-        "appDefinitionLine": 1
-      }
     ]
   }
 }
@@ -385,10 +299,44 @@ A full example of a `StaticGraphArtifact` for an application with a frontend con
 Key observations:
 
 - `frontend` has an **Outbound** connection to `cache`; `cache` has a corresponding **Inbound** connection from `frontend` (bidirectional edges).
-- `environment` has no `codeReference` — the source-code navigation link is omitted in the UI.
-- `outputResources` is empty for all static graph resources (populated only for run-time graphs).
+- `outputResources` is empty for all static graph resources (populated only for planned and deployed graphs).
 - Each resource has a unique `diffHash` computed from its review-relevant properties.
 
+
+#### Graph persistence
+
+The graph is constructed in-memory but must be persisted so it remains accessible when the Radius control plane is not running (e.g., in GitHub Actions CI/CD where the cluster is torn down after each run).
+
+| Graph type | Persisted where | Written when |
+|---|---|---|
+| modeled graph | `{branch}/appgraph.json` on `radius-graph` orphan branch | CI runs `rad graph build` on push/PR |
+| planned graph | `{branch}/scopename-envname/appgraph.json` on `radius-graph` orphan branch | TBD |
+| deployed graph | `{branch}/deployments/appgraph.json` on `radius-graph` orphan branch | `rad shutdown` serializes after deploy |
+
+**Why orphan branches?**
+
+- No interference with application code history.
+- GitHub Contents API provides easy access without local checkout.
+- Natural per-branch organization (`main/app.json`, `feature-branch/app.json`).
+- PR diff visualization naturally flows from comparing base vs head artifacts.
+- Zero additional infrastructure — git is already available with `actions/checkout` credentials.
+- Atomic commit+push semantics for consistent state.
+
+**Relationship to the GitHub Actions Workspace feature:**
+
+The orphan branch persistence pattern is shared with the [GitHub Actions Workspace](../2026-03-github-workspace-design.md) feature (`filesystem-state` branch). That feature uses a `radius-state` orphan branch to persist PostgreSQL database backups across ephemeral CI runs. The app graph feature uses a separate `radius-graph` orphan branch for graph artifacts. Both use the same underlying technique:
+
+- `git worktree add` in `/tmp/` for isolated operations
+- Sentinel files for lifecycle state (the workspace feature uses `.lock`, `.backup-ok`, `.deploy-lock`)
+- Atomic commit+push with the `GITHUB_TOKEN` from `actions/checkout`
+
+The `gitstate` package from the workspace feature (`pkg/cli/gitstate/`) provides reusable primitives for orphan branch management (create, checkout, commit, push) that the graph builder's orphan branch logic could adopt to avoid duplicating git plumbing code.
+
+**Run-time graph persistence via `rad shutdown`:**
+
+The `rad shutdown` command (from the `filesystem-state` branch) backs up PostgreSQL state and tears down the k3d cluster. A natural extension is to call `getGraph` for each deployed application during shutdown and write the graph JSON to the `radius-state` orphan branch alongside the SQL dumps. This would make run-time graphs available for visualization even after the cluster is destroyed — enabling the browser extension to show deployed infrastructure topology from the last known state.
+
+---
 ##### Resource property selection
 
 The graph JSON includes properties for each resource node. There are three approaches considered:
@@ -422,61 +370,6 @@ Include all properties but add a `displayProperties` list for recommended render
 | Display hints guide UI | Two sources of truth |
 
 
----
-
-#### Graph persistence
-
-The graph is constructed in-memory but must be persisted so it remains accessible when the Radius control plane is not running (e.g., in GitHub Actions CI/CD where the cluster is torn down after each run).
-
-| Graph type | Persisted where | Written when |
-|---|---|---|
-| Static graph | `{branch}/app.json` on `radius-graph` orphan branch | CI runs `rad graph build` on push/PR |
-| Run-time graph | `graphs/{app}.json` on `radius-state` orphan branch | `rad shutdown` serializes after deploy |
-
-**Why orphan branches?**
-
-- No interference with application code history.
-- GitHub Contents API provides easy access without local checkout.
-- Natural per-branch organization (`main/app.json`, `feature-branch/app.json`).
-- PR diff visualization naturally flows from comparing base vs head artifacts.
-- Zero additional infrastructure — git is already available with `actions/checkout` credentials.
-- Atomic commit+push semantics for consistent state.
-
-**Relationship to the GitHub Actions Workspace feature:**
-
-The orphan branch persistence pattern is shared with the [GitHub Actions Workspace](../2026-03-github-workspace-design.md) feature (`filesystem-state` branch). That feature uses a `radius-state` orphan branch to persist PostgreSQL database backups across ephemeral CI runs. The app graph feature uses a separate `radius-graph` orphan branch for graph artifacts. Both use the same underlying technique:
-
-- `git worktree add` in `/tmp/` for isolated operations
-- Sentinel files for lifecycle state (the workspace feature uses `.lock`, `.backup-ok`, `.deploy-lock`)
-- Atomic commit+push with the `GITHUB_TOKEN` from `actions/checkout`
-
-The `gitstate` package from the workspace feature (`pkg/cli/gitstate/`) provides reusable primitives for orphan branch management (create, checkout, commit, push) that the graph builder's orphan branch logic could adopt to avoid duplicating git plumbing code.
-
-**Run-time graph persistence via `rad shutdown`:**
-
-The `rad shutdown` command (from the `filesystem-state` branch) backs up PostgreSQL state and tears down the k3d cluster. A natural extension is to call `getGraph` for each deployed application during shutdown and write the graph JSON to the `radius-state` orphan branch alongside the SQL dumps. This would make run-time graphs available for visualization even after the cluster is destroyed — enabling the browser extension to show deployed infrastructure topology from the last known state.
-
----
-
-### API design and server-side support
-
-No REST API changes or server-side changes are required for this iteration. The existing `getGraph` custom action on `Applications.Core/applications` continues to serve the run-time graph unchanged. Future work may add `diffHash`, `appDefinitionLine`, and `codeReference` to the server-side `ApplicationGraphResponse` TypeSpec definition.
-
-The new `StaticGraphArtifact` type is CLI-only, defined in `pkg/cli/graph/build.go` and mirrored in `web/browser-extension/src/shared/graph-types.ts`. See [Full schema reference](#full-schema-reference) for the complete type definitions.
-
-### CLI Design
-
-See [User Experience > CLI: `rad graph build`](#cli-rad-graph-build) for the full command description, sample I/O, and flags. The existing `rad app graph` command is unchanged.
-
-### Implementation Details
-
-| Component | Changes |
-|---|---|
-| **UCP** | No changes |
-| **Bicep** | Used as-is (`bicep build`). No custom Bicep parsing |
-| **Core RP** | No changes. Future: add `diffHash`, `appDefinitionLine`, `codeReference` to `ApplicationGraphResource` TypeSpec model |
-| **CLI** (`pkg/cli/graph/`) | New package — see [Static Graph Builder](#component-1-static-graph-builder-rad-graph-build) for file listing and algorithm |
-| **Browser Extension** (`web/browser-extension/`) | New — see [Browser Extension](#component-3-browser-extension) for architecture |
 
 ### Error Handling
 

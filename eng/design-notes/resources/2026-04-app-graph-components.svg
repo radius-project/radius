@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 720" font-family="Helvetica, Arial, sans-serif" font-size="16">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/>
+    </marker>
+  </defs>
+
+  <!-- Developer / Agent -->
+  <rect x="80" y="60" width="220" height="80" rx="8" ry="8" fill="#e7f5ff" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="190" y="95" text-anchor="middle" font-weight="bold">Developer / Agent</text>
+  <text x="190" y="118" text-anchor="middle" fill="#444">(authors app.bicep)</text>
+
+  <!-- Consumer repo -->
+  <rect x="80" y="220" width="220" height="80" rx="8" ry="8" fill="#fff9db" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="190" y="255" text-anchor="middle" font-weight="bold">Consumer repo</text>
+  <text x="190" y="278" text-anchor="middle" fill="#444">(app.bicep)</text>
+
+  <!-- GH workflow -->
+  <rect x="80" y="380" width="220" height="120" rx="8" ry="8" fill="#d3f9d8" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="190" y="415" text-anchor="middle" font-weight="bold">GH workflow</text>
+  <text x="190" y="440" text-anchor="middle" fill="#444">install &#183; build</text>
+  <text x="190" y="462" text-anchor="middle" fill="#444">concurrency</text>
+  <text x="190" y="484" text-anchor="middle" fill="#444">commit + push</text>
+
+  <!-- Radius CLI -->
+  <rect x="420" y="400" width="220" height="80" rx="8" ry="8" fill="#ffe3e3" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="530" y="435" text-anchor="middle" font-weight="bold">Radius CLI</text>
+  <text x="530" y="458" text-anchor="middle" fill="#444">rad graph build</text>
+
+  <!-- Browser extension -->
+  <rect x="760" y="220" width="240" height="100" rx="8" ry="8" fill="#e7f5ff" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="880" y="255" text-anchor="middle" font-weight="bold">Browser extension</text>
+  <text x="880" y="280" text-anchor="middle" fill="#444">+ Cytoscape.js</text>
+  <text x="880" y="302" text-anchor="middle" fill="#444">(renderer)</text>
+
+  <!-- Reviewer -->
+  <rect x="760" y="60" width="240" height="80" rx="8" ry="8" fill="#e7f5ff" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="880" y="95" text-anchor="middle" font-weight="bold">Reviewer</text>
+  <text x="880" y="118" text-anchor="middle" fill="#444">(opens PR on GitHub)</text>
+
+  <!-- radius-graph orphan branch -->
+  <rect x="80" y="580" width="920" height="100" rx="8" ry="8" fill="#fff3bf" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="540" y="615" text-anchor="middle" font-weight="bold">radius-graph (orphan branch)</text>
+  <text x="540" y="645" text-anchor="middle" fill="#444">main/app-graph.json   feature-a/app-graph.json   feature-b/app-graph.json   ...</text>
+
+  <!-- Arrows -->
+  <!-- Dev -> Repo -->
+  <line x1="190" y1="140" x2="190" y2="220" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="200" y="183" fill="#444">push / PR</text>
+
+  <!-- Repo -> Workflow -->
+  <line x1="190" y1="300" x2="190" y2="380" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="200" y="343" fill="#444">triggers</text>
+
+  <!-- Workflow <-> CLI -->
+  <line x1="300" y1="430" x2="420" y2="430" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="312" y="420" fill="#444">invokes</text>
+  <line x1="420" y1="455" x2="300" y2="455" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="312" y="475" fill="#444">app-graph.json</text>
+
+  <!-- Workflow -> Orphan -->
+  <line x1="190" y1="500" x2="190" y2="580" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="200" y="543" fill="#444">git push</text>
+
+  <!-- Orphan -> Extension -->
+  <line x1="880" y1="580" x2="880" y2="320" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="890" y="455" fill="#444">GET contents</text>
+  <text x="890" y="475" fill="#444">(GitHub API)</text>
+
+  <!-- Extension -> Reviewer -->
+  <line x1="880" y1="220" x2="880" y2="140" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="890" y="183" fill="#444">renders</text>
+</svg>
