@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -98,6 +99,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Format = format
+
 	resourceProviderName, resourceTypeName, err := cli.RequireFullyQualifiedResourceType(args)
 	if err != nil {
 		return err
@@ -138,9 +140,15 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.CreateOrUpdateResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Resource)
+	response, err := client.CreateOrUpdateResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Resource)
 	if err != nil {
 		return err
+	}
+
+	// For non-default output formats (json), emit the full resource representation
+	// so callers can script against it. For the default/table format, emit a concise line.
+	if r.Format == output.FormatJson {
+		return r.Output.WriteFormatted(r.Format, response, common.GetResourceProviderTableFormat())
 	}
 
 	r.Output.LogInfo("%s/%s created", r.FullyQualifiedResourceTypeName, r.ResourceName)

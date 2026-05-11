@@ -76,18 +76,13 @@ type Runner struct {
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
-	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-provider create` command.
 func NewRunner(factory framework.Factory) *Runner {
-	output := factory.GetOutput()
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
-		Output:       output,
-		Logger: func(format string, args ...any) {
-			output.LogInfo(format, args...)
-		},
+		Output:       factory.GetOutput(),
 	}
 }
 

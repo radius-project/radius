@@ -32,9 +32,7 @@ import (
 )
 
 const (
-	defaultPlaneName              = "local"
-	msgNoResourceTypeNameProvided = "No resource type name provided. Creating all resource types in the manifest."
-	msgAllResourceTypesCreated    = "All resource types in the manifest created successfully"
+	defaultPlaneName = "local"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -89,7 +87,6 @@ type Runner struct {
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
 	ResourceTypeName                 string
-	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
@@ -97,9 +94,6 @@ func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
-		Logger: func(format string, args ...any) {
-			output.LogInfo(format, args...)
-		},
 	}
 }
 

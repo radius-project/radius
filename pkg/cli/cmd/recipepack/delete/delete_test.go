@@ -274,9 +274,7 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
-		require.Equal(t, []any{
-			output.LogOutput{Format: msgRecipePackNotDeleted, Params: []any{packName}},
-		}, outputSink.Writes)
+		require.Empty(t, outputSink.Writes)
 	})
 
 	t.Run("get recipe pack returns 404 — returns error", func(t *testing.T) {

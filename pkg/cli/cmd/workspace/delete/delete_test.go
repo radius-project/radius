@@ -117,7 +117,7 @@ func Test_Run(t *testing.T) {
 
 		require.Equal(t, []any{
 			output.LogOutput{
-				Format: "workspace/%s deleted",
+				Format: "Local workspace %s deleted",
 				Params: []any{"test-workspace"},
 			},
 		}, outputSink.Writes)
@@ -154,7 +154,7 @@ func Test_Run(t *testing.T) {
 
 		require.Equal(t, []any{
 			output.LogOutput{
-				Format: "workspace/%s deleted",
+				Format: "Local workspace %s deleted",
 				Params: []any{"test-workspace"},
 			},
 		}, outputSink.Writes)

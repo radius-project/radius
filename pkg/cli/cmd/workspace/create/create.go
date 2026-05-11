@@ -212,8 +212,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.Output.LogInfo("workspace/%s created", r.Workspace.Name)
-	r.Output.LogInfo("workspace/%s set as current", r.Workspace.Name)
+	r.Output.LogInfo("Local workspace %s created (current)", r.Workspace.Name)
 
 	return nil
 }
