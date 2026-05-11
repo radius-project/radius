@@ -326,7 +326,7 @@ concurrency:
   cancel-in-progress: true
 ```
 
-This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. 
+With this, if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. 
 
 ## Test plan
 
@@ -344,36 +344,18 @@ This means: if a new push arrives on the same PR branch while a previous graph b
 
 | Test | Description |
 |------|-------------|
-| End-to-end modeled graph | Compile a test `app.bicep`, run `rad app graph --bicep`, verify output JSON matches expected artifact |
-| End-to-end planned graph | Run `rad app graph --bicep -e simulated-env`, verify `outputResources` are populated for resources backed by recipes |
+| E2E modeled graph | Compile a test `app.bicep`, run `rad app graph --bicep`, verify output JSON matches expected artifact |
+| E2E planned graph | Run `rad app graph --bicep -e simulated-env`, verify `outputResources` are populated for resources backed by recipes |
+| E2E deployed graph| Enhance existing test to capture new details |
 
 ## Security
 
-| Concern | Mitigation |
-|---------|-----------|
-| GitHub token storage | Stored in `chrome.storage.local` (extension-only storage, not accessible to web pages). No tokens in graph artifacts. |
-| Orphan branch permissions | Requires `contents: write` permission in CI. Graph artifacts contain no secrets — only resource names, types, and connections. |
-| Extension permissions | Minimal permissions: `activeTab`, `storage`. Content scripts scoped to `github.com`. |
-| Token in auth flow | Device flow uses short-lived user codes. PATs entered manually by user. No client secrets stored in extension. |
-| Graph artifact content | Contains only application topology (resource names, types, connections). No credentials, secrets, or infrastructure details. |
+Graph artifacts contain no secrets — only resource names, types, and connections. 
 
-## Compatibility
-
-| Concern | Impact |
-|---------|--------|
-| Existing `rad app graph` | No breaking changes. The existing command continues to work unchanged. |
-| `ApplicationGraphResponse` schema | New fields (`diffHash`, `appDefinitionLine`, `codeReference`) are optional. Existing consumers are unaffected. |
-| Browser support | Extension uses Chrome Extension Manifest V3. Compatible with Chrome 88+ and Edge 88+. |
-| GitHub API | Uses public REST API v3 (Contents API, Pull Requests API). No dependency on preview features. |
 
 ## Monitoring and Logging
 
-| Component | Instrumentation |
-|-----------|----------------|
-| `rad app graph --bicep` | Logs: graph type (modeled/planned), resource count, connection count, compilation time, commit SHA. Errors: Bicep compilation failures, recipe resolution failures, git operations. |
-| `pkg/cli/gitstate/` | Logs: branch fetch, worktree path, commit SHA, push retries. |
-| CI workflow | Standard GitHub Actions logging. Step-level timing. |
-| Browser extension | `console.debug` for page detection, artifact fetching, graph rendering. `console.error` for API failures. |
+The commands will introduce logs as required. No new control plane logging enhancements required.
 
 ## Development plan
 
