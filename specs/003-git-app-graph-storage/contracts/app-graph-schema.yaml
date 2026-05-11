@@ -1,0 +1,300 @@
+openapi: 3.0.3
+info:
+  title: Radius App Graph Static API
+  description: |
+    Internal API contract for static app graph generation from Bicep files.
+    This contract defines the JSON schema for app graph output and diff operations.
+    
+    Note: This is a CLI-internal contract, not a REST API. The schema defines
+    the structure of JSON files written by `rad app graph` commands.
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+paths: {}
+
+components:
+  schemas:
+    AppGraph:
+      type: object
+      description: Complete application topology extracted from Bicep files
+      required:
+        - metadata
+        - resources
+        - connections
+      properties:
+        metadata:
+          $ref: '#/components/schemas/AppGraphMetadata'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppGraphResource'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppGraphConnection'
+
+    AppGraphMetadata:
+      type: object
+      description: Generation context and provenance information
+      required:
+        - generatedAt
+        - radiusCliVersion
+        - sourceFiles
+        - sourceHash
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+          description: UTC timestamp when this graph was generated
+          example: "2026-01-30T10:15:00Z"
+        radiusCliVersion:
+          type: string
+          description: Version of rad CLI used to generate this graph
+          example: "0.35.0"
+        sourceFiles:
+          type: array
+          items:
+            type: string
+          description: Bicep files that contributed to this graph
+          example: ["app.bicep", "modules/database.bicep"]
+        sourceHash:
+          type: string
+          pattern: "^sha256:[a-f0-9]{64}$"
+          description: SHA256 hash of source files for staleness detection
+          example: "sha256:7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730"
+        gitCommit:
+          type: string
+          description: Current git commit SHA (if in a git repository)
+          example: "abc123def456"
+
+    AppGraphResource:
+      type: object
+      description: A single resource in the application topology
+      required:
+        - id
+        - name
+        - type
+        - sourceLocation
+      properties:
+        id:
+          type: string
+          description: Fully qualified Radius resource ID
+          pattern: "^/planes/radius/.+/providers/.+/.+"
+          example: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/frontend"
+        name:
+          type: string
+          description: Human-readable resource name
+          example: "frontend"
+        type:
+          type: string
+          description: Resource type
+          example: "Applications.Core/containers"
+        sourceLocation:
+          $ref: '#/components/schemas/SourceLocation'
+        gitInfo:
+          $ref: '#/components/schemas/GitInfo'
+        properties:
+          type: object
+          additionalProperties: true
+          description: Type-specific resource configuration
+
+    SourceLocation:
+      type: object
+      description: Bicep source file and line where a resource is defined
+      required:
+        - file
+        - line
+      properties:
+        file:
+          type: string
+          description: Path to Bicep file (relative to repo root)
+          example: "app.bicep"
+        line:
+          type: integer
+          minimum: 1
+          description: 1-based line number where resource begins
+          example: 12
+        module:
+          type: string
+          description: Module path if from an imported module
+          example: "modules/database.bicep"
+
+    GitInfo:
+      type: object
+      description: Git commit information for a resource
+      required:
+        - commitSha
+        - commitShort
+        - author
+        - date
+        - message
+      properties:
+        commitSha:
+          type: string
+          pattern: "^[a-f0-9]{40}$"
+          description: Full commit hash that last modified this resource
+          example: "abc123def456789012345678901234567890abcd"
+        commitShort:
+          type: string
+          pattern: "^[a-f0-9]{7}$"
+          description: Abbreviated commit hash for display
+          example: "abc123d"
+        author:
+          type: string
+          format: email
+          description: Commit author email
+          example: "dev@example.com"
+        date:
+          type: string
+          format: date-time
+          description: Commit timestamp in RFC3339 format
+          example: "2026-01-29T14:30:00Z"
+        message:
+          type: string
+          description: Commit message (first line only)
+          example: "Add frontend container"
+        uncommitted:
+          type: boolean
+          description: True if resource has uncommitted changes
+          default: false
+
+    AppGraphConnection:
+      type: object
+      description: Directed edge between two resources
+      required:
+        - sourceId
+        - targetId
+        - type
+      properties:
+        sourceId:
+          type: string
+          description: Resource ID where connection originates
+          example: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/frontend"
+        targetId:
+          type: string
+          description: Resource ID where connection terminates
+          example: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/backend"
+        type:
+          type: string
+          enum:
+            - connection
+            - route
+            - dependsOn
+          description: Kind of connection
+
+    GraphDiff:
+      type: object
+      description: Differences between two app graphs
+      required:
+        - addedResources
+        - removedResources
+        - modifiedResources
+        - addedConnections
+        - removedConnections
+        - summary
+      properties:
+        baseCommit:
+          type: string
+          description: Commit SHA of the base graph
+          example: "abc123"
+        headCommit:
+          type: string
+          description: Commit SHA of the head graph
+          example: "def456"
+        addedResources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppGraphResource'
+          description: Resources in head but not in base
+        removedResources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppGraphResource'
+          description: Resources in base but not in head
+        modifiedResources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceDiff'
+          description: Resources with changed properties
+        addedConnections:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppGraphConnection'
+          description: Connections in head but not in base
+        removedConnections:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppGraphConnection'
+          description: Connections in base but not in head
+        summary:
+          $ref: '#/components/schemas/DiffSummary'
+
+    ResourceDiff:
+      type: object
+      description: Changes to a single resource
+      required:
+        - id
+        - name
+        - type
+        - changedProperties
+      properties:
+        id:
+          type: string
+          description: Resource ID
+        name:
+          type: string
+          description: Resource name
+        type:
+          type: string
+          description: Resource type
+        changedProperties:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertyChange'
+
+    PropertyChange:
+      type: object
+      description: Single property modification
+      required:
+        - path
+      properties:
+        path:
+          type: string
+          description: JSON path to changed property
+          example: "properties.container.image"
+        oldValue:
+          description: Value in base graph
+        newValue:
+          description: Value in head graph
+
+    DiffSummary:
+      type: object
+      description: Aggregate statistics for the diff
+      required:
+        - totalChanges
+        - resourcesAdded
+        - resourcesRemoved
+        - resourcesModified
+        - connectionsAdded
+        - connectionsRemoved
+      properties:
+        totalChanges:
+          type: integer
+          minimum: 0
+        resourcesAdded:
+          type: integer
+          minimum: 0
+        resourcesRemoved:
+          type: integer
+          minimum: 0
+        resourcesModified:
+          type: integer
+          minimum: 0
+        connectionsAdded:
+          type: integer
+          minimum: 0
+        connectionsRemoved:
+          type: integer
+          minimum: 0
