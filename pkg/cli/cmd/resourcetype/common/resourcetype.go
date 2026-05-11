@@ -136,7 +136,7 @@ func GetResourceTypeShowSchemaTableFormat() output.FormatterOptions {
 func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, clientFactory *v20231001preview.ClientFactory) (ResourceType, error) {
 	response, err := clientFactory.NewResourceProvidersClient().GetProviderSummary(ctx, "local", resourceProviderName, nil)
 	if clients.Is404Error(err) {
-		return ResourceType{}, clierrors.Message("The resource provider %q was not found or has been deleted.", resourceProviderName)
+		return ResourceType{}, clierrors.Message("The resource type %q does not exist.", resourceProviderName+"/"+resourceTypeName)
 	} else if err != nil {
 		return ResourceType{}, err
 	}
@@ -147,7 +147,7 @@ func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, re
 	})
 
 	if idx < 0 {
-		return ResourceType{}, clierrors.Message("Resource type %q not found in resource provider %q.", resourceTypeName, *response.ResourceProviderSummary.Name)
+		return ResourceType{}, clierrors.Message("The resource type %q does not exist.", resourceProviderName+"/"+resourceTypeName)
 	}
 
 	return resourceTypes[idx], nil
