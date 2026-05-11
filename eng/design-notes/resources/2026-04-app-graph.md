@@ -353,7 +353,7 @@ This means: if a new push arrives on the same PR branch while a previous graph b
 | Modeled graph build | `pkg/cli/graph/build_test.go` | Resource extraction, connection parsing, `resourceId()` expression resolution, source line mapping |
 | Planned graph build | `pkg/cli/graph/planned_test.go` | Recipe resolution, `outputResources` population from dry-run, fallback when recipe unresolved |
 | Orphan branch primitives | `pkg/cli/gitstate/gitstate_test.go` | Worktree create/remove, orphan branch init from empty-tree SHA, fetch+rebase+push retry |
-| Graph diff (TypeScript) | `web/browser-extension/src/content/graph-diff.test.ts` | Added/removed/modified/unchanged classification, null base, null head, empty graphs |
+
 
 ### Functional tests
 
@@ -361,14 +361,6 @@ This means: if a new push arrives on the same PR branch while a previous graph b
 |------|-------------|
 | End-to-end modeled graph | Compile a test `app.bicep`, run `rad app graph --bicep`, verify output JSON matches expected artifact |
 | End-to-end planned graph | Run `rad app graph --bicep -e simulated-env`, verify `outputResources` are populated for resources backed by recipes |
-| Orphan branch lifecycle | Run the CLI in a fresh repo, verify `radius-graph` is created and `{branch}/app-graph.json` is committed |
-| CI workflow | Push `app.bicep` change to test repo, verify workflow runs and artifact appears on orphan branch |
-| Browser extension rendering | Manual verification: load extension, navigate to test repo, verify graph tab and PR diff graph |
-
-### Extension testing
-
-The browser extension is tested with these [detailed instructions](https://github.com/radius-project/radius/blob/6ab75a070d0bd48b82d7d5cc7fb4af89e99c7ed9/web/browser-extension/graph-extension-quickstart.md)
-
 
 ## Security
 
@@ -419,7 +411,7 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 **Testing**
 
 - Unit tests for each package (`gitstate`, `graph`, diffHash, source-line mapping) as listed in [Test plan](#test-plan).
-- Functional tests that exercise each command end-to-end against a temporary git repo and a real Radius environment (simulated where applicable).
+- Functional tests that exercise each graph command variant end-to-end 
 - A repo-radius E2E that runs the reusable workflow on a sample app, has the browser extension consume the resulting artifact, and asserts the graph renders for the repo tab and the PR diff view. This validates the Radius CLI contract from the consumer side; the workflow and extension themselves are owned by repo-radius.
 
 **Phasing**
@@ -430,7 +422,7 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 | **Phase 2: Modeled graph** | `rad app graph --bicep` with source-line mapping and `codeReference` | P0 |
 | **Phase 3: Deployed graph persistence** | `rad app graph [app-name]` writes to `radius-graph` orphan branch in repo-radius context | P0 |
 | **Phase 4: Repo-radius E2E** | Wire the CLI into the repo-radius workflow + browser extension and validate end-to-end | P0 |
-| **Phase 5: Planned graph** | `rad app graph --bicep -e env [-g grp]`; recipe resolution to populate `outputResources` | P1 |
+| **Phase 5: Planned graph detailed design+impl** | `rad app graph --bicep -e env [-g grp]`; recipe resolution to populate `outputResources` | P1 |
 
 ## Open Questions
 
