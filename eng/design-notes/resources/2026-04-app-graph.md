@@ -47,9 +47,16 @@ The graph of a **live, deployed** application, as described above. This is the o
 
 ## Terms and definitions
 
-
-
-## Objectives
+| Term | Definition |
+|------|------------|
+| **Application graph** | A directed graph of the resources that make up a Radius application and the connections between them. Used by Radius for dependency-aware deployment and configuration injection, and by users for topology visualization. |
+| **Modeled graph** | Graph derived purely from a Bicep application definition (or its compiled ARM JSON), without contacting any Radius environment. Contains application-level resources and their connections, but no recipe-produced infrastructure. |
+| **Planned graph** | Graph derived from a Bicep application definition resolved against a specific Radius environment and resource group, without actually deploying. Includes the `outputResources` that recipes would produce. |
+| **Deployed graph** | Graph of a live, deployed application, returned by the existing `getGraph` custom action on `Applications.Core/applications`. Reflects the actual state stored in the Radius control plane. |
+| **`outputResources`** | The concrete infrastructure resources produced by a recipe for a given Radius resource (e.g., the AWS / Azure / Kubernetes objects backing a `redisCaches` resource). Populated on planned and deployed graphs; empty on modeled graphs. |
+| **Recipe** | A Bicep or Terraform template bound to a Radius resource type in an environment that materializes the concrete infrastructure for a resource at deploy time. |
+| **Radius environment** | A named scope (with a resource group) that binds resource types to recipes and supplies environment-specific configuration. Required to produce a planned or deployed graph; not required for a modeled graph. |
+| **Browser extension** | Chrome / Edge extension (in the github-extension repo) that reads `StaticGraphArtifact` files from the `radius-graph` branch and renders them with Cytoscape on GitHub pages. Out of scope for this design. |
 
 > **Issue Reference:** <!-- TODO: Link to tracking issue -->
 
@@ -203,14 +210,19 @@ We could choose to reuse this idea and enhance it so that we populate outputReso
 While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Gitea. Further, If we use workflows to own orphan branch + graph data handling, these functionalities will not be tested as part of core Radius. Therefore, we are handling git interactions 
 through a new package in Radius (pkg/cli/gitstate/).  
 
+#### Detecing repo-radius mode
+
+GitHub Actions guarantees that the [`GITHUB_ACTIONS`](https://docs.github.com/en/actions/reference/workflows-and-actions/variables) environment variable is set to `true` for every step that runs inside a runner . `rad app graph` could check `os.Getenv("GITHUB_ACTIONS") == "true"` to detect repo-radius mode, and handle command outputs/ persistence accordingly. 
+
 ##### Schema
 
 The static graph artifact uses `StaticGraphArtifact` as its JSON envelope, wrapping the existing `ApplicationGraphResponse` API type extended with three optional fields (`diffHash`, `appDefinitionLine`, `codeReference`). The `Version` field exists on `StaticGraphArtifact` (not `ApplicationGraphResponse`) because the API response is versioned by its URL (`v20231001preview`), while the file artifact needs its own schema version. `StaticGraphArtifact` is a `cli-only` datamodel, since the new fields are all relevant for code/ static analysis and do not involve a API call. 
 
 ```go
-/ StaticGraphArtifact is the JSON envelope for the static graph artifact.
+// StaticGraphArtifact is the JSON envelope for the static graph artifact.
 // When using orphan branch storage, this is committed to {source-branch}/app.json
-// on the radius-graph orphan branch.
+// on the radius-graph orphan branch. 
+// When Version, GeneratedAt fields could be useful on local disk.
 type StaticGraphArtifact struct {
 	Version     string                                          `json:"version"`
 	GeneratedAt string                                          `json:"generatedAt"`
@@ -268,10 +280,10 @@ A full example of a `StaticGraphArtifact` for an application with a frontend con
 
 Key observations:
 
-- `frontend` has an **Outbound** connection to `cache`; `cache` has a corresponding **Inbound** connection from `frontend` (bidirectional edges).
 - `outputResources` is empty for all static graph resources (populated only for planned and deployed graphs).
 - Each resource has a unique `diffHash` computed from its review-relevant properties. Filled on modeled, planned graphs.
 - provisioningState is [NotSpecified](https://learn.microsoft.com/en-us/javascript/api/@azure/arm-managedapplications/provisioningstate?view=azure-node-latest) for both modeled and planned graphs.
+- These optional attributes will be added to schema: "diffHash","appDefinitionLine","codeReference".
 
 
 #### DiffHash computation
@@ -286,27 +298,6 @@ func ComputeDiffHash(properties map[string]interface{}, dependsOn ...string) str
 ```
 
 The diffHash enables the browser extension(UI component) to classify resources as modified vs unchanged without comparing all properties.
-
-#### Workflow 
-
-The workflow will be responsible for installing rad cli, running the rad graph command on appropritate events (merge to main, PR against main from a fork). 
-
-##### Concurrent PR handling
-
-Multiple PRs can be open simultaneously, each writing to the same `radius-graph` orphan branch. Conflicts are avoided through:
-
-**1. Directory-per-branch isolation.** Each PR writes to its own directory on the orphan branch. Since different PRs are from different source-branch, their artifacts never overwrite each other — they're in separate directories within the same branch.
-
-**2. GitHub Actions concurrency group.** The reusable workflow uses a concurrency group scoped to the triggering ref:
-
-```yaml
-concurrency:
-  group: build-app-graph-${{ github.ref }}
-  cancel-in-progress: true
-```
-
-This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. 
-
 
 #### Graph persistence
 
@@ -331,6 +322,26 @@ The graph is constructed in-memory but must be persisted so it remains accessibl
 **Run-time graph persistence via `rad shutdown`:**
 
 The `rad shutdown` command backs up PostgreSQL state and tears down the k3d cluster. A natural extension is to call `getGraph` for each deployed application during shutdown and write the graph JSON to the `radius-graph` orphan branch as `deployments\scope-name-env-name\app-graph.json`. This would make run-time graphs available for visualization even after the cluster is destroyed — enabling the browser extension to show deployed infrastructure topology from the last known state.
+
+#### Workflow 
+
+The workflow will be responsible for installing rad cli, running the rad graph command on appropritate events (merge to main, PR against main from a fork). 
+
+##### Concurrent PR handling
+
+Multiple PRs can be open simultaneously, each writing to the same `radius-graph` orphan branch. Conflicts are avoided through:
+
+**1. Directory-per-branch isolation.** Each PR writes to its own directory on the orphan branch. Since different PRs are from different source-branch, their artifacts never overwrite each other — they're in separate directories within the same branch.
+
+**2. GitHub Actions concurrency group.** The reusable workflow uses a concurrency group scoped to the triggering ref:
+
+```yaml
+concurrency:
+  group: build-app-graph-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+This means: if a new push arrives on the same PR branch while a previous graph build is still running, the in-progress build is cancelled and replaced. 
 
 ## Test plan
 
