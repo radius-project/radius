@@ -10,6 +10,7 @@ resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'bicepconfig-test-secret'
   location: 'global'
   properties: {
+    resource: 'bicepconfig-test-ns/bicepconfig-test-secret'
     type: 'generic'
     data: {
       username: { value: 'test-user' }

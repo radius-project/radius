@@ -45,6 +45,7 @@ resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'tfbicep-combined-registry-secret'
   location: 'global'
   properties: {
+    resource: 'tfbicep-combined-ns/tfbicep-combined-registry-secret'
     type: 'generic'
     data: {
       username: { value: 'test-user' }
