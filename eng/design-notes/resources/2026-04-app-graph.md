@@ -207,8 +207,7 @@ We prefer this approach, since it
 
 #### Git dependency
 
-While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Flux. Further, If we use workflows to own orphan branch + graph data handling, these functionalities will not be tested as part of core Radius. Therefore, we are handling git interactions 
-through a new package in Radius (pkg/cli/gitstate/).  
+While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Flux. If we use workflows to own orphan branch + graph data handling, these functionalities will not be tested extensively as part of core Radius. We dont have reliable and automatic methods to make sure workflows meet the requirement, since that is not part of core Radius. The functionalities invoving branches are used only context of repo radius and are auto detected by cli. Therefore, we are handling git interactions through a new package in Radius (pkg/cli/gitstate/).  
 
 #### Detecing repo-radius mode
 
