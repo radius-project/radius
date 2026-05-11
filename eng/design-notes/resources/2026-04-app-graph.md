@@ -377,8 +377,11 @@ Include all properties but add a `displayProperties` list for recommended render
 |----------|----------|
 | `app.bicep` not found | CLI exits with error: "app.bicep not found at specified path" |
 | `bicep build` fails | CLI exits with Bicep compiler error output |
-| Orphan branch doesn't exist | CLI creates it automatically |
-| Git identity not configured | CLI fails with error suggesting `git config` |
+| Not running in repo-radius context | CLI writes `app-graph.json` locally and skips orphan-branch commit |
+| Orphan `radius-graph` branch doesn't exist | `pkg/cli/gitstate/` creates it automatically from the empty-tree SHA |
+| Git identity not configured | `pkg/cli/gitstate/` falls back to a `github-actions[bot]` identity for the commit |
+| `git push` rejected (non-fast-forward) | CLI fetches latest `radius-graph`, rebases the worktree, and retries |
+| Recipe resolution fails (planned graph) | CLI emits the modeled graph and logs the unresolved recipes; `outputResources` left empty |
 | Head artifact not built yet (PR) | Extension shows "waiting for CI" message |
 | Both artifacts missing (PR) | Extension shows "waiting for CI" message |
 | GitHub API rate limit | Extension logs warning, proceeds without auth |
@@ -391,15 +394,18 @@ Include all properties but add a `displayProperties` list for recommended render
 | Component | Test file | Coverage |
 |-----------|----------|----------|
 | DiffHash computation | `pkg/cli/graph/diffhash_test.go` | Determinism, stability across map iteration, different properties produce different hashes, dependsOn affects hash, empty properties |
-| Static graph building | `pkg/cli/graph/build_test.go` | Resource extraction, connection parsing, `resourceId()` expression resolution, source line mapping |
+| Modeled graph build | `pkg/cli/graph/build_test.go` | Resource extraction, connection parsing, `resourceId()` expression resolution, source line mapping |
+| Planned graph build | `pkg/cli/graph/planned_test.go` | Recipe resolution, `outputResources` population from dry-run, fallback when recipe unresolved |
+| Orphan branch primitives | `pkg/cli/gitstate/gitstate_test.go` | Worktree create/remove, orphan branch init from empty-tree SHA, fetch+rebase+push retry |
 | Graph diff (TypeScript) | `web/browser-extension/src/content/graph-diff.test.ts` | Added/removed/modified/unchanged classification, null base, null head, empty graphs |
 
 ### Functional tests
 
 | Test | Description |
 |------|-------------|
-| End-to-end graph build | Compile a test `app.bicep`, run `rad graph build`, verify output JSON matches expected artifact |
-| Orphan branch creation | Run `rad graph build` in a fresh repo, verify orphan branch is created with correct structure |
+| End-to-end modeled graph | Compile a test `app.bicep`, run `rad app graph --bicep`, verify output JSON matches expected artifact |
+| End-to-end planned graph | Run `rad app graph --bicep -e simulated-env`, verify `outputResources` are populated for resources backed by recipes |
+| Orphan branch lifecycle | Run the CLI in a fresh repo, verify `radius-graph` is created and `{branch}/app-graph.json` is committed |
 | CI workflow | Push `app.bicep` change to test repo, verify workflow runs and artifact appears on orphan branch |
 | Browser extension rendering | Manual verification: load extension, navigate to test repo, verify graph tab and PR diff graph |
 
@@ -431,39 +437,37 @@ The browser extension is tested with these [detailed instructions](https://githu
 
 | Component | Instrumentation |
 |-----------|----------------|
-| `rad graph build` | Logs: resource count, connection count, compilation time, commit SHA. Errors: Bicep compilation failures, git operations. |
+| `rad app graph --bicep` | Logs: graph type (modeled/planned), resource count, connection count, compilation time, commit SHA. Errors: Bicep compilation failures, recipe resolution failures, git operations. |
+| `pkg/cli/gitstate/` | Logs: branch fetch, worktree path, commit SHA, push retries. |
 | CI workflow | Standard GitHub Actions logging. Step-level timing. |
 | Browser extension | `console.debug` for page detection, artifact fetching, graph rendering. `console.error` for API failures. |
 
 ## Development plan
 
-- enhance `rad app graph [app-name]` output commit the deployed graph output to orphan branch, if running in repo-radius context
-- `rad app graph --bicep` should be able to extract line number + fully qualified file path in order to enable UI to create deep links from a graph node into application source code (as well as to the resource definiton in bicep file ?)
-- 
-
-Compiling app.bicep → /tmp/app.json
-Parsed 4 resources, 3 connections
-Committed main/app.json to orphan branch radius-graph
+- Enhance `rad app graph [app-name]` to commit the deployed graph artifact to the `radius-graph` orphan branch when running in repo-radius context.
+- Add `rad app graph --bicep` for the modeled graph; emit `appDefinitionLine` and `codeReference` so the UI can deep-link from a node to source code.
+- Add `rad app graph --bicep -e env [-g grp]` for the planned graph; populate `outputResources` via recipe dry-run.
+- Introduce `pkg/cli/gitstate/` to encapsulate orphan-branch fetch / worktree / commit / push.
 
 | Phase | Scope | Priority |
 |-------|-------|----------|
-| **Phase 1: Static graph builder** | `rad graph build` CLI command, orphan branch persistence, diffHash | P0 |
-| **Phase 2: CI integration** | Reusable workflow `__build-app-graph.yml` | P0 |
+| **Phase 1: Modeled graph** | `rad app graph --bicep`, `pkg/cli/gitstate/`, orphan-branch persistence, diffHash | P0 |
+| **Phase 2: CI integration** | Reusable workflow that installs `rad` and runs the modeled-graph command on push/PR | P0 |
 | **Phase 3: Browser extension — repo tab** | "Application graph" tab on repo root, Cytoscape rendering | P0 |
 | **Phase 4: Browser extension — PR diff** | Diff computation, color-coded PR graph, navigation popups | P0 |
 | **Phase 5: Authentication** | GitHub App device flow, PAT support | P0 |
-| **Phase 6: Deployed graph visualization** | Browser extension page showing live deployment state | P1 |
-| **Phase 7: Planned graph visualization** | Dry-run graph showing expected deployment | P2 |
+| **Phase 6: Deployed graph** | Persist `rad app graph [app]` output during `rad shutdown`; extension page showing live state | P1 |
+| **Phase 7: Planned graph** | `rad app graph --bicep -e env`; recipe dry-run to populate `outputResources` | P2 |
 
 ## Open Questions
 
-1. **Run-time graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the run-time graph JSON alongside the SQL dumps would enable deployed graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
+1. **Deployed graph persistence:** The `filesystem-state` branch implements `rad shutdown` with PostgreSQL backup to a `radius-state` orphan branch. Adding a `getGraph` call during shutdown to persist the deployed graph JSON to `{branch}/deployments/app-graph.json` on `radius-graph` would enable deployed-graph visualization after cluster teardown. Should this be integrated in this iteration or deferred?
 
 2. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed potentially by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. In addition, users can use cloud provider cli/ portals to change the configuration to suit their needs. If an instance of control plane or an  user modifies the resources of the  application, then Radius's stored state and `getGraph` output become stale.
 
-Note that the static graph (`rad graph build`) is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. It depicts the app graph as inferred from the  code. 
+Note that the modeled graph (`rad app graph --bicep`) is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. It depicts the app graph as inferred from the code.
 
-Only the run-time graph (from `getGraph`) is affected by this problem.
+Only the deployed graph (from `getGraph`) is affected by this problem.
 
 Possible approaches to drift:
 
@@ -495,7 +499,7 @@ Drawing from these approaches, Radius could offer `rad` commands to detect drift
 - Cannot handle Bicep modules without recursive resolution.
 - Ongoing maintenance burden as Bicep syntax evolves.
 
-**Chosen approach:** Compile to ARM JSON via `bicep build`, then parse the stable JSON format. See [Static graph builder](#component-1-static-graph-builder-rad-graph-build) for details.
+**Chosen approach:** Compile to ARM JSON via `bicep build`, then parse the stable JSON format. See [Accessing modeled graph](#accessing-modeled-graph) for details.
 
 ### Graph persistence: File in repo vs orphan branch vs external storage
 
@@ -508,6 +512,8 @@ Drawing from these approaches, Radius could offer `rad` commands to detect drift
 | GitHub Actions artifacts | Cross-run accessible | Retention limits, complex download logic |
 
 **Chosen approach:** Orphan branch. Clean separation from application code, natural per-branch organization, accessible via GitHub API. This is consistent with the `filesystem-state` branch's choice of orphan branches for PostgreSQL state persistence, validated by the same analysis (see [GitHub Actions Workspace](../2026-03-github-workspace-design.md) alternatives considered).
+
+The implemnentation should be decoupled from the persistence target as part of an extensible design.
 
 
 ## Design Review Notes
