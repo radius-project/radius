@@ -75,18 +75,21 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
+	// Set environment variables (including TF_CLI_CONFIG_FILE for the
+	// generated .terraformrc) before generateConfig, because generateConfig
+	// runs `terraform get` to download the module. Module downloads from
+	// authenticated registries need credentials and provider_installation
+	// rules in effect at fetch time, not just at apply time.
+	if options.EnvConfig != nil {
+		if err = e.setEnvironmentVariables(tf, options); err != nil {
+			return nil, err
+		}
+	}
+
 	// Create Terraform config in the working directory
 	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return nil, err
-	}
-
-	if options.EnvConfig != nil {
-		// Set environment variables for the Terraform process.
-		err = e.setEnvironmentVariables(tf, options)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// Run TF Init and Apply in the working directory

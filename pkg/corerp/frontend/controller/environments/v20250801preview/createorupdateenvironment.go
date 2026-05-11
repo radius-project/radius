@@ -185,7 +185,19 @@ func validateConfigRef(
 	if !strings.EqualFold(id.Type(), expectedType) {
 		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q has type %q; expected %q.", propertyName, resourceID, id.Type(), expectedType))
 	}
-	if _, _, err := e.GetResource(ctx, id); err != nil {
+	// Operation.GetResource clears the error and returns a nil resource on
+	// not-found, so check both. err covers transport/decode failures; the
+	// nil out covers the resource-missing case.
+	out, _, err := e.GetResource(ctx, id)
+	if err != nil {
+		return rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    v1.CodeInternal,
+				Message: fmt.Sprintf("Failed to look up referenced %s resource %q: %s", propertyName, resourceID, err.Error()),
+			},
+		})
+	}
+	if out == nil {
 		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q does not exist.", propertyName, resourceID))
 	}
 	return nil
