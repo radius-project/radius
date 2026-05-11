@@ -53,7 +53,6 @@ The graph of a **live, deployed** application, as described above. This is the o
 | **Modeled graph** | Graph derived purely from a Bicep application definition (or its compiled ARM JSON), without contacting any Radius environment. Contains application-level resources and their connections, but no recipe-produced infrastructure. |
 | **Planned graph** | Graph derived from a Bicep application definition resolved against a specific Radius environment and resource group, without actually deploying. Includes the `outputResources` that recipes would produce. |
 | **Deployed graph** | Graph of a live, deployed application, returned by the existing `getGraph` custom action on `Applications.Core/applications`. Reflects the actual state stored in the Radius control plane. |
-| **`outputResources`** | The concrete infrastructure resources produced by a recipe for a given Radius resource (e.g., the AWS / Azure / Kubernetes objects backing a `redisCaches` resource). Populated on planned and deployed graphs; empty on modeled graphs. |
 | **Recipe** | A Bicep or Terraform template bound to a Radius resource type in an environment that materializes the concrete infrastructure for a resource at deploy time. |
 | **Radius environment** | A named scope (with a resource group) that binds resource types to recipes and supplies environment-specific configuration. Required to produce a planned or deployed graph; not required for a modeled graph. |
 | **Browser extension** | Chrome / Edge extension (in the github-extension repo) that reads `StaticGraphArtifact` files from the `radius-graph` branch and renders them with Cytoscape on GitHub pages. Out of scope for this design. |
@@ -131,7 +130,7 @@ We will merge Workflows,  Browser extension and Graph-renderer cytoscape.js java
 
 #### User Experience
 
-#####  Accessing deployed graph 
+##### Accessing deployed graph 
 
 Below command exist today in Radius to access the deployed application graph:
 
@@ -148,7 +147,7 @@ at /deployments/groupname-envname/app-graph.json.
 
 There will be no changes to output when rad deploy is called on a persistent control plane, like we do today.
 
-#####  Accessing modeled graph
+##### Accessing modeled graph
 
 We build on the existing `rad app graph command` to access other kinds of graphs.
 
@@ -168,7 +167,7 @@ The command:
 4. Computes a `diffHash` for each resource based on relevant properties.
 5. Commits the resulting `StaticGraphArtifact` JSON to `{source-branch}/app-graph.json` on the orphan `radius-graph` branch, if it is run in the context of a github runner (repo radius). Otherwise writes `StaticGraphArtifact` JSON to `app-graph.json` in current directory or specified location. At any point, there can be exactly one modeled graph per repo branch.
 
-#####  Accessing planned graph
+##### Accessing planned graph
 
 The planned graph is richer than the modeled graph. It additionally includes the concrete output resources produced by each recipe, resolved against a specific environment.
 The details of implementation are at a high level and require further research/experimentation.
@@ -188,7 +187,7 @@ The command
 
 There are 2 potential approaches to how the recipe resources command can be resolved:
 
-#### static inferences
+*static inferences*
 
 1. Invokes `bicep build` to compile `app.bicep` to ARM JSON.
 2. Parses resources, connections, `dependsOn`, and `codeReference` from the JSON.
@@ -197,10 +196,11 @@ There are 2 potential approaches to how the recipe resources command can be reso
 5. Integrate back to the StaticGraphArtifact through "outputResources" field. 
 6. Commit to orphan branch
 
-#### simulated inferences [prefered]
+*simulated inferences [prefered]*
 
 Radius currently supports a simulated environment. At a high level, this makes an entry in Radius datastore for each reasource, identical to what a `rad deploy` does. But the deployment status is used to indicate the resources have not been deployed yet. The simulated environment also does not do a dry-run on the recipes. 
 We could choose to reuse this idea and enhance it so that we populate outputResources using dry-run abilities of bicep and terraform.
+We prefer this approach, since it 
 
 
 ##### Implementation approach
