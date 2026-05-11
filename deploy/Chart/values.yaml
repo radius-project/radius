@@ -83,8 +83,8 @@ controller:
 
 de:
   image: deployment-engine
-  # Default tag uses Chart AppVersion.
-  # tag: latest
+  # Pin Deployment Engine to the v0.56.0 image for the v0.57.1 patch release.
+  tag: 0.56
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
