@@ -423,6 +423,9 @@ tests:
       rp.image: applications-rp
       dynamicrp.image: dynamic-rp
       de.image: deployment-engine
+      # Clear the values.yaml pin so this test exercises the
+      # global.imageTag fallthrough for the DE image.
+      de.tag: ""
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
