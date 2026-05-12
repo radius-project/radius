@@ -251,6 +251,112 @@ Remaining files ( `radius_core.yaml`, `microsoft_resources.yaml`) stay because t
 
 No changes to the security model. The embedded manifests are static YAML files compiled into the binary at build time, so there is no new attack surface for injection or tampering beyond what exists for any compiled-in resource. The `defaults.yaml` file is validated at startup, and invalid entries cause a clear startup failure.
 
+### Security Considerations for Embedded External Manifests
+
+The proposed design has `defaults.yaml` in `resource-types-contrib` and pulls manifests into the Radius binary via a Go module dependency. Since manifests are sourced from a separate repository that may have a broader set of contributors, it is important to ensure that changes are properly reviewed before they are embedded into the Radius binary.
+
+#### Existing safeguards
+
+The following safeguards already mitigate this risk:
+
+1. **PR review in `resource-types-contrib`.** Adding or modifying a manifest and updating `defaults.yaml` requires a PR reviewed and approved by CODEOWNERS of `resource-types-contrib`. A malicious manifest cannot become a default without reviewer approval.
+
+2. **`go.mod` bump requires PR review in `radius`.** Changes in `resource-types-contrib` only reach Radius when a maintainer runs `go get -u` and merges the resulting `go.mod`/`go.sum` change. This is a second review gate.
+
+3. **Manifest parsing and schema validation.** Manifests are parsed using a strict YAML decoder that rejects unknown top-level fields, duplicate keys, and any data that does not conform to the expected `ResourceProvider` structure. Schemas within each manifest are further validated against OpenAPI format; malformed or structurally invalid schemas are rejected at startup. There is no risk of code execution through YAML parsing, as Go YAML parsers do not support executable YAML tags.
+
+4. **Schema runtime behavior.** The `schema` field within each API version accepts arbitrary JSON Schema content (including `additionalProperties: true`), so its contents are not structurally restricted beyond OpenAPI validity. After registration, dynamic-rp reads stored schemas at runtime for request validation and sensitive field identification (encryption). The schema is never passed to Terraform or Bicep recipes, and users always provide resource property values explicitly, so a crafted schema cannot inject values into recipe execution. The residual risks are limited to weakened request validation (overly permissive properties), unnecessary encryption overhead (incorrectly marking fields as sensitive), or performance degradation (very large or deeply nested schemas). These risks are mitigated by the requirement for manifest changes to go through code review, where reviewers can inspect the schema content.
+
+#### Remaining risk
+
+The primary remaining risk is **limited visibility in the Radius PR**. When a maintainer bumps the `resource-types-contrib` dependency, the PR diff in `radius` shows only a `go.mod`/`go.sum` version change. The actual YAML content changes are not visible. A reviewer must manually compare the two commit hashes in `resource-types-contrib` to see what changed.
+
+#### Alternative approach 1: `defaults.yaml` and copied files in `radius`
+
+To address the visibility concern, `defaults.yaml` and the manifest copies can be moved entirely to the `radius` repo. Since the files would already be on disk in the radius repo, no `go:embed` or `RegisterFS` changes are needed. The existing `RegisterDirectory` function handles them at startup, the same way it handles `radius_core.yaml` today.
+
+**How it works:**
+
+1. `resource-types-contrib` remains a plain Go module with `go.mod` and YAML manifest files. No `go:embed`, no `defaults.yaml`, no generated code.
+2. `radius` has:
+   - `deploy/manifest/defaults.yaml` listing the file paths to copy from `resource-types-contrib`
+   - A Makefile target that reads `defaults.yaml`, downloads the pinned version of `resource-types-contrib` from the Go module cache, and copies the listed files into `deploy/manifest/built-in-providers/`
+3. The copied YAML files are committed to the `radius` repo and registered at startup by the existing `RegisterDirectory` function.
+
+**Makefile target:**
+```make
+sync-resource-types:
+	@echo "Syncing default resource types from resource-types-contrib..."
+	@MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
+	for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
+		cp "$$MODULE_DIR/$$path" deploy/manifest/built-in-providers/$$(basename "$$path"); \
+		echo "  Copied $$path"; \
+	done
+	@echo "Done. Review and commit the updated files."
+```
+
+**Usage:**
+```bash
+# After bumping the dependency
+go get -u github.com/radius-project/resource-types-contrib
+make sync-resource-types
+# Review the diff, then commit
+```
+
+```
+radius/
+  deploy/manifest/
+    defaults.yaml                          # lists which files to copy
+    built-in-providers/
+      radius_core.yaml                     # existing, unchanged
+      microsoft_resources.yaml             # existing, unchanged
+      containers.yaml                      # copied from resource-types-contrib
+      routes.yaml                          # copied from resource-types-contrib
+      secrets.yaml                         # copied from resource-types-contrib
+      ...
+```
+
+**Comparison with the proposed approach:**
+
+| Aspect | Proposed (defaults.yaml in contrib) | Alternative (defaults.yaml in radius) |
+|---|---|---|
+| **Who controls what's default** | `resource-types-contrib` maintainers | `radius` maintainers |
+| **YAML content visible in Radius PRs** | No (only go.mod/go.sum changes) | Yes (copied files show full diff) |
+| **File duplication** | None; files embedded directly from Go module | YAML copies exist in both repos |
+| **Security gate** | Two gates: contrib PR + radius go.mod PR (but radius PR has no content visibility) | Two gates: contrib PR + radius PR (with full content visibility) |
+| **Adding a new default** | Edit `defaults.yaml` in contrib, run `go generate` there, then bump dependency in radius | Bump dependency in radius, edit `defaults.yaml` in radius, run copy script |
+| **Contribution simplicity** | Single-repo change for contrib authors | Cross-repo change (contrib for the type, radius for making it default) |
+| **Code changes needed** | New `RegisterFS` function, updated initializer | None; uses existing `RegisterDirectory` |
+
+**Advantages of the alternative:**
+- Stronger security posture: `defaults.yaml` changes go through Radius CODEOWNERS review
+- Full content visibility in Radius PRs eliminates the opaque `go.mod` bump problem
+- Radius maintainers have explicit control over which types ship as defaults
+
+**Disadvantages of the alternative:**
+- Reintroduces file copies in the `radius` repo (automated, but still copies)
+- Adding a new default requires changes in both repos instead of one
+- **Sequential cross-repo workflow.** A contributor's manifest PR in `resource-types-contrib` must be merged before they can open the corresponding PR in `radius` (since `go get -u` pulls from the merged main branch), so it is a sequential two step process across repos.
+- **Risk of drift on schema updates.** When an existing default resource type's schema is updated in `resource-types-contrib`, a maintainer must both bump the dependency (`go get -u`) and re-run the copy script to refresh the local YAML copies. If they bump the dependency but forget to re-run the copy script, the YAML files in radius will be stale relative to the pinned dependency version, reintroducing the drift problem in a different form. CI can catch this by comparing the committed YAML files against the versions in the pinned module (e.g., downloading the module, diffing against the local copies, and failing the build if they don't match).
+
+#### Alternative approach 2: CI diff report and CODEOWNERS
+
+Rather than moving `defaults.yaml` to `radius`, the visibility and control gaps in the proposed approach can be addressed with two lighter-weight mitigations:
+
+1. **CI diff report in `radius`.** A CI step triggers on `go.mod` changes involving `resource-types-contrib`, fetches both the old and new versions of the module, and posts a comment on the PR with a diff summary of changed YAML files. This gives reviewers full visibility into what changed without any architectural changes, file duplication, or cross-repo complexity.
+
+2. **CODEOWNERS for `defaults.yaml` in `resource-types-contrib`.** Add Radius maintainers as required reviewers for `defaults.yaml` via `resource-types-contrib`'s CODEOWNERS file:
+   ```
+   /defaults.yaml @radius-project/radius-maintainers
+   ```
+   This ensures that any change to which types are registered as defaults requires approval from a Radius maintainer, even though the file lives in the contrib repo. This gives Radius maintainers visibility on default registration changes without moving the file to a different repo.
+
+Combined with the existing safeguards (strict parsing, schema validation, contrib CODEOWNERS), these two mitigations address both visibility and review requirements without the complexity of the alternative approach.
+
+#### Recommendation
+
+The proposed approach (defaults.yaml in `resource-types-contrib`) with a **CI diff report** added to `radius` provides the best balance of simplicity, single-repo contribution workflow, and security visibility. The alternative (defaults.yaml in `radius`) offers stronger security control and PR visibility but at the cost of file duplication, cross-repo contribution complexity, and risk of drift if the copy script is not re-run after dependency updates.
+
 ## Compatibility
 
 - **No breaking changes**: The existing `ManifestDirectory` config continues to work. Directory-based manifests are registered after embedded manifests, so existing deployments that set a custom manifest directory will continue to function.
