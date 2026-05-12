@@ -171,7 +171,7 @@ Contributions enter at Alpha or Beta and graduate towards Stable. Stable resourc
 - Voted by external community members
 - Radius core repository maintainer review and approval before merge
 
-**Radius maintainers** are responsible for schema evolution, versioning, compatibility guarantees, deprecation, and promotion through maturity stages for resource types. Resource types are versioned by API (2026-11-05-preview, 2026-11-05-stable), while recipes follow upstream module versioning.
+**Radius maintainers** are responsible for schema evolution, versioning, compatibility guarantees, deprecation, and promotion through maturity stages for resource types.
 
 ## Action Plan
 
