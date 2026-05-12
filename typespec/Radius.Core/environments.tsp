@@ -60,6 +60,12 @@ model EnvironmentProperties {
   @doc("Cloud provider configuration for the environment.")
   providers?: Providers;
 
+  @doc("Resource ID of a Radius.Core/terraformConfigs resource providing Terraform recipe settings.")
+  terraformConfig?: string;
+
+  @doc("Resource ID of a Radius.Core/bicepConfigs resource providing Bicep recipe settings.")
+  bicepConfig?: string;
+
   @doc("Simulated environment.")
   simulated?: boolean;
 }
