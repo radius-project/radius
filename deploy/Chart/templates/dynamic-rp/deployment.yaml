@@ -253,7 +253,6 @@ spec:
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
-          allowPrivilegeEscalation: false
           {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
           # On clusters without user namespaces, BuildKit's rootless
           # mode needs unconfined seccomp/AppArmor to drop into the
@@ -263,13 +262,16 @@ spec:
             type: Unconfined
           appArmorProfile:
             type: Unconfined
-          # `allowPrivilegeEscalation: false` blocks the file caps on
-          # /usr/bin/newuidmap from taking effect, so rootlesskit
-          # cannot set up the UID/GID map. Add SETUID/SETGID/SETFCAP
-          # explicitly (all allowed by PSA baseline) so rootlesskit
-          # can configure the user namespace without newuidmap.
-          capabilities:
-            add: ["SETUID", "SETGID", "SETFCAP"]
+          # rootlesskit execs /usr/bin/newuidmap, which relies on
+          # file capabilities to write the UID/GID map. With
+          # allowPrivilegeEscalation=false, the kernel sets
+          # no_new_privs=1 and nullifies file caps on execve, so
+          # newuidmap fails with "Could not set caps". PSA baseline
+          # permits allowPrivilegeEscalation=true; PSA restricted
+          # forbids it and requires user-namespace support instead.
+          allowPrivilegeEscalation: true
+          {{- else }}
+          allowPrivilegeEscalation: false
           {{- end }}
         volumeMounts:
         - name: buildkit-run
