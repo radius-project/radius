@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"os"
 	"path/filepath"
 	reflect "reflect"
 	"testing"
@@ -246,6 +247,23 @@ func TestSetEnvironmentVariables(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "provider_installation writes .terraformrc and sets TF_CLI_CONFIG_FILE",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Terraform: dm.TerraformConfigProperties{
+							ProviderInstallation: &dm.TerraformProviderInstallation{
+								NetworkMirror: &dm.TerraformProviderMirror{
+									URL:     "https://mirror.example.com/",
+									Include: []string{"*"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCase {
@@ -260,8 +278,78 @@ func TestSetEnvironmentVariables(t *testing.T) {
 
 			if tc.wantErr {
 				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			// When provider_installation is set, the helper should have written .terraformrc
+			// into the working directory.
+			if tc.opts.EnvConfig != nil && tc.opts.EnvConfig.RecipeConfig.Terraform.ProviderInstallation != nil {
+				_, statErr := os.Stat(filepath.Join(workingDir, terraformCLIConfigFileName))
+				require.NoError(t, statErr, "expected .terraformrc to be written to working dir")
+			}
+		})
+	}
+}
+
+func TestApplyTerraformCLIConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		opts      Options
+		wantFile  bool
+		wantError bool
+	}{
+		{
+			name:     "nil EnvConfig is a no-op",
+			opts:     Options{},
+			wantFile: false,
+		},
+		{
+			name: "nil ProviderInstallation is a no-op",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{},
+			},
+			wantFile: false,
+		},
+		{
+			name: "writes .terraformrc when ProviderInstallation is set",
+			opts: Options{
+				EnvConfig: &recipes.Configuration{
+					RecipeConfig: dm.RecipeConfigProperties{
+						Terraform: dm.TerraformConfigProperties{
+							ProviderInstallation: &dm.TerraformProviderInstallation{
+								NetworkMirror: &dm.TerraformProviderMirror{
+									URL: "https://mirror.example.com/",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantFile: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			tf, err := tfexec.NewTerraform(workingDir, filepath.Join(workingDir, "terraform"))
+			require.NoError(t, err)
+
+			e := executor{}
+			err = e.applyTerraformCLIConfig(tf, tc.opts)
+			if tc.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			path := filepath.Join(workingDir, terraformCLIConfigFileName)
+			_, statErr := os.Stat(path)
+			if tc.wantFile {
+				require.NoError(t, statErr)
 			} else {
-				require.NoError(t, err)
+				require.True(t, os.IsNotExist(statErr))
 			}
 		})
 	}

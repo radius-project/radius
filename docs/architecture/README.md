@@ -28,6 +28,10 @@ change-safety guidance.
   secret, and queue abstractions used by the control-plane services.
 - [application-graph.md](application-graph.md) explains how the application
   graph is computed from stored resources and displayed via the CLI.
+- [terraform-bicep-config.md](terraform-bicep-config.md) explains the reusable
+  `Radius.Core/terraformConfigs` and `bicepConfigs` resources referenced by
+  environments to provide private registry auth, Terraform CLI provider
+  installation rules, and recipe environment variables.
 
 ## Reading Order
 
