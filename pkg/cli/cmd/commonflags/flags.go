@@ -70,6 +70,11 @@ func AddConfirmationFlag(cmd *cobra.Command) {
 	cmd.Flags().BoolP("yes", "y", false, "The confirmation flag")
 }
 
+// AddForceFlag adds a flag to the given command that allows the user to force an operation even when the resource is in a non-terminal state.
+func AddForceFlag(cmd *cobra.Command) {
+	cmd.Flags().Bool("force", false, "Force the operation even if the resource is in a non-terminal provisioning state")
+}
+
 // AddEnvironmentNameFlag adds a flag to the given command that allows the user to specify an environment name.
 func AddEnvironmentNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("environment", "e", "", "The environment name")

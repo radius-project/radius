@@ -70,6 +70,8 @@ type DeleteOptions struct {
 	ProgressText string
 	// ProgressChan is a channel used to signal progress of the deletion operation.
 	ProgressChan chan<- ResourceProgress
+	// Force indicates whether to force delete resources that are in a non-terminal provisioning state.
+	Force bool
 }
 
 type ResourceStatus string
@@ -177,7 +179,8 @@ type ApplicationsManagementClient interface {
 	CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error)
 
 	// DeleteResource deletes a resource by its type and name (or id).
-	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string) (bool, error)
+	// When force is true, the delete will proceed even if the resource is in a non-terminal provisioning state.
+	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (bool, error)
 
 	// ListApplications lists all applications in the configured scope.
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
@@ -195,7 +198,8 @@ type ApplicationsManagementClient interface {
 	CreateApplicationIfNotFound(ctx context.Context, applicationNameOrID string, resource *corerp.ApplicationResource) error
 
 	// DeleteApplication deletes an application and all of its resources by its name (or id).
-	DeleteApplication(ctx context.Context, applicationNameOrID string) (bool, error)
+	// When force is true, resources in non-terminal provisioning states will be force-deleted.
+	DeleteApplication(ctx context.Context, applicationNameOrID string, force bool) (bool, error)
 
 	// ListEnvironments lists all environments in the configured scope (assumes configured scope is a resource group).
 	ListEnvironments(ctx context.Context) ([]corerp.EnvironmentResource, error)
