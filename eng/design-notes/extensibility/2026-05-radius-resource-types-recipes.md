@@ -1,13 +1,14 @@
 # Radius Resource Types & Recipes
 
+* **Author**: Reshma Abdul Rahim (@Reshrahim)
+
 ## Summary
 
 As part of GitHub-Radius integration, AI agents need to understand application source code and automatically generate deployment definitions (`app.bicep`). For the agents to work **deterministically and reliably**, they need a well-defined catalog of application-oriented resource types backed by production-ready recipes.
 
-Radius maintains the resource type schemas and recipes in the `resource-type-contrib` repository. 
-We need about 30 application oriented resource types covering the basics: databases, caches, messaging, storage, and so on. These are what AI agents use to generate `app.bicep`, so the schemas need to be well-defined. We use  to generate schemas and validate them against community Bicep and Terraform modules.
+Radius maintains the resource type schemas and recipes in the `resource-type-contrib` repository. We need about 30 application oriented resource types covering the basics: databases, caches, messaging, storage, and so on. These are what AI agents use to generate `app.bicep`, so the schemas need to be well-defined. We use Agents and skills to generate schemas and validate them against community Bicep and Terraform modules.
 
-We don't write recipes. The `resource-type-contrib` repository has type definitions only, no recipe code. Recipes point at community modules directly: Azure Verified Modules for Azure, Terraform Registry for AWS, Helm charts for Kubernetes. Radius handles the input and output mapping automatically with configuration maintained in Recipe packs.
+Recipes reference community modules directly rather than custom IaC code. The `resource-type-contrib` repository contains type definitions and tested module references. For Azure, recipes point at Azure Verified Modules. For AWS, the Terraform Registry. For Kubernetes, Helm charts. Radius resolves inputs and outputs automatically, with the mapping configuration maintained in Recipe packs.
 
 Because we own the type interface but not the module code, there's nothing to maintain, audit, or patch on the recipe side. This also eliminates supply chain concerns since we don't ship or redistribute any IaC code. Bicep and Terraform Recipe drivers work today. Helm is next and will open up Kubernetes coverage significantly. This document lays out the strategy to build and maintain the types and recipes for the GitHub-Radius integration to be successful.
 
@@ -172,6 +173,14 @@ Contributions enter at Alpha or Beta and graduate towards Stable. Stable resourc
 - Radius core repository maintainer review and approval before merge
 
 **Radius maintainers** are responsible for schema evolution, versioning, compatibility guarantees, deprecation, and promotion through maturity stages for resource types.
+
+## Risks and Dependencies
+
+- **Upstream module quality**: We reference community modules we don't own. If AVM or a Terraform module ships a bad release or drops an output, our recipes break. We pin versions and run weekly CI to catch this early.
+- **Helm driver**: Kubernetes recipes are stuck on custom Bicep until we build the Helm driver. That's a bottleneck for K8s coverage.
+- **AVM gaps**: Some Tier 1 types don't have AVM modules yet. For those, we fall back to Terraform or custom Bicep on Azure.
+- **Schema stability**: Agents depend on resource type schemas. If we break a schema after agents are already using it, generated `app.bicep` files will be wrong. We enforce backward compatibility from Beta onward.
+- **Contributor adoption**: If nobody contributes, we build all 27 types ourselves. The contribution model needs to be low-friction enough that people actually use it.
 
 ## Action Plan
 
