@@ -22,7 +22,7 @@ Because we own the type interface but not the module code, there's nothing to ma
 
 Resource types are the building blocks of the application definition. Today's catalog is limited to a handful of types that serve only the Radius `todo-list` sample. To support real-world applications, the catalog needs to grow to cover the application dependencies developers actually use.
 
-A data-driven analysis by Copilot from cloud provider catalogs, Docker Hub, the Stack Overflow 2025 Developer Survey, IaC registries, and package registry trends identified 27 application components ranked by actual developer adoption. Adoption is measured by dedicated client-library downloads across four ecosystems (npm, PyPI, NuGet, RubyGems), weighted by survey usage, Docker pulls, and cloud availability. The full ranked catalog with methodology is in [`resource-type-ranked-catalog`](resource-type-ranked-catalog.md).
+A data-driven analysis by Copilot from cloud provider catalogs, Docker Hub, the Stack Overflow 2025 Developer Survey, IaC registries, and package registry trends identified 27 application components ranked by actual developer adoption. Adoption is measured by dedicated client-library downloads across four ecosystems (npm, PyPI, NuGet, RubyGems), weighted by survey usage, Docker pulls, and cloud availability. The full ranked catalog with methodology is in [`resource-type-ranked-catalog`](2026-05-radius-resource-types-recipes/resource-type-ranked-catalog.md).
 
 The top 27 break into three tiers:
 
