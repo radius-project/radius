@@ -118,9 +118,9 @@ func TestTerraformConfig_ConvertTo_Both(t *testing.T) {
 func TestTerraformConfig_ConvertTo_MultipleCredentialHosts(t *testing.T) {
 	src := newVersionedTerraformConfig(&TerraformrcConfig{
 		Credentials: map[string]*TerraformCredentialConfig{
-			"app.terraform.io":      {Secret: to.Ptr("/planes/radius/local/.../secretA")},
-			"registry.example.com":  {Secret: to.Ptr("/planes/radius/local/.../secretB")},
-			"private.example.com":   {Secret: to.Ptr("/planes/radius/local/.../secretC")},
+			"app.terraform.io":     {Secret: to.Ptr("/planes/radius/local/.../secretA")},
+			"registry.example.com": {Secret: to.Ptr("/planes/radius/local/.../secretB")},
+			"private.example.com":  {Secret: to.Ptr("/planes/radius/local/.../secretC")},
 		},
 	})
 
