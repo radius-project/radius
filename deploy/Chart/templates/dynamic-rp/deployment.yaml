@@ -263,6 +263,13 @@ spec:
             type: Unconfined
           appArmorProfile:
             type: Unconfined
+          # `allowPrivilegeEscalation: false` blocks the file caps on
+          # /usr/bin/newuidmap from taking effect, so rootlesskit
+          # cannot set up the UID/GID map. Add SETUID/SETGID/SETFCAP
+          # explicitly (all allowed by PSA baseline) so rootlesskit
+          # can configure the user namespace without newuidmap.
+          capabilities:
+            add: ["SETUID", "SETGID", "SETFCAP"]
           {{- end }}
         volumeMounts:
         - name: buildkit-run
