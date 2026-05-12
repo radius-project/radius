@@ -245,12 +245,12 @@ spec:
         {{- end }}
         readinessProbe:
           exec:
-            command: ["buildctl", "debug", "workers"]
+            command: ["buildctl", "--addr", "unix:///run/buildkit/buildkit.sock", "debug", "workers"]
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe:
           exec:
-            command: ["buildctl", "debug", "workers"]
+            command: ["buildctl", "--addr", "unix:///run/buildkit/buildkit.sock", "debug", "workers"]
           initialDelaySeconds: 30
           periodSeconds: 30
         securityContext:
