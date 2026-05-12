@@ -4,21 +4,16 @@
 **Created**: 2026-04-22  
 **Updated**: 2026-04-30  
 **Status**: Draft  
-**Input**: Enable platform engineers to use any standard Bicep or Terraform module as a Radius recipe — without writing a Radius-specific wrapper. Today, using a module as a recipe requires a wrapper that conforms to Radius conventions (a `context` input variable, a structured `result` output). This feature eliminates the wrapper: point `recipeLocation` directly at a standard module, and the system handles input resolution (injecting Radius context like resource name, namespace, etc.) and output resolution (mapping module outputs to resource properties) externally, outside the module. The module doesn't need to know about Radius.
+**Input**: Enable platform engineers to use any standard Bicep or Terraform module as a Radius Recipe — without writing a Radius-specific wrapper. Today, using a module as a recipe requires a wrapper that conforms to Radius conventions (a `context` input variable, a structured `result` output). This feature eliminates the wrapper: point `recipeLocation` directly at a standard module, and the system handles input resolution (injecting Radius context like resource name, namespace, etc.) and output resolution (mapping module outputs to resource properties) externally, outside the module. The module doesn't need to know about Radius.
 
 ## The Problem
 
-Today, every Bicep or Terraform module used as a Radius recipe must be wrapped in a Radius-specific shim:
+Today, every Bicep or Terraform module used as a Radius Recipe must be wrapped in a Radius-specific adapter. The wrapper adds a context input and a structured result output that conforms to Radius recipe conventions. To use a community module, platform engineers must create the wrapper, publish it to a distribution source (Git for Terraform, OCI for Bicep), and keep it updated as the upstream module evolves.
 
-- **For both Bicep and Terraform**: The wrapper adds a `context` input variable and a structured `result` output (separating `values`, `secrets`, and `resources`) that conforms to Radius recipe conventions. The platform engineer downloads a community module, writes a wrapper that calls it, re-publishes the wrapper, and references that wrapper as the recipe. The problem is identical regardless of IaC language.
+1. Adoption friction — every module requires a custom recipe wrapper that must be published and versioned separately from the original module before it can be used.
+1. Maintenance burden — upstream module updates require wrapper changes, validation, and republishing, creating version drift over time.
 
-This wrapper tax has real consequences:
-
-1. **Friction**: Every module requires a bespoke wrapper before it can be used. Wrapping a single module takes 15–60 minutes and requires understanding both the module's interface and Radius conventions.
-2. **Maintenance burden**: When the upstream module releases a new version, the wrapper must be updated and re-published. Wrapper drift causes silent failures.
-3. **Ecosystem lock-out**: Thousands of production-ready modules exist in the Terraform Registry, MCR (for Bicep), and Git repositories. The wrapper requirement means none of them work out of the box.
-
-**Direct module support eliminates the wrapper.** Platform engineers point `recipeLocation` at any standard module. The system resolves inputs (injecting Radius context into the module's native variables) and resolves outputs (mapping the module's native outputs to resource properties) — all externally, without modifying the module.
+Direct module support eliminates the Recipe wrapper. Platform engineers point recipeLocation directly at any standard module, and Radius handles context injection and output mapping externally—without modifying, republishing, or forking the upstream module.
 
 ## User Scenarios & Testing *(mandatory)*
 
