@@ -235,8 +235,11 @@ spec:
         args:
         - --addr
         - unix:///run/buildkit/buildkit.sock
-        - --group
-        - "65532"
+        # No --group flag: rootless buildkit cannot chown the socket
+        # to a GID outside its mapped subgid range. Instead, the Pod's
+        # fsGroup propagates to the shared emptyDir (setgid bit), so
+        # the socket buildkit creates inherits gid=fsGroup and is
+        # accessible to the dynamic-rp container without chown.
         {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
         - --oci-worker-no-process-sandbox
         {{- end }}
