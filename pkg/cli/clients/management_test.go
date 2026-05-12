@@ -847,8 +847,9 @@ func Test_DeleteResource_ForceQueryParameter(t *testing.T) {
 				},
 			}
 
-			// We don't check the return values - we only care about the captured URLs.
-			_, _ = client.DeleteResource(context.Background(), "Applications.Test/testResource", testScope+"/providers/Applications.Test/testResource/myresource", tt.force)
+			// Assert the delete call succeeds so failures in later requests are not silently ignored.
+			_, err := client.DeleteResource(context.Background(), "Applications.Test/testResource", testScope+"/providers/Applications.Test/testResource/myresource", tt.force)
+			require.NoError(t, err)
 
 			require.NotEmpty(t, capturedURLs, "expected at least one HTTP request")
 			foundForce := false
@@ -942,8 +943,9 @@ func Test_DeleteApplication_ForceQueryParameter(t *testing.T) {
 				},
 			}
 
-			// We don't check the return values - we only care about the captured URLs.
-			_, _ = client.DeleteApplication(context.Background(), testScope+"/providers/Applications.Core/applications/test-app", tt.force)
+			// Assert the delete call succeeds so failures in later requests are not silently ignored.
+			_, err := client.DeleteApplication(context.Background(), testScope+"/providers/Applications.Core/applications/test-app", tt.force)
+			require.NoError(t, err)
 
 			require.NotEmpty(t, appDeleteURLs, "expected at least one DELETE request to applications endpoint")
 			foundForce := false
