@@ -203,13 +203,13 @@ We could choose to reuse this idea and enhance it so that we populate outputReso
 We prefer this approach, since it 
 
 
-##### Implementation approach
+#### Implementation approach
 
-#### Git dependency
+##### Git dependency
 
 While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Flux. If we use workflows to own orphan branch + graph data handling, these functionalities will not be tested extensively as part of core Radius. We dont have reliable and automatic methods to make sure workflows meet the requirement, since that is not part of core Radius. The functionalities invoving branches are used only context of repo radius and are auto detected by cli. Therefore, we are handling git interactions through a new package in Radius (pkg/cli/gitstate/).  
 
-#### Detecing repo-radius mode
+##### Detecing repo-radius mode
 
 GitHub Actions guarantees that the [`GITHUB_ACTIONS`](https://docs.github.com/en/actions/reference/workflows-and-actions/variables) environment variable is set to `true` for every step that runs inside a runner . `rad app graph` could check `os.Getenv("GITHUB_ACTIONS") == "true"` to detect repo-radius mode, and handle command outputs/ persistence accordingly. 
 
@@ -271,7 +271,7 @@ A modeled-graph example for an application with a frontend container connected t
 }
 ```
 
-#### DiffHash computation
+##### DiffHash computation
 
 ```go
 func ComputeDiffHash(properties map[string]interface{}, dependsOn ...string) string {
@@ -284,7 +284,7 @@ func ComputeDiffHash(properties map[string]interface{}, dependsOn ...string) str
 
 The diffHash enables the browser extension(UI component) to classify resources as modified vs unchanged without comparing all properties.
 
-#### Graph persistence
+##### Graph persistence
 
 The graph is constructed in-memory but must be persisted so it remains accessible when the Radius control plane is not running (e.g., in GitHub Actions CI/CD where the cluster is torn down after each run). repo radius persists graphs to git. However, Radius should be able to configure persistence targets as needed in future. 
 
