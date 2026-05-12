@@ -47,12 +47,12 @@ This eliminates the need to copy files between repositories, ensures schemas sta
 A platform engineer creates a new resource type `Radius.Networking/loadBalancers` in `resource-types-contrib`. To make it a default in Radius:
 
 1. They add the YAML manifest at `Networking/loadBalancers/loadBalancers.yaml`.
-2. They add the file path to `defaults.yaml`:
+2. They add the resource type to `defaults.yaml`:
    ```yaml
    defaultRegistration:
-     - Networking/loadBalancers/loadBalancers.yaml
+     - Radius.Networking/loadBalancers
    ```
-3. They run `go generate` and commit `defaults.yaml` along with the auto-generated `manifests_gen.go` (which contains the `//go:embed` directives that tell the Go compiler which files to embed in the binary).
+3. They run `go generate` and commit `defaults.yaml` along with the auto-generated `manifests_gen.go` (which contains the `//go:embed` directives that tell the Go compiler which files to embed in the binary). `gen_embed.go` resolves each resource type name to its corresponding file path by scanning the directory tree.
 4. A Radius maintainer manually bumps the dependency by running `go get -u github.com/radius-project/resource-types-contrib` in the `radius` repository and merging the resulting `go.mod` change. Since `resource-types-contrib` does not have tagged releases today, Go resolves a pseudo-version based on the latest commit (e.g., `v0.0.0-20260408153021-abc123def456`).
 
 #### Platform engineer updates a resource type schema
@@ -72,7 +72,7 @@ The design introduces `resource-types-contrib` as a Go module dependency of `rad
 At startup, the UCP initializer service:
 1. Reads `defaults.yaml` from the embedded filesystem to discover which manifests to load.
 2. Parses each listed manifest, validates its schema, and merges manifests sharing a namespace into a single resource provider.
-3. Registers the merged resource providers with UCP.
+3. Registers the merged resource providers directly to the database, consistent with the existing startup registration path.
 4. Proceeds to register any additional directory-based manifests as before.
 
 The `location` field is intentionally omitted from `resource-types-contrib` manifests. When a manifest has no `location`, UCP's existing fallback mechanism routes requests to `DefaultDownstreamEndpoint` (dynamic-rp), which is the correct handler for all UDT-based resource types.
@@ -83,7 +83,7 @@ The `location` field is intentionally omitted from `resource-types-contrib` mani
 ┌─────────────────────────────────────────────────────────────┐
 │  resource-types-contrib (Go module)                         │
 │                                                             │
-│  defaults.yaml ─── lists paths ──► go generate              │
+│  defaults.yaml ─── lists types ───► go generate             │
 │                                        │                    │
 │  Compute/containers/containers.yaml    ▼                    │
 │  Compute/routes/routes.yaml       manifests_gen.go          │
@@ -142,7 +142,7 @@ Add a `defaultRegistration` boolean field to each manifest YAML and to the `Reso
 
 #### Option 2: Central `defaults.yaml` + `go generate` (Proposed)
 
-A `defaults.yaml` file at the repo root lists which manifest paths should be default-registered. A `go generate` script reads this file and produces `manifests_gen.go` with `//go:embed` directives for exactly those files (plus `defaults.yaml` itself). At runtime, `RegisterFS` reads `defaults.yaml` from the embedded FS to know which paths to load.
+A `defaults.yaml` file at the repo root lists which resource types should be default-registered using canonical `<namespace>/<typeName>` names. Running `go generate` invokes `gen_embed.go`, which reads this file, resolves each name to its corresponding manifest file path, and produces `manifests_gen.go` with `//go:embed` directives for exactly those files (plus `defaults.yaml` itself). At runtime, `RegisterFS` reads `defaults.yaml` from the embedded FS to know which paths to load.
 
 ##### Advantages
 
@@ -170,37 +170,40 @@ A `defaults.yaml` file at the repo root lists which manifest paths should be def
 | File | Purpose |
 |---|---|
 | `go.mod` | Makes the repository a Go module (`github.com/radius-project/resource-types-contrib`). |
-| `defaults.yaml` | Central list of manifest paths for default registration. |
-| `gen_embed.go` | `go generate` script that reads `defaults.yaml` and produces `manifests_gen.go`. Build-tagged `//go:build ignore`. |
+| `defaults.yaml` | Central list of resource types for default registration, using canonical `<namespace>/<typeName>` names. |
+| `gen_embed.go` | Invoked by `go generate`. Reads `defaults.yaml`, resolves each resource type name to its file path, and produces `manifests_gen.go`. Build-tagged `//go:build ignore`. |
 | `manifests.go` | Contains `//go:generate go run gen_embed.go` directive and package documentation. |
 | `manifests_gen.go` | **Generated**. Contains `//go:embed` directives for `defaults.yaml` and each listed manifest. Exports `DefaultManifests embed.FS`. |
 
 **`defaults.yaml` format:**
 ```yaml
 defaultRegistration:
-  - Compute/containers/containers.yaml
-  - Compute/persistentVolumes/persistentVolumes.yaml
-  - Compute/routes/routes.yaml
-  - Data/mySqlDatabases/mySqlDatabases.yaml
-  - Data/postgreSqlDatabases/postgreSqlDatabases.yaml
-  - Security/secrets/secrets.yaml
+  - Radius.Compute/containers
+  - Radius.Compute/persistentVolumes
+  - Radius.Compute/routes
+  - Radius.Data/mySqlDatabases
+  - Radius.Data/postgreSqlDatabases
+  - Radius.Security/secrets
 ```
+
+`gen_embed.go` resolves each entry to a file path using the convention: strip the `Radius.` prefix from the namespace, then `<namespace>/<typeName>/<typeName>.yaml` (e.g., `Radius.Compute/containers` resolves to `Compute/containers/containers.yaml`). If a file does not exist at the resolved path, `go generate` fails immediately.
 
 **Manifest YAML files** remain unchanged: no `location` field, no `defaultRegistration` field. They contain only `namespace` and `types`.
 
 #### UCP
 
 **`pkg/cli/manifest/registermanifest.go`**: New `RegisterFS` function:
-- Reads `defaults.yaml` from the provided `fs.FS` to get the list of manifest file paths.
-- For each path, reads and parses the manifest using the existing `ReadBytes` function.
+- Reads `defaults.yaml` from the provided `fs.FS` to get the list of resource type names.
+- For each entry, resolves the resource type name to the corresponding embedded manifest file path.
+- Reads and parses the manifest using the existing `ReadBytes` function.
 - Validates schemas using the existing `validateManifestSchemas` function.
 - Merges manifests sharing a namespace (e.g., three `Radius.Compute` files) into a single `ResourceProvider` with all types under one `Types` map.
-- Registers each merged provider using the existing `RegisterResourceProvider` function.
+- Returns the merged providers to the initializer for direct database registration.
 
 **`pkg/ucp/initializer/service.go`** (updated):
 - `NewService` accepts an additional `fs.FS` parameter for embedded manifests.
-- `Run` calls `manifest.RegisterFS` for embedded manifests **before** `manifest.RegisterDirectory` for directory-based manifests.
-- If both embedded and directory manifests exist, both are registered. Directory-based manifests can override embedded ones (last-write-wins via UCP's `CreateOrUpdate`).
+- `Run` processes embedded manifests by calling `RegisterFS` to parse and merge them, then registers each merged provider using `registerResourceProviderDirect` (direct database writes), consistent with how directory-based manifests are already registered at startup. This avoids HTTP round-trips, async operation queues, and polling.
+- If both embedded and directory manifests exist, both are registered. Directory-based manifests can override embedded ones (last-write-wins via direct database save).
 
 **`pkg/ucp/server/server.go`** (updated):
 - Imports `resource-types-contrib` and passes `resourcetypes.DefaultManifests` to `initializer.NewService`.
@@ -220,8 +223,7 @@ Remaining files ( `radius_core.yaml`, `microsoft_resources.yaml`) stay because t
 | Manifest YAML has invalid syntax | `ReadBytes` returns parse error. Startup fails with the specific file identified. |
 | Manifest schema validation fails | `validateManifestSchemas` returns error. Startup fails with the specific file identified. |
 | `defaults.yaml` is empty (no entries) | `RegisterFS` logs a message and returns nil. Startup continues with directory-based manifests only. |
-| UCP not reachable at startup | Existing `waitForServer` timeout behavior. No change from current behavior. |
-| 409 conflict during registration | Existing retry logic with exponential backoff. No change from current behavior. |
+| `rad upgrade` introduces new default resource types | New types are registered via direct database save on startup. Existing types are updated. No error expected. |
 
 ## Test plan
 
@@ -236,6 +238,7 @@ Remaining files ( `radius_core.yaml`, `microsoft_resources.yaml`) stay because t
 2. **Integration tests**:
    - Existing `Test_ResourceProvider_RegisterManifests` continues to work (tests directory-based registration).
    - New test that passes an `embed.FS` to `NewService` and verifies the resource provider is registered correctly.
+   - Test `rad upgrade` scenario: register an initial set of embedded types, then simulate an upgrade with an updated `embed.FS` containing an additional default type. Verify the new type is registered and existing types are updated without errors.
 
 3. **CI validation for `manifests_gen.go`**:
    - In `resource-types-contrib` CI: run `go generate` and verify no diff to ensure the generated file is up to date.
@@ -318,7 +321,7 @@ radius/
 
 **Comparison with the proposed approach:**
 
-| Aspect | Proposed (defaults.yaml in contrib) | Alternative (defaults.yaml in radius) |
+| | Proposed (defaults.yaml in contrib) | Alternative (defaults.yaml in radius) |
 |---|---|---|
 | **Who controls what's default** | `resource-types-contrib` maintainers | `radius` maintainers |
 | **YAML content visible in Radius PRs** | No (only go.mod/go.sum changes) | Yes (copied files show full diff) |
@@ -326,7 +329,6 @@ radius/
 | **Security gate** | Two gates: contrib PR + radius go.mod PR (but radius PR has no content visibility) | Two gates: contrib PR + radius PR (with full content visibility) |
 | **Adding a new default** | Edit `defaults.yaml` in contrib, run `go generate` there, then bump dependency in radius | Bump dependency in radius, edit `defaults.yaml` in radius, run copy script |
 | **Contribution simplicity** | Single-repo change for contrib authors | Cross-repo change (contrib for the type, radius for making it default) |
-| **Code changes needed** | New `RegisterFS` function, updated initializer | None; uses existing `RegisterDirectory` |
 
 **Advantages of the alternative:**
 - Stronger security posture: `defaults.yaml` changes go through Radius CODEOWNERS review
@@ -337,7 +339,7 @@ radius/
 - Reintroduces file copies in the `radius` repo (automated, but still copies)
 - Adding a new default requires changes in both repos instead of one
 - **Sequential cross-repo workflow.** A contributor's manifest PR in `resource-types-contrib` must be merged before they can open the corresponding PR in `radius` (since `go get -u` pulls from the merged main branch), so it is a sequential two step process across repos.
-- **Risk of drift on schema updates.** When an existing default resource type's schema is updated in `resource-types-contrib`, a maintainer must both bump the dependency (`go get -u`) and re-run the copy script to refresh the local YAML copies. If they bump the dependency but forget to re-run the copy script, the YAML files in radius will be stale relative to the pinned dependency version, reintroducing the drift problem in a different form. CI can catch this by comparing the committed YAML files against the versions in the pinned module (e.g., downloading the module, diffing against the local copies, and failing the build if they don't match).
+- **Risk of drift on schema updates.** When an existing default resource type's schema is updated in `resource-types-contrib`, a maintainer must both bump the dependency (`go get -u`) and re-run the copy script to refresh the local YAML copies. If they bump the dependency but forget to re-run the copy script, the YAML files in radius will be stale relative to the pinned dependency version, reintroducing the drift problem in a different form.
 
 #### Alternative approach 2: CI diff report and CODEOWNERS
 
@@ -393,6 +395,10 @@ update-resource-types:
 	go get -u github.com/radius-project/resource-types-contrib
 	go mod tidy
 ```
+
+### Ensuring the dependency is kept up to date
+
+Until tagged releases and Dependabot automation are in place (see Follow-up Item #3), bumping the `resource-types-contrib` dependency in `radius` is a manual step. To ensure this is not forgotten, include a step in the Radius release checklist to run `make update-resource-types` and verify the latest resource type schemas are included before each release.
 
 ## Open Questions
 
