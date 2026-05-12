@@ -86,7 +86,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the workspace, output format, and cloud provider name from the command line arguments and returns
 // an error if any of them are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

@@ -84,9 +84,6 @@ Note: Alternatively, if you already have the Radius CLI installed, you can choos
 
     ```json
     {
-        "experimentalFeaturesEnabled": {
-            "extensibility": true
-        },
         "extensions": {
             "radius": "<file-path>",
             "aws": "br:biceptypes.azurecr.io/aws:latest"

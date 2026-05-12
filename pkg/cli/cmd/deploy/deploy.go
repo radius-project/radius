@@ -17,11 +17,16 @@ limitations under the License.
 package deploy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -34,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -46,6 +52,7 @@ import (
 const (
 	appCoreProviderName    = "Applications.Core"
 	radiusCoreProviderName = "Radius.Core"
+	unsupportedAPIDocsURL  = "https://docs.radapp.io/reference/api/"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
@@ -136,6 +143,9 @@ type Runner struct {
 	RadiusCoreClientFactory *v20250801preview.ClientFactory
 	Deploy                  deploy.Interface
 	Output                  output.Interface
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// The default recipe pack is always created/queried in the default scope.
+	DefaultScopeClientFactory *v20250801preview.ClientFactory
 
 	ApplicationName          string
 	EnvironmentNameOrID      string
@@ -166,7 +176,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate validates the workspace, scope, environment name, application name, and parameters from the command
 // line arguments and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -333,6 +343,14 @@ func (r *Runner) Run(ctx context.Context) error {
 				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
 	}
 
+	// Before deploying, set up recipe packs for any Radius.Core environments in the
+	// template. This creates default recipe pack resource if not found and injects its
+	// ID into the template.
+	err = r.setupRecipePack(ctx, template)
+	if err != nil {
+		return err
+	}
+
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{
 		ConnectionFactory: r.ConnectionFactory,
 		Workspace:         *r.Workspace,
@@ -343,7 +361,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		Providers:         r.Providers,
 	})
 	if err != nil {
-		return err
+		return addDeploymentErrorContext(err, template)
 	}
 
 	return nil
@@ -642,6 +660,100 @@ func (r *Runner) setupCloudProviders(properties any) {
 	}
 }
 
+// setupRecipePack ensures recipe pack(s) for all Radius.Core/environments resources in the template.
+// If a Radius.Core environment resource has no recipe
+// packs set by the user, Radius creates(if needed) and fetches the default recipe pack from the default scope and
+// injects its ID into the template. If the environment already has any recipe pack
+// IDs set (literal or Bicep expression references), no changes are made.
+func (r *Runner) setupRecipePack(ctx context.Context, template map[string]any) error {
+	envResources := bicep.GetEnvironmentResources(template)
+	if len(envResources) == 0 {
+		return nil
+	}
+
+	for _, envResource := range envResources {
+		if err := r.setupRecipePackForEnvironment(ctx, envResource); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// setupRecipePackForEnvironment sets up recipe packs for a single Radius.Core/environments resource.
+// If the environment already has any recipe packs set (literal IDs or ARM expression references),
+// no changes are made. Otherwise, it fetches or creates the default recipe pack from
+// the default scope and injects its ID into the template.
+func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource map[string]any) error {
+	// The compiled ARM template has a double-nested properties structure:
+	//   envResource["properties"]["properties"] is where resource-level fields live.
+	// Navigate to the inner (resource) properties map.
+	outerProps, ok := envResource["properties"].(map[string]any)
+	if !ok {
+		outerProps = map[string]any{}
+		envResource["properties"] = outerProps
+	}
+
+	properties, ok := outerProps["properties"].(map[string]any)
+	if !ok {
+		properties = map[string]any{}
+		outerProps["properties"] = properties
+	}
+
+	// If the environment already has any recipe packs configured (literal IDs or
+	// Bicep expression references), leave it as-is — the user is managing packs explicitly.
+	if hasAnyRecipePacks(properties) {
+		return nil
+	}
+
+	// No recipe packs set — provide defaults from the default scope.
+	// Ensure the default resource group exists before accessing recipe packs.
+	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
+		return err
+	}
+
+	// Initialize the default scope client factory so we can access default recipe packs.
+	if r.DefaultScopeClientFactory == nil {
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		if err != nil {
+			return err
+		}
+		r.DefaultScopeClientFactory = defaultFactory
+	}
+
+	recipePackDefaultClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
+
+	// Try to GET the default recipe pack from the default scope.
+	// If it doesn't exist, create it.
+	packID, err := recipepack.GetOrCreateDefaultRecipePack(ctx, recipePackDefaultClient)
+	if err != nil {
+		return err
+	}
+
+	// Inject the default recipe pack ID into the template.
+	properties["recipePacks"] = []any{packID}
+
+	return nil
+}
+
+// hasAnyRecipePacks returns true if the environment properties have any recipe packs
+// configured, including both literal string IDs and ARM expression references.
+func hasAnyRecipePacks(properties map[string]any) bool {
+	recipePacks, ok := properties["recipePacks"]
+	if !ok {
+		return false
+	}
+	packsArray, ok := recipePacks.([]any)
+	if !ok {
+		return false
+	}
+	return len(packsArray) > 0
+}
+
 // configureProviders configures environment and cloud providers based on the environment and provider type
 func (r *Runner) configureProviders() error {
 	var env any
@@ -697,4 +809,86 @@ func (r *Runner) configureProviders() error {
 	}
 
 	return nil
+}
+
+func addDeploymentErrorContext(err error, template map[string]any) error {
+	if !isUnsupportedRadiusAPIVersionError(err, template) {
+		return err
+	}
+
+	return clierrors.MessageWithCause(err,
+		"Deployment failed (incorrect or unsupported API version). Please verify that each resource uses a supported API version. For more information, please reference the documentation: %s",
+		unsupportedAPIDocsURL)
+}
+
+// providerNotConfiguredPrefix is the exact error message prefix returned by the Deployment Engine
+// when a resource type is routed to a provider that is not configured. See deploymentprocessor.go.
+const providerNotConfiguredPrefix = "provider "
+
+// providerNotConfiguredSuffix is the middle portion of the Deployment Engine error after the provider name.
+const providerNotConfiguredSuffix = " is not configured. cannot support resource type "
+
+func isUnsupportedRadiusAPIVersionError(err error, template map[string]any) bool {
+	if !bicep.HasOnlyRadiusResourceTypes(template) {
+		return false
+	}
+
+	errorDetails, ok := extractDeploymentEngineErrorDetails(err)
+	if !ok {
+		return false
+	}
+
+	if errorDetails.Code != v1.CodeInvalid {
+		return false
+	}
+
+	return isProviderNotConfiguredError(errorDetails.Message)
+}
+
+// isProviderNotConfiguredError checks whether the error message matches the exact pattern
+// "provider <name> is not configured. Cannot support resource type <type>" returned by the Deployment Engine,
+// and only treats it as the unsupported Radius API version case when the provider is Azure.
+func isProviderNotConfiguredError(message string) bool {
+	lower := strings.ToLower(message)
+	if !strings.HasPrefix(lower, providerNotConfiguredPrefix) {
+		return false
+	}
+
+	providerStart := len(providerNotConfiguredPrefix)
+	providerEnd := strings.Index(lower[providerStart:], providerNotConfiguredSuffix)
+	if providerEnd < 0 {
+		return false
+	}
+
+	providerName := lower[providerStart : providerStart+providerEnd]
+	return providerName == "azure"
+}
+
+func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
+	var clientErr *v1.ErrClientRP
+	if errors.As(err, &clientErr) {
+		return &v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}, true
+	}
+
+	var responseErr *azcore.ResponseError
+	if !errors.As(err, &responseErr) || responseErr.RawResponse == nil || responseErr.RawResponse.Body == nil {
+		return nil, false
+	}
+
+	originalBody := responseErr.RawResponse.Body
+	body, readErr := io.ReadAll(originalBody)
+	if readErr != nil {
+		return nil, false
+	}
+	if closeErr := originalBody.Close(); closeErr != nil {
+		return nil, false
+	}
+	responseErr.RawResponse.Body = io.NopCloser(bytes.NewReader(body))
+
+	var errorResponse v1.ErrorResponse
+	if unmarshalErr := json.Unmarshal(body, &errorResponse); unmarshalErr != nil || errorResponse.Error == nil {
+		return nil, false
+	}
+
+	return errorResponse.Error, true
 }

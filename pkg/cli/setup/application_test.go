@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 const latest = "latest"
@@ -31,70 +30,36 @@ const latest = "latest"
 func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	directory := t.TempDir()
 
-	err := ScaffoldApplication(directory, "cool-application")
+	err := ScaffoldApplication(directory)
 	require.NoError(t, err)
 
-	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
 	require.FileExists(t, filepath.Join(directory, "app.bicep"))
 	require.FileExists(t, filepath.Join(directory, "bicepconfig.json"))
 
-	b, err := os.ReadFile(filepath.Join(directory, ".rad", "rad.yaml"))
-	require.NoError(t, err)
-
-	actualYaml := map[string]any{}
-	err = yaml.Unmarshal(b, &actualYaml)
-	require.NoError(t, err)
-
-	expectedYaml := map[string]any{
-		"workspace": map[string]any{
-			"application": "cool-application",
-		},
-	}
-	require.Equal(t, expectedYaml, actualYaml)
-
-	b, err = os.ReadFile(filepath.Join(directory, "app.bicep"))
+	b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
 	require.NoError(t, err)
 	require.Equal(t, appBicepTemplate, string(b))
 
 	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
+	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest, latest, latest, latest), string(b))
 }
 
-func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
+func Test_ScaffoldApplication_KeepsExistingFiles(t *testing.T) {
 	directory := t.TempDir()
 
 	// Pre-create files
-	err := os.Mkdir(filepath.Join(directory, ".rad"), 0755)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(directory, ".rad", "rad.yaml"), []byte("something else"), 0644)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(directory, "app.bicep"), []byte("something else"), 0644)
+	err := os.WriteFile(filepath.Join(directory, "app.bicep"), []byte("something else"), 0644)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(directory, "bicepconfig.json"), []byte("something else"), 0644)
 	require.NoError(t, err)
 
-	err = ScaffoldApplication(directory, "cool-application")
+	err = ScaffoldApplication(directory)
 	require.NoError(t, err)
 
-	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
 	require.FileExists(t, filepath.Join(directory, "app.bicep"))
 
-	b, err := os.ReadFile(filepath.Join(directory, ".rad", "rad.yaml"))
-	require.NoError(t, err)
-
-	actualYaml := map[string]any{}
-	err = yaml.Unmarshal(b, &actualYaml)
-	require.NoError(t, err)
-
-	expectedYaml := map[string]any{
-		"workspace": map[string]any{
-			"application": "cool-application",
-		},
-	}
-	require.Equal(t, expectedYaml, actualYaml)
-
-	b, err = os.ReadFile(filepath.Join(directory, "app.bicep"))
+	b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
 	require.NoError(t, err)
 	require.Equal(t, "something else", string(b))
 

@@ -984,6 +984,7 @@ publickey
 pubsub
 pubsubbrokers
 py
+pyspelling
 qps
 queueProvider
 queueing
