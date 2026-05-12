@@ -1,6 +1,6 @@
 module github.com/radius-project/radius
 
-go 1.26.1
+go 1.26.3
 
 // Replace digest lib to master to gather access to BLAKE3.
 // xref: https://github.com/opencontainers/go-digest/pull/66
@@ -68,6 +68,7 @@ require (
 	github.com/gosuri/uilive v0.0.4
 	github.com/hashicorp/go-getter v1.8.6
 	github.com/hashicorp/go-retryablehttp v0.7.8
+	github.com/hashicorp/go-version v1.9.0
 	github.com/hashicorp/hc-install v0.9.4
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20250828155816-225c06ed5fd9
 	github.com/hashicorp/terraform-exec v0.25.1
@@ -116,8 +117,6 @@ require (
 	sigs.k8s.io/secrets-store-csi-driver v1.5.6
 	sigs.k8s.io/yaml v1.6.0
 )
-
-require github.com/hashicorp/go-version v1.9.0
 
 require (
 	cel.dev/expr v0.25.1 // indirect
