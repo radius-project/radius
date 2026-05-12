@@ -18,7 +18,7 @@ After this work, a Radius environment can name an external AKS or EKS cluster, a
 
 ### Non-goals (out of scope)
 
-- Generic / self-managed / on-premises Kubernetes clusters (kubeadm, k3s, OpenShift, Rancher, GKE, other clouds).
+- Generic / self-managed / on-premises Kubernetes clusters (k3s, OpenShift, Rancher, GKE, other clouds).
 - A new Kubernetes credential resource or `rad credential register kubernetes` command.
 - Storing kubeconfig files, service-account tokens, or client certificates inside Radius.
 - Auto-creating namespaces on external clusters.
