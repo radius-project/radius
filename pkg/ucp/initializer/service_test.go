@@ -163,6 +163,7 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, obj)
 	})
+
 }
 
 func Test_Run(t *testing.T) {
@@ -212,6 +213,115 @@ types:
 		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
 		require.NoError(t, err)
 		require.NotNil(t, obj)
+	})
+
+	t.Run("hydrates Radius.Core schemas from embedded OpenAPI", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		manifestPath := filepath.Join("..", "..", "..", "deploy", "manifest", "built-in-providers", "dev", "radius_core.yaml")
+		manifestContent, err := os.ReadFile(manifestPath)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "radius_core.yaml"), manifestContent, 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Radius.Core")
+		require.NoError(t, err)
+
+		summaryModel := &datamodel.ResourceProviderSummary{}
+		require.NoError(t, obj.As(summaryModel))
+
+		applications := summaryModel.Properties.ResourceTypes["applications"]
+		require.NotNil(t, applications.Description)
+		assert.Equal(t, "Radius Application resource", *applications.Description)
+		applicationSchema := applications.APIVersions["2025-08-01-preview"].Schema
+		assert.Equal(t, "object", applicationSchema["type"])
+		requireRenderableResourceTypeSchema(t, applicationSchema)
+
+		applicationProperties := requireSchemaProperties(t, applicationSchema)
+		environmentProperty := requireSchemaProperty(t, applicationProperties, "environment")
+		assert.Equal(t, "string", environmentProperty["type"])
+
+		statusProperty := requireSchemaProperty(t, applicationProperties, "status")
+		assert.NotContains(t, statusProperty, "$ref")
+		assert.Equal(t, "object", statusProperty["type"])
+
+		environments := summaryModel.Properties.ResourceTypes["environments"]
+		require.NotNil(t, environments.Description)
+		assert.Equal(t, "The environment resource", *environments.Description)
+		environmentSchema := environments.APIVersions["2025-08-01-preview"].Schema
+		requireRenderableResourceTypeSchema(t, environmentSchema)
+		environmentProperties := requireSchemaProperties(t, environmentSchema)
+		providersProperty := requireSchemaProperty(t, environmentProperties, "providers")
+		assert.NotContains(t, providersProperty, "$ref")
+		assert.Equal(t, "object", providersProperty["type"])
+
+		recipePacks := summaryModel.Properties.ResourceTypes["recipePacks"]
+		require.NotNil(t, recipePacks.Description)
+		assert.Equal(t, "The recipe pack resource", *recipePacks.Description)
+		recipePackSchema := recipePacks.APIVersions["2025-08-01-preview"].Schema
+		requireRenderableResourceTypeSchema(t, recipePackSchema)
+		recipePackProperties := requireSchemaProperties(t, recipePackSchema)
+		recipesProperty := requireSchemaProperty(t, recipePackProperties, "recipes")
+		additionalProperties, ok := recipesProperty["additionalProperties"].(map[string]any)
+		require.True(t, ok)
+		recipeDefinitionProperties := requireSchemaProperties(t, additionalProperties)
+		recipeKindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "recipeKind")
+		assert.NotContains(t, recipeKindProperty, "$ref")
+		assert.Equal(t, "string", recipeKindProperty["type"])
+
+		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Core/resourceTypes/applications/apiVersions/2025-08-01-preview")
+		require.NoError(t, err)
+
+		apiVersionModel := &datamodel.APIVersion{}
+		require.NoError(t, obj.As(apiVersionModel))
+		assert.Equal(t, applicationSchema, apiVersionModel.Properties.Schema)
+	})
+}
+
+func Test_hydrateBuiltInResourceProviderMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fails when mapped Radius.Core type is missing expected API version", func(t *testing.T) {
+		t.Parallel()
+
+		rp := &manifest.ResourceProvider{
+			Namespace: "Radius.Core",
+			Types: map[string]*manifest.ResourceType{
+				"applications": {
+					APIVersions: map[string]*manifest.ResourceTypeAPIVersion{
+						"2024-01-01-preview": {Schema: map[string]any{}},
+					},
+				},
+			},
+		}
+
+		err := hydrateBuiltInResourceProviderMetadata(rp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "mapped Radius.Core type applications is missing API version 2025-08-01-preview")
+	})
+
+	t.Run("ignores non Radius.Core providers", func(t *testing.T) {
+		t.Parallel()
+
+		rp := &manifest.ResourceProvider{
+			Namespace: "MyCompany.Resources",
+			Types: map[string]*manifest.ResourceType{
+				"applications": {
+					APIVersions: map[string]*manifest.ResourceTypeAPIVersion{},
+				},
+			},
+		}
+
+		err := hydrateBuiltInResourceProviderMetadata(rp)
+		require.NoError(t, err)
 	})
 }
 
@@ -291,5 +401,69 @@ func createTestResourceProviderMultiType() manifest.ResourceProvider {
 				},
 			},
 		},
+	}
+}
+
+func requireSchemaProperties(t *testing.T, schema map[string]any) map[string]any {
+	t.Helper()
+
+	properties, ok := schema["properties"].(map[string]any)
+	require.True(t, ok)
+	require.NotEmpty(t, properties)
+	return properties
+}
+
+func requireSchemaProperty(t *testing.T, properties map[string]any, name string) map[string]any {
+	t.Helper()
+
+	property, ok := properties[name].(map[string]any)
+	require.True(t, ok)
+	require.NotEmpty(t, property)
+	return property
+}
+
+func requireRenderableResourceTypeSchema(t *testing.T, schema map[string]any) {
+	t.Helper()
+
+	properties := requireSchemaProperties(t, schema)
+	for name, property := range properties {
+		propertySchema, ok := property.(map[string]any)
+		require.True(t, ok, "property %q should be an object schema", name)
+		require.NotContains(t, propertySchema, "$ref", "property %q should have expanded refs", name)
+		require.IsType(t, "", propertySchema["type"], "property %q should have a concrete type", name)
+
+		if propertySchema["type"] == "object" {
+			requireRenderableNestedObjectSchema(t, name, propertySchema)
+		}
+	}
+}
+
+func requireRenderableNestedObjectSchema(t *testing.T, path string, schema map[string]any) {
+	t.Helper()
+
+	nestedSchema := schema
+	if _, ok := nestedSchema["properties"].(map[string]any); !ok {
+		additionalProperties, ok := schema["additionalProperties"].(map[string]any)
+		if !ok {
+			return
+		}
+		nestedSchema = additionalProperties
+	}
+
+	properties, ok := nestedSchema["properties"].(map[string]any)
+	if !ok {
+		return
+	}
+	require.NotEmpty(t, properties)
+	for name, property := range properties {
+		propertyPath := path + "." + name
+		propertySchema, ok := property.(map[string]any)
+		require.True(t, ok, "property %q should be an object schema", propertyPath)
+		require.NotContains(t, propertySchema, "$ref", "property %q should have expanded refs", propertyPath)
+		require.IsType(t, "", propertySchema["type"], "property %q should have a concrete type", propertyPath)
+
+		if propertySchema["type"] == "object" {
+			requireRenderableNestedObjectSchema(t, propertyPath, propertySchema)
+		}
 	}
 }
