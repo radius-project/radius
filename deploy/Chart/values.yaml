@@ -248,7 +248,7 @@ encryption:
   rotation:
     # Enable automatic key rotation via CronJob
     enabled: true
-    
+
     # Cron schedule for key rotation
     # Format: minute hour day month weekday
     # Note: Cron day-of-month only supports 1-31, cannot use */90
@@ -258,11 +258,11 @@ encryption:
     #   "0 2 1 */2 *"  - Every 2 months on the 1st at 2 AM
     #   "*/2 * * * *"  - Every 2 minutes (for testing only)
     schedule: "0 0 1 */3 *"
-    
+
     # Number of days a key remains valid for encryption (default: 90 days)
     # After this period, a new key version is generated
     intervalDays: 90
-    
+
     # Grace period in days for keeping old keys after expiration (default: 1 day)
     # During this period, old encrypted data can still be decrypted
     # Keys are removed after: expiresAt + gracePeriodDays
