@@ -70,9 +70,7 @@ We **squash** pull-requests as part of the merge process, which means that inter
 
 ## Signing your commits
 
-We require all contributors to **cryptographically sign their commits** so that they show as **Verified** on GitHub. This is separate from the DCO `Signed-off-by` line in the commit message — signing cryptographically proves the commit was authored by you.
-
-See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for setup steps and links to the GitHub documentation.
+See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide.
 
 ## Automated tests
 
