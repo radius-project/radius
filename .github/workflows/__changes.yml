@@ -33,7 +33,6 @@ on:
           .github/workflows/close-stale-prs.yml
           .github/workflows/devcontainer-feature-release.yaml
           .github/workflows/devcontainer-feature-test.yaml
-          .github/workflows/devops-boards.yaml
           .github/workflows/publish-*.yaml
           .github/workflows/purge-*.yaml
           .github/workflows/radius-bot.yaml

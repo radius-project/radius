@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -103,6 +104,18 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		return resp, err
 	}
 
+	// Validate referenced config resources exist and are of the correct type.
+	if newResource.Properties.TerraformConfig != "" {
+		if resp := validateConfigRef(ctx, e, newResource.Properties.TerraformConfig, datamodel.TerraformConfigResourceType, "terraformConfig"); resp != nil {
+			return resp, nil
+		}
+	}
+	if newResource.Properties.BicepConfig != "" {
+		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepConfig, datamodel.BicepConfigResourceType, "bicepConfig"); resp != nil {
+			return resp, nil
+		}
+	}
+
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
@@ -148,4 +161,44 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) validateRecipePacks(ctx cont
 	}
 
 	return nil, nil
+}
+
+// validateConfigRef checks that the referenced resource ID parses, has the
+// expected resource type, and exists. It returns a populated rest.Response on
+// validation failure or nil on success. propertyName is the user-facing field
+// label used in error messages (e.g. "terraformConfig").
+//
+// Without the type check, any existing resource ID (a recipe pack, an
+// application, etc.) would silently pass and the loader would fail at recipe
+// execution time with a confusing error.
+func validateConfigRef(
+	ctx context.Context,
+	e *CreateOrUpdateEnvironmentv20250801preview,
+	resourceID string,
+	expectedType string,
+	propertyName string,
+) rest.Response {
+	id, parseErr := resources.Parse(resourceID)
+	if parseErr != nil {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Invalid %s resource ID: %s", propertyName, resourceID))
+	}
+	if !strings.EqualFold(id.Type(), expectedType) {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q has type %q; expected %q.", propertyName, resourceID, id.Type(), expectedType))
+	}
+	// Operation.GetResource clears the error and returns a nil resource on
+	// not-found, so check both. err covers transport/decode failures; the
+	// nil out covers the resource-missing case.
+	out, _, err := e.GetResource(ctx, id)
+	if err != nil {
+		return rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    v1.CodeInternal,
+				Message: fmt.Sprintf("Failed to look up referenced %s resource %q: %s", propertyName, resourceID, err.Error()),
+			},
+		})
+	}
+	if out == nil {
+		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q does not exist.", propertyName, resourceID))
+	}
+	return nil
 }

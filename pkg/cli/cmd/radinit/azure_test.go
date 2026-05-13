@@ -24,6 +24,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/stretchr/testify/require"
@@ -77,7 +78,7 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 	require.Equal(t, expected, provider)
 
 	expectedOutput := []any{output.LogOutput{
-		Format: azureServicePrincipalCreateInstructionsFmt,
+		Format: common.AzureServicePrincipalCreateInstructionsFmt,
 		Params: []any{subscription.ID, *resourceGroup.Name},
 	}}
 	require.Equal(t, expectedOutput, outputSink.Writes)
@@ -131,7 +132,7 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 	require.Equal(t, expected, provider)
 
 	expectedOutput := []any{output.LogOutput{
-		Format: azureWorkloadIdentityCreateInstructionsFmt,
+		Format: common.AzureWorkloadIdentityCreateInstructionsFmt,
 	}}
 	require.Equal(t, expectedOutput, outputSink.Writes)
 
@@ -169,7 +170,6 @@ func Test_selectAzureSubscription(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		client := azure.NewMockClient(ctrl)
-		runner := Runner{Prompter: prompter, azureClient: client}
 
 		subscriptions := subscriptions
 		subscriptions.Default = &subscriptions.Subscriptions[1]
@@ -177,7 +177,7 @@ func Test_selectAzureSubscription(t *testing.T) {
 		setAzureSubscriptions(client, &subscriptions)
 		setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
 
-		selected, err := runner.selectAzureSubscription(context.Background())
+		selected, err := common.SelectAzureSubscription(context.Background(), prompter, client)
 		require.NoError(t, err)
 		require.NotNil(t, selected)
 
@@ -188,7 +188,6 @@ func Test_selectAzureSubscription(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		client := azure.NewMockClient(ctrl)
-		runner := Runner{Prompter: prompter, azureClient: client}
 
 		subscriptions := subscriptions
 		subscriptions.Default = &subscriptions.Subscriptions[1]
@@ -197,7 +196,7 @@ func Test_selectAzureSubscription(t *testing.T) {
 		setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmNo)
 		setAzureSubsubscriptionPrompt(prompter, subscriptionNames, subscriptions.Subscriptions[2].Name)
 
-		selected, err := runner.selectAzureSubscription(context.Background())
+		selected, err := common.SelectAzureSubscription(context.Background(), prompter, client)
 		require.NoError(t, err)
 		require.NotNil(t, selected)
 
@@ -208,7 +207,6 @@ func Test_selectAzureSubscription(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		client := azure.NewMockClient(ctrl)
-		runner := Runner{Prompter: prompter, azureClient: client}
 
 		subscriptions := subscriptions
 		subscriptions.Default = nil
@@ -216,7 +214,7 @@ func Test_selectAzureSubscription(t *testing.T) {
 		setAzureSubscriptions(client, &subscriptions)
 		setAzureSubsubscriptionPrompt(prompter, subscriptionNames, subscriptions.Subscriptions[2].Name)
 
-		selected, err := runner.selectAzureSubscription(context.Background())
+		selected, err := common.SelectAzureSubscription(context.Background(), prompter, client)
 		require.NoError(t, err)
 		require.NotNil(t, selected)
 
@@ -250,8 +248,7 @@ func Test_buildAzureSubscriptionListAndMap(t *testing.T) {
 		"c-test-subscription2": subscriptions.Subscriptions[1],
 	}
 
-	runner := Runner{}
-	names, subscriptionMap := runner.buildAzureSubscriptionListAndMap(&subscriptions)
+	names, subscriptionMap := common.BuildAzureSubscriptionListAndMap(&subscriptions)
 	require.Equal(t, expectedNames, names)
 	require.Equal(t, expectedMap, subscriptionMap)
 }
@@ -304,13 +301,12 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		client := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, azureClient: client, Output: &outputSink}
 
 		setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmNo)
 		setAzureResourceGroups(client, subscription.ID, resourceGroups)
 		setAzureResourceGroupPrompt(prompter, resourceGroupNames, *resourceGroups[1].Name)
 
-		name, err := runner.selectAzureResourceGroup(context.Background(), subscription)
+		name, err := common.SelectAzureResourceGroup(context.Background(), prompter, &outputSink, client, subscription)
 		require.NoError(t, err)
 
 		require.Equal(t, *resourceGroups[1].Name, name)
@@ -322,7 +318,6 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		client := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, azureClient: client, Output: &outputSink}
 
 		setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmYes)
 		setAzureResourceGroupNamePrompt(prompter, "test-resource-group")
@@ -331,7 +326,7 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		setSelectAzureResourceGroupLocationPrompt(prompter, locationDisplayNames, *locations[1].DisplayName)
 		setAzureCreateOrUpdateResourceGroup(client, subscription.ID, "test-resource-group", *locations[1].Name)
 
-		name, err := runner.selectAzureResourceGroup(context.Background(), subscription)
+		name, err := common.SelectAzureResourceGroup(context.Background(), prompter, &outputSink, client, subscription)
 		require.NoError(t, err)
 
 		require.Equal(t, "test-resource-group", name)
@@ -350,13 +345,12 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		client := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, azureClient: client, Output: &outputSink}
 
 		setAzureResourceGroupCreatePrompt(prompter, prompt.ConfirmYes)
 		setAzureResourceGroupNamePrompt(prompter, "test-resource-group")
 		setAzureCheckResourceGroupExistence(client, subscription.ID, "test-resource-group", true)
 
-		name, err := runner.selectAzureResourceGroup(context.Background(), subscription)
+		name, err := common.SelectAzureResourceGroup(context.Background(), prompter, &outputSink, client, subscription)
 		require.NoError(t, err)
 
 		require.Equal(t, "test-resource-group", name)
@@ -393,12 +387,11 @@ func Test_selectExistingAzureResourceGroup(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
 	client := azure.NewMockClient(ctrl)
-	runner := Runner{Prompter: prompter, azureClient: client}
 
 	setAzureResourceGroups(client, subscription.ID, resourceGroups)
 	setAzureResourceGroupPrompt(prompter, resourceGroupNames, *resourceGroups[1].Name)
 
-	name, err := runner.selectExistingAzureResourceGroup(context.Background(), subscription)
+	name, err := common.SelectExistingAzureResourceGroup(context.Background(), prompter, client, subscription)
 	require.NoError(t, err)
 
 	require.Equal(t, *resourceGroups[1].Name, name)
@@ -420,20 +413,17 @@ func Test_buildAzureResourceGroupList(t *testing.T) {
 
 	expectedNames := []string{"a-test-resource-group2", "b-test-resource-group1", "c-test-resource-group3"}
 
-	runner := Runner{}
-	names := runner.buildAzureResourceGroupList(resourceGroups)
+	names := common.BuildAzureResourceGroupList(resourceGroups)
 	require.Equal(t, expectedNames, names)
 }
 
 func Test_enterAzureResourceGroupName(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
-	client := azure.NewMockClient(ctrl)
-	runner := Runner{Prompter: prompter, azureClient: client}
 
 	setAzureResourceGroupNamePrompt(prompter, "test-resource-group")
 
-	name, err := runner.enterAzureResourceGroupName()
+	name, err := common.EnterAzureResourceGroupName(prompter)
 	require.NoError(t, err)
 	require.Equal(t, "test-resource-group", name)
 }
@@ -484,12 +474,11 @@ func Test_selectAzureResourceGroupLocation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
 	client := azure.NewMockClient(ctrl)
-	runner := Runner{Prompter: prompter, azureClient: client}
 
 	setAzureLocations(client, subscription.ID, locations)
 	setSelectAzureResourceGroupLocationPrompt(prompter, locationDisplayNames, *locations[1].DisplayName)
 
-	location, err := runner.selectAzureResourceGroupLocation(context.Background(), subscription)
+	location, err := common.SelectAzureResourceGroupLocation(context.Background(), prompter, client, subscription)
 	require.NoError(t, err)
 	require.Equal(t, locations[1], *location)
 }
@@ -513,8 +502,7 @@ func Test_buildAzureResourceGroupLocationListAndMap(t *testing.T) {
 		"West US": locations[0],
 	}
 
-	runner := Runner{}
-	names, locationMap := runner.buildAzureResourceGroupLocationListAndMap(locations)
+	names, locationMap := common.BuildAzureResourceGroupLocationListAndMap(locations)
 	require.Equal(t, expectedNames, names)
 	require.Equal(t, expectedMap, locationMap)
 }
