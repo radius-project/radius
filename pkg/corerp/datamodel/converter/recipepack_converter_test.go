@@ -167,7 +167,7 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 								"parameters": {
 									"param1": "value1"
 								},
-								"plainHTTP": false
+								"plainHttp": false
 							},
 							"Applications.Datastores/sqlDatabases": {
 								"kind": "terraform",
