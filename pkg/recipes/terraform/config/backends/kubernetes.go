@@ -102,12 +102,21 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 		return "", err
 	}
 
-	parsedAppID, err := resources.Parse(resourceRecipe.ApplicationID)
-	if err != nil {
-		return "", err
+	appName := ""
+	if resourceRecipe.ApplicationID != "" {
+		parsedAppID, err := resources.Parse(resourceRecipe.ApplicationID)
+		if err != nil {
+			return "", err
+		}
+		appName = parsedAppID.Name()
 	}
 
-	inputString := strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))
+	var inputString string
+	if appName != "" {
+		inputString = strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), appName, parsedResourceID.String()))
+	} else {
+		inputString = strings.ToLower(fmt.Sprintf("%s-%s", parsedEnvID.Name(), parsedResourceID.String()))
+	}
 
 	hasher := sha1.New()
 	_, err = hasher.Write([]byte(inputString))

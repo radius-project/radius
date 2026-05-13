@@ -1,0 +1,306 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package preview
+
+import (
+	"context"
+	"sort"
+	"strings"
+
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+)
+
+const (
+	selectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
+	selectExistingEnvironmentCreateSentinel = "[create new]"
+	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into. The namespace must exist in the Kubernetes cluster."
+	enterEnvironmentNamePrompt              = "Enter an environment name"
+	defaultEnvironmentName                  = "default"
+	defaultEnvironmentNamespace             = "default"
+)
+
+// CreateEnvironment creates a Radius.Core environment with the default recipe pack.
+func (r *Runner) CreateEnvironment(ctx context.Context) error {
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	err = client.CreateOrUpdateResourceGroup(ctx, "local", r.Options.Environment.Name, &ucp.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create a resource group.")
+	}
+
+	// Build providers for the new Radius.Core/environments resource type
+	providers := &corerpv20250801.Providers{}
+
+	if r.Options.Environment.Namespace != "" {
+		providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+			Namespace: to.Ptr(r.Options.Environment.Namespace),
+		}
+	}
+
+	if r.Options.CloudProviders.Azure != nil {
+		providers.Azure = &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    to.Ptr(r.Options.CloudProviders.Azure.SubscriptionID),
+			ResourceGroupName: to.Ptr(r.Options.CloudProviders.Azure.ResourceGroup),
+		}
+	}
+
+	if r.Options.CloudProviders.AWS != nil {
+		providers.Aws = &corerpv20250801.ProvidersAws{
+			AccountID: to.Ptr(r.Options.CloudProviders.AWS.AccountID),
+			Region:    to.Ptr(r.Options.CloudProviders.AWS.Region),
+		}
+	}
+
+	envProperties := corerpv20250801.EnvironmentProperties{
+		Providers: providers,
+	}
+
+	// Initialize the Radius.Core client factory if not already set
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
+		}
+		r.RadiusCoreClientFactory = clientFactory
+	}
+
+	// Ensure the default resource group exists before creating recipe packs in it.
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, client.CreateOrUpdateResourceGroup); err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create default resource group for recipe packs.")
+	}
+
+	// Create the default recipe pack and link it to the environment.
+	// The default pack lives in the default resource group scope.
+	if r.DefaultScopeClientFactory == nil {
+		if r.Workspace.Scope == recipepack.DefaultResourceGroupScope {
+			r.DefaultScopeClientFactory = r.RadiusCoreClientFactory
+		} else {
+			defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+			if err != nil {
+				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client for default scope.")
+			}
+			r.DefaultScopeClientFactory = defaultClientFactory
+		}
+	}
+
+	defaultPack := recipepack.NewDefaultRecipePackResource()
+	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
+	}
+
+	// Link the default recipe pack to the environment.
+	envProperties.RecipePacks = []*string{to.Ptr(recipepack.DefaultRecipePackID())}
+
+	// Create the Radius.Core/environments resource
+	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: &envProperties,
+	}, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create environment.")
+	}
+
+	credentialClient, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	if r.Options.CloudProviders.Azure != nil {
+		credential, err := r.getAzureCredential()
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
+		}
+
+		err = credentialClient.PutAzure(ctx, credential)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
+		}
+	}
+
+	if r.Options.CloudProviders.AWS != nil {
+		credential, err := r.getAWSCredential()
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")
+		}
+
+		err = credentialClient.PutAWS(ctx, credential)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")
+		}
+	}
+
+	return nil
+}
+
+func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspaces.Workspace, options *initOptions) error {
+	options.Environment.Create = true
+	if !options.Cluster.Install {
+		// If Radius is already installed then look for an existing environment first.
+		existing, err := r.selectExistingEnvironment(ctx, workspace)
+		if err != nil {
+			return err
+		}
+
+		// For an existing environment we won't make changes, so we're done gathering options.
+		if existing != nil {
+			options.Environment.Name = *existing.Name
+			options.Environment.Create = false
+
+			// Derive the resource group from the existing environment's resource ID so we
+			// don't assume the resource group name matches the environment name.
+			id, err := resources.ParseResource(*existing.ID)
+			if err != nil {
+				return err
+			}
+			options.Environment.ResourceGroup = id.FindScope(resources_radius.ScopeResourceGroups)
+			return nil
+		}
+	}
+
+	var err error
+	options.Environment.Name, err = r.enterEnvironmentName()
+	if err != nil {
+		return err
+	}
+
+	options.Environment.Namespace, err = r.enterEnvironmentNamespace()
+	if err != nil {
+		return err
+	}
+
+	// For a newly-created environment we put it in a resource group whose name matches the environment name.
+	options.Environment.ResourceGroup = options.Environment.Name
+
+	return nil
+}
+
+func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *workspaces.Workspace) (*corerpv20250801.EnvironmentResource, error) {
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	environments, err := client.ListRadiusCoreEnvironmentsAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there are any existing environments ask to use one of those first.
+	if len(environments) == 0 {
+		return nil, nil
+	}
+
+	// Without any flags we take the default without asking if it's an option.
+	if !r.Full {
+		for i, env := range environments {
+			if strings.EqualFold(defaultEnvironmentName, *env.Name) {
+				return &environments[i], nil
+			}
+		}
+	}
+
+	items := r.buildExistingEnvironmentList(environments)
+	name, err := r.Prompter.GetListInput(items, selectExistingEnvironmentPrompt)
+	if err != nil {
+		return nil, err
+	}
+
+	if name == selectExistingEnvironmentCreateSentinel {
+		return nil, nil
+	}
+
+	for i, env := range environments {
+		if env.Name != nil && *env.Name == name {
+			return &environments[i], nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (r *Runner) buildExistingEnvironmentList(existing []corerpv20250801.EnvironmentResource) []string {
+	others := []string{}
+	defaultExists := false
+	for _, env := range existing {
+		if strings.EqualFold(defaultEnvironmentName, *env.Name) {
+			defaultExists = true
+			continue
+		}
+
+		others = append(others, *env.Name)
+	}
+	sort.Strings(others)
+
+	items := []string{}
+	if defaultExists {
+		items = append(items, defaultEnvironmentName)
+	}
+	items = append(items, others...)
+	items = append(items, selectExistingEnvironmentCreateSentinel)
+
+	return items
+}
+
+func (r *Runner) enterEnvironmentName() (string, error) {
+	if !r.Full {
+		return defaultEnvironmentName, nil
+	}
+
+	name, err := r.Prompter.GetTextInput(enterEnvironmentNamePrompt, prompt.TextInputOptions{
+		Default:     defaultEnvironmentName,
+		Placeholder: defaultEnvironmentName,
+		Validate:    prompt.ValidateResourceNameOrDefault,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return name, nil
+}
+
+func (r *Runner) enterEnvironmentNamespace() (string, error) {
+	if !r.Full {
+		return defaultEnvironmentNamespace, nil
+	}
+
+	namespace, err := r.Prompter.GetTextInput(enterNamespacePrompt, prompt.TextInputOptions{
+		Default:     defaultEnvironmentNamespace,
+		Placeholder: defaultEnvironmentNamespace,
+		Validate:    prompt.ValidateResourceNameOrDefault,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return namespace, nil
+}

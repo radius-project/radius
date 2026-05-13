@@ -94,7 +94,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate() checks if the required workspace, output format, access key ID and secret access key are present, and if not, returns an error.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

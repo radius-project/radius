@@ -101,7 +101,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // recipe name, portable resource type and output format in the Runner struct. It returns an error if any of the arguments are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -186,6 +186,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		paramItem := types.RecipeParameter{
 			Name:         parameter,
 			DefaultValue: "-",
+			Value:        "-",
 			MaxValue:     "-",
 			MinValue:     "-",
 		}
@@ -196,6 +197,8 @@ func (r *Runner) Run(ctx context.Context) error {
 				paramItem.Type = paramDetailValue.(string)
 			case "defaultValue":
 				paramItem.DefaultValue = paramDetailValue
+			case "value":
+				paramItem.Value = paramDetailValue
 			case "maxValue":
 				paramItem.MaxValue = fmt.Sprintf("%v", paramDetailValue.(float64))
 			case "minValue":
