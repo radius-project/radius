@@ -145,6 +145,22 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 65532
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # Copy buildctl out of the BuildKit image into a shared volume so
+      # the dynamic-rp container can invoke it from `local-exec` inside
+      # Terraform recipes. We use buildctl rather than the Docker Engine
+      # API because buildkitd does not implement the latter.
+      - name: buildctl-init
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        command: ["/bin/sh", "-c", "cp /usr/bin/buildctl /tools/buildctl && chmod 0755 /tools/buildctl"]
+        volumeMounts:
+        - name: buildctl-bin
+          mountPath: /tools
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65532
+      {{- end }}
       {{- end }}
       containers:
       - name: dynamic-rp
@@ -161,13 +177,18 @@ spec:
         - name: K8S_CLUSTER
           value: 'true'
         {{- if .Values.dynamicrp.buildkit.enabled }}
-        # Recipes use this to dial the buildkitd sidecar.
-        - name: DOCKER_HOST
-          value: "unix:///run/buildkit/buildkit.sock"
-        # Make `pathexpand("~")` deterministic in the recipe runner so
-        # the kreuzwerker/docker provider finds the mounted credentials.
+        # Recipes invoke `buildctl` (mounted from the buildctl-init
+        # init container) which reads this env to dial the in-Pod
+        # buildkitd sidecar over loopback TCP.
+        - name: BUILDKIT_HOST
+          value: "tcp://127.0.0.1:1234"
+        # buildctl reads ~/.docker/config.json for registry credentials.
+        # Make `~` deterministic for the recipe runner process.
         - name: HOME
           value: "/home/rpuser"
+        # Put the mounted buildctl on PATH.
+        - name: PATH
+          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/buildctl"
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
@@ -197,9 +218,10 @@ spec:
           mountPath: /var/secrets/encryption
           readOnly: true
         {{- if .Values.dynamicrp.buildkit.enabled }}
-        # Shared with the buildkitd sidecar; holds the unix socket.
-        - name: buildkit-run
-          mountPath: /run/buildkit
+        # buildctl binary copied by the buildctl-init init container.
+        - name: buildctl-bin
+          mountPath: /buildctl
+          readOnly: true
         {{- if .Values.dynamicrp.buildkit.credentialsSecret }}
         # Docker config provides registry credentials to the recipe.
         - name: buildkit-credentials
@@ -221,36 +243,28 @@ spec:
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # Rootless BuildKit sidecar. Serves the unix socket that the
-      # dynamic-rp recipe runner talks to via DOCKER_HOST. No host
-      # paths, no privileged container, no extra capabilities.
-      #
-      # The sidecar runs as UID 1000 (the rootless image's default
-      # `user` account); we pass `--group 65532` so the unix socket
-      # is group-owned by the dynamic-rp container's GID, and the
-      # Pod-level `fsGroup: 65532` ensures the shared emptyDir is
-      # group-writable.
+      # Rootless BuildKit sidecar. Listens on loopback TCP inside the
+      # Pod network namespace. The dynamic-rp container reaches it via
+      # BUILDKIT_HOST=tcp://127.0.0.1:1234 and invokes `buildctl` for
+      # recipe-driven image builds. TCP-over-loopback avoids the
+      # cross-user-namespace socket-permission issues that plague
+      # rootless buildkit + emptyDir sharing.
       - name: buildkitd
         image: "{{ .Values.dynamicrp.buildkit.image }}"
         args:
         - --addr
-        - unix:///run/buildkit/buildkit.sock
-        # No --group flag: rootless buildkit cannot chown the socket
-        # to a GID outside its mapped subgid range. Instead, the Pod's
-        # fsGroup propagates to the shared emptyDir (setgid bit), so
-        # the socket buildkit creates inherits gid=fsGroup and is
-        # accessible to the dynamic-rp container without chown.
+        - tcp://127.0.0.1:1234
         {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
         - --oci-worker-no-process-sandbox
         {{- end }}
         readinessProbe:
           exec:
-            command: ["buildctl", "--addr", "unix:///run/buildkit/buildkit.sock", "debug", "workers"]
+            command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe:
           exec:
-            command: ["buildctl", "--addr", "unix:///run/buildkit/buildkit.sock", "debug", "workers"]
+            command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
           initialDelaySeconds: 30
           periodSeconds: 30
         securityContext:
@@ -277,8 +291,6 @@ spec:
           allowPrivilegeEscalation: false
           {{- end }}
         volumeMounts:
-        - name: buildkit-run
-          mountPath: /run/buildkit
         - name: buildkit-state
           mountPath: /home/user/.local/share/buildkit
       {{- end }}
@@ -302,7 +314,7 @@ spec:
             secretName: radius-encryption-key
             defaultMode: 0400
         {{- if .Values.dynamicrp.buildkit.enabled }}
-        - name: buildkit-run
+        - name: buildctl-bin
           emptyDir: {}
         - name: buildkit-state
           emptyDir: {}
