@@ -62,8 +62,9 @@ Radius will be installed in the 'radius-system' namespace. For more information 
 
 After installing the control plane, this command also creates a default resource group named 'default' and
 a default environment named 'default' (using the 'default' Kubernetes namespace) so that the cluster is
-immediately ready to deploy applications. Re-running the command on an existing installation will leave
-existing resources unchanged.
+immediately ready to deploy applications. Re-running the command on an existing installation without
+'--reinstall' will leave existing resources unchanged. Using '--reinstall' may recreate or overwrite the
+default resource group and environment if they already exist.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,
