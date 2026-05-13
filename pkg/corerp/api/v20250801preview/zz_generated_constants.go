@@ -18,6 +18,27 @@ func PossibleActionTypeValues() []ActionType {
 	}
 }
 
+// BicepAuthenticationMethod - Supported authentication methods for private Bicep registries.
+type BicepAuthenticationMethod string
+
+const (
+	// BicepAuthenticationMethodAwsIrsa - AWS IAM Roles for Service Accounts authentication.
+	BicepAuthenticationMethodAwsIrsa BicepAuthenticationMethod = "AwsIrsa"
+	// BicepAuthenticationMethodAzureWI - Azure Workload Identity authentication.
+	BicepAuthenticationMethodAzureWI BicepAuthenticationMethod = "AzureWI"
+	// BicepAuthenticationMethodBasicAuth - Username/password authentication.
+	BicepAuthenticationMethodBasicAuth BicepAuthenticationMethod = "BasicAuth"
+)
+
+// PossibleBicepAuthenticationMethodValues returns the possible values for the BicepAuthenticationMethod const type.
+func PossibleBicepAuthenticationMethodValues() []BicepAuthenticationMethod {
+	return []BicepAuthenticationMethod{
+		BicepAuthenticationMethodAwsIrsa,
+		BicepAuthenticationMethodAzureWI,
+		BicepAuthenticationMethodBasicAuth,
+	}
+}
+
 // CreatedByType - The type of identity that created the resource.
 type CreatedByType string
 

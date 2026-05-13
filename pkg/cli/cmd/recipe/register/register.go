@@ -112,7 +112,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // recipe name, and parameters, and returns an error if any of these fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

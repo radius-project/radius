@@ -39,6 +39,35 @@ type ApplicationsClientUpdateResponse struct {
 	ApplicationResource
 }
 
+// BicepConfigsClientCreateOrUpdateResponse contains the response from method BicepConfigsClient.CreateOrUpdate.
+type BicepConfigsClientCreateOrUpdateResponse struct {
+	// The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+	BicepConfigResource
+}
+
+// BicepConfigsClientDeleteResponse contains the response from method BicepConfigsClient.Delete.
+type BicepConfigsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// BicepConfigsClientGetResponse contains the response from method BicepConfigsClient.Get.
+type BicepConfigsClientGetResponse struct {
+	// The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+	BicepConfigResource
+}
+
+// BicepConfigsClientListByScopeResponse contains the response from method BicepConfigsClient.NewListByScopePager.
+type BicepConfigsClientListByScopeResponse struct {
+	// The response of a BicepConfigResource list operation.
+	BicepConfigResourceListResult
+}
+
+// BicepConfigsClientUpdateResponse contains the response from method BicepConfigsClient.Update.
+type BicepConfigsClientUpdateResponse struct {
+	// The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+	BicepConfigResource
+}
+
 // EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
 type EnvironmentsClientCreateOrUpdateResponse struct {
 	// The environment resource
@@ -101,4 +130,33 @@ type RecipePacksClientListByScopeResponse struct {
 type RecipePacksClientUpdateResponse struct {
 	// The recipe pack resource
 	RecipePackResource
+}
+
+// TerraformConfigsClientCreateOrUpdateResponse contains the response from method TerraformConfigsClient.CreateOrUpdate.
+type TerraformConfigsClientCreateOrUpdateResponse struct {
+	// The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
+	TerraformConfigResource
+}
+
+// TerraformConfigsClientDeleteResponse contains the response from method TerraformConfigsClient.Delete.
+type TerraformConfigsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// TerraformConfigsClientGetResponse contains the response from method TerraformConfigsClient.Get.
+type TerraformConfigsClientGetResponse struct {
+	// The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
+	TerraformConfigResource
+}
+
+// TerraformConfigsClientListByScopeResponse contains the response from method TerraformConfigsClient.NewListByScopePager.
+type TerraformConfigsClientListByScopeResponse struct {
+	// The response of a TerraformConfigResource list operation.
+	TerraformConfigResourceListResult
+}
+
+// TerraformConfigsClientUpdateResponse contains the response from method TerraformConfigsClient.Update.
+type TerraformConfigsClientUpdateResponse struct {
+	// The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
+	TerraformConfigResource
 }

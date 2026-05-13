@@ -16,24 +16,16 @@ limitations under the License.
 
 package workspaces
 
-import "github.com/radius-project/radius/pkg/cli/config"
-
 // Workspace represents configuration for the rad CLI.
 //
 // Workspaces may:
 //
 // - be stored in per-user config (~/.rad/config.yaml) OR
 //
-// - be stored in the user's working directory `$pwd/.rad/rad.yaml` OR
-//
 // - may represent the rad CLI's fallback configuration when no configuration is present
 type Workspace struct {
 	// Source indicates how the workspace was loaded.
 	Source Source `json:"-" mapstructure:"-" yaml:"-"`
-
-	// Directory config contains per-directory overrides and settings that affect the behavior of `rad`.
-	// This is not stored in the `~/.rad/config.yaml`.
-	DirectoryConfig config.DirectoryConfig `json:"-" mapstructure:"-" yaml:"-"`
 
 	// Name is the name of the workspace. The name is not stored as part of the workspace entry but is populated
 	// by the configuration APIs in this package.

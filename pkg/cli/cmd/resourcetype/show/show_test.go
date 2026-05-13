@@ -245,3 +245,162 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 }
+
+func Test_GetResourceTypeSchema_Properties(t *testing.T) {
+	schema := map[string]any{
+		"properties": map[string]any{
+			"name": map[string]any{
+				"type":        "string",
+				"description": "The resource name.",
+			},
+			"settings": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"replicas": map[string]any{
+						"type":        "integer",
+						"description": "Number of replicas.",
+					},
+				},
+				"required": []any{"replicas"},
+			},
+		},
+		"required": []any{"name"},
+	}
+
+	result := GetResourceTypeSchema(schema)
+
+	require.Equal(t, map[string]FieldSchema{
+		"name": {
+			Name:        "name",
+			Type:        "string",
+			Description: "The resource name.",
+			IsRequired:  true,
+			IsReadOnly:  false,
+			Properties:  map[string]FieldSchema{},
+		},
+		"settings": {
+			Name:        "settings",
+			Type:        "object",
+			Description: "",
+			IsRequired:  false,
+			IsReadOnly:  false,
+			Properties: map[string]FieldSchema{
+				"replicas": {
+					Name:        "replicas",
+					Type:        "integer",
+					Description: "Number of replicas.",
+					IsRequired:  true,
+					IsReadOnly:  false,
+					Properties:  map[string]FieldSchema{},
+				},
+			},
+		},
+	}, result)
+}
+
+func Test_getNestedSchema(t *testing.T) {
+	t.Run("returns input when schema has properties", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"foo": map[string]any{"type": "string"},
+			},
+		}
+
+		got := getNestedSchema(schema)
+		require.Same(t, &schema, &schema)
+		require.Equal(t, schema, got)
+	})
+
+	t.Run("descends into additionalProperties when no properties key", func(t *testing.T) {
+		nested := map[string]any{
+			"properties": map[string]any{
+				"value": map[string]any{"type": "string"},
+			},
+		}
+		schema := map[string]any{
+			"type":                 "object",
+			"additionalProperties": nested,
+		}
+
+		got := getNestedSchema(schema)
+		require.Equal(t, nested, got)
+	})
+
+	t.Run("returns input when neither properties nor additionalProperties match", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "string",
+		}
+
+		got := getNestedSchema(schema)
+		require.Equal(t, schema, got)
+	})
+
+	t.Run("prefers properties over additionalProperties when both exist", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"a": map[string]any{"type": "string"},
+			},
+			"additionalProperties": map[string]any{
+				"properties": map[string]any{
+					"b": map[string]any{"type": "string"},
+				},
+			},
+		}
+
+		got := getNestedSchema(schema)
+		require.Equal(t, schema, got)
+	})
+}
+
+func Test_GetResourceTypeSchema_AdditionalProperties(t *testing.T) {
+	schema := map[string]any{
+		"properties": map[string]any{
+			"data": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"encoding": map[string]any{
+							"type":        "string",
+							"description": "Content encoding of the value.",
+						},
+						"value": map[string]any{
+							"type":        "string",
+							"description": "The secret value.",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := GetResourceTypeSchema(schema)
+
+	require.Equal(t, map[string]FieldSchema{
+		"data": {
+			Name:        "data",
+			Type:        "object",
+			Description: "",
+			IsRequired:  false,
+			IsReadOnly:  false,
+			Properties: map[string]FieldSchema{
+				"encoding": {
+					Name:        "encoding",
+					Type:        "string",
+					Description: "Content encoding of the value.",
+					IsRequired:  false,
+					IsReadOnly:  false,
+					Properties:  map[string]FieldSchema{},
+				},
+				"value": {
+					Name:        "value",
+					Type:        "string",
+					Description: "The secret value.",
+					IsRequired:  false,
+					IsReadOnly:  false,
+					Properties:  map[string]FieldSchema{},
+				},
+			},
+		},
+	}, result)
+}

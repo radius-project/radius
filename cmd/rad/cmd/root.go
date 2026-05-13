@@ -58,6 +58,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
+	radinit_preview "github.com/radius-project/radius/pkg/cli/cmd/radinit/preview"
 	recipe_list "github.com/radius-project/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/radius-project/radius/pkg/cli/cmd/recipe/register"
 	recipe_show "github.com/radius-project/radius/pkg/cli/cmd/recipe/show"
@@ -90,7 +91,6 @@ import (
 	workspace_list "github.com/radius-project/radius/pkg/cli/cmd/workspace/list"
 	workspace_show "github.com/radius-project/radius/pkg/cli/cmd/workspace/show"
 	workspace_switch "github.com/radius-project/radius/pkg/cli/cmd/workspace/switch"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/delete"
 	"github.com/radius-project/radius/pkg/cli/deploy"
@@ -343,6 +343,8 @@ func initSubCommands() {
 	RootCmd.AddCommand(groupCmd)
 
 	initCmd, _ := radinit.NewCommand(framework)
+	previewInitCmd, _ := radinit_preview.NewCommand(framework)
+	wirePreviewSubcommand(initCmd, previewInitCmd)
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
@@ -468,20 +470,6 @@ func initConfig() {
 	}
 
 	ConfigHolder.Config = v
-
-	wd, err := os.Getwd()
-	if err != nil {
-		fmt.Printf("Error: failed to find current working directory: %v\n", err)
-		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
-	}
-
-	dc, err := config.LoadDirectoryConfig(wd)
-	if err != nil {
-		fmt.Printf("Error: failed to load config: %v\n", err)
-		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
-	}
-
-	ConfigHolder.DirectoryConfig = dc
 }
 
 // TODO: Deprecate once all the commands are moved to new framework
@@ -492,16 +480,6 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	}
 
 	return holder.Config
-}
-
-// TODO: Deprecate once all the commands are moved to new framework
-func DirectoryConfigFromContext(ctx context.Context) *config.DirectoryConfig {
-	holder := ctx.Value(framework.NewContextKey("config")).(*framework.ConfigHolder)
-	if holder == nil {
-		return nil
-	}
-
-	return holder.DirectoryConfig
 }
 
 func getRootSpanName() string {
