@@ -126,7 +126,7 @@ Step 2
 #### User Story 1: As a Platform Engineer, I want to create a Recipe Pack that bundles multiple recipes for core resource types, so that I can easily register and manage them in a Radius environment:
 
 1. **Define a Recipe Pack**:
-   * A platform engineer creates a Radius Recipe Pack resource definition that specifies a collection of Recipes. It would list each core resource type (e.g., `Radius.Compute/containers@2025-05-01-preview`, `Radius.Compute/routes@2025-05-01-preview`, `Radius.Security/secrets@2025-05-01-preview`) and associate it with a specific Recipe (kind and location) and its default parameters:
+   * A platform engineer creates a Radius Recipe Pack resource definition that specifies a collection of Recipes. It would list each core resource type (e.g., `Radius.Compute/containers@2025-05-01-preview`, `Radius.Compute/routes@2025-05-01-preview`, `Radius.Security/secrets@2025-05-01-preview`) and associate it with a specific Recipe (recipeKind and recipeLocation) and its default parameters:
         > Note that Recipe Packs are modeled as a new resource type called `Config`, which was introduced in [this feature spec](https://github.com/radius-project/design-notes/blob/main/features/2025-07-23-radius-configuration-ux.md)
    * e.g. `computeRecipePack.bicep`:
         ```bicep
@@ -136,19 +136,19 @@ Step 2
             properties: {
                 recipes: [
                     Radius.Compute/container: {
-                        kind: 'terraform'
-                        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
+                        recipeKind: 'terraform'
+                        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
                         parameters: {
                         allowPlatformOptions: true
                         }
                     }
                     Radius.Security/secrets: {
-                        kind: 'terraform'
-                        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
+                        recipeKind: 'terraform'
+                        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
                     }
                     Radius.Compute/persistentVolumes: {
-                        kind: 'terraform'
-                        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/storage/volumes/kubernetes?ref=v0.48'
+                        recipeKind: 'terraform'
+                        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/storage/volumes/kubernetes?ref=v0.48'
                     }
                 ]
             }
@@ -162,8 +162,8 @@ Step 2
             properties: {
                 recipes: [
                     Radius.Data/redisCaches: {
-                        kind: 'terraform'
-                        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/data/redis-caches/kubernetes?ref=v0.48'
+                        recipeKind: 'terraform'
+                        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/data/redis-caches/kubernetes?ref=v0.48'
                     }
                 ]
             }
@@ -875,8 +875,8 @@ Given: my platform engineer has set up a Radius environment with recipes registe
 * The `compute.namespace` property is moved to `providers.kubernetes.namespace` in the `Radius.Core/environments` resource type.
 * The `properties.providers.azure.scope` property in the `environments` resource type is changed to an object with the subscriptionId and resourceGroupName properties separated. `subscriptionId` (required) can be overridden by the Recipe if it provides a `subscriptionId`. `resourceGroup` (optional) can be set in the Environment or by the Recipe (value set in the Recipe overrides the value set in the Environment). If the neither the Environment nor Recipe specifies a `resourceGroup` (optional) and the resource to be deployed needs to be scoped to a resource group, then the deployment would fail.
 * The following [Recipe properties](https://docs.radapp.io/reference/resource-schema/core-schema/environment-schema/#recipe-properties) are renamed for better clarity going forward:
-    * `templateKind` -> `kind`
-    * `templatePath` -> `location`
+    * `templateKind` -> `recipeKind`
+    * `templatePath` -> `recipeLocation`
 * Recipes accept a new `allowPlatformOptions` parameter that determines whether platform-specific configurations via their own schemas (e.g., ACI containerGroupProfile, Kubernetes podSpec) are allowed in the resource type definition.
 * Ability to package and register sets of related recipes as "Recipe Packs" to simplify distribution and management. Environment definitions can reference these packs, which will include the necessary recipes for core types.
 * Core types (`Applications.Core/containers`, `Applications.Core/gateways`, `Applications.Core/secrets`, `Applications.Core/volumes`) are re-implemented as Radius Resource Types (RRT) with new, versioned resource type names (e.g., `Radius.Compute/containers@2025-05-01-preview`).
@@ -1094,8 +1094,8 @@ Recipe packs being defined in a yaml manifest that bundles individual Recipes ca
         description: "Recipe Pack for deploying to ACI in production."
         recipes:
             - resourceType: "Radius.Compute/containers@2025-05-01-preview"   
-            kind: "bicep"
-            location: "oci://ghcr.io/my-org/recipes/core/aci-container:1.2.0"
+            recipeKind: "bicep"
+            recipeLocation: "oci://ghcr.io/my-org/recipes/core/aci-container:1.2.0"
             parameters:
                 cpu: "1.0"
                 memoryInGB: "2.0"
@@ -1104,17 +1104,17 @@ Recipe packs being defined in a yaml manifest that bundles individual Recipes ca
                 # Optional: allow platform-specific options like containerGroupProfile for ACI
                 allowPlatformOptions: true
             - resourceType: "Radius.Compute/routes@2025-05-01-preview"
-            kind: "bicep"
-            location: "oci://ghcr.io/my-org/recipes/core/aci-gateway:1.1.0"
+            recipeKind: "bicep"
+            recipeLocation: "oci://ghcr.io/my-org/recipes/core/aci-gateway:1.1.0"
             parameters:
                 sku: "Standard_v2"
             - resourceType: "Radius.Security/secrets@2025-05-01-preview"
-            kind: "bicep"
-            location: "oci://ghcr.io/my-org/recipes/azure/keyvault-secretstore:1.0.0"
+            recipeKind: "bicep"
+            recipeLocation: "oci://ghcr.io/my-org/recipes/azure/keyvault-secretstore:1.0.0"
             parameters:
                 skuName: "premium"
         ```
-        > Note: `templateKind` is changed to `kind` and `templatePath` is changed to `location`
+        > Note: `templateKind` is changed to `recipeKind` and `templatePath` is changed to `recipeLocation`
 
 1.  **Add the Recipe Pack to an Environment**:
     *   The platform engineer uses a new CLI command to add the entire pack to a Radius environment.

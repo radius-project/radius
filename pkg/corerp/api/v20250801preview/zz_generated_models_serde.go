@@ -1265,10 +1265,10 @@ func (p *ProvidersKubernetes) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeDefinition.
 func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "parameters", r.Parameters)
-	populate(objectMap, "plainHttp", r.PlainHTTP)
 	populate(objectMap, "kind", r.Kind)
 	populate(objectMap, "location", r.Location)
+	populate(objectMap, "parameters", r.Parameters)
+	populate(objectMap, "plainHttp", r.PlainHTTP)
 	return json.Marshal(objectMap)
 }
 
@@ -1281,17 +1281,17 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "parameters":
-			err = unpopulate(val, "Parameters", &r.Parameters)
-			delete(rawMsg, key)
-		case "plainHttp":
-			err = unpopulate(val, "PlainHTTP", &r.PlainHTTP)
-			delete(rawMsg, key)
 		case "kind":
 			err = unpopulate(val, "Kind", &r.Kind)
 			delete(rawMsg, key)
 		case "location":
 			err = unpopulate(val, "Location", &r.Location)
+			delete(rawMsg, key)
+		case "parameters":
+			err = unpopulate(val, "Parameters", &r.Parameters)
+			delete(rawMsg, key)
+		case "plainHttp":
+			err = unpopulate(val, "PlainHTTP", &r.PlainHTTP)
 			delete(rawMsg, key)
 		}
 		if err != nil {
