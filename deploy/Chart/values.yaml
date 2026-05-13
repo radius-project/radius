@@ -62,6 +62,8 @@ global:
   terraform:
     # Enable terraform binary pre-downloading during pod startup
     enabled: true
+    # Init image used to pre-download Terraform binaries.
+    initImage: "alpine:3.23"
     # URL for downloading Terraform binary
     # Leave empty to automatically fetch the latest version from HashiCorp
     # Or provide a complete direct download URL for custom sources
