@@ -48,9 +48,9 @@ Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Sig
 
 ## Signing your commits
 
-> 💡 Commit signing is **separate from** the DCO `Signed-off-by` line described above. The `Signed-off-by` line is a textual attestation, while commit signing cryptographically verifies that a commit was authored by you. Both are recommended.
+> 💡 Commit signing is **separate from** the DCO `Signed-off-by` line described above. The `Signed-off-by` line is a textual attestation, while commit signing proves that the commit was signed with the private key corresponding to your configured public key. Both are recommended.
 
-We require all contributors to **cryptographically sign their commits** so that they show as **Verified** on GitHub. Verified commits give reviewers and the community confidence that a commit was actually authored by the person it claims to be from, which is an important supply-chain safeguard.
+We require all contributors to **cryptographically sign their commits** so that they show as **Verified** on GitHub. On GitHub, **Verified** means GitHub could validate the signature and that the signing key is associated with the account. This gives reviewers and the community additional confidence in the integrity and provenance of commits, which is an important supply-chain safeguard.
 
 GitHub supports three types of commit signatures: GPG, SSH, and S/MIME. Pick whichever is easiest for you — SSH signing is usually the simplest if you already use an SSH key with GitHub.
 
