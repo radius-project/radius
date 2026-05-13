@@ -54,8 +54,8 @@ func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
 	for _, def := range GetCoreTypesRecipeInfo() {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
-			RecipeKind:     &bicepKind,
-			RecipeLocation: to.Ptr(def.RecipeLocation),
+			Kind:     &bicepKind,
+			Location: to.Ptr(def.RecipeLocation),
 		}
 	}
 	return corerpv20250801.RecipePackResource{

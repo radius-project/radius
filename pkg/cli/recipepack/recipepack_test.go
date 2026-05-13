@@ -75,9 +75,9 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 	for _, def := range definitions {
 		recipe, exists := resource.Properties.Recipes[def.ResourceType]
 		require.True(t, exists, "Expected recipe for resource type %s to exist", def.ResourceType)
-		require.NotNil(t, recipe.RecipeKind)
-		require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.RecipeKind)
-		require.NotNil(t, recipe.RecipeLocation)
-		require.Equal(t, def.RecipeLocation, *recipe.RecipeLocation)
+		require.NotNil(t, recipe.Kind)
+		require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.Kind)
+		require.NotNil(t, recipe.Location)
+		require.Equal(t, def.RecipeLocation, *recipe.Location)
 	}
 }
