@@ -122,10 +122,21 @@ spec:
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
+          # Path/marker MUST match constants in
+          # pkg/recipes/terraform/install.go (defaultGlobalTerraformBinary,
+          # defaultGlobalMarkerFile). If they diverge, ensureGlobalTerraformBinary
+          # falls through to downloadAndInstallTerraform and this init container's
+          # work is wasted.
+          GLOBAL_DIR="{{ .Values.rp.terraform.path }}/.terraform-global"
+          mkdir -p "$GLOBAL_DIR" || { echo "ERROR: Failed to create global terraform directory"; exit 6; }
+          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
+          touch "$GLOBAL_DIR/.terraform-ready"
+
+          # Keep a copy at the legacy path and write the legacy marker so any
+          # tooling that still references {{ .Values.rp.terraform.path }}/terraform continues to work.
           cp terraform "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
           chmod +x "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          
-          # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.rp.terraform.path }}/.terraform-source"
           
           echo "Terraform binary successfully pre-downloaded and installed"
