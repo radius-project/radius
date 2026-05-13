@@ -69,7 +69,7 @@ git config --global commit.gpgsign true
 
 (Use the same setting for SSH or S/MIME signing — Git will use whichever signing format you have configured.)
 
-After pushing, your commits should display a green **Verified** badge next to them on GitHub.
+After pushing, your commits should display a **Verified** badge next to them on GitHub.
 
 ## Creating the pull request
 
