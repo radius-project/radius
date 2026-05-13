@@ -524,7 +524,7 @@ tests:
         template: dynamic-rp/deployment.yaml
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: alpine:3.23
+          value: alpine:3.23.4
         template: dynamic-rp/deployment.yaml
 
   - it: should allow overriding the terraform init image
@@ -660,7 +660,7 @@ tests:
         template: rp/deployment.yaml
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: alpine:3.23
+          value: alpine:3.23.4
         template: rp/deployment.yaml
 
   - it: should add append-root-ca init container and mounts for ucp when cert provided

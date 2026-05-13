@@ -30,7 +30,7 @@ global:
   appendRootCA:
     # Auto-enabled when global.rootCA.cert is provided via --set-file
     # Init image to normalize and prepare certs directory
-    initImage: "alpine:3.23"
+    initImage: "alpine:3.23.4"
     # Working and target mount paths
     workDir: "/work/certs"
     targetMountPath: "/etc/ssl/certs"
@@ -63,7 +63,7 @@ global:
     # Enable terraform binary pre-downloading during pod startup
     enabled: true
     # Init image used to pre-download Terraform binaries.
-    initImage: "alpine:3.23"
+    initImage: "alpine:3.23.4"
     # URL for downloading Terraform binary
     # Leave empty to automatically fetch the latest version from HashiCorp
     # Or provide a complete direct download URL for custom sources
