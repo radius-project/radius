@@ -60,7 +60,7 @@ func TestRecipePackDataModelToVersioned(t *testing.T) {
 						"Applications.Core/containers": {
 							RecipeKind:     "bicep",
 							RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
-							RecipeParameters: map[string]any{
+							Parameters: map[string]any{
 								"param1": "value1",
 							},
 							PlainHTTP: false,
@@ -162,16 +162,16 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 					"properties": {
 						"recipes": {
 							"Applications.Core/containers": {
-								"recipeKind": "bicep",
-								"recipeLocation": "br:myregistry.azurecr.io/recipes/container:1.0",
-								"recipeParameters": {
+								"kind": "bicep",
+								"location": "br:myregistry.azurecr.io/recipes/container:1.0",
+								"parameters": {
 									"param1": "value1"
 								},
 								"plainHTTP": false
 							},
 							"Applications.Datastores/sqlDatabases": {
-								"recipeKind": "terraform",
-								"recipeLocation": "https://github.com/radius-project/recipes.git//terraform/modules/sql"
+								"kind": "terraform",
+								"location": "https://github.com/radius-project/recipes.git//terraform/modules/sql"
 							}
 						},
 						"referencedBy": [
@@ -205,7 +205,7 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 						"Applications.Core/containers": {
 							RecipeKind:     "bicep",
 							RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
-							RecipeParameters: map[string]any{
+							Parameters: map[string]any{
 								"param1": "value1",
 							},
 							PlainHTTP: false,
@@ -260,8 +260,8 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 					"properties": {
 						"recipes": {
 							"Applications.Core/containers": {
-								"recipeKind": "bicep",
-								"recipeLocation": "br:myregistry.azurecr.io/recipes/container:1.0"
+								"kind": "bicep",
+								"location": "br:myregistry.azurecr.io/recipes/container:1.0"
 							}
 						}
 					}
@@ -302,8 +302,8 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 				"properties": {
 					"recipes": {
 						"Applications.Datastores/sqlDatabases": {
-							"recipeKind": "terraform",
-							"recipeLocation": "http://insecure-registry.example.com/recipes/sql",
+							"kind": "terraform",
+							"location": "http://insecure-registry.example.com/recipes/sql",
 							"plainHttp": true
 						}
 					}
@@ -394,8 +394,8 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 						require.Equal(t, expectedRecipe.PlainHTTP, actualRecipe.PlainHTTP, "PlainHTTP for recipe %s should match. Expected: %v, Actual: %v", key, expectedRecipe.PlainHTTP, actualRecipe.PlainHTTP)
 
 						// Note: JSON unmarshaling can change the type of parameters, especially for numbers
-						if expectedRecipe.RecipeParameters != nil {
-							require.Equal(t, expectedRecipe.RecipeParameters, actualRecipe.RecipeParameters)
+						if expectedRecipe.Parameters != nil {
+							require.Equal(t, expectedRecipe.Parameters, actualRecipe.Parameters)
 						}
 					}
 				}
@@ -428,7 +428,7 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 				"Applications.Core/containers": {
 					RecipeKind:     "bicep",
 					RecipeLocation: "br:test.azurecr.io/recipes/container:latest",
-					RecipeParameters: map[string]any{
+					Parameters: map[string]any{
 						"cpu":    "0.5",
 						"memory": "1Gi",
 					},
@@ -471,7 +471,7 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 		require.Equal(t, originalRecipe.RecipeKind, resultRecipe.RecipeKind)
 		require.Equal(t, originalRecipe.RecipeLocation, resultRecipe.RecipeLocation)
 		require.Equal(t, originalRecipe.PlainHTTP, resultRecipe.PlainHTTP)
-		require.Equal(t, originalRecipe.RecipeParameters, resultRecipe.RecipeParameters)
+		require.Equal(t, originalRecipe.Parameters, resultRecipe.Parameters)
 	}
 }
 

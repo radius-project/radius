@@ -15,18 +15,18 @@
     ],
     "recipes": {
       "Applications.Core/containers": {
-        "recipeKind": "Bicep",
-        "recipeLocation": "br:ghcr.io/radius-project/recipes/kubernetes-container:latest",
-        "recipeParameters": {
+        "kind": "Bicep",
+        "location": "br:ghcr.io/radius-project/recipes/kubernetes-container:latest",
+        "parameters": {
           "port": 8080,
           "replicas": 3
         },
         "plainHTTP": false
       },
       "Applications.Dapr/stateStores": {
-        "recipeKind": "Terraform",
-        "recipeLocation": "oci://ghcr.io/radius-project/recipes/terraform/redis:latest",
-        "recipeParameters": {
+        "kind": "Terraform",
+        "location": "oci://ghcr.io/radius-project/recipes/terraform/redis:latest",
+        "parameters": {
           "size": "small"
         },
         "plainHTTP": true

@@ -191,8 +191,8 @@ func (r *Runner) Run(ctx context.Context) error {
 			envRecipes = append(envRecipes, EnvRecipes{
 				RecipePack:     ID.Name(),
 				ResourceType:   resourceType,
-				RecipeKind:     string(*recipe.RecipeKind),
-				RecipeLocation: *recipe.RecipeLocation,
+				RecipeKind:     string(*recipe.Kind),
+				RecipeLocation: *recipe.Location,
 			})
 		}
 	}

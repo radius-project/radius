@@ -68,12 +68,12 @@ func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 					Properties: &v20250801preview.RecipePackProperties{
 						Recipes: map[string]*v20250801preview.RecipeDefinition{
 							"test-recipe1": {
-								RecipeLocation: new("https://example.com/recipe1?ref=v0.1"),
-								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
+								Location: new("https://example.com/recipe1?ref=v0.1"),
+								Kind:     to.Ptr(v20250801preview.RecipeKindTerraform),
 							},
 							"test-recipe2": {
-								RecipeLocation: new("https://example.com/recipe2?ref=v0.1"),
-								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
+								Location: new("https://example.com/recipe2?ref=v0.1"),
+								Kind:     to.Ptr(v20250801preview.RecipeKindTerraform),
 							},
 						},
 					},

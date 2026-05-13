@@ -50,13 +50,13 @@ type RecipePackProperties struct {
 // RecipeDefinition represents a recipe definition in the datamodel.
 type RecipeDefinition struct {
 	// RecipeKind is the type of recipe (e.g., terraform, bicep).
-	RecipeKind string `json:"recipeKind"`
+	RecipeKind string `json:"kind"`
 
 	// RecipeLocation is the URL or path to the recipe source.
-	RecipeLocation string `json:"recipeLocation"`
+	RecipeLocation string `json:"location"`
 
-	// RecipeParameters to pass to the recipe.
-	RecipeParameters map[string]any `json:"recipeParameters,omitempty"`
+	// Parameters to pass to the recipe.
+	Parameters map[string]any `json:"parameters,omitempty"`
 
 	// PlainHTTP connects to the location using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`

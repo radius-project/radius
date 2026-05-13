@@ -421,13 +421,13 @@ type ProvidersKubernetes struct {
 // RecipeDefinition - Recipe definition for a specific resource type
 type RecipeDefinition struct {
 	// REQUIRED; The type of recipe (e.g., Terraform, Bicep)
-	RecipeKind *RecipeKind
+	Kind *RecipeKind
 
 	// REQUIRED; URL path to the recipe
-	RecipeLocation *string
+	Location *string
 
 	// Parameters to pass to the recipe
-	RecipeParameters map[string]any
+	Parameters map[string]any
 
 	// Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for
 	// example in a locally hosted registry for Bicep recipes. Defaults to false (use

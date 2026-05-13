@@ -243,23 +243,23 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 				if recipePackName == "pack-a" {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{
 						"Applications.Datastores/sqlDatabases": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/sql"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
+							Location: new("ghcr.io/radius-project/recipes/sql"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
 						},
 						"Applications.Datastores/redisCaches": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/redis"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
+							Location: new("ghcr.io/radius-project/recipes/redis"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
 						},
 					}
 				} else {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{
 						"Applications.Messaging/rabbitMQQueues": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/rabbitmq"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindBicep),
+							Location: new("ghcr.io/radius-project/recipes/rabbitmq"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindBicep),
 						},
 						"Applications.Dapr/stateStores": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/dapr-state"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindBicep),
+							Location: new("ghcr.io/radius-project/recipes/dapr-state"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindBicep),
 						},
 					}
 				}

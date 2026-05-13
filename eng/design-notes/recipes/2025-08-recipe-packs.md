@@ -102,9 +102,9 @@ version: 1.0.0
 description: "Recipe Pack for deploying to ACI in production."
 recipes:
   - resourceType: "Radius.Compute/containers@2025-05-01-preview"   
-    recipeKind: "bicep"
-    recipeLocation: "oci://ghcr.io/my-org/recipes/core/aci-container:1.2.0"
-    recipeParameters:
+    kind: "bicep"
+    location: "oci://ghcr.io/my-org/recipes/core/aci-container:1.2.0"
+    parameters:
       cpu: "1.0"
       memoryInGB: "2.0"
       environmentVariables:
@@ -112,14 +112,14 @@ recipes:
       # Optional: allow platform-specific options like containerGroupProfile for ACI
       allowPlatformOptions: true
   - resourceType: "Radius.Compute/gateways@2025-05-01-preview"
-    recipeKind: "bicep"
-    recipeLocation: "oci://ghcr.io/my-org/recipes/core/aci-gateway:1.1.0"
-    recipeParameters:
+    kind: "bicep"
+    location: "oci://ghcr.io/my-org/recipes/core/aci-gateway:1.1.0"
+    parameters:
       sku: "Standard_v2"
   - resourceType: "Radius.Security/secrets@2025-05-01-preview"
-    recipeKind: "bicep"
-    recipeLocation: "oci://ghcr.io/my-org/recipes/azure/keyvault-secretstore:1.0.0"
-    recipeParameters:
+    kind: "bicep"
+    location: "oci://ghcr.io/my-org/recipes/azure/keyvault-secretstore:1.0.0"
+    parameters:
       skuName: "premium"
 ```
 
@@ -197,19 +197,19 @@ recipes: Record<RecipeDefinition>;
 @doc("Recipe definition for a specific resource type") 
 model RecipeDefinition { 
 @doc("The type of recipe (e.g., terraform, bicep)") 
-recipeKind: RecipeKind; 
+kind: RecipeKind; 
 
 @doc("Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)")
 plainHttp?: boolean;
 
 @doc("URL or path to the recipe source") 
-recipeLocation: string; 
+location: string; 
 
 @doc("recipe digest in the format algorithm:digest_value") 
 recipeDigest?: string; 
 
 @doc("Parameters to pass to the recipe")
-recipeParameters?: Record<unknown>; 
+parameters?: Record<unknown>; 
 } 
 
 @doc("The type of recipe") 
@@ -278,21 +278,21 @@ resource computeRecipePack 'Radius.Core/recipePacks@2026-01-01-preview' = {
   properties: {
     recipes: { 
       'Radius.Compute/containers': {
-        recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
+        kind: 'terraform'
+        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
         recipeDigest: 'sha256:4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5'
-        recipeParameters: {
+        parameters: {
           allowPlatformOptions: true
           anIntegerParam: 1
         }
       }
       'Radius.Security/secrets': {
-        recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
+        kind: 'terraform'
+        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
       }
       'Radius.Storage/volumes': {
-        recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/storage/volumes/kubernetes?ref=v0.48'
+        kind: 'terraform'
+        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/storage/volumes/kubernetes?ref=v0.48'
       }
     }
   }
@@ -325,17 +325,17 @@ curl -X PUT \
         "description": "Test recipe pack with sample recipes",
         "recipes": {
           "Applications.Datastores/sqlDatabases": {
-            "recipeKind": "terraform",
-            "recipeLocation": "https://github.com/example/recipes/sql-database",
-            "recipeParameters": {
+            "kind": "terraform",
+            "location": "https://github.com/example/recipes/sql-database",
+            "parameters": {
               "size": "small",
               "backup": false
             }
           },
           "Applications.Datastores/redisCaches": {
-            "recipeKind": "bicep",
-            "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep",
-            "recipeParameters": {
+            "kind": "bicep",
+            "location": "https://github.com/example/recipes/redis-cache.bicep",
+            "parameters": {
               "tier": "basic"
             }
           }
@@ -356,19 +356,19 @@ CREATE response:
     "provisioningState": "Succeeded",
     "recipes": {
       "Applications.Datastores/redisCaches": {
-        "recipeParameters": {
+        "parameters": {
           "tier": "basic"
         },
-        "recipeKind": "bicep",
-        "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep"
+        "kind": "bicep",
+        "location": "https://github.com/example/recipes/redis-cache.bicep"
       },
       "Applications.Datastores/sqlDatabases": {
-        "recipeParameters": {
+        "parameters": {
           "backup": false,
           "size": "small"
         },
-        "recipeKind": "terraform",
-        "recipeLocation": "https://github.com/example/recipes/sql-database"
+        "kind": "terraform",
+        "location": "https://github.com/example/recipes/sql-database"
       }
     }
   },
@@ -405,19 +405,19 @@ READ response:
     "provisioningState": "Succeeded",
     "recipes": {
       "Applications.Datastores/redisCaches": {
-        "recipeParameters": {
+        "parameters": {
           "tier": "basic"
         },
-        "recipeKind": "bicep",
-        "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep"
+        "kind": "bicep",
+        "location": "https://github.com/example/recipes/redis-cache.bicep"
       },
       "Applications.Datastores/sqlDatabases": {
-        "recipeParameters": {
+        "parameters": {
           "backup": false,
           "size": "small"
         },
-        "recipeKind": "terraform",
-        "recipeLocation": "https://github.com/example/recipes/sql-database"
+        "kind": "terraform",
+        "location": "https://github.com/example/recipes/sql-database"
       }
     }
   },
@@ -524,19 +524,19 @@ resource computeRecipePack 'Radius.Core/recipePacks@2025-05-01-preview' = {
   properties: {
     recipes: {
       'Radius.Compute/containers': {
-        recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
-        recipeParameters: {
+        kind: 'terraform'
+        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/compute/containers/kubernetes?ref=v0.48'
+        parameters: {
           allowPlatformOptions: true
         }
       }
       'Radius.Security/secrets': {
-        recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
+        kind: 'terraform'
+        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/security/secrets/kubernetes?ref=v0.48'
       }
       'Radius.Storage/volumes': {
-        recipeKind: 'terraform'
-        recipeLocation: 'https://github.com/project-radius/resource-types-contrib.git//recipes/storage/volumes/kubernetes?ref=v0.48'
+        kind: 'terraform'
+        location: 'https://github.com/project-radius/resource-types-contrib.git//recipes/storage/volumes/kubernetes?ref=v0.48'
       }
     }
   }
