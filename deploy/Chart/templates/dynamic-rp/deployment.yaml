@@ -131,9 +131,25 @@ spec:
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
-          cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
-          chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          
+          # Radius's terraform installer (pkg/recipes/terraform/install.go)
+          # looks for a pre-mounted binary at
+          # `<terraform.path>/.terraform-global/terraform` with a
+          # marker file `.terraform-ready` in the same dir. If those
+          # aren't found it silently downloads "latest" from
+          # HashiCorp. Place the binary + marker exactly where Radius
+          # expects so a pinned version (e.g. via downloadUrl) is
+          # actually used.
+          GLOBAL_DIR="{{ .Values.dynamicrp.terraform.path }}/.terraform-global"
+          mkdir -p "$GLOBAL_DIR"
+          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
+          touch "$GLOBAL_DIR/.terraform-ready"
+
+          # Also keep a copy at the legacy path for any out-of-tree
+          # tooling that still expects it there.
+          cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform"
+          chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform"
+
           # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.dynamicrp.terraform.path }}/.terraform-source"
           
