@@ -68,6 +68,12 @@ Fixes: #<issue>
 
 We **squash** pull-requests as part of the merge process, which means that intermediate commits will have their messages appended. We prefer to have a single commit in the git history for each PR.
 
+## Signing your commits
+
+We strongly encourage all contributors to **cryptographically sign their commits** so that they show as **Verified** on GitHub. This is separate from the DCO `Signed-off-by` line in the commit message — signing cryptographically proves the commit was authored by you.
+
+See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for setup steps and links to the GitHub documentation.
+
 ## Automated tests
 
 Our GitHub Actions workflows will run against your pull request to validate the changes. This will run the unit tests, integration tests, and functional tests.
