@@ -163,27 +163,98 @@ Developers can override per-resource by setting `properties.tag`.
 
 ### Recipe registration
 
-The platform engineer registers the recipe once per environment,
-supplying the registry **base** (registry host plus an optional
-namespace/org segment) and credentials as recipe parameters:
+Recipes are packaged into a **recipe pack** and the pack is
+registered into the environment. The platform engineer:
 
-```sh
-rad recipe register default \
-  --resource-type Radius.Compute/containerImages \
-  --template-kind terraform \
-  --template-path git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform \
-  --parameters registry=ghcr.io/alice \
-  --parameters registry_username=alice \
-  --parameters registry_token=<PAT>
+1. Creates a `Radius.Core/secrets` resource holding the registry
+   credentials.
+2. Defines a `Radius.Core/recipePacks` resource that includes the
+   `Radius.Compute/containerImages` recipe and references the
+   secret and a `Radius.Core/terraformConfigurations` resource that
+   tells the Docker Terraform provider how to authenticate.
+3. References the recipe pack from the
+   `Radius.Core/environments` resource.
+
+```bicep
+resource registryCreds 'Radius.Core/secrets@2025-08-01-preview' = {
+  name: 'registry-creds'
+  properties: {
+    type: 'generic'
+    data: {
+      username: { value: 'alice' }
+      password: { value: '<PAT>' }
+    }
+  }
+}
+
+resource tfConfig 'Radius.Core/terraformConfigurations@2025-08-01-preview' = {
+  name: 'docker-tf-config'
+  properties: {
+    providerConfigurations: {
+      docker: {
+        registryAuth: {
+          address: 'ghcr.io'
+          secret: registryCreds.id
+        }
+      }
+    }
+  }
+}
+
+resource imagesPack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'container-images-pack'
+  properties: {
+    recipes: {
+      'Radius.Compute/containerImages': {
+        templateKind: 'terraform'
+        templatePath: 'git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform'
+        parameters: {
+          registry: 'ghcr.io/alice'
+        }
+        terraformConfiguration: tfConfig.id
+      }
+    }
+  }
+}
+
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'dev'
+  properties: {
+    recipePacks: [ imagesPack.id ]
+    // ...
+  }
+}
 ```
 
-The `registry` parameter is the prefix; the resource name supplies
-the final path segment. Different environments can register the
-same recipe against different registries (dev → `ghcr.io/alice`,
-staging → `myorg.azurecr.io/staging`, prod → `myorg.azurecr.io/prod`)
-without any change to the developer's Bicep.
+Key points:
 
-Developers do not see or manage credentials.
+* The **`registry`** recipe parameter is the full prefix
+  (registry host plus optional namespace/org), and the resource
+  name supplies the final path segment. Different environments
+  reference different recipe packs that point at different
+  registries (dev → `ghcr.io/alice`, staging →
+  `myorg.azurecr.io/staging`, prod → `myorg.azurecr.io/prod`)
+  without any change to the developer's Bicep.
+* **Credentials are never recipe parameters.** They live in a
+  `Radius.Core/secrets` resource and are wired into the recipe via
+  a `Radius.Core/terraformConfigurations` resource that the
+  Terraform Docker provider consumes. This matches how other
+  resource types that talk to authenticated services (Postgres,
+  MySQL, containers) reference secrets, and lets operators rotate
+  credentials without re-publishing the recipe pack.
+* Developers do not see or manage credentials, the registry, or
+  the recipe pack.
+
+### Bring-your-own published image
+
+If a user already builds and publishes their image out-of-band
+(local `docker build && docker push`, CI pipeline, GitOps), they
+do not need `Radius.Compute/containerImages` at all. They simply
+reference the published image directly from a
+`Radius.Compute/containers` resource exactly as they do today.
+This pre-existing workflow is unchanged and remains supported;
+`containerImages` is purely additive for users who want the build
+to be part of the application graph.
 
 ### Sample output
 
@@ -199,18 +270,30 @@ the next reconciliation.
 A `Radius.Compute/containerImages` resource is reconciled by
 dynamic-rp like any other recipe-backed resource type. The recipe is
 written in Terraform.
-What makes this resource type different from existing recipes is
-that the Docker provider needs a build endpoint to talk to. To
-provide one without depending on the host (which is unreachable on
-managed Kubernetes), Radius runs **rootless BuildKit as a sidecar
-container in the dynamic-rp Pod** and exposes its unix socket to
-recipe execution via a shared volume.
+
+A core design principle in Radius is that adding a new resource
+type should not require special-casing inside dynamic-rp — recipes
+are the extensibility point. This resource type is the first
+exception we are knowingly introducing. The Terraform Docker
+provider needs a build endpoint to talk to, and on managed
+Kubernetes the host's Docker socket is unreachable. To give the
+provider a reliable endpoint without depending on the host, Radius
+runs **rootless BuildKit as a sidecar container in the dynamic-rp
+Pod** and exposes its unix socket to recipe execution via a shared
+volume. That sidecar — and the `DOCKER_HOST` environment variable
+plumbing that points the recipe at it — is the special case.
+
+This is also why the section below revisits whether the
+implementation should remain a Terraform recipe at all (see
+[Implementation choice: recipe vs. built-in provider](#implementation-choice-recipe-vs-built-in-provider)).
 
 1. **Resource type schema** (`containerImages.yaml`):
    defines the user-facing API.
 2. **Terraform recipe** (`recipes/kubernetes/terraform/`):
    takes the resource's properties, calls the Docker provider
-   against the local BuildKit endpoint, builds, and pushes.
+   against the local BuildKit endpoint, builds, and pushes. See
+   [Implementation choice: recipe vs. built-in provider](#implementation-choice-recipe-vs-built-in-provider)
+   for the rationale and the open question on this choice.
 3. **dynamic-rp Helm chart** (`deploy/Chart`):
    adds the buildkitd sidecar and the shared socket volume so the
    recipe has something to talk to.
@@ -255,8 +338,8 @@ Properties:
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `environment` | string | yes | The Radius Environment ID. |
-| `application` | string | yes | The Radius Application ID. |
+| `environment` | string | no | The Radius Environment ID. Optional so a single built image can be shared across environments. |
+| `application` | string | no | The Radius Application ID. Optional so a single built image can be shared across applications. |
 | `tag` | string | no | Tag for the produced image. Defaults to a content-addressable digest computed from the build inputs (see [Tag strategy](#tag-strategy)). |
 | `build.context` | string | yes | Source location. Either a git URL (`git::https://…`) or — for local development workflows — a path that the rad CLI uploads as a tarball. See [Local development workflow](#local-development-workflow). |
 | `build.dockerfile` | string | no | Path to the Dockerfile relative to the context. Defaults to `Dockerfile`. |
@@ -306,30 +389,29 @@ and is intentionally small. Its contract:
   variable, which dynamic-rp sets to
   `unix:///run/buildkit/buildkit.sock` for recipe execution. The
   recipe itself does not encode the endpoint.
-* **Authentication**: reads `~/.docker/config.json` from the
-  recipe-runner filesystem. The dynamic-rp Pod mounts a Secret
-  containing the credentials configured by the platform engineer at
-  recipe-registration time.
-* **Recipe parameters** (set by the platform engineer at
-  registration time): `registry` (e.g. `ghcr.io/alice`),
-  `registry_username`, `registry_token`.
+* **Authentication**: the platform engineer supplies registry
+  credentials via a `Radius.Core/secrets` resource referenced
+  from a `Radius.Core/terraformConfigurations` resource (see
+  [Recipe registration](#recipe-registration)). The Terraform
+  Docker provider's `registry_auth` block is populated from that
+  configuration at recipe-execution time. The recipe itself takes
+  no credential parameters.
+* **Recipe parameters**: only `registry` (e.g. `ghcr.io/alice`).
+  Credentials and the Docker provider endpoint are wired in by
+  the platform engineer's recipe pack and Terraform configuration,
+  not by the recipe author.
 
 Sketch of the resources the recipe declares:
 
 ```hcl
 provider "docker" {
-  registry_auth {
-    address     = local.registry_host
-    config_file = pathexpand("~/.docker/config.json")
-  }
+  # registry_auth is supplied by the Radius.Core/terraformConfigurations
+  # resource referenced from the recipe pack; no credentials in this file.
 }
 
 locals {
   resource_name = var.context.resource.name
-  registry      = coalesce(
-    try(var.context.resource.properties.registry, null),
-    var.registry,
-  )
+  registry      = var.registry
   registry_host = regex("^[^/]+", local.registry)
 
   context_sha   = sha256(...)             # over context + dockerfile + platforms
@@ -384,8 +466,21 @@ containers:
   directory (mounted to satisfy upstream's documented requirement
   on Container-Optimized OS).
 
-The dynamic-rp container also mounts a Secret-backed volume at
-`/home/dynamicrp/.docker` containing `config.json`.
+The dynamic-rp container does **not** mount a Docker
+`config.json`. Registry credentials reach the Terraform Docker
+provider through the `Radius.Core/secrets` +
+`Radius.Core/terraformConfigurations` resources referenced from
+the recipe pack (see [Recipe registration](#recipe-registration)),
+not through a chart-level Secret mount.
+
+The sidecar is enabled by default. Operators who never use
+`Radius.Compute/containerImages` can opt out by setting
+`dynamicrp.buildkit.enabled=false` at install time, in which case
+the sidecar, the shared volumes, and the `DOCKER_HOST` env var are
+all omitted and any attempt to deploy a `containerImages` resource
+fails fast with a clear error. Default-on matches the principle
+that core resource types should work out of the box; the opt-out
+exists for operators who care about the ~50 MiB idle footprint.
 
 **3. Pod security profile.** Selected by the Helm value
 `dynamicrp.buildkit.psaMode`, with two settings sharing the same
@@ -407,6 +502,36 @@ The chart includes a Helm `NOTES.txt` preflight that surfaces a
 clear message ("Kubernetes ≥ 1.30 with UserNamespacesSupport
 required; rerun with `--set dynamicrp.buildkit.psaMode=baseline`")
 if `restricted` is selected on an incompatible cluster.
+
+#### Implementation choice: recipe vs. built-in provider
+
+The design above implements `Radius.Compute/containerImages` as a
+Terraform recipe. There is a viable alternative: implement the
+build path as a **built-in resource provider** inside dynamic-rp,
+calling BuildKit's gRPC API directly from Go.
+
+| | Terraform recipe (proposed) | Built-in provider (alternative) |
+|---|---|---|
+| Build invocation | Terraform Docker provider → BuildKit gRPC | Go BuildKit client → BuildKit gRPC |
+| Auth wiring | `Radius.Core/secrets` + `terraformConfigurations` consumed by the provider | Same `Radius.Core/secrets`, consumed directly by dynamic-rp |
+| Customization | Operators can swap in their own Terraform recipe (different tag scheme, additional provenance, signing, etc.) | Behavior is fixed by dynamic-rp; customization requires a code change |
+| Failure modes | Inherits everything Terraform brings (state, lockfiles, provider version drift) | Fewer moving parts, no Terraform state for an action that has no resources to track |
+| Consistency with rest of Radius | Matches every other resource type | This type is already a special case (BuildKit sidecar); a built-in provider would not break a pattern this resource type doesn't fit |
+
+The author's current lean is **toward the built-in provider**.
+Building and pushing an image is an action, not a resource with
+state; Terraform is solving a problem this recipe doesn't really
+have, and the special-casing in dynamic-rp (the BuildKit sidecar
+and `DOCKER_HOST` plumbing) already breaks the "no special cases"
+property a recipe is supposed to give us. Operators who want to
+customize the build path are better served by recipe parameters
+or follow-up resource types than by replacing the recipe wholesale.
+
+This is called out as an **open question** below — the design
+review should pick one direction. The user-facing schema, the
+recipe-pack registration flow, and the BuildKit sidecar are the
+same either way; only the box in the architecture diagram labelled
+"recipe execution" changes.
 
 #### Multi-architecture builds
 
@@ -579,15 +704,17 @@ cluster like any other container.
   fast with a clear message if `restricted` is selected on an
   incompatible cluster.
 * **Idle resource cost.** The buildkitd sidecar adds ~50 MiB
-  resident memory to every dynamic-rp Pod, whether
-  `containerImages` is used or not.
+  resident memory to every dynamic-rp Pod. It is on by default;
+  operators who never use `containerImages` can opt out via
+  `dynamicrp.buildkit.enabled=false`.
 * **Dockerfiles must be cross-compile-friendly for multi-arch.**
   Multi-architecture builds rely on `BUILDPLATFORM` /
   `TARGETPLATFORM`. Dockerfiles that execute target-arch binaries
   during the build won't work multi-arch under this design and will
   fail at build time with a clear error.
 * **Credential bootstrap.** The recipe needs registry credentials
-  delivered into the Pod via a Kubernetes Secret. Defining the
+  delivered through `Radius.Core/secrets` and a
+  `Radius.Core/terraformConfigurations` resource. Defining the
   secret-management UX is a separate workstream.
 * **Local-context upload size.** The CLI tarball-upload path
   (Option 2 in [Local development workflow](#local-development-workflow))
@@ -599,9 +726,10 @@ cluster like any other container.
 
 | Component | Repo | Change |
 |---|---|---|
-| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. |
-| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe targets the BuildKit unix socket via `DOCKER_HOST`; composes image ref from `registry`, resource name, and content-hash tag. |
-| dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar, `emptyDir` volumes for socket and BuildKit state, Secret-backed credentials volume, `dynamicrp.buildkit.psaMode` value, NOTES.txt preflight. |
+| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. `environment` and `application` are optional. |
+| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe targets the BuildKit unix socket via `DOCKER_HOST`; takes a single `registry` parameter; composes image ref from `registry`, resource name, and content-hash tag. No credential parameters. |
+| Recipe pack + auth wiring | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` + `Radius.Core/secrets` + `Radius.Core/terraformConfigurations` registration flow that delivers registry credentials to the Docker provider. |
+| dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`), `emptyDir` volumes for socket and BuildKit state, `dynamicrp.buildkit.psaMode` value, NOTES.txt preflight. No Docker `config.json` Secret mount. |
 | dynamic-rp recipe runner | `radius-project/radius` | Set `DOCKER_HOST=unix:///run/buildkit/buildkit.sock` in the recipe-execution environment. No Go code changes beyond environment plumbing. |
 | dynamic-rp context-upload endpoint | `radius-project/radius` | New endpoint accepting tarball uploads from the rad CLI; staged in an emptyDir for the recipe to consume. (Local development workflow, Option 2a.) |
 | `rad` CLI local-context detection | `radius-project/radius` | When `build.context` is a local path, tar with `.dockerignore` honored and POST to dynamic-rp before recipe execution. |
@@ -637,9 +765,11 @@ cluster like any other container.
   `baseline` (most clusters' default). Operators that enforce
   `restricted` cluster-wide must either be on K8s 1.30+ (use
   default mode) or namespace-exempt the dynamic-rp install.
-* Registry credentials live in a Kubernetes Secret in the
-  dynamic-rp namespace and are mounted into the sidecar. They are
-  not visible to recipes from other resource types.
+* Registry credentials live in a `Radius.Core/secrets` resource
+  in the dynamic-rp namespace and are wired into the Terraform
+  Docker provider via a `Radius.Core/terraformConfigurations`
+  resource. They are not exposed as recipe parameters and are not
+  visible to recipes from other resource types.
 * The BuildKit socket is on an `emptyDir` shared between the two
   containers in the same Pod. It is not exposed outside the Pod.
 * Build outputs are streamed directly to the user's registry; the
@@ -670,9 +800,10 @@ cluster like any other container.
 
 | Workstream | Repo | Notes |
 |---|---|---|
-| Resource type schema | resource-types-contrib | New `containerImages.yaml` with `tag` optional, `registry` optional override, no `image` field. |
-| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource>:<tag>`, content-hash tag default, talks to BuildKit unix socket via `DOCKER_HOST`. |
-| Helm chart sidecar | radius | Add buildkitd container, emptyDir volumes, Secret mount, `psaMode` value with `restricted` and `baseline` templates, NOTES.txt preflight. |
+| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `tag` optional, `environment` and `application` optional, no per-resource `registry` override, no `image` field. |
+| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource>:<tag>`, content-hash tag default, talks to BuildKit unix socket via `DOCKER_HOST`, takes only the `registry` parameter. |
+| Sample recipe pack + auth wiring | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` + `Radius.Core/secrets` + `Radius.Core/terraformConfigurations` showing how to register the recipe and deliver registry credentials to the Docker provider. |
+| Helm chart sidecar | radius | Add buildkitd container, emptyDir volumes, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, NOTES.txt preflight. No Docker `config.json` Secret mount. |
 | Recipe-runner env plumbing | radius | Set `DOCKER_HOST` for the recipe execution. |
 | Local-context upload (CLI ↔ dynamic-rp) | radius | rad CLI tarballs local `build.context`, POSTs to dynamic-rp; dynamic-rp stages for the recipe. (Local development workflow Option 2a.) |
 | End-to-end test for Docker provider ↔ rootless BuildKit | radius | Highest-risk unknown. Validate before merging the chart change. |
@@ -704,8 +835,9 @@ cluster like any other container.
    HTTP). Not sure if this is actually possible or recommended.
 5. **Idle sidecar cost.** ~50 MiB resident memory is paid by every
    dynamic-rp Pod, including those that never build images.
-   Acceptable, or should the sidecar be conditional on operator
-   opt-in?
+   Resolved: the sidecar is **default-on** with an
+   opt-out Helm value (`dynamicrp.buildkit.enabled=false`) for
+   operators who want the smaller footprint.
 6. **Docker provider ↔ rootless BuildKit compatibility.** Verified
    by source inspection but not end-to-end. Highest-risk unknown.
 7. **Non-cross-compile Dockerfile support.** When does that become
@@ -713,6 +845,13 @@ cluster like any other container.
 8. **Deprecation schedule for `baseline` mode.** Worth setting an
    expectation now (e.g., when 1.30 reaches end-of-support across
    major managed K8s)?
+9. **Recipe vs. built-in resource provider.** See
+   [Implementation choice: recipe vs. built-in provider](#implementation-choice-recipe-vs-built-in-provider).
+   Building and pushing an image is an action without persistent
+   state, and dynamic-rp is already special-cased to host the
+   BuildKit sidecar — so the usual "recipe = no special-casing"
+   benefit doesn't apply here. The author leans toward a built-in
+   provider; design review should pick a direction.
 
 ## Alternatives considered
 
