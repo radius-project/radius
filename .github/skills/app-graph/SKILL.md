@@ -15,8 +15,11 @@ description: >
 Use this skill to render an interactive application graph from a Radius
 `app.bicep` file. The skill compiles the Bicep, invokes `rad graph build`,
 and produces a single self-contained `app-graph.html` whose renderer is
-ported verbatim from `radius-project/github-extension`
-(`src/content/graph-renderer.ts` + `src/content/graph-navigation.ts`).
+ported from `radius-project/github-extension`
+(`src/content/graph-renderer.ts` + `src/content/graph-navigation.ts`),
+plus additive interactive controls (hover tooltip, neighbor highlight,
+search box, fit/zoom/reset, clickable legend type-toggle, minimap). See
+[rendering.md](references/rendering.md#interactive-controls-additive).
 
 ## Output Format
 

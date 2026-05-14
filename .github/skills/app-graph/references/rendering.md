@@ -11,6 +11,8 @@ The template loads from CDN:
 - `cytoscape` v3 (`https://unpkg.com/cytoscape@3/dist/cytoscape.min.js`)
 - `cytoscape-dagre` (`https://unpkg.com/cytoscape-dagre@2/cytoscape-dagre.js`)
 - `dagre` (peer dep of cytoscape-dagre, also from unpkg)
+- `cytoscape-navigator` v1.4 (powers the optional minimap — additive
+  feature, see [interactive controls](#interactive-controls-additive))
 
 ## Layout
 
@@ -143,3 +145,40 @@ Cytoscape's container-walking handler does not intercept link clicks.
 ## Tap-on-background closes popup
 
 `cy.on('tap', e => { if (e.target === cy) closeGraphPopup(); })`.
+
+## Interactive controls (additive)
+
+These features go beyond the extension's built-in renderer. They are
+opt-in via DOM interaction only — no programmatic API change is needed
+in the artifact. None of them touch the diff color tables, the dagre
+layout, or the edge construction rule. Implementation lives entirely in
+`template/app-graph.html.tmpl`.
+
+| Feature              | UI surface                  | Cytoscape primitive                                             |
+| -------------------- | --------------------------- | --------------------------------------------------------------- |
+| Hover tooltip        | `#hover-tip` floating div   | `cy.on('mouseover'/'mouseout'/'mousemove', 'node', ...)`        |
+| Neighbor highlight   | `.faded` cytoscape class    | `node.closedNeighborhood()` + `cy.elements().difference(...)`   |
+| Search filter        | `#search` input             | `node.toggleClass('filtered-out', ...)` on input event          |
+| Legend type toggle   | `.radius-graph-legend-item` | Same `filtered-out` class — both filters compose via `OR`       |
+| Fit / Zoom / Reset   | `#controls` button group    | `cy.fit(...)`, `cy.zoom(...)`                                   |
+| Minimap              | `#minimap` div              | `cy.navigator({...})` from `cytoscape-navigator@1.4`            |
+
+### Visibility model
+
+Two filter sources — search and legend toggle — share a single
+`filtered-out` class on each node. An edge is `filtered-out` iff either
+endpoint is. Hovered-node neighbor highlighting uses a separate `faded`
+class on non-neighbors so the two effects compose without interfering.
+
+### Reset
+
+The Reset button (`⟲`) clears `#search`, clears all type toggles, and
+calls `cy.fit(cy.elements(), 48)`. It does NOT close any open popup —
+ESC or outside click handles that.
+
+### Failure modes
+
+If `cytoscape-navigator` fails to load (offline mirror, blocked CDN),
+the script falls back to `display: none` on `#minimap` so the canvas
+still works. The hover/search/controls/legend features depend only on
+`cytoscape` + `cytoscape-dagre`, which the renderer requires anyway.

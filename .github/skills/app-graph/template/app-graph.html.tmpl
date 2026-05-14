@@ -132,22 +132,130 @@
     border-radius: 4px;
   }
   .radius-graph-popup-close:hover { background: var(--bg-subtle); color: var(--fg); }
+
+  /* Search box in the header */
+  #search {
+    font: 13px/1.45 inherit;
+    color: var(--fg);
+    background: var(--bg-canvas);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    width: 220px;
+    min-width: 140px;
+  }
+  #search:focus {
+    outline: none;
+    border-color: var(--link);
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.25);
+  }
+
+  /* Floating controls panel (bottom-right of canvas) */
+  #controls {
+    position: absolute;
+    z-index: 5;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: var(--shadow);
+  }
+  #controls button {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 0;
+    color: var(--fg);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 0;
+  }
+  #controls button:hover  { background: var(--bg-subtle); }
+  #controls button:active { background: #e7eaee; }
+
+  /* Minimap (cytoscape-navigator anchors itself inside this div) */
+  #minimap {
+    position: absolute;
+    z-index: 5;
+    left: 12px;
+    bottom: 12px;
+    width: 180px;
+    height: 130px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  #minimap canvas { display: block; }
+
+  /* Hover tooltip — follows the cursor; clears on mouseout. */
+  #hover-tip {
+    position: absolute;
+    z-index: 8;
+    pointer-events: none;
+    max-width: 260px;
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--fg);
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    transform: translate(12px, 12px);
+  }
+  #hover-tip[hidden] { display: none; }
+  #hover-tip .ht-name { font-weight: 600; }
+  #hover-tip .ht-type { color: var(--fg-muted); margin-top: 2px; word-break: break-word; }
+
+  /* Legend swatches double as click-to-toggle filters */
+  .radius-graph-legend-item {
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .radius-graph-legend-item:hover { background: var(--bg-subtle); }
+  .radius-graph-legend-item.is-off { opacity: 0.45; }
+  .radius-graph-legend-item.is-off .radius-graph-legend-label { text-decoration: line-through; }
 </style>
 </head>
 <body>
 <header>
   <h1>Radius application graph</h1>
   <span class="meta" id="meta"></span>
+  <input id="search" type="search" placeholder="Search resources..." autocomplete="off" spellcheck="false" />
   <span style="flex:1"></span>
-  <span class="radius-graph-legend" id="legend"></span>
+  <span class="radius-graph-legend" id="legend" aria-label="Resource type filters"></span>
 </header>
 <main>
   <div id="graph"></div>
+  <div id="controls" aria-label="Graph controls">
+    <button type="button" id="ctl-fit"      title="Fit to view"  aria-label="Fit to view">⤢</button>
+    <button type="button" id="ctl-zoom-in"  title="Zoom in"      aria-label="Zoom in">＋</button>
+    <button type="button" id="ctl-zoom-out" title="Zoom out"     aria-label="Zoom out">－</button>
+    <button type="button" id="ctl-reset"    title="Reset"        aria-label="Reset view">⟲</button>
+  </div>
+  <div id="minimap" aria-label="Minimap"></div>
+  <div id="hover-tip" role="tooltip" hidden></div>
 </main>
 
 <script src="https://unpkg.com/cytoscape@3/dist/cytoscape.min.js"></script>
 <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
 <script src="https://unpkg.com/cytoscape-dagre@2/cytoscape-dagre.js"></script>
+<!-- cytoscape-navigator powers the minimap (additive feature; the
+     extension itself does not include it, but we keep the same
+     cytoscape + dagre core so the renderer behavior stays in lockstep). -->
+<link rel="stylesheet" href="https://unpkg.com/cytoscape-navigator@1.4.0/cytoscape.js-navigator.css" />
+<script src="https://unpkg.com/cytoscape-navigator@1.4.0/cytoscape-navigator.js"></script>
 
 <script>
 // === Embedded artifact (substituted by the skill) =========================
@@ -219,10 +327,15 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     (sourceFile ? ` — ${sourceFile}` : '') +
     (generatedAt ? ` — ${generatedAt}` : '');
 
-  // ----- Build legend (one swatch per resource type present) -----
+  // ----- Build legend (one swatch per resource type present).
+  //       Each entry is also a clickable filter that toggles all
+  //       resources of that type. State lives in `typesHidden`. -----
   const legend = document.getElementById('legend');
+  const typesHidden = new Set();
+  const legendButtonsByType = new Map();
   function renderTypeLegend(types) {
     legend.replaceChildren();
+    legendButtonsByType.clear();
     const seen = new Set();
     const ordered = types.filter(t => {
       if (seen.has(t)) return false;
@@ -231,19 +344,35 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     }).sort();
     for (const type of ordered) {
       const s = styleForType(type);
-      const el = document.createElement('span');
+      const el = document.createElement('button');
+      el.type = 'button';
       el.className = 'radius-graph-legend-item';
-      el.title = type;
+      el.title = `${type} — click to toggle`;
+      el.setAttribute('aria-pressed', 'true');
       const swatch = document.createElement('span');
       swatch.className = 'radius-graph-legend-swatch';
       swatch.style.background = s.bg;
       swatch.style.borderColor = s.border;
       swatch.textContent = s.icon;
       const text = document.createElement('span');
+      text.className = 'radius-graph-legend-label';
       text.textContent = s.label;
       el.appendChild(swatch);
       el.appendChild(text);
+      el.addEventListener('click', () => {
+        if (typesHidden.has(type)) {
+          typesHidden.delete(type);
+          el.classList.remove('is-off');
+          el.setAttribute('aria-pressed', 'true');
+        } else {
+          typesHidden.add(type);
+          el.classList.add('is-off');
+          el.setAttribute('aria-pressed', 'false');
+        }
+        applyVisibility();
+      });
       legend.appendChild(el);
+      legendButtonsByType.set(type, el);
     }
   }
   renderTypeLegend(resources.map(r => r.type));
@@ -344,6 +473,16 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
         selector: 'node:active',
         style: { 'overlay-opacity': 0.1 },
       },
+      // Hover-driven dimming: applied to nodes/edges outside the hovered
+      // neighborhood so the focused subgraph stays bright.
+      { selector: 'node.faded', style: { opacity: 0.18, 'text-opacity': 0.4 } },
+      { selector: 'edge.faded', style: { opacity: 0.12 } },
+      // Search miss / legend toggle off: stronger fade and ignore mouse.
+      // Listed after `.faded` so it wins when both apply.
+      { selector: 'node.filtered-out', style: { opacity: 0.07, 'text-opacity': 0.15, events: 'no' } },
+      { selector: 'edge.filtered-out', style: { opacity: 0.05, events: 'no' } },
+      // Neighbor of a hovered node — slight border emphasis.
+      { selector: 'node.is-hovered', style: { 'border-width': 4 } },
     ],
     userZoomingEnabled: true,
     userPanningEnabled: true,
@@ -363,6 +502,175 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     requestAnimationFrame(fitGraph);
   });
   window.addEventListener('resize', fitGraph);
+
+  // ============================================================
+  //  Interactive features (additive — not in the extension's
+  //  built-in renderer, but use the same Cytoscape APIs).
+  // ============================================================
+
+  // --- Visibility model -------------------------------------------------
+  //
+  // Two independent filters dim nodes & their connected edges:
+  //   1. Legend type toggles (`typesHidden`)
+  //   2. Search box substring match (`searchQuery`)
+  //
+  // A node is "filtered-out" iff its type is hidden OR a non-empty
+  // search query doesn't match. Edges are filtered-out iff either
+  // endpoint is filtered-out.
+  let searchQuery = '';
+
+  function nodeMatchesSearch(node) {
+    if (!searchQuery) return true;
+    const q = searchQuery;
+    const id = (node.data('resourceId') || '').toLowerCase();
+    const t  = (node.data('resourceType') || '').toLowerCase();
+    const r  = resources.find(x => x.id === node.data('resourceId'));
+    const name = (r && r.name || '').toLowerCase();
+    return name.includes(q) || t.includes(q) || id.includes(q);
+  }
+
+  function applyVisibility() {
+    cy.batch(() => {
+      cy.nodes().forEach(n => {
+        const typeHidden = typesHidden.has(n.data('resourceType'));
+        const searchMiss = !nodeMatchesSearch(n);
+        n.toggleClass('filtered-out', typeHidden || searchMiss);
+      });
+      cy.edges().forEach(e => {
+        const src = e.source();
+        const tgt = e.target();
+        const outA = src.hasClass('filtered-out');
+        const outB = tgt.hasClass('filtered-out');
+        e.toggleClass('filtered-out', outA || outB);
+      });
+    });
+  }
+
+  // --- Hover tooltip + neighbor highlight ------------------------------
+  const tip = document.getElementById('hover-tip');
+  const graphHost = document.getElementById('graph');
+
+  function showTip(node, evt) {
+    const r = resources.find(x => x.id === node.data('resourceId'));
+    if (!r) return;
+    const s = styleForType(r.type);
+    tip.innerHTML = '';
+    const name = document.createElement('div');
+    name.className = 'ht-name';
+    name.textContent = `${s.icon}  ${r.name}`;
+    const type = document.createElement('div');
+    type.className = 'ht-type';
+    type.textContent = r.type;
+    tip.appendChild(name);
+    tip.appendChild(type);
+    tip.hidden = false;
+    positionTip(evt);
+  }
+
+  function positionTip(evt) {
+    if (tip.hidden) return;
+    const rect = graphHost.getBoundingClientRect();
+    const oe = evt && evt.originalEvent;
+    let cx, cy_;
+    if (oe && typeof oe.clientX === 'number') {
+      cx = oe.clientX - rect.left;
+      cy_ = oe.clientY - rect.top;
+    } else {
+      const r = evt && evt.target && evt.target.renderedPosition && evt.target.renderedPosition();
+      if (!r) return;
+      cx = r.x; cy_ = r.y;
+    }
+    tip.style.left = `${cx}px`;
+    tip.style.top  = `${cy_}px`;
+  }
+
+  function clearHoverDim() {
+    cy.elements().removeClass('faded is-hovered');
+  }
+
+  cy.on('mouseover', 'node', (evt) => {
+    const node = evt.target;
+    if (node.hasClass('filtered-out')) return;
+    showTip(node, evt);
+    const nhood = node.closedNeighborhood();
+    cy.elements().difference(nhood).addClass('faded');
+    node.addClass('is-hovered');
+  });
+  cy.on('mousemove', 'node', positionTip);
+  cy.on('mouseout', 'node', () => {
+    tip.hidden = true;
+    clearHoverDim();
+  });
+  // Hide tooltip if the pointer leaves the canvas entirely.
+  graphHost.addEventListener('mouseleave', () => {
+    tip.hidden = true;
+    clearHoverDim();
+  });
+
+  // --- Search input -----------------------------------------------------
+  const searchEl = document.getElementById('search');
+  searchEl.addEventListener('input', () => {
+    searchQuery = searchEl.value.trim().toLowerCase();
+    applyVisibility();
+  });
+  // Escape clears the search box. (Popup's Escape handler also runs but
+  // is harmless — it just clears any open popup, which is typically what
+  // a user pressing Esc expects.)
+  searchEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && searchEl.value) {
+      e.stopPropagation();
+      searchEl.value = '';
+      searchQuery = '';
+      applyVisibility();
+    }
+  });
+
+  // --- Control buttons --------------------------------------------------
+  function zoomBy(factor) {
+    const z = cy.zoom() * factor;
+    const r = graphHost.getBoundingClientRect();
+    cy.zoom({ level: z, renderedPosition: { x: r.width / 2, y: r.height / 2 } });
+  }
+  document.getElementById('ctl-fit').addEventListener('click', () => {
+    cy.fit(cy.elements(), 48);
+  });
+  document.getElementById('ctl-zoom-in').addEventListener('click', () => zoomBy(1.2));
+  document.getElementById('ctl-zoom-out').addEventListener('click', () => zoomBy(1 / 1.2));
+  document.getElementById('ctl-reset').addEventListener('click', () => {
+    // Reset = clear search + un-hide all types + fit.
+    searchEl.value = '';
+    searchQuery = '';
+    typesHidden.clear();
+    for (const btn of legendButtonsByType.values()) {
+      btn.classList.remove('is-off');
+      btn.setAttribute('aria-pressed', 'true');
+    }
+    applyVisibility();
+    fitGraph();
+  });
+
+  // --- Minimap (cytoscape-navigator auto-registers in v1.4) ------------
+  if (typeof cy.navigator === 'function') {
+    try {
+      cy.navigator({
+        container: document.getElementById('minimap'),
+        viewLiveFramerate: 0,
+        thumbnailEventFramerate: 30,
+        dblClickDelay: 200,
+        removeCustomContainer: false,
+      });
+    } catch (err) {
+      // Plugin failure shouldn't break the main view.
+      console.warn('cytoscape-navigator init failed:', err);
+      const mm = document.getElementById('minimap');
+      if (mm) mm.style.display = 'none';
+    }
+  } else {
+    // Plugin script didn't load (offline mirror, blocked CDN, etc.).
+    const mm = document.getElementById('minimap');
+    if (mm) mm.style.display = 'none';
+  }
+
 
   // ----- Popup (verbatim from graph-navigation.ts, standalone variant) -----
   const container = document.getElementById('graph');
