@@ -17,6 +17,7 @@ limitations under the License.
 package server
 
 import (
+	resourcetypes "github.com/radius-project/resource-types-contrib"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -46,7 +47,7 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 		services = append(services, &traceservice.Service{Options: &options.Config.Tracing})
 	}
 
-	services = append(services, initializer.NewService(options, nil))
+	services = append(services, initializer.NewService(options, resourcetypes.DefaultManifests))
 
 	return &hosting.Host{
 		Services: services,
