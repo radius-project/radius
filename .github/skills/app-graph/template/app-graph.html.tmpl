@@ -51,7 +51,7 @@
     inset: 0;
   }
 
-  /* Diff legend */
+  /* Legend (resource types in single-graph mode, diff status in diff mode) */
   .radius-graph-legend {
     display: inline-flex;
     gap: 12px;
@@ -66,11 +66,15 @@
     color: var(--fg-muted);
   }
   .radius-graph-legend-swatch {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
     border: 2px solid;
+    font-size: 11px;
+    line-height: 1;
   }
   .radius-graph-legend-swatch--added    { background: #dafbe1; border-color: #1a7f37; }
   .radius-graph-legend-swatch--modified { background: #fff8c5; border-color: #9a6700; }
@@ -179,6 +183,33 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     unchanged: '#f6f8fa',
   };
 
+  // ----- Resource-type styles (icon + Primer color pair) -----
+  // Keyed by full Radius type. In single-graph (unchanged) mode the
+  // per-type fill/border replace the diff "unchanged" gray defaults; in
+  // diff mode the diff colors win so status remains the dominant signal.
+  const TYPE_STYLES = {
+    'Applications.Core/applications':       { icon: '📦', bg: '#ddf4ff', border: '#0969da', label: 'Application' },
+    'Radius.Compute/containers':            { icon: '🐳', bg: '#dbeefb', border: '#1f6feb', label: 'Container' },
+    'Radius.Compute/containerImages':       { icon: '🖼️', bg: '#fbefff', border: '#8250df', label: 'Container image' },
+    'Radius.Compute/gateways':              { icon: '🌐', bg: '#e6f4ff', border: '#218bff', label: 'Gateway' },
+    'Radius.Data/mySqlDatabases':           { icon: '🐬', bg: '#fff1e5', border: '#bc4c00', label: 'MySQL database' },
+    'Radius.Data/postgreSqlDatabases':      { icon: '🐘', bg: '#eaf4ff', border: '#0550ae', label: 'PostgreSQL database' },
+    'Radius.Data/mongoDatabases':           { icon: '🍃', bg: '#dafbe1', border: '#1a7f37', label: 'Mongo database' },
+    'Radius.Data/redisCaches':              { icon: '🧱', bg: '#ffebe9', border: '#cf222e', label: 'Redis cache' },
+    'Radius.Security/secrets':              { icon: '🔐', bg: '#fff8c5', border: '#9a6700', label: 'Secret' },
+  };
+  const DEFAULT_TYPE_STYLE = { icon: '📄', bg: '#f6f8fa', border: '#57606a', label: 'Resource' };
+
+  function styleForType(type) {
+    if (type && TYPE_STYLES[type]) return TYPE_STYLES[type];
+    // Group fallbacks by provider prefix so unknown subtypes still look right.
+    if (type && type.startsWith('Radius.Compute/'))  return { icon: '⚙️', bg: '#dbeefb', border: '#1f6feb', label: 'Compute resource' };
+    if (type && type.startsWith('Radius.Data/'))     return { icon: '🗄️', bg: '#fff1e5', border: '#bc4c00', label: 'Data resource' };
+    if (type && type.startsWith('Radius.Security/')) return { icon: '🔐', bg: '#fff8c5', border: '#9a6700', label: 'Security resource' };
+    if (type && type.startsWith('aws.'))             return { icon: '☁️', bg: '#fff5cc', border: '#d29922', label: 'AWS resource' };
+    return DEFAULT_TYPE_STYLE;
+  }
+
   const resources = (GRAPH_ARTIFACT && GRAPH_ARTIFACT.application && GRAPH_ARTIFACT.application.resources) || [];
   const sourceFile = (GRAPH_ARTIFACT && GRAPH_ARTIFACT.sourceFile) || '';
   const generatedAt = (GRAPH_ARTIFACT && GRAPH_ARTIFACT.generatedAt) || '';
@@ -188,19 +219,34 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     (sourceFile ? ` — ${sourceFile}` : '') +
     (generatedAt ? ` — ${generatedAt}` : '');
 
-  // ----- Build legend (verbatim from createDiffLegend) -----
+  // ----- Build legend (one swatch per resource type present) -----
   const legend = document.getElementById('legend');
-  for (const item of [
-    { label: 'Added',     className: 'radius-graph-legend-swatch--added' },
-    { label: 'Modified',  className: 'radius-graph-legend-swatch--modified' },
-    { label: 'Removed',   className: 'radius-graph-legend-swatch--removed' },
-    { label: 'Unchanged', className: 'radius-graph-legend-swatch--unchanged' },
-  ]) {
-    const el = document.createElement('span');
-    el.className = 'radius-graph-legend-item';
-    el.innerHTML = `<span class="radius-graph-legend-swatch ${item.className}"></span>${item.label}`;
-    legend.appendChild(el);
+  function renderTypeLegend(types) {
+    legend.replaceChildren();
+    const seen = new Set();
+    const ordered = types.filter(t => {
+      if (seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    }).sort();
+    for (const type of ordered) {
+      const s = styleForType(type);
+      const el = document.createElement('span');
+      el.className = 'radius-graph-legend-item';
+      el.title = type;
+      const swatch = document.createElement('span');
+      swatch.className = 'radius-graph-legend-swatch';
+      swatch.style.background = s.bg;
+      swatch.style.borderColor = s.border;
+      swatch.textContent = s.icon;
+      const text = document.createElement('span');
+      text.textContent = s.label;
+      el.appendChild(swatch);
+      el.appendChild(text);
+      legend.appendChild(el);
+    }
   }
+  renderTypeLegend(resources.map(r => r.type));
 
   // ----- Build elements (verbatim from buildCytoscapeElements) -----
   function buildElements(resources) {
@@ -208,17 +254,25 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     for (const r of resources) {
       const status = 'unchanged'; // single-graph mode
       const shortType = r.type && r.type.split('/').pop() || r.type;
-      const label = `${r.name}\n${shortType}`;
+      const typeStyle = styleForType(r.type);
+      // Icon prefix on the first line; short type stays on the second line.
+      const label = `${typeStyle.icon}  ${r.name}\n${shortType}`;
+      // In single-graph mode the per-type fill/border replace the muted
+      // "unchanged" gray defaults so each resource type is visually distinct.
+      // In diff mode (status !== 'unchanged') the diff colors win.
+      const bg     = status === 'unchanged' ? typeStyle.bg     : DIFF_BG_COLORS[status];
+      const border = status === 'unchanged' ? typeStyle.border : DIFF_COLORS[status];
       elements.push({
         group: 'nodes',
         data: {
           id: r.id,
           resourceId: r.id,
           label,
-          borderColor: DIFF_COLORS[status],
+          borderColor: border,
           borderWidth: DIFF_BORDER_WIDTH[status],
-          bgColor: DIFF_BG_COLORS[status],
+          bgColor: bg,
           diffStatus: status,
+          resourceType: r.type,
         },
       });
     }
@@ -269,10 +323,10 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
           'border-color': 'data(borderColor)',
           'border-width': 'data(borderWidth)',
           shape: 'roundrectangle',
-          width: 140,
-          height: 55,
+          width: 160,
+          height: 60,
           'text-wrap': 'wrap',
-          'text-max-width': '120px',
+          'text-max-width': '140px',
         },
       },
       {
@@ -351,9 +405,10 @@ const GRAPH_ARTIFACT = __GRAPH_DATA__;
     popup.style.left = `${position.x}px`;
     popup.style.top = `${position.y}px`;
 
+    const typeStyle = styleForType(resource.type);
     const title = document.createElement('div');
     title.className = 'radius-graph-popup-title';
-    title.textContent = resource.name;
+    title.textContent = `${typeStyle.icon}  ${resource.name}`;
     popup.appendChild(title);
 
     const typeEl = document.createElement('div');

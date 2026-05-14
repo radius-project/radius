@@ -75,8 +75,9 @@ That is the COMPLETE chat response.
 
 Read [rendering.md](references/rendering.md) for the exact Cytoscape +
 dagre options, the Primer color tables, and the edge construction rule.
-The template file already encodes these — do NOT modify the template's
-renderer code.
+Read [visual-style.md](references/visual-style.md) for the resource-type
+icon + color palette used to theme nodes and the legend in single-graph
+mode.
 
 ## Schema
 
@@ -96,8 +97,12 @@ Before saying "Opening it in your default browser now", verify ALL:
 
 ## Guardrails
 
-- Do NOT alter the renderer logic in `template/app-graph.html.tmpl`.
-  It is a verbatim port of `graph-renderer.ts` + `graph-navigation.ts`.
+- The renderer in `template/app-graph.html.tmpl` is a port of
+  `graph-renderer.ts` + `graph-navigation.ts`. The layout, popup
+  behavior, edge rule, and Primer color tables MUST stay verbatim. The
+  resource-type icon/color palette ([visual-style.md](references/visual-style.md))
+  is an additive extension — extend it for new resource types instead
+  of rewriting the renderer.
 - Do NOT inline a screenshot in chat in place of the mermaid block — the
   user wants a structural preview, not a rasterized one.
 - Do NOT push to or create any orphan branch from this skill. The
@@ -108,3 +113,6 @@ Before saying "Opening it in your default browser now", verify ALL:
   Do NOT attempt to construct the JSON manually.
 - The HTML viewer is single-graph only. Diff coloring is preserved in
   the ported code but unused; do NOT add UI to load a second artifact.
+  In single-graph mode every node uses the per-resource-type fill +
+  border + icon from `TYPE_STYLES`; the diff palette is reserved for
+  when a future diff mode lands.

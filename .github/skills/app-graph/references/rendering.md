@@ -103,8 +103,11 @@ Background fills:
 | modified  | `#fff8c5` |
 | unchanged | `#f6f8fa` |
 
-In single-graph mode (this skill's default), every node uses the
-`unchanged` row.
+In single-graph mode (this skill's default), every node has diff status
+`unchanged`. The diff fill/border are then replaced by per-resource-type
+colors and the label is prefixed with a type icon — see
+[visual-style.md](visual-style.md). In a future diff mode the diff
+status fill/border wins so the diff signal stays dominant.
 
 ## Node label
 
