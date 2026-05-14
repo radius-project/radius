@@ -68,9 +68,9 @@ interface AwsPlanes {
   @route("/aws")
   @list
   @armResourceList(AwsPlaneResource)
-  list(
-    ...ApiVersionParameter,
-  ): ArmResponse<ResourceListResult<AwsPlaneResource>> | ErrorResponse;
+  list(...ApiVersionParameter):
+    | ArmResponse<ResourceListResult<AwsPlaneResource>>
+    | ErrorResponse;
 
   @doc("Get a plane by name")
   get is UcpResourceRead<

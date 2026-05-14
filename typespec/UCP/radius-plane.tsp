@@ -70,9 +70,9 @@ interface RadiusPlanes {
   @route("/radius")
   @list
   @armResourceList(RadiusPlaneResource)
-  list(
-    ...ApiVersionParameter,
-  ): ArmResponse<ResourceListResult<RadiusPlaneResource>> | ErrorResponse;
+  list(...ApiVersionParameter):
+    | ArmResponse<ResourceListResult<RadiusPlaneResource>>
+    | ErrorResponse;
 
   @doc("Get a plane by name")
   get is UcpResourceRead<
