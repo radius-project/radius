@@ -225,6 +225,8 @@ Remaining files ( `radius_core.yaml`, `microsoft_resources.yaml`) stay because t
 | `defaults.yaml` is empty (no entries) | `RegisterFS` logs a message and returns nil. Startup continues with directory-based manifests only. |
 | `rad upgrade` introduces new default resource types | New types are registered via direct database save on startup. Existing types are updated. No error expected. |
 
+**Schema validation failure and release impact:** If any embedded manifest fails schema validation, startup fails entirely and no resource types are registered. This fail-fast behavior is intentional to prevent Radius from starting in a partially configured state. If this occurs during a release, the fix would be to either update the manifest in `resource-types-contrib` and re-bump the dependency, or pin `go.mod` to the last known good version of `resource-types-contrib` until the issue is resolved. This should be documented in the release process alongside the `make update-resource-types` step, so that maintainers know how to handle validation failures when bumping the dependency.
+
 ## Test plan
 
 1. **Unit tests for `RegisterFS`**:
@@ -378,6 +380,7 @@ No new metrics are added. Existing startup health checks and log monitoring appl
 
 1. **PR 1 (resource-types-contrib)**: Add `go.mod`, `defaults.yaml`, `gen_embed.go`, `manifests.go`, `manifests_gen.go`. Add CI step to validate `manifests_gen.go` is up to date.
 2. **PR 2 (radius)**: Add `resource-types-contrib` to `go.mod`. Add `RegisterFS` to the manifest package. Update `initializer.Service` and `server.NewServer`. Remove `radius_compute.yaml` and `radius_security.yaml` from `built-in-providers/`. Add unit/integration tests.
+3. **PR 3 (radius)**: Update the Radius release process documentation to include a step for running `make update-resource-types` before each release, along with guidance on handling schema validation failures (fix the manifest and re-bump, or pin to the last known good version).
 
 ### Makefile
 
