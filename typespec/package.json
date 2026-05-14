@@ -18,10 +18,5 @@
   "devDependencies": {
     "autorest": "3.8.0",
     "oav": "4.0.4"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "autorest"
-    ]
   }
 }
