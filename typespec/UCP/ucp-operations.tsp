@@ -69,7 +69,10 @@ op UcpResourceCreateOrUpdateAsync<
   @doc("Resource create parameters.")
   @bodyRoot
   resource: TResource,
-): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedResponse<TResource> | ErrorResponse;
+):
+  | ArmResourceUpdatedResponse<TResource>
+  | ArmResourceCreatedResponse<TResource>
+  | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
@@ -91,7 +94,10 @@ op UcpCustomPatchAsync<
   @doc("The resource properties to be updated.")
   @body
   properties: TPatchModel,
-): ArmResponse<TResource> | ArmAcceptedLroResponse<"Resource update request accepted."> | ErrorResponse;
+):
+  | ArmResponse<TResource>
+  | ArmAcceptedLroResponse<"Resource update request accepted.">
+  | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
@@ -126,7 +132,10 @@ op UcpResourceCreateOrUpdateSync<
   @doc("Resource create parameters.")
   @bodyRoot
   resource: TResource,
-): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedSyncResponse<TResource> | ErrorResponse;
+):
+  | ArmResourceUpdatedResponse<TResource>
+  | ArmResourceCreatedSyncResponse<TResource>
+  | ErrorResponse;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
@@ -153,6 +162,7 @@ op UcpCustomPatchSync<
 op UcpResourceDeleteSync<
   TResource extends Foundations.Resource,
   TBaseParameters
->(
-  ...TBaseParameters,
-): ArmDeletedResponse | ArmDeletedNoContentResponse | ErrorResponse;
+>(...TBaseParameters):
+  | ArmDeletedResponse
+  | ArmDeletedNoContentResponse
+  | ErrorResponse;
