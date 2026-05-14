@@ -169,3 +169,15 @@ GOBIN=$(PROJECT_DIR)/bin go get -u $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+##@ Resource Types
+
+.PHONY: update-resource-types
+update-resource-types: ## Update resource-types-contrib dependency to latest
+	@echo "$(ARROW) Updating resource-types-contrib dependency..."
+	# Use @main because resource-types-contrib does not have tagged releases.
+	# @latest would look for a tagged version and fail. Once tagged releases
+	# are established, switch to @latest.
+	go get github.com/radius-project/resource-types-contrib@main
+	go mod tidy
+	@echo "$(ARROW) Done. Review the changes and commit."

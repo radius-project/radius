@@ -138,6 +138,16 @@ git pull origin main
 git checkout -b <USERNAME>/release-X.Y.0-rcN
 ```
 
+> **Before updating versions.yaml**, ensure the `resource-types-contrib` dependency is up to date. Run:
+>
+> ```bash
+> make update-resource-types
+> ```
+>
+> This bumps the `resource-types-contrib` Go module dependency to the latest version, ensuring the latest resource type schemas are included in the release. Review the `go.mod`/`go.sum` changes and commit them on this branch alongside (or before) the `versions.yaml` update.
+>
+> **If schema validation fails at startup after bumping**: Either fix the manifest in `resource-types-contrib` and re-bump, or pin `go.mod` to the last known good version of `resource-types-contrib` by running `go get github.com/radius-project/resource-types-contrib@<known-good-version>`.
+
 Edit `versions.yaml` to add the new RC as a supported version. Move the oldest supported version to the `deprecated` list if needed ([example PR](https://github.com/radius-project/radius/pull/6077/files)).
 
 ```yaml
