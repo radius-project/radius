@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/secret"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
@@ -128,8 +129,8 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 	logger := ucplog.FromContextOrDiscard(ctx)
 	credentials, err := azureCredentialsProvider.Fetch(ctx, credentials.AzureCloud, "default")
 	if err != nil {
-		if errors.Is(err, &secret.ErrNotFound{}) {
-			logger.Info("Azure credentials are not registered, skipping credentials configuration.")
+		if errors.Is(err, &secret.ErrNotFound{}) || clientv2.Is404Error(err) {
+			logger.Info("Azure credentials are not registered, falling back to Azure CLI credentials.")
 			return nil, nil
 		}
 
@@ -166,6 +167,16 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, credentials *credentials.AzureCredential, subscriptionID string) map[string]any {
 	if subscriptionID != "" {
 		configMap[azureSubIDParam] = subscriptionID
+	}
+
+	// When no Radius-managed credentials are registered (e.g. a developer
+	// running the RP locally without `rad credential register azure ...`),
+	// fall back to the Azure CLI credentials available on the host process.
+	// `use_cli = true` is the azurerm provider default but we set it
+	// explicitly to make the intent clear in the generated terraform config.
+	if credentials == nil {
+		configMap[azureUseCLIParam] = true
+		return configMap
 	}
 
 	switch credentials.Kind {
