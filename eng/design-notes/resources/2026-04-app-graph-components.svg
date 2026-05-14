@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 880" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/>
+    </marker>
+  </defs>
+
+  <!-- =================== ACTORS (top row) =================== -->
+
+  <!-- Developer / Agent -->
+  <rect x="60" y="40" width="220" height="80" rx="8" ry="8" fill="#e7f5ff" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="170" y="72" text-anchor="middle" font-weight="bold">Developer / Agent</text>
+  <text x="170" y="94" text-anchor="middle" fill="#444">authors / edits app.bicep</text>
+  <text x="170" y="112" text-anchor="middle" fill="#444">opens PR, merges to main</text>
+
+  <!-- Reviewer -->
+  <rect x="960" y="40" width="220" height="80" rx="8" ry="8" fill="#e7f5ff" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="1070" y="72" text-anchor="middle" font-weight="bold">Reviewer</text>
+  <text x="1070" y="94" text-anchor="middle" fill="#444">views graph on GitHub</text>
+  <text x="1070" y="112" text-anchor="middle" fill="#444">(repo tab / PR diff)</text>
+
+  <!-- =================== CONSUMER REPO =================== -->
+
+  <rect x="60" y="180" width="220" height="80" rx="8" ry="8" fill="#fff9db" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="170" y="212" text-anchor="middle" font-weight="bold">Consumer repo</text>
+  <text x="170" y="234" text-anchor="middle" fill="#444">app.bicep</text>
+  <text x="170" y="252" text-anchor="middle" fill="#444">(source of truth)</text>
+
+  <!-- =================== GH WORKFLOW (repo-radius) =================== -->
+
+  <rect x="60" y="320" width="220" height="140" rx="8" ry="8" fill="#d3f9d8" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="170" y="350" text-anchor="middle" font-weight="bold">GitHub Actions workflow</text>
+  <text x="170" y="372" text-anchor="middle" fill="#444">(repo-radius)</text>
+  <text x="170" y="394" text-anchor="middle" fill="#444">install rad &#183; run command</text>
+  <text x="170" y="414" text-anchor="middle" fill="#444">concurrency per ref</text>
+  <text x="170" y="436" text-anchor="middle" fill="#666" font-style="italic">GITHUB_ACTIONS=true</text>
+
+  <!-- =================== RADIUS CLI (rad app graph) =================== -->
+
+  <rect x="380" y="200" width="500" height="380" rx="10" ry="10" fill="#fff5f5" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="630" y="228" text-anchor="middle" font-weight="bold" font-size="16">Radius CLI &#8212; rad app graph</text>
+
+  <!-- command variants -->
+  <rect x="400" y="250" width="460" height="90" rx="6" ry="6" fill="#ffe3e3" stroke="#1e1e1e" stroke-width="1.5"/>
+  <text x="630" y="272" text-anchor="middle" font-weight="bold">Command variants</text>
+  <text x="412" y="294" fill="#333">&#8226; rad app graph [app-name]&#160;&#160;&#8594; deployed (calls getGraph)</text>
+  <text x="412" y="312" fill="#333">&#8226; rad app graph --bicep [path]&#160;&#160;&#8594; modeled</text>
+  <text x="412" y="330" fill="#333">&#8226; rad app graph --bicep -e env [-g grp]&#160;&#160;&#8594; planned</text>
+
+  <!-- graph builder -->
+  <rect x="400" y="360" width="220" height="100" rx="6" ry="6" fill="#ffe3e3" stroke="#1e1e1e" stroke-width="1.5"/>
+  <text x="510" y="384" text-anchor="middle" font-weight="bold">Graph builder</text>
+  <text x="510" y="404" text-anchor="middle" fill="#333">bicep build &#183; parse</text>
+  <text x="510" y="422" text-anchor="middle" fill="#333">source-line mapping</text>
+  <text x="510" y="440" text-anchor="middle" fill="#333">diffHash &#183; outputResources</text>
+
+  <!-- StaticGraphArtifact -->
+  <rect x="640" y="360" width="220" height="100" rx="6" ry="6" fill="#ffe3e3" stroke="#1e1e1e" stroke-width="1.5"/>
+  <text x="750" y="384" text-anchor="middle" font-weight="bold">StaticGraphArtifact</text>
+  <text x="750" y="404" text-anchor="middle" fill="#333">version, generatedAt</text>
+  <text x="750" y="422" text-anchor="middle" fill="#333">ApplicationGraphResponse</text>
+  <text x="750" y="440" text-anchor="middle" fill="#333">+ diffHash, codeReference</text>
+
+  <!-- GraphStore + backends -->
+  <rect x="400" y="480" width="460" height="90" rx="6" ry="6" fill="#ffe3e3" stroke="#1e1e1e" stroke-width="1.5"/>
+  <text x="630" y="502" text-anchor="middle" font-weight="bold">GraphStore (persistence abstraction)</text>
+  <text x="412" y="524" fill="#333">&#8226; pkg/cli/gitstate/ &#8212; orphan-branch backend (fetch / worktree / commit / push)</text>
+  <text x="412" y="542" fill="#333">&#8226; local-file backend &#8212; writes app-graph.json to cwd or -o path</text>
+  <text x="412" y="562" fill="#666" font-style="italic">selected based on GITHUB_ACTIONS env var</text>
+
+  <!-- =================== ORPHAN BRANCH =================== -->
+
+  <rect x="60" y="640" width="820" height="180" rx="8" ry="8" fill="#fff3bf" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="470" y="668" text-anchor="middle" font-weight="bold" font-size="16">radius-graph (orphan branch)</text>
+
+  <text x="80" y="700" font-weight="bold" fill="#333">Modeled</text>
+  <text x="80" y="720" fill="#333">{branch}/app-graph.json</text>
+
+  <text x="80" y="752" font-weight="bold" fill="#333">Planned</text>
+  <text x="80" y="772" fill="#333">{branch}/{scope}-{env}/app-graph.json</text>
+
+  <text x="500" y="700" font-weight="bold" fill="#333">Deployed</text>
+  <text x="500" y="720" fill="#333">{branch}/deployments/{scope}-{env}/app-graph.json</text>
+
+  <text x="500" y="752" fill="#666" font-style="italic">one directory per branch &#8594; PR isolation</text>
+  <text x="500" y="772" fill="#666" font-style="italic">artifacts diffed across base/head for PR view</text>
+
+  <!-- =================== BROWSER EXTENSION =================== -->
+
+  <rect x="960" y="320" width="220" height="120" rx="8" ry="8" fill="#e7f5ff" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="1070" y="350" text-anchor="middle" font-weight="bold">Browser extension</text>
+  <text x="1070" y="372" text-anchor="middle" fill="#444">(github-extension repo)</text>
+  <text x="1070" y="394" text-anchor="middle" fill="#444">reads via GitHub API</text>
+  <text x="1070" y="414" text-anchor="middle" fill="#444">renders with Cytoscape.js</text>
+  <text x="1070" y="432" text-anchor="middle" fill="#444">computes PR diff (diffHash)</text>
+
+  <!-- =================== ARROWS =================== -->
+
+  <!-- Developer -> Consumer repo -->
+  <line x1="170" y1="120" x2="170" y2="180" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="180" y="155" fill="#444">push / PR</text>
+
+  <!-- Consumer repo -> Workflow -->
+  <line x1="170" y1="260" x2="170" y2="320" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="180" y="295" fill="#444">triggers</text>
+
+  <!-- Workflow -> Radius CLI (invokes) -->
+  <line x1="280" y1="380" x2="380" y2="380" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="290" y="372" fill="#444">invokes</text>
+
+  <!-- Consumer repo -> Radius CLI (reads app.bicep) -->
+  <line x1="280" y1="220" x2="380" y2="270" stroke="#1e1e1e" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+  <text x="290" y="240" fill="#666" font-style="italic">app.bicep</text>
+
+  <!-- Radius CLI -> Orphan branch (commit) -->
+  <line x1="500" y1="580" x2="350" y2="640" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="350" y="612" fill="#444">git commit + push</text>
+
+  <!-- Radius CLI -> local file (alt) -->
+  <line x1="760" y1="580" x2="760" y2="630" stroke="#1e1e1e" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+  <text x="770" y="610" fill="#666" font-style="italic">or local app-graph.json</text>
+
+  <!-- Orphan branch -> Browser extension -->
+  <line x1="880" y1="700" x2="1070" y2="440" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="950" y="560" fill="#444">GET contents</text>
+  <text x="950" y="578" fill="#444">(GitHub API)</text>
+
+  <!-- Browser extension -> Reviewer -->
+  <line x1="1070" y1="320" x2="1070" y2="120" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1080" y="220" fill="#444">renders</text>
+
+</svg>
