@@ -79,7 +79,9 @@ once the container has its final size.
     'line-color': '#8c959f',
     'target-arrow-color': '#8c959f',
     'target-arrow-shape': 'triangle',
-    'curve-style': 'bezier',
+    'curve-style': 'unbundled-bezier',
+    'control-point-distances': [40],
+    'control-point-weights': [0.5],
     'arrow-scale': 0.8,
   },
 }
