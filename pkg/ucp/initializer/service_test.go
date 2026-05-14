@@ -18,9 +18,11 @@ package initializer
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
@@ -170,14 +172,14 @@ func Test_Run(t *testing.T) {
 
 	t.Run("no manifest directory skips initialization", func(t *testing.T) {
 		t.Parallel()
-		svc := newTestService("")
+		svc := newTestService("", nil)
 		err := svc.Run(context.Background())
 		require.NoError(t, err)
 	})
 
 	t.Run("missing manifest directory returns error", func(t *testing.T) {
 		t.Parallel()
-		svc := newTestService("/nonexistent/path")
+		svc := newTestService("/nonexistent/path", nil)
 		err := svc.Run(context.Background())
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "manifest directory does not exist")
@@ -201,7 +203,7 @@ types:
 		err := os.WriteFile(filepath.Join(tempDir, "test.yaml"), []byte(manifestContent), 0600)
 		require.NoError(t, err)
 
-		svc := newTestService(tempDir)
+		svc := newTestService(tempDir, nil)
 		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
 		require.NoError(t, err)
 
@@ -212,6 +214,146 @@ types:
 		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
 		require.NoError(t, err)
 		require.NotNil(t, obj)
+	})
+
+	t.Run("registers embedded manifests", func(t *testing.T) {
+		t.Parallel()
+
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - test.yaml
+`),
+			},
+			"test.yaml": &fstest.MapFile{
+				Data: []byte(`
+namespace: Embedded.Provider
+types:
+  myType:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`),
+			},
+		}
+
+		svc := newTestService("", fsys)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify the embedded resource provider was registered
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Embedded.Provider")
+		require.NoError(t, err)
+		require.NotNil(t, obj)
+	})
+
+	t.Run("registers both embedded and directory manifests", func(t *testing.T) {
+		t.Parallel()
+
+		// Embedded manifest
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - embedded.yaml
+`),
+			},
+			"embedded.yaml": &fstest.MapFile{
+				Data: []byte(`
+namespace: Embedded.Provider
+types:
+  embeddedType:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`),
+			},
+		}
+
+		// Directory manifest
+		tempDir := t.TempDir()
+		manifestContent := `
+namespace: Directory.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  dirType:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "dir.yaml"), []byte(manifestContent), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir, fsys)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Both should be registered
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Embedded.Provider")
+		require.NoError(t, err)
+
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Directory.Provider")
+		require.NoError(t, err)
+	})
+
+	t.Run("directory manifests override embedded manifests", func(t *testing.T) {
+		t.Parallel()
+
+		// Embedded manifest for Same.Provider with typeA
+		fsys := fstest.MapFS{
+			"defaults.yaml": &fstest.MapFile{
+				Data: []byte(`defaultRegistration:
+  - same.yaml
+`),
+			},
+			"same.yaml": &fstest.MapFile{
+				Data: []byte(`
+namespace: Same.Provider
+types:
+  typeA:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`),
+			},
+		}
+
+		// Directory manifest for Same.Provider with typeB (overrides)
+		tempDir := t.TempDir()
+		manifestContent := `
+namespace: Same.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  typeB:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "same.yaml"), []byte(manifestContent), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir, fsys)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// The directory manifest overwrites the embedded one (last-write-wins)
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Same.Provider")
+		require.NoError(t, err)
+		require.NotNil(t, obj)
+
+		// typeB from directory should exist
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Same.Provider/resourceTypes/typeB")
+		require.NoError(t, err)
 	})
 }
 
@@ -241,17 +383,15 @@ func Test_saveResource(t *testing.T) {
 }
 
 // newTestService creates a Service with in-memory database for testing.
-func newTestService(manifestDir string) *Service {
-	return &Service{
-		options: &ucp.Options{
-			Config: &ucp.Config{
-				Initialization: ucp.InitializationConfig{
-					ManifestDirectory: manifestDir,
-				},
+func newTestService(manifestDir string, embeddedFS fs.FS) *Service {
+	return NewService(&ucp.Options{
+		Config: &ucp.Config{
+			Initialization: ucp.InitializationConfig{
+				ManifestDirectory: manifestDir,
 			},
-			DatabaseProvider: databaseprovider.FromMemory(),
 		},
-	}
+		DatabaseProvider: databaseprovider.FromMemory(),
+	}, embeddedFS)
 }
 
 func createTestResourceProvider() manifest.ResourceProvider {

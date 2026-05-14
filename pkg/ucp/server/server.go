@@ -46,7 +46,7 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 		services = append(services, &traceservice.Service{Options: &options.Config.Tracing})
 	}
 
-	services = append(services, initializer.NewService(options))
+	services = append(services, initializer.NewService(options, nil))
 
 	return &hosting.Host{
 		Services: services,
