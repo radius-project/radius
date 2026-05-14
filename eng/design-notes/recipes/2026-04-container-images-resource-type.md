@@ -166,37 +166,22 @@ Developers can override per-resource by setting `properties.tag`.
 Recipes are packaged into a **recipe pack** and the pack is
 registered into the environment. The platform engineer:
 
-1. Creates a `Radius.Core/secrets` resource holding the registry
-   credentials.
+1. Creates a `Radius.Security/secrets` resource holding the
+   registry credentials.
 2. Defines a `Radius.Core/recipePacks` resource that includes the
-   `Radius.Compute/containerImages` recipe and references the
-   secret and a `Radius.Core/terraformConfigurations` resource that
-   tells the Docker Terraform provider how to authenticate.
+   `Radius.Compute/containerImages` recipe and passes the
+   secret-backed credentials to the recipe via parameters.
 3. References the recipe pack from the
    `Radius.Core/environments` resource.
 
 ```bicep
-resource registryCreds 'Radius.Core/secrets@2025-08-01-preview' = {
+resource registryCreds 'Radius.Security/secrets@2025-08-01-preview' = {
   name: 'registry-creds'
   properties: {
     type: 'generic'
     data: {
       username: { value: 'alice' }
       password: { value: '<PAT>' }
-    }
-  }
-}
-
-resource tfConfig 'Radius.Core/terraformConfigurations@2025-08-01-preview' = {
-  name: 'docker-tf-config'
-  properties: {
-    providerConfigurations: {
-      docker: {
-        registryAuth: {
-          address: 'ghcr.io'
-          secret: registryCreds.id
-        }
-      }
     }
   }
 }
@@ -210,8 +195,8 @@ resource imagesPack 'Radius.Core/recipePacks@2025-08-01-preview' = {
         templatePath: 'git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform'
         parameters: {
           registry: 'ghcr.io/alice'
+          registrySecretName: registryCreds.name
         }
-        terraformConfiguration: tfConfig.id
       }
     }
   }
@@ -235,13 +220,14 @@ Key points:
   registries (dev → `ghcr.io/alice`, staging →
   `myorg.azurecr.io/staging`, prod → `myorg.azurecr.io/prod`)
   without any change to the developer's Bicep.
-* **Credentials are never recipe parameters.** They live in a
-  `Radius.Core/secrets` resource and are wired into the recipe via
-  a `Radius.Core/terraformConfigurations` resource that the
-  Terraform Docker provider consumes. This matches how other
-  resource types that talk to authenticated services (Postgres,
-  MySQL, containers) reference secrets, and lets operators rotate
-  credentials without re-publishing the recipe pack.
+* The **`registrySecretName`** recipe parameter names a
+  `Radius.Security/secrets` resource whose `data.username` and
+  `data.password` keys hold the registry credentials. The recipe
+  resolves the secret at execution time and configures the
+  Terraform Docker provider's `registry_auth` block from it.
+  This follows the same `secretName` pattern used by
+  [`Radius.Data/mySqlDatabases`](https://github.com/radius-project/resource-types-contrib/blob/main/Data/mySqlDatabases/mySqlDatabases.yaml)
+  and other authenticated resource types.
 * Developers do not see or manage credentials, the registry, or
   the recipe pack.
 
@@ -389,24 +375,35 @@ and is intentionally small. Its contract:
   variable, which dynamic-rp sets to
   `unix:///run/buildkit/buildkit.sock` for recipe execution. The
   recipe itself does not encode the endpoint.
-* **Authentication**: the platform engineer supplies registry
-  credentials via a `Radius.Core/secrets` resource referenced
-  from a `Radius.Core/terraformConfigurations` resource (see
-  [Recipe registration](#recipe-registration)). The Terraform
-  Docker provider's `registry_auth` block is populated from that
-  configuration at recipe-execution time. The recipe itself takes
-  no credential parameters.
-* **Recipe parameters**: only `registry` (e.g. `ghcr.io/alice`).
-  Credentials and the Docker provider endpoint are wired in by
-  the platform engineer's recipe pack and Terraform configuration,
-  not by the recipe author.
+* **Authentication**: the platform engineer creates a
+  `Radius.Security/secrets` resource holding `username` and
+  `password` keys, then passes its name to the recipe via the
+  `registrySecretName` parameter (see
+  [Recipe registration](#recipe-registration)). The recipe
+  resolves the secret at execution time — using the same
+  secret-reference mechanism that
+  [`Radius.Data/mySqlDatabases`](https://github.com/radius-project/resource-types-contrib/blob/main/Data/mySqlDatabases/mySqlDatabases.yaml)
+  and other authenticated resource types use — and configures the
+  Terraform Docker provider's `registry_auth` block from it.
+* **Recipe parameters**: `registry` (e.g. `ghcr.io/alice`) and
+  `registrySecretName` (name of the `Radius.Security/secrets`
+  resource holding the credentials). The Docker provider endpoint
+  is wired in by dynamic-rp via `DOCKER_HOST` and is not a recipe
+  parameter.
 
 Sketch of the resources the recipe declares:
 
 ```hcl
+data "radius_secret" "registry" {
+  name = var.registrySecretName
+}
+
 provider "docker" {
-  # registry_auth is supplied by the Radius.Core/terraformConfigurations
-  # resource referenced from the recipe pack; no credentials in this file.
+  registry_auth {
+    address  = local.registry_host
+    username = data.radius_secret.registry.data["username"]
+    password = data.radius_secret.registry.data["password"]
+  }
 }
 
 locals {
@@ -468,9 +465,9 @@ containers:
 
 The dynamic-rp container does **not** mount a Docker
 `config.json`. Registry credentials reach the Terraform Docker
-provider through the `Radius.Core/secrets` +
-`Radius.Core/terraformConfigurations` resources referenced from
-the recipe pack (see [Recipe registration](#recipe-registration)),
+provider through the `registrySecretName` recipe parameter, which
+names a `Radius.Security/secrets` resource the recipe resolves at
+execution time (see [Recipe registration](#recipe-registration)),
 not through a chart-level Secret mount.
 
 The sidecar is enabled by default. Operators who never use
@@ -513,7 +510,7 @@ calling BuildKit's gRPC API directly from Go.
 | | Terraform recipe (proposed) | Built-in provider (alternative) |
 |---|---|---|
 | Build invocation | Terraform Docker provider → BuildKit gRPC | Go BuildKit client → BuildKit gRPC |
-| Auth wiring | `Radius.Core/secrets` + `terraformConfigurations` consumed by the provider | Same `Radius.Core/secrets`, consumed directly by dynamic-rp |
+| Auth wiring | `Radius.Security/secrets` referenced via `registrySecretName` recipe parameter | Same `Radius.Security/secrets`, resolved directly by dynamic-rp |
 | Customization | Operators can swap in their own Terraform recipe (different tag scheme, additional provenance, signing, etc.) | Behavior is fixed by dynamic-rp; customization requires a code change |
 | Failure modes | Inherits everything Terraform brings (state, lockfiles, provider version drift) | Fewer moving parts, no Terraform state for an action that has no resources to track |
 | Consistency with rest of Radius | Matches every other resource type | This type is already a special case (BuildKit sidecar); a built-in provider would not break a pattern this resource type doesn't fit |
@@ -713,8 +710,8 @@ cluster like any other container.
   during the build won't work multi-arch under this design and will
   fail at build time with a clear error.
 * **Credential bootstrap.** The recipe needs registry credentials
-  delivered through `Radius.Core/secrets` and a
-  `Radius.Core/terraformConfigurations` resource. Defining the
+  delivered through a `Radius.Security/secrets` resource named by
+  the `registrySecretName` recipe parameter. Defining the
   secret-management UX is a separate workstream.
 * **Local-context upload size.** The CLI tarball-upload path
   (Option 2 in [Local development workflow](#local-development-workflow))
@@ -728,7 +725,7 @@ cluster like any other container.
 |---|---|---|
 | Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. `environment` and `application` are optional. |
 | Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe targets the BuildKit unix socket via `DOCKER_HOST`; takes a single `registry` parameter; composes image ref from `registry`, resource name, and content-hash tag. No credential parameters. |
-| Recipe pack + auth wiring | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` + `Radius.Core/secrets` + `Radius.Core/terraformConfigurations` registration flow that delivers registry credentials to the Docker provider. |
+| Recipe pack + auth wiring | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` + `Radius.Security/secrets` registration flow: pack passes `registrySecretName` to the recipe, which resolves the secret and configures the Docker provider's `registry_auth`. |
 | dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`), `emptyDir` volumes for socket and BuildKit state, `dynamicrp.buildkit.psaMode` value, NOTES.txt preflight. No Docker `config.json` Secret mount. |
 | dynamic-rp recipe runner | `radius-project/radius` | Set `DOCKER_HOST=unix:///run/buildkit/buildkit.sock` in the recipe-execution environment. No Go code changes beyond environment plumbing. |
 | dynamic-rp context-upload endpoint | `radius-project/radius` | New endpoint accepting tarball uploads from the rad CLI; staged in an emptyDir for the recipe to consume. (Local development workflow, Option 2a.) |
@@ -765,11 +762,12 @@ cluster like any other container.
   `baseline` (most clusters' default). Operators that enforce
   `restricted` cluster-wide must either be on K8s 1.30+ (use
   default mode) or namespace-exempt the dynamic-rp install.
-* Registry credentials live in a `Radius.Core/secrets` resource
-  in the dynamic-rp namespace and are wired into the Terraform
-  Docker provider via a `Radius.Core/terraformConfigurations`
-  resource. They are not exposed as recipe parameters and are not
-  visible to recipes from other resource types.
+* Registry credentials live in a `Radius.Security/secrets`
+  resource and are passed to the recipe by name via the
+  `registrySecretName` parameter. The recipe resolves the secret
+  at execution time and configures the Terraform Docker provider's
+  `registry_auth` block from it. Credentials are never recipe
+  parameters or chart-level Secret mounts.
 * The BuildKit socket is on an `emptyDir` shared between the two
   containers in the same Pod. It is not exposed outside the Pod.
 * Build outputs are streamed directly to the user's registry; the
@@ -802,7 +800,7 @@ cluster like any other container.
 |---|---|---|
 | Resource type schema | resource-types-contrib | New `containerImages.yaml`: `tag` optional, `environment` and `application` optional, no per-resource `registry` override, no `image` field. |
 | Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource>:<tag>`, content-hash tag default, talks to BuildKit unix socket via `DOCKER_HOST`, takes only the `registry` parameter. |
-| Sample recipe pack + auth wiring | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` + `Radius.Core/secrets` + `Radius.Core/terraformConfigurations` showing how to register the recipe and deliver registry credentials to the Docker provider. |
+| Sample recipe pack + auth wiring | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` + `Radius.Security/secrets` showing how to register the recipe and deliver registry credentials via the `registrySecretName` parameter. |
 | Helm chart sidecar | radius | Add buildkitd container, emptyDir volumes, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, NOTES.txt preflight. No Docker `config.json` Secret mount. |
 | Recipe-runner env plumbing | radius | Set `DOCKER_HOST` for the recipe execution. |
 | Local-context upload (CLI ↔ dynamic-rp) | radius | rad CLI tarballs local `build.context`, POSTs to dynamic-rp; dynamic-rp stages for the recipe. (Local development workflow Option 2a.) |
