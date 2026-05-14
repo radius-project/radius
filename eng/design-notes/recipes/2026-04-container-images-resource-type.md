@@ -42,9 +42,6 @@ cluster without privileged workloads or host-side prerequisites.
 * Provide a `Radius.Compute/containerImages` resource type that
   developers can declare in Bicep and that produces a published
   container image.
-* Implement the resource type with a Terraform recipe that uses the
-  existing `kreuzwerker/docker` provider, so the recipe contract is
-  unchanged.
 * Build images on **any Kubernetes cluster** Radius supports —
   managed (EKS / AKS / GKE), self-hosted, and local (k3d / kind).
 * Avoid host privilege: no host volume mounts, no `privileged: true`,
@@ -67,6 +64,7 @@ cluster without privileged workloads or host-side prerequisites.
   [Appendix](#appendix-multi-architecture-node-pools).)
 * Multi-architecture builds via QEMU/binfmt emulation. (See
   [Alternatives](#alternatives-considered).)
+* Bicep recipe implementation. See https://github.com/radius-project/resource-types-contrib/issues/131
 
 ### User scenarios
 
@@ -88,7 +86,8 @@ wants to build directly from there instead of uploading their
 working tree. The same Bicep, but
 `build.context: 'git::https://github.com/alice/myapp.git//frontend'`.
 BuildKit clones the repo inside the cluster on each deployment; no
-local context upload is needed.
+local context upload is needed. All git url constructs (refs, tags, sha, branch)
+are supported.
 
 #### User story 3 — Multi-architecture image on a single-arch cluster
 
@@ -199,7 +198,7 @@ the next reconciliation.
 
 A `Radius.Compute/containerImages` resource is reconciled by
 dynamic-rp like any other recipe-backed resource type. The recipe is
-written in Terraform and uses the `kreuzwerker/docker` provider.
+written in Terraform.
 What makes this resource type different from existing recipes is
 that the Docker provider needs a build endpoint to talk to. To
 provide one without depending on the host (which is unreachable on
@@ -207,12 +206,12 @@ managed Kubernetes), Radius runs **rootless BuildKit as a sidecar
 container in the dynamic-rp Pod** and exposes its unix socket to
 recipe execution via a shared volume.
 
-1. **Resource type schema** (this document, and `containerImages.yaml`):
+1. **Resource type schema** (`containerImages.yaml`):
    defines the user-facing API.
-2. **Terraform recipe** (this document, and `recipes/kubernetes/terraform/`):
+2. **Terraform recipe** (`recipes/kubernetes/terraform/`):
    takes the resource's properties, calls the Docker provider
    against the local BuildKit endpoint, builds, and pushes.
-3. **dynamic-rp Helm chart** (this document, and `deploy/Chart`):
+3. **dynamic-rp Helm chart** (`deploy/Chart`):
    adds the buildkitd sidecar and the shared socket volume so the
    recipe has something to talk to.
 
@@ -261,8 +260,7 @@ Properties:
 | `tag` | string | no | Tag for the produced image. Defaults to a content-addressable digest computed from the build inputs (see [Tag strategy](#tag-strategy)). |
 | `build.context` | string | yes | Source location. Either a git URL (`git::https://…`) or — for local development workflows — a path that the rad CLI uploads as a tarball. See [Local development workflow](#local-development-workflow). |
 | `build.dockerfile` | string | no | Path to the Dockerfile relative to the context. Defaults to `Dockerfile`. |
-| `build.platforms` | string[] | no | Target platforms (e.g. `["linux/amd64", "linux/arm64"]`). When omitted, builds for the BuildKit sidecar's native architecture. |
-| `registry` | string | no | Per-resource override of the recipe's `registry` parameter. Most developers leave this unset. |
+| `build.platforms` | string[] | no | Target platforms (e.g. `["linux/amd64", "linux/arm64"]`). When omitted, defaults to `["linux/amd64", "linux/arm64"]`. |
 
 The resource **name** (e.g. `todolist-app`) is what the developer
 writes in `resource <name> 'Radius.Compute/containerImages@…'`, and
@@ -569,9 +567,6 @@ cluster like any other container.
 * Default install is compatible with PSA `restricted` on Kubernetes
   1.33+, matching the security posture of most newly-provisioned
   managed clusters.
-* The recipe contract is unchanged: same Terraform provider as any
-  other Docker-targeted recipe, no new build-tool-specific
-  abstractions.
 * Single image for both PSA modes; differences are limited to the
   Pod's `securityContext` block.
 
