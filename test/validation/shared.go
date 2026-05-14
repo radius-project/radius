@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -197,7 +198,20 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 }
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.
+//
+// Local-dev escape hatch: when RADIUS_TEST_USE_LOCAL_CLOUD_CREDS lists the credential
+// (comma-separated; supported values: "azure", "aws", or "1"/"true" for all clouds),
+// the UCP credential check is bypassed and the test is allowed to run as if the
+// credential were registered. This is used by the `test-functional-azure-local`
+// make target, which runs Radius components with ambient cloud credentials
+// (az CLI / AWS profile) instead of credentials registered in UCP. The container-DE
+// path used by CI and most contributors is unaffected.
 func AssertCredentialExists(t *testing.T, credential string) bool {
+	if localCloudCredAllowed(credential) {
+		t.Logf("RADIUS_TEST_USE_LOCAL_CLOUD_CREDS includes %q; bypassing UCP credential check", credential)
+		return true
+	}
+
 	ctx := testcontext.New(t)
 
 	config, err := cli.LoadConfig("")
@@ -215,4 +229,24 @@ func AssertCredentialExists(t *testing.T, credential string) bool {
 	require.NoError(t, err, "failed to get credentials")
 
 	return cred.CloudProviderStatus.Enabled
+}
+
+// localCloudCredAllowed reports whether the given credential ("azure", "aws") is
+// covered by the RADIUS_TEST_USE_LOCAL_CLOUD_CREDS escape hatch. Accepted values:
+//   - "1" / "true": all clouds.
+//   - comma-separated list of cloud names, e.g. "azure" or "azure,aws".
+func localCloudCredAllowed(credential string) bool {
+	v := strings.TrimSpace(os.Getenv("RADIUS_TEST_USE_LOCAL_CLOUD_CREDS"))
+	if v == "" {
+		return false
+	}
+	if v == "1" || strings.EqualFold(v, "true") {
+		return true
+	}
+	for _, item := range strings.Split(v, ",") {
+		if strings.EqualFold(strings.TrimSpace(item), credential) {
+			return true
+		}
+	}
+	return false
 }

@@ -209,14 +209,25 @@ debug-build-rad: ## Build rad CLI with debug symbols + create drad alias
 	@echo "💡 Use './drad' for debug-configured CLI (preserves 'rad' for your installed version)"
 
 debug-start: debug-setup debug-build-all ## Start k3d cluster and all Radius components as OS processes
-	@echo "Creating k3d cluster..."
-	@if k3d cluster list | grep -q "radius-debug"; then \
-		echo "k3d cluster 'radius-debug' already exists"; \
+	@echo "Ensuring k3d cluster 'radius-debug' is running..."
+	@if k3d cluster list --no-headers 2>/dev/null | awk '{print $$1}' | grep -qx "radius-debug"; then \
+		servers=$$(k3d cluster list --no-headers 2>/dev/null | awk '$$1=="radius-debug"{print $$2}'); \
+		running=$$(echo "$$servers" | cut -d/ -f1); \
+		if [ "$$running" = "0" ]; then \
+			echo "k3d cluster 'radius-debug' exists but is stopped — starting it..."; \
+			k3d cluster start radius-debug; \
+		else \
+			echo "k3d cluster 'radius-debug' already running ($$servers servers)"; \
+		fi; \
 	else \
+		echo "Creating k3d cluster 'radius-debug'..."; \
 		k3d cluster create radius-debug --api-port 0.0.0.0:6443 --wait --timeout 60s; \
 	fi
 	@echo "Switching to k3d context..."
 	@kubectl config use-context k3d-radius-debug
+	@echo "Ensuring radius-encryption-key secret exists in k3d cluster..."
+	@chmod +x build/scripts/ensure-encryption-key.sh 2>/dev/null || true
+	@build/scripts/ensure-encryption-key.sh
 	@echo "Starting Radius components as OS processes..."
 	@build/scripts/start-radius.sh
 	@echo "Waiting for components to be ready..."
@@ -281,17 +292,30 @@ debug-deployment-engine-pull: ## Pull latest deployment engine image from ghcr.i
 		&& echo "✅ Deployment Engine image pulled successfully" \
 		|| echo "❌ Failed to pull Deployment Engine image"
 
-debug-deployment-engine-start: ## Start deployment engine in k3d cluster
-	@echo "Installing ONLY deployment engine to k3d cluster..."
-	@if kubectl --context k3d-radius-debug get deployment deployment-engine >/dev/null 2>&1 && \
-		kubectl --context k3d-radius-debug get deployment deployment-engine -o jsonpath='{.status.readyReplicas}' 2>/dev/null | grep -q "1" && \
-		curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
-		echo "✅ Deployment engine already running and healthy"; \
+debug-deployment-engine-start: ## Start deployment engine in k3d cluster (or reuse a local OS process on port 5017)
+	@echo "Checking for an existing Deployment Engine on localhost:5017..."
+	@listener_cmd=""; \
+	if command -v lsof >/dev/null 2>&1; then \
+		listener_cmd=$$(lsof -nP -iTCP:5017 -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $$1}'); \
+	fi; \
+	if [ -n "$$listener_cmd" ] && [ "$$listener_cmd" != "kubectl" ] && curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
+		echo "✅ Detected local Deployment Engine process ($$listener_cmd) on port 5017 — reusing it"; \
+		echo "💡 Skipping k3d deployment-engine install and port-forward"; \
+		mkdir -p $(DEBUG_DEV_ROOT)/logs; \
+		echo "external" > $(DEBUG_DEV_ROOT)/logs/de-external.marker; \
 	else \
-		$(MAKE) debug-deployment-engine-deploy; \
-		$(MAKE) debug-deployment-engine-port-forward; \
+		rm -f $(DEBUG_DEV_ROOT)/logs/de-external.marker 2>/dev/null || true; \
+		echo "Installing ONLY deployment engine to k3d cluster..."; \
+		if kubectl --context k3d-radius-debug get deployment deployment-engine >/dev/null 2>&1 && \
+			kubectl --context k3d-radius-debug get deployment deployment-engine -o jsonpath='{.status.readyReplicas}' 2>/dev/null | grep -q "1" && \
+			curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
+			echo "✅ Deployment engine already running and healthy in k3d"; \
+		else \
+			$(MAKE) debug-deployment-engine-deploy; \
+			$(MAKE) debug-deployment-engine-port-forward; \
+		fi; \
+		echo "✅ Deployment engine installed and ready in k3d cluster"; \
 	fi
-	@echo "✅ Deployment engine installed and ready in k3d cluster"
 
 debug-deployment-engine-deploy: ## Deploy deployment engine to k3d cluster
 	@echo "Applying deployment engine manifest to k3d cluster..."
@@ -302,7 +326,12 @@ debug-deployment-engine-deploy: ## Deploy deployment engine to k3d cluster
 debug-deployment-engine-port-forward: ## Set up port forwarding for deployment engine
 	@build/scripts/setup-deployment-engine-port-forward.sh
 
-debug-deployment-engine-stop: ## Stop deployment engine in k3d cluster
+debug-deployment-engine-stop: ## Stop deployment engine in k3d cluster (leaves external local DE process alone)
+	@if [ -f $(DEBUG_DEV_ROOT)/logs/de-external.marker ]; then \
+		echo "ℹ️ External local Deployment Engine was in use — leaving it running"; \
+		rm -f $(DEBUG_DEV_ROOT)/logs/de-external.marker; \
+		exit 0; \
+	fi
 	@echo "Removing deployment engine from k3d cluster..."
 	@if [ -f $(DEBUG_DEV_ROOT)/logs/de-port-forward.pid ]; then \
 		kill $$(cat $(DEBUG_DEV_ROOT)/logs/de-port-forward.pid) 2>/dev/null || true; \
@@ -315,7 +344,9 @@ debug-deployment-engine-stop: ## Stop deployment engine in k3d cluster
 
 debug-deployment-engine-status: ## Check deployment engine status
 	@echo "🚀 Deployment Engine Status:"
-	@if kubectl --context k3d-radius-debug get deployment deployment-engine >/dev/null 2>&1; then \
+	@if [ -f $(DEBUG_DEV_ROOT)/logs/de-external.marker ] && curl -s "http://localhost:5017/metrics" > /dev/null 2>&1; then \
+		echo "✅ Deployment Engine (external local process on :5017) - Running"; \
+	elif kubectl --context k3d-radius-debug get deployment deployment-engine >/dev/null 2>&1; then \
 		replicas=$$(kubectl --context k3d-radius-debug get deployment deployment-engine -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0"); \
 		if [ "$$replicas" = "1" ]; then \
 			echo "✅ Deployment Engine (k3d) - Running and ready"; \
