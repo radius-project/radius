@@ -248,7 +248,7 @@ A modeled-graph example for an application with a frontend container connected t
       ],
       "outputResources": [],
       "diffHash": "sha256:883755ad2f9e...",
-      "appDefinitionLine": 23,
+      "appDefinitionReference": "path/to/app.bicep#L15",
       "codeReference": "src/frontend/index.ts"
     },
     {
@@ -264,7 +264,7 @@ A modeled-graph example for an application with a frontend container connected t
       ],
       "outputResources": [],
       "diffHash": "sha256:b4e91c3d7a01...",
-      "appDefinitionLine": 45,
+      "appDefinitionReference": "path/to/app.bicep#L15",
       "codeReference": "src/cache/redis.ts#L10"
     }
   ]
@@ -362,7 +362,7 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 
 **Tasks (Radius CLI)**
 
-1. **Introduce `pkg/cli/gitstate/`** — encapsulate orphan-branch fetch / worktree / commit / push so callers do not deal with raw git commands. This is the foundation that every persistence task below depends on.
+1. **Introduce `pkg/cli/gitstate/`** — encapsulate orphan-branch fetch / worktree / commit / push so callers do not deal with raw git commands. This is the neccessaryu to make storage configurable
 2. **Extend `ApplicationGraphResponse`** in both `corerpv20231001preview` (`Applications.Core/applications`) and `corerpv20250801preview` (`Radius.Core/applications`) with three optional fields — `diffHash`, `appDefinitionLine`, `codeReference` — and add the `diffHash` computation in `pkg/cli/graph/`. No new envelope type; the graph type is derived from `provisioningState` + `outputResources`.
 3. **Add `rad app graph --bicep [path]`** for the modeled graph.
    - Compile Bicep → ARM JSON, parse resources/connections/`dependsOn`.
