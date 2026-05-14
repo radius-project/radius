@@ -1,3 +1,4 @@
-onlyBuiltDependencies:
-  - autorest
-  - unrs-resolver
+allowBuilds:
+  autorest: true
+  unrs-resolver: true
+sideEffectsCache: false
