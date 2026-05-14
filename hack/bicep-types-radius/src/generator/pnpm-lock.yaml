@@ -369,7 +369,7 @@ packages:
     engines: {node: 18 || 20 || >=22}
 
   bicep-types-repo@https://codeload.github.com/Azure/bicep-types/tar.gz/556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7:
-    resolution: {tarball: https://codeload.github.com/Azure/bicep-types/tar.gz/556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/Azure/bicep-types/tar.gz/556bf5edad58e47ca57c6ddb1af155c3bcfdc5c7}
     version: 0.0.0
 
   brace-expansion@5.0.5:
