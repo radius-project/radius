@@ -1,0 +1,103 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# This workflow posts a diff report on PRs that bump the resource-types-contrib
+# dependency, showing exactly which default-registered manifest files changed.
+# This gives reviewers visibility into YAML content changes that are otherwise
+# hidden behind an opaque go.mod version bump.
+#
+# Note: This workflow uses pull_request trigger, so the report is only posted
+# for in-repo PRs. Fork PRs will silently skip the comment step due to
+# read-only GITHUB_TOKEN.
+
+name: Resource Types Diff Report
+
+on:
+  pull_request:
+    paths:
+      - 'go.mod'
+  # Uncomment to test this workflow from a fork:
+  # workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  diff-report:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install yq
+        run: |
+          YQ_VERSION=v4.44.3
+          YQ_BINARY=yq_linux_amd64
+          YQ_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY}"
+          CHECKSUMS_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/checksums"
+
+          wget -qO "/tmp/${YQ_BINARY}" "${YQ_URL}"
+          wget -qO /tmp/yq_checksums "${CHECKSUMS_URL}"
+          grep " ${YQ_BINARY}\$" /tmp/yq_checksums | (cd /tmp && sha256sum -c -)
+          sudo install -m 0755 "/tmp/${YQ_BINARY}" /usr/local/bin/yq
+
+      - name: Detect resource-types-contrib version change
+        id: detect
+        run: |
+          # Get the old and new versions using go list -m for precise matching.
+          OLD_VERSION=$(git show ${{ github.event.pull_request.base.sha }}:go.mod | go mod edit -json /dev/stdin 2>/dev/null | jq -r '.Require[]? | select(.Path == "github.com/radius-project/resource-types-contrib") | .Version' || true)
+          NEW_VERSION=$(go list -m -json github.com/radius-project/resource-types-contrib 2>/dev/null | jq -r '.Version' || true)
+
+          if [[ -z "${OLD_VERSION}" ]] && [[ -z "${NEW_VERSION}" ]]; then
+            echo "resource-types-contrib dependency not found in go.mod"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ "${OLD_VERSION}" == "${NEW_VERSION}" ]]; then
+            echo "resource-types-contrib version unchanged (${OLD_VERSION})"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "Old version: ${OLD_VERSION}"
+          echo "New version: ${NEW_VERSION}"
+          echo "old=${OLD_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "new=${NEW_VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate diff report
+        if: steps.detect.outputs.skip != 'true'
+        env:
+          OLD_VERSION: ${{ steps.detect.outputs.old }}
+          NEW_VERSION: ${{ steps.detect.outputs.new }}
+        run: |
+          .github/scripts/diff-resource-types.sh
+
+      - name: Post PR comment
+        if: steps.detect.outputs.skip != 'true'
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        with:
+          header: resource-types-diff
+          path: /tmp/diff-report.md
