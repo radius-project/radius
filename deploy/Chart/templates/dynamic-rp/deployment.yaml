@@ -35,6 +35,9 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
       {{- if eq .Values.global.terraform.enabled true }}
+      {{- if ne .Values.dynamicrp.terraform.path "/terraform" }}
+      {{- fail "dynamicrp.terraform.path must be \"/terraform\" -- the runtime (pkg/recipes/terraform/install.go) hard-codes /terraform/.terraform-global, so overriding the mount path silently breaks Terraform binary caching." }}
+      {{- end }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
       initContainers:
