@@ -302,8 +302,8 @@ func TestFetchRecipeDefinition_Success(t *testing.T) {
 	def, err := fetchRecipeDefinition(context.Background(), []string{recipePackID}, armOpts, resourceType)
 	require.NoError(t, err)
 	require.NotNil(t, def)
-	require.Equal(t, string(bicepKind), def.RecipeKind)
-	require.Equal(t, expectedLocation, def.RecipeLocation)
+	require.Equal(t, string(bicepKind), def.Kind)
+	require.Equal(t, expectedLocation, def.Location)
 	require.Equal(t, map[string]any{"tier": "basic"}, def.Parameters)
 	require.False(t, def.PlainHTTP)
 }

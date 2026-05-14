@@ -367,10 +367,10 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
 			Name:         "default",
-			Driver:       recipeDefinition.RecipeKind,
+			Driver:       recipeDefinition.Kind,
 			ResourceType: resource.Type(),
 			Parameters:   parameters,
-			TemplatePath: recipeDefinition.RecipeLocation,
+			TemplatePath: recipeDefinition.Location,
 			PlainHTTP:    recipeDefinition.PlainHTTP,
 		}
 		return definition, nil
@@ -405,8 +405,8 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 					plainHTTP = *definition.PlainHTTP
 				}
 				return &recipes.RecipeDefinition{
-					RecipeKind:     string(*definition.Kind),
-					RecipeLocation: string(*definition.Location),
+					Kind:     string(*definition.Kind),
+					Location: string(*definition.Location),
 					Parameters:     definition.Parameters,
 					PlainHTTP:      plainHTTP,
 				}, nil

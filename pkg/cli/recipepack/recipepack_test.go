@@ -41,7 +41,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	actualResourceTypes := make([]string, len(definitions))
 	for i, def := range definitions {
 		actualResourceTypes[i] = def.ResourceType
-		require.NotEmpty(t, def.RecipeLocation, "RecipeLocation should not be empty for %s", def.ResourceType)
+		require.NotEmpty(t, def.Location, "Location should not be empty for %s", def.ResourceType)
 	}
 	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
 }
@@ -52,8 +52,8 @@ func Test_GetDefaultRecipePackDefinition_UsesLatestTagForEdgeChannel(t *testing.
 
 	definitions := GetCoreTypesRecipeInfo()
 	for _, def := range definitions {
-		require.True(t, strings.HasSuffix(def.RecipeLocation, ":latest"),
-			"Expected :latest tag for edge channel, got %s", def.RecipeLocation)
+		require.True(t, strings.HasSuffix(def.Location, ":latest"),
+			"Expected :latest tag for edge channel, got %s", def.Location)
 	}
 }
 
@@ -78,6 +78,6 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 		require.NotNil(t, recipe.Kind)
 		require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.Kind)
 		require.NotNil(t, recipe.Location)
-		require.Equal(t, def.RecipeLocation, *recipe.Location)
+		require.Equal(t, def.Location, *recipe.Location)
 	}
 }

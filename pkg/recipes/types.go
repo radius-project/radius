@@ -152,10 +152,10 @@ type RecipePackResource struct {
 
 // RecipeDefinition represents a recipe definition for a specific resource type in a recipe pack.
 type RecipeDefinition struct {
-	// RecipeKind represents the type of recipe (e.g., terraform, bicep)
-	RecipeKind string
-	// RecipeLocation represents URL or path to the recipe source
-	RecipeLocation string
+	// Kind represents the type of recipe (e.g., terraform, bicep)
+	Kind string
+	// Location represents URL or path to the recipe source
+	Location string
 	// Parameters represents parameters to pass to the recipe
 	Parameters map[string]any
 	// PlainHTTP connects to the location using HTTP (not-HTTPS)

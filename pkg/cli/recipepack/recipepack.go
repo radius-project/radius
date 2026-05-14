@@ -55,7 +55,7 @@ func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 	for _, def := range GetCoreTypesRecipeInfo() {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
 			Kind:     &bicepKind,
-			Location: to.Ptr(def.RecipeLocation),
+			Location: to.Ptr(def.Location),
 		}
 	}
 	return corerpv20250801.RecipePackResource{
@@ -110,8 +110,8 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 type CoreTypesRecipeInfo struct {
 	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
 	ResourceType string
-	// RecipeLocation is the OCI registry location for the recipe.
-	RecipeLocation string
+	// Location is the OCI registry location for the recipe.
+	Location string
 }
 
 // GetCoreTypesRecipeInfo returns recipe information for all core types.
@@ -124,20 +124,20 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 	}
 	return []CoreTypesRecipeInfo{
 		{
-			ResourceType:   "Radius.Compute/containers",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:" + tag,
+			ResourceType: "Radius.Compute/containers",
+			Location:     "ghcr.io/radius-project/kube-recipes/containers:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Compute/persistentVolumes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
+			ResourceType: "Radius.Compute/persistentVolumes",
+			Location:     "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Compute/routes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			ResourceType: "Radius.Compute/routes",
+			Location:     "ghcr.io/radius-project/kube-recipes/routes:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Security/secrets",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
+			ResourceType: "Radius.Security/secrets",
+			Location:     "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
 	}
 }
