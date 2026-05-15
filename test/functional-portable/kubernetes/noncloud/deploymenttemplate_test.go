@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -410,24 +411,25 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		return
 	}
 
-	// First, wait for normal deletion.
-	deleted := false
-	require.Eventually(t, func() bool {
+	// First, wait for normal deletion. Use assert.Eventually (not require.Eventually) so that
+	// if the namespace is stuck Terminating we fall through to the finalizer-clearing fallback
+	// below instead of failing the test outright.
+	if assert.Eventually(t, func() bool {
 		ns := &corev1.Namespace{}
-		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-		if apierrors.IsNotFound(err) {
-			deleted = true
+		getErr := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		if apierrors.IsNotFound(getErr) {
 			return true
 		}
-		require.NoError(t, err)
+		// Tolerate transient errors and keep polling.
 		return false
-	}, time.Minute*2, time.Second*5, "waiting for namespace delete to start progressing")
-
-	if deleted {
+	}, time.Minute*2, time.Second*5, "waiting for namespace %s to be deleted", namespace) {
 		return
 	}
 
 	// Fallback for namespaces stuck in Terminating due to finalizers.
+	// NOTE: Force-clearing namespace finalizers is a TEST-ONLY escape hatch. In production
+	// code this can leak the underlying resources owned by whichever controller registered
+	// the finalizer.
 	ns, err := opts.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return
@@ -438,7 +440,10 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		t.Logf("Namespace %s stuck terminating with finalizers: %v; clearing them", namespace, ns.Spec.Finalizers)
 		ns.Spec.Finalizers = nil
 		_, err = opts.K8sClient.CoreV1().Namespaces().Finalize(ctx, ns, metav1.UpdateOptions{})
-		if !apierrors.IsNotFound(err) {
+		// Tolerate NotFound (already gone) and Conflict (apiserver mutated the namespace
+		// between Get and Finalize); in either case the next Eventually below will reflect
+		// the final state.
+		if err != nil && !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
 			require.NoError(t, err)
 		}
 	}

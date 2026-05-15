@@ -42,6 +42,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -219,7 +220,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	defer func() {
 		err := opts.Client.Delete(ctx, secret)
 		if controller_runtime.IgnoreNotFound(err) != nil {
-			t.Logf("Error deleting secret %s/%s: %v", secret.Namespace, secret.Name, err)
+			t.Errorf("Error deleting secret %s/%s: %v", secret.Namespace, secret.Name, err)
 		}
 	}()
 	require.NoError(t, err)
@@ -241,7 +242,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	defer func() {
 		err := opts.Client.Delete(ctx, fluxGitRepository)
 		if controller_runtime.IgnoreNotFound(err) != nil {
-			t.Logf("Error deleting GitRepository %s/%s: %v", fluxGitRepository.Namespace, fluxGitRepository.Name, err)
+			t.Errorf("Error deleting GitRepository %s/%s: %v", fluxGitRepository.Namespace, fluxGitRepository.Name, err)
 		}
 	}()
 	require.NoError(t, err)
@@ -354,27 +355,27 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	//      Applications.Core/applications and containers still exist in Radius.
 	// Deleting and waiting for the DeploymentTemplates first lets the Radius controller
 	// drain its finalizer and remove the Radius resources, after which namespace deletion succeeds.
+	//
+	// Use assert.* (not require.*) during teardown so that one stuck DeploymentTemplate does
+	// not skip teardown of the others (and the namespaces below).
 	for _, dt := range deploymentTemplates {
 		t.Logf("Deleting DeploymentTemplate: %s/%s", dt.Namespace, dt.Name)
 		err := opts.Client.Delete(ctx, dt)
 		if controller_runtime.IgnoreNotFound(err) != nil {
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}
 	}
-	for _, dt := range deploymentTemplates {
-		name := types.NamespacedName{Name: dt.Name, Namespace: dt.Namespace}
-		require.Eventually(t, func() bool {
-			current := &radappiov1alpha3.DeploymentTemplate{}
-			getErr := opts.Client.Get(ctx, name, current)
-			return apierrors.IsNotFound(getErr)
-		}, time.Minute*5, time.Second*5, "DeploymentTemplate %s/%s was not deleted in time", dt.Namespace, dt.Name)
-	}
-
-	if fluxGitRepository != nil {
-		err := opts.Client.Delete(ctx, fluxGitRepository)
-		if controller_runtime.IgnoreNotFound(err) != nil {
-			require.NoError(t, err)
-		}
+	if len(deploymentTemplates) > 0 {
+		assert.Eventually(t, func() bool {
+			for _, dt := range deploymentTemplates {
+				current := &radappiov1alpha3.DeploymentTemplate{}
+				getErr := opts.Client.Get(ctx, types.NamespacedName{Name: dt.Name, Namespace: dt.Namespace}, current)
+				if !apierrors.IsNotFound(getErr) {
+					return false
+				}
+			}
+			return true
+		}, time.Minute*5, time.Second*5, "DeploymentTemplates were not deleted in time")
 	}
 
 	for _, namespace := range namespaces {
