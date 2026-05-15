@@ -1513,3 +1513,27 @@ tests:
             name: buildkitd
           any: true
         template: dynamic-rp/deployment.yaml
+
+  # Regression: buildctl-init must still be rendered when global
+  # terraform pre-download is disabled but buildkit is enabled.
+  # Otherwise the dynamic-rp container has BUILDKIT_HOST wired but
+  # no buildctl on PATH, and recipes silently fail.
+  - it: should render buildctl-init when terraform is disabled but buildkit is enabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: buildctl-init
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: terraform-init
+          any: true
+        template: dynamic-rp/deployment.yaml
