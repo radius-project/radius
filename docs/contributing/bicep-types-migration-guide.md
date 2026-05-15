@@ -148,7 +148,7 @@ Or if using corepack (Node.js 16.13+):
 
 ```bash
 corepack enable
-corepack prepare pnpm@10 --activate
+corepack prepare pnpm@11 --activate
 ```
 
 ### Stale submodule references
