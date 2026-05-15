@@ -404,14 +404,48 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 	if !apierrors.IsNotFound(err) {
 		require.NoError(t, err, "failed to delete namespace %s", namespace)
-		t.Logf("Namespace %s deleted successfully", namespace)
+		t.Logf("Namespace %s delete requested", namespace)
 	} else {
 		t.Logf("Namespace %s already deleted or does not exist", namespace)
+		return
+	}
+
+	// First, wait for normal deletion.
+	deleted := false
+	require.Eventually(t, func() bool {
+		ns := &corev1.Namespace{}
+		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		if apierrors.IsNotFound(err) {
+			deleted = true
+			return true
+		}
+		require.NoError(t, err)
+		return false
+	}, time.Minute*2, time.Second*5, "waiting for namespace delete to start progressing")
+
+	if deleted {
+		return
+	}
+
+	// Fallback for namespaces stuck in Terminating due to finalizers.
+	ns, err := opts.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return
+	}
+	require.NoError(t, err)
+
+	if len(ns.Spec.Finalizers) > 0 {
+		t.Logf("Namespace %s stuck terminating with finalizers: %v; clearing them", namespace, ns.Spec.Finalizers)
+		ns.Spec.Finalizers = nil
+		_, err = opts.K8sClient.CoreV1().Namespaces().Finalize(ctx, ns, metav1.UpdateOptions{})
+		if !apierrors.IsNotFound(err) {
+			require.NoError(t, err)
+		}
 	}
 
 	require.Eventually(t, func() bool {
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
-		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		ns := &corev1.Namespace{}
+		err := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 		return apierrors.IsNotFound(err)
-	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+	}, time.Minute*5, time.Second*5, "waiting for namespace %s to be fully deleted", namespace)
 }

@@ -342,6 +342,13 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
 	}
 
+	if fluxGitRepository != nil {
+		err := opts.Client.Delete(ctx, fluxGitRepository)
+		if controller_runtime.IgnoreNotFound(err) != nil {
+			require.NoError(t, err)
+		}
+	}
+
 	for _, namespace := range namespaces {
 		t.Logf("Deleting namespace: %s", namespace)
 		deleteNamespace(ctx, t, namespace, opts)
