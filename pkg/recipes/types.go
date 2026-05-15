@@ -161,6 +161,9 @@ type RecipeDefinition struct {
 	Location string
 	// Parameters represents parameters to pass to the recipe
 	Parameters map[string]any
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with original names.
+	Outputs map[string]string
 	// PlainHTTP connects to the location using HTTP (not-HTTPS)
 	PlainHTTP bool
 }

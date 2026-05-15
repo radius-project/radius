@@ -66,8 +66,11 @@ model RecipeDefinition {
   @doc("URL path to the recipe")
   location: string;
 
-  @doc("Parameters to pass to the recipe")
+  @doc("Parameters to pass to the recipe. Values may contain {{context.*}} template expressions resolved at deployment time")
   parameters?: Record<unknown>;
+
+  @doc("Maps resource property names to module output names. Keys are the resource type's read-only property names, values are the module output names. When empty or not specified, all module outputs pass through with their original names")
+  outputs?: Record<string>;
 }
 
 @doc("The type of recipe")

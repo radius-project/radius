@@ -1267,6 +1267,7 @@ func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "kind", r.Kind)
 	populate(objectMap, "location", r.Location)
+	populate(objectMap, "outputs", r.Outputs)
 	populate(objectMap, "parameters", r.Parameters)
 	populate(objectMap, "plainHttp", r.PlainHTTP)
 	return json.Marshal(objectMap)
@@ -1286,6 +1287,9 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "location":
 			err = unpopulate(val, "Location", &r.Location)
+			delete(rawMsg, key)
+		case "outputs":
+			err = unpopulate(val, "Outputs", &r.Outputs)
 			delete(rawMsg, key)
 		case "parameters":
 			err = unpopulate(val, "Parameters", &r.Parameters)

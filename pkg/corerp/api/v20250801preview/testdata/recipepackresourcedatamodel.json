@@ -41,6 +41,10 @@
         "parameters": {
           "size": "small"
         },
+        "outputs": {
+          "host": "redis_host",
+          "port": "redis_port"
+        },
         "plainHTTP": true
       }
     }

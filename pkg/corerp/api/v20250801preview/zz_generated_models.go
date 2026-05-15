@@ -516,7 +516,12 @@ type RecipeDefinition struct {
 	// REQUIRED; URL path to the recipe
 	Location *string
 
-	// Parameters to pass to the recipe
+	// Maps resource property names to module output names. Keys are the resource type's read-only property names, values are
+	// the module output names. When empty or not specified, all module outputs pass
+	// through with their original names
+	Outputs map[string]*string
+
+	// Parameters to pass to the recipe. Values may contain {{context.*}} template expressions resolved at deployment time
 	Parameters map[string]any
 
 	// Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for

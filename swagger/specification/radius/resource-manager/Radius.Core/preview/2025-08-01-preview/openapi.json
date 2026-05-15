@@ -2003,8 +2003,15 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Parameters to pass to the recipe",
+          "description": "Parameters to pass to the recipe. Values may contain {{context.*}} template expressions resolved at deployment time",
           "additionalProperties": {}
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Maps resource property names to module output names. Keys are the resource type's read-only property names, values are the module output names. When empty or not specified, all module outputs pass through with their original names",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [

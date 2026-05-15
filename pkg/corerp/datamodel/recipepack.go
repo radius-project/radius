@@ -58,6 +58,10 @@ type RecipeDefinition struct {
 	// Parameters to pass to the recipe.
 	Parameters map[string]any `json:"parameters,omitempty"`
 
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with original names.
+	Outputs map[string]string `json:"outputs,omitempty"`
+
 	// PlainHTTP connects to the location using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
 }
