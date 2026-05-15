@@ -1,0 +1,109 @@
+namespace: Radius.Compute
+types:
+  persistentVolumes:
+    description: |
+      The Radius.Compute/persistentVolumes Resource Type represents a persistent storage volume. A PersistentVolume can be referenced in the volumes property of a Container. 
+      To deploy, first add a PersistentVolume resource to the application definition Bicep file.
+      ```
+      extension radius
+      param environment string 
+
+      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
+
+      resource myPersistentVolume 'Radius.Compute/persistentVolumes@2025-08-01-preview' = {
+        name: 'myPersistentVolume'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          sizeInGib: 1
+        }
+      }
+      ```
+
+      Then reference the PersistentVolume by ID in the volumes property of the Container. Finally, set the mountPath in the container referencing the volumeName.
+      ```
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            demo: {
+              image: 'ghcr.io/radius-project/samples/demo:latest'
+              volumeMounts: [
+                {
+                volumeName: 'data'
+                mountPath: '/app/data'
+                } 
+              ] 
+            }
+          }
+          volumes: {
+            data: {
+              persistentVolume: {
+                resourceId: myPersistentVolume.id
+              }
+            }
+          }
+        }
+      }
+      ```
+
+      PersistentVolumes may be shared across multiple Containers. To mount an existing PersistentVolume in read-only mode, reference the PersistentVolume by name using the `existing` Bicep keyword. For example:
+      ```
+      resource existingPersistentVolume 'Radius.Compute/persistentVolumes@2025-08-01-preview' existing = {
+        name: 'existingPersistentVolume'
+      }
+      ```
+
+      Then add the existing PersistentVolume to the volumes property of a Container with accessMode set to `ReadOnlyMany`.
+      ```
+      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'myContainer'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          containers: {
+            demo: {
+              image: 'ghcr.io/radius-project/samples/demo:latest'
+              volumeMounts: [
+                {
+                  volumeName: 'readOnlyData'
+                  mountPath: '/app/data' 
+                }
+              ]
+            }
+          }
+          volumes: {
+            readOnlyData: {
+              persistentVolume: {
+                resourceId: existingPersistentVolume.id
+                accessMode: 'ReadOnlyMany'
+              }
+            }
+          }
+        }
+      }
+      ```
+
+      A PersistentVolume may be shared between multiple Containers in read/write mode if the PersistentVolume was created with `accessMode: ReadWriteMany` and the volume is set to ReadWriteMany as well. Note that not all infrastructures support this mode.
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
+            application:
+              type: string
+              description: (Optional) The Radius Application ID. `myApplication.id` for example.
+            sizeInGib:
+              type: integer
+              description: (Required) The size of the volume in gibibytes. `1` represents 1024 MiB.
+            allowedAccessModes:
+              type: string
+              enum: [ReadWriteOnce, ReadOnlyMany, ReadWriteMany]
+              description: (Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.
+          required: [environment, sizeInGib]
