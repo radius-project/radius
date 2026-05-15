@@ -1,0 +1,16 @@
+namespace: Radius.Compute
+types:
+  routes:
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+            application:
+              type: string
+            kind:
+              type: string
+              enum: [HTTP, TCP]
+          required: [environment, application]
