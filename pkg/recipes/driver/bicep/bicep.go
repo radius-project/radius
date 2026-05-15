@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
@@ -126,7 +127,17 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	isContextParameterDefined := hasContextParameter(recipeData)
-	parameters := createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, isContextParameterDefined, recipeContext)
+
+	var parameters map[string]any
+	if isContextParameterDefined {
+		// Wrapped recipe — use existing context injection flow.
+		parameters = createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, true, recipeContext)
+	} else {
+		// Direct module — resolve {{context.*}} expressions and merge parameters.
+		mergedParams := recipes_util.ShallowMergeParameters(opts.Recipe.Parameters, opts.Definition.Parameters)
+		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		parameters = wrapARMParameters(resolvedParams)
+	}
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
@@ -168,7 +179,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -373,32 +384,45 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set)
-	// and the resources created by the template.
-	//
-	// Note that there are two ways a resource can be returned:
-	// - Implicitly when it is created in the template (it will be in 'resources').
-	// - Explicitly as part of the 'result' output.
-	//
-	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
-	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+//
+// Precedence logic (FR-015):
+//   - If an `outputs` mapping is configured on the definition, it takes precedence: all ARM deployment outputs
+//     are collected flat and then renamed via the mapping.
+//   - If no `outputs` mapping exists and the deployment has a `result` output, the module is treated as a
+//     wrapped recipe (existing behavior).
+//   - If neither is present, all ARM deployment outputs pass through unchanged.
+func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
-	if ok {
-		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
-			if resultValue, ok := result["value"].(map[string]any); ok {
-				err := recipeResponse.PrepareRecipeResponse(resultValue)
-				if err != nil {
-					return &recipes.RecipeOutput{}, err
+	if ok && len(out) > 0 {
+		hasOutputsMapping := len(definition.Outputs) > 0
+		_, hasResultOutput := out[recipes.ResultPropertyName]
+
+		if hasOutputsMapping {
+			// Direct module with outputs mapping — collect all ARM outputs flat, then apply mapping.
+			values := collectARMOutputValues(out)
+			mappedValues, mappedSecrets := recipes_util.ApplyOutputsMapping(values, map[string]any{}, definition.Outputs)
+			recipeResponse.Values = mappedValues
+			recipeResponse.Secrets = mappedSecrets
+		} else if hasResultOutput {
+			// Wrapped recipe — use existing result output parsing.
+			if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
+				if resultValue, ok := result["value"].(map[string]any); ok {
+					err := recipeResponse.PrepareRecipeResponse(resultValue)
+					if err != nil {
+						return &recipes.RecipeOutput{}, err
+					}
 				}
 			}
+		} else {
+			// Direct module without mapping — pass through all ARM outputs unchanged.
+			recipeResponse.Values = collectARMOutputValues(out)
 		}
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{
 		TemplateKind: recipes.TemplateKindBicep,
-		TemplatePath: templatePath,
+		TemplatePath: definition.TemplatePath,
 	}
 
 	// process the 'resources' created by the template
@@ -407,6 +431,20 @@ func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, re
 	}
 
 	return recipeResponse, nil
+}
+
+// collectARMOutputValues extracts values from ARM deployment outputs.
+// ARM outputs have the shape: {"outputName": {"type": "...", "value": ...}, ...}
+func collectARMOutputValues(outputs map[string]any) map[string]any {
+	values := make(map[string]any)
+	for name, raw := range outputs {
+		if outputMap, ok := raw.(map[string]any); ok {
+			if val, ok := outputMap["value"]; ok {
+				values[name] = val
+			}
+		}
+	}
+	return values
 }
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
@@ -452,4 +490,19 @@ func getRegistryAuthClient(ctx context.Context, secrets recipes.SecretData, temp
 	}
 
 	return newRegistryClient.GetAuthClient(ctx, templatePath)
+}
+
+// wrapARMParameters wraps raw parameter values into the ARM parameter format: {"key": {"value": val}}.
+func wrapARMParameters(params map[string]any) map[string]any {
+	if params == nil {
+		return map[string]any{}
+	}
+
+	wrapped := make(map[string]any, len(params))
+	for k, v := range params {
+		wrapped[k] = map[string]any{
+			"value": v,
+		}
+	}
+	return wrapped
 }
