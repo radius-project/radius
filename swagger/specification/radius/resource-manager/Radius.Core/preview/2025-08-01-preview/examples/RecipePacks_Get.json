@@ -20,16 +20,16 @@
           ],
           "recipes": {
             "Applications.Core/containers": {
-              "recipeKind": "bicep",
-              "recipeLocation": "ghcr.io/radius-project/recipes/azure-container-apps:latest",
+              "kind": "bicep",
+              "location": "ghcr.io/radius-project/recipes/azure-container-apps:latest",
               "parameters": {
                 "cpu": "1.0",
                 "memory": "2Gi"
               }
             },
             "Applications.Dapr/stateStores": {
-              "recipeKind": "bicep",
-              "recipeLocation": "br:myregistry.azurecr.io/bicep/recipes/cosmosdb:v1.0",
+              "kind": "bicep",
+              "location": "br:myregistry.azurecr.io/bicep/recipes/cosmosdb:v1.0",
               "parameters": {
                 "databaseName": "radius-db",
                 "throughput": 400

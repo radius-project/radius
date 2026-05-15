@@ -1278,7 +1278,7 @@
     "$type": "ObjectType",
     "name": "RecipeDefinition",
     "properties": {
-      "recipeKind": {
+      "kind": {
         "type": {
           "$ref": "#/107"
         },
@@ -1292,7 +1292,7 @@
         "flags": 0,
         "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
       },
-      "recipeLocation": {
+      "location": {
         "type": {
           "$ref": "#/0"
         },

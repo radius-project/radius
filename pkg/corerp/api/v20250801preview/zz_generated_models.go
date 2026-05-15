@@ -511,10 +511,10 @@ type ProvidersKubernetes struct {
 // RecipeDefinition - Recipe definition for a specific resource type
 type RecipeDefinition struct {
 	// REQUIRED; The type of recipe (e.g., Terraform, Bicep)
-	RecipeKind *RecipeKind
+	Kind *RecipeKind
 
 	// REQUIRED; URL path to the recipe
-	RecipeLocation *string
+	Location *string
 
 	// Parameters to pass to the recipe
 	Parameters map[string]any
