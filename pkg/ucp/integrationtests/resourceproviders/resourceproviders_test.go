@@ -161,6 +161,50 @@ func Test_ResourceProvider_RegisterManifests(t *testing.T) {
 	deleteManifestResourceProvider(server)
 }
 
+// Test_ResourceProvider_RegisterManifests_NoLocation verifies that manifests
+// without a "location" field are registered successfully at startup. This is
+// the code path used by resource type manifests copied from
+// resource-types-contrib, which omit location so that UCP routes requests via
+// DefaultDownstreamEndpoint (dynamic-rp).
+func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
+	server := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
+		options.Config.Initialization.ManifestDirectory = "testdata/manifests-no-location"
+	}))
+	defer server.Close()
+
+	createRadiusPlane(server)
+
+	noLocationNamespace := "Radius.Compute"
+	noLocationResourceProviderURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + radiusAPIVersion
+	noLocationResourceTypeURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/containers" + radiusAPIVersion
+	noLocationLocationURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/locations/global" + radiusAPIVersion
+
+	require.EventuallyWithTf(t, func(collect *assert.CollectT) {
+		// Verify the resource provider was registered.
+		response := server.MakeRequest(http.MethodGet, noLocationResourceProviderURL, nil)
+		assert.Equal(collect, 200, response.Raw.StatusCode, "resource provider Radius.Compute should be registered")
+
+		// Verify the resource type was registered.
+		response = server.MakeRequest(http.MethodGet, noLocationResourceTypeURL, nil)
+		assert.Equal(collect, 200, response.Raw.StatusCode, "resource type Radius.Compute/containers should be registered")
+
+		// Verify the location was created with no address, so UCP uses
+		// DefaultDownstreamEndpoint for routing.
+		response = server.MakeRequest(http.MethodGet, noLocationLocationURL, nil)
+		if !assert.Equal(collect, 200, response.Raw.StatusCode, "location global should be registered") {
+			return
+		}
+
+		var locationBody map[string]any
+		if !assert.NoError(collect, json.Unmarshal(response.Body.Bytes(), &locationBody)) {
+			return
+		}
+
+		props, _ := locationBody["properties"].(map[string]any)
+		assert.Nil(collect, props["address"], "location address should be absent for no-location manifests")
+	}, registerManifestWaitDuration, registerManifestWaitInterval, "no-location manifest registration did not complete in time")
+}
+
 // removeSystemData removes the systemData property from the response body recursively.
 // This matches the behavior of TestResponse.removeSystemData in the testhost package.
 func removeSystemData(body map[string]any) {

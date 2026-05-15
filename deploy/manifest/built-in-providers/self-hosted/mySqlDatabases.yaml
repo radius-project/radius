@@ -1,6 +1,4 @@
 namespace: Radius.Data
-location:
-  global: "http://dynamic-rp.radius-system:8082"
 types:
   mySqlDatabases:
     description: |
@@ -96,6 +94,4 @@ types:
               type: integer
               description: "(Read-only) The port number used to connect to the database."
               readOnly: true
-          required:
-            - environment
-            - secretName
+          required: [environment,secretName]
