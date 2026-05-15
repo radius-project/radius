@@ -156,7 +156,7 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			name: "nested map traversal",
 			params: map[string]any{
 				"outer": map[string]any{
-					"inner": "{{context.resource.name}}",
+					"inner":  "{{context.resource.name}}",
 					"static": "no-change",
 				},
 			},
