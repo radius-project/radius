@@ -177,6 +177,7 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 	noLocationNamespace := "Radius.Compute"
 	noLocationResourceProviderURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + radiusAPIVersion
 	noLocationResourceTypeURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/containers" + radiusAPIVersion
+	noLocationLocationURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/locations/global" + radiusAPIVersion
 
 	require.EventuallyWithTf(t, func(collect *assert.CollectT) {
 		// Verify the resource provider was registered.
@@ -186,6 +187,21 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 		// Verify the resource type was registered.
 		response = server.MakeRequest(http.MethodGet, noLocationResourceTypeURL, nil)
 		assert.Equal(collect, 200, response.Raw.StatusCode, "resource type Radius.Compute/containers should be registered")
+
+		// Verify the location was created with no address, so UCP uses
+		// DefaultDownstreamEndpoint for routing.
+		response = server.MakeRequest(http.MethodGet, noLocationLocationURL, nil)
+		if !assert.Equal(collect, 200, response.Raw.StatusCode, "location global should be registered") {
+			return
+		}
+
+		var locationBody map[string]any
+		if !assert.NoError(collect, json.Unmarshal(response.Body.Bytes(), &locationBody)) {
+			return
+		}
+
+		props, _ := locationBody["properties"].(map[string]any)
+		assert.Nil(collect, props["address"], "location address should be absent for no-location manifests")
 	}, registerManifestWaitDuration, registerManifestWaitInterval, "no-location manifest registration did not complete in time")
 }
 
