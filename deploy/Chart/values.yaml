@@ -133,13 +133,17 @@ dynamicrp:
     # unusable.
     enabled: true
     # Pod-security-admission profile the sidecar is configured for.
-    #   restricted (default): uses Kubernetes user namespaces
-    #     (hostUsers=false). Requires Kubernetes >= 1.30 with the
+    #   baseline (default): uses Unconfined seccomp/AppArmor profiles
+    #     plus --oci-worker-no-process-sandbox. Compatible with PSA
+    #     baseline and works on every supported Kubernetes version
+    #     (including kind/k3d/Docker Desktop without extra config).
+    #   restricted: uses Kubernetes user namespaces (hostUsers=false).
+    #     Stricter posture, but requires Kubernetes >= 1.30 with the
     #     UserNamespacesSupport feature gate enabled (stable in 1.33).
-    #   baseline: uses Unconfined seccomp/AppArmor profiles plus
-    #     --oci-worker-no-process-sandbox. Compatible with PSA baseline
-    #     and clusters older than 1.30.
-    psaMode: restricted
+    #     Operators who enforce PSA restricted cluster-wide and run
+    #     a recent enough kernel can opt in with
+    #     --set dynamicrp.buildkit.psaMode=restricted.
+    psaMode: baseline
     # Pinned rootless BuildKit image. Match a tested upstream tag.
     image: "moby/buildkit:v0.13.2-rootless"
     # Resource requests and limits for the buildkitd sidecar.
