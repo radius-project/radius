@@ -355,6 +355,8 @@ jobs:
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
           # Restore AWS Bicep types
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
+          # Restore UDT testresources Bicep types - required to avoid Azure CLI token expiry during the long-running tests
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha-recipe.bicep" --force
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
