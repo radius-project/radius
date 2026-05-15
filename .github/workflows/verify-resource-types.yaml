@@ -52,8 +52,7 @@ on:
       - 'Makefile'
       - 'build/resource-types.mk'
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: verify-resource-types-${{ github.event.pull_request.number || github.sha }}
@@ -63,6 +62,8 @@ jobs:
   verify-resource-types:
     name: Verify resource type copies are in sync
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
