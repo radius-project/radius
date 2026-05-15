@@ -142,12 +142,6 @@ dynamicrp:
     psaMode: restricted
     # Pinned rootless BuildKit image. Match a tested upstream tag.
     image: "moby/buildkit:v0.13.2-rootless"
-    # Name of a Kubernetes Secret in the release namespace whose
-    # `config.json` key holds Docker-config-format registry
-    # credentials. The Secret is mounted into the dynamic-rp
-    # container at $HOME/.docker/config.json. Leave empty to skip
-    # the mount (recipe pushes will then fail to authenticate).
-    credentialsSecret: ""
     # Resource requests and limits for the buildkitd sidecar.
     # Tune based on expected concurrent builds and image complexity.
     # Multi-arch builds with QEMU emulation are particularly

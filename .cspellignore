@@ -39,6 +39,7 @@ Bitbucket
 Bitnami
 Bitnami's
 Bugfix
+Buildah
 CDN
 CEL
 CLI's
@@ -204,6 +205,7 @@ InvalidTemplate
 JetStream
 KRM
 KV
+Kaniko
 Karishma
 KeyObjectProperties
 KeyVault
@@ -519,11 +521,15 @@ bicepConfig
 bicepconfig
 bicepparams
 bikeshedding
+binfmt
 bool
 booleans
 breakpoint
 brooke
 bubbletea
+buildctl
+buildctl's
+buildkitd
 buildx
 caBundle
 camelCased
