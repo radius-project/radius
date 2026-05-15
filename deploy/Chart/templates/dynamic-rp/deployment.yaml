@@ -41,10 +41,12 @@ spec:
       hostUsers: false
       {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # fsGroup makes shared emptyDir volumes (notably the BuildKit
-      # unix socket directory) group-owned by GID 65532 so the
-      # dynamic-rp container (UID/GID 65532) can dial a socket
-      # created by the buildkitd sidecar (UID 1000).
+      # fsGroup makes the shared emptyDir volume that holds the
+      # buildctl binary (copied from the rootless BuildKit init
+      # container) group-owned by GID 65532, so the dynamic-rp
+      # container (UID/GID 65532) can read and exec it. The
+      # buildkitd sidecar listens on TCP, so no socket sharing is
+      # required.
       securityContext:
         fsGroup: 65532
       {{- end }}
@@ -52,10 +54,11 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
+      {{- if or (eq .Values.global.terraform.enabled true) .Values.dynamicrp.buildkit.enabled }}
+      initContainers:
       {{- if eq .Values.global.terraform.enabled true }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
-      initContainers:
       {{- if .Values.global.appendRootCA.cert }}
       - name: append-root-ca
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
@@ -164,6 +167,7 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 65532
+      {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
       # Copy buildctl out of the BuildKit image into a shared volume so
       # the dynamic-rp container can invoke it from `local-exec` inside
@@ -241,12 +245,6 @@ spec:
         - name: buildctl-bin
           mountPath: /buildctl
           readOnly: true
-        {{- if .Values.dynamicrp.buildkit.credentialsSecret }}
-        # Docker config provides registry credentials to the recipe.
-        - name: buildkit-credentials
-          mountPath: /home/rpuser/.docker
-          readOnly: true
-        {{- end }}
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
@@ -259,7 +257,7 @@ spec:
           readOnly: true
         {{- end }}
         {{- if .Values.dynamicrp.resources }}
-        resources:{{ toYaml .Values.rp.resources | nindent 10 }}
+        resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
       # Rootless BuildKit sidecar. Listens on loopback TCP inside the
@@ -341,12 +339,6 @@ spec:
           emptyDir: {}
         - name: buildkit-state
           emptyDir: {}
-        {{- if .Values.dynamicrp.buildkit.credentialsSecret }}
-        - name: buildkit-credentials
-          secret:
-            secretName: {{ .Values.dynamicrp.buildkit.credentialsSecret }}
-            defaultMode: 0400
-        {{- end }}
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}

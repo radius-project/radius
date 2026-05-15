@@ -13,7 +13,7 @@ but the pattern generalizes.
 
 ## Architecture
 
-The chart adds three things to the dynamic-rp Pod when
+The chart adds two things to the dynamic-rp Pod when
 `dynamicrp.buildkit.enabled=true` (the default):
 
 1. A **`buildkitd` sidecar container** running rootless
@@ -22,10 +22,11 @@ The chart adds three things to the dynamic-rp Pod when
 2. A **`buildctl-init` init container** that copies the `buildctl` CLI
    into a shared `emptyDir`, which is then mounted into the dynamic-rp
    container's `PATH`.
-3. A **registry-credentials volume** that mounts an operator-supplied
-   Secret at `~/.docker/config.json` inside the dynamic-rp container,
-   so any tool that reads Docker credential files (including
-   `buildctl`) authenticates transparently.
+
+A **registry-credentials volume** also mounts an operator-supplied
+Secret at `~/.docker/config.json` inside the dynamic-rp container, so
+any tool that reads Docker credential files (including `buildctl`)
+authenticates transparently.
 
 The dynamic-rp container itself is otherwise unmodified — it still
 runs Terraform recipes, just now with `buildctl` on `PATH` and a
@@ -35,7 +36,6 @@ working buildkitd to dial.
 ┌─────────────────────────────────────────────────────────────┐
 │ dynamic-rp Pod                                              │
 │                                                             │
-│  buildkit-init ──► copies rootlesskit/buildkit data dir     │
 │  buildctl-init ──► copies /usr/bin/buildctl to shared vol   │
 │                                                             │
 │  ┌──────────────────────┐   loopback   ┌──────────────────┐ │

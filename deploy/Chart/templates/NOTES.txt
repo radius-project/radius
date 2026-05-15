@@ -25,13 +25,19 @@ The "baseline" mode runs the same buildkitd image with Unconfined
 seccomp/AppArmor profiles. Your namespace must permit PSA "baseline".
 {{- end }}
 {{- end }}
-{{- if and .Values.dynamicrp.buildkit.enabled (not .Values.dynamicrp.buildkit.credentialsSecret) }}
+{{- if .Values.dynamicrp.buildkit.enabled }}
 
-NOTE: dynamicrp.buildkit.credentialsSecret is unset. The Radius.Compute/containerImages
-recipe will not be able to authenticate with your registry. Create a
-Secret containing a Docker config.json and pass its name via:
+NOTE: The Radius.Compute/containerImages recipe authenticates with your
+registry using a Radius.Security/secrets resource that you create in
+the Radius environment. Register the recipe with both the registry and
+the secret name as parameters, e.g.:
 
-  --set dynamicrp.buildkit.credentialsSecret=<secret-name>
+  rad recipe register default \
+    --resource-type Radius.Compute/containerImages \
+    --template-kind terraform \
+    --template-path git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform \
+    --parameters registry=ghcr.io/myorg \
+    --parameters registrySecretName=registry-creds
 
 See the resource type README for instructions.
 {{- end }}
