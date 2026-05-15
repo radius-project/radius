@@ -1,4 +1,4 @@
-# Dynamic Bicep Extensions Served by the Radius Control Plane
+# Feature Spec: Dynamic Bicep Extensions Served by the Radius Control Plane
 
 * **Author**: zachcasper
 
