@@ -942,7 +942,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml --format testname --format-hide-empty-pkg
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
