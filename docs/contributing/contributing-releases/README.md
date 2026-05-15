@@ -128,11 +128,14 @@ git push origin vX.Y.Z-rcN
 
 > **Note**: This manual tagging step is a temporary workaround. Ideally the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) would handle this, but GPG signing is not yet configured there. See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
 
-### Step 3: Update default resource types
+### Step 3: Update default resource types in the Radius repo
 
-In a local clone of `radius-project/radius`, ensure the default resource type manifests are up to date with the latest `resource-types-contrib` definitions:
+Ensure the default resource type manifests in the Radius repo are up to date with the latest `resource-types-contrib` definitions:
 
 ```bash
+git checkout main
+git pull origin main
+git checkout -b <USERNAME>/update-resource-types
 make update-resource-types
 ```
 
