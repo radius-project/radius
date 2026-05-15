@@ -42,6 +42,17 @@ name: Long-running test on Azure
 on:
   # Enable manual trigger for testing.
   workflow_dispatch:
+    inputs:
+      test_code_ref:
+        description: |
+          Optional git ref (branch, tag, or SHA) in radius-project/radius to use
+          for test code. Leave blank to use the tag matching the installed
+          release CLI (default behavior). The product under test is always the
+          installed release; only the on-disk test/infrastructure code is taken
+          from this ref.
+        required: false
+        default: ''
+        type: string
   schedule:
     # Run once per day at 3:00 AM PDT (10:00 AM UTC)
     - cron: 0 10 * * *
@@ -161,6 +172,9 @@ jobs:
 
       - name: Checkout release codebase
         id: checkout-release-codebase
+        env:
+          # Optional override; empty string means "use the release tag matching the installed CLI".
+          TEST_CODE_REF: ${{ inputs.test_code_ref }}
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/checkout-release-codebase.sh
@@ -355,6 +369,8 @@ jobs:
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
           # Restore AWS Bicep types
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
+          # Restore UDT testresources Bicep types - required to avoid Azure CLI token expiry during the long-running tests
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha-recipe.bicep" --force
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
