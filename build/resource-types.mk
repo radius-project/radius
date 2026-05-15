@@ -79,9 +79,12 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 	@command -v yq >/dev/null 2>&1 || { echo "ERROR: yq is required but not found. Install via: go install github.com/mikefarah/yq/v4@latest"; exit 1; }
 	@command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required but not found. Install via: brew install jq (macOS) or apt-get install jq (Linux)"; exit 1; }
 	@echo "Syncing default resource types from resource-types-contrib..."
-	# Resolve the module's local cache directory from the version pinned in go.mod.
-	# "go mod download -json" outputs JSON with a "Dir" field pointing to the
-	# cached module source on disk.
+	@# Resolve the module's local cache directory from the version pinned in
+	@# go.mod. "go mod download -json" outputs JSON with a "Dir" field pointing
+	@# to the cached module source on disk. Then iterate over each entry in
+	@# defaults.yaml, convert the resource type name to a module-relative path
+	@# (e.g. Radius.Compute/containers -> Compute/containers/containers.yaml),
+	@# and copy the file into each destination directory (dev/ and self-hosted/).
 	@MODULE_DIR=$$(go mod download -json $(RESOURCE_TYPES_MODULE) | jq -r '.Dir') && \
 	if [ -z "$$MODULE_DIR" ] || [ "$$MODULE_DIR" = "null" ]; then \
 		echo "ERROR: Could not resolve module directory for $(RESOURCE_TYPES_MODULE)."; \
@@ -89,32 +92,24 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 		exit 1; \
 	fi && \
 	echo "  Module directory: $$MODULE_DIR" && \
-	# Iterate over each entry in defaults.yaml and copy the corresponding YAML
-	# file from the module cache into the manifest destination directories.
 	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-		# Convert the resource type name to a relative path inside the module.
-		# Example: Radius.Compute/containers → Compute/containers
 		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
-		# Extract the type name (second path component).
-		# Example: Compute/containers → containers
 		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
-		# Build the full source path: <module_dir>/<namespace>/<type>/<type>.yaml
 		src_path="$$MODULE_DIR/$$rel_path/$$type_name.yaml" && \
 		if [ ! -f "$$src_path" ]; then \
 			echo "ERROR: File not found: $$src_path (from entry '$$entry')"; \
 			echo "       Verify the entry in $(DEFAULTS_YAML) and the resource-types-contrib version."; \
 			exit 1; \
 		fi && \
-		# Copy into each destination directory (dev/ and self-hosted/).
 		for dest_dir in $(MANIFEST_DEST_DIRS); do \
 			cp "$$src_path" "$$dest_dir/$$type_name.yaml"; \
 		done && \
 		echo "  Copied $$entry"; \
 	done
-	# Remove stale managed files: any YAML in the destination directories that
-	# is NOT in MANUAL_CORE_MANIFESTS and NOT in the current defaults.yaml list. This
-	# prevents previously-copied manifests from remaining registered after their
-	# entry is removed from defaults.yaml.
+	@# Remove stale managed files: any YAML in the destination directories that
+	@# is NOT in MANUAL_CORE_MANIFESTS and NOT in the current defaults.yaml list.
+	@# This prevents previously-copied manifests from remaining registered after
+	@# their entry is removed from defaults.yaml.
 	@EXPECTED_FILES="" && \
 	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
 		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
