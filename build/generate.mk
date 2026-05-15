@@ -193,7 +193,8 @@ generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.jso
 			manifest_args="$$manifest_args $$manifest"; \
 		done && \
 		echo "  -> $$ns ($$manifest_args) -> $$out_dir" && \
-		go run ./bicep-tools/cmd/manifest-to-bicep generate $$manifest_args "$$out_dir" || exit 1; \
+		go run ./bicep-tools/cmd/manifest-to-bicep generate $$manifest_args "$$out_dir" && \
+		mkdir -p "$$out_dir/docs" || exit 1; \
 	done
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
