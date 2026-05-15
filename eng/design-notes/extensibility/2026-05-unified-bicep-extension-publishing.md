@@ -21,7 +21,7 @@ This design proposes consolidating the contrib-sourced Bicep extensions into few
 ## Goals
 
 1. **Reduce the number of Bicep extension entries** in `bicepconfig.json` for resource types from `resource-types-contrib`.
-2. **Automate Bicep extension publishing** so it stays in sync with the default resource type registration list (`defaults.yaml`).
+2. **Automate Bicep extension publishing** so it stays in sync with the default resource type registration list (`deploy/manifest/defaults.yaml` in the Radius repo).
 3. **Publish both versioned and latest** extensions to support release consistency and edge development.
 
 ## Non goals
@@ -136,13 +136,14 @@ generate-bicep-types: generate-node-installed generate-pnpm-installed
 	pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger
 
 	# Step 2: Generate types from contrib manifests (new)
-	$(eval MODULE_DIR := $(shell go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir'))
-	@for entry in $$(yq '.defaultRegistration[]' $(MODULE_DIR)/defaults.yaml); do \
+	# Manifests are already copied into deploy/manifest/built-in-providers/ by `make update-resource-types`
+	# (see the default registration design). The generation step reads them directly from disk.
+	@for entry in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
 		NAMESPACE=$$(echo $$entry | cut -d/ -f1 | sed 's/Radius\.//'); \
 		TYPE=$$(echo $$entry | cut -d/ -f2); \
-		FILEPATH=$$(echo "$$NAMESPACE/$$TYPE/$$TYPE.yaml"); \
+		FILEPATH="deploy/manifest/built-in-providers/$$TYPE.yaml"; \
 		go run ./bicep-tools/cmd/manifest-to-bicep \
-			--input "$(MODULE_DIR)/$$FILEPATH" \
+			--input "$$FILEPATH" \
 			--output-dir hack/bicep-types-radius/generated/radius/$$(echo $$NAMESPACE | tr '[:upper:]' '[:lower:]')/2025-08-01-preview/; \
 	done
 
@@ -176,8 +177,15 @@ generate-bicep-types: generate-node-installed generate-pnpm-installed
 **Option 2: Merge into the existing `radius` extension.** After review, we decided to consolidate all Radius-authored types (core + contrib) into the single `radius` extension rather than introducing a new `radiusResources` extension.
 
 Rationale:
-- **Better end-user experience.** Users have one `extension radius` directive in their Bicep files for everything Radius ships. No need to teach users which extension owns which namespace.
+- **Best end-user experience.** Users have one `extension radius` directive in their Bicep files for everything Radius ships. No need to teach users which extension owns which namespace.
 - **No migration churn.** Existing users on the `radius` extension automatically pick up the new namespaces on upgrade. No update required to start using contrib types.
+
+The disadvantages noted under Option 2 (pipeline coupling, ordering dependency, build complexity) are accepted as engineering tradeoffs to optimize for the end-user experience. They are mitigated by:
+- Keeping the contrib generation step idempotent and isolated so a failure surfaces clearly without partially corrupting the unified output.
+- Failing the build fast if the contrib step errors, rather than publishing a partial extension.
+- Documenting the ordering requirement in the Makefile and CI workflow.
+
+The remainder of this document focuses on Option 2 details. Option 1 is retained above as a documented alternative.
 
 ### Automating extension publishing
 
@@ -189,10 +197,12 @@ Extension publishing should be automated in two places:
 
 **Option 1 automation:** `resource-types-contrib` CI reads `defaults.yaml`, runs the merged type generation, and publishes to `br:biceptypes.azurecr.io/radiusresources:latest`. Since the `radiusResources` extension is Go-only and independent of the TypeScript autorest pipeline, this runs entirely within `resource-types-contrib` CI without any cross-pipeline coordination.
 
-**Option 2 automation:** Publishing the unified `radius` extension requires running both the TypeScript autorest pipeline (for `Applications.*` and `Radius.Core`) and the Go converter (for contrib types) before merging into a single `index.json`. Because both pipelines live in the Radius repo, the Radius repo owns publishing for both `latest` and versioned tags:
+**Option 2 automation:** Publishing the unified `radius` extension requires running both the TypeScript autorest pipeline (for `Applications.*` and `Radius.Core`) and the Go converter (for contrib types) before merging into a single `index.json`. Because both pipelines live in the Radius repo and the contrib manifest copies are also committed there (see the [default registration design](2026-04-automated-default-resource-type-registration.md) decision to use Alternative approach 1), publishing is fully self-contained in the Radius repo:
 
-- **Versioned tag (`v0.58.0`, etc.):** Published by the Radius release pipeline. Pins to the `resource-types-contrib` commit referenced in `go.mod` for that release.
-- **`latest` tag:** Published by a Radius CI workflow on every merge to `main`. The same workflow is also triggered via `repository_dispatch` from `resource-types-contrib` CI on merges to its `main`, so contrib changes flow into `latest` without waiting for the next Radius commit. This requires a cross-repo PAT scoped to triggering the dispatch event.
+- **Versioned tag (`v0.58.0`, etc.):** Published by the Radius release pipeline. Uses the manifest copies committed to `deploy/manifest/built-in-providers/`, which were last refreshed via `make update-resource-types` against the `resource-types-contrib` version pinned in `go.mod`.
+- **`latest` tag:** Published by a Radius CI workflow on every merge to `main`. The same workflow is also triggered via `repository_dispatch` from `resource-types-contrib` CI on merges to its `main`. Important nuance: the dispatch alone does not refresh the manifest copies in Radius (those only update via the explicit `make update-resource-types` PR), so dispatching `latest` after a contrib merge would publish stale types. Instead, contrib's dispatch should open (or update) a Radius PR that runs `make update-resource-types`; the `latest` republish happens when that PR merges. This requires a cross-repo PAT scoped to triggering the dispatch event and opening PRs.
+
+A staging-location approach (where `resource-types-contrib` CI publishes intermediate artifacts that the Radius pipeline later consumes) was considered but rejected: it adds an extra artifact and storage location without solving the core requirement that the unified extension must be assembled in one place by the pipeline that owns both generators.
 
 ## Error Handling
 
@@ -211,6 +221,6 @@ Extension publishing should be automated in two places:
 ## Development plan
 
 1. **PR 1 (radius)**: Add `--output-dir` flag to `bicep-tools/cmd/manifest-to-bicep` for generating `types.json` without publishing.
-2. **PR 2 (radius)**: Update `generate-bicep-types` Makefile target to include contrib manifest processing (driven by `defaults.yaml` from the `resource-types-contrib` Go module). Update or add `rebuild-index` step so `index.json` covers both TypeScript- and Go-generated types. Remove `radiusCompute`, `radiusData`, `radiusSecurity` from `bicepconfig.json` and from the install scripts (`deploy/install.sh`, `deploy/install.ps1`).
+2. **PR 2 (radius)**: Update `generate-bicep-types` Makefile target to include contrib manifest processing (driven by `deploy/manifest/defaults.yaml` and the manifest copies in `deploy/manifest/built-in-providers/`, both maintained by `make update-resource-types`; see the default registration design). Update or add `rebuild-index` step so `index.json` covers both TypeScript- and Go-generated types. Remove `radiusCompute`, `radiusData`, `radiusSecurity` from `bicepconfig.json` and from the install scripts (`deploy/install.sh`, `deploy/install.ps1`).
 3. **PR 3 (radius)**: Update the release pipeline to publish the unified `radius` extension (versioned tag) and add a CI workflow that publishes the `latest` tag on merges to `main`. Wire up `repository_dispatch` from `resource-types-contrib` so contrib merges also trigger a `latest` republish.
-4. **PR 4 (resource-types-contrib)**: Add a workflow that fires `repository_dispatch` to the Radius repo on merges to `main`.
+4. **PR 4 (resource-types-contrib)**: Add a workflow that fires `repository_dispatch` to the Radius repo on merges to `main`. The dispatch opens or updates a Radius PR running `make update-resource-types`; merging that PR refreshes the committed manifest copies and triggers the `latest` republish via PR 3's workflow.
