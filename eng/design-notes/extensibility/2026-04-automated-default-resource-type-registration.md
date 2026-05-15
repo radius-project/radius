@@ -70,7 +70,7 @@ The design adds `resource-types-contrib` as a Go module dependency of `radius` �
 
 A `defaults.yaml` file at `radius/deploy/manifest/defaults.yaml` lists the manifest files to ship as defaults. A `make update-resource-types` target:
 
-1. Bumps the `resource-types-contrib` dependency in `go.mod` (`go get -u`).
+1. Bumps the `resource-types-contrib` dependency in `go.mod` (`go get MODULE@latest`).
 2. Reads `defaults.yaml`.
 3. Resolves each entry to a path inside the Go module cache for the pinned version.
 4. Copies the file into `deploy/manifest/built-in-providers/`.
@@ -103,7 +103,7 @@ The `location` field is intentionally omitted from `resource-types-contrib` mani
 │  deploy/manifest/defaults.yaml  (lists files to copy)       │
 │                      │                                      │
 │                      │ make update-resource-types           │
-│                      │   1. go get -u && go mod tidy        │
+│                      │   1. go get MODULE@latest && go mod tidy│
 │                      │   2. for each entry in defaults.yaml │
 │                      │   3. cp $MOD_DIR/<path> →            │
 │                      │      deploy/manifest/built-in-providers/ │
@@ -135,7 +135,6 @@ defaultRegistration:
   - Radius.Compute/persistentVolumes
   - Radius.Compute/routes
   - Radius.Data/mySqlDatabases
-  - Radius.Data/postgreSqlDatabases
   - Radius.Security/secrets
 ```
 
@@ -145,7 +144,7 @@ The copy script resolves each entry to a file path in the `resource-types-contri
 
 ```make
 update-resource-types:
-	go get -u github.com/radius-project/resource-types-contrib
+	go get github.com/radius-project/resource-types-contrib@latest
 	go mod tidy
 	$(MAKE) sync-resource-types
 
@@ -153,13 +152,16 @@ sync-resource-types:
 	@echo "Syncing default resource types from resource-types-contrib..."
 	@MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
 	for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
-		cp "$$MODULE_DIR/$$path" deploy/manifest/built-in-providers/$$(basename "$$path"); \
+		for dest in deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted; do \
+			cp "$$MODULE_DIR/$$path" "$$dest/$$(basename "$$path")"; \
+		done; \
 		echo "  Copied $$path"; \
 	done
+	@# Remove stale managed files not in the current defaults.yaml list.
 	@echo "Done. Review and commit the updated files."
 ```
 
-`sync-resource-types` is split out so CI can run the copy step alone (without bumping the dependency) to detect drift.
+`sync-resource-types` is split out so CI can run the copy step alone (without bumping the dependency) to detect drift. It also removes stale managed files whose entries have been removed from `defaults.yaml`.
 
 #### Drift detection in CI
 
@@ -200,13 +202,15 @@ At startup, UCP's existing `RegisterDirectory` function loads each file. For a m
 
 #### resource-types-contrib repository
 
-One change: add a `go.mod` so the repo is consumable as a Go module.
+Two changes: add a `go.mod` and a `doc.go` so the repo is consumable as an importable Go module.
 
 ```
 module github.com/radius-project/resource-types-contrib
 
-go 1.24
+go 1.26.3
 ```
+
+`doc.go` provides a minimal package declaration (`package resourcetypescontrib`) so that dependent modules can use a blank import to keep the dependency stable across `go mod tidy` runs.
 
 No `defaults.yaml`, no generated code, no embed directives. The repo continues to be a flat collection of YAML manifests and recipes.
 
@@ -215,14 +219,16 @@ No `defaults.yaml`, no generated code, no embed directives. The repo continues t
 | File | Change |
 |---|---|
 | `go.mod` | Add `github.com/radius-project/resource-types-contrib` dependency. |
+| `pkg/resourcetypescontrib/import.go` | New file with blank import (`_ \"github.com/radius-project/resource-types-contrib\"`) to keep the dependency in `go.mod` across `go mod tidy`. |
 | `deploy/manifest/defaults.yaml` | New file listing manifests to copy. |
-| `deploy/manifest/built-in-providers/<type>.yaml` | New copied files (one per entry in `defaults.yaml`). |
-| `deploy/manifest/built-in-providers/radius_compute.yaml` | **Removed**. Replaced by per-type copied files. |
-| `deploy/manifest/built-in-providers/radius_security.yaml` | **Removed**. Replaced by per-type copied files. |
-| `deploy/manifest/built-in-providers/radius_core.yaml` | Unchanged. Not in `resource-types-contrib`. |
-| `deploy/manifest/built-in-providers/microsoft_resources.yaml` | Unchanged. Not in `resource-types-contrib`. |
+| `deploy/manifest/built-in-providers/{dev,self-hosted}/<type>.yaml` | New copied files (one per entry in `defaults.yaml`), in both `dev/` and `self-hosted/` directories. |
+| `deploy/manifest/built-in-providers/{dev,self-hosted}/radius_compute.yaml` | **Removed**. Replaced by per-type copied files. |
+| `deploy/manifest/built-in-providers/{dev,self-hosted}/radius_data.yaml` | **Removed**. Replaced by per-type copied files. |
+| `deploy/manifest/built-in-providers/{dev,self-hosted}/radius_security.yaml` | **Removed**. Replaced by per-type copied files. |
+| `deploy/manifest/built-in-providers/{dev,self-hosted}/radius_core.yaml` | Unchanged. Not in `resource-types-contrib`. |
+| `deploy/manifest/built-in-providers/{dev,self-hosted}/microsoft_resources.yaml` | Unchanged. Not in `resource-types-contrib`. |
 | `Makefile` | Add `update-resource-types` and `sync-resource-types` targets. |
-| `.github/workflows/...` | Add the drift-detection step described above. |
+| `.github/workflows/verify-resource-types.yaml` | Add the drift-detection workflow described above. |
 
 **No changes to UCP runtime code.** `pkg/cli/manifest/registermanifest.go`, `pkg/ucp/initializer/service.go`, and `pkg/ucp/server/server.go` are untouched. The existing `RegisterDirectory` path picks up the copied files automatically.
 
@@ -231,7 +237,7 @@ No `defaults.yaml`, no generated code, no embed directives. The repo continues t
 | Scenario | Behavior |
 |---|---|
 | `defaults.yaml` lists a file not present in the pinned `resource-types-contrib` version | `make sync-resource-types` fails on `cp`, with the missing path identified. CI fails on the PR. |
-| `go get -u` fails (network, module resolution) | `make update-resource-types` fails with the underlying Go toolchain error. The maintainer retries or pins manually. |
+| `go get` fails (network, module resolution) | `make update-resource-types` fails with the underlying Go toolchain error. The maintainer retries or pins manually. |
 | Copied manifest YAML has invalid syntax | At startup, the existing `RegisterDirectory` parser returns an error for the specific file. Startup fails. |
 | Copied manifest fails schema validation | The existing `validateManifestSchemas` returns an error for the specific file. Startup fails. |
 | Drift between committed copies and pinned dependency | CI's drift-detection step shows the diff and fails the PR before merge. |
@@ -253,28 +259,28 @@ No `defaults.yaml`, no generated code, no embed directives. The repo continues t
 
 3. **Startup registration**:
    - Existing `Test_ResourceProvider_RegisterManifests` continues to pass against the new copied files.
-   - Add an integration test that asserts each type listed in `defaults.yaml` is registered after startup.
+   - `Test_ResourceProvider_RegisterManifests_NoLocation` verifies that manifests without a `location` field are registered successfully and that the location resource has no `address` property (confirming UCP uses `DefaultDownstreamEndpoint` for routing).
 
-4. **`rad upgrade` scenario**:
+4. **`rad upgrade` scenario** (follow-up, not covered in this implementation):
    - Start an older Radius with a smaller default set, then upgrade to a build with an additional default type. Verify the new type is registered and existing types are updated without errors.
 
 ## Security
 
-No changes to the security model. The embedded manifests are static YAML files compiled into the binary at build time, so there is no new attack surface for injection or tampering beyond what exists for any compiled-in resource. The `defaults.yaml` file is validated at startup, and invalid entries cause a clear startup failure.
+No changes to the security model. The manifests are static YAML files copied into `deploy/manifest/built-in-providers/`, committed to the `radius` repository, and loaded from disk at startup through the existing `RegisterDirectory` path. This does not introduce a new runtime attack surface beyond the existing manifest-loading behavior. The `defaults.yaml` file is a build-time input to the sync tooling and CI checks; it is not read or validated at runtime.
 
-### Security Considerations for Embedded External Manifests
+### Security Considerations for Copied Manifests from an External Repository
 
-The proposed design has `defaults.yaml` in `resource-types-contrib` and pulls manifests into the Radius binary via a Go module dependency. Since manifests are sourced from a separate repository that may have a broader set of contributors, it is important to ensure that changes are properly reviewed before they are embedded into the Radius binary.
+The chosen design sources manifests from `resource-types-contrib`, copies the selected files into the `radius` repository, and commits those copies alongside the Radius codebase. Since the source repository may have a broader set of contributors, it is important to ensure that changes are properly reviewed before updated manifests are synchronized into Radius.
 
 #### Existing safeguards
 
 The following safeguards already mitigate this risk:
 
-1. **PR review in `resource-types-contrib`.** Adding or modifying a manifest and updating `defaults.yaml` requires a PR reviewed and approved by CODEOWNERS of `resource-types-contrib`. A malicious manifest cannot become a default without reviewer approval.
+1. **PR review in `resource-types-contrib`.** Adding or modifying a source manifest requires a PR reviewed and approved by CODEOWNERS of `resource-types-contrib` before it can be consumed by Radius.
 
-2. **`go.mod` bump requires PR review in `radius`.** Changes in `resource-types-contrib` only reach Radius when a maintainer runs `go get -u` and merges the resulting `go.mod`/`go.sum` change. This is a second review gate.
+2. **Dependency bump and copied manifest changes require PR review in `radius`.** Changes from `resource-types-contrib` only reach Radius when a maintainer updates the pinned module version, runs the sync target, and merges the resulting `go.mod`/`go.sum` and copied YAML changes. This provides a second review gate in the Radius repository with full visibility into the YAML diffs.
 
-3. **Manifest parsing and schema validation.** Manifests are parsed using a strict YAML decoder that rejects unknown top-level fields, duplicate keys, and any data that does not conform to the expected `ResourceProvider` structure. Schemas within each manifest are further validated against OpenAPI format; malformed or structurally invalid schemas are rejected at startup. There is no risk of code execution through YAML parsing, as Go YAML parsers do not support executable YAML tags.
+3. **CI drift detection and runtime manifest validation.** CI verifies that the committed copies match the pinned `resource-types-contrib` version so unsynchronized or hand-edited files are caught before merge. At runtime, the copied manifests loaded by `RegisterDirectory` are still parsed using the existing strict YAML decoder and schema validation path; malformed or structurally invalid manifests are rejected at startup. There is no risk of code execution through YAML parsing, as Go YAML parsers do not support executable YAML tags.
 
 4. **Schema runtime behavior.** The `schema` field within each API version accepts arbitrary JSON Schema content (including `additionalProperties: true`), so its contents are not structurally restricted beyond OpenAPI validity. After registration, dynamic-rp reads stored schemas at runtime for request validation and sensitive field identification (encryption). The schema is never passed to Terraform or Bicep recipes, and users always provide resource property values explicitly, so a crafted schema cannot inject values into recipe execution. The residual risks are limited to weakened request validation (overly permissive properties), unnecessary encryption overhead (incorrectly marking fields as sensitive), or performance degradation (very large or deeply nested schemas). These risks are mitigated by the requirement for manifest changes to go through code review, where reviewers can inspect the schema content.
 
@@ -383,7 +389,7 @@ Mitigating the disadvantages noted in the alternative:
 
 - **No breaking changes**: The existing `RegisterDirectory` startup path is reused as-is. The copied manifests live alongside the existing `radius_core.yaml` and `microsoft_resources.yaml` files.
 - **Custom `ManifestDirectory` config**: Continues to work. Operators that point to a custom manifest directory can still override the defaults.
-- **Removed files**: `radius_compute.yaml` and `radius_security.yaml` are deleted from `built-in-providers/` because their content is now provided by the per-type files copied from `resource-types-contrib`. Operators relying on these specific filenames should be informed in release notes (the resource types themselves remain registered).
+- **Removed files**: `radius_compute.yaml`, `radius_data.yaml`, and `radius_security.yaml` are deleted from `built-in-providers/` because their content is now provided by the per-type files copied from `resource-types-contrib`. Operators relying on these specific filenames should be informed in release notes (the resource types themselves remain registered).
 
 ## Monitoring and Logging
 
@@ -395,8 +401,8 @@ Existing startup health checks and log monitoring apply.
 
 ## Development plan
 
-1. **PR 1 (resource-types-contrib)**: Add `go.mod` so the repo is consumable as a Go module. No `defaults.yaml`, no generated code, no `go:embed`.
-2. **PR 2 (radius)**: Add `resource-types-contrib` to `go.mod`. Add `deploy/manifest/defaults.yaml` listing the manifests to copy. Add the `update-resource-types` and `sync-resource-types` Makefile targets. Run `make update-resource-types` once and commit the copied manifest files into `deploy/manifest/built-in-providers/`. Remove the manually-maintained `radius_compute.yaml` and `radius_security.yaml`. Add the CI drift-detection workflow.
+1. **PR 1 (resource-types-contrib)**: Add `go.mod` and `doc.go` so the repo is consumable as an importable Go module. No `defaults.yaml`, no generated code, no `go:embed`.
+2. **PR 2 (radius)**: Add `resource-types-contrib` to `go.mod`. Add `pkg/resourcetypescontrib/import.go` with a blank import to keep the dependency across `go mod tidy`. Add `deploy/manifest/defaults.yaml` listing the manifests to copy. Add the `update-resource-types` and `sync-resource-types` Makefile targets. Run `make update-resource-types` once and commit the copied manifest files into `deploy/manifest/built-in-providers/{dev,self-hosted}/`. Remove the manually-maintained `radius_compute.yaml`, `radius_data.yaml`, and `radius_security.yaml`. Add the CI drift-detection workflow. Add integration test for no-location manifest registration.
 3. **PR 3 (radius)**: Update the Radius release process documentation to include a step for running `make update-resource-types` before each release, along with guidance on handling schema validation failures (fix the manifest in `resource-types-contrib`, re-bump, and re-run `make update-resource-types`; or pin to the last known good version).
 
 ### Ensuring the dependency is kept up to date
