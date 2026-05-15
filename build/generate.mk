@@ -147,6 +147,79 @@ generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generat
 	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
 	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+	@echo "$(ARROW) Generating Bicep types for default contrib resource type namespaces..."
+	@$(MAKE) generate-bicep-types-contrib
+	@echo "$(ARROW) Rebuilding unified Bicep types index..."
+	CI=true pnpm -C hack/bicep-types-radius/src/generator run rebuild-index --release-version ${VERSION}
+
+# Generates Bicep types.json files for the default contrib resource type
+# namespaces listed in deploy/manifest/defaults.yaml.
+#
+# Each entry in defaults.yaml uses <namespace>/<typeName> format
+# (e.g. Radius.Compute/containers). This target:
+#   1. Reads defaults.yaml to discover which types to include.
+#   2. Groups entries by namespace.
+#   3. For each namespace, passes ALL per-type manifest files to
+#      `generate` so they are merged into a single output.
+#
+# Per-type manifest files live under deploy/manifest/built-in-providers/self-hosted/
+# as individual YAML files (e.g. containers.yaml, routes.yaml).
+DEFAULTS_YAML := deploy/manifest/defaults.yaml
+BICEP_TYPES_CONTRIB_API_VERSION ?= 2025-08-01-preview
+BICEP_TYPES_OUTPUT_BASE := hack/bicep-types-radius/generated/radius
+BICEP_TYPES_CONTRIB_MANIFEST_DIR := deploy/manifest/built-in-providers/self-hosted
+
+.PHONY: generate-yq-installed
+generate-yq-installed:
+	@echo "$(ARROW) Detecting yq..."
+	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@latest' to install yq"; exit 1; }
+	@echo "$(ARROW) OK"
+
+.PHONY: generate-bicep-types-contrib
+generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.json files for default contrib namespaces from defaults.yaml.
+	# Discover unique namespaces from defaults.yaml.
+	@NAMESPACES=$$(yq '.defaultRegistration[]' $(DEFAULTS_YAML) | sed 's|/.*||' | sort -u) && \
+	for ns in $$NAMESPACES; do \
+		ns_lower=$$(echo "$$ns" | tr '[:upper:]' '[:lower:]') && \
+		out_dir="$(BICEP_TYPES_OUTPUT_BASE)/$$ns_lower/$(BICEP_TYPES_CONTRIB_API_VERSION)" && \
+		manifest_args="" && \
+		for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML) | grep "^$$ns/"); do \
+			type_name=$$(echo "$$entry" | cut -d'/' -f2) && \
+			manifest="$(BICEP_TYPES_CONTRIB_MANIFEST_DIR)/$$type_name.yaml" && \
+			if [ ! -f "$$manifest" ]; then \
+				echo "ERROR: Manifest not found: $$manifest (from entry '$$entry')"; \
+				exit 1; \
+			fi && \
+			manifest_args="$$manifest_args $$manifest"; \
+		done && \
+		echo "  -> $$ns ($$manifest_args) -> $$out_dir" && \
+		go run ./bicep-tools/cmd/manifest-to-bicep generate $$manifest_args "$$out_dir" || exit 1; \
+	done
+
+# Publishing the unified `radius` Bicep extension. Runnable locally against any
+# OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io
+# after `az acr login`). Both BICEP_PUBLISH_TARGET and the local Bicep CLI must
+# be available. CI workflows (added separately) call this target after
+# generating types and authenticating to the registry.
+#
+# Example:
+#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:biceptypes.azurecr.io/radius:latest
+BICEP_PUBLISH_INDEX := $(BICEP_TYPES_OUTPUT_BASE)/../index.json
+BICEP_PUBLISH_TARGET ?=
+
+.PHONY: publish-bicep-extension
+publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICEP_PUBLISH_TARGET. Requires generate-bicep-types to have been run.
+	@if [ -z "$(BICEP_PUBLISH_TARGET)" ]; then \
+		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:biceptypes.azurecr.io/radius:latest)"; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(BICEP_PUBLISH_INDEX)" ]; then \
+		echo "ERROR: $(BICEP_PUBLISH_INDEX) does not exist; run 'make generate-bicep-types' first"; \
+		exit 1; \
+	fi
+	@which bicep > /dev/null || { echo "ERROR: 'bicep' CLI not found in PATH"; exit 1; }
+	@echo "$(ARROW) Publishing Bicep extension index $(BICEP_PUBLISH_INDEX) -> $(BICEP_PUBLISH_TARGET)"
+	bicep publish-extension "$(BICEP_PUBLISH_INDEX)" --target "$(BICEP_PUBLISH_TARGET)" --force
 
 
 .PHONY: generate-containerinstance-client

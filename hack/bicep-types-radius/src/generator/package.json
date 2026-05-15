@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc -p .",
     "generate": "ts-node src/cmd/generate.ts",
+    "rebuild-index": "ts-node src/cmd/rebuild-index.ts",
     "lint": "eslint src --ext ts",
     "lint:fix": "eslint src --ext ts --fix",
     "postinstall": "cd node_modules/bicep-types-repo/src/bicep-types && npm install && npm run build && cd ../../../.. && rm -rf node_modules/bicep-types && ln -sf bicep-types-repo/src/bicep-types node_modules/bicep-types"
