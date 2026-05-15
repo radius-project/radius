@@ -32,10 +32,12 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
@@ -373,6 +375,30 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
 			return "", err
+		}
+	} else {
+		// Direct module path: resolve {{context.*}} expressions in parameters.
+		logger.Info("Direct module detected — resolving parameter expressions")
+
+		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+		if err != nil {
+			return "", err
+		}
+
+		if options.ResourceRecipe != nil {
+			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+		}
+
+		// Merge environment-level and resource-level parameters (environment wins per FR-004).
+		mergedParams := recipes_util.ShallowMergeParameters(options.ResourceRecipe.Parameters, options.EnvRecipe.Parameters)
+
+		// Resolve {{context.*}} expressions in the merged parameters.
+		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
+
+		// Update the TF config module with resolved parameters.
+		if resolvedParams != nil {
+			moduleCfg := tfConfig.Module[options.EnvRecipe.Name]
+			moduleCfg.SetParams(config.RecipeParams(resolvedParams))
 		}
 	}
 	if loadedModule.ResultOutputExists {

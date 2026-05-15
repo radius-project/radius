@@ -179,6 +179,13 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
+//
+// Precedence logic (FR-015):
+//   - If an `outputs` mapping is configured on the definition, it takes precedence: all module outputs
+//     are collected flat and then renamed via the mapping.
+//   - If no `outputs` mapping exists and the module has a `result` output, the module is treated as a
+//     wrapped recipe (existing behavior).
+//   - If neither is present, all module outputs pass through unchanged.
 func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	// We need to use reflect.DeepEqual to compare the struct that has a slice with an empty struct.
 	// The reason is that Go does not allow comparison of structs that contain slices.
@@ -189,13 +196,27 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 
 	recipeResponse := &recipes.RecipeOutput{}
 	if tfState.Values != nil && tfState.Values.Outputs != nil {
-		// We populate the recipe response from the 'result' output (if set).
 		moduleOutputs := tfState.Values.Outputs
-		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
-			err := recipeResponse.PrepareRecipeResponse(result)
-			if err != nil {
-				return &recipes.RecipeOutput{}, err
+		hasOutputsMapping := len(definition.Outputs) > 0
+		_, hasResultOutput := moduleOutputs[recipes.ResultPropertyName]
+
+		if hasOutputsMapping {
+			// Direct module with outputs mapping — collect all outputs flat, then apply mapping.
+			values, secrets := collectFlatOutputs(moduleOutputs)
+			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs)
+		} else if hasResultOutput {
+			// Wrapped recipe — use existing result output parsing.
+			if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(result)
+				if err != nil {
+					return &recipes.RecipeOutput{}, err
+				}
 			}
+		} else {
+			// Direct module without mapping — pass through all outputs unchanged.
+			values, secrets := collectFlatOutputs(moduleOutputs)
+			recipeResponse.Values = values
+			recipeResponse.Secrets = secrets
 		}
 	}
 
@@ -449,4 +470,24 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	return recipeResources, nil
+}
+
+// collectFlatOutputs collects all Terraform state outputs into flat value and secret maps.
+// Sensitive outputs go into secrets, non-sensitive into values.
+func collectFlatOutputs(outputs map[string]*tfjson.StateOutput) (map[string]any, map[string]any) {
+	values := make(map[string]any)
+	secrets := make(map[string]any)
+
+	for name, output := range outputs {
+		if output == nil {
+			continue
+		}
+		if output.Sensitive {
+			secrets[name] = output.Value
+		} else {
+			values[name] = output.Value
+		}
+	}
+
+	return values, secrets
 }

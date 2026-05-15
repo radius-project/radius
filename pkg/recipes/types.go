@@ -83,6 +83,9 @@ type EnvironmentDefinition struct {
 	TemplateVersion string
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with original names.
+	Outputs map[string]string
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
