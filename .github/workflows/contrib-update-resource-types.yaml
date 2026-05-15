@@ -1,0 +1,209 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: contrib-update-resource-types
+
+# Triggered via `repository_dispatch` from radius-project/resource-types-contrib
+# whenever its `main` branch updates. Opens (or refreshes) a PR that runs
+# `make update-resource-types` so the manifest copies committed under
+# deploy/manifest/built-in-providers/ stay in sync with the contrib repo.
+#
+# Merging the resulting PR triggers the existing `build-and-push-bicep-types`
+# job in build.yaml, which dispatches to azure-octo/radius-publisher to
+# republish `radius:latest` with the refreshed contrib types.
+#
+# See the design note:
+#   eng/design-notes/extensibility/2026-05-unified-bicep-extension-publishing.md
+
+on:
+  repository_dispatch:
+    types:
+      - resource-types-contrib-updated
+  # workflow_dispatch: # Enable during development for manual testing
+  #   inputs:
+  #     contrib_ref:
+  #       description: "Optional resource-types-contrib commit SHA the update is based on."
+  #       required: false
+  #       default: ""
+
+permissions: {}
+
+concurrency:
+  # Only one in-flight refresh PR at a time.
+  group: contrib-update-resource-types
+  cancel-in-progress: false
+
+env:
+  PR_BRANCH: bot/update-resource-types
+  CONTRIB_REPO: radius-project/resource-types-contrib
+
+jobs:
+  open-update-pr:
+    name: Open update-resource-types PR
+    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read # actions/checkout
+    steps:
+      - name: Resolve contrib ref
+        # Extracts the contrib commit SHA from either the dispatch payload or
+        # workflow_dispatch input. Validates it as a hex SHA to prevent injection.
+        # Falls back to "main" if not provided. Note: this value is informational
+        # only (used in commit messages and PR body). The actual version fetched
+        # is determined by 'make update-resource-types' which runs 'go get ...@latest'.
+        id: contrib
+        env:
+          DISPATCH_REF: ${{ github.event.client_payload.contrib_ref }}
+          INPUT_REF: ${{ github.event.inputs.contrib_ref }}
+        run: |
+          set -euo pipefail
+          ref="${DISPATCH_REF:-${INPUT_REF:-}}"
+          if [ -z "${ref}" ]; then
+            ref="main"
+          elif ! [[ "${ref}" =~ ^[a-f0-9]{7,40}$ ]]; then
+            echo "ERROR: contrib_ref must be a hex commit SHA, got '${ref}'"
+            exit 1
+          fi
+          echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
+          echo "Contrib ref: ${ref}"
+
+      - name: Checkout
+        # Uses GH_RAD_CI_BOT_PAT instead of the default GITHUB_TOKEN so that
+        # the bot can push the PR branch and the resulting PR triggers CI checks.
+        # The default GITHUB_TOKEN cannot trigger workflows on pushes it creates.
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          persist-credentials: true
+
+      - name: Set up Git identity
+        # Configure git author for the automated commit on the PR branch.
+        run: |
+          git config user.name "Radius CI Bot"
+          git config user.email "radiuscoreteam@service.microsoft.com"
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Install yq
+        # Required by make update-resource-types / sync-resource-types to parse
+        # deploy/manifest/defaults.yaml.
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@v4.44.3
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+
+      - name: Run make update-resource-types
+        # Bumps go.mod to the latest resource-types-contrib version and copies
+        # the manifest files listed in defaults.yaml into
+        # deploy/manifest/built-in-providers/{dev,self-hosted}/.
+        run: |
+          set -euo pipefail
+          if ! make -n update-resource-types >/dev/null 2>&1; then
+            echo "ERROR: 'make update-resource-types' target is not yet defined." >&2
+            echo "This workflow depends on the target introduced by the default-registration design" >&2
+            echo "(eng/design-notes/extensibility/2026-04-automated-default-resource-type-registration.md)." >&2
+            exit 1
+          fi
+          make update-resource-types
+
+      - name: Detect changes
+        # Uses git status --porcelain (not git diff --quiet) because
+        # make update-resource-types may create new untracked files when new
+        # resource types are added to defaults.yaml. git diff only detects
+        # modifications to already-tracked files.
+        id: changes
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "No changes from 'make update-resource-types'; nothing to do."
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Create or update PR branch
+        # Force-pushes to the bot branch so that if a previous automated PR is
+        # still open, its content is replaced with the latest manifests rather
+        # than accumulating stale commits.
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
+        run: |
+          set -euo pipefail
+          git checkout -B "${PR_BRANCH}"
+          git add -A
+          git commit -m "chore: refresh resource type manifests from ${CONTRIB_REPO} (${CONTRIB_REF})"
+          git push --force origin "${PR_BRANCH}"
+
+      - name: Open or update pull request
+        # Creates a new PR if none exists for the bot branch, or updates the
+        # existing one's title and body. Uses github-script because we need
+        # conditional create-or-update logic that gh pr create doesn't support.
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const branch = process.env.PR_BRANCH;
+            const contribRef = process.env.CONTRIB_REF;
+            const title = "chore: refresh resource type manifests from resource-types-contrib";
+            const body = [
+              "Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/`.",
+              "",
+              `Triggered by an update to [\`${process.env.CONTRIB_REPO}\`](https://github.com/${process.env.CONTRIB_REPO}) at ref \`${contribRef}\`.`,
+              "",
+              "Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build.yaml`.",
+            ].join("\n");
+
+            const { owner, repo } = context.repo;
+            const { data: existing } = await github.rest.pulls.list({
+              owner,
+              repo,
+              head: `${owner}:${branch}`,
+              state: "open",
+            });
+
+            if (existing.length === 0) {
+              const { data: pr } = await github.rest.pulls.create({
+                owner,
+                repo,
+                title,
+                head: branch,
+                base: "main",
+                body,
+              });
+              core.notice(`Opened PR #${pr.number}: ${pr.html_url}`);
+            } else {
+              const pr = existing[0];
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                title,
+                body,
+              });
+              core.notice(`Refreshed existing PR #${pr.number}: ${pr.html_url}`);
+            }
