@@ -71,9 +71,9 @@ interface AzurePlanes {
   @route("/azure")
   @list
   @armResourceList(AzurePlaneResource)
-  list(
-    ...ApiVersionParameter,
-  ): ArmResponse<ResourceListResult<AzurePlaneResource>> | ErrorResponse;
+  list(...ApiVersionParameter):
+    | ArmResponse<ResourceListResult<AzurePlaneResource>>
+    | ErrorResponse;
 
   @doc("Get a plane by name")
   get is UcpResourceRead<

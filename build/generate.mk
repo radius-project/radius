@@ -32,7 +32,7 @@ generate-tsp-installed: generate-pnpm-installed
 	@echo "$(ARROW) Detecting tsp..."
 	@pnpm -C typespec exec tsp --help > /dev/null 2>&1 || { \
 		echo "$(ARROW) TypeSpec not found. Installing TypeSpec dependencies..."; \
-		pnpm -C typespec install --frozen-lockfile; \
+		pnpm -C typespec install --frozen-lockfile --config.confirm-modules-purge=false; \
 	}
 	@echo "$(ARROW) OK"
 
