@@ -1,11 +1,10 @@
 namespace: Radius.Compute
-location:
-  global: "http://dynamic-rp.radius-system:8082"
 types:
   containers:
     description: |
       The Radius.Compute/containers Resource Type is the primary resource type for running one or more containers. It is always part of a Radius Application. To deploy a Container add a resource to the application definition Bicep file.
 
+      ```
       extension radius
       param environment string 
 
@@ -23,11 +22,13 @@ types:
           }
         }
       }
+      ```
 
       By default, Containers deploys to Kubernetes. In this case, a Kubernetes Deployment named myContainer is deployed which includes a Pod named myContainer. Your Radius environment may deploy to other container platforms such as Azure Container Instances. 
 
       To accept network connections, expose a port on the container.
 
+      ```
       resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
         name: 'myContainer'
         properties: {
@@ -45,11 +46,13 @@ types:
           }
         }
       }
+      ```
       
       When a port is included, a Kubernetes Service named demo with the type ClusterIP is created.
       
       To create a emphemeral emptyDir shared between two containers add a Containers.properties.volumes.
 
+      ```
       resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
         name: 'myContainer'
         properties: {
@@ -82,6 +85,7 @@ types:
           }
         }
       }
+      ```
 
       To mount a persistent volume or secret see the PersistentVolumes and Secrets Resource Types.
 
@@ -433,404 +437,3 @@ types:
                 type: any
                 description: (Required) Platform-specific properties.
           required: [environment, application, containers]
-  routes:
-    description: |
-      The Radius.Compute/routes Resource Type defines network routes for responding to external clients. Note that a Routes resource is not required for service-to-service communication. To use Routes, define a Container and ensure a `containerPort` is specified.
-
-      extension radius
-      param environment string
-
-      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
-      
-      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
-        name: 'myContainer'
-        properties: {
-          environment: environment
-          application: myApplication.id
-          containers: {
-            frontend: {
-              image: 'frontend:1.25'
-              ports: {
-                web: {
-                  containerPort: 8080
-                }
-              }
-            }
-            accounts: {
-              image: 'accounts:1.25'
-              ports: {
-                web: {
-                  containerPort: 8080
-                }
-              }
-            }
-          }
-        }
-      }
-
-      Then define a Routes resource.
-
-      resource ingressRule 'Radius.Compute/routes@2025-08-01-preview' = {
-        name: 'ingressRule'
-        properties: {
-          application: myApplication.id
-          environment: environment
-          kind: 'HTTP'
-          rules: [
-            {
-              matches: [
-                {
-                  httpPath: '/'
-                }
-              ]
-              destinationContainer: {
-                resourceId: myContainer.id
-                containerName: 'frontend'
-                containerPortName: 'web'
-              }
-            }
-          ]
-        }
-      }
-
-      The hostname is determined by the Recipe. 
-
-      Multiple rules can be included in Routes.
-
-      resource ingressRule 'Radius.Compute/routes@2025-08-01-preview' = {
-        name: 'ingressRule'
-        properties: {
-          application: myApplication.id
-          environment: environment
-          kind: 'HTTP'
-          rules: [
-            {
-              matches: [
-                {
-                  httpPath: '/'
-                }
-              ]
-              destinationContainer: {
-                resourceId: myContainer.id
-                containerName: 'frontend'
-                containerPortName: 'web'
-              }
-            }
-            {
-              matches: [
-                {
-                  httpPath: '/accounts'
-                }
-              ]
-              destinationContainer: {
-                resourceId: myContainer.id
-                containerName: 'accounts'
-                containerPortName: 'web'
-              }
-            }
-          ]
-        }
-      }
-
-    apiVersions:
-      '2025-08-01-preview':
-        schema: 
-          type: object
-          properties:
-            environment:
-              type: string
-              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
-            application:
-              type: string
-              description: (Required) The Radius Application ID. `myApplication.id` for example.
-            kind:
-              type: string 
-              enum: [HTTP, TCP, TLS, UDP]
-              description: (Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.
-            hostnames:
-              type: array
-              description: (Optional) Use only when kind is HTTP or TLS. When HTTP, match against the HTTP Host header. When using TLS, match against the SNI attribute of TLS ClientHello message. Hostname may be preceded by a * wildcard.
-              items:
-                type: string
-            rules:
-              type: array
-              description: (Required) Rules define semantics for matching a network connection request based on conditions and forwarding the request to a Container.
-              items:
-                type: object
-                properties:
-                  matches:
-                    type: array
-                    description: (Required) Matches define conditions used for matching a request. 
-                    items:
-                      type: object
-                      properties:
-                        httpHeaders:
-                          type: array
-                          description: (Optional) HTTP headers to match. Specify only when kind is HTTP. Multiple match values are ANDed together. A request must match all the specified headers to match.
-                          items:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                                description: (Required) The name of the HTTP Header to be matched. Must be exact.
-                              value:
-                                type: string
-                                description: (Required) Value of HTTP Header to be matched.
-                            required: [name, value]
-                        httpMethod:
-                          type: string
-                          description: (Optional) The HTTP method to match. Specify only when kind is HTTP. 
-                          enum: [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH]
-                        httpPath:
-                          type: string
-                          description: (Optional) The HTTP request path to match. Trailing space is ignored. Requests for `/abc`, `/abc/`, and ``/abc/def/` will all match `/abc`.
-                        httpQueryParams:
-                          type: array
-                          description: (Optional) HTTP query parameters to match. Specify only when kind is HTTP.
-                          items:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                                description: (Required) Name of the HTTP query parameter to be matched. Specify only when kind is HTTP.
-                              value:
-                                type: string
-                                description: (Required) Value of the HTTP query parameter to be matched.
-                            required: [name, value]
-                  destinationContainer:
-                    type: object
-                    properties:
-                      resourceId:
-                        type: string
-                        description: (Required) The Radius Container resource ID.
-                      containerName:
-                        type: string
-                        description: (Required) The specific container to target within the Container resource.
-                      containerPortName:
-                        type: string
-                        description: (Required) The port name to target from the container.
-                    required: [resourceId, containerName, containerPortName]
-                required: [matches, destinationContainer]
-            listener:
-              type: object
-              description: (Read Only) The Gateway Listener the route is assigned to.
-              readOnly: true
-              properties:
-                hostname:
-                  type: string
-                port:
-                  type: integer
-                protocol:
-                  type: string
-                  enum: [HTTP, HTTPS, TLS, TCP, UDP]
-          required: [environment, application, rules]
-  persistentVolumes:
-    description: |
-      The Radius.Compute/persistentVolumes Resource Type represents a persistent storage volume. A PersistentVolume can be referenced in the volumes property of a Container. 
-      To deploy, first add a PersistentVolume resource to the application definition Bicep file.
-      
-      extension radius
-      param environment string 
-
-      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
-
-      resource myPersistentVolume 'Radius.Compute/persistentVolumes@2025-08-01-preview' = {
-        name: 'myPersistentVolume'
-        properties: {
-          environment: environment
-          application: myApplication.id
-          sizeInGib: 1
-        }
-      }
-
-      Then reference the PersistentVolume by ID in the volumes property of the Container. Finally, set the mountPath in the container referencing the volumeName.
-
-      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
-        name: 'myContainer'
-        properties: {
-          environment: environment
-          application: myApplication.id
-          containers: {
-            demo: {
-              image: 'ghcr.io/radius-project/samples/demo:latest'
-              volumeMounts: [
-                {
-                volumeName: 'data'
-                mountPath: '/app/data'
-                } 
-              ] 
-            }
-          }
-          volumes: {
-            data: {
-              persistentVolume: {
-                resourceId: myPersistentVolume.id
-              }
-            }
-          }
-        }
-      }
-      
-      PersistentVolumes may be shared across multiple Containers. To mount an existing PersistentVolume in read-only mode, reference the PersistentVolume by name using the `existing` Bicep keyword. For example:
-      
-      resource existingPersistentVolume 'Radius.Compute/persistentVolumes@2025-08-01-preview' existing = {
-        name: 'existingPersistentVolume'
-      }
-      
-      Then add the existing PersistentVolume to the volumes property of a Container with accessMode set to `ReadOnlyMany`.
-      
-      resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
-        name: 'myContainer'
-        properties: {
-          environment: environment
-          application: myApplication.id
-          containers: {
-            demo: {
-              image: 'ghcr.io/radius-project/samples/demo:latest'
-              volumeMounts: [
-                {
-                  volumeName: 'readOnlyData'
-                  mountPath: '/app/data' 
-                }
-              ]
-            }
-          }
-          volumes: {
-            readOnlyData: {
-              persistentVolume: {
-                resourceId: existingPersistentVolume.id
-                accessMode: 'ReadOnlyMany'
-              }
-            }
-          }
-        }
-      }
-      
-      A PersistentVolume may be shared between multiple Containers in read/write mode if the PersistentVolume was created with `accessMode: ReadWriteMany` and the volume is set to ReadWriteMany as well. Note that not all infrastructures support this mode.
-
-    apiVersions:
-      '2025-08-01-preview':
-        schema: 
-          type: object
-          properties:
-            environment:
-              type: string
-              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
-            application:
-              type: string
-              description: (Optional) The Radius Application ID. `myApplication.id` for example.
-            sizeInGib:
-              type: integer
-              description: (Required) The size of the volume in gibibytes. `1` represents 1024 MiB.
-            allowedAccessModes:
-              type: string
-              enum: [ReadWriteOnce, ReadOnlyMany, ReadWriteMany]
-              description: (Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.
-          required: [environment, sizeInGib]
-  containerImages:
-    description: |
-      The Radius.Compute/containerImages Resource Type builds a container image from source and pushes it to a container registry. It is always part of a Radius Application.
-
-      This resource type is designed for local development workflows where the source code is available on the Kubernetes node filesystem (e.g., via kind `extraMounts` or k3d `-v` flags). It uses BuildKit to build and push the image.
-
-      To build and push a container image, add a containerImages resource to your application definition Bicep file:
-
-        extension radius
-        extension containerImages
-
-        param environment string
-
-        resource myApp 'Radius.Core/applications@2025-08-01-preview' = {
-          name: 'myApp'
-          properties: {
-            environment: environment
-          }
-        }
-
-        resource myImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
-          name: 'myImage'
-          properties: {
-            environment: environment
-            application: myApp.id
-            image: 'ghcr.io/myorg/myapp:latest'
-            build: {
-              context: '/app/src/myapp'
-            }
-          }
-        }
-
-      Registry credentials are configured by the platform engineer when registering the recipe. Developers do not need to manage credentials.
-
-      To reference the built image in a Container resource:
-
-        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
-          name: 'myContainer'
-          properties: {
-            environment: environment
-            application: myApp.id
-            containers: {
-              app: {
-                image: myImage.properties.image
-                ports: {
-                  web: {
-                    containerPort: 3000
-                  }
-                }
-              }
-            }
-          }
-        }
-
-      Prerequisites:
-
-      1. The Kubernetes cluster must have the source directory available on the node. For kind, use `extraMounts`. For k3d, use `-v` flags.
-
-      2. Registry credentials must be configured as recipe parameters when registering the recipe:
-
-        rad recipe register default --resource-type Radius.Compute/containerImages --template-kind terraform --template-path git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform --parameters ghcr_username=USERNAME --parameters ghcr_token=PAT
-
-    apiVersions:
-      '2025-08-01-preview':
-        schema:
-          type: object
-          properties:
-            environment:
-              type: string
-              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
-            application:
-              type: string
-              description: (Required) The Radius Application ID. `myApplication.id` for example.
-            image:
-              type: string
-              description: (Required) The full container image reference including registry, repository, and tag. `ghcr.io/myorg/myapp:latest` for example. Must be lowercase.
-            build:
-              type: object
-              description: (Required) Build configuration for the container image.
-              properties:
-                context:
-                  type: string
-                  description: (Required) The path to the build context directory on the Kubernetes node. This must be a path available on the node, for example via kind extraMounts or k3d volume flags. `/app/src/myapp` for example.
-                dockerfile:
-                  type: string
-                  description: (Optional) The path to the Dockerfile relative to the build context. If not specified, `Dockerfile` is assumed.
-              required:
-                - context
-            registry:
-              type: object
-              description: (Optional) Registry authentication overrides. If not specified, the recipe uses credentials configured by the platform engineer as recipe parameters.
-              properties:
-                server:
-                  type: string
-                  description: (Optional) The registry server address. If not specified, `ghcr.io` is assumed.
-                username:
-                  type: string
-                  description: (Optional) The registry username.
-                token:
-                  type: string
-                  description: (Optional) The registry token or PAT.
-                  x-radius-sensitive: true
-          required:
-            - environment
-            - application
-            - image
-            - build
