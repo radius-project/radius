@@ -14,23 +14,24 @@ Visit https://docs.radapp.io to start Radius.
 WARNING: dynamicrp.buildkit.psaMode is "restricted" but this cluster
 is running Kubernetes {{ .Capabilities.KubeVersion.Version }}, which
 predates user-namespace support (added in 1.30, stable in 1.33). The
-buildkitd sidecar will fail to start.
-
-Reinstall with:
-
-  helm upgrade --install radius ... \
-    --set dynamicrp.buildkit.psaMode=baseline
-
-The "baseline" mode runs the same buildkitd image with Unconfined
-seccomp/AppArmor profiles. Your namespace must permit PSA "baseline".
+buildkitd sidecar will fail to start. Reinstall without
+`--set dynamicrp.buildkit.psaMode=restricted` to fall back to the
+default `baseline` profile.
 {{- end }}
 {{- end }}
 {{- if .Values.dynamicrp.buildkit.enabled }}
 
-NOTE: The Radius.Compute/containerImages recipe authenticates with your
-registry using a Radius.Security/secrets resource that you create in
-the Radius environment. Register the recipe with both the registry and
-the secret name as parameters, e.g.:
+NOTE: The Radius.Compute/containerImages recipe pushes built images
+using credentials supplied by the platform engineer. Create a
+`kubernetes.io/dockerconfigjson` Secret in the {{ $.Release.Namespace }}
+namespace (developers never see it) and pass its name to the recipe
+at registration time:
+
+  kubectl create secret docker-registry registry-creds \
+    --namespace {{ $.Release.Namespace }} \
+    --docker-server=ghcr.io \
+    --docker-username=<user> \
+    --docker-password=<token>
 
   rad recipe register default \
     --resource-type Radius.Compute/containerImages \
