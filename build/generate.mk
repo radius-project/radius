@@ -172,7 +172,7 @@ BICEP_TYPES_CONTRIB_MANIFEST_DIR := deploy/manifest/built-in-providers/self-host
 .PHONY: generate-yq-installed
 generate-yq-installed:
 	@echo "$(ARROW) Detecting yq..."
-	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@latest' to install yq"; exit 1; }
+	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@latest' to install yq, then ensure ~/go/bin is on your PATH"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-bicep-types-contrib
