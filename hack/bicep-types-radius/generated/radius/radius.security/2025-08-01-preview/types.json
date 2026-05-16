@@ -1,0 +1,214 @@
+[
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "generic"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "certificate-pem"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "certificate-pkcs12"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "basicAuthentication"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "awsIRSA"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "azureWorkloadIdentity"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/1"
+      },
+      {
+        "$ref": "#/2"
+      },
+      {
+        "$ref": "#/3"
+      },
+      {
+        "$ref": "#/4"
+      },
+      {
+        "$ref": "#/5"
+      },
+      {
+        "$ref": "#/6"
+      }
+    ]
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "string"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "base64"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/8"
+      },
+      {
+        "$ref": "#/9"
+      }
+    ]
+  },
+  {
+    "$type": "StringType",
+    "sensitive": true
+  },
+  {
+    "$type": "ObjectType",
+    "name": "dataAdditionalProperties",
+    "properties": {
+      "encoding": {
+        "description": "(Optional) Content encoding of the value. If not specified, `string` is assumed.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/10"
+        }
+      },
+      "value": {
+        "description": "(Required) The string value of the secret unless encoding is set to 'base64'.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/11"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/12"
+    },
+    "name": "data",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "secretsProperties",
+    "properties": {
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "data": {
+        "description": "(Required) Map of secret data. For example: `data: { username: { value: user1 } password: { value: pass }}`",
+        "flags": 1,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/14"
+        }
+      },
+      "kind": {
+        "description": "(Optional) The kind of content of the secret. If not specified, generic is assumed. basicAuthentication, awsIRSA, and azureWorkloadIdentity should only be used for configuring authentication to OCI registries for storing Bicep templates. This will change in the future.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/7"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Security/secrets"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Security/secrets@2025-08-01-preview",
+    "properties": {
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/18"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/20"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/17"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/16"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/15"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/19"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/21"
+    },
+    "name": "Radius.Security/secrets@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  }
+]

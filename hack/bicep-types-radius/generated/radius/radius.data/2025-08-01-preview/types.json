@@ -1,0 +1,175 @@
+[
+  {
+    "$type": "StringLiteralType",
+    "value": "5.7"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "8.0"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "8.4"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/0"
+      },
+      {
+        "$ref": "#/1"
+      },
+      {
+        "$ref": "#/2"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "mySqlDatabasesProperties",
+    "properties": {
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/7"
+        }
+      },
+      "database": {
+        "description": "(Optional) The name of the database. Defaults to `mysql_db` if not provided.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/8"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius EnvironmentID. Typically set by the rad CLI. Typically value should be `environment`",
+        "flags": 1,
+        "type": {
+          "$ref": "#/6"
+        }
+      },
+      "host": {
+        "description": "(Read-only) The host name used to connect to the database.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/4"
+        }
+      },
+      "port": {
+        "description": "(Read-only) The port number used to connect to the database.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
+      "secretName": {
+        "description": "(Required) The name of the secret containing the database credentials.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "version": {
+        "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/3"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Data/mySqlDatabases"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Data/mySqlDatabases@2025-08-01-preview",
+    "properties": {
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/15"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/12"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/11"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/10"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/14"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/16"
+    },
+    "name": "Radius.Data/mySqlDatabases@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  }
+]

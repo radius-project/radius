@@ -1,0 +1,1887 @@
+[
+  {
+    "$type": "StringLiteralType",
+    "value": "Always"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "OnFailure"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Never"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/0"
+      },
+      {
+        "$ref": "#/1"
+      },
+      {
+        "$ref": "#/2"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "BooleanType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "limits",
+    "properties": {
+      "cpu": {
+        "description": "(Optional) The maximum number of vCPUs which can be used by the container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/6"
+        }
+      },
+      "memoryInMib": {
+        "description": "(Optional) The maximum amount of memory which can be used by the container in MiB.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/7"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "requests",
+    "properties": {
+      "cpu": {
+        "description": "(Optional) The minimum number of vCPUs required by the container. `0.1` results in one tenth of a vCPU being reserved.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "memoryInMib": {
+        "description": "(Optional) The minimum amount of memory required by the container in MiB. `1024` results in 1 GiB of memory being reserved.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/10"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "resources",
+    "properties": {
+      "limits": {
+        "description": "(Optional) Limits define the maximum amount of CPU or memory the container can consume.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/8"
+        }
+      },
+      "requests": {
+        "description": "(Optional) Requests define the minimum amount of CPU or memory that is required by the container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/11"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "volumeMountsItem",
+    "properties": {
+      "mountPath": {
+        "description": "(Required) The path to mount the volume in the container file system.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "volumeName": {
+        "description": "(Required) The name of the volume defined in Containers.properties.volumes.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/14"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/15"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/18"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/20"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "secretKeyRef",
+    "properties": {
+      "key": {
+        "description": "(Optional) The key of the Radius Secrets resource. The value of the key will be used as the environment variable value.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/23"
+        }
+      },
+      "secretName": {
+        "description": "(Optional) The name of the Radius Secrets resource.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/24"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "valueFrom",
+    "properties": {
+      "secretKeyRef": {
+        "description": "(Optional) Set the environment variable value based on a Radius Secrets resource.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/25"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "envAdditionalProperties",
+    "properties": {
+      "value": {
+        "description": "(Optional) String value of the environment variable.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/22"
+        }
+      },
+      "valueFrom": {
+        "flags": 0,
+        "type": {
+          "$ref": "#/26"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/27"
+    },
+    "name": "env",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/29"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "exec",
+    "properties": {
+      "command": {
+        "description": "(Required) The command to run inside the container. `[\"cat\", \"/tmp/healthy\"]` for example.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/30"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "httpHeadersItem",
+    "properties": {
+      "value": {
+        "description": "(Required) The header field value.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/35"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/36"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "http"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "https"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/40"
+      },
+      {
+        "$ref": "#/41"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "httpGet",
+    "properties": {
+      "httpHeaders": {
+        "description": "(Optional) Custom HTTP headers to be included in the GET request.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/37"
+        }
+      },
+      "path": {
+        "description": "(Required) The path to access on the HTTP server.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/38"
+        }
+      },
+      "port": {
+        "description": "(Required) The TCP port connect to on the container.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/39"
+        }
+      },
+      "scheme": {
+        "description": "(Optional) HTTP or HTTPS. Assumes HTTP is not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/42"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "tcpSocket",
+    "properties": {
+      "port": {
+        "description": "(Required) The TCP port to connect to.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/46"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "livenessProbe",
+    "properties": {
+      "exec": {
+        "description": "(Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/31"
+        }
+      },
+      "failureThreshold": {
+        "description": "(Optional) Minimum consecutive failures for the probe to be considered failed after having succeeded. Assumed to be 3 if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/32"
+        }
+      },
+      "httpGet": {
+        "description": "(Optional) A httpGet probe performs a HTTP GET against the container on the specified port. If the HTTP server returns a code greater than or equal to 200 and less than 400 the probe is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/43"
+        }
+      },
+      "initialDelaySeconds": {
+        "description": "(Optional) Number of seconds after the container has started before probes are initiated.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/44"
+        }
+      },
+      "periodSeconds": {
+        "description": "(Optional) How often to perform the probe. Assumed to be 10 seconds if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/33"
+        }
+      },
+      "successThreshold": {
+        "description": "(Optional) Minimum consecutive successes for the probe to be considered successful after having failed. Assumed to be 1 if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/45"
+        }
+      },
+      "tcpSocket": {
+        "description": "(Optional) A TCP socket probe establishes a TCP connection to the container on the specified port. If a connection is established the probe is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/47"
+        }
+      },
+      "terminationGracePeriodSeconds": {
+        "description": "(Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/48"
+        }
+      },
+      "timeoutSeconds": {
+        "description": "(Optional) Number of seconds after which the probe times out. Assumed to be 1 second if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/34"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TCP"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "UDP"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/51"
+      },
+      {
+        "$ref": "#/52"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "portsAdditionalProperties",
+    "properties": {
+      "containerPort": {
+        "description": "(Required) The network port the container is listening on. `443` for example.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/50"
+        }
+      },
+      "protocol": {
+        "description": "(Optional) The protocol. If not specified, `TCP` is assumed.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/53"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/54"
+    },
+    "name": "ports",
+    "properties": {}
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/57"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "exec",
+    "properties": {
+      "command": {
+        "flags": 1,
+        "type": {
+          "$ref": "#/58"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "http"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "https"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/61"
+      },
+      {
+        "$ref": "#/62"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "httpHeadersItem",
+    "properties": {
+      "value": {
+        "description": "(Required) The header field value.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/64"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/65"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "httpGet",
+    "properties": {
+      "httpHeaders": {
+        "description": "(Optional) Custom HTTP headers to be included in the GET request.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/66"
+        }
+      },
+      "path": {
+        "description": "(Required) The path to access on the HTTP server.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/67"
+        }
+      },
+      "port": {
+        "description": "(Required) The TCP port connect to on the container.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/60"
+        }
+      },
+      "scheme": {
+        "description": "(Optional) HTTP or HTTPS. Assumes HTTP is not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/63"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "tcpSocket",
+    "properties": {
+      "port": {
+        "description": "(Required) The TCP port to connect to.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/73"
+        }
+      }
+    }
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "readinessProbe",
+    "properties": {
+      "exec": {
+        "description": "(Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/59"
+        }
+      },
+      "failureThreshold": {
+        "description": "(Optional) Minimum consecutive failures for the probe to be considered failed after having succeeded. Assumed to be 3 if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/71"
+        }
+      },
+      "httpGet": {
+        "description": "(Optional) A httpGet probe performs a HTTP GET against the container on the specified port. If the HTTP server returns a code greater than or equal to 200 and less than 400 the probe is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/68"
+        }
+      },
+      "initialDelaySeconds": {
+        "description": "(Optional) Number of seconds after the container has started before probes are initiated.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/69"
+        }
+      },
+      "periodSeconds": {
+        "description": "(Optional) How often to perform the probe. Assumed to be 10 seconds if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/70"
+        }
+      },
+      "successThreshold": {
+        "description": "(Optional) Minimum consecutive successes for the probe to be considered successful after having failed. Assumed to be 1 if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/72"
+        }
+      },
+      "tcpSocket": {
+        "description": "(Optional) A TCP socket probe establishes a TCP connection to the container on the specified port. If a connection is established the probe is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/74"
+        }
+      },
+      "terminationGracePeriodSeconds": {
+        "description": "(Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/75"
+        }
+      },
+      "timeoutSeconds": {
+        "description": "(Optional) Number of seconds after which the probe times out. Assumed to be 1 second if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/56"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "containersAdditionalProperties",
+    "properties": {
+      "args": {
+        "description": "(Optional) Arguments for the command. Overrides the container image CMD. `[\"echo Hello\", \"\u0026\u0026\", \"echo World\"]` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/19"
+        }
+      },
+      "command": {
+        "description": "(Optional) Command the container runs. Overrides the container image ENTRYPOINT. `[\"/bin/sh\", \"-c\"]` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/21"
+        }
+      },
+      "env": {
+        "description": "(Optional) Environment variables injected into the container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/28"
+        }
+      },
+      "image": {
+        "description": "(Required) The container image. `ghcr.io/radius-project/samples/demo:latest` for example.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/4"
+        }
+      },
+      "initContainer": {
+        "description": "(Optional) Set to true if container should run and succeed prior to other containers starting.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
+      "livenessProbe": {
+        "description": "(Optional) A liveness probe defines a check (a probe) to determine if a container is healthy.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/49"
+        }
+      },
+      "ports": {
+        "description": "(Optional) Network ports exposed by the container. A network endpoint is created for each port. For L7 ingress create a Routes resource.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/55"
+        }
+      },
+      "readinessProbe": {
+        "description": "(Optional) A readiness probe defines a check (a probe) to determine when a container is ready to begin accepting traffic.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/76"
+        }
+      },
+      "resources": {
+        "description": "(Optional) Compute resource requirements for the container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/12"
+        }
+      },
+      "volumeMounts": {
+        "description": "(Optional) Volumes to mount in the container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/16"
+        }
+      },
+      "workingDir": {
+        "description": "(Optional) The working directory inside the container. `/usr/share` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/17"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/77"
+    },
+    "name": "containers",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "daprSidecar",
+    "properties": {
+      "appId": {
+        "description": "(Optional) The unique ID of the Dapr application. Used for service discovery, state encapsulation and the pub/sub consumer ID.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/80"
+        }
+      },
+      "appPort": {
+        "description": "(Optional) The port your application is listening on.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/81"
+        }
+      },
+      "config": {
+        "description": "(Optional) The Dapr Configuration resource name.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/82"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "extensions",
+    "properties": {
+      "daprSidecar": {
+        "description": "(Optional) When set the daprSidecar container is configured.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/83"
+        }
+      }
+    }
+  },
+  {
+    "$type": "AnyType"
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/85"
+    },
+    "name": "platformOptions",
+    "properties": {}
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "disk"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "memory"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/88"
+      },
+      {
+        "$ref": "#/89"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "emptyDir",
+    "properties": {
+      "medium": {
+        "description": "(Optional) Set to `memory` for a tmpfs (RAM backed filesystem). Note that while tmpfs is very fast storage counts against the memory limit of the container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/90"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ReadWriteOnce"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ReadOnlyMany"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ReadWriteMany"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/92"
+      },
+      {
+        "$ref": "#/93"
+      },
+      {
+        "$ref": "#/94"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "persistentVolume",
+    "properties": {
+      "accessMode": {
+        "description": "(Optional) Set to `ReadWriteOnce` if no other Containers can mount in read/write mode. Set to `ReadOnlyMany` to enable other Containers to mount in read-only mode. Set to `ReadWriteMany` to allow multiple containers to mount in read/write mode. Assumed to be `ReadWriteOnce` if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/95"
+        }
+      },
+      "resourceId": {
+        "description": "(Required) The Radius PersistentVolume resource ID.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/96"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "volumesAdditionalProperties",
+    "properties": {
+      "emptyDir": {
+        "description": "(Optional) An empty directory.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/91"
+        }
+      },
+      "persistentVolume": {
+        "description": "(Optional) Mount an existing Radius PersistentVolume resource.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/97"
+        }
+      },
+      "secretName": {
+        "description": "(Optional) The Radius Secret resource name.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/98"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/99"
+    },
+    "name": "volumes",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "cpu"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "memory"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "custom"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/104"
+      },
+      {
+        "$ref": "#/105"
+      },
+      {
+        "$ref": "#/106"
+      }
+    ]
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "target",
+    "properties": {
+      "averageUtilization": {
+        "description": "(Optional) The average CPU or memory utilization across all containers expressed as a percentage. Kind must be CPU or memory.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/108"
+        }
+      },
+      "averageValue": {
+        "description": "(Optional) The average value of the metric as a quantity.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/109"
+        }
+      },
+      "value": {
+        "description": "(Optional) The absolute value of the metric as a quantity.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/110"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "metricsItem",
+    "properties": {
+      "customMetric": {
+        "description": "(Optional) The custom metric exposed by the application. Implementation specific. See platform engineer for further guidance.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/103"
+        }
+      },
+      "kind": {
+        "description": "(Required) The metric to measure.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/107"
+        }
+      },
+      "target": {
+        "description": "(Required) When the metric exceeds the target value specified, autoscaling is triggered. Only one target value can be specified dependent upon the type.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/111"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/112"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "autoScaling",
+    "properties": {
+      "maxReplicas": {
+        "description": "(Optional) The maximum number of replicas for the autoscaler.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/102"
+        }
+      },
+      "metrics": {
+        "description": "(Required) The metric to measure and target used to autoscale.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/113"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "connectionsAdditionalProperties",
+    "properties": {
+      "disableDefaultEnvVars": {
+        "description": "(Optional) Disables the automatic injection of environment variables from connected resource properties.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
+      "source": {
+        "description": "(Required) The resource ID of the resource this container is dependent upon.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/115"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/116"
+    },
+    "name": "connections",
+    "properties": {}
+  },
+  {
+    "$type": "ObjectType",
+    "name": "containersProperties",
+    "properties": {
+      "application": {
+        "description": "(Required) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/101"
+        }
+      },
+      "autoScaling": {
+        "flags": 0,
+        "type": {
+          "$ref": "#/114"
+        }
+      },
+      "connections": {
+        "description": "(Optional) Map of resources this container is dependent upon. `db: { source: db.id } for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/117"
+        }
+      },
+      "containers": {
+        "flags": 1,
+        "type": {
+          "$ref": "#/78"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/79"
+        }
+      },
+      "extensions": {
+        "description": "(Optional) Properties for additional functionality. daprSidecar is the only available option.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/84"
+        }
+      },
+      "platformOptions": {
+        "description": "(Optional) If enabled by the platform engineer, properties to be passed to the Recipe for the specified platform.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/86"
+        }
+      },
+      "replicas": {
+        "description": "(Optional) The minimum number of replicas for the set of containers.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/87"
+        }
+      },
+      "restartPolicy": {
+        "description": "(Optional) Defines how a containers behave when they terminate. `Always` will restart containers regardless of their exit status. `OnFailure` will restart containers if they return a non-zero exit code.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/3"
+        }
+      },
+      "volumes": {
+        "description": "(Optional) List of volumes that can be mounted by a container.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/100"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Compute/containers"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Compute/containers@2025-08-01-preview",
+    "properties": {
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/121"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/123"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/120"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/119"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/118"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/122"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/124"
+    },
+    "name": "Radius.Compute/containers@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ReadWriteOnce"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ReadOnlyMany"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ReadWriteMany"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/126"
+      },
+      {
+        "$ref": "#/127"
+      },
+      {
+        "$ref": "#/128"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "persistentVolumesProperties",
+    "properties": {
+      "allowedAccessModes": {
+        "description": "(Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/129"
+        }
+      },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/130"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/131"
+        }
+      },
+      "sizeInGib": {
+        "description": "(Required) The size of the volume in gibibytes. `1` represents 1024 MiB.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/132"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Compute/persistentVolumes"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Compute/persistentVolumes@2025-08-01-preview",
+    "properties": {
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/136"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/138"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/135"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/134"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/133"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/137"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/139"
+    },
+    "name": "Radius.Compute/persistentVolumes@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "destinationContainer",
+    "properties": {
+      "containerName": {
+        "description": "(Required) The specific container to target within the Container resource.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/141"
+        }
+      },
+      "containerPort": {
+        "description": "(Required) The port to target from the container.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/142"
+        }
+      },
+      "resourceId": {
+        "description": "(Required) The Radius Container resource ID.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/143"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "httpHeadersItem",
+    "properties": {
+      "name": {
+        "description": "(Required) The name of the HTTP Header to be matched. Must be exact.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/145"
+        }
+      },
+      "value": {
+        "description": "(Required) Value of HTTP Header to be matched.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/146"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/147"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "GET"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "HEAD"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "POST"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "PUT"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "DELETE"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "CONNECT"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "OPTIONS"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TRACE"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "PATCH"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/149"
+      },
+      {
+        "$ref": "#/150"
+      },
+      {
+        "$ref": "#/151"
+      },
+      {
+        "$ref": "#/152"
+      },
+      {
+        "$ref": "#/153"
+      },
+      {
+        "$ref": "#/154"
+      },
+      {
+        "$ref": "#/155"
+      },
+      {
+        "$ref": "#/156"
+      },
+      {
+        "$ref": "#/157"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "httpQueryParamsItem",
+    "properties": {
+      "name": {
+        "description": "(Required) Name of the HTTP query parameter to be matched. Specify only when kind is HTTP.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/160"
+        }
+      },
+      "value": {
+        "description": "(Required) Value of the HTTP query parameter to be matched.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/161"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/162"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "matchesItem",
+    "properties": {
+      "httpHeaders": {
+        "description": "(Optional) HTTP headers to match. Specify only when kind is HTTP. Multiple match values are ANDed together. A request must match all the specified headers to match.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/148"
+        }
+      },
+      "httpMethod": {
+        "description": "(Optional) The HTTP method to match. Specify only when kind is HTTP.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/158"
+        }
+      },
+      "httpPath": {
+        "description": "(Optional) The HTTP request path to match. Trailing space is ignored. Requests for `/abc`, `/abc/`, and ``/abc/def/` will all match `/abc`.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/159"
+        }
+      },
+      "httpQueryParams": {
+        "description": "(Optional) HTTP query parameters to match. Specify only when kind is HTTP.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/163"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/164"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "rulesItem",
+    "properties": {
+      "destinationContainer": {
+        "flags": 1,
+        "type": {
+          "$ref": "#/144"
+        }
+      },
+      "matches": {
+        "description": "(Required) Matches define conditions used for matching a request.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/165"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/166"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/170"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "HTTP"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TCP"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TLS"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "UDP"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/172"
+      },
+      {
+        "$ref": "#/173"
+      },
+      {
+        "$ref": "#/174"
+      },
+      {
+        "$ref": "#/175"
+      }
+    ]
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "HTTP"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "HTTPS"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TLS"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "TCP"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "UDP"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/179"
+      },
+      {
+        "$ref": "#/180"
+      },
+      {
+        "$ref": "#/181"
+      },
+      {
+        "$ref": "#/182"
+      },
+      {
+        "$ref": "#/183"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "listener",
+    "properties": {
+      "hostname": {
+        "flags": 0,
+        "type": {
+          "$ref": "#/177"
+        }
+      },
+      "port": {
+        "flags": 0,
+        "type": {
+          "$ref": "#/178"
+        }
+      },
+      "protocol": {
+        "flags": 0,
+        "type": {
+          "$ref": "#/184"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "routesProperties",
+    "properties": {
+      "application": {
+        "description": "(Required) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/168"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/169"
+        }
+      },
+      "hostnames": {
+        "description": "(Optional) Use only when kind is HTTP or TLS. When HTTP, match against the HTTP Host header. When using TLS, match against the SNI attribute of TLS ClientHello message. Hostname may be preceded by a * wildcard.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/171"
+        }
+      },
+      "kind": {
+        "description": "(Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/176"
+        }
+      },
+      "listener": {
+        "description": "(Read Only) The Gateway Listener the route is assigned to.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/185"
+        }
+      },
+      "rules": {
+        "description": "(Required) Rules define semantics for matching a network connection request based on conditions and forwarding the request to a Container.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/167"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Compute/routes"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Compute/routes@2025-08-01-preview",
+    "properties": {
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/189"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/191"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/188"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/187"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/186"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/190"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/192"
+    },
+    "name": "Radius.Compute/routes@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  }
+]
