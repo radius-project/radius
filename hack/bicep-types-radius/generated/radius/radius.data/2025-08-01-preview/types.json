@@ -3,6 +3,21 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
     "$type": "StringLiteralType",
     "value": "5.7"
   },
@@ -18,30 +33,15 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/1"
+        "$ref": "#/6"
       },
       {
-        "$ref": "#/2"
+        "$ref": "#/7"
       },
       {
-        "$ref": "#/3"
+        "$ref": "#/8"
       }
     ]
-  },
-  {
-    "$type": "StringType"
-  },
-  {
-    "$type": "IntegerType"
-  },
-  {
-    "$type": "StringType"
-  },
-  {
-    "$type": "StringType"
-  },
-  {
-    "$type": "StringType"
   },
   {
     "$type": "ObjectType",
@@ -51,49 +51,49 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/0"
         }
       },
       "database": {
         "description": "(Optional) The name of the database. Defaults to `mysql_db` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/1"
         }
       },
       "environment": {
         "description": "(Required) The Radius EnvironmentID. Typically set by the rad CLI. Typically value should be `environment`",
         "flags": 1,
         "type": {
-          "$ref": "#/7"
+          "$ref": "#/2"
         }
       },
       "host": {
         "description": "(Read-only) The host name used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/5"
+          "$ref": "#/3"
         }
       },
       "port": {
         "description": "(Read-only) The port number used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/6"
+          "$ref": "#/4"
         }
       },
       "secretName": {
         "description": "(Required) The name of the secret containing the database credentials.",
         "flags": 1,
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/5"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
         "flags": 0,
         "type": {
-          "$ref": "#/4"
+          "$ref": "#/9"
         }
       }
     }

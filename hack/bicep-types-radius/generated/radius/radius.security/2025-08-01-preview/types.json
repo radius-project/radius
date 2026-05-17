@@ -3,6 +3,57 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "string"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "base64"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/1"
+      },
+      {
+        "$ref": "#/2"
+      }
+    ]
+  },
+  {
+    "$type": "StringType",
+    "sensitive": true
+  },
+  {
+    "$type": "ObjectType",
+    "name": "dataAdditionalProperties",
+    "properties": {
+      "encoding": {
+        "description": "(Optional) Content encoding of the value. If not specified, `string` is assumed.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/3"
+        }
+      },
+      "value": {
+        "description": "(Required) The string value of the secret unless encoding is set to 'base64'.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/4"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/5"
+    },
+    "name": "data",
+    "properties": {}
+  },
+  {
     "$type": "StringType"
   },
   {
@@ -33,75 +84,24 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/2"
+        "$ref": "#/8"
       },
-      {
-        "$ref": "#/3"
-      },
-      {
-        "$ref": "#/4"
-      },
-      {
-        "$ref": "#/5"
-      },
-      {
-        "$ref": "#/6"
-      },
-      {
-        "$ref": "#/7"
-      }
-    ]
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "string"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "base64"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
       {
         "$ref": "#/9"
       },
       {
         "$ref": "#/10"
+      },
+      {
+        "$ref": "#/11"
+      },
+      {
+        "$ref": "#/12"
+      },
+      {
+        "$ref": "#/13"
       }
     ]
-  },
-  {
-    "$type": "StringType",
-    "sensitive": true
-  },
-  {
-    "$type": "ObjectType",
-    "name": "dataAdditionalProperties",
-    "properties": {
-      "encoding": {
-        "description": "(Optional) Content encoding of the value. If not specified, `string` is assumed.",
-        "flags": 0,
-        "type": {
-          "$ref": "#/11"
-        }
-      },
-      "value": {
-        "description": "(Required) The string value of the secret unless encoding is set to 'base64'.",
-        "flags": 1,
-        "type": {
-          "$ref": "#/12"
-        }
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "additionalProperties": {
-      "$ref": "#/13"
-    },
-    "name": "data",
-    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -111,28 +111,28 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/0"
         }
       },
       "data": {
         "description": "(Required) Map of secret data. For example: `data: { username: { value: user1 } password: { value: pass }}`",
         "flags": 1,
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/6"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/7"
         }
       },
       "kind": {
         "description": "(Optional) The kind of content of the secret. If not specified, generic is assumed. basicAuthentication, awsIRSA, and azureWorkloadIdentity should only be used for configuring authentication to OCI registries for storing Bicep templates. This will change in the future.",
         "flags": 0,
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/14"
         }
       }
     }
