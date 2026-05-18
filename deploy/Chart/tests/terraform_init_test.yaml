@@ -45,7 +45,7 @@ tests:
       rp.terraform.path: "/other"
     asserts:
       - failedTemplate:
-          errorMessage: 'rp.terraform.path must be "/terraform" -- the runtime (pkg/recipes/terraform/install.go) hard-codes /terraform/.terraform-global, so overriding the mount path silently breaks Terraform binary caching.'
+          errorMessage: 'rp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
         template: rp/deployment.yaml
 
   - it: dynamic-rp template fails when dynamicrp.terraform.path is overridden away from /terraform
@@ -53,21 +53,23 @@ tests:
       dynamicrp.terraform.path: "/other"
     asserts:
       - failedTemplate:
-          errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime (pkg/recipes/terraform/install.go) hard-codes /terraform/.terraform-global, so overriding the mount path silently breaks Terraform binary caching.'
+          errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
         template: dynamic-rp/deployment.yaml
 
-  - it: rp template renders normally when terraform pre-download is disabled, regardless of path
+  - it: rp template still fails when rp.terraform.path is overridden, even with terraform pre-download disabled
     set:
       global.terraform.enabled: false
       rp.terraform.path: "/other"
     asserts:
-      - notFailedTemplate: {}
+      - failedTemplate:
+          errorMessage: 'rp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
         template: rp/deployment.yaml
 
-  - it: dynamic-rp template renders normally when terraform pre-download is disabled, regardless of path
+  - it: dynamic-rp template still fails when dynamicrp.terraform.path is overridden, even with terraform pre-download disabled
     set:
       global.terraform.enabled: false
       dynamicrp.terraform.path: "/other"
     asserts:
-      - notFailedTemplate: {}
+      - failedTemplate:
+          errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
         template: dynamic-rp/deployment.yaml

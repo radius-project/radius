@@ -1,4 +1,7 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- if ne .Values.rp.terraform.path "/terraform" }}
+{{- fail "rp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,9 +38,6 @@ spec:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
       {{- if eq .Values.global.terraform.enabled true }}
-      {{- if ne .Values.rp.terraform.path "/terraform" }}
-      {{- fail "rp.terraform.path must be \"/terraform\" -- the runtime (pkg/recipes/terraform/install.go) hard-codes /terraform/.terraform-global, so overriding the mount path silently breaks Terraform binary caching." }}
-      {{- end }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
       initContainers:
