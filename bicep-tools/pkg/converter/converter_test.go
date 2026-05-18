@@ -332,6 +332,81 @@ func TestAddSchemaType_Object(t *testing.T) {
 	}
 }
 
+// TestConvert_IsDeterministic checks that Convert() always gives the same result, no matter how many times you run it.
+// This test makes sure that the code doesn't randomly change the order of things, which would cause CI to fail for no real reason.
+// If this test fails, it means the output order isn't consistent.
+func TestConvert_IsDeterministic(t *testing.T) {
+	// The provider is set up with nested schemas to mimic real-world resources that have complex, nested properties.
+	// This helps ensure the converter handles deeply nested and multiple property objects correctly and deterministically.
+	provider := &manifest.ResourceProvider{
+		Namespace: "Radius.Compute",
+		Types: map[string]manifest.ResourceType{
+			"containers": {
+				APIVersions: map[string]manifest.APIVersion{
+					"2025-08-01-preview": {
+						Schema: manifest.Schema{
+							Type: "object",
+							Properties: map[string]manifest.Schema{
+								"properties": {
+									Type: "object",
+									Properties: map[string]manifest.Schema{
+										"image": {Type: "string"},
+										"env": {
+											Type: "object",
+											Properties: map[string]manifest.Schema{
+												"a": {Type: "string"},
+												"b": {Type: "string"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"routes": {
+				APIVersions: map[string]manifest.APIVersion{
+					"2025-08-01-preview": {
+						Schema: manifest.Schema{
+							Type: "object",
+							Properties: map[string]manifest.Schema{
+								"host": {Type: "string"},
+								"path": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	first, err := Convert(provider)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Run the conversion 10 times to catch any rare, random ordering bugs.
+	for i := 0; i < 10; i++ {
+		next, err := Convert(provider)
+		if err != nil {
+			t.Fatalf("expected no error on run %d, got: %v", i+2, err)
+		}
+
+		if first.TypesContent != next.TypesContent {
+			t.Fatalf("types output is non-deterministic on run %d", i+2)
+		}
+
+		if first.IndexContent != next.IndexContent {
+			t.Fatalf("index output is non-deterministic on run %d", i+2)
+		}
+
+		if first.DocumentationContent != next.DocumentationContent {
+			t.Fatalf("documentation output is non-deterministic on run %d", i+2)
+		}
+	}
+}
+
 func TestAddSchemaType_UnsupportedType(t *testing.T) {
 	schema := &manifest.Schema{Type: "unsupported"}
 	typeFactory := factory.NewTypeFactory()

@@ -1,0 +1,20 @@
+# defaults.yaml lists the resource types from resource-types-contrib that ship
+# as defaults in Radius. Each entry uses the <namespace>/<typeName> format
+# and is resolved to a file path in the resource-types-contrib module
+# using the convention: strip the "Radius." prefix, then
+# <namespace>/<typeName>/<typeName>.yaml.
+#
+# The version of resource-types-contrib is pinned in go.mod. To update:
+#   make update-resource-types
+#
+# To add a new default resource type:
+#   1. Merge the manifest in resource-types-contrib.
+#   2. Add the entry below.
+#   3. Run: make update-resource-types
+#   4. Commit the updated files (defaults.yaml, go.mod, go.sum, and copied YAMLs).
+defaultRegistration:
+  - Radius.Compute/containers
+  - Radius.Compute/persistentVolumes
+  - Radius.Compute/routes
+  - Radius.Data/mySqlDatabases
+  - Radius.Security/secrets
