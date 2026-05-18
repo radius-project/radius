@@ -18,6 +18,7 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // DeploymentTemplateSpec defines the desired state of a DeploymentTemplate resource.
@@ -98,5 +99,8 @@ type DeploymentTemplateList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&DeploymentTemplate{}, &DeploymentTemplateList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &DeploymentTemplate{}, &DeploymentTemplateList{})
+		return nil
+	})
 }

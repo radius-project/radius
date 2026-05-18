@@ -341,24 +341,11 @@ func Test_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		environment.Properties.Providers = testProviders
-		obj := environmentForDisplay{
-			Name:        "test-env",
-			Recipes:     0,
-			Providers:   2,
-			ComputeKind: "kubernetes",
-		}
+		_ = environment
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Updating Environment...",
-			},
-			output.FormattedOutput{
-				Format:  "table",
-				Obj:     obj,
-				Options: environmentFormat(),
-			},
-			output.LogOutput{
-				Format: "Successfully updated environment %q.",
+				Format: "Applications.Core/environments/%s updated",
 				Params: []any{"test-env"},
 			},
 		}
@@ -510,34 +497,9 @@ func Test_Update(t *testing.T) {
 				err := runner.Run(context.Background())
 				require.NoError(t, err)
 
-				numberOfProviders := func() int {
-					numberOfProviders := 0
-					if tc.expectedProviders.Azure != nil {
-						numberOfProviders++
-					}
-					if tc.expectedProviders.Aws != nil {
-						numberOfProviders++
-					}
-					return numberOfProviders
-				}
-
-				obj := environmentForDisplay{
-					Name:      "test-env",
-					Recipes:   0,
-					Providers: numberOfProviders(),
-				}
-
 				expected := []any{
 					output.LogOutput{
-						Format: "Updating Environment...",
-					},
-					output.FormattedOutput{
-						Format:  "table",
-						Obj:     obj,
-						Options: environmentFormat(),
-					},
-					output.LogOutput{
-						Format: "Successfully updated environment %q.",
+						Format: "Applications.Core/environments/%s updated",
 						Params: []any{"test-env"},
 					},
 				}

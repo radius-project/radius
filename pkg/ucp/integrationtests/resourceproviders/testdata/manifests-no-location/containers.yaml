@@ -1,0 +1,13 @@
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+            application:
+              type: string
+          required: [environment, application]

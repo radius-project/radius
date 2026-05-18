@@ -18,6 +18,7 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // DeploymentResourceSpec defines the desired state of a DeploymentResource resource.
@@ -83,5 +84,8 @@ type DeploymentResourceList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&DeploymentResource{}, &DeploymentResourceList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &DeploymentResource{}, &DeploymentResourceList{})
+		return nil
+	})
 }

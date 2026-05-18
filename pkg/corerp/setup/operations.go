@@ -259,4 +259,64 @@ var operationList = []v1.Operation{
 		},
 		IsDataAction: false,
 	},
+	{
+		Name: "Radius.Core/terraformConfigs/read",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "terraformConfigs",
+			Operation:   "Get/List Terraform configs",
+			Description: "Gets/Lists Terraform config(s).",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/terraformConfigs/write",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "terraformConfigs",
+			Operation:   "Create/Update Terraform configs",
+			Description: "Creates or updates a Terraform config resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/terraformConfigs/delete",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "terraformConfigs",
+			Operation:   "Delete Terraform config",
+			Description: "Deletes a Terraform config resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/bicepConfigs/read",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "bicepConfigs",
+			Operation:   "Get/List Bicep configs",
+			Description: "Gets/Lists Bicep config(s).",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/bicepConfigs/write",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "bicepConfigs",
+			Operation:   "Create/Update Bicep configs",
+			Description: "Creates or updates a Bicep config resource.",
+		},
+		IsDataAction: false,
+	},
+	{
+		Name: "Radius.Core/bicepConfigs/delete",
+		Display: &v1.OperationDisplayProperties{
+			Provider:    "Radius.Core",
+			Resource:    "bicepConfigs",
+			Operation:   "Delete Bicep config",
+			Description: "Deletes a Bicep config resource.",
+		},
+		IsDataAction: false,
+	},
 }
