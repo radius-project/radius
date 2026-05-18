@@ -59,6 +59,11 @@ func ToUCPResourceID(arn string) (string, error) {
 		region = "global"
 	}
 	account := arnSegments[4]
+	// Some AWS resources (e.g., S3 buckets) have ARNs with an empty account field.
+	// These cannot be converted to a valid UCP resource ID which requires an account.
+	if account == "" {
+		return "", fmt.Errorf("\"%s\" is not convertible to a UCP resource ID because the ARN does not contain an account", arn)
+	}
 	resourcePath := strings.Join(arnSegments[5:], "/")
 
 	ucpID := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], account, region, service, resourcePath)
