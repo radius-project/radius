@@ -1,4 +1,7 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- if ne .Values.dynamicrp.terraform.path "/terraform" }}
+{{- fail "dynamicrp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -116,10 +119,23 @@ spec:
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
+          # Path/marker MUST match constants in
+          # pkg/recipes/terraform/install.go (defaultGlobalTerraformBinary,
+          # defaultGlobalMarkerFile). The runtime hard-codes
+          # /terraform/.terraform-global, so this path is hard-coded too --
+          # do NOT derive it from .Values.dynamicrp.terraform.path or
+          # overrides to that value will silently reintroduce the
+          # path-mismatch bug this fix addresses.
+          GLOBAL_DIR="/terraform/.terraform-global"
+          mkdir -p "$GLOBAL_DIR" || { echo "ERROR: Failed to create global terraform directory"; exit 6; }
+          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
+          touch "$GLOBAL_DIR/.terraform-ready" || { echo "ERROR: Failed to create terraform-ready marker"; exit 8; }
+
+          # Keep a copy at the legacy path and write the legacy marker so any
+          # tooling that still references {{ .Values.dynamicrp.terraform.path }}/terraform continues to work.
           cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
           chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          
-          # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.dynamicrp.terraform.path }}/.terraform-source"
           
           echo "Terraform binary successfully pre-downloaded and installed"
