@@ -140,18 +140,6 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 
-.PHONY: generate-bicep-types
-generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types
-	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
-	@echo "$(ARROW) Build autorest.bicep..."
-	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
-	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
-	@echo "$(ARROW) Generating Bicep types for default contrib resource type namespaces..."
-	@$(MAKE) generate-bicep-types-contrib
-	@echo "$(ARROW) Rebuilding unified Bicep types index..."
-	CI=true pnpm -C hack/bicep-types-radius/src/generator run rebuild-index --release-version ${VERSION}
-
 # Generates Bicep types.json files for the default contrib resource type
 # namespaces listed in deploy/manifest/defaults.yaml.
 #
@@ -164,38 +152,43 @@ generate-bicep-types: generate-node-installed generate-pnpm-installed ## Generat
 #
 # Per-type manifest files live under deploy/manifest/built-in-providers/self-hosted/
 # as individual YAML files (e.g. containers.yaml, routes.yaml).
+YQ_VERSION ?= v4.44.3
+
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
 BICEP_TYPES_CONTRIB_API_VERSION ?= 2025-08-01-preview
 BICEP_TYPES_OUTPUT_BASE := hack/bicep-types-radius/generated/radius
 BICEP_TYPES_CONTRIB_MANIFEST_DIR := deploy/manifest/built-in-providers/self-hosted
 
+.PHONY: generate-bicep-types
+generate-bicep-types: generate-bicep-types-core generate-bicep-types-contrib rebuild-bicep-types-index ## Generate Bicep extensibility types
+
+.PHONY: generate-bicep-types-core
+generate-bicep-types-core: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types from OpenAPI specs.
+	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
+	@echo "$(ARROW) Build autorest.bicep..."
+	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
+	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
+	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+
 .PHONY: generate-yq-installed
 generate-yq-installed:
 	@echo "$(ARROW) Detecting yq..."
-	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@latest' to install yq, then ensure ~/go/bin is on your PATH"; exit 1; }
+	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@$(YQ_VERSION)' to install yq, then ensure ~/go/bin is on your PATH"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-bicep-types-contrib
 generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.json files for default contrib namespaces from defaults.yaml.
-	# Discover unique namespaces from defaults.yaml.
-	@NAMESPACES=$$(yq '.defaultRegistration[]' $(DEFAULTS_YAML) | sed 's|/.*||' | sort -u) && \
-	for ns in $$NAMESPACES; do \
-		ns_lower=$$(echo "$$ns" | tr '[:upper:]' '[:lower:]') && \
-		out_dir="$(BICEP_TYPES_OUTPUT_BASE)/$$ns_lower/$(BICEP_TYPES_CONTRIB_API_VERSION)" && \
-		manifest_args="" && \
-		for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML) | grep "^$$ns/"); do \
-			type_name=$$(echo "$$entry" | cut -d'/' -f2) && \
-			manifest="$(BICEP_TYPES_CONTRIB_MANIFEST_DIR)/$$type_name.yaml" && \
-			if [ ! -f "$$manifest" ]; then \
-				echo "ERROR: Manifest not found: $$manifest (from entry '$$entry')"; \
-				exit 1; \
-			fi && \
-			manifest_args="$$manifest_args $$manifest"; \
-		done && \
-		echo "  -> $$ns ($$manifest_args) -> $$out_dir" && \
-		go run ./bicep-tools/cmd/manifest-to-bicep generate $$manifest_args "$$out_dir" && \
-		mkdir -p "$$out_dir/docs" || exit 1; \
-	done
+	@echo "$(ARROW) Generating Bicep types for default contrib resource type namespaces..."
+	build/scripts/generate-bicep-types-contrib.sh \
+		"$(DEFAULTS_YAML)" \
+		"$(BICEP_TYPES_CONTRIB_MANIFEST_DIR)" \
+		"$(BICEP_TYPES_OUTPUT_BASE)" \
+		"$(BICEP_TYPES_CONTRIB_API_VERSION)"
+
+.PHONY: rebuild-bicep-types-index
+rebuild-bicep-types-index:
+	@echo "$(ARROW) Rebuilding unified Bicep types index..."
+	CI=true pnpm -C hack/bicep-types-radius/src/generator run rebuild-index --release-version ${VERSION}
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
 # OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io
