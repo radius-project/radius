@@ -165,16 +165,16 @@ func Test_Run(t *testing.T) {
 					Format: "table",
 					Obj: []EnvRecipes{
 						{
-							RecipePack:     "test-recipe-pack",
-							ResourceType:   "test-recipe1",
-							RecipeKind:     string(corerpv20250801.RecipeKindTerraform),
-							RecipeLocation: "https://example.com/recipe1?ref=v0.1",
+							RecipePack:   "test-recipe-pack",
+							ResourceType: "test-recipe1",
+							Kind:         string(corerpv20250801.RecipeKindTerraform),
+							Location:     "https://example.com/recipe1?ref=v0.1",
 						},
 						{
-							RecipePack:     "test-recipe-pack",
-							ResourceType:   "test-recipe2",
-							RecipeKind:     string(corerpv20250801.RecipeKindTerraform),
-							RecipeLocation: "https://example.com/recipe2?ref=v0.1",
+							RecipePack:   "test-recipe-pack",
+							ResourceType: "test-recipe2",
+							Kind:         string(corerpv20250801.RecipeKindTerraform),
+							Location:     "https://example.com/recipe2?ref=v0.1",
 						},
 					},
 					Options: objectformats.GetRecipesForEnvironmentTableFormat(),
@@ -243,23 +243,23 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 				if recipePackName == "pack-a" {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{
 						"Applications.Datastores/sqlDatabases": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/sql"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
+							Location: new("ghcr.io/radius-project/recipes/sql"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
 						},
 						"Applications.Datastores/redisCaches": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/redis"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
+							Location: new("ghcr.io/radius-project/recipes/redis"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindTerraform),
 						},
 					}
 				} else {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{
 						"Applications.Messaging/rabbitMQQueues": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/rabbitmq"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindBicep),
+							Location: new("ghcr.io/radius-project/recipes/rabbitmq"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindBicep),
 						},
 						"Applications.Dapr/stateStores": {
-							RecipeLocation: new("ghcr.io/radius-project/recipes/dapr-state"),
-							RecipeKind:     to.Ptr(corerpv20250801.RecipeKindBicep),
+							Location: new("ghcr.io/radius-project/recipes/dapr-state"),
+							Kind:     to.Ptr(corerpv20250801.RecipeKindBicep),
 						},
 					}
 				}
@@ -294,10 +294,10 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 
 	// Verify the recipes are sorted by RecipePack first, then by ResourceType
 	expectedRecipes := []EnvRecipes{
-		{RecipePack: "pack-a", ResourceType: "Applications.Datastores/redisCaches", RecipeKind: "terraform", RecipeLocation: "ghcr.io/radius-project/recipes/redis"},
-		{RecipePack: "pack-a", ResourceType: "Applications.Datastores/sqlDatabases", RecipeKind: "terraform", RecipeLocation: "ghcr.io/radius-project/recipes/sql"},
-		{RecipePack: "pack-b", ResourceType: "Applications.Dapr/stateStores", RecipeKind: "bicep", RecipeLocation: "ghcr.io/radius-project/recipes/dapr-state"},
-		{RecipePack: "pack-b", ResourceType: "Applications.Messaging/rabbitMQQueues", RecipeKind: "bicep", RecipeLocation: "ghcr.io/radius-project/recipes/rabbitmq"},
+		{RecipePack: "pack-a", ResourceType: "Applications.Datastores/redisCaches", Kind: "terraform", Location: "ghcr.io/radius-project/recipes/redis"},
+		{RecipePack: "pack-a", ResourceType: "Applications.Datastores/sqlDatabases", Kind: "terraform", Location: "ghcr.io/radius-project/recipes/sql"},
+		{RecipePack: "pack-b", ResourceType: "Applications.Dapr/stateStores", Kind: "bicep", Location: "ghcr.io/radius-project/recipes/dapr-state"},
+		{RecipePack: "pack-b", ResourceType: "Applications.Messaging/rabbitMQQueues", Kind: "bicep", Location: "ghcr.io/radius-project/recipes/rabbitmq"},
 	}
 
 	// The third output should be the recipes table

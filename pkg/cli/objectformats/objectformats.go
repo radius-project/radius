@@ -70,12 +70,12 @@ func GetRecipeFormat() output.FormatterOptions {
 				JSONPath: "{ .ResourceType }",
 			},
 			{
-				Heading:  "RECIPE KIND",
-				JSONPath: "{ .RecipeKind }",
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
 			},
 			{
-				Heading:  "RECIPE LOCATION",
-				JSONPath: "{ .RecipeLocation }",
+				Heading:  "LOCATION",
+				JSONPath: "{ .Location }",
 			},
 		},
 	}
@@ -90,11 +90,11 @@ func GetRecipeFormatWithoutHeadings() output.FormatterOptions {
 			},
 			{
 				Heading:  "",
-				JSONPath: "{ .RecipeKind }",
+				JSONPath: "{ .Kind }",
 			},
 			{
 				Heading:  "",
-				JSONPath: "{ .RecipeLocation }",
+				JSONPath: "{ .Location }",
 			},
 		},
 	}
@@ -140,12 +140,12 @@ func GetRecipesForEnvironmentTableFormat() output.FormatterOptions {
 				JSONPath: "{ .ResourceType }",
 			},
 			{
-				Heading:  "RECIPE KIND",
-				JSONPath: "{ .RecipeKind }",
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
 			},
 			{
-				Heading:  "RECIPE LOCATION",
-				JSONPath: "{ .RecipeLocation }",
+				Heading:  "LOCATION",
+				JSONPath: "{ .Location }",
 			},
 		},
 	}

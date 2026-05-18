@@ -14,8 +14,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        recipeKind: 'bicep'
-        recipeLocation: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+        kind: 'bicep'
+        location: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
         parameters: {
           port: port
         }

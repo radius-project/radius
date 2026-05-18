@@ -30,8 +30,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Applications.Core/extenders': {
-        recipeKind: 'terraform'
-        recipeLocation: '${moduleServer}/kubernetes-redis.zip//modules'
+        kind: 'terraform'
+        location: '${moduleServer}/kubernetes-redis.zip//modules'
       }
     }
   }

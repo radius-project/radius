@@ -58,13 +58,13 @@ model RecipePackProperties {
 @doc("Recipe definition for a specific resource type")
 model RecipeDefinition {
   @doc("The type of recipe (e.g., Terraform, Bicep)")
-  recipeKind: RecipeKind;
+  kind: RecipeKind;
 
   @doc("Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)")
   plainHttp?: boolean;
 
   @doc("URL path to the recipe")
-  recipeLocation: string;
+  location: string;
 
   @doc("Parameters to pass to the recipe")
   parameters?: Record<unknown>;

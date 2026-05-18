@@ -69,12 +69,12 @@ func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 					Properties: &v20250801preview.RecipePackProperties{
 						Recipes: map[string]*v20250801preview.RecipeDefinition{
 							"test-recipe1": {
-								RecipeLocation: new("https://example.com/recipe1?ref=v0.1"),
-								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
+								Location: new("https://example.com/recipe1?ref=v0.1"),
+								Kind:     to.Ptr(v20250801preview.RecipeKindTerraform),
 							},
 							"test-recipe2": {
-								RecipeLocation: new("https://example.com/recipe2?ref=v0.1"),
-								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
+								Location: new("https://example.com/recipe2?ref=v0.1"),
+								Kind:     to.Ptr(v20250801preview.RecipeKindTerraform),
 							},
 						},
 					},
@@ -300,8 +300,8 @@ func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
 					Properties: &v20250801preview.RecipePackProperties{
 						Recipes: map[string]*v20250801preview.RecipeDefinition{
 							resourceType: {
-								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
-								RecipeKind:     &bicepKind,
+								Location: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+								Kind:     &bicepKind,
 							},
 						},
 					},
@@ -335,8 +335,8 @@ func WithRecipePackServerUniqueTypes() corerpfake.RecipePacksServer {
 					Properties: &v20250801preview.RecipePackProperties{
 						Recipes: map[string]*v20250801preview.RecipeDefinition{
 							"Test.Resource/" + recipePackName: {
-								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
-								RecipeKind:     &bicepKind,
+								Location: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+								Kind:     &bicepKind,
 							},
 						},
 					},
@@ -393,8 +393,8 @@ func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
 					Properties: &v20250801preview.RecipePackProperties{
 						Recipes: map[string]*v20250801preview.RecipeDefinition{
 							"Radius.Compute/containers": {
-								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
-								RecipeKind:     &bicepKind,
+								Location: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+								Kind:     &bicepKind,
 							},
 						},
 					},

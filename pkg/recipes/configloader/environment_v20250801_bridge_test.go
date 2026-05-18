@@ -261,6 +261,53 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 	require.Empty(t, cfg.RecipeConfig.Bicep.Authentication, "expected no auth map when no usable entries")
 }
 
+func TestFetchRecipeDefinition_Success(t *testing.T) {
+	recipePackName := "kubernetes-pack"
+	recipePackID := "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/" + recipePackName
+	resourceType := "Radius.Compute/containers"
+	expectedLocation := "ghcr.io/test/containers:latest"
+	bicepKind := v20250801.RecipeKindBicep
+
+	rpSrv := fake.RecipePacksServer{
+		Get: func(ctx context.Context, name string, opts *v20250801.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			require.Equal(t, recipePackName, name)
+			resp.SetResponse(http.StatusOK, v20250801.RecipePacksClientGetResponse{
+				RecipePackResource: v20250801.RecipePackResource{
+					Name: to.Ptr(recipePackName),
+					Properties: &v20250801.RecipePackProperties{
+						Recipes: map[string]*v20250801.RecipeDefinition{
+							resourceType: {
+								Kind:     &bicepKind,
+								Location: to.Ptr(expectedLocation),
+								Parameters: map[string]any{
+									"tier": "basic",
+								},
+							},
+						},
+					},
+				},
+			}, nil)
+			return
+		},
+	}
+
+	armOpts := &armpolicy.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+				RecipePacksServer: rpSrv,
+			}),
+		},
+	}
+
+	def, err := fetchRecipeDefinition(context.Background(), []string{recipePackID}, armOpts, resourceType)
+	require.NoError(t, err)
+	require.NotNil(t, def)
+	require.Equal(t, string(bicepKind), def.Kind)
+	require.Equal(t, expectedLocation, def.Location)
+	require.Equal(t, map[string]any{"tier": "basic"}, def.Parameters)
+	require.False(t, def.PlainHTTP)
+}
+
 func TestGetConfigurationV20250801_TerraformFetchError_IsWrapped(t *testing.T) {
 	tfSrv := fake.TerraformConfigsServer{
 		Get: func(ctx context.Context, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
