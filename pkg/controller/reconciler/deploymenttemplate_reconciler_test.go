@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -60,7 +59,6 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 
 	// Shut down the manager when the test exits.
 	ctx, cancel := testcontext.NewWithCancel(t)
-	t.Cleanup(cancel)
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -102,12 +100,18 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
+	managerDone := make(chan error, 1)
 	go func() {
-		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
-		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			panic(fmt.Sprintf("manager exited with error: %v", err))
-		}
+		managerDone <- mgr.Start(ctx)
 	}()
+
+	t.Cleanup(func() {
+		err := <-managerDone
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			require.NoError(t, err)
+		}
+	})
+	t.Cleanup(cancel)
 
 	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()
 }
