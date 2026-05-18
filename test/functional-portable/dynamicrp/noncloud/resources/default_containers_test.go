@@ -17,11 +17,16 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"testing"
 
+	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Test_DefaultContainers_Deploy verifies that the default Radius.Compute/containers
@@ -40,12 +45,33 @@ import (
 func Test_DefaultContainers_Deploy(t *testing.T) {
 	template := "testdata/default-containers-test.bicep"
 	appName := "default-containers-app"
+	k8sNamespace := "default-containers-ns"
 
-	test := rp.NewRPTest(t, appName, []rp.TestStep{
+	options := rp.NewRPTestOptions(t)
+
+	testObj := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// Create the Kubernetes namespace that the Radius.Core/environments
+			// resource references as its provider namespace.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				ns := &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{Name: k8sNamespace},
+				}
+				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
 		{
 			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
+					{
+						Name: "default-containers-env",
+						Type: "Radius.Core/environments",
+					},
 					{
 						Name: appName,
 						Type: "Radius.Core/applications",
@@ -65,5 +91,6 @@ func Test_DefaultContainers_Deploy(t *testing.T) {
 		},
 	})
 
-	test.Test(t)
+	testObj.Options = options
+	testObj.Test(t)
 }

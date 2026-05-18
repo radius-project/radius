@@ -1,11 +1,21 @@
 extension radius
 
-param environment string
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'default-containers-env'
+  location: 'global'
+  properties: {
+    providers: {
+      kubernetes: {
+        namespace: 'default-containers-ns'
+      }
+    }
+  }
+}
 
 resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'default-containers-app'
   properties: {
-    environment: environment
+    environment: env.id
   }
 }
 
@@ -15,7 +25,7 @@ resource app 'Radius.Core/applications@2025-08-01-preview' = {
 resource container 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'default-container'
   properties: {
-    environment: environment
+    environment: env.id
     application: app.id
     containers: {
       web: {
@@ -38,7 +48,7 @@ resource container 'Radius.Compute/containers@2025-08-01-preview' = {
 resource route 'Radius.Compute/routes@2025-08-01-preview' = {
   name: 'default-route'
   properties: {
-    environment: environment
+    environment: env.id
     application: app.id
     rules: [
       {
