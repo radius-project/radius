@@ -1175,6 +1175,7 @@ testrp
 testsyncresources
 tf
 tfexec
+tfvars
 tgz
 th
 throughs
