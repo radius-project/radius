@@ -139,5 +139,9 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 			ResourceType: "Radius.Security/secrets",
 			Location:     "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
+		{
+			ResourceType:   "Radius.Data/mySqlDatabases",
+			RecipeLocation: "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
+		},
 	}
 }

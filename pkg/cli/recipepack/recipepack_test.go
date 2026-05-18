@@ -29,7 +29,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	definitions := GetCoreTypesRecipeInfo()
 
 	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 4)
+	require.Len(t, definitions, 5)
 
 	// Verify expected resource types
 	expectedResourceTypes := []string{
@@ -37,6 +37,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Compute/persistentVolumes",
 		"Radius.Compute/routes",
 		"Radius.Security/secrets",
+		"Radius.Data/mySqlDatabases",
 	}
 	actualResourceTypes := make([]string, len(definitions))
 	for i, def := range definitions {
