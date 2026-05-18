@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -400,18 +401,40 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 	return nil
 }
 
+// deleteNamespace requests deletion of the namespace and waits for it to be fully removed.
+//
+// Callers MUST first delete any Radius resources (e.g. DeploymentTemplate) that own the
+// namespace, and wait for those resources' finalizers to drain, before calling this
+// function. We deliberately do NOT force-clear namespace finalizers here: a namespace
+// stuck Terminating with a finalizer is a symptom that underlying resources still exist,
+// and clearing the finalizer would leak those resources and leave the next test run in
+// an unpredictable state. If the namespace fails to drain within the timeout, the test
+// fails — which is the correct signal that real cleanup is broken.
 func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-	if !apierrors.IsNotFound(err) {
-		require.NoError(t, err, "failed to delete namespace %s", namespace)
-		t.Logf("Namespace %s deleted successfully", namespace)
-	} else {
+	if apierrors.IsNotFound(err) {
 		t.Logf("Namespace %s already deleted or does not exist", namespace)
+		return
 	}
+	// Use assert.* (not require.*) here so a single failing namespace does not abort cleanup
+	// of subsequent namespaces in the caller's loop.
+	if !assert.NoError(t, err, "failed to delete namespace %s", namespace) {
+		return
+	}
+	t.Logf("Namespace %s delete requested", namespace)
 
-	require.Eventually(t, func() bool {
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
-		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-		return apierrors.IsNotFound(err)
-	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
+	assert.Eventually(t, func() bool {
+		ns := &corev1.Namespace{}
+		getErr := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		if apierrors.IsNotFound(getErr) {
+			return true
+		}
+		// Log finalizers periodically so a stuck namespace is easy to diagnose in CI logs
+		// without us having to reproduce locally.
+		if len(ns.Finalizers) > 0 || len(ns.Spec.Finalizers) > 0 {
+			t.Logf("Namespace %s still Terminating; metadata.finalizers=%v spec.finalizers=%v",
+				namespace, ns.Finalizers, ns.Spec.Finalizers)
+		}
+		return false
+	}, time.Minute*5, time.Second*5, "namespace %s was not fully deleted; underlying Radius resources are likely still present", namespace)
 }

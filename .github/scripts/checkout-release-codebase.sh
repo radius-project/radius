@@ -19,11 +19,16 @@
 # ============================================================================
 # Checkout Release Codebase
 #
-# This script clones the Radius repository at the tag matching the installed
-# Radius CLI version into a "current_release" subfolder.
+# This script clones the Radius repository into a "current_release" subfolder
+# so long-running tests can run against the release codebase while keeping the
+# main repository clone intact for workflow infrastructure.
 #
-# This allows long-running tests to run against the release codebase while
-# keeping the main repository clone intact for workflow infrastructure.
+# By default it clones the tag matching the installed Radius CLI version. The
+# ref to clone can be overridden by passing a git branch or tag as the first
+# argument or via the TEST_CODE_REF environment variable. Raw commit SHAs are
+# not supported (git clone --branch does not accept them). When overridden, the
+# product under test is still the installed release; only the test/infrastructure
+# code on disk changes.
 # ============================================================================
 
 set -euo pipefail
@@ -33,10 +38,15 @@ readonly SCRIPT_NAME
 readonly RELEASE_DIR="current_release"
 
 usage() {
-    echo "Usage: ${SCRIPT_NAME}"
+    echo "Usage: ${SCRIPT_NAME} [test-code-ref]"
     echo ""
-    echo "Clones the Radius repository at the installed release tag into"
-    echo "a '${RELEASE_DIR}' subfolder."
+    echo "Clones the Radius repository into a '${RELEASE_DIR}' subfolder."
+    echo ""
+    echo "Arguments:"
+    echo "  test-code-ref   Optional git branch or tag to clone instead of the"
+    echo "                  installed release tag. Raw commit SHAs are not"
+    echo "                  supported. May also be supplied via the"
+    echo "                  TEST_CODE_REF environment variable."
     echo ""
     echo "Requires rad CLI to be installed and in PATH."
     exit 0
@@ -50,6 +60,9 @@ main() {
     if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
         usage
     fi
+
+    # Optional override: positional arg takes precedence over TEST_CODE_REF env var.
+    local test_code_ref="${1:-${TEST_CODE_REF:-}}"
 
     if ! command -v rad &> /dev/null; then
         echo "Error: rad CLI not found in PATH"
@@ -86,6 +99,20 @@ main() {
     echo "Installed Radius version: ${release_version}"
     echo "Release tag: ${release_tag}"
 
+    # Determine the ref to clone. Default is the release tag matching the installed CLI.
+    # An explicit override clones a different branch or tag so test code (and only test
+    # code) can be patched without cutting a product patch release. The product under
+    # test is still the installed release.
+    local clone_ref="${release_tag}"
+    local clone_ref_source="release tag"
+    if [[ -n "${test_code_ref}" ]]; then
+        clone_ref="${test_code_ref}"
+        clone_ref_source="override"
+        echo "Test code ref override: ${clone_ref}"
+        echo "NOTE: product under test is still ${release_tag}; only the on-disk"
+        echo "      test/infrastructure code is taken from ${clone_ref}."
+    fi
+
     # Remove existing release directory if present
     if [[ -d "${RELEASE_DIR}" ]]; then
         echo ""
@@ -94,8 +121,8 @@ main() {
     fi
 
     echo ""
-    echo "Cloning repository at tag ${release_tag} into ${RELEASE_DIR}..."
-    git clone --depth 1 --branch "${release_tag}" --recurse-submodules \
+    echo "Cloning repository at ref ${clone_ref} (${clone_ref_source}) into ${RELEASE_DIR}..."
+    git clone --depth 1 --branch "${clone_ref}" --recurse-submodules \
         "https://github.com/radius-project/radius.git" "${RELEASE_DIR}"
 
     echo ""
@@ -114,11 +141,17 @@ main() {
     echo "Release Codebase Clone Complete"
     echo "============================================================================"
     echo "Release codebase location: ${RELEASE_DIR}"
-    echo "Release tag: ${release_tag}"
+    echo "Release tag (product under test): ${release_tag}"
+    echo "Cloned ref (test code source):    ${clone_ref} (${clone_ref_source})"
 
-    # Output the release directory for use in subsequent workflow steps
+    # Output values for use in subsequent workflow steps
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-        echo "release-dir=${RELEASE_DIR}" >> "${GITHUB_OUTPUT}"
+        {
+            echo "release-dir=${RELEASE_DIR}"
+            echo "release-tag=${release_tag}"
+            echo "test-code-ref=${clone_ref}"
+            echo "test-code-ref-source=${clone_ref_source}"
+        } >> "${GITHUB_OUTPUT}"
     fi
 }
 

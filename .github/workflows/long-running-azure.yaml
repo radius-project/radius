@@ -42,6 +42,17 @@ name: Long-running test on Azure
 on:
   # Enable manual trigger for testing.
   workflow_dispatch:
+    inputs:
+      test_code_ref:
+        description: |
+          Optional git branch or tag in radius-project/radius for the test code
+          to use during the run. Leave blank to use the tag matching the release
+          (default behavior). This setting does not affect the code being tested,
+          which is always the installed release. This setting allows testing
+          updated test code, not updated product code.
+        required: false
+        default: ''
+        type: string
   schedule:
     # Run once per day at 3:00 AM PDT (10:00 AM UTC)
     - cron: 0 10 * * *
@@ -161,6 +172,9 @@ jobs:
 
       - name: Checkout release codebase
         id: checkout-release-codebase
+        env:
+          # Optional override; empty string means "use the release tag matching the installed CLI".
+          TEST_CODE_REF: ${{ inputs.test_code_ref }}
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/checkout-release-codebase.sh
@@ -355,6 +369,10 @@ jobs:
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
           # Restore AWS Bicep types
           bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
+          # Pre-restore UDT testresources Bicep types so the first deploy in the run does not have to fetch them.
+          # Without pre-restore, the lazy restore happens mid-test and has occasionally exceeded the Azure CLI
+          # token lifetime during long-running tests.
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/usertypealpha-recipe.bicep" --force
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
