@@ -64,9 +64,16 @@ global:
     enabled: true
     # Init image used to pre-download Terraform binaries.
     initImage: "alpine:3.23.4"
-    # URL for downloading Terraform binary
-    # Leave empty to automatically fetch the latest version from HashiCorp
-    # Or provide a complete direct download URL for custom sources
+    # Terraform version to pre-download. MUST match terraformVersion in
+    # pkg/recipes/terraform/version.go -- the runtime download fallback
+    # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
+    # pins to that version, so the pre-mounted binary must match or
+    # recipes will see behavior differences between cold and warm starts.
+    version: "1.14.9"
+    # URL for downloading Terraform binary. Leave empty to download the
+    # version specified by `version` from releases.hashicorp.com. Provide
+    # a complete direct download URL to override (e.g., for air-gapped or
+    # custom builds); when set, `version` is ignored.
     downloadUrl: ""
     # Configure Terraform log level for terraform-exec execution
     # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
