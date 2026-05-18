@@ -54,6 +54,9 @@ on:
 
 permissions: {}
 
+env:
+  YQ_VERSION: v4.44.3
+
 concurrency:
   group: verify-resource-types-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
@@ -76,9 +79,10 @@ jobs:
 
       - name: Install yq
         run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@v4.44.3
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${{ env.YQ_VERSION }}/yq_linux_amd64" -o "${RUNNER_TEMP}/yq"
+          echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  ${RUNNER_TEMP}/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/yq"
+          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
 
       # Re-run the copy step (without bumping the version) to regenerate the
       # manifest files from the module version pinned in go.mod.
