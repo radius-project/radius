@@ -24,6 +24,9 @@ on:
 
 permissions: {}
 
+env:
+  YQ_VERSION: v4.44.3
+
 jobs:
   changes:
     name: Changes
@@ -97,6 +100,13 @@ jobs:
         run: |
           cd radius
           go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
+
+      - name: Install yq
+        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@${{ env.YQ_VERSION }}
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       # Generate Bicep docs
       - name: Generate Bicep docs
