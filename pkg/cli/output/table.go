@@ -23,8 +23,8 @@ import (
 	"os"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 	"k8s.io/client-go/util/jsonpath"
 )
@@ -120,14 +120,14 @@ func (f *TableFormatter) formatWithWidth(obj any, writer io.Writer, options Form
 	numCols := len(headings)
 	slots := make([]int, numCols)
 	for i, h := range headings {
-		if w := utf8.RuneCountInString(h) + TablePadSize; w > slots[i] {
+		if w := runewidth.StringWidth(h) + TablePadSize; w > slots[i] {
 			slots[i] = w
 		}
 	}
 	for _, cells := range cellLines {
 		for i, lines := range cells {
 			for _, line := range lines {
-				if w := utf8.RuneCountInString(line) + TablePadSize; w > slots[i] {
+				if w := runewidth.StringWidth(line) + TablePadSize; w > slots[i] {
 					slots[i] = w
 				}
 			}
@@ -221,28 +221,35 @@ func (f *TableFormatter) formatWithWidth(obj any, writer io.Writer, options Form
 	return nil
 }
 
-// padRight returns s padded with trailing spaces so that the resulting string is at least
-// width runes long. If s is already wider than width, s is returned unchanged.
+// padRight returns s padded with trailing spaces so that the resulting string occupies
+// at least width terminal columns. Width is measured in display columns (so wide
+// characters like CJK or emoji count as 2 and combining marks count as 0), so the next
+// column starts at the correct visual position. If s is already wider than width, s is
+// returned unchanged.
 func padRight(s string, width int) string {
-	n := utf8.RuneCountInString(s)
+	n := runewidth.StringWidth(s)
 	if n >= width {
 		return s
 	}
 	return s + strings.Repeat(" ", width-n)
 }
 
-// wordWrap wraps s into lines no wider than width runes, breaking on whitespace where
-// possible. Words longer than width are broken mid-word on rune boundaries (never inside
-// a UTF-8 sequence). Internal whitespace runs are preserved within a line; trailing
-// whitespace at a wrap boundary is dropped. An empty input returns a single empty line.
+// wordWrap wraps s into lines whose display width is no more than width terminal
+// columns, breaking on whitespace where possible. Width is measured in display
+// columns (wide characters count as 2, combining marks as 0), so the result fits
+// the terminal even when the content contains CJK characters or emoji. Words wider
+// than width are broken at rune boundaries (never inside a UTF-8 sequence). Internal
+// whitespace runs are preserved within a line; trailing whitespace at a wrap boundary
+// is dropped. An empty input returns a single empty line.
 func wordWrap(s string, width int) []string {
-	if width <= 0 || utf8.RuneCountInString(s) <= width {
+	if width <= 0 || runewidth.StringWidth(s) <= width {
 		return []string{s}
 	}
 
 	runes := []rune(s)
 	var lines []string
 	var current []rune
+	currentWidth := 0
 	i := 0
 	for i < len(runes) {
 		// Collect the next non-whitespace word.
@@ -251,6 +258,7 @@ func wordWrap(s string, width int) []string {
 			j++
 		}
 		word := runes[i:j]
+		wordWidth := runewidth.StringWidth(string(word))
 
 		// Collect the whitespace that follows the word.
 		k := j
@@ -258,34 +266,49 @@ func wordWrap(s string, width int) []string {
 			k++
 		}
 		space := runes[j:k]
+		spaceWidth := runewidth.StringWidth(string(space))
 		i = k
 
-		// Place the word, breaking it across lines if it is itself longer than width.
-		if len(word) > width {
+		// Place the word, breaking it across lines if it is itself wider than width.
+		if wordWidth > width {
 			if len(current) > 0 {
 				lines = append(lines, string(trimTrailingSpace(current)))
 				current = current[:0]
+				currentWidth = 0
 			}
-			for len(word) > width {
-				lines = append(lines, string(word[:width]))
-				word = word[width:]
+			// Walk the word and emit chunks of <= width display columns.
+			chunkStart := 0
+			chunkWidth := 0
+			for ci, r := range word {
+				rw := runewidth.RuneWidth(r)
+				if chunkWidth+rw > width && ci > chunkStart {
+					lines = append(lines, string(word[chunkStart:ci]))
+					chunkStart = ci
+					chunkWidth = 0
+				}
+				chunkWidth += rw
 			}
+			current = append(current, word[chunkStart:]...)
+			currentWidth = chunkWidth
+		} else if currentWidth+wordWidth <= width {
 			current = append(current, word...)
-		} else if len(current)+len(word) <= width {
-			current = append(current, word...)
+			currentWidth += wordWidth
 		} else {
 			lines = append(lines, string(trimTrailingSpace(current)))
 			current = append(current[:0], word...)
+			currentWidth = wordWidth
 		}
 
 		// Append the trailing whitespace if it still fits on the current line; otherwise
 		// drop it at the wrap boundary so we don't emit lines with trailing spaces.
 		if len(space) > 0 {
-			if len(current)+len(space) <= width {
+			if currentWidth+spaceWidth <= width {
 				current = append(current, space...)
+				currentWidth += spaceWidth
 			} else {
 				lines = append(lines, string(trimTrailingSpace(current)))
 				current = current[:0]
+				currentWidth = 0
 			}
 		}
 	}
