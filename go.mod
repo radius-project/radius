@@ -53,7 +53,7 @@ require (
 	github.com/go-openapi/errors v0.22.7
 	github.com/go-openapi/jsonpointer v0.23.1
 	github.com/go-openapi/loads v0.23.3
-	github.com/go-openapi/runtime v0.30.0
+	github.com/go-openapi/runtime v0.31.0
 	github.com/go-openapi/spec v0.22.4
 	github.com/go-openapi/strfmt v0.26.2
 	github.com/go-openapi/swag/loading v0.26.0
@@ -316,7 +316,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
