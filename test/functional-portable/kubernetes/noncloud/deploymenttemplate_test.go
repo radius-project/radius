@@ -47,7 +47,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
-	"k8s.io/client-go/util/retry"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -402,6 +401,15 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 	return nil
 }
 
+// deleteNamespace requests deletion of the namespace and waits for it to be fully removed.
+//
+// Callers MUST first delete any Radius resources (e.g. DeploymentTemplate) that own the
+// namespace, and wait for those resources' finalizers to drain, before calling this
+// function. We deliberately do NOT force-clear namespace finalizers here: a namespace
+// stuck Terminating with a finalizer is a symptom that underlying resources still exist,
+// and clearing the finalizer would leak those resources and leave the next test run in
+// an unpredictable state. If the namespace fails to drain within the timeout, the test
+// fails — which is the correct signal that real cleanup is broken.
 func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 	if apierrors.IsNotFound(err) {
@@ -415,54 +423,18 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 	}
 	t.Logf("Namespace %s delete requested", namespace)
 
-	// First, wait for normal deletion using a plain poll loop. We deliberately avoid
-	// assert.Eventually here because its timeout would mark the test failed even when the
-	// finalizer-clearing fallback below subsequently succeeds.
-	deadline := time.Now().Add(2 * time.Minute)
-	for time.Now().Before(deadline) {
-		ns := &corev1.Namespace{}
-		getErr := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-		if apierrors.IsNotFound(getErr) {
-			return
-		}
-		time.Sleep(5 * time.Second)
-	}
-
-	// Fallback for namespaces stuck in Terminating due to finalizers.
-	// NOTE: Force-clearing namespace finalizers is a TEST-ONLY escape hatch. In production
-	// code this can leak the underlying resources owned by whichever controller registered
-	// the finalizer.
-	//
-	// Use RetryOnConflict so that if the apiserver mutates the namespace between Get and
-	// Finalize, we re-fetch and re-clear instead of giving up (which would leave finalizers
-	// in place and cause the Eventually below to time out spuriously).
-	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		ns, getErr := opts.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-		if apierrors.IsNotFound(getErr) {
-			return nil
-		}
-		if getErr != nil {
-			return getErr
-		}
-		if len(ns.Spec.Finalizers) == 0 {
-			return nil
-		}
-		t.Logf("Namespace %s stuck terminating with finalizers: %v; clearing them", namespace, ns.Spec.Finalizers)
-		ns.Spec.Finalizers = nil
-		_, finalizeErr := opts.K8sClient.CoreV1().Namespaces().Finalize(ctx, ns, metav1.UpdateOptions{})
-		if apierrors.IsNotFound(finalizeErr) {
-			return nil
-		}
-		return finalizeErr
-	})
-	if err != nil {
-		assert.NoError(t, err, "failed to clear finalizers on namespace %s", namespace)
-		return
-	}
-
 	assert.Eventually(t, func() bool {
 		ns := &corev1.Namespace{}
 		getErr := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-		return apierrors.IsNotFound(getErr)
-	}, time.Minute*5, time.Second*5, "waiting for namespace %s to be fully deleted", namespace)
+		if apierrors.IsNotFound(getErr) {
+			return true
+		}
+		// Log finalizers periodically so a stuck namespace is easy to diagnose in CI logs
+		// without us having to reproduce locally.
+		if len(ns.Finalizers) > 0 || len(ns.Spec.Finalizers) > 0 {
+			t.Logf("Namespace %s still Terminating; metadata.finalizers=%v spec.finalizers=%v",
+				namespace, ns.Finalizers, ns.Spec.Finalizers)
+		}
+		return false
+	}, time.Minute*5, time.Second*5, "namespace %s was not fully deleted; underlying Radius resources are likely still present", namespace)
 }
