@@ -40,6 +40,10 @@ var radiusCoreTypeOpenAPIDefinitions = map[string]struct {
 		resourceDefinition:   "ApplicationResource",
 		propertiesDefinition: "ApplicationProperties",
 	},
+	"bicepConfigs": {
+		resourceDefinition:   "BicepConfigResource",
+		propertiesDefinition: "BicepConfigProperties",
+	},
 	"environments": {
 		resourceDefinition:   "EnvironmentResource",
 		propertiesDefinition: "EnvironmentProperties",
@@ -48,12 +52,19 @@ var radiusCoreTypeOpenAPIDefinitions = map[string]struct {
 		resourceDefinition:   "RecipePackResource",
 		propertiesDefinition: "RecipePackProperties",
 	},
+	"terraformConfigs": {
+		resourceDefinition:   "TerraformConfigResource",
+		propertiesDefinition: "TerraformConfigProperties",
+	},
 }
 
 type openAPIDocument struct {
 	Definitions map[string]map[string]any `json:"definitions"`
 }
 
+// hydrateBuiltInResourceProviderMetadata fills built-in manifest metadata that is intentionally not
+// duplicated in YAML. Radius.Core schemas are sourced from the generated OpenAPI spec so the CLI and
+// dashboard see the same TypeSpec-authored descriptions and property schemas that UCP serves.
 func hydrateBuiltInResourceProviderMetadata(rp *manifest.ResourceProvider) error {
 	if !strings.EqualFold(rp.Namespace, radiusCoreNamespace) {
 		return nil
@@ -67,7 +78,7 @@ func hydrateBuiltInResourceProviderMetadata(rp *manifest.ResourceProvider) error
 	for typeName, resourceType := range rp.Types {
 		definitionNames, ok := radiusCoreTypeOpenAPIDefinitions[typeName]
 		if !ok {
-			continue
+			return fmt.Errorf("%s type %s has no OpenAPI metadata mapping", rp.Namespace, typeName)
 		}
 		if resourceType == nil {
 			return fmt.Errorf("mapped %s type %s is nil", rp.Namespace, typeName)
@@ -97,6 +108,8 @@ func hydrateBuiltInResourceProviderMetadata(rp *manifest.ResourceProvider) error
 	return nil
 }
 
+// loadRadiusCoreOpenAPI reads the embedded TypeSpec-generated Radius.Core OpenAPI document used as
+// the source of truth for built-in resource type descriptions and schemas.
 func loadRadiusCoreOpenAPI() (*openAPIDocument, error) {
 	contents, err := swagger.SpecFiles.ReadFile(radiusCoreOpenAPIFile)
 	if err != nil {
@@ -114,6 +127,7 @@ func loadRadiusCoreOpenAPI() (*openAPIDocument, error) {
 	return &doc, nil
 }
 
+// openAPIDefinitionDescription returns the top-level resource description for a named OpenAPI definition.
 func openAPIDefinitionDescription(doc *openAPIDocument, name string) (string, error) {
 	definition, ok := doc.Definitions[name]
 	if !ok {
@@ -128,6 +142,7 @@ func openAPIDefinitionDescription(doc *openAPIDocument, name string) (string, er
 	return description, nil
 }
 
+// openAPIDefinitionSchema returns a fully local-ref-expanded schema for a named OpenAPI definition.
 func openAPIDefinitionSchema(doc *openAPIDocument, name string) (map[string]any, error) {
 	definition, ok := doc.Definitions[name]
 	if !ok {
@@ -147,6 +162,8 @@ func openAPIDefinitionSchema(doc *openAPIDocument, name string) (map[string]any,
 	return schema, nil
 }
 
+// resolveOpenAPIValue recursively expands local #/definitions references while preserving external
+// references, which are part of the ARM envelope rather than the resource-type property schema.
 func resolveOpenAPIValue(value any, definitions map[string]map[string]any, resolving map[string]bool) (any, error) {
 	switch typed := value.(type) {
 	case map[string]any:
@@ -216,6 +233,7 @@ func resolveOpenAPIValue(value any, definitions map[string]map[string]any, resol
 	}
 }
 
+// cloneMap returns a shallow copy so unresolved external refs are not mutated while local refs expand.
 func cloneMap(value map[string]any) map[string]any {
 	result := map[string]any{}
 	for key, child := range value {

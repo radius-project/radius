@@ -237,13 +237,30 @@ types:
 
 		summaryModel := &datamodel.ResourceProviderSummary{}
 		require.NoError(t, obj.As(summaryModel))
+		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
+
+		expectedDescriptions := map[string]string{
+			"applications":     "Radius Application resource",
+			"bicepConfigs":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
+			"environments":     "The environment resource",
+			"recipePacks":      "The recipe pack resource",
+			"terraformConfigs": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+		}
+		require.Len(t, expectedDescriptions, len(radiusCoreTypeOpenAPIDefinitions))
+		for typeName, expectedDescription := range expectedDescriptions {
+			resourceType := summaryModel.Properties.ResourceTypes[typeName]
+			require.NotNil(t, resourceType, "resource type %q should be registered", typeName)
+			require.NotNil(t, resourceType.Description, "resource type %q should have a description", typeName)
+			assert.Equal(t, expectedDescription, *resourceType.Description)
+
+			apiVersion := resourceType.APIVersions["2025-08-01-preview"]
+			require.NotNil(t, apiVersion, "resource type %q should have API version 2025-08-01-preview", typeName)
+			assert.Equal(t, "object", apiVersion.Schema["type"])
+			requireRenderableResourceTypeSchema(t, apiVersion.Schema)
+		}
 
 		applications := summaryModel.Properties.ResourceTypes["applications"]
-		require.NotNil(t, applications.Description)
-		assert.Equal(t, "Radius Application resource", *applications.Description)
 		applicationSchema := applications.APIVersions["2025-08-01-preview"].Schema
-		assert.Equal(t, "object", applicationSchema["type"])
-		requireRenderableResourceTypeSchema(t, applicationSchema)
 
 		applicationProperties := requireSchemaProperties(t, applicationSchema)
 		environmentProperty := requireSchemaProperty(t, applicationProperties, "environment")
@@ -254,20 +271,14 @@ types:
 		assert.Equal(t, "object", statusProperty["type"])
 
 		environments := summaryModel.Properties.ResourceTypes["environments"]
-		require.NotNil(t, environments.Description)
-		assert.Equal(t, "The environment resource", *environments.Description)
 		environmentSchema := environments.APIVersions["2025-08-01-preview"].Schema
-		requireRenderableResourceTypeSchema(t, environmentSchema)
 		environmentProperties := requireSchemaProperties(t, environmentSchema)
 		providersProperty := requireSchemaProperty(t, environmentProperties, "providers")
 		assert.NotContains(t, providersProperty, "$ref")
 		assert.Equal(t, "object", providersProperty["type"])
 
 		recipePacks := summaryModel.Properties.ResourceTypes["recipePacks"]
-		require.NotNil(t, recipePacks.Description)
-		assert.Equal(t, "The recipe pack resource", *recipePacks.Description)
 		recipePackSchema := recipePacks.APIVersions["2025-08-01-preview"].Schema
-		requireRenderableResourceTypeSchema(t, recipePackSchema)
 		recipePackProperties := requireSchemaProperties(t, recipePackSchema)
 		recipesProperty := requireSchemaProperty(t, recipePackProperties, "recipes")
 		additionalProperties, ok := recipesProperty["additionalProperties"].(map[string]any)
@@ -276,6 +287,20 @@ types:
 		recipeKindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "recipeKind")
 		assert.NotContains(t, recipeKindProperty, "$ref")
 		assert.Equal(t, "string", recipeKindProperty["type"])
+
+		terraformConfigs := summaryModel.Properties.ResourceTypes["terraformConfigs"]
+		terraformConfigSchema := terraformConfigs.APIVersions["2025-08-01-preview"].Schema
+		terraformConfigProperties := requireSchemaProperties(t, terraformConfigSchema)
+		terraformrcProperty := requireSchemaProperty(t, terraformConfigProperties, "terraformrc")
+		assert.NotContains(t, terraformrcProperty, "$ref")
+		assert.Equal(t, "object", terraformrcProperty["type"])
+
+		bicepConfigs := summaryModel.Properties.ResourceTypes["bicepConfigs"]
+		bicepConfigSchema := bicepConfigs.APIVersions["2025-08-01-preview"].Schema
+		bicepConfigProperties := requireSchemaProperties(t, bicepConfigSchema)
+		registryAuthenticationsProperty := requireSchemaProperty(t, bicepConfigProperties, "registryAuthentications")
+		assert.NotContains(t, registryAuthenticationsProperty, "$ref")
+		assert.Equal(t, "object", registryAuthenticationsProperty["type"])
 
 		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Core/resourceTypes/applications/apiVersions/2025-08-01-preview")
 		require.NoError(t, err)
@@ -306,6 +331,25 @@ func Test_hydrateBuiltInResourceProviderMetadata(t *testing.T) {
 		err := hydrateBuiltInResourceProviderMetadata(rp)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "mapped Radius.Core type applications is missing API version 2025-08-01-preview")
+	})
+
+	t.Run("fails when Radius.Core manifest type has no OpenAPI metadata mapping", func(t *testing.T) {
+		t.Parallel()
+
+		rp := &manifest.ResourceProvider{
+			Namespace: "Radius.Core",
+			Types: map[string]*manifest.ResourceType{
+				"widgets": {
+					APIVersions: map[string]*manifest.ResourceTypeAPIVersion{
+						"2025-08-01-preview": {Schema: map[string]any{}},
+					},
+				},
+			},
+		}
+
+		err := hydrateBuiltInResourceProviderMetadata(rp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Radius.Core type widgets has no OpenAPI metadata mapping")
 	})
 
 	t.Run("ignores non Radius.Core providers", func(t *testing.T) {
