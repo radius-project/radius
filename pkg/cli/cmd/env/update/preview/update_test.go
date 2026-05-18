@@ -306,19 +306,7 @@ func Test_Run(t *testing.T) {
 					Format: "WARNING: The existing recipe pack list will be replaced with the specified packs.",
 				},
 				output.LogOutput{
-					Format: "Updating Environment...",
-				},
-				output.FormattedOutput{
-					Format: "table",
-					Obj: environmentForDisplay{
-						Name:        "test-env",
-						RecipePacks: 2, // rp1 and rp2 replace the old pack
-						Providers:   3,
-					},
-					Options: environmentFormat(),
-				},
-				output.LogOutput{
-					Format: "Successfully updated environment %q.",
+					Format: "Radius.Core/environments/%s updated",
 					Params: []any{"test-env"},
 				},
 			},

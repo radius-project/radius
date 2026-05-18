@@ -208,12 +208,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run creates a workspace and sets it as the current workspace, returning an error if any occurs during the process."
 func (r *Runner) Run(ctx context.Context) error {
 
-	r.Output.LogInfo("Creating workspace...")
 	err := r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.Config, r.Workspace)
 	if err != nil {
 		return err
 	}
-	output.LogInfo("Set %q as current workspace", r.Workspace.Name)
+	r.Output.LogInfo("Local workspace %s created (current)", r.Workspace.Name)
 
 	return nil
 }

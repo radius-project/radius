@@ -36,11 +36,8 @@ const (
 	scopeLocal = "local"
 
 	// Message templates
-	msgResourceGroupDeleted       = "Resource group %s deleted."
-	msgResourceGroupNotFound      = "Resource group %s does not exist or has already been deleted."
-	msgResourceGroupNotDeleted    = "Resource group %q NOT deleted"
-	msgDeletingResourceGroup      = "Deleting resource group %s...\n"
-	msgDeletingResourcesWithCount = "Deleting %d resource(s) in group %s..."
+	msgResourceGroupDeleted  = "System.Resources/resourceGroups/%s deleted"
+	msgResourceGroupNotFound = "System.Resources/resourceGroups/%s not found"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad group delete` command.
@@ -153,16 +150,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		if !confirmed {
-			r.Output.LogInfo(msgResourceGroupNotDeleted, r.UCPResourceGroupName)
 			return nil
 		}
 	}
-
-	// Show appropriate progress messages with resource count when available
-	if hasResources {
-		r.Output.LogInfo(msgDeletingResourcesWithCount, len(resources), r.UCPResourceGroupName)
-	}
-	r.Output.LogInfo(msgDeletingResourceGroup, r.UCPResourceGroupName)
 
 	// Actually delete the resource group (which will now handle resource deletion internally)
 	deleted, err := client.DeleteResourceGroup(ctx, scopeLocal, r.UCPResourceGroupName)

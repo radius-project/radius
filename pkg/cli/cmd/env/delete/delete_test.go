@@ -39,7 +39,7 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 const (
-	deleteConfirmationEmpty = "The environment %s is empty. Are you sure you want to delete the environment?"
+	deleteConfirmationEmpty         = "The environment %s is empty. Are you sure you want to delete the environment?"
 	deleteConfirmationWithResources = "The environment %s contains %d deployed resource(s). Are you sure you want to delete the environment and its resources?"
 )
 
@@ -146,11 +146,8 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: msgDeletingEnvironment,
-				Params: []any{"test-env"},
-			},
-			output.LogOutput{
 				Format: msgEnvironmentDeleted,
+				Params: []any{"test-env"},
 			},
 		}
 
@@ -202,11 +199,8 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: msgDeletingEnvironment,
-				Params: []any{"test-env"},
-			},
-			output.LogOutput{
 				Format: msgEnvironmentDeleted,
+				Params: []any{"test-env"},
 			},
 		}
 
@@ -261,15 +255,8 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: msgDeletingResourceCount,
-				Params: []any{1, "test-env"},
-			},
-			output.LogOutput{
-				Format: msgDeletingEnvironment,
-				Params: []any{"test-env"},
-			},
-			output.LogOutput{
 				Format: msgEnvironmentDeleted,
+				Params: []any{"test-env"},
 			},
 		}
 
@@ -324,15 +311,8 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: msgDeletingResourceCount,
-				Params: []any{1, "test-env"},
-			},
-			output.LogOutput{
-				Format: msgDeletingEnvironment,
-				Params: []any{"test-env"},
-			},
-			output.LogOutput{
 				Format: msgEnvironmentDeleted,
+				Params: []any{"test-env"},
 			},
 		}
 
@@ -376,13 +356,7 @@ func Test_Show(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []any{
-			output.LogOutput{
-				Format: "Environment %q NOT deleted",
-				Params: []any{"test-env"},
-			},
-		}
-		require.Equal(t, expected, outputSink.Writes)
+		require.Empty(t, outputSink.Writes)
 	})
 
 	// YES, this is a success case. Delete means "make it be gone", so if the environment is already
@@ -428,10 +402,6 @@ func Test_Show(t *testing.T) {
 		require.NoError(t, err)
 
 		expected := []any{
-			output.LogOutput{
-				Format: msgDeletingEnvironment,
-				Params: []any{"test-env"},
-			},
 			output.LogOutput{
 				Format: msgEnvironmentNotFound,
 				Params: []any{"test-env"},

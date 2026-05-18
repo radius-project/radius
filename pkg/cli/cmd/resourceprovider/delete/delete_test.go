@@ -95,7 +95,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Resource provider %q deleted.",
+				Format: "System.Resources/resourceProviders/%s deleted",
 				Params: []any{"Applications.Test"},
 			},
 		}
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Resource provider %q does not exist or has already been deleted.",
+				Format: "System.Resources/resourceProviders/%s not found",
 				Params: []any{"Applications.Test"},
 			},
 		}
@@ -183,7 +183,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Resource provider %q deleted.",
+				Format: "System.Resources/resourceProviders/%s deleted",
 				Params: []any{"Applications.Test"},
 			},
 		}

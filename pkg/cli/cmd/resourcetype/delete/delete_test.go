@@ -103,7 +103,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Resource type %q deleted.",
+				Format: "%s deleted",
 				Params: []any{"Applications.Test/testResources"},
 			},
 		}
@@ -146,7 +146,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Resource type %q does not exist or has already been deleted.",
+				Format: "%s not found",
 				Params: []any{"Applications.Test/testResources"},
 			},
 		}
@@ -195,7 +195,7 @@ func Test_Run(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Resource type %q deleted.",
+				Format: "%s deleted",
 				Params: []any{"Applications.Test/testResources"},
 			},
 		}
