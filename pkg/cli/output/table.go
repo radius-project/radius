@@ -274,7 +274,6 @@ func wordWrap(s string, width int) []string {
 			if len(current) > 0 {
 				lines = append(lines, string(trimTrailingSpace(current)))
 				current = current[:0]
-				currentWidth = 0
 			}
 			// Walk the word and emit chunks of <= width display columns.
 			chunkStart := 0
