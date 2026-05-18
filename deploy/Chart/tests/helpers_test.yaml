@@ -398,6 +398,9 @@ tests:
       rp.image: applications-rp
       dynamicrp.image: dynamic-rp
       de.image: deployment-engine
+      # Clear the values.yaml pin so this test exercises the
+      # global.imageTag fallthrough for the DE image.
+      de.tag: ""
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
@@ -519,6 +522,26 @@ tests:
           path: spec.template.spec.initContainers[0].name
           value: terraform-init
         template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: alpine:3.23.4
+        template: dynamic-rp/deployment.yaml
+
+  - it: should allow overriding the terraform init image
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: true
+      global.terraform.initImage: alpine:3.22
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: alpine:3.22
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: alpine:3.22
+        template: rp/deployment.yaml
 
   - it: should add append-root-ca init container and mounts for controller when cert provided
     set:
@@ -634,6 +657,10 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].name
           value: terraform-init
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: alpine:3.23.4
         template: rp/deployment.yaml
 
   - it: should add append-root-ca init container and mounts for ucp when cert provided
