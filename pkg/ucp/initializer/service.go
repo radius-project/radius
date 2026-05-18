@@ -18,6 +18,7 @@ package initializer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -202,8 +203,22 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 
 	// 3. Save Location
+	// Read the existing location (if any) and merge in the new resource types.
+	// This supports multiple manifest files sharing the same namespace, where
+	// each file contributes different resource types to the same location.
 	locationID := rpID + "/locations/" + locationName
 	locationResourceTypes := map[string]datamodel.LocationResourceTypeConfiguration{}
+
+	existingLocation, err := database.GetResource[datamodel.Location](ctx, dbClient, locationID)
+	if err != nil && !errors.Is(err, &database.ErrNotFound{}) {
+		return fmt.Errorf("failed to read existing location %s/%s: %w", rp.Namespace, locationName, err)
+	}
+	if err == nil {
+		for name, config := range existingLocation.Properties.ResourceTypes {
+			locationResourceTypes[name] = config
+		}
+	}
+
 	for typeName, resourceType := range rp.Types {
 		apiVersions := map[string]datamodel.LocationAPIVersionConfiguration{}
 		for apiVersionName := range resourceType.APIVersions {
@@ -231,6 +246,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 	if address != "" {
 		locationModel.Properties.Address = &address
+	} else if err == nil && existingLocation.Properties.Address != nil {
+		// Preserve the address from the existing location if the current
+		// manifest does not specify one.
+		locationModel.Properties.Address = existingLocation.Properties.Address
 	}
 
 	if err := saveResource(ctx, dbClient, locationID, locationModel); err != nil {
@@ -238,7 +257,22 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 
 	// 4. Save ResourceProviderSummary
+	// Read the existing summary (if any) and merge in the new resource types,
+	// same as for the location above.
 	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
+
+	existingSummary, err := database.GetResource[datamodel.ResourceProviderSummary](ctx, dbClient, summaryID)
+	if err != nil && !errors.Is(err, &database.ErrNotFound{}) {
+		return fmt.Errorf("failed to read existing summary %s: %w", rp.Namespace, err)
+	}
+	if err == nil {
+		for name, rt := range existingSummary.Properties.ResourceTypes {
+			if _, exists := summaryResourceTypes[name]; !exists {
+				summaryResourceTypes[name] = rt
+			}
+		}
+	}
+
 	summaryModel := &datamodel.ResourceProviderSummary{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
