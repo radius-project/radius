@@ -18,13 +18,27 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
+	cli_kubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/setup"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
+)
+
+// Defaults created by `rad install kubernetes` to mirror `rad init` behavior.
+const (
+	defaultResourceGroupName    = "default"
+	defaultEnvironmentName      = "default"
+	defaultEnvironmentNamespace = "default"
+	defaultUCPPlane             = "local"
 )
 
 // NewCommand creates an instance of the `rad install kubernetes` command and runner.
@@ -42,6 +56,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 By default 'rad install kubernetes' will install Radius with the version matching the rad CLI version.
 
 Radius will be installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/
+
+After installing the control plane, this command also creates a default resource group named 'default' and
+a default environment named 'default' (using the 'default' Kubernetes namespace) so that the cluster is
+immediately ready to deploy applications. Re-running the command on an existing installation without
+'--reinstall' will leave existing resources unchanged. Using '--reinstall' may recreate or overwrite the
+default resource group and environment if they already exist.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,
@@ -114,8 +134,10 @@ rad install kubernetes --set global.terraform.loglevel=DEBUG
 
 // Runner is the Runner implementation for the `rad install kubernetes` command.
 type Runner struct {
-	Helm   helm.Interface
-	Output output.Interface
+	Helm                helm.Interface
+	Output              output.Interface
+	ConnectionFactory   connections.Factory
+	KubernetesInterface cli_kubernetes.Interface
 
 	KubeContext string
 
@@ -136,12 +158,14 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
 //
 
-// NewRunner creates a new Runner struct with Helm and Output fields initialized with the HelmInterface and Output
-// objects returned by the Factory's GetHelmInterface and GetOutput methods respectively.
+// NewRunner creates a new Runner struct with Helm, Output, ConnectionFactory and KubernetesInterface
+// fields initialized from the supplied factory.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Helm:   factory.GetHelmInterface(),
-		Output: factory.GetOutput(),
+		Helm:                factory.GetHelmInterface(),
+		Output:              factory.GetOutput(),
+		ConnectionFactory:   factory.GetConnectionFactory(),
+		KubernetesInterface: factory.GetKubernetesInterface(),
 	}
 }
 
@@ -155,7 +179,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run checks if a Radius installation exists, and if it does, it either skips the installation or reinstalls it
 // depending on the "Reinstall" flag. If no installation is found, it installs the version of Radius corresponding
-// to the cli version. It then returns any errors that occur during the installation.
+// to the cli version. After a successful install it ensures that a default resource group and environment exist
+// so the cluster is ready to deploy applications immediately. It returns any errors that occur during these steps.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.ChartOptions{
@@ -196,5 +221,63 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Helm is configured with Wait=true for the Radius chart (see PopulateDefaultClusterOptions),
+	// so by the time InstallRadius returns the control plane pods are Ready and the UCP API is
+	// reachable. We can therefore call the management client immediately without an extra wait.
+	return r.createDefaultGroupAndEnvironment(ctx)
+}
+
+// createDefaultGroupAndEnvironment ensures that a resource group named "default" and an environment named
+// "default" exist on the cluster Radius was just installed on. Existing resources with the same names are
+// left unchanged (CreateOrUpdate semantics), so re-running install is safe.
+func (r *Runner) createDefaultGroupAndEnvironment(ctx context.Context) error {
+	kubeContext, err := r.resolveKubeContext()
+	if err != nil {
+		return err
+	}
+
+	workspace := workspaces.Workspace{
+		Connection: map[string]any{
+			"context": kubeContext,
+			"kind":    workspaces.KindKubernetes,
+		},
+		Scope: fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", defaultUCPPlane, defaultResourceGroupName),
+	}
+
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, workspace)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to connect to the Radius control plane. Radius was installed successfully; you can create the default resource group and environment manually with 'rad group create default' and 'rad env create default'.")
+	}
+
+	r.Output.LogInfo("Creating default resource group %q...", defaultResourceGroupName)
+	err = setup.EnsureResourceGroup(ctx, client, defaultUCPPlane, defaultResourceGroupName)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create the default resource group. Radius was installed successfully; you can retry with 'rad group create default'.")
+	}
+
+	r.Output.LogInfo("Creating default environment %q in namespace %q...", defaultEnvironmentName, defaultEnvironmentNamespace)
+	err = setup.EnsureEnvironment(ctx, client, defaultEnvironmentName, defaultEnvironmentNamespace, nil, nil)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create the default environment. Radius was installed successfully; you can retry with 'rad env create default'.")
+	}
+
 	return nil
+}
+
+// resolveKubeContext returns the kube context the install targeted. If --kubecontext was passed, that value
+// is used. Otherwise the active kube context from the user's kubeconfig is used (matching what the Helm
+// install actually targeted).
+func (r *Runner) resolveKubeContext() (string, error) {
+	if r.KubeContext != "" {
+		return r.KubeContext, nil
+	}
+
+	config, err := r.KubernetesInterface.GetKubeContext()
+	if err != nil {
+		return "", clierrors.MessageWithCause(err, "Failed to read kubeconfig.")
+	}
+	if config.CurrentContext == "" {
+		return "", clierrors.Message("No active Kubernetes context is set in your kubeconfig. Specify one with the '--kubecontext' flag.")
+	}
+	return config.CurrentContext, nil
 }

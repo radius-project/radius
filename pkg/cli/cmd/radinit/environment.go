@@ -21,14 +21,12 @@ import (
 	"sort"
 	"strings"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 const (
@@ -46,9 +44,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		return err
 	}
 
-	err = client.CreateOrUpdateResourceGroup(ctx, "local", r.Options.Environment.Name, &ucp.ResourceGroupResource{
-		Location: to.Ptr(v1.LocationGlobal),
-	})
+	err = setup.EnsureResourceGroup(ctx, client, "local", r.Options.Environment.Name)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create a resource group.")
 	}
@@ -76,18 +72,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		}
 	}
 
-	envProperties := corerp.EnvironmentProperties{
-		Compute: &corerp.KubernetesCompute{
-			Namespace: new(r.Options.Environment.Namespace),
-		},
-		Providers: &providers,
-		Recipes:   recipes,
-	}
-
-	err = client.CreateOrUpdateEnvironment(ctx, r.Options.Environment.Name, &corerp.EnvironmentResource{
-		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &envProperties,
-	})
+	err = setup.EnsureEnvironment(ctx, client, r.Options.Environment.Name, r.Options.Environment.Namespace, &providers, recipes)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create environment.")
 	}
