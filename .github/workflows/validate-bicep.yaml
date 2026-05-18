@@ -94,11 +94,16 @@ jobs:
       - name: Create a temporary file system
         run: |
           mkdir tmp-radius-bicep-extension
+          mkdir tmp-radiuscompute-bicep-extension
           mkdir tmp-testresources-bicep-extension
 
       - name: Publish bicep types
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
+
+      - name: Publish radiusCompute extension
+        run: |
+          go run ./cmd/rad/main.go bicep publish-extension -f ./deploy/manifest/built-in-providers/dev/radius_compute.yaml --target ./tmp-radiuscompute-bicep-extension/radiuscompute.tgz --force
 
       - name: Publish testresources extension
         run: |
@@ -113,8 +118,9 @@ jobs:
           WORKDIR="${{ github.workspace }}"
           jq \
             --arg rad "$WORKDIR/tmp-radius-bicep-extension/radius.tgz" \
+            --arg compute "$WORKDIR/tmp-radiuscompute-bicep-extension/radiuscompute.tgz" \
             --arg test "$WORKDIR/tmp-testresources-bicep-extension/testresources.tgz" \
-            '.extensions.radius = $rad | .extensions.testresources = $test' \
+            '.extensions.radius = $rad | .extensions.radiusCompute = $compute | .extensions.testresources = $test' \
             bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
 
            # Copy to the dynamicrp resources test directory so the .bicep files there can find it
