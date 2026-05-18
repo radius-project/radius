@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/Azure/bicep-types/src/bicep-types-go/factory"
@@ -22,12 +23,21 @@ type ConversionResult struct {
 
 // Convert transforms a ResourceProvider manifest into Bicep extension files
 // Equivalent to TypeScript function convert()
+
+// Convert transforms a ResourceProvider manifest into Bicep extension files.
+// This function guarantees deterministic output by sorting resource type and API version keys before processing.
+// This is important to make sure CI checks are reliable and the generated files are always the same every time.
 func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 	typeFactory := factory.NewTypeFactory()
 
-	// Process each resource type and API version
-	for resourceTypeName, resourceType := range provider.Types {
-		for apiVersionName, apiVersion := range resourceType.APIVersions {
+	// Iterate resource types in sorted order
+	resourceTypeNames := sortedResourceTypeNames(provider.Types)
+	for _, resourceTypeName := range resourceTypeNames {
+		resourceType := provider.Types[resourceTypeName]
+		// Iterate API versions in sorted order
+		apiVersionNames := sortedAPIVersionNames(resourceType.APIVersions)
+		for _, apiVersionName := range apiVersionNames {
+			apiVersion := resourceType.APIVersions[apiVersionName]
 			_, err := addResourceTypeForAPIVersion(
 				provider,
 				resourceTypeName,
@@ -302,6 +312,9 @@ func addSchemaTypeInternal(schema *manifest.Schema, name string, typeFactory *fa
 }
 
 // addObjectPropertiesInternal converts manifest schema properties to Bicep object properties with context tracking
+
+// addObjectPropertiesInternal converts manifest schema properties to Bicep object properties.
+// Properties are always processed in sorted key order to ensure deterministic output.
 func addObjectPropertiesInternal(schema *manifest.Schema, typeFactory *factory.TypeFactory, inPlatformOptions bool) (map[string]types.ObjectTypeProperty, error) {
 	result := make(map[string]types.ObjectTypeProperty)
 
@@ -309,7 +322,15 @@ func addObjectPropertiesInternal(schema *manifest.Schema, typeFactory *factory.T
 		return result, nil
 	}
 
-	for key, propSchema := range schema.Properties {
+	// Collect and sort property names for deterministic ordering
+	propertyNames := make([]string, 0, len(schema.Properties))
+	for key := range schema.Properties {
+		propertyNames = append(propertyNames, key)
+	}
+	sort.Strings(propertyNames)
+
+	for _, key := range propertyNames {
+		propSchema := schema.Properties[key]
 		property, err := addObjectProperty(schema, key, &propSchema, typeFactory, inPlatformOptions)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add property %s: %w", key, err)
@@ -318,6 +339,26 @@ func addObjectPropertiesInternal(schema *manifest.Schema, typeFactory *factory.T
 	}
 
 	return result, nil
+}
+
+// sortedResourceTypeNames returns resource type names in sorted order.
+func sortedResourceTypeNames(resourceTypes map[string]manifest.ResourceType) []string {
+	names := make([]string, 0, len(resourceTypes))
+	for name := range resourceTypes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// sortedAPIVersionNames returns API version names in sorted order.
+func sortedAPIVersionNames(apiVersions map[string]manifest.APIVersion) []string {
+	names := make([]string, 0, len(apiVersions))
+	for name := range apiVersions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // addObjectProperty converts a single manifest property to a Bicep object property

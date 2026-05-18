@@ -56,6 +56,17 @@ echo "Installing mockgen..."
 go install go.uber.org/mock/mockgen@v0.4.0
 
 echo "Installing cspell..."
+# Ensure pnpm global bin directory exists and is on PATH before installing
+# global packages. `pnpm setup` updates shell rc files for future sessions,
+# but we also need PATH updated for the current script execution.
+export PNPM_HOME="${PNPM_HOME:-/home/vscode/.local/share/pnpm}"
+PNPM_BIN_DIR="$(pnpm config get global-bin-dir 2>/dev/null || true)"
+if [[ -z "${PNPM_BIN_DIR}" || "${PNPM_BIN_DIR}" == "undefined" ]]; then
+    PNPM_BIN_DIR="${PNPM_HOME}/bin"
+    pnpm config set global-bin-dir "${PNPM_BIN_DIR}"
+fi
+mkdir -p "${PNPM_BIN_DIR}"
+export PATH="${PNPM_BIN_DIR}:${PATH}"
 pnpm add -g cspell
 
 echo "============================================================================"
