@@ -116,6 +116,8 @@ func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 }
 
 func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
+	// getTerraformConfig no longer saves the file; it only creates the in-memory config.
+	// An invalid directory should not cause an error because saving happens separately.
 	workingDir := "invalid-directory"
 	options := Options{
 		EnvRecipe: &recipes.EnvironmentDefinition{
@@ -125,9 +127,9 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
+	cfg, err := getTerraformConfig(testcontext.New(t), workingDir, options)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
 }
 
 func TestSetEnvironmentVariables(t *testing.T) {
