@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Radius application graph</title>
+<style>
+  :root {
+    color-scheme: light;
+    --fg: #1f2328;
+    --fg-muted: #57606a;
+    --bg-canvas: #ffffff;
+    --bg-subtle: #f6f8fa;
+    --border: #d0d7de;
+    --link: #0969da;
+    --shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg-canvas);
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-subtle);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  header .meta {
+    color: var(--fg-muted);
+    font-size: 12px;
+  }
+  main {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #graph {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Legend (resource types in single-graph mode, diff status in diff mode) */
+  .radius-graph-legend {
+    display: inline-flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .radius-graph-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+  .radius-graph-legend-swatch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .radius-graph-legend-swatch--added    { background: #dafbe1; border-color: #1a7f37; }
+  .radius-graph-legend-swatch--modified { background: #fff8c5; border-color: #9a6700; }
+  .radius-graph-legend-swatch--removed  { background: #ffebe9; border-color: #cf222e; }
+  .radius-graph-legend-swatch--unchanged{ background: #f6f8fa; border-color: #57606a; }
+
+  /* Popup */
+  .radius-graph-popup {
+    position: absolute;
+    z-index: 10;
+    min-width: 220px;
+    max-width: 320px;
+    padding: 12px 14px 12px 14px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    color: var(--fg);
+  }
+  .radius-graph-popup-title {
+    font-weight: 600;
+    font-size: 14px;
+    word-break: break-word;
+    padding-right: 24px;
+  }
+  .radius-graph-popup-type {
+    margin-top: 2px;
+    color: var(--fg-muted);
+    font-size: 12px;
+    word-break: break-word;
+  }
+  .radius-graph-popup-links {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .radius-graph-popup-link {
+    color: var(--link);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .radius-graph-popup-link:hover { text-decoration: underline; }
+  .radius-graph-popup-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: transparent;
+    border: 0;
+    color: var(--fg-muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .radius-graph-popup-close:hover { background: var(--bg-subtle); color: var(--fg); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Radius application graph</h1>
+  <span class="meta" id="meta"></span>
+  <span style="flex:1"></span>
+  <span class="radius-graph-legend" id="legend"></span>
+</header>
+<main>
+  <div id="graph"></div>
+</main>
+
+<script src="https://unpkg.com/cytoscape@3/dist/cytoscape.min.js"></script>
+<script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://unpkg.com/cytoscape-dagre@2/cytoscape-dagre.js"></script>
+
+<script>
+// === Embedded artifact (substituted by the skill) =========================
+const GRAPH_ARTIFACT = __GRAPH_DATA__;
+// =========================================================================
+
+(function () {
+  if (typeof cytoscape !== 'function') {
+    document.getElementById('graph').textContent = 'Failed to load Cytoscape.';
+    return;
+  }
+  if (window.cytoscapeDagre) {
+    cytoscape.use(window.cytoscapeDagre);
+  }
+
+  // ----- Primer palette (verbatim from graph-renderer.ts) -----
+  const DIFF_COLORS = {
+    added: '#1a7f37',
+    removed: '#cf222e',
+    modified: '#9a6700',
+    unchanged: '#57606a',
+  };
+  const DIFF_BORDER_WIDTH = {
+    added: 3,
+    removed: 3,
+    modified: 3,
+    unchanged: 2,
+  };
+  const DIFF_BG_COLORS = {
+    added: '#dafbe1',
+    removed: '#ffebe9',
+    modified: '#fff8c5',
+    unchanged: '#f6f8fa',
+  };
+
+  // ----- Resource-type styles (icon + Primer color pair) -----
+  // Keyed by full Radius type. In single-graph (unchanged) mode the
+  // per-type fill/border replace the diff "unchanged" gray defaults; in
+  // diff mode the diff colors win so status remains the dominant signal.
+  const TYPE_STYLES = {
+    'Applications.Core/applications':       { icon: '📦', bg: '#ddf4ff', border: '#0969da', label: 'Application' },
+    'Radius.Compute/containers':            { icon: '🐳', bg: '#dbeefb', border: '#1f6feb', label: 'Container' },
+    'Radius.Compute/containerImages':       { icon: '🖼️', bg: '#fbefff', border: '#8250df', label: 'Container image' },
+    'Radius.Compute/gateways':              { icon: '🌐', bg: '#e6f4ff', border: '#218bff', label: 'Gateway' },
+    'Radius.Data/mySqlDatabases':           { icon: '🐬', bg: '#fff1e5', border: '#bc4c00', label: 'MySQL database' },
+    'Radius.Data/postgreSqlDatabases':      { icon: '🐘', bg: '#eaf4ff', border: '#0550ae', label: 'PostgreSQL database' },
+    'Radius.Data/mongoDatabases':           { icon: '🍃', bg: '#dafbe1', border: '#1a7f37', label: 'Mongo database' },
+    'Radius.Data/redisCaches':              { icon: '🧱', bg: '#ffebe9', border: '#cf222e', label: 'Redis cache' },
+    'Radius.Security/secrets':              { icon: '🔐', bg: '#fff8c5', border: '#9a6700', label: 'Secret' },
+  };
+  const DEFAULT_TYPE_STYLE = { icon: '📄', bg: '#f6f8fa', border: '#57606a', label: 'Resource' };
+
+  function styleForType(type) {
+    if (type && TYPE_STYLES[type]) return TYPE_STYLES[type];
+    // Group fallbacks by provider prefix so unknown subtypes still look right.
+    if (type && type.startsWith('Radius.Compute/'))  return { icon: '⚙️', bg: '#dbeefb', border: '#1f6feb', label: 'Compute resource' };
+    if (type && type.startsWith('Radius.Data/'))     return { icon: '🗄️', bg: '#fff1e5', border: '#bc4c00', label: 'Data resource' };
+    if (type && type.startsWith('Radius.Security/')) return { icon: '🔐', bg: '#fff8c5', border: '#9a6700', label: 'Security resource' };
+    if (type && type.startsWith('aws.'))             return { icon: '☁️', bg: '#fff5cc', border: '#d29922', label: 'AWS resource' };
+    return DEFAULT_TYPE_STYLE;
+  }
+
+  const resources = (GRAPH_ARTIFACT && GRAPH_ARTIFACT.application && GRAPH_ARTIFACT.application.resources) || [];
+  const sourceFile = (GRAPH_ARTIFACT && GRAPH_ARTIFACT.sourceFile) || '';
+  const generatedAt = (GRAPH_ARTIFACT && GRAPH_ARTIFACT.generatedAt) || '';
+
+  document.getElementById('meta').textContent =
+    `${resources.length} resource${resources.length === 1 ? '' : 's'}` +
+    (sourceFile ? ` — ${sourceFile}` : '') +
+    (generatedAt ? ` — ${generatedAt}` : '');
+
+  // ----- Build legend (one swatch per resource type present) -----
+  const legend = document.getElementById('legend');
+  function renderTypeLegend(types) {
+    legend.replaceChildren();
+    const seen = new Set();
+    const ordered = types.filter(t => {
+      if (seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    }).sort();
+    for (const type of ordered) {
+      const s = styleForType(type);
+      const el = document.createElement('span');
+      el.className = 'radius-graph-legend-item';
+      el.title = type;
+      const swatch = document.createElement('span');
+      swatch.className = 'radius-graph-legend-swatch';
+      swatch.style.background = s.bg;
+      swatch.style.borderColor = s.border;
+      swatch.textContent = s.icon;
+      const text = document.createElement('span');
+      text.textContent = s.label;
+      el.appendChild(swatch);
+      el.appendChild(text);
+      legend.appendChild(el);
+    }
+  }
+  renderTypeLegend(resources.map(r => r.type));
+
+  // ----- Build elements (verbatim from buildCytoscapeElements) -----
+  function buildElements(resources) {
+    const elements = [];
+    for (const r of resources) {
+      const status = 'unchanged'; // single-graph mode
+      const shortType = r.type && r.type.split('/').pop() || r.type;
+      const typeStyle = styleForType(r.type);
+      // Icon prefix on the first line; short type stays on the second line.
+      const label = `${typeStyle.icon}  ${r.name}\n${shortType}`;
+      // In single-graph mode the per-type fill/border replace the muted
+      // "unchanged" gray defaults so each resource type is visually distinct.
+      // In diff mode (status !== 'unchanged') the diff colors win.
+      const bg     = status === 'unchanged' ? typeStyle.bg     : DIFF_BG_COLORS[status];
+      const border = status === 'unchanged' ? typeStyle.border : DIFF_COLORS[status];
+      elements.push({
+        group: 'nodes',
+        data: {
+          id: r.id,
+          resourceId: r.id,
+          label,
+          borderColor: border,
+          borderWidth: DIFF_BORDER_WIDTH[status],
+          bgColor: bg,
+          diffStatus: status,
+          resourceType: r.type,
+        },
+      });
+    }
+    for (const r of resources) {
+      for (const conn of (r.connections || [])) {
+        if (conn.direction === 'Outbound') {
+          const targetExists = resources.some(x => x.id === conn.id);
+          if (targetExists) {
+            elements.push({
+              group: 'edges',
+              data: {
+                id: `${r.id}-->${conn.id}`,
+                source: r.id,
+                target: conn.id,
+              },
+            });
+          }
+        }
+      }
+    }
+    return elements;
+  }
+
+  // ----- Cytoscape init (verbatim from renderGraph) -----
+  const cy = cytoscape({
+    container: document.getElementById('graph'),
+    elements: buildElements(resources),
+    layout: {
+      name: 'dagre',
+      rankDir: 'TB',
+      nodeSep: 60,
+      rankSep: 80,
+      edgeSep: 20,
+      padding: 48,
+      animate: false,
+    },
+    style: [
+      {
+        selector: 'node',
+        style: {
+          label: 'data(label)',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'font-size': '12px',
+          'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
+          color: '#1f2328',
+          'background-color': 'data(bgColor)',
+          'border-color': 'data(borderColor)',
+          'border-width': 'data(borderWidth)',
+          shape: 'roundrectangle',
+          width: 160,
+          height: 60,
+          'text-wrap': 'wrap',
+          'text-max-width': '140px',
+        },
+      },
+      {
+        selector: 'edge',
+        style: {
+          width: 2,
+          'line-color': '#8c959f',
+          'target-arrow-color': '#8c959f',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'arrow-scale': 0.8,
+        },
+      },
+      {
+        selector: 'node:active',
+        style: { 'overlay-opacity': 0.1 },
+      },
+    ],
+    userZoomingEnabled: true,
+    userPanningEnabled: true,
+    boxSelectionEnabled: false,
+    autoungrabify: true,
+    minZoom: 0.3,
+    maxZoom: 3,
+  });
+
+  function fitGraph() {
+    cy.resize();
+    cy.fit(cy.elements(), 48);
+    cy.center();
+  }
+  requestAnimationFrame(() => {
+    fitGraph();
+    requestAnimationFrame(fitGraph);
+  });
+  window.addEventListener('resize', fitGraph);
+
+  // ----- Popup (verbatim from graph-navigation.ts, standalone variant) -----
+  const container = document.getElementById('graph');
+  let activeOutsideClickHandler = null;
+  let activeKeydownHandler = null;
+
+  function closeGraphPopup() {
+    const existing = container.querySelector('#radius-graph-popup');
+    if (existing) existing.remove();
+    if (activeOutsideClickHandler) {
+      document.removeEventListener('click', activeOutsideClickHandler);
+      activeOutsideClickHandler = null;
+    }
+    if (activeKeydownHandler) {
+      document.removeEventListener('keydown', activeKeydownHandler);
+      activeKeydownHandler = null;
+    }
+  }
+
+  function parseCodeReference(ref) {
+    if (!ref) return null;
+    const hash = ref.indexOf('#L');
+    if (hash === -1) return { path: ref, line: undefined };
+    const line = Number(ref.slice(hash + 2));
+    return { path: ref.slice(0, hash), line: Number.isFinite(line) ? line : undefined };
+  }
+
+  function fileHref(path, line) {
+    if (!path) return null;
+    const lineSuffix = line ? `#L${line}` : '';
+    return `${path}${lineSuffix}`;
+  }
+
+  function showGraphPopup(resource, position) {
+    closeGraphPopup();
+
+    const popup = document.createElement('div');
+    popup.className = 'radius-graph-popup';
+    popup.id = 'radius-graph-popup';
+    popup.style.left = `${position.x}px`;
+    popup.style.top = `${position.y}px`;
+
+    const typeStyle = styleForType(resource.type);
+    const title = document.createElement('div');
+    title.className = 'radius-graph-popup-title';
+    title.textContent = `${typeStyle.icon}  ${resource.name}`;
+    popup.appendChild(title);
+
+    const typeEl = document.createElement('div');
+    typeEl.className = 'radius-graph-popup-type';
+    typeEl.textContent = resource.type;
+    popup.appendChild(typeEl);
+
+    const links = document.createElement('div');
+    links.className = 'radius-graph-popup-links';
+
+    const cr = parseCodeReference(resource.codeReference);
+    if (cr && cr.path) {
+      const sourceHref = fileHref(cr.path, cr.line);
+      const a = document.createElement('a');
+      a.className = 'radius-graph-popup-link';
+      a.href = sourceHref;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = '📄 Source code';
+      links.appendChild(a);
+    }
+
+    if (sourceFile) {
+      const a = document.createElement('a');
+      a.className = 'radius-graph-popup-link';
+      a.href = fileHref(sourceFile, resource.appDefinitionLine);
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = '📐 App definition';
+      links.appendChild(a);
+    }
+
+    popup.appendChild(links);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'radius-graph-popup-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeGraphPopup();
+    });
+    popup.appendChild(closeBtn);
+
+    // Stop mouse events from bubbling to Cytoscape's container handler.
+    for (const evt of ['mousedown', 'mouseup', 'touchstart', 'touchend', 'pointerdown', 'pointerup']) {
+      popup.addEventListener(evt, (e) => e.stopPropagation());
+    }
+
+    container.appendChild(popup);
+
+    const closeOnOutsideClick = (e) => {
+      if (!popup.contains(e.target)) closeGraphPopup();
+    };
+    activeOutsideClickHandler = closeOnOutsideClick;
+    setTimeout(() => {
+      if (activeOutsideClickHandler === closeOnOutsideClick) {
+        document.addEventListener('click', closeOnOutsideClick);
+      }
+    }, 0);
+
+    const onKey = (e) => { if (e.key === 'Escape') closeGraphPopup(); };
+    activeKeydownHandler = onKey;
+    document.addEventListener('keydown', onKey);
+  }
+
+  cy.on('tap', 'node', (event) => {
+    const node = event.target;
+    const resourceId = node.data('resourceId');
+    const resource = resources.find(r => r.id === resourceId);
+    if (!resource) return;
+    const pos = node.renderedPosition();
+    showGraphPopup(resource, { x: pos.x + 10, y: pos.y + 10 });
+  });
+
+  cy.on('tap', (event) => {
+    if (event.target === cy) closeGraphPopup();
+  });
+})();
+</script>
+</body>
+</html>
