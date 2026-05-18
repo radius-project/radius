@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -28,10 +27,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/helm"
 	cli_kubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -253,23 +250,13 @@ func (r *Runner) createDefaultGroupAndEnvironment(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Creating default resource group %q...", defaultResourceGroupName)
-	err = client.CreateOrUpdateResourceGroup(ctx, defaultUCPPlane, defaultResourceGroupName, &ucp.ResourceGroupResource{
-		Location: to.Ptr(v1.LocationGlobal),
-	})
+	err = setup.EnsureResourceGroup(ctx, client, defaultUCPPlane, defaultResourceGroupName)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create the default resource group. Radius was installed successfully; you can retry with 'rad group create default'.")
 	}
 
 	r.Output.LogInfo("Creating default environment %q in namespace %q...", defaultEnvironmentName, defaultEnvironmentNamespace)
-	envProperties := corerp.EnvironmentProperties{
-		Compute: &corerp.KubernetesCompute{
-			Namespace: to.Ptr(defaultEnvironmentNamespace),
-		},
-	}
-	err = client.CreateOrUpdateEnvironment(ctx, defaultEnvironmentName, &corerp.EnvironmentResource{
-		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &envProperties,
-	})
+	err = setup.EnsureEnvironment(ctx, client, defaultEnvironmentName, defaultEnvironmentNamespace, nil, nil)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create the default environment. Radius was installed successfully; you can retry with 'rad env create default'.")
 	}
