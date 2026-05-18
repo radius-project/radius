@@ -208,7 +208,7 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.Error(t, err)
-		require.Equal(t, clierrors.Message("The resource provider \"Applications.AnotherTest\" was not found or has been deleted."), err)
+		require.Equal(t, clierrors.Message("The resource type \"Applications.AnotherTest/exampleResources\" does not exist."), err)
 
 		require.Empty(t, outputSink.Writes)
 	})
@@ -240,7 +240,7 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.Error(t, err)
-		require.Equal(t, clierrors.Message("Resource type \"anotherResources\" not found in resource provider \"Applications.Test\"."), err)
+		require.Equal(t, clierrors.Message("The resource type \"Applications.Test/anotherResources\" does not exist."), err)
 
 		require.Empty(t, outputSink.Writes)
 	})
