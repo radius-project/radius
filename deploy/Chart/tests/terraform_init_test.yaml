@@ -73,3 +73,24 @@ tests:
       - failedTemplate:
           errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
         template: dynamic-rp/deployment.yaml
+
+  # Regression test for the second half of #11880: after fixing the
+  # binary-path mismatch the runtime actually uses the pre-mounted
+  # binary, so its version MUST match terraformVersion in
+  # pkg/recipes/terraform/version.go (currently "1.14.9"). If these
+  # drift the runtime download fallback and the pre-mount install
+  # different versions, causing recipes to behave differently between
+  # cold and warm starts (see Test_TerraformRecipe_Context failure).
+  - it: rp init container pins terraform version to match pkg/recipes/terraform/version.go
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_VERSION="1\.14\.9"'
+        template: rp/deployment.yaml
+
+  - it: dynamic-rp init container pins terraform version to match pkg/recipes/terraform/version.go
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_VERSION="1\.14\.9"'
+        template: dynamic-rp/deployment.yaml
