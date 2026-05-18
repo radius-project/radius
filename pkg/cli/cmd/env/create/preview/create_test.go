@@ -194,11 +194,11 @@ func Test_Run(t *testing.T) {
 
 		require.Contains(t, outputSink.Writes, output.LogOutput{
 			Format: "Creating Radius Core Environment %q...",
-			Params: []interface{}{"testenv"},
+			Params: []any{"testenv"},
 		})
 		require.Contains(t, outputSink.Writes, output.LogOutput{
 			Format: "Successfully created environment %q in resource group %q with default recipe pack.",
-			Params: []interface{}{"testenv", "test-resource-group"},
+			Params: []any{"testenv", "test-resource-group"},
 		})
 	})
 

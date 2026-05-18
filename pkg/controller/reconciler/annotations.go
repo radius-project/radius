@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
@@ -115,6 +116,11 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 			return result, fmt.Errorf("failed to unmarshal status annotation: %w", err)
 		}
 
+		err = validateDeploymentStatus(&s)
+		if err != nil {
+			return result, fmt.Errorf("invalid status annotation: %w", err)
+		}
+
 		result.Status = &s
 	}
 
@@ -138,6 +144,41 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 	}
 
 	return result, nil
+}
+
+func validateDeploymentStatus(status *deploymentStatus) error {
+	if status == nil {
+		return nil
+	}
+
+	hasScope := status.Scope != ""
+	hasContainer := status.Container != ""
+	if hasScope != hasContainer {
+		return fmt.Errorf("status.scope and status.container must either both be set or both be empty")
+	}
+
+	if !hasScope {
+		return nil
+	}
+
+	parsedScope, err := resources.ParseScope(status.Scope)
+	if err != nil {
+		return fmt.Errorf("invalid status.scope: %w", err)
+	}
+
+	parsedContainer, err := resources.ParseResource(status.Container)
+	if err != nil {
+		return fmt.Errorf("invalid status.container: %w", err)
+	}
+	if !strings.EqualFold(parsedContainer.Type(), applicationsCoreContainersResourceType) {
+		return fmt.Errorf("status.container type %q is not %q", parsedContainer.Type(), applicationsCoreContainersResourceType)
+	}
+
+	if !strings.EqualFold(parsedScope.String(), parsedContainer.RootScope()) {
+		return fmt.Errorf("status.scope %q does not match status.container root scope %q", parsedScope.String(), parsedContainer.RootScope())
+	}
+
+	return nil
 }
 
 // ApplyToDeployment applies the configuration and status to a Deployment.
