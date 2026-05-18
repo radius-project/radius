@@ -160,7 +160,10 @@ BICEP_TYPES_OUTPUT_BASE := hack/bicep-types-radius/generated/radius
 BICEP_TYPES_CONTRIB_MANIFEST_DIR := deploy/manifest/built-in-providers/self-hosted
 
 .PHONY: generate-bicep-types
-generate-bicep-types: generate-bicep-types-core generate-bicep-types-contrib rebuild-bicep-types-index ## Generate Bicep extensibility types
+generate-bicep-types: ## Generate Bicep extensibility types
+	@$(MAKE) generate-bicep-types-core
+	@$(MAKE) generate-bicep-types-contrib
+	@$(MAKE) rebuild-bicep-types-index
 
 .PHONY: generate-bicep-types-core
 generate-bicep-types-core: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types from OpenAPI specs.
