@@ -45,10 +45,10 @@ on:
     inputs:
       test_code_ref:
         description: |
-          Optional git  branch in radius-project/radius for the test code to use
-          during the run. Leave blank to use the tag matching the release
+          Optional git branch or tag in radius-project/radius for the test code
+          to use during the run. Leave blank to use the tag matching the release
           (default behavior). This setting does not affect the code being tested,
-          which is always the installed release. This setting allows testing 
+          which is always the installed release. This setting allows testing
           updated test code, not updated product code.
         required: false
         default: ''

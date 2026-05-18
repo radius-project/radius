@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -46,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/client-go/util/retry"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -402,13 +404,16 @@ func assertExpectedResourcesToNotExist(ctx context.Context, scope string, expect
 
 func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts rp.RPTestOptions) {
 	err := opts.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-	if !apierrors.IsNotFound(err) {
-		require.NoError(t, err, "failed to delete namespace %s", namespace)
-		t.Logf("Namespace %s delete requested", namespace)
-	} else {
+	if apierrors.IsNotFound(err) {
 		t.Logf("Namespace %s already deleted or does not exist", namespace)
 		return
 	}
+	// Use assert.* (not require.*) here so a single failing namespace does not abort cleanup
+	// of subsequent namespaces in the caller's loop.
+	if !assert.NoError(t, err, "failed to delete namespace %s", namespace) {
+		return
+	}
+	t.Logf("Namespace %s delete requested", namespace)
 
 	// First, wait for normal deletion using a plain poll loop. We deliberately avoid
 	// assert.Eventually here because its timeout would mark the test failed even when the
@@ -427,27 +432,37 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 	// NOTE: Force-clearing namespace finalizers is a TEST-ONLY escape hatch. In production
 	// code this can leak the underlying resources owned by whichever controller registered
 	// the finalizer.
-	ns, err := opts.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return
-	}
-	require.NoError(t, err)
-
-	if len(ns.Spec.Finalizers) > 0 {
+	//
+	// Use RetryOnConflict so that if the apiserver mutates the namespace between Get and
+	// Finalize, we re-fetch and re-clear instead of giving up (which would leave finalizers
+	// in place and cause the Eventually below to time out spuriously).
+	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		ns, getErr := opts.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if apierrors.IsNotFound(getErr) {
+			return nil
+		}
+		if getErr != nil {
+			return getErr
+		}
+		if len(ns.Spec.Finalizers) == 0 {
+			return nil
+		}
 		t.Logf("Namespace %s stuck terminating with finalizers: %v; clearing them", namespace, ns.Spec.Finalizers)
 		ns.Spec.Finalizers = nil
-		_, err = opts.K8sClient.CoreV1().Namespaces().Finalize(ctx, ns, metav1.UpdateOptions{})
-		// Tolerate NotFound (already gone) and Conflict (apiserver mutated the namespace
-		// between Get and Finalize); in either case the next Eventually below will reflect
-		// the final state.
-		if err != nil && !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
-			require.NoError(t, err)
+		_, finalizeErr := opts.K8sClient.CoreV1().Namespaces().Finalize(ctx, ns, metav1.UpdateOptions{})
+		if apierrors.IsNotFound(finalizeErr) {
+			return nil
 		}
+		return finalizeErr
+	})
+	if err != nil {
+		assert.NoError(t, err, "failed to clear finalizers on namespace %s", namespace)
+		return
 	}
 
-	require.Eventually(t, func() bool {
+	assert.Eventually(t, func() bool {
 		ns := &corev1.Namespace{}
-		err := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
-		return apierrors.IsNotFound(err)
+		getErr := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
+		return apierrors.IsNotFound(getErr)
 	}, time.Minute*5, time.Second*5, "waiting for namespace %s to be fully deleted", namespace)
 }
