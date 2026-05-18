@@ -88,6 +88,10 @@ func (w *Service) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to validate manifest %s: %w", filePath, err)
 		}
 
+		if err := hydrateBuiltInResourceProviderMetadata(resourceProvider); err != nil {
+			return fmt.Errorf("failed to hydrate built-in resource provider metadata for manifest %s: %w", filePath, err)
+		}
+
 		if err := registerResourceProviderDirect(ctx, dbClient, "local", *resourceProvider); err != nil {
 			return fmt.Errorf("failed to register manifest %s: %w", filePath, err)
 		}
