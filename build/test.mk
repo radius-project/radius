@@ -162,6 +162,44 @@ test-functional-samples: test-functional-samples-noncloud ## Runs all Samples fu
 test-functional-samples-noncloud: ## Runs Samples functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+# ----------------------------------------------------------------------------
+# Local Azure functional tests
+#
+# These targets orchestrate an ephemeral Azure resource group, deploy the test
+# fixtures (Cosmos Mongo for Test_AzureConnections), run the Test_Azure* subset
+# of corerp-cloud tests against your locally-running Radius stack (make
+# debug-start) using ambient `az login` credentials, and tear everything down.
+#
+# Prerequisites:
+#   - `az login` succeeded for the target subscription.
+#   - `make debug-start` is running (OS-process Radius).
+#   - Deployment Engine is running locally on :5017 (NOT in a container) so it
+#     can use the az CLI fallback. See debug_files/logs/de-external.marker.
+#
+# NOTE: AWS is intentionally out of scope for this iteration.
+# ----------------------------------------------------------------------------
+AZURE_LOCAL_TESTENV := ./build/scripts/azure-local-testenv.sh
+
+.PHONY: test-functional-azure-local-setup
+test-functional-azure-local-setup: ## Provision an ephemeral Azure RG and fixtures for local Azure functional tests.
+	@$(AZURE_LOCAL_TESTENV) setup
+
+.PHONY: test-functional-azure-local-run
+test-functional-azure-local-run: ## Run Test_Azure* against the locally-running Radius stack using the env from setup.
+	@$(AZURE_LOCAL_TESTENV) run
+
+.PHONY: test-functional-azure-local-teardown
+test-functional-azure-local-teardown: ## Delete the ephemeral Azure RG and clear local Azure test state.
+	@$(AZURE_LOCAL_TESTENV) teardown
+
+.PHONY: test-functional-azure-local
+test-functional-azure-local: ## Setup -> run Test_Azure* -> teardown (teardown runs even on test failure).
+	@$(AZURE_LOCAL_TESTENV) all
+
+.PHONY: test-functional-azure-local-keep
+test-functional-azure-local-keep: ## Same as test-functional-azure-local but skips teardown on failure (post-mortem).
+	@AZURE_LOCAL_KEEP_ON_FAILURE=1 $(AZURE_LOCAL_TESTENV) all
+
 .PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin/bicep" ./build/validate-bicep.sh

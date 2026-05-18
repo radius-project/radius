@@ -7,7 +7,8 @@ Run Radius components as OS processes with full debugger support - set breakpoin
 1. [Quick Start](#quick-start)
 2. [Prerequisites](#prerequisites)
 3. [Debugging Workflow](#debugging-workflow)
-4. [Troubleshooting](#troubleshooting)
+4. [Using a Local Deployment Engine](#using-a-local-deployment-engine)
+5. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -234,6 +235,182 @@ make debug-logs           # Tail all component logs
 # Help
 make debug-help           # Show all debug commands
 ```
+
+## Using a Local Deployment Engine
+
+By default `make debug-start` runs the Deployment Engine (DE) inside the k3d
+cluster from the published `ghcr.io/radius-project/deployment-engine:latest`
+image. If you are working on DE itself you can run it as a local OS process
+instead and have the debug stack pick it up automatically.
+
+### Auto-detection
+
+`make debug-start` checks whether something is already listening on TCP
+**port 5017** (`lsof -nP -iTCP:5017 -sTCP:LISTEN`). If it is, the in-cluster DE
+deployment is skipped and a marker file is written to
+`debug_files/logs/de-external.marker`. `make debug-stop` honours the marker and
+leaves your local DE process alone.
+
+There is nothing else to configure on the Radius side — UCP/Applications RP
+will reach DE at `http://localhost:5017` and DE will reach UCP at
+`http://localhost:9000/apis/api.ucp.dev/v1alpha3`.
+
+### Running DE locally
+
+From your `deployment-engine` checkout, in a shell where you want DE attached
+to a debugger or just running with hot-reload:
+
+```bash
+# UCP endpoint exposed by `make debug-start`
+export RADIUSBACKENDURL=http://localhost:9000/apis/api.ucp.dev/v1alpha3
+export ASPNETCORE_URLS=http://+:5017
+
+# Provider toggles that the in-cluster DE config sets by default
+export AZURE_ENABLED=true
+export AWS_ENABLED=false
+export KUBERNETES_ENABLED=true
+
+# IMPORTANT: do NOT set ARM_AUTH_METHOD when you want DE to use ambient
+# Azure credentials (az CLI / DefaultAzureCredential). Setting it to
+# UCPCredential forces DE to fetch credentials from UCP, which is the
+# correct value when DE runs in-cluster but defeats the local path.
+unset ARM_AUTH_METHOD SKIP_ARM
+
+dotnet run --project src/DeploymentEngine
+```
+
+Then start (or restart) the rest of the stack:
+
+```bash
+make debug-start
+# Output will include:
+#   ℹ Detected Deployment Engine listening on localhost:5017 — using external instance
+```
+
+### Switching back to the in-cluster DE
+
+Stop your local DE process so port 5017 is free, then:
+
+```bash
+rm -f debug_files/logs/de-external.marker
+make debug-stop
+make debug-start
+```
+
+### Running Azure functional tests against the local stack
+
+When DE is running locally with ambient `az login` credentials, you can run
+the Azure subset of the cloud functional tests without registering any Azure
+service principal in UCP. The test helper
+`AssertCredentialExists` honours the `RADIUS_TEST_USE_LOCAL_CLOUD_CREDS`
+environment variable as a local-dev escape hatch (set to `azure`, `aws`,
+`azure,aws`, or `1` for all clouds). The container-DE / CI path is unchanged
+and still requires `rad credential register azure …`.
+
+A make target orchestrates an ephemeral Azure resource group, deploys the
+test fixtures (Cosmos Mongo for `Test_AzureConnections`), runs the entire
+`corerp/cloud/...` suite (AWS-required tests skip automatically because
+`RADIUS_TEST_USE_LOCAL_CLOUD_CREDS=azure` only covers Azure), and tears
+everything down even if the tests fail:
+
+```bash
+az login
+az account set --subscription <your-sub-id>
+
+make debug-start                       # OS-process Radius, picks up local DE
+make test-functional-azure-local       # setup → run → teardown
+```
+
+Sub-targets if you want manual control:
+
+```bash
+make test-functional-azure-local-setup     # create RG, deploy fixtures
+make test-functional-azure-local-run       # run corerp/cloud tests against the stack
+make test-functional-azure-local-teardown  # delete RG, clear state
+```
+
+For post-mortem debugging of failing tests, use the `-keep` variant. It runs
+setup → run → teardown as normal, but **skips the teardown step if any test
+fails** so you can inspect the RG and the running stack:
+
+```bash
+make test-functional-azure-local-keep
+# On failure, RG is preserved. When done:
+make test-functional-azure-local-teardown
+```
+
+The setup step creates a resource group named
+`radlocal-${USER}-$(date +%s)` (tagged `creator`/`creationTime`/`purpose=radius-local-test`)
+and writes state to `debug_files/logs/azure-local.env`. To reuse a long-lived
+resource group instead of paying the ~3-5 minute Cosmos provisioning cost on
+every run:
+
+```bash
+AZURE_LOCAL_PREPROVISIONED_RG=<your-rg> make test-functional-azure-local-setup
+```
+
+The teardown step refuses to delete a pre-provisioned RG.
+
+#### Re-running individual tests
+
+`run` accepts arbitrary `go test` flags after the sub-command, so you can
+quickly re-run one failing test without re-doing setup or teardown:
+
+```bash
+./build/scripts/azure-local-testenv.sh run -run '^Test_TerraformRecipe_AzureResourceGroup$' -v
+```
+
+If `debug_files/logs/azure-local.env` was wiped (e.g. by `make debug-stop`),
+`run` auto-recovers state by listing `radlocal-${USER}-*` resource groups in
+the current subscription and picking the newest. It re-applies the Azure
+scope on the `default` rad environment too — `make debug-start` resets the
+embedded Postgres DB which clears the env's provider config.
+
+#### Cleaning up orphaned resource groups
+
+If a previous run left RGs behind (cancelled tests, lost state file, multiple
+attempts), garbage-collect everything you own with one command:
+
+```bash
+./build/scripts/azure-local-testenv.sh teardown --all-orphans
+```
+
+This deletes every `radlocal-${USER}-*` RG in the current subscription
+(`--no-wait`), stops the `tf-module-server` port-forward, and removes the
+state file. Pre-provisioned RGs (`AZURE_LOCAL_PREPROVISIONED_RG`) are not
+touched.
+
+#### Terraform module server bootstrap
+
+`Test_TerraformRecipe_AzureResourceGroup` consumes a recipe served from
+`http://localhost:8999`. Both `setup` and `run` call `ensure_tf_module_server`
+which:
+
+1. Probes `http://localhost:8999/azure-rg.zip` and short-circuits if reachable.
+2. Otherwise runs `make publish-test-terraform-recipes` (deploys the nginx
+   `tf-module-server` Deployment + Service into the
+   `radius-test-tf-module-server` namespace).
+3. Starts a `kubectl port-forward svc/tf-module-server 8999:80` in the
+   background (PID stored under `debug_files/logs/tf-module-server-pf.pid`).
+4. Waits for `/azure-rg.zip` to return 200.
+
+Teardown (and `--all-orphans`) stop the port-forward.
+
+#### Terraform recipes and Azure CLI credentials
+
+The Azure terraform provider configuration in
+[`pkg/recipes/terraform/config/providers/azure.go`](../../../../pkg/recipes/terraform/config/providers/azure.go)
+falls back to **`use_cli = true`** when no credential is registered with UCP
+(404 from `/planes/azure/azurecloud/providers/System.Azure/credentials/default`).
+This makes terraform pick up the same `az login` session the host RP process
+already uses. No `rad credential register azure …` is required for local dev.
+
+In CI a workload-identity credential is registered as before; that path is
+unchanged.
+
+> **Note:** AWS local-credentials and Azure MSSQL fixtures are intentionally
+> out of scope for this flow. Tests that require `AZURE_MSSQL_*` env vars
+> auto-skip when those vars are absent.
 
 ## Troubleshooting
 

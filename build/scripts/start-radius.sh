@@ -130,6 +130,12 @@ fi
 # Ensure logs directory exists
 mkdir -p "$DEBUG_ROOT/logs"
 
+# Use a writable Terraform global cache directory for local OS-process runs.
+# The default `/terraform` path only exists inside the Radius container image
+# and would fail with "read-only file system" on host filesystems.
+export TERRAFORM_TEST_GLOBAL_DIR="${TERRAFORM_TEST_GLOBAL_DIR:-$DEBUG_ROOT/terraform-global}"
+mkdir -p "$TERRAFORM_TEST_GLOBAL_DIR"
+
 # Check prerequisites
 check_prerequisites
 
