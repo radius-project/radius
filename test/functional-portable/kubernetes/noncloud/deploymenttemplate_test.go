@@ -36,7 +36,6 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -411,19 +410,17 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		return
 	}
 
-	// First, wait for normal deletion. Use assert.Eventually (not require.Eventually) so that
-	// if the namespace is stuck Terminating we fall through to the finalizer-clearing fallback
-	// below instead of failing the test outright.
-	if assert.Eventually(t, func() bool {
+	// First, wait for normal deletion using a plain poll loop. We deliberately avoid
+	// assert.Eventually here because its timeout would mark the test failed even when the
+	// finalizer-clearing fallback below subsequently succeeds.
+	deadline := time.Now().Add(2 * time.Minute)
+	for time.Now().Before(deadline) {
 		ns := &corev1.Namespace{}
 		getErr := opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 		if apierrors.IsNotFound(getErr) {
-			return true
+			return
 		}
-		// Tolerate transient errors and keep polling.
-		return false
-	}, time.Minute*2, time.Second*5, "waiting for namespace %s to be deleted", namespace) {
-		return
+		time.Sleep(5 * time.Second)
 	}
 
 	// Fallback for namespaces stuck in Terminating due to finalizers.

@@ -24,10 +24,11 @@
 # main repository clone intact for workflow infrastructure.
 #
 # By default it clones the tag matching the installed Radius CLI version. The
-# ref to clone can be overridden by passing a git ref (branch, tag, or SHA) as
-# the first argument or via the TEST_CODE_REF environment variable. When
-# overridden, the product under test is still the installed release; only the
-# test/infrastructure code on disk changes.
+# ref to clone can be overridden by passing a git branch or tag as the first
+# argument or via the TEST_CODE_REF environment variable. Raw commit SHAs are
+# not supported (git clone --branch does not accept them). When overridden, the
+# product under test is still the installed release; only the test/infrastructure
+# code on disk changes.
 # ============================================================================
 
 set -euo pipefail
@@ -42,9 +43,10 @@ usage() {
     echo "Clones the Radius repository into a '${RELEASE_DIR}' subfolder."
     echo ""
     echo "Arguments:"
-    echo "  test-code-ref   Optional git ref (branch, tag, or SHA) to clone"
-    echo "                  instead of the installed release tag. May also be"
-    echo "                  supplied via the TEST_CODE_REF environment variable."
+    echo "  test-code-ref   Optional git branch or tag to clone instead of the"
+    echo "                  installed release tag. Raw commit SHAs are not"
+    echo "                  supported. May also be supplied via the"
+    echo "                  TEST_CODE_REF environment variable."
     echo ""
     echo "Requires rad CLI to be installed and in PATH."
     exit 0
@@ -98,7 +100,7 @@ main() {
     echo "Release tag: ${release_tag}"
 
     # Determine the ref to clone. Default is the release tag matching the installed CLI.
-    # An explicit override clones a different branch/tag/SHA so test code (and only test
+    # An explicit override clones a different branch or tag so test code (and only test
     # code) can be patched without cutting a product patch release. The product under
     # test is still the installed release.
     local clone_ref="${release_tag}"

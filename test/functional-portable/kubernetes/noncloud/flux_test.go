@@ -255,6 +255,46 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	// the Radius finalizer to drain before tearing down namespaces.
 	var deploymentTemplates []*radappiov1alpha3.DeploymentTemplate
 
+	// Register teardown via t.Cleanup so it also runs when an earlier require.* aborts
+	// the test. See the long comment inside the cleanup for why ordering matters.
+	t.Cleanup(func() {
+		// IMPORTANT: tear down in reverse order of dependencies before deleting namespaces.
+		// If we delete the namespaces while DeploymentTemplates (and the Radius resources behind them)
+		// still exist, two things happen:
+		//   1. The namespace is stuck Terminating because of the radapp.io/deployment-template-finalizer.
+		//   2. radius-rp recreates application namespaces (e.g. <env>-<app>) because the underlying
+		//      Applications.Core/applications and containers still exist in Radius.
+		// Deleting and waiting for the DeploymentTemplates first lets the Radius controller
+		// drain its finalizer and remove the Radius resources, after which namespace deletion succeeds.
+		//
+		// Use assert.* (not require.*) during teardown so that one stuck DeploymentTemplate does
+		// not skip teardown of the others (and the namespaces below).
+		for _, dt := range deploymentTemplates {
+			t.Logf("Deleting DeploymentTemplate: %s/%s", dt.Namespace, dt.Name)
+			err := opts.Client.Delete(ctx, dt)
+			if controller_runtime.IgnoreNotFound(err) != nil {
+				t.Errorf("Error deleting DeploymentTemplate %s/%s: %v", dt.Namespace, dt.Name, err)
+			}
+		}
+		if len(deploymentTemplates) > 0 {
+			assert.Eventually(t, func() bool {
+				for _, dt := range deploymentTemplates {
+					current := &radappiov1alpha3.DeploymentTemplate{}
+					getErr := opts.Client.Get(ctx, types.NamespacedName{Name: dt.Name, Namespace: dt.Namespace}, current)
+					if !apierrors.IsNotFound(getErr) {
+						return false
+					}
+				}
+				return true
+			}, time.Minute*5, time.Second*5, "DeploymentTemplates were not deleted in time")
+		}
+
+		for _, namespace := range namespaces {
+			t.Logf("Deleting namespace: %s", namespace)
+			deleteNamespace(ctx, t, namespace, opts)
+		}
+	})
+
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
 
@@ -347,41 +387,6 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
 	}
 
-	// IMPORTANT: tear down in reverse order of dependencies before deleting namespaces.
-	// If we delete the namespaces while DeploymentTemplates (and the Radius resources behind them)
-	// still exist, two things happen:
-	//   1. The namespace is stuck Terminating because of the radapp.io/deployment-template-finalizer.
-	//   2. radius-rp recreates application namespaces (e.g. <env>-<app>) because the underlying
-	//      Applications.Core/applications and containers still exist in Radius.
-	// Deleting and waiting for the DeploymentTemplates first lets the Radius controller
-	// drain its finalizer and remove the Radius resources, after which namespace deletion succeeds.
-	//
-	// Use assert.* (not require.*) during teardown so that one stuck DeploymentTemplate does
-	// not skip teardown of the others (and the namespaces below).
-	for _, dt := range deploymentTemplates {
-		t.Logf("Deleting DeploymentTemplate: %s/%s", dt.Namespace, dt.Name)
-		err := opts.Client.Delete(ctx, dt)
-		if controller_runtime.IgnoreNotFound(err) != nil {
-			assert.NoError(t, err)
-		}
-	}
-	if len(deploymentTemplates) > 0 {
-		assert.Eventually(t, func() bool {
-			for _, dt := range deploymentTemplates {
-				current := &radappiov1alpha3.DeploymentTemplate{}
-				getErr := opts.Client.Get(ctx, types.NamespacedName{Name: dt.Name, Namespace: dt.Namespace}, current)
-				if !apierrors.IsNotFound(getErr) {
-					return false
-				}
-			}
-			return true
-		}, time.Minute*5, time.Second*5, "DeploymentTemplates were not deleted in time")
-	}
-
-	for _, namespace := range namespaces {
-		t.Logf("Deleting namespace: %s", namespace)
-		deleteNamespace(ctx, t, namespace, opts)
-	}
 }
 
 func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {
