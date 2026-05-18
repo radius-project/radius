@@ -173,7 +173,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	app, err := client.GetApplication(ctx, r.ApplicationName)
 	if clients.Is404Error(err) {
-		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
 		return nil
 	} else if err != nil {
 		return err
@@ -210,15 +210,15 @@ func (r *Runner) Run(ctx context.Context) error {
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+			r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
 			return nil
 		}
 		return clierrors.Message("Failed to delete application '%s': %v", r.ApplicationName, err)
 	}
 	if deleted {
-		r.Output.LogInfo("Application %s deleted successfully", r.ApplicationName)
+		r.Output.LogInfo("Applications.Core/applications/%s deleted", r.ApplicationName)
 	} else {
-		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
 		return nil
 	}
 
