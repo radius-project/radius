@@ -74,11 +74,13 @@ func Test_Run(t *testing.T) {
 				// Intentionally NOT in alphabetical order
 				"workspace-b": {
 					Environment: "b",
+					Scope:       "/planes/radius/local/resourceGroups/group-b",
 					Source:      workspaces.SourceUserConfig,
 					Connection:  map[string]any{},
 				},
 				"workspace-a": {
 					Environment: "a",
+					Scope:       "/planes/radius/local/resourceGroups/group-a",
 					Source:      workspaces.SourceUserConfig,
 					Connection:  map[string]any{},
 				},
@@ -104,12 +106,14 @@ func Test_Run(t *testing.T) {
 					{
 						Name:        "workspace-a",
 						Environment: "a",
+						Scope:       "/planes/radius/local/resourceGroups/group-a",
 						Source:      workspaces.SourceUserConfig,
 						Connection:  map[string]any{},
 					},
 					{
 						Name:        "workspace-b",
 						Environment: "b",
+						Scope:       "/planes/radius/local/resourceGroups/group-b",
 						Source:      workspaces.SourceUserConfig,
 						Connection:  map[string]any{},
 					},

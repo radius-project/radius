@@ -85,3 +85,35 @@ func Test_ResourceIDToResourceGroupNameTransformer(t *testing.T) {
 		})
 	}
 }
+
+func Test_ResourceScopeToResourceGroupNameTransformer(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "empty input",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "invalid input",
+			input:    "////",
+			expected: "<error>",
+		},
+		{
+			name:     "valid input",
+			input:    "/planes/radius/local/resourceGroups/test-group",
+			expected: "test-group",
+		},
+	}
+
+	for _, testcase := range cases {
+		t.Run(testcase.name, func(t *testing.T) {
+			transformer := &ResourceScopeToResourceGroupNameTransformer{}
+			actual := transformer.Transform(testcase.input)
+			require.Equal(t, testcase.expected, actual)
+		})
+	}
+}
