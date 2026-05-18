@@ -90,7 +90,7 @@ func DeleteApplicationWithProgress(ctx context.Context, amc clients.Applications
 		}
 	}
 
-	deleted, err := amc.DeleteApplication(ctx, options.ApplicationNameOrID)
+	deleted, err := amc.DeleteApplication(ctx, options.ApplicationNameOrID, options.Force)
 	if err == nil {
 		for _, resource := range resourcesList {
 			if resource.ID != nil {

@@ -28,9 +28,6 @@ const (
 	bicepConfigTemplate = `{
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
-		"radiusCompute": "br:biceptypes.azurecr.io/radiuscompute:%s",
-		"radiusData": "br:biceptypes.azurecr.io/radiusdata:%s",
-		"radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:%s",
 		"aws": "br:biceptypes.azurecr.io/aws:%s"
 	}
 }`
@@ -62,5 +59,5 @@ func getVersionedBicepConfig() string {
 		tag = "latest"
 	}
 
-	return fmt.Sprintf(bicepConfigTemplate, tag, tag, tag, tag, tag)
+	return fmt.Sprintf(bicepConfigTemplate, tag, tag)
 }

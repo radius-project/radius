@@ -330,6 +330,20 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 		}
 	}
 
+	// Include secrets referenced by terraformrc.credentials (Radius.Core path).
+	// Each credentials entry references a secret store that must expose a "token"
+	// key, which the driver writes into the generated .terraformrc.
+	for _, cred := range envConfig.RecipeConfig.Terraform.Credentials {
+		if cred.Secret == "" {
+			continue
+		}
+		if _, ok := secretStoreIDResourceKeys[cred.Secret]; !ok {
+			secretStoreIDResourceKeys[cred.Secret] = []string{terraform.TerraformCredentialsTokenKey}
+		} else {
+			secretStoreIDResourceKeys[cred.Secret] = append(secretStoreIDResourceKeys[cred.Secret], terraform.TerraformCredentialsTokenKey)
+		}
+	}
+
 	return secretStoreIDResourceKeys, nil
 }
 
