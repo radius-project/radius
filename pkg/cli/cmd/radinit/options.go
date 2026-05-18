@@ -31,7 +31,6 @@ type initOptions struct {
 	Environment    environmentOptions
 	CloudProviders cloudProviderOptions
 	Recipes        recipePackOptions
-	Application    applicationOptions
 	// SetValues is a list of values that will be passed to Helm when installing the application.
 	SetValues []string
 }
@@ -62,12 +61,6 @@ type cloudProviderOptions struct {
 // recipePackOptions holds all of the options that will be used to initialize recipe packs as part of the environment.
 type recipePackOptions struct {
 	DevRecipes bool
-}
-
-// applicationOptions holds all of the options that will be used to initialize an application in the current directory.
-type applicationOptions struct {
-	Scaffold bool
-	Name     string
 }
 
 func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspaces.Workspace, error) {
@@ -102,11 +95,6 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 	}
 
 	err = r.enterCloudProviderOptions(ctx, &options)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = r.enterApplicationOptions(&options)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -167,14 +155,4 @@ func (r *Runner) UpdateRecipePackOptions(devRecipes bool) {
 	}
 
 	r.Options.Recipes.DevRecipes = devRecipes
-}
-
-// UpdateApplicationOptions updates the application options with the provided values.
-func (r *Runner) UpdateApplicationOptions(scaffold bool, name string) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Application.Scaffold = scaffold
-	r.Options.Application.Name = name
 }

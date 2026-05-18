@@ -37,6 +37,27 @@ type CLIClusterOptions struct {
 type ClusterOptions struct {
 	Radius  RadiusChartOptions
 	Contour ContourChartOptions
+
+	// Logger is an optional function used to emit informational messages from
+	// install/upgrade/rollback operations (e.g. "Installing Contour..."). When
+	// nil, messages are routed through the global output.LogInfo (which writes
+	// to stdout). Callers that drive an interactive UI (like 'rad init', which
+	// renders a Bubble Tea progress display) must set this to a no-op or to a
+	// sink that does not write to stdout, otherwise concurrent writes will
+	// corrupt the in-place rendering.
+	Logger func(format string, v ...any)
+}
+
+// logf logs via c.Logger when it is set; otherwise it uses the global
+// output.LogInfo. This allows callers that own stdout (e.g. an interactive
+// progress UI) to silence helm install/upgrade messages without affecting
+// non-interactive callers.
+func (c *ClusterOptions) logf(format string, v ...any) {
+	if c.Logger != nil {
+		c.Logger(format, v...)
+		return
+	}
+	output.LogInfo(format, v...)
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -230,12 +251,12 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	if clusterOptions.Contour.Disabled {
-		output.LogInfo("Contour is disabled, skipping installation")
+		clusterOptions.logf("Contour is disabled, skipping installation")
 		return nil
 	}
 
 	// Install Contour
-	output.LogInfo("Installing Contour...")
+	clusterOptions.logf("Installing Contour...")
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)

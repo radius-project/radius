@@ -42,7 +42,6 @@ func Test_enterInitOptions(t *testing.T) {
 
 		initGetKubeContextSuccess(k8s)
 		initHelmMockRadiusNotInstalled(helm)
-		setScaffoldApplicationPromptNo(prompter)
 
 		options, workspace, err := runner.enterInitOptions(context.Background())
 		require.NoError(t, err)
@@ -90,7 +89,6 @@ func Test_enterInitOptions(t *testing.T) {
 		initEnvNamePrompt(prompter, "test-env")
 		initNamespacePrompt(prompter, "test-namespace")
 		initAddCloudProviderPromptNo(prompter)
-		setScaffoldApplicationPromptNo(prompter)
 
 		options, workspace, err := runner.enterInitOptions(context.Background())
 		require.NoError(t, err)
@@ -149,7 +147,6 @@ workspaces:
 		initEnvNamePrompt(prompter, "test-env")
 		initNamespacePrompt(prompter, "test-namespace")
 		initAddCloudProviderPromptNo(prompter)
-		setScaffoldApplicationPromptNo(prompter)
 
 		options, workspace, err := runner.enterInitOptions(context.Background())
 		require.NoError(t, err)
@@ -214,7 +211,6 @@ workspaces:
 		initEnvNamePrompt(prompter, "test-env")
 		initNamespacePrompt(prompter, "test-namespace")
 		initAddCloudProviderPromptNo(prompter)
-		setScaffoldApplicationPromptNo(prompter)
 
 		options, workspace, err := runner.enterInitOptions(context.Background())
 		require.NoError(t, err)
