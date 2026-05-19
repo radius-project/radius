@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +32,7 @@ func Test_readAnnotations(t *testing.T) {
 		Scope:       "/planes/radius/local/resourceGroups/controller-test",
 		Application: "test-application",
 		Environment: "test-environment",
-		Container:   "test-container",
+		Container:   "/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/containers/test-container",
 		Operation:   nil,
 		Phrase:      deploymentPhraseReady,
 	}
@@ -42,6 +43,8 @@ func Test_readAnnotations(t *testing.T) {
 	// invalidDeploymentStatus is missing a curly brace at the end of the JSON
 	// so that an unmarshaling error can be triggered.
 	invalidDeploymentStatus := []byte(`{"invalid": "json"`)
+
+	_, invalidContainerIDErr := resources.ParseResource("not-a-resource-id")
 
 	tests := []struct {
 		name        string
@@ -156,11 +159,63 @@ func Test_readAnnotations(t *testing.T) {
 			err: fmt.Errorf("failed to unmarshal status annotation: %w",
 				json.Unmarshal(invalidDeploymentStatus, &deploymentStatus{})),
 		},
+		{
+			name: "status-invalid-container-id",
+			deployment: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"not-a-resource-id"}`,
+					},
+				},
+			},
+			annotations: deploymentAnnotations{ConfigurationHash: ""},
+			err:         fmt.Errorf("invalid status annotation: invalid status.container: %w", invalidContainerIDErr),
+		},
+		{
+			name: "status-scope-container-mismatch",
+			deployment: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"/planes/radius/local/resourceGroups/other/providers/Applications.Core/containers/test-container"}`,
+					},
+				},
+			},
+			annotations: deploymentAnnotations{ConfigurationHash: ""},
+			err:         fmt.Errorf("invalid status annotation: status.scope %q does not match status.container root scope %q", "/planes/radius/local/resourceGroups/controller-test", "/planes/radius/local/resourceGroups/other"),
+		},
+		{
+			name: "status-container-wrong-resource-type",
+			deployment: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/applications/test-app"}`,
+					},
+				},
+			},
+			annotations: deploymentAnnotations{ConfigurationHash: ""},
+			err:         fmt.Errorf("invalid status annotation: status.container type %q is not %q", "Applications.Core/applications", applicationsCoreContainersResourceType),
+		},
+		{
+			name: "status-only-scope-set",
+			deployment: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test"}`,
+					},
+				},
+			},
+			annotations: deploymentAnnotations{ConfigurationHash: ""},
+			err:         fmt.Errorf("invalid status annotation: status.scope and status.container must either both be set or both be empty"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			annotations, err := readAnnotations(tt.deployment)
-			require.Equal(t, tt.err, err)
+			if tt.err == nil {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tt.err.Error())
+			}
 			require.Equal(t, tt.annotations, annotations)
 		})
 	}
