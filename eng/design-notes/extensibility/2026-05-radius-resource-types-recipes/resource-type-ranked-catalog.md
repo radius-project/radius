@@ -180,7 +180,7 @@ Ranks in this appendix match the main catalog. Technologies are grouped by ecosy
 
 ## Appendix C: Methodology
 
-This catalog was produced using the Discover → Measure → Rank methodology documented in detail in [`resource-type-discovery-methodology.md`](resource-type-discovery-methodology.md). In brief:
+This catalog was produced using a Discover → Measure → Rank methodology. In brief:
 
 1. **Discovery**: 173 technologies gathered from 5 independent sources: cloud provider catalogs (AWS/Azure/GCP), Docker Hub official images, Stack Overflow Developer Survey 2025, IaC registries (Terraform + Helm), and package registry trending data (npm/PyPI fastest-growing packages, added to catch emerging categories like AI/LLM).
 2. **Normalization and alias consolidation**: Vendor-specific names merged (e.g., "Amazon RDS for PostgreSQL" + "Azure Database for PostgreSQL" → `postgresql`).
