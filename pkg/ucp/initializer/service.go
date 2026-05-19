@@ -101,7 +101,12 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 
 		// Merge types from this file into the existing provider for this
-		// namespace. If a type appears in multiple files, the later file wins.
+		// namespace. Error if a type appears in multiple files.
+		for typeName := range rp.Types {
+			if _, exists := existing.Types[typeName]; exists {
+				return fmt.Errorf("duplicate resource type %s/%s found in multiple manifest files", rp.Namespace, typeName)
+			}
+		}
 		for typeName, resourceType := range rp.Types {
 			existing.Types[typeName] = resourceType
 		}
@@ -267,7 +272,6 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 	// 4. Save ResourceProviderSummary
 	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
-
 	summaryModel := &datamodel.ResourceProviderSummary{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
