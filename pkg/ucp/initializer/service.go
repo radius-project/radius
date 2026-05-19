@@ -121,6 +121,10 @@ func (w *Service) Run(ctx context.Context) error {
 	// Register each merged provider.
 	for _, rp := range merged {
 		logger.Info("Registering manifest", "namespace", rp.Namespace, "types", len(rp.Types))
+		if err := hydrateBuiltInResourceProviderMetadata(rp); err != nil {
+			return fmt.Errorf("failed to hydrate built-in resource provider metadata for namespace %s: %w", rp.Namespace, err)
+		}
+
 		if err := registerResourceProviderDirect(ctx, dbClient, "local", *rp); err != nil {
 			return fmt.Errorf("failed to register manifest for namespace %s: %w", rp.Namespace, err)
 		}
