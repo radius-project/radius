@@ -51,6 +51,8 @@ concurrency:
 env:
   PR_BRANCH: bot/update-resource-types
   CONTRIB_REPO: radius-project/resource-types-contrib
+  YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
 
 jobs:
   open-update-pr:
@@ -123,7 +125,9 @@ jobs:
         # deploy/manifest/defaults.yaml.
         run: |
           mkdir -p "${RUNNER_TEMP}/bin"
-          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@v4.44.3
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
           echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       - name: Run make update-resource-types
