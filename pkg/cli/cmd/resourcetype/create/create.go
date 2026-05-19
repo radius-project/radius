@@ -32,9 +32,7 @@ import (
 )
 
 const (
-	defaultPlaneName              = "local"
-	msgNoResourceTypeNameProvided = "No resource type name provided. Creating all resource types in the manifest."
-	msgAllResourceTypesCreated    = "All resource types in the manifest created successfully"
+	defaultPlaneName = "local"
 )
 
 // NewCommand creates an instance of the `rad resource-type create` command and runner.
@@ -89,7 +87,6 @@ type Runner struct {
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
 	ResourceTypeName                 string
-	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
@@ -97,9 +94,6 @@ func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
-		Logger: func(format string, args ...any) {
-			output.LogInfo(format, args...)
-		},
 	}
 }
 
@@ -149,7 +143,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.ResourceTypeName == "" {
-		r.Output.LogInfo(msgNoResourceTypeNameProvided)
 		return r.registerTypes(ctx, nil) // Register all types
 	}
 
@@ -158,8 +151,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 // registerTypes registers the specified resource types (or all types if typeNames is nil)
 func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
-	// Always ensure the resource provider exists first
-	err := manifest.EnsureResourceProviderExists(ctx, r.UCPClientFactory, defaultPlaneName, *r.ResourceProvider, r.Logger)
+	// Always ensure the resource provider exists first. Use a nil logger to suppress
+	// verbose progress messages; the concise success line is emitted below.
+	err := manifest.EnsureResourceProviderExists(ctx, r.UCPClientFactory, defaultPlaneName, *r.ResourceProvider, nil)
 	if err != nil {
 		return err
 	}
@@ -176,19 +170,13 @@ func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
 		}
 	}
 
-	// Register each type individually using the unified approach
+	// Register each type individually and emit a single concise line per type.
 	for _, typeName := range typesToRegister {
-		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, r.Logger)
+		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, nil)
 		if err != nil {
 			return err
 		}
-	}
-
-	// Provide appropriate success message
-	if len(typesToRegister) == 1 {
-		// Single type - success message already logged by RegisterType
-	} else {
-		r.Output.LogInfo(msgAllResourceTypesCreated)
+		r.Output.LogInfo("%s/%s created", r.ResourceProvider.Namespace, typeName)
 	}
 
 	return nil
