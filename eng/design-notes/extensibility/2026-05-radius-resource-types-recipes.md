@@ -41,6 +41,18 @@ Shared infrastructure services (identity/auth, observability, logging, email, fe
 
 Recipes are how Radius deploys infrastructure behind resource types. Though it is a concept of Radius, the implementation uses existing IaC languages, Bicep and Terraform. Instead of us writing the IaC code, we leverage well established community modules directly. This approach helps Radius to not maintain recipe code reducing the supply chain surface. There is no wrapper code to audit, patch, or keep in sync with upstream module changes.
 
+### Community Module Ecosystems
+
+Each cloud platform has a dominant IaC tool with an established library of reusable modules. These libraries are what Radius recipes reference:
+
+| Cloud / Platform | IaC Tool | Module Library | Registry |
+|------------------|----------|----------------|----------|
+| Azure | Bicep | [Azure Verified Modules (AVM)](https://aka.ms/avm) | `mcr.microsoft.com/bicep/avm/` |
+| AWS | Terraform | [terraform-aws-modules](https://registry.terraform.io/namespaces/terraform-aws-modules) | `registry.terraform.io/terraform-aws-modules/` |
+| Kubernetes | Helm | [Bitnami Charts](https://github.com/bitnami/charts) | `oci://registry-1.docker.io/bitnamicharts/` |
+
+> **Why not CloudFormation for AWS?** No authoritative module library exists. CloudFormation modules must be registered per-account/per-region, are not URL-addressable, and have no central registry or semantic versioning (~146 stars on AWS samples vs 3,200+ for terraform-aws-modules).
+
 ### Direct Module Support
 
 Today, using a community module as a Radius recipe requires a wrapper that adds a `context` input and a structured `result` output conforming to Radius conventions. This wrapper adds friction, creates maintenance burden to republish to another IaC source and needs constant updates to stay in sync with upstream changes.
@@ -89,7 +101,7 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
 }
 ```
 
-For the full technical specification, see [Direct Recipe Modules]().
+For the full technical specification, see [Direct Recipe Modules](https://github.com/radius-project/radius/pull/11876).
 
 ### Recipe Drivers Coverage
 
