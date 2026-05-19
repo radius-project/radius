@@ -48,7 +48,19 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 
 		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
 		require.Error(t, err)
-		require.Equal(t, "The resource provider \"MyCompany.Resources\" was not found or has been deleted.", err.Error())
+		require.Equal(t, "The resource type \"MyCompany.Resources/testResources\" does not exist.", err.Error())
+	})
+
+	t.Run("Get Resource Details Failure - Resource Type Not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+
+		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "missingResources", clientFactory)
+		require.Error(t, err)
+		require.Equal(t, "The resource type \"MyCompany.Resources/missingResources\" does not exist.", err.Error())
 	})
 
 	t.Run("Get Resource Details Failures Other Than Not Found", func(t *testing.T) {

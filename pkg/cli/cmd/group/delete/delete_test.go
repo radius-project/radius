@@ -97,11 +97,7 @@ func Test_Run(t *testing.T) {
 			skipPrompt:   true,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s deleted.",
+					Format: "System.Resources/resourceGroups/%s deleted",
 					Params: []any{"testrg"},
 				},
 			},
@@ -117,15 +113,7 @@ func Test_Run(t *testing.T) {
 			skipPrompt:   true,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting %d resource(s) in group %s...",
-					Params: []any{2, "testrg"},
-				},
-				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s deleted.",
+					Format: "System.Resources/resourceGroups/%s deleted",
 					Params: []any{"testrg"},
 				},
 			},
@@ -138,11 +126,7 @@ func Test_Run(t *testing.T) {
 			skipPrompt:   true,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s does not exist or has already been deleted.",
+					Format: "System.Resources/resourceGroups/%s not found",
 					Params: []any{"testrg"},
 				},
 			},
@@ -156,28 +140,19 @@ func Test_Run(t *testing.T) {
 			deleteResult:   true,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s deleted.",
+					Format: "System.Resources/resourceGroups/%s deleted",
 					Params: []any{"testrg"},
 				},
 			},
 		},
 		{
-			name:           "Empty group - user cancels deletion",
-			confirmation:   false,
-			resources:      []generated.GenericResource{},
-			promptResponse: prompt.ConfirmNo,
-			expectedPrompt: "The resource group testrg is empty. Are you sure you want to delete the resource group?",
-			deleteResult:   false, // Won't be called
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "Resource group %q NOT deleted",
-					Params: []any{"testrg"},
-				},
-			},
+			name:            "Empty group - user cancels deletion",
+			confirmation:    false,
+			resources:       []generated.GenericResource{},
+			promptResponse:  prompt.ConfirmNo,
+			expectedPrompt:  "The resource group testrg is empty. Are you sure you want to delete the resource group?",
+			deleteResult:    false, // Won't be called
+			expectedOutputs: nil,
 		},
 		{
 			name:         "Group with resources - user confirms deletion",
@@ -191,15 +166,7 @@ func Test_Run(t *testing.T) {
 			deleteResult:   true,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting %d resource(s) in group %s...",
-					Params: []any{2, "testrg"},
-				},
-				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s deleted.",
+					Format: "System.Resources/resourceGroups/%s deleted",
 					Params: []any{"testrg"},
 				},
 			},
@@ -210,15 +177,10 @@ func Test_Run(t *testing.T) {
 			resources: []generated.GenericResource{
 				{Name: new("resource1"), Type: new("Applications.Core/containers")},
 			},
-			promptResponse: prompt.ConfirmNo,
-			expectedPrompt: "The resource group testrg contains deployed resources. Are you sure you want to delete the resource group and its resources?",
-			deleteResult:   false, // Won't be called
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "Resource group %q NOT deleted",
-					Params: []any{"testrg"},
-				},
-			},
+			promptResponse:  prompt.ConfirmNo,
+			expectedPrompt:  "The resource group testrg contains deployed resources. Are you sure you want to delete the resource group and its resources?",
+			deleteResult:    false, // Won't be called
+			expectedOutputs: nil,
 		},
 		{
 			name:            "List resources fails - should not proceed",
@@ -238,18 +200,13 @@ func Test_Run(t *testing.T) {
 			expectedOutputs: nil, // No output expected
 		},
 		{
-			name:          "Delete operation fails",
-			confirmation:  true,
-			resources:     []generated.GenericResource{},
-			deleteError:   fmt.Errorf("deletion failed"),
-			skipPrompt:    true,
-			expectedError: fmt.Errorf("deletion failed"),
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-			},
+			name:            "Delete operation fails",
+			confirmation:    true,
+			resources:       []generated.GenericResource{},
+			deleteError:     fmt.Errorf("deletion failed"),
+			skipPrompt:      true,
+			expectedError:   fmt.Errorf("deletion failed"),
+			expectedOutputs: nil,
 		},
 		{
 			name:           "List returns 404 - group doesn't exist",
@@ -260,11 +217,7 @@ func Test_Run(t *testing.T) {
 			deleteResult:   false,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s does not exist or has already been deleted.",
+					Format: "System.Resources/resourceGroups/%s not found",
 					Params: []any{"testrg"},
 				},
 			},
@@ -277,11 +230,7 @@ func Test_Run(t *testing.T) {
 			deleteResult: false,
 			expectedOutputs: []any{
 				output.LogOutput{
-					Format: "Deleting resource group %s...\n",
-					Params: []any{"testrg"},
-				},
-				output.LogOutput{
-					Format: "Resource group %s does not exist or has already been deleted.",
+					Format: "System.Resources/resourceGroups/%s not found",
 					Params: []any{"testrg"},
 				},
 			},

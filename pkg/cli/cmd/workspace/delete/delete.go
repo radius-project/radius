@@ -131,5 +131,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	r.Output.LogInfo("Local workspace %s deleted", r.Workspace.Name)
 	return nil
 }
