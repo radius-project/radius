@@ -51,7 +51,7 @@ Each cloud platform has a dominant IaC tool with an established library of reusa
 | AWS | Terraform | [terraform-aws-modules](https://registry.terraform.io/namespaces/terraform-aws-modules) | `registry.terraform.io/terraform-aws-modules/` |
 | Kubernetes | Helm | [Bitnami Charts](https://github.com/bitnami/charts) | `oci://registry-1.docker.io/bitnamicharts/` |
 
-> **Why not CloudFormation for AWS?** No authoritative module library exists. CloudFormation modules must be registered per-account/per-region, are not URL-addressable, and have no central registry or semantic versioning (~146 stars on AWS samples vs 3,200+ for terraform-aws-modules).
+> **Why not CloudFormation for AWS?** Based on my analysis across module sources, Terraform is preferred by Multi-cloud companies and [Terraform's registry](https://registry.terraform.io/namespaces/terraform-aws-modules) had wide usage with million weekly downloads across multiple modules. AWS CDK is preferred by AWS native teams, and internally it uses CloudFormation but no clear authentic source of CloudFormation usage exists today to bet on the CloudFormation for AWS.
 
 ### Direct Module Support
 
@@ -162,6 +162,8 @@ The contribution model covers types only, no recipe code. Success means external
 ---
 
 ## Appendix: Testing, Validation, and Contribution Model
+
+This will be covered in another doc with the technical details of the testing framework and contribution process, but here are the high-level principles.
 
 ### Testing and Validation
 
