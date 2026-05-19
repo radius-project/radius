@@ -33,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad workspace create --preview` command.
@@ -96,7 +97,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // validateRadiusCoreEnvironment validates that the Radius.Core/environments resource
 // exists in the workspace scope and returns its fully-qualified resource ID.
 func (r *Runner) validateRadiusCoreEnvironment(ctx context.Context, ws *workspaces.Workspace, _ clients.ApplicationsManagementClient, envName string) (string, error) {
-	envID := ws.Scope + "/providers/Radius.Core/environments/" + envName
+	envID := ws.Scope + "/providers/" + datamodel.EnvironmentResourceType_v20250801preview + "/" + envName
 
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, ws, ws.Scope)

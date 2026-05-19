@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/spf13/cobra"
 )
 
@@ -111,7 +112,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // ValidateApplicationsCoreEnvironment is the default EnvironmentValidator. It targets
 // Applications.Core/environments via the management client.
 func ValidateApplicationsCoreEnvironment(ctx context.Context, ws *workspaces.Workspace, mgmtClient clients.ApplicationsManagementClient, envName string) (string, error) {
-	envID := ws.Scope + "/providers/applications.core/environments/" + envName
+	envID := ws.Scope + "/providers/" + datamodel.EnvironmentResourceType + "/" + envName
 	if _, err := mgmtClient.GetEnvironment(ctx, envName); err != nil {
 		return "", clierrors.Message("The environment %q does not exist. Run `rad env create` try again.", envID)
 	}
