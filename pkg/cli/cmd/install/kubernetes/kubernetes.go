@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -55,13 +56,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long: `Install Radius in a Kubernetes cluster using the Radius Helm chart.
 By default 'rad install kubernetes' will install Radius with the version matching the rad CLI version.
 
-Radius will be installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/
+Radius will be installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts#technical-architecture
 
-After installing the control plane, this command also creates a default resource group named 'default' and
-a default environment named 'default' (using the 'default' Kubernetes namespace) so that the cluster is
-immediately ready to deploy applications. Re-running the command on an existing installation without
-'--reinstall' will leave existing resources unchanged. Using '--reinstall' may recreate or overwrite the
-default resource group and environment if they already exist.
+This command also ensures that a default resource group named 'default' and a default environment
+named 'default' (using the 'default' Kubernetes namespace) exist so the cluster is immediately
+ready to deploy applications. If either resource already exists, it is left unchanged; user
+customizations are never overwritten, even with '--reinstall'.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,
@@ -179,8 +179,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run checks if a Radius installation exists, and if it does, it either skips the installation or reinstalls it
 // depending on the "Reinstall" flag. If no installation is found, it installs the version of Radius corresponding
-// to the cli version. After a successful install it ensures that a default resource group and environment exist
-// so the cluster is ready to deploy applications immediately. It returns any errors that occur during these steps.
+// to the cli version. After a successful install or reinstall it ensures the default resource group and
+// environment exist, creating each only when it is missing so existing user customizations are preserved.
+// It returns any errors that occur during these steps.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.ChartOptions{
@@ -227,18 +228,17 @@ func (r *Runner) Run(ctx context.Context) error {
 	return r.createDefaultGroupAndEnvironment(ctx)
 }
 
-// createDefaultGroupAndEnvironment ensures that a resource group named "default" and an environment named
-// "default" exist on the cluster Radius was just installed on. Existing resources with the same names are
-// left unchanged (CreateOrUpdate semantics), so re-running install is safe.
+// createDefaultGroupAndEnvironment ensures a resource group named "default" and an environment named
+// "default" exist on the Radius control plane. Each resource is created only when it is missing
+// (GET-first, create on 404); if it already exists it is left untouched so that any user
+// customizations (recipes, cloud providers, namespace, etc.) are preserved across reinstalls.
 func (r *Runner) createDefaultGroupAndEnvironment(ctx context.Context) error {
-	kubeContext, err := r.resolveKubeContext()
-	if err != nil {
-		return err
-	}
-
+	// r.KubeContext may be empty; downstream Kubernetes client config treats an empty string as
+	// "use the active kubeconfig context", matching workspaces.MakeFallbackWorkspace and the Helm
+	// install call above (r.Helm.InstallRadius(..., r.KubeContext)).
 	workspace := workspaces.Workspace{
 		Connection: map[string]any{
-			"context": kubeContext,
+			"context": r.KubeContext,
 			"kind":    workspaces.KindKubernetes,
 		},
 		Scope: fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", defaultUCPPlane, defaultResourceGroupName),
@@ -249,35 +249,45 @@ func (r *Runner) createDefaultGroupAndEnvironment(ctx context.Context) error {
 		return clierrors.MessageWithCause(err, "Failed to connect to the Radius control plane. Radius was installed successfully; you can create the default resource group and environment manually with 'rad group create default' and 'rad env create default'.")
 	}
 
+	if err := r.ensureDefaultResourceGroup(ctx, client); err != nil {
+		return err
+	}
+	return r.ensureDefaultEnvironment(ctx, client)
+}
+
+
+// ensureDefaultResourceGroup creates the "default" resource group only if it does not already exist.
+func (r *Runner) ensureDefaultResourceGroup(ctx context.Context, client clients.ApplicationsManagementClient) error {
+	_, err := client.GetResourceGroup(ctx, defaultUCPPlane, defaultResourceGroupName)
+	if err == nil {
+		r.Output.LogInfo("Default resource group %q already exists; leaving it unchanged.", defaultResourceGroupName)
+		return nil
+	}
+	if !clients.Is404Error(err) {
+		return clierrors.MessageWithCause(err, "Failed to check for the default resource group. Radius was installed successfully; you can retry with 'rad group create default'.")
+	}
+
 	r.Output.LogInfo("Creating default resource group %q...", defaultResourceGroupName)
-	err = setup.EnsureResourceGroup(ctx, client, defaultUCPPlane, defaultResourceGroupName)
-	if err != nil {
+	if err := setup.EnsureResourceGroup(ctx, client, defaultUCPPlane, defaultResourceGroupName); err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create the default resource group. Radius was installed successfully; you can retry with 'rad group create default'.")
 	}
-
-	r.Output.LogInfo("Creating default environment %q in namespace %q...", defaultEnvironmentName, defaultEnvironmentNamespace)
-	err = setup.EnsureEnvironment(ctx, client, defaultEnvironmentName, defaultEnvironmentNamespace, nil, nil)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to create the default environment. Radius was installed successfully; you can retry with 'rad env create default'.")
-	}
-
 	return nil
 }
 
-// resolveKubeContext returns the kube context the install targeted. If --kubecontext was passed, that value
-// is used. Otherwise the active kube context from the user's kubeconfig is used (matching what the Helm
-// install actually targeted).
-func (r *Runner) resolveKubeContext() (string, error) {
-	if r.KubeContext != "" {
-		return r.KubeContext, nil
+// ensureDefaultEnvironment creates the "default" environment only if it does not already exist.
+func (r *Runner) ensureDefaultEnvironment(ctx context.Context, client clients.ApplicationsManagementClient) error {
+	_, err := client.GetEnvironment(ctx, defaultEnvironmentName)
+	if err == nil {
+		r.Output.LogInfo("Default environment %q already exists; leaving it unchanged.", defaultEnvironmentName)
+		return nil
+	}
+	if !clients.Is404Error(err) {
+		return clierrors.MessageWithCause(err, "Failed to check for the default environment. Radius was installed successfully; you can retry with 'rad env create default'.")
 	}
 
-	config, err := r.KubernetesInterface.GetKubeContext()
-	if err != nil {
-		return "", clierrors.MessageWithCause(err, "Failed to read kubeconfig.")
+	r.Output.LogInfo("Creating default environment %q in namespace %q...", defaultEnvironmentName, defaultEnvironmentNamespace)
+	if err := setup.EnsureEnvironment(ctx, client, defaultEnvironmentName, defaultEnvironmentNamespace, nil, nil); err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create the default environment. Radius was installed successfully; you can retry with 'rad env create default'.")
 	}
-	if config.CurrentContext == "" {
-		return "", clierrors.Message("No active Kubernetes context is set in your kubeconfig. Specify one with the '--kubecontext' flag.")
-	}
-	return config.CurrentContext, nil
+	return nil
 }
