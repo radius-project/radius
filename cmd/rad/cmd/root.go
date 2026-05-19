@@ -87,6 +87,7 @@ import (
 	upgrade_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/upgrade/kubernetes"
 	version "github.com/radius-project/radius/pkg/cli/cmd/version"
 	workspace_create "github.com/radius-project/radius/pkg/cli/cmd/workspace/create"
+	workspace_create_preview "github.com/radius-project/radius/pkg/cli/cmd/workspace/create/preview"
 	workspace_delete "github.com/radius-project/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/radius-project/radius/pkg/cli/cmd/workspace/list"
 	workspace_show "github.com/radius-project/radius/pkg/cli/cmd/workspace/show"
@@ -385,6 +386,8 @@ func initSubCommands() {
 	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
+	previewWorkspaceCreateCmd, _ := workspace_create_preview.NewCommand(framework)
+	wirePreviewSubcommand(workspaceCreateCmd, previewWorkspaceCreateCmd)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
 
 	workspaceDeleteCmd, _ := workspace_delete.NewCommand(framework)
