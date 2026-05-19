@@ -145,8 +145,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	r.Output.LogInfo("Creating Radius Core Environment %q...", r.EnvironmentName)
-
 	// Ensure the default resource group exists before creating recipe pack in it.
 	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -185,6 +183,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("Successfully created environment %q in resource group %q with default recipe pack.", r.EnvironmentName, r.ResourceGroupName)
-	return nil
+	r.Output.LogInfo("Radius.Core/environments/%s created", r.EnvironmentName)
+  return nil
 }
