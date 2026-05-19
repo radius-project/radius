@@ -58,8 +58,8 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		validator.AddOptionalAnyField(key, &value)
 	}
 	for key, value := range options.RecipeOutput.Secrets {
-		value := value.(string)
-		validator.AddOptionalSecretField(key, &value)
+		strValue := fmt.Sprintf("%v", value)
+		validator.AddOptionalSecretField(key, &strValue)
 	}
 
 	err := validator.SetAndValidate(options.RecipeOutput)

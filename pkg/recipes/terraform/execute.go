@@ -389,8 +389,19 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
 		}
 
+		// Debug: log resource properties available for expression resolution.
+		logger.Info("Direct module context properties", "resourceName", recipectx.Resource.Name, "propertiesCount", len(recipectx.Resource.Properties))
+		for k, v := range recipectx.Resource.Properties {
+			logger.Info("Direct module context property", "key", k, "value", fmt.Sprintf("%v", v))
+		}
+
 		// Merge environment-level and resource-level parameters (environment wins per FR-004).
 		mergedParams := recipes_util.ShallowMergeParameters(options.ResourceRecipe.Parameters, options.EnvRecipe.Parameters)
+
+		logger.Info("Direct module merged params", "paramCount", len(mergedParams))
+		for k, v := range mergedParams {
+			logger.Info("Direct module merged param", "key", k, "value", fmt.Sprintf("%v", v))
+		}
 
 		// Resolve {{context.*}} expressions in the merged parameters.
 		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
@@ -403,6 +414,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 	if loadedModule.ResultOutputExists {
 		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
+			return "", err
+		}
+	} else if len(options.EnvRecipe.Outputs) > 0 {
+		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs); err != nil {
 			return "", err
 		}
 	}

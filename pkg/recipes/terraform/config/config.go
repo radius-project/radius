@@ -96,6 +96,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	}
 
 	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
+	logger.Info(fmt.Sprintf("Terraform JSON config content:\n%s", buf.String()))
 	if err := os.WriteFile(getMainConfigFilePath(workingDir), buf.Bytes(), modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
@@ -292,6 +293,28 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",
 			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
 		},
+	}
+
+	return nil
+}
+
+// AddMappedOutputs generates output blocks for each entry in the outputs mapping.
+// This is used for direct modules that don't have a "result" output but declare
+// individual outputs that should be mapped to resource properties.
+func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap map[string]string) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+	if len(outputsMap) == 0 {
+		return nil
+	}
+
+	cfg.Output = make(map[string]any, len(outputsMap))
+	for _, moduleOutputName := range outputsMap {
+		cfg.Output[moduleOutputName] = map[string]any{
+			"value":     "${module." + localModuleName + "." + moduleOutputName + "}",
+			"sensitive": true,
+		}
 	}
 
 	return nil

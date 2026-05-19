@@ -55,10 +55,10 @@
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/89"
     },
     "Radius.Core/recipePacks@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/111"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/112"
     },
     "Radius.Core/terraformConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/138"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/139"
     }
   },
   "resourceFunctions": {},

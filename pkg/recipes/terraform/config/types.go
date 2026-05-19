@@ -16,8 +16,6 @@ limitations under the License.
 
 package config
 
-import "maps"
-
 const (
 	// moduleSourceKey represents the key for the module source parameter.
 	moduleSourceKey = "source"
@@ -34,8 +32,14 @@ type TFModuleConfig map[string]any
 type RecipeParams map[string]any
 
 // SetParams sets the recipe parameters in the Terraform module configuration.
+// Nil values are skipped to avoid passing explicit nulls in main.tf.json,
+// which would override module variable defaults.
 func (tf TFModuleConfig) SetParams(params RecipeParams) {
-	maps.Copy(tf, params)
+	for k, v := range params {
+		if v != nil {
+			tf[k] = v
+		}
+	}
 }
 
 // TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
