@@ -116,9 +116,7 @@ without policy exceptions.
 ```bicep
 extension radius
 extension containerImages
-// Disambiguate from the radius extension's Radius.Compute/containers
-// (which lacks imagePullSecrets).
-extension containers as ctnrs
+extension containers
 
 param environment string
 param imageTag string
@@ -139,12 +137,11 @@ resource frontendImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
   }
 }
 
-resource frontend 'ctnrs:Radius.Compute/containers@2025-08-01-preview' = {
+resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'frontend'
   properties: {
     environment: environment
     application: app.id
-    imagePullSecrets: [frontendImage.properties.imagePullSecretName]
     containers: {
       app: {
         image: frontendImage.properties.image
@@ -159,9 +156,9 @@ The developer never declares a registry secret, references one by
 name, or supplies registry credentials as `@secure()` parameters.
 Registry authentication is wired in once per environment by the
 platform engineer (see [Recipe registration](#recipe-registration));
-the recipe materializes a per-resource pull Secret and surfaces its
-name as `imagePullSecretName` for `Radius.Compute/containers` to
-consume.
+the recipe materializes a per-resource pull Secret and patches the
+application namespace's `default` ServiceAccount to use it, so every
+Pod pulls without explicit `imagePullSecrets` wiring.
 
 The developer never writes the registry, the repository path, or
 the tag. The final image reference is composed by the recipe:
@@ -185,20 +182,15 @@ otherwise.
 
 The platform engineer deploys a single `platform.bicep` that:
 
-1. Declares a `Radius.Core/recipePacks` registering the
-   `Radius.Compute/containerImages` recipe with three parameters —
-   `registry` (push target), `registrySecretName`, and
-   `registrySecretNamespace` (location of the kube Secret holding
-   `username` / `password`). Same pack typically registers
+1. Declares a `Radius.Core/environments`.
+2. Declares an env-scoped `Radius.Security/secrets` of `kind: generic`
+   with `username` / `password` data keys carrying the registry
+   credentials.
+3. Declares a `Radius.Core/recipePacks` registering the
+   `Radius.Compute/containerImages` recipe with two parameters —
+   `registry` (push target) and `registryCredentials` (the resource
+   ID of the secret above). The same pack typically registers
    `Radius.Compute/containers` and `Radius.Security/secrets`.
-2. Declares a `Radius.Core/environments` that references the pack.
-3. Declares a `Radius.Core/applications` named `platform` that holds
-   PE-owned resources.
-4. Declares a `Radius.Security/secrets` of `kind: generic` with
-   `username` / `password` data keys in the `platform` app. Its
-   recipe materializes a Kubernetes Secret of the same name in the
-   env's namespace, which is what the containerImages recipe reads
-   at execution time.
 
 ```bicep
 extension radius
@@ -210,6 +202,27 @@ param registryPassword string
 param containerImagesTemplatePath string
 param containersTemplatePath string
 param envNamespace string = 'default'
+
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'default'
+  location: 'global'
+  properties: {
+    providers:    { kubernetes: { namespace: envNamespace } }
+    recipePacks:  [ recipes.id ]
+  }
+}
+
+resource ghcrCreds 'Radius.Security/secrets@2025-08-01-preview' = {
+  name: 'ghcr-creds'
+  properties: {
+    environment: env.id
+    kind: 'generic'
+    data: {
+      username: { value: registryUsername }
+      password: { value: registryPassword }
+    }
+  }
+}
 
 resource recipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'default-recipes'
@@ -224,43 +237,14 @@ resource recipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
         recipeKind: 'terraform'
         recipeLocation: containerImagesTemplatePath
         parameters: {
-          registry:                registryPath
-          registrySecretName:      'ghcr-creds'
-          registrySecretNamespace: envNamespace
+          registry:            registryPath
+          registryCredentials: ghcrCreds.id
         }
       }
       'Radius.Compute/containers': {
         recipeKind: 'terraform'
         recipeLocation: containersTemplatePath
       }
-    }
-  }
-}
-
-resource env 'Radius.Core/environments@2025-08-01-preview' = {
-  name: 'default'
-  location: 'global'
-  properties: {
-    providers:    { kubernetes: { namespace: envNamespace } }
-    recipePacks:  [ recipes.id ]
-  }
-}
-
-resource platform 'Radius.Core/applications@2025-08-01-preview' = {
-  name: 'platform'
-  location: 'global'
-  properties: { environment: env.id }
-}
-
-resource ghcrCreds 'Radius.Security/secrets@2025-08-01-preview' = {
-  name: 'ghcr-creds'
-  properties: {
-    environment: env.id
-    application: platform.id
-    kind: 'generic'
-    data: {
-      username: { value: registryUsername }
-      password: { value: registryPassword }
     }
   }
 }
@@ -274,14 +258,15 @@ Key points:
   point their recipePack at different registries
   (dev → `ghcr.io/alice`, prod → `myorg.azurecr.io/prod`)
   without any change to the developer's Bicep.
-* **Registry credentials** live in a `Radius.Security/secrets` of
-  `kind: generic` deployed by the PE into a dedicated `platform`
-  application. Its recipe writes a Kubernetes Secret in the env's
-  namespace. The containerImages recipe reads it at execution time
-  via the `kubernetes_secret` data source named by the
-  `registrySecretName` / `registrySecretNamespace` recipe
-  parameters. Credentials are not in developer Bicep, not in the
-  recipe pack, and not in any chart-level Secret mount.
+* **Registry credentials** live in an env-scoped
+  `Radius.Security/secrets` of `kind: generic`. The recipe pack
+  references it by resource ID via the `registryCredentials`
+  parameter; the driver resolves the reference at execution time
+  and projects the secret's `data` into the recipe's variable
+  scope. The recipe never reads a Kubernetes Secret directly and
+  is unaware of namespaces or Secret names. Credentials are not
+  in developer Bicep, not as plaintext in the recipe pack, and
+  not in any chart-level Secret mount.
 * The recipePack is the single declarative artifact: deploying
   `platform.bicep` registers all three recipes; no imperative
   `rad recipe register` is needed for them.
@@ -394,7 +379,6 @@ becomes the final path segment of the image reference.
 | Output | Description |
 |---|---|
 | `properties.image` | The full resolved image reference, e.g. `ghcr.io/mycompany/todolist-app:sha256-d4f2…`. Downstream `Radius.Compute/containers` resources reference this so they pick up new digests automatically. |
-| `properties.imagePullSecretName` | The name of the per-resource `kubernetes.io/dockerconfigjson` Secret the recipe materializes in the application's namespace. Empty when the recipe is registered without `registrySecretName` / `registrySecretNamespace` (public-registry path). |
 
 ##### Tag strategy
 
@@ -432,25 +416,26 @@ and is intentionally small. Its contract:
   variable, which dynamic-rp sets to `tcp://127.0.0.1:1234` (Pod
   loopback to the sidecar) for recipe execution. The recipe itself
   does not encode the endpoint.
-* **Authentication**: the recipe takes two PE-provided parameters,
-  `registrySecretName` and `registrySecretNamespace`, identifying
-  a Kubernetes Secret with `username` and `password` data keys (the
-  Secret the PE-owned `Radius.Security/secrets` resource
-  materializes). The recipe reads it via the
-  [`kubernetes_secret`](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/data-sources/secret)
-  data source, **base64-decodes the data values** (the data source
-  returns base64 strings, unlike the resource form), composes a
-  Docker `config.json`, writes it via `local_sensitive_file`, and
-  exports `DOCKER_CONFIG` so `buildctl` picks it up. Both parameters
-  default to empty strings; when both are empty the recipe skips the
-  auth path entirely (public-registry / local-kind-registry flow).
-* **Pull Secret materialization**: after a successful push the
-  recipe creates a per-resource `kubernetes.io/dockerconfigjson`
+* **Authentication**: the recipe takes one PE-provided parameter,
+  `registryCredentials`, whose value is the resource ID of a
+  `Radius.Security/secrets` of `kind: generic` holding `username`
+  and `password` data keys. The driver resolves the reference at
+  recipe-execution time and projects the secret's `data` into the
+  recipe's variable scope as
+  `var.registry_credentials = { username, password }`. The recipe
+  composes a Docker `config.json` from those values, writes it via
+  `local_sensitive_file`, and exports `DOCKER_CONFIG` so `buildctl`
+  picks it up. The parameter defaults to empty; when empty, the
+  recipe skips the auth path entirely (public-registry /
+  local-kind-registry flow). The recipe never reads a Kubernetes
+  Secret directly and is unaware of Secret names or namespaces.
+* **Pull Secret wiring**: after a successful push the recipe
+  materializes a per-resource `kubernetes.io/dockerconfigjson`
   Secret named `<resource>-pull` in the application's namespace
-  (via the same registry credentials) and surfaces its name as the
-  `imagePullSecretName` output. `Radius.Compute/containers`
-  references that output so kubelet can pull the produced image
-  without any out-of-band wiring.
+  and patches that namespace's `default` ServiceAccount to include
+  it in `imagePullSecrets`. Every Pod in the namespace then pulls
+  the produced image without any explicit wiring in
+  `Radius.Compute/containers`.
 * **Input validation**: every value interpolated into the
   `buildctl` command line is gated by a `terraform_data
   "validate_inputs"` resource with `precondition` blocks (registry,
@@ -468,10 +453,10 @@ and is intentionally small. Its contract:
   before invoking BuildKit; the recipe fails fast with a clear
   message rather than silently push a non-content-addressable image
   on every reconciliation.
-* **Recipe parameters**: `registry` (e.g. `ghcr.io/mycompany`),
-  `registrySecretName`, and `registrySecretNamespace`. The BuildKit
-  endpoint is wired in by dynamic-rp via `BUILDKIT_HOST` and is not
-  a recipe parameter.
+* **Recipe parameters**: `registry` (e.g. `ghcr.io/mycompany`) and
+  `registryCredentials` (resource ID of a `Radius.Security/secrets`).
+  The BuildKit endpoint is wired in by dynamic-rp via `BUILDKIT_HOST`
+  and is not a recipe parameter.
 * **Destroy semantics**: `terraform destroy` removes the Terraform
   state for the resource but does **not** delete the pushed image
   from the registry. Registry retention is an operator concern
@@ -482,22 +467,15 @@ Sketch of the resources the recipe declares:
 
 ```hcl
 locals {
-  use_auth = var.registrySecretName != "" && var.registrySecretNamespace != ""
-}
-
-data "kubernetes_secret" "registry_creds" {
-  count = local.use_auth ? 1 : 0
-  metadata {
-    name      = var.registrySecretName
-    namespace = var.registrySecretNamespace
-  }
+  use_auth = length(keys(var.registry_credentials)) > 0
 }
 
 locals {
-  # kubernetes_secret data source returns .data as base64-encoded
-  # strings; decode once before composing the Docker auth header.
-  registry_username = local.use_auth ? base64decode(data.kubernetes_secret.registry_creds[0].data["username"]) : ""
-  registry_password = local.use_auth ? base64decode(data.kubernetes_secret.registry_creds[0].data["password"]) : ""
+  # registry_credentials is resolved by the driver from the
+  # Radius.Security/secrets resource ID supplied as a recipe
+  # parameter. The recipe never reads a Kubernetes Secret directly.
+  registry_username = local.use_auth ? var.registry_credentials.username : ""
+  registry_password = local.use_auth ? var.registry_credentials.password : ""
 
   docker_config_json = local.use_auth ? jsonencode({
     auths = {
@@ -566,11 +544,17 @@ resource "kubernetes_secret" "pull" {
   data = { ".dockerconfigjson" = local.docker_config_json }
 }
 
+# Patch the namespace's default ServiceAccount so every Pod
+# in the application namespace picks up the pull Secret without
+# explicit wiring in Radius.Compute/containers.
+resource "kubernetes_default_service_account" "patched" {
+  count = local.use_auth ? 1 : 0
+  metadata { namespace = var.context.runtime.kubernetes.namespace }
+  image_pull_secret { name = kubernetes_secret.pull[0].metadata[0].name }
+}
+
 output "properties" {
-  value = {
-    image                = local.image_ref
-    imagePullSecretName  = local.use_auth ? "${local.resource_name}-pull" : ""
-  }
+  value = { image = local.image_ref }
 }
 ```
 
@@ -605,8 +589,8 @@ talks to buildkitd over Pod loopback TCP.
 `BUILDKIT_HOST=tcp://127.0.0.1:1234` and a `PATH` that includes
 the `buildctl-init` emptyDir. No Docker `config.json` is mounted
 at chart level; registry credentials reach the recipe through the
-`registrySecretName` / `registrySecretNamespace` recipe parameters
-the PE wires in via `Radius.Core/recipePacks` (see
+`registryCredentials` recipe parameter (a `Radius.Security/secrets`
+resource ID resolved by the driver — see
 [Recipe registration](#recipe-registration)).
 
 The sidecar is enabled by default. Operators who never use
@@ -648,7 +632,7 @@ calling BuildKit's gRPC API directly from Go.
 | | Terraform recipe (proposed) | Built-in provider (alternative) |
 |---|---|---|
 | Build invocation | `local-exec` → `buildctl` → BuildKit gRPC | Go BuildKit client → BuildKit gRPC |
-| Auth wiring | PE-deployed `Radius.Security/secrets` of `kind: generic`; recipe resolves it via the `kubernetes_secret` data source using the `registrySecretName` / `registrySecretNamespace` recipe parameters | Same `Radius.Security/secrets`, resolved directly by dynamic-rp |
+| Auth wiring | Env-scoped `Radius.Security/secrets` of `kind: generic` referenced by resource ID via the `registryCredentials` recipe parameter; driver resolves the reference and projects the secret's `data` into the recipe's variable scope | Same `Radius.Security/secrets`, resolved directly by dynamic-rp |
 | Customization | Operators can swap in their own Terraform recipe (different tag scheme, additional provenance, signing, etc.) | Behavior is fixed by dynamic-rp; customization requires a code change |
 | Failure modes | Inherits everything Terraform brings (state, lockfiles, provider version drift) | Fewer moving parts, no Terraform state for an action that has no resources to track |
 | Consistency with rest of Radius | Matches every other resource type | This type is already a special case (BuildKit sidecar); a built-in provider would not break a pattern this resource type doesn't fit |
@@ -846,13 +830,11 @@ cluster like any other container.
   `TARGETPLATFORM`. Dockerfiles that execute target-arch binaries
   during the build won't work multi-arch under this design and will
   fail at build time with a clear error.
-* **Credential bootstrap.** The PE deploys a single
-  `Radius.Security/secrets` resource into a dedicated `platform`
-  application and points the recipe at the materialized Kubernetes
-  Secret via the `registrySecretName` / `registrySecretNamespace`
-  recipe parameters. Operator UX for rotating PATs, scoping
-  per-application vs. per-environment secrets, etc. is a separate
-  workstream.
+* **Credential bootstrap.** The PE declares an env-scoped
+  `Radius.Security/secrets` and references it by resource ID in the
+  recipe pack's `registryCredentials` parameter. Operator UX for
+  rotating PATs, scoping per-application vs. per-environment
+  secrets, etc. is a separate workstream.
 * **Local-context upload size.** The CLI tarball-upload path
   (Option 2 in [Local development workflow](#local-development-workflow))
   scales poorly for very large directories. `.dockerignore` and a
@@ -863,9 +845,10 @@ cluster like any other container.
 
 | Component | Repo | Change |
 |---|---|---|
-| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `build`. Optional: `environment`, `application`, `tag`. Outputs: `image`, `imagePullSecretName`. Extend `Compute/containers/containers.yaml` with an `imagePullSecrets: array<string>` property. |
-| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by `terraform_data "validate_inputs"` and `terraform_data "validate_git_tag"` preconditions; the build resource `depends_on` both. Reads the registry Kubernetes Secret via the `kubernetes_secret` data source named by the `registrySecretName` / `registrySecretNamespace` recipe parameters, `base64decode`s the `username` / `password` values, renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. After push, creates a per-resource `kubernetes.io/dockerconfigjson` Secret in the application namespace and surfaces it as `imagePullSecretName`. Composes image ref from `registry`, resource name, and content-hash tag (or explicit `properties.tag` when supplied). The `Compute/containers` kubernetes recipe threads `imagePullSecrets` into the Deployment's `template.spec.image_pull_secrets`. |
-| Recipe pack | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` registration flow: pack registers the `containerImages` recipe with `registry`, `registrySecretName`, and `registrySecretNamespace` parameters; PE separately deploys a `Radius.Security/secrets` of `kind: generic` into a `platform` application that materializes the referenced Kubernetes Secret in the env's namespace. |
+| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `build`. Optional: `environment`, `application`, `tag`. Output: `image`. |
+| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by `terraform_data "validate_inputs"` and `terraform_data "validate_git_tag"` preconditions; the build resource `depends_on` both. Reads `username` / `password` from the driver-resolved `registry_credentials` variable, renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. After push, materializes a per-resource `kubernetes.io/dockerconfigjson` Secret in the application's namespace and patches that namespace's `default` ServiceAccount with the pull Secret so every Pod pulls without explicit wiring. Composes image ref from `registry`, resource name, and content-hash tag (or explicit `properties.tag` when supplied). |
+| Recipe pack | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` registration flow: pack registers the `containerImages` recipe with `registry` and `registryCredentials` (resource ID of a `Radius.Security/secrets`) parameters; PE separately declares an env-scoped `Radius.Security/secrets` of `kind: generic` carrying `username` / `password`. |
+| Recipe-parameter secret resolution | `radius-project/radius` | Driver support for recipe parameters typed as a `Radius.Security/secrets` reference: dereference the resource, fetch its `data`, and project it into the recipe's variable scope (`var.registry_credentials = { username, password }`) without the recipe touching a Kubernetes Secret directly. |
 | dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`) listening on `tcp://0.0.0.0:1234`. Add `buildctl-init` init container that copies the `buildctl` binary into an `emptyDir` mounted onto the dynamic-rp container's `PATH`. Add `dynamicrp.buildkit.psaMode` value, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket emptyDir, no BuildKit-state emptyDir, no Docker `config.json` Secret mount. |
 | dynamic-rp recipe runner | `radius-project/radius` | Set `BUILDKIT_HOST=tcp://127.0.0.1:1234` and extend `PATH` with the `buildctl-init` mount in the recipe-execution environment. No Go code changes beyond environment plumbing. |
 | Contributor documentation | `radius-project/radius` (`docs/contributing/`) | Add `buildkit-recipes.md` covering the buildkit subsystem and the `local-exec`-via-`buildctl` recipe pattern, so the next person adding a build-style recipe doesn't have to reverse-engineer it. |
@@ -902,19 +885,19 @@ cluster like any other container.
   version. Operators who enforce PSA `restricted` cluster-wide
   opt in with `--set dynamicrp.buildkit.psaMode=restricted` on
   Kubernetes 1.30+ (stable in 1.33+).
-* Registry credentials live in a `Radius.Security/secrets` of
-  `kind: generic` (with `username` and `password` data keys),
-  deployed by the PE into a dedicated `platform` application. Its
-  recipe writes a Kubernetes Secret in the env's namespace; the
-  containerImages recipe reads it via the `kubernetes_secret` data
-  source named by the `registrySecretName` /
-  `registrySecretNamespace` recipe parameters, composes a
-  `config.json` for `buildctl`, and after a successful push creates
-  a per-resource `kubernetes.io/dockerconfigjson` Secret in the
-  developer's application namespace that `Radius.Compute/containers`
-  references via `imagePullSecrets`. Credentials are never
-  developer-Bicep parameters, chart-level Secret mounts, or
-  out-of-band `kubectl create secret` invocations.
+* Registry credentials live in an env-scoped
+  `Radius.Security/secrets` of `kind: generic` (with `username` and
+  `password` data keys). The recipe pack references it by resource
+  ID via the `registryCredentials` parameter; the driver resolves
+  the reference at recipe-execution time and projects the secret's
+  `data` into the recipe's variable scope. After a successful push
+  the recipe creates a per-resource
+  `kubernetes.io/dockerconfigjson` Secret in the application's
+  namespace and patches that namespace's `default` ServiceAccount
+  to use it, so every Pod pulls without any developer-Bicep
+  wiring. Credentials are never developer-Bicep parameters, never
+  read by the recipe as a Kubernetes Secret directly, and never
+  mounted at chart level.
 * The BuildKit endpoint is `tcp://127.0.0.1:1234` on the Pod's
   loopback interface and is not reachable from outside the Pod.
   No Service, NetworkPolicy egress, or Ingress is required.
@@ -948,9 +931,10 @@ cluster like any other container.
 
 | Workstream | Repo | Notes |
 |---|---|---|
-| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `build` required, `tag` optional, `environment` and `application` optional, no per-resource `registry` override, no `image` field. Outputs: `image`, `imagePullSecretName`. Extend `Compute/containers/containers.yaml` with an `imagePullSecrets: array<string>` property. |
-| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource>:<tag>`, content-hash tag default for local contexts, validates every interpolated input via `terraform_data "validate_inputs"` preconditions, requires explicit `properties.tag` for git contexts via `terraform_data "validate_git_tag"`, reads the registry Kubernetes Secret via the `kubernetes_secret` data source named by the `registrySecretName` / `registrySecretNamespace` recipe parameters, `base64decode`s `username` / `password`, renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. After push, materializes a per-resource `kubernetes.io/dockerconfigjson` Secret in the application namespace and surfaces it as `imagePullSecretName`. The `Compute/containers` kubernetes recipe threads `imagePullSecrets` into the Deployment's `template.spec.image_pull_secrets`. |
-| Sample recipe pack | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` showing how to register the recipe with `registry`, `registrySecretName`, and `registrySecretNamespace` parameters. Companion PE Bicep deploys a `Radius.Core/applications` named `platform` and a `Radius.Security/secrets` of `kind: generic` (data: `username`, `password`) into it, and a sample developer Bicep declares `Radius.Compute/containerImages` with no credential plumbing and wires `imagePullSecrets: [demoImage.properties.imagePullSecretName]` into `Radius.Compute/containers`. |
+| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `build` required, `tag` optional, `environment` and `application` optional, no per-resource `registry` override, no `image` field. Output: `image`. |
+| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource>:<tag>`, content-hash tag default for local contexts, validates every interpolated input via `terraform_data "validate_inputs"` preconditions, requires explicit `properties.tag` for git contexts via `terraform_data "validate_git_tag"`, reads `username` / `password` from the driver-resolved `registry_credentials` variable, renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. After push, materializes a per-resource `kubernetes.io/dockerconfigjson` Secret in the application namespace and patches that namespace's `default` ServiceAccount with the pull Secret. |
+| Sample recipe pack | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` showing how to register the recipe with `registry` and `registryCredentials` (resource ID of a `Radius.Security/secrets`) parameters. Companion PE Bicep declares an env-scoped `Radius.Security/secrets` of `kind: generic` (data: `username`, `password`). Sample developer Bicep declares `Radius.Compute/containerImages` and `Radius.Compute/containers` with no credential or pull-Secret plumbing. |
+| Recipe-parameter secret resolution | radius | Driver support for recipe parameters typed as a `Radius.Security/secrets` reference: dereference and project the secret's `data` into the recipe's variable scope. |
 | Helm chart sidecar | radius | Add buildkitd container listening on `tcp://0.0.0.0:1234`, `buildctl-init` init container copying `buildctl` into an `emptyDir` on the dynamic-rp container's `PATH`, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket/state emptyDir, no Docker `config.json` Secret mount. |
 | Recipe-runner env plumbing | radius | Set `BUILDKIT_HOST` and extend `PATH` for the recipe execution. |
 | Contributor documentation | radius | `docs/contributing/contributing-code/contributing-code-writing/buildkit-recipes.md`: explains the sidecar, the `buildctl-init` init container, the `local-exec`-via-`buildctl` recipe pattern, and the shell-injection-safety contract recipes are expected to follow. |
@@ -1013,7 +997,7 @@ The following were considered and rejected. Brief rationale only.
 | H | Long-lived `buildkitd` Service in its own namespace, recipes connect via remote driver + mTLS | Likely the right destination at scale (multi-tenant build service), but adds a Helm sub-chart, mTLS bootstrap, and multi-tenancy concerns. Premature for a first cut; revisit when usage justifies it. |
 | I | Non-Docker builders (Buildah / Podman / Kaniko) | None remove the multi-arch constraint; weaker Terraform provider story; cross-compile-first design fits BuildKit best. Kaniko remains a fallback if a `restricted`-compatible build path is ever needed on Kubernetes versions that pre-date user namespaces. |
 | J | Native multi-arch fan-out via the `buildx` Kubernetes driver | Assumes multi-arch node pools we are explicitly not assuming for v1; adds RBAC and a build namespace; would land an opt-in flag with no effect on the clusters targeted now. Kept as the natural extension; see appendix. |
-| K | Env-level `recipeConfig.terraform.authentication.registries` analogous to `git.pat` | Requires a typespec change to `Radius.Core/environments`. The current design avoids that by deploying a generic `Radius.Security/secrets` from a PE-owned `platform` application and threading its name/namespace through `Radius.Core/recipePacks` parameters; the recipe resolves the Kubernetes Secret via a `kubernetes_secret` data source. Reconsider if first-class env-level registry credentials become a broader Radius concept. |
+| K | Env-level `recipeConfig.terraform.authentication.registries` analogous to `git.pat` | Conflates two different things: `terraform.authentication.*` is for Terraform's *own* operations (module fetch, provider auth), while OCI registry credentials are runtime credentials the recipe's workload (`buildctl`) consumes. The current design models the credential as an env-scoped `Radius.Security/secrets` and lets the recipe pack reference it by ID via the `registryCredentials` parameter — the same shape that works for any other recipe needing runtime credentials, not just Terraform recipes. |
 
 ## Appendix: multi-architecture node pools
 
