@@ -83,13 +83,26 @@ jobs:
           echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
           echo "Contrib ref: ${ref}"
 
-      - name: Checkout
-        # Uses GH_RAD_CI_BOT_PAT instead of the default GITHUB_TOKEN so that
+      - name: Generate App Token
+        # Uses a GitHub App token instead of the default GITHUB_TOKEN so that
         # the bot can push the PR branch and the resulting PR triggers CI checks.
         # The default GITHUB_TOKEN cannot trigger workflows on pushes it creates.
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RESOURCE_TYPES_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RESOURCE_TYPES_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            radius
+          permission-metadata: read
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
 
       - name: Set up Git identity
@@ -165,7 +178,7 @@ jobs:
         env:
           CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const branch = process.env.PR_BRANCH;
             const contribRef = process.env.CONTRIB_REF;
