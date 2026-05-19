@@ -30,14 +30,32 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if and .Values.dynamicrp.buildkit.enabled (eq .Values.dynamicrp.buildkit.psaMode "restricted") }}
+      # User namespaces let the rootless BuildKit sidecar satisfy
+      # PodSecurityAdmission "restricted" without Unconfined profiles.
+      # Requires Kubernetes >= 1.30 with the UserNamespacesSupport
+      # feature gate enabled (stable in 1.33).
+      hostUsers: false
+      {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # fsGroup makes the shared emptyDir volume that holds the
+      # buildctl binary (copied from the rootless BuildKit init
+      # container) group-owned by GID 65532, so the dynamic-rp
+      # container (UID/GID 65532) can read and exec it. The
+      # buildkitd sidecar listens on TCP, so no socket sharing is
+      # required.
+      securityContext:
+        fsGroup: 65532
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
+      {{- if or (eq .Values.global.terraform.enabled true) .Values.dynamicrp.buildkit.enabled }}
+      initContainers:
       {{- if eq .Values.global.terraform.enabled true }}
       # Init container to pre-download Terraform binary to a shared volume
       # This avoids downloading Terraform at runtime and improves recipe execution performance
-      initContainers:
       {{- if .Values.global.appendRootCA.cert }}
       - name: append-root-ca
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
@@ -116,9 +134,25 @@ spec:
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
-          cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
-          chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          
+          # Radius's terraform installer (pkg/recipes/terraform/install.go)
+          # looks for a pre-mounted binary at
+          # `<terraform.path>/.terraform-global/terraform` with a
+          # marker file `.terraform-ready` in the same dir. If those
+          # aren't found it silently downloads "latest" from
+          # HashiCorp. Place the binary + marker exactly where Radius
+          # expects so a pinned version (e.g. via downloadUrl) is
+          # actually used.
+          GLOBAL_DIR="{{ .Values.dynamicrp.terraform.path }}/.terraform-global"
+          mkdir -p "$GLOBAL_DIR"
+          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
+          touch "$GLOBAL_DIR/.terraform-ready"
+
+          # Also keep a copy at the legacy path for any out-of-tree
+          # tooling that still expects it there.
+          cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform"
+          chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform"
+
           # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.dynamicrp.terraform.path }}/.terraform-source"
           
@@ -130,6 +164,23 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 65532
+      {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # Copy buildctl out of the BuildKit image into a shared volume so
+      # the dynamic-rp container can invoke it from `local-exec` inside
+      # Terraform recipes. We use buildctl rather than the Docker Engine
+      # API because buildkitd does not implement the latter.
+      - name: buildctl-init
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        command: ["/bin/sh", "-c", "cp /usr/bin/buildctl /tools/buildctl && chmod 0755 /tools/buildctl"]
+        volumeMounts:
+        - name: buildctl-bin
+          mountPath: /tools
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65532
+      {{- end }}
       {{- end }}
       containers:
       - name: dynamic-rp
@@ -145,6 +196,20 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        # Recipes invoke `buildctl` (mounted from the buildctl-init
+        # init container) which reads this env to dial the in-Pod
+        # buildkitd sidecar over loopback TCP.
+        - name: BUILDKIT_HOST
+          value: "tcp://127.0.0.1:1234"
+        # buildctl reads ~/.docker/config.json for registry credentials.
+        # Make `~` deterministic for the recipe runner process.
+        - name: HOME
+          value: "/home/rpuser"
+        # Put the mounted buildctl on PATH.
+        - name: PATH
+          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/buildctl"
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
@@ -172,6 +237,12 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        # buildctl binary copied by the buildctl-init init container.
+        - name: buildctl-bin
+          mountPath: /buildctl
+          readOnly: true
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -183,8 +254,64 @@ spec:
           readOnly: true
         {{- end }}
         {{- if .Values.dynamicrp.resources }}
-        resources:{{ toYaml .Values.rp.resources | nindent 10 }}
+        resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # Rootless BuildKit sidecar. Listens on loopback TCP inside the
+      # Pod network namespace. The dynamic-rp container reaches it via
+      # BUILDKIT_HOST=tcp://127.0.0.1:1234 and invokes `buildctl` for
+      # recipe-driven image builds. TCP-over-loopback avoids the
+      # cross-user-namespace socket-permission issues that plague
+      # rootless buildkit + emptyDir sharing.
+      - name: buildkitd
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        args:
+        - --addr
+        - tcp://127.0.0.1:1234
+        {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
+        - --oci-worker-no-process-sandbox
+        {{- end }}
+        readinessProbe:
+          exec:
+            command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
+          # On clusters without user namespaces, BuildKit's rootless
+          # mode needs unconfined seccomp/AppArmor to drop into the
+          # nested user namespace. PSA `baseline` permits this; PSA
+          # `restricted` does not.
+          seccompProfile:
+            type: Unconfined
+          appArmorProfile:
+            type: Unconfined
+          # rootlesskit execs /usr/bin/newuidmap, which relies on
+          # file capabilities to write the UID/GID map. With
+          # allowPrivilegeEscalation=false, the kernel sets
+          # no_new_privs=1 and nullifies file caps on execve, so
+          # newuidmap fails with "Could not set caps". PSA baseline
+          # permits allowPrivilegeEscalation=true; PSA restricted
+          # forbids it and requires user-namespace support instead.
+          allowPrivilegeEscalation: true
+          {{- else }}
+          allowPrivilegeEscalation: false
+          {{- end }}
+        volumeMounts:
+        - name: buildkit-state
+          mountPath: /home/user/.local/share/buildkit
+        {{- with .Values.dynamicrp.buildkit.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -204,6 +331,12 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        - name: buildctl-bin
+          emptyDir: {}
+        - name: buildkit-state
+          emptyDir: {}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

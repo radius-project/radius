@@ -122,6 +122,41 @@ dynamicrp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  # buildkit configures an in-Pod rootless BuildKit sidecar that
+  # serves the Radius.Compute/containerImages resource type. The
+  # sidecar exposes a TCP endpoint on Pod loopback that the
+  # dynamic-rp container talks to via the BUILDKIT_HOST env. No host
+  # Docker socket is mounted; no privileged containers are created.
+  buildkit:
+    # Set false to skip provisioning the sidecar. Disabling saves
+    # ~50 MiB of resident memory but makes Radius.Compute/containerImages
+    # unusable.
+    enabled: true
+    # Pod-security-admission profile the sidecar is configured for.
+    #   baseline (default): uses Unconfined seccomp/AppArmor profiles
+    #     plus --oci-worker-no-process-sandbox. Compatible with PSA
+    #     baseline and works on every supported Kubernetes version
+    #     (including kind/k3d/Docker Desktop without extra config).
+    #   restricted: uses Kubernetes user namespaces (hostUsers=false).
+    #     Stricter posture, but requires Kubernetes >= 1.30 with the
+    #     UserNamespacesSupport feature gate enabled (stable in 1.33).
+    #     Operators who enforce PSA restricted cluster-wide and run
+    #     a recent enough kernel can opt in with
+    #     --set dynamicrp.buildkit.psaMode=restricted.
+    psaMode: baseline
+    # Pinned rootless BuildKit image. Match a tested upstream tag.
+    image: "moby/buildkit:v0.13.2-rootless"
+    # Resource requests and limits for the buildkitd sidecar.
+    # Tune based on expected concurrent builds and image complexity.
+    # Multi-arch builds with QEMU emulation are particularly
+    # memory-hungry; raise limits.memory accordingly.
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
 
 rp:
   image: applications-rp
