@@ -116,8 +116,7 @@ CNCF 2025 confirms Kubernetes at 82% production adoption among container users, 
 - **Upstream module quality**: We reference community modules we don't own. If AVM or a Terraform module ships a bad release or drops an output, our recipes break. We pin versions and run weekly CI to catch this early.
 - **Helm driver**: Kubernetes recipes are stuck on custom Bicep until we build the Helm driver. That's a bottleneck for K8s coverage.
 - **AVM gaps**: Some Tier 1 types don't have AVM modules yet. For those, we fall back to Terraform or custom Bicep on Azure.
-- **Schema stability**: Agents depend on resource type schemas. If we break a schema after agents are already using it, generated `app.bicep` files will be wrong. We enforce backward compatibility from Beta onward.
-- **Contributor adoption**: If nobody contributes, we build all 27 types ourselves. The contribution model needs to be low-friction enough that people actually use it.
+- **Schema stability**: Agents depend on resource type schemas. If we break a schema after agents are already using it, generated `app.bicep` files will be wrong. We enforce backward compatibility from Beta onward. 
 
 ## Action Plan
 
