@@ -228,8 +228,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		env.Properties.Providers.Aws = r.providers.Aws
 	}
 
-	r.Output.LogInfo("Updating Environment...")
-
 	err = client.CreateOrUpdateEnvironment(ctx, r.EnvName, &corerp.EnvironmentResource{
 		Location:   to.Ptr(v1.LocationGlobal),
 		Properties: env.Properties,
@@ -238,36 +236,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.MessageWithCause(err, "Failed to apply cloud provider scope to the environment %q.", r.EnvName)
 	}
 
-	recipeCount := 0
-	if env.Properties.Recipes != nil {
-		recipeCount = len(env.Properties.Recipes)
-	}
-	providerCount := 0
-	if env.Properties.Providers != nil {
-		if env.Properties.Providers.Azure != nil {
-			providerCount++
-		}
-		if env.Properties.Providers.Aws != nil {
-			providerCount++
-		}
-	}
-	computeKind := ""
-	if env.Properties.Compute != nil {
-		computeKind = *env.Properties.Compute.GetEnvironmentCompute().Kind
-	}
-	obj := environmentForDisplay{
-		Name:        *env.Name,
-		ComputeKind: computeKind,
-		Recipes:     recipeCount,
-		Providers:   providerCount,
-	}
-
-	err = r.Output.WriteFormatted("table", obj, environmentFormat())
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("Successfully updated environment %q.", r.EnvName)
+	r.Output.LogInfo("Applications.Core/environments/%s updated", r.EnvName)
 
 	return nil
 }

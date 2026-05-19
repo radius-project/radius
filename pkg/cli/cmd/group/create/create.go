@@ -119,8 +119,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
-
 	err = client.CreateOrUpdateResourceGroup(ctx, "local", r.UCPResourceGroupName, &v20231001preview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
@@ -128,7 +126,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("resource group %q created", r.UCPResourceGroupName)
+	r.Output.LogInfo("System.Resources/resourceGroups/%s created", r.UCPResourceGroupName)
 	return nil
 
 }

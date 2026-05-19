@@ -215,6 +215,87 @@ types:
 		require.NotNil(t, obj)
 	})
 
+	t.Run("errors on duplicate type across manifest files", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+
+		// Two manifest files with the same namespace and same type name.
+		manifest1 := `
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		manifest2 := `
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "a-containers.yaml"), []byte(manifest1), 0600)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "b-containers.yaml"), []byte(manifest2), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		err = svc.Run(context.Background())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "duplicate resource type Radius.Compute/containers")
+	})
+
+	t.Run("merges types from multiple files sharing a namespace", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+
+		manifest1 := `
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		manifest2 := `
+namespace: Radius.Compute
+types:
+  routes:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "containers.yaml"), []byte(manifest1), 0600)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "routes.yaml"), []byte(manifest2), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify both types are registered under the same namespace.
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/containers")
+		require.NoError(t, err)
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/routes")
+		require.NoError(t, err)
+
+		// Verify the location contains both types.
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/locations/global")
+		require.NoError(t, err)
+		location := &datamodel.Location{}
+		require.NoError(t, obj.As(location))
+		assert.Contains(t, location.Properties.ResourceTypes, "containers")
+		assert.Contains(t, location.Properties.ResourceTypes, "routes")
+	})
+
 	t.Run("hydrates Radius.Core schemas from embedded OpenAPI", func(t *testing.T) {
 		t.Parallel()
 
