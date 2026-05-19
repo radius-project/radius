@@ -75,21 +75,54 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to read manifest directory: %w", err)
 	}
 
+	// Read and validate all manifest files, then merge by namespace so that
+	// multiple per-type files sharing a namespace (e.g., containers.yaml and
+	// persistentVolumes.yaml both under Radius.Compute) are registered as a
+	// single resource provider with all types. This makes the on-disk manifest
+	// directory the source of truth for the database.
+	merged := map[string]*manifest.ResourceProvider{}
 	for _, fileInfo := range files {
 		if fileInfo.IsDir() {
 			continue
 		}
 
 		filePath := filepath.Join(manifestDir, fileInfo.Name())
-		logger.Info("Registering manifest", "file", filePath)
+		logger.Info("Loading manifest", "file", filePath)
 
-		resourceProvider, err := manifest.ValidateManifest(ctx, filePath)
+		rp, err := manifest.ValidateManifest(ctx, filePath)
 		if err != nil {
 			return fmt.Errorf("failed to validate manifest %s: %w", filePath, err)
 		}
 
-		if err := registerResourceProviderDirect(ctx, dbClient, "local", *resourceProvider); err != nil {
-			return fmt.Errorf("failed to register manifest %s: %w", filePath, err)
+		existing, ok := merged[rp.Namespace]
+		if !ok {
+			merged[rp.Namespace] = rp
+			continue
+		}
+
+		// Merge types from this file into the existing provider for this
+		// namespace. Error if a type appears in multiple files.
+		for typeName := range rp.Types {
+			if _, exists := existing.Types[typeName]; exists {
+				return fmt.Errorf("duplicate resource type %s/%s found in multiple manifest files", rp.Namespace, typeName)
+			}
+		}
+		for typeName, resourceType := range rp.Types {
+			existing.Types[typeName] = resourceType
+		}
+
+		// Preserve location from whichever file specifies one. If multiple
+		// files set a location, the later file wins.
+		if len(rp.Location) > 0 {
+			existing.Location = rp.Location
+		}
+	}
+
+	// Register each merged provider.
+	for _, rp := range merged {
+		logger.Info("Registering manifest", "namespace", rp.Namespace, "types", len(rp.Types))
+		if err := registerResourceProviderDirect(ctx, dbClient, "local", *rp); err != nil {
+			return fmt.Errorf("failed to register manifest for namespace %s: %w", rp.Namespace, err)
 		}
 	}
 

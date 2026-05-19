@@ -150,8 +150,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run creates an environment in the specified resource group using the provided environment name and namespace, and
 // returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Creating Environment...")
-
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -170,7 +168,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.ResourceGroupName)
+	r.Output.LogInfo("Applications.Core/environments/%s created", r.EnvironmentName)
 
 	return nil
 }
