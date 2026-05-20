@@ -59,7 +59,6 @@ spec:
       containers:
       - name: controller
         image: "{{ include "radius.image" (dict "image" .Values.controller.image "tag" (.Values.controller.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
-        imagePullPolicy: 'Always'
         args: 
         - '--config-file'
         - '/etc/config/controller-config.yaml'
