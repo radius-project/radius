@@ -33,6 +33,40 @@ TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
+
+# Auto-detect the local debug OCI registry started by `make debug-publish-recipes`.
+# When it is running and the user has not explicitly set BICEP_RECIPE_REGISTRY,
+# point the functional tests at it so the locally-published test recipes are used
+# instead of the (private) ghcr.io fallback.
+ifeq ($(origin BICEP_RECIPE_REGISTRY), undefined)
+ifneq ($(shell docker ps --format '{{.Names}}' 2>/dev/null | grep -x radius-debug-registry),)
+export BICEP_RECIPE_REGISTRY := localhost:5000
+export BICEP_RECIPE_TAG_VERSION ?= latest
+$(info Using local debug recipe registry: BICEP_RECIPE_REGISTRY=$(BICEP_RECIPE_REGISTRY) BICEP_RECIPE_TAG_VERSION=$(BICEP_RECIPE_TAG_VERSION))
+# When the debug-built rad CLI is available, point the functional tests at it
+# (via RAD_PATH, honored by test/radcli/cli.go) so they exercise the HEAD CLI
+# matching the locally-running control plane, not any system-installed rad.
+ifneq ($(wildcard $(CURDIR)/debug_files/bin/rad),)
+export RAD_PATH := $(CURDIR)/debug_files/bin
+$(info Using debug-built rad CLI: RAD_PATH=$(RAD_PATH))
+endif
+endif
+endif
+
+# Auto-detect the in-cluster Git HTTP backend started by `make debug-install-git-http-backend`.
+# When its port-forward PID file exists and the process is alive, export the
+# GIT_HTTP_* variables that the kubernetes-noncloud Flux tests expect.
+ifeq ($(origin GIT_HTTP_SERVER_URL), undefined)
+ifneq ($(wildcard $(CURDIR)/debug_files/logs/git-http-port-forward.pid),)
+ifneq ($(shell pid=$$(cat $(CURDIR)/debug_files/logs/git-http-port-forward.pid 2>/dev/null); kill -0 $$pid 2>/dev/null && echo up),)
+export GIT_HTTP_SERVER_URL := http://localhost:30080
+export GIT_HTTP_USERNAME ?= testuser
+export GIT_HTTP_PASSWORD ?= not-a-secret-password
+export GIT_HTTP_EMAIL ?= testuser@radapp.io
+$(info Using local git-http-backend: GIT_HTTP_SERVER_URL=$(GIT_HTTP_SERVER_URL))
+endif
+endif
+endif
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.30.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
@@ -50,8 +84,13 @@ GOTEST_TOOL ?= go test
 else
 # Use these options by default but allow an override via env-var
 GOTEST_OPTS ?=
-# We need the double dash here to separate the 'gotestsum' options from the 'go test' options
-GOTEST_TOOL ?= gotestsum $(GOTESTSUM_OPTS) --
+# When set, a per-target JSON timing file is emitted as $(GOTESTSUM_JSONFILE_DIR)/<target>.jsonl.
+# This avoids the file being overwritten by each sub-target in test-functional-all-*.
+# Example: GOTESTSUM_JSONFILE_DIR=/tmp/timings make test-functional-all-noncloud
+GOTESTSUM_JSONFILE_DIR ?=
+# Recursive '=' so $@ resolves in each recipe's context.
+# We need the double dash here to separate the 'gotestsum' options from the 'go test' options.
+GOTEST_TOOL = gotestsum $(GOTESTSUM_OPTS)$(if $(GOTESTSUM_JSONFILE_DIR), --jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 endif
 
 .PHONY: test

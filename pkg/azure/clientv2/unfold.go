@@ -17,6 +17,7 @@ limitations under the License.
 package clientv2
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -201,12 +202,17 @@ func readResponseBody(resp *http.Response) ([]byte, error) {
 	if resp.Body == nil {
 		return []byte{}, nil
 	}
-	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
+	// Always close the original body; if we successfully read it, replace it
+	// with an in-memory reader so subsequent reads return the same bytes
+	// (otherwise unfolding the same *azcore.ResponseError twice would yield
+	// an empty body and a nil ErrorDetails).
+	_ = resp.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
+	resp.Body = io.NopCloser(bytes.NewReader(data))
 
 	return data, nil
 }

@@ -25,6 +25,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test"
@@ -100,11 +101,30 @@ func (ucptest UCPTest) Test(t *testing.T) {
 		}
 	})
 
-	config, err := kubernetes.NewCLIClientConfig("")
-	require.NoError(t, err, "failed to read kubeconfig")
-
-	connection, err := sdk.NewKubernetesConnectionFromConfig(config)
-	require.NoError(t, err, "failed to create kubernetes connection")
+	// Prefer the active rad workspace's connection so the tests honor the
+	// workspace's UCP override (e.g. http://localhost:9000 when Radius runs
+	// as host OS processes via `make debug-start`). When no override is
+	// configured (the CI default) `Workspace.Connect()` falls through to
+	// the standard kubernetes APIService aggregation path and behaves
+	// identically to `sdk.NewKubernetesConnectionFromConfig`.
+	var (
+		connection sdk.Connection
+		err        error
+	)
+	if config, cfgErr := cli.LoadConfig(""); cfgErr == nil {
+		if workspace, wsErr := cli.GetWorkspace(config, ""); wsErr == nil && workspace != nil {
+			t.Logf("Loaded workspace: %s (%s)", workspace.Name, workspace.FmtConnection())
+			connection, err = workspace.Connect(ctx)
+		}
+	}
+	if connection == nil {
+		// Fall back to the legacy direct-from-kubeconfig path when no rad
+		// workspace is available.
+		var kcfg, cerr = kubernetes.NewCLIClientConfig("")
+		require.NoError(t, cerr, "failed to read kubeconfig")
+		connection, err = sdk.NewKubernetesConnectionFromConfig(kcfg)
+	}
+	require.NoError(t, err, "failed to create UCP connection")
 
 	// Transport will be nil for some default cases as http.Client does not require it to be set.
 	// Since the tests call the transport directly then just pass in the default.
