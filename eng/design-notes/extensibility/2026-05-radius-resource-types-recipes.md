@@ -8,16 +8,16 @@ As part of GitHub-Radius integration, AI agents need to understand application s
 
 Radius maintains the resource type schemas and recipes in the `resource-types-contrib` repository. We need about 30 application oriented resource types covering the basics: databases, caches, messaging, storage, and so on. These are what AI agents use to generate `app.bicep`, so the schemas need to be well-defined.
 
-Recipes reference community modules directly rather than custom IaC code. The `resource-types-contrib` repository contains type definitions and tested module references. For Azure, recipes point at Azure Verified Modules. For AWS, the Terraform Registry. For Kubernetes, Helm charts. Radius resolves inputs and outputs automatically, with the mapping configuration maintained in Recipe packs.
+Recipes reference community modules directly rather than custom IaC code. The `resource-types-contrib` repository contains type definitions and tested module references in Recipe packs. For Azure, Recipes point at Azure Verified Modules. For AWS, the Terraform Registry. and for Kubernetes in the future points to Helm charts. Radius resolves inputs and outputs automatically, with the mapping configuration maintained in Recipe packs.
 
-In most cases, there is no IaC code to maintain — just a module reference and mapping configuration. In rare cases where no suitable community module exists or where Radius-specific orchestration is needed (e.g., the container recipe that manages Kubernetes deployments directly), a custom recipe module is still required. This document lays out the strategy to build and maintain the types and recipes for the GitHub-Radius integration to be successful.
+In most cases, there is no IaC code to maintain in the `resource-types-contrib` repository where only IaC module references are maintained in the Recipe packs for the individual types. In rare cases where no verified community module exists or where Radius-specific orchestration is needed (e.g., the container recipe), a manually written Recipe is still required. This document lays out the strategy to build and maintain the Resource types and Recipes for the GitHub-Radius integration to be successful.
 
 ## Goals
 
-1. Build a resource type catalog broad enough for AI agents to generate accurate `app.bicep` for real-world applications.
-2. Minimize recipe authoring by pointing directly at community modules where possible. Custom recipe code is only needed when no suitable upstream module exists or Radius-specific orchestration is required.
+1. Build the Radius Resource Type catalog broad enough for AI agents to generate accurate `app.bicep` for real-world applications.
+2. Minimize Recipe authoring by pointing directly at community modules(Azure Verified Modules for Azure, Terraform modules for AWS) where possible. Custom recipe code is only needed when no suitable upstream module exists or Radius-specific orchestration is required.
 3. Establish a contribution model that lets the community add and validate resource types with clear maturity gates from Alpha to Stable.
-4. Extend recipe driver coverage to match where developers deploy: Bicep for Azure (via AVM), Terraform for AWS , Helm for Kubernetes.
+4. Extend Recipe driver coverage to match where developers deploy: Bicep/Terraform for Azure (via AVM), Terraform for AWS, Helm for Kubernetes.
 
 ## 1. Resource Types
 
@@ -33,17 +33,17 @@ The top 27 break into three tiers:
 | **Build Next** | Serverless Functions, Message Queue (SQS/Azure Queue/Service Bus Queues), MQTT, pgvector, NATS, Oracle, Neo4j, Vault, Cassandra, InfluxDB | Strong adoption but higher abstraction complexity or narrower use cases |
 | **Build Later** | Ollama, Pub/Sub, ClickHouse, Keycloak, Spark, MLflow, Memcached | Emerging, niche, or platform-specific — build as demand materializes |
 
-Notable inclusions: OpenAI-compatible API reflects AI becoming a first-class application dependency (81.4% of surveyed developers use OpenAI GPT models). The resource type represents the chat/completions API contract implemented by OpenAI, Azure OpenAI, Anthropic, and compatible providers (Ollama, vLLM). pgvector (#14) is the recommended vector-database entry point with the same PostgreSQL connection contract and 3/3 cloud availability. Vault (#18) is included because applications directly establish runtime connections to secrets providers, unlike org-level identity or observability platforms.
+Notable inclusions: OpenAI-compatible API reflects AI becoming a first-class application dependency (81.4% of surveyed developers use OpenAI GPT models). The resource type represents the chat/completions API contract implemented by OpenAI, Azure OpenAI, Anthropic, and compatible providers (Ollama, vLLM). pgvector is the recommended vector-database entry point with the same PostgreSQL connection contract and 3/3 cloud availability. Vault is included because applications directly establish runtime connections to secrets providers, unlike org-level identity or observability platforms.
 
-Shared infrastructure services (identity/auth, observability, logging, email, feature flags) are provisioned at the platform level, but applications still connect to them at runtime. For these, the environment provides connection metadata (endpoint, credentials) without a recipe — no infrastructure is provisioned per-application.
+Shared infrastructure services (identity/auth, observability, logging, email, feature flags) are provisioned at the platform level, but applications still connect to them at runtime. For these, the environment provides connection metadata (endpoint, credentials) without a recipe no infrastructure is provisioned per-application. We maintain a sub catalog of these shared resource types in the `resource-types-contrib` with their connection contracts, and the environment provisioning process ensures the metadata is injected for agents to use when generating `app.bicep`.
 
 ## 2. Recipes
 
-Recipes are how Radius deploys infrastructure behind resource types. Though it is a concept of Radius, the implementation uses existing IaC languages, Bicep and Terraform. Instead of us writing the IaC code, we leverage well established community modules directly. This approach helps Radius to not maintain recipe code reducing the supply chain surface. There is no wrapper code to audit, patch, or keep in sync with upstream module changes.
+Recipes are how Radius deploys infrastructure behind resource types. Though it is concept of Radius, the implementation uses existing IaC languages — Bicep and Terraform. The proposal here is to leverage reference well-established community maintained modules directly wherever available rather than maintaining custom recipe code. This section covers two things: (1) which module ecosystems we leverage per cloud platform, and (2) Direct Recipe Module Support, the feature that makes referencing these modules easier without wrapper Recipe code.
 
 ### Community Module Ecosystems
 
-Each cloud platform has a dominant IaC tool with an established library of reusable modules. These libraries are what Radius recipes reference:
+Radius supports Bicep and Terraform recipe drivers today. Each cloud platform has a dominant IaC tool with an established library of reusable modules that Radius recipes reference directly:
 
 | Cloud / Platform | IaC Tool | Module Library | Registry |
 |------------------|----------|----------------|----------|
@@ -51,13 +51,17 @@ Each cloud platform has a dominant IaC tool with an established library of reusa
 | AWS | Terraform | [terraform-aws-modules](https://registry.terraform.io/namespaces/terraform-aws-modules) | `registry.terraform.io/terraform-aws-modules/` |
 | Kubernetes | Helm | [Bitnami Charts](https://github.com/bitnami/charts) | `oci://registry-1.docker.io/bitnamicharts/` |
 
-> **Why not CloudFormation for AWS?** Based on my analysis across module sources, Terraform is preferred by Multi-cloud companies and [Terraform's registry](https://registry.terraform.io/namespaces/terraform-aws-modules) had wide usage with million weekly downloads across multiple modules. AWS CDK is preferred by AWS native teams, and internally it uses CloudFormation but no clear authentic source of CloudFormation usage exists today to bet on the CloudFormation for AWS.
+Bicep is the Azure-native path through AVM. Terraform provides the broadest AWS and multi-cloud coverage — Stack Overflow 2025 places it at 17.8% adoption across all respondents, well ahead of other infrastructure tools like Ansible (11.7%). CNCF Annual Survey 2025 confirms Helm at 81-87% adoption among Kubernetes organizations, making it the highest-leverage next driver for Radius — it maps directly to how the K8s ecosystem packages and distributes software.
 
-### Direct Module Support
+> **Why not CloudFormation for AWS?** Terraform is preferred by multi-cloud companies and [terraform-aws-modules](https://registry.terraform.io/namespaces/terraform-aws-modules) has millions of weekly downloads across 80+ modules. The CloudFormation registry exists but does not contain an authoritative library of reusable infrastructure modules. Modules must be activated per-account/per-region before use, unlike Terraform where a registry URL is referenced directly.
 
-Today, using a community module as a Radius recipe requires a wrapper that adds a `context` input and a structured `result` output conforming to Radius conventions. This wrapper adds friction, creates maintenance burden to republish to another IaC source and needs constant updates to stay in sync with upstream changes.
+All the module ecosystems use semantic versioning, which means Radius can pin recipe references to exact versions (e.g., `mcr.microsoft.com/bicep/avm/res/db-for-postgre-sql/flexible-server:0.15.3`)and rely on versioning from the module ecosystems.
 
-Direct Module Support eliminates the Recipe wrapper for community modules. Platform engineers point `location` at any standard Bicep or Terraform module. Radius handles input resolution (injecting context like resource name and other resource properties into the module's native parameters via `{{context.*}}` expressions) and output resolution (mapping the module's native outputs to resource properties), all externally.
+### Direct Recipe Module Support
+
+Today, using a community module as a Radius Recipe requires a wrapper file that adds a `context` input and a structured `result` output conforming to Radius conventions. This wrapper adds friction, creates maintenance burden to republish to another IaC source and needs constant updates to stay in sync with upstream changes.
+
+Direct Recipe Module Support eliminates the Recipe wrapper for community modules. Platform engineers point `location` at any standard Bicep or Terraform module. Radius handles input resolution (injecting context like resource name and other resource properties like `size` into the module's native parameters via `{{context.*}}` expressions) and output resolution (mapping the module's native outputs to resource properties), all externally.
 
 The Recipe Pack bundles recipe definitions for multiple resource types. It maps each type to a module location, handles parameter injection via `{{context.*}}` expressions, and maps module outputs back to resource properties.
 
@@ -103,20 +107,18 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
 
 For the full technical specification, see [Direct Recipe Modules](https://github.com/radius-project/radius/pull/11876).
 
-### Recipe Drivers Coverage
+This feature is critical to scaling the Recipe catalog for the ~27 resource types. It enables us to leverage the rich ecosystem of community modules eliminating the need for maintaining custom wrapper code in the `resource-types-contrib` repository. We maintain the Radius resource type definitions and the mapping configuration in the Recipe Packs in the `resource-types-contrib` repository, making it seamless not only for Application modeling skill but also for Platform engineers who want to use community modules out of the box in the Radius environments.
 
-Radius supports Bicep and Terraform drivers today. Bicep is the Azure-native path through AVM, while Terraform provides the broadest AWS and multi-cloud coverage.
+## Contribution Model and Ownership
 
-Stack Overflow 2025 places Terraform at 17.8% adoption across all respondents, behind Docker (71.1%) and Kubernetes (28.5%) but well ahead of other infrastructure tools like Ansible (11.7%). The survey no longer breaks out Bicep, CloudFormation, or Pulumi individually, having merged IaC into a broader "Cloud development" category.
-
-CNCF 2025 confirms Kubernetes at 82% production adoption among container users, with Helm at 81-87% adoption among Kubernetes organizations. That Helm number is what makes it the highest-leverage next driver for Radius: it maps directly to how the Kubernetes ecosystem already packages and distributes software, and unlocks existing charts instead of requiring custom Bicep modules per backing service.
+The `resource-types-contrib` repository accepts contributions to resource type schemas, module references tested and added to the Recipe Packs. Types graduate through maturity stages **Alpha**, **Beta**, **Stable** with each of them having their own criteria for promotion. Radius Maintainers are responsible to provide clear contribution guidelines, testing workflows to review contributions for quality and consistency, and manage the overall health of the catalog. The contribution process is designed to be inclusive and encourage participation from the community while ensuring that all additions meet the standards required for production use.
 
 ## Risks and Dependencies
 
 - **Upstream module quality**: We reference community modules we don't own. If AVM or a Terraform module ships a bad release or drops an output, our recipes break. We pin versions and run weekly CI to catch this early.
 - **Helm driver**: Kubernetes recipes are stuck on custom Bicep until we build the Helm driver. That's a bottleneck for K8s coverage.
 - **AVM gaps**: Some Tier 1 types don't have AVM modules yet. For those, we fall back to Terraform or custom Bicep on Azure.
-- **Schema stability**: Agents depend on resource type schemas. If we break a schema after agents are already using it, generated `app.bicep` files will be wrong. We enforce backward compatibility from Beta onward. 
+- **Schema stability**: Agents depend on resource type schemas. If we break a schema after agents are already using it, generated `app.bicep` files will be wrong. We enforce backward compatibility and have maturity gates to minimize this risk.
 
 ## Action Plan
 
@@ -140,7 +142,7 @@ The primary measure is whether the resource type catalog is broad enough for AI 
 
 ### Resource type and Recipe correctness
 
-- **Dependency resolution rate**: 80%+ of detected app dependencies should map to a defined resource type, measured across common application patterns (web apps, microservices, data pipelines).  
+- **Benchmark coverage**: We need to benchmark against a representative sample of real-world applications (e.g., top GitHub repos, popular Docker images) to ensure the resource types and recipes cover the dependencies they use. Success means 80%+ of app dependencies map to a defined resource type with a working recipe.
 - **Schema accuracy**: Generated `app.bicep` files should require zero manual edits for connection properties (host, port, credentials) when deploying against any supported platform.
 - **Deployment success rate**: 100% success rate across all module references, measured by weekly automated test runs against pinned module versions on all three platforms (Azure, AWS, Kubernetes).
 - **Breakage detection**: Upstream module changes that break a recipe should be caught with CI runs before they impact deployments.
@@ -157,59 +159,5 @@ The contribution model covers types only, no recipe code. Success means external
 
 1. [Stack Overflow Developer Survey 2025](https://survey.stackoverflow.co/2025/)
 2. [CNCF Annual Cloud Native Survey 2025](https://www.cncf.io/wp-content/uploads/2026/01/CNCF_Annual_Survey_Report_final.pdf)
-
----
-
-## Appendix: Testing, Validation, and Contribution Model
-
-This will be covered in another doc with the technical details of the testing framework and contribution process, but here are the high-level principles.
-
-### Testing and Validation
-
-**Schema Validation** ensures the resource type contract remains stable over time:
-
-- Required property and type checks
-- Output contract validation
-- Backward compatibility checks across schema versions
-
-**Recipe Validation** catches upstream module breakage before it impacts deployments:
-
-- Weekly CI runs that deploy each referenced module and verify outputs map correctly
-- Version-pinned references with automated PRs when new module versions are available
-- Cross-platform validation (Azure, AWS, Kubernetes)
-
-### Contributions, Ownership and Lifecycle
-
-The `resource-types-contrib` repository contains resource type definitions and tested recipe module references. Contributions include:
-
-1. Resource Type schema
-2. Documentation and module references (which AVM/TF/Helm modules to use)
-3. Tests that validate the type deploys correctly with those modules
-
-### Maturity Stages
-
-Contributions enter at Alpha or Beta and graduate towards Stable. Stable resource-types are what is added to Radius install.
-
-> **Note:** Resource types that exist in Radius today (e.g., Applications.Core/*, Applications.Data/*) are automatically promoted to Stable once Radius maintainers validate their extensibility equivalents.
-
-**Alpha**
-
-- Schema passes validation (required properties, type checks, output contract)
-- At least one working recipe module reference on any single platform
-- README with usage examples
-- Manual testing evidence submitted with the PR
-
-**Beta**
-
-- Recipe module references for all three platforms (AWS, Azure, Kubernetes)
-- README with usage examples across all platforms
-- Recipe packs tested across all supported platforms
-- Backward-compatible schema changes only
-
-**Stable**
-
-- 100% functional test coverage across all supported modules
-- Full CI/CD integration with release pipeline
-- Proven documentation validated by external community members
-
-**Radius maintainers** are responsible for schema evolution, versioning, compatibility guarantees, deprecation, and promotion through maturity stages.
+3. [Azure Verified Modules](https://aka.ms/avm)
+4. [Terraform AWS Modules](https://registry.terraform.io/namespaces/terraform-aws-modules)
