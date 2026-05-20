@@ -152,14 +152,12 @@ func validateDeploymentStatus(status *deploymentStatus) error {
 	}
 
 	// The reconciler state machine may persist status.scope (and an in-progress operation) before
-	// status.container is known, so scope-only status is valid. However, if status.container is set
-	// then status.scope must also be set, the container type must be Applications.Core/containers,
-	// and the container's root scope must match status.scope.
-	var parsedScope resources.ID
+	// status.container is known, so scope-only status is valid. When the environment or application
+	// changes, status.scope is updated to the new scope while status.container still references the
+	// previous container (which the reconciler then deletes), so we do not require status.scope to
+	// match the container's root scope.
 	if status.Scope != "" {
-		var err error
-		parsedScope, err = resources.ParseScope(status.Scope)
-		if err != nil {
+		if _, err := resources.ParseScope(status.Scope); err != nil {
 			return fmt.Errorf("invalid status.scope: %w", err)
 		}
 	}
@@ -178,10 +176,6 @@ func validateDeploymentStatus(status *deploymentStatus) error {
 	}
 	if !strings.EqualFold(parsedContainer.Type(), applicationsCoreContainersResourceType) {
 		return fmt.Errorf("status.container type %q is not %q", parsedContainer.Type(), applicationsCoreContainersResourceType)
-	}
-
-	if !strings.EqualFold(parsedScope.String(), parsedContainer.RootScope()) {
-		return fmt.Errorf("status.scope %q does not match status.container root scope %q", parsedScope.String(), parsedContainer.RootScope())
 	}
 
 	return nil

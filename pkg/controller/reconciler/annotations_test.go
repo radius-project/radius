@@ -173,7 +173,7 @@ func Test_readAnnotations(t *testing.T) {
 			err:         fmt.Errorf("invalid status annotation: invalid status.container: %w", invalidContainerIDErr),
 		},
 		{
-			name: "status-scope-container-mismatch",
+			name: "status-scope-container-mismatch-allowed",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -181,8 +181,17 @@ func Test_readAnnotations(t *testing.T) {
 					},
 				},
 			},
-			annotations: deploymentAnnotations{ConfigurationHash: ""},
-			err:         fmt.Errorf("invalid status annotation: status.scope %q does not match status.container root scope %q", "/planes/radius/local/resourceGroups/controller-test", "/planes/radius/local/resourceGroups/other"),
+			// The reconciler intentionally produces this transitional state when the environment or
+			// application changes: status.scope advances to the new scope while status.container still
+			// references the previous container until it is deleted.
+			annotations: deploymentAnnotations{
+				ConfigurationHash: "",
+				Status: &deploymentStatus{
+					Scope:     "/planes/radius/local/resourceGroups/controller-test",
+					Container: "/planes/radius/local/resourceGroups/other/providers/Applications.Core/containers/test-container",
+				},
+			},
+			err: nil,
 		},
 		{
 			name: "status-container-wrong-resource-type",
