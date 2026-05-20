@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -58,8 +59,8 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
 		result = metrics.FailedOperationState
-		if recipes.GetErrorDetails(err) != nil {
-			result = recipes.GetErrorDetails(err).Code
+		if details := recipes.GetErrorDetails(err); details != nil {
+			result = details.Code
 		}
 	}
 
@@ -120,8 +121,8 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources)
 	if err != nil {
 		result = metrics.FailedOperationState
-		if recipes.GetErrorDetails(err) != nil {
-			result = recipes.GetErrorDetails(err).Code
+		if details := recipes.GetErrorDetails(err); details != nil {
+			result = details.Code
 		}
 	}
 
@@ -138,6 +139,14 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 	logger := ucplog.FromContextOrDiscard(ctx)
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
+		// If the environment has already been deleted (e.g. test cleanup deleted
+		// it before the child resource's async delete drained), there is nothing
+		// left to clean up via a recipe. Treat as a successful no-op so the
+		// resource deletion can proceed.
+		if clientv2.Is404Error(err) {
+			logger.Info("environment not found while loading recipe configuration for delete; treating as no-op")
+			return nil, nil
+		}
 		return nil, err
 	}
 

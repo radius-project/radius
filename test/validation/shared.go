@@ -18,7 +18,6 @@ package validation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -130,33 +129,15 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
-			envs, err := client.ListEnvironments(ctx)
-			require.NoError(t, err)
-			require.NotEmpty(t, envs)
-
-			found := false
-			for _, env := range envs {
-				if *env.Name == expectedResource.Name {
-					found = true
-					break
-				}
-			}
-
-			require.True(t, found, fmt.Sprintf("environment %s was not found", expectedResource.Name))
+			// Use GetEnvironment instead of ListEnvironments to avoid a read-after-write
+			// race where the resource exists but is not yet visible via the paginated list.
+			_, err := client.GetEnvironment(ctx, expectedResource.Name)
+			require.NoErrorf(t, err, "environment %s was not found", expectedResource.Name)
 		} else if expectedResource.Type == ApplicationsResource {
-			apps, err := client.ListApplications(ctx)
-			require.NoError(t, err)
-			require.NotEmpty(t, apps)
-
-			found := false
-			for _, app := range apps {
-				if *app.Name == expectedResource.Name {
-					found = true
-					break
-				}
-			}
-
-			require.True(t, found, fmt.Sprintf("application %s was not found", expectedResource.Name))
+			// Use GetApplication instead of ListApplications to avoid a read-after-write
+			// race where the resource exists but is not yet visible via the paginated list.
+			_, err := client.GetApplication(ctx, expectedResource.Name)
+			require.NoErrorf(t, err, "application %s was not found", expectedResource.Name)
 		} else {
 			res, err := client.GetResource(ctx, expectedResource.Type, expectedResource.Name)
 			require.NoError(t, err)

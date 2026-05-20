@@ -9,14 +9,18 @@ param port int = 3000
 @description('Specifies the image for the container resource.')
 param magpieimage string
 
+// NOTE: do NOT name this 'default'. Tests must never mutate the shared `default`
+// environment because other tests deploy applications into it; the joined
+// `<envNamespace>-<appName>` would exceed k8s' 63-char namespace limit and
+// break unrelated tests (e.g. mechanics/communication-cycle).
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'default'
+  name: 'corerp-simulatedenv'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-simulatedenv-env'
+      namespace: 'corerp-simulatedenv'
     }
     simulated: true
   }
