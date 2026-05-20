@@ -45,6 +45,7 @@ func Test_readAnnotations(t *testing.T) {
 	invalidDeploymentStatus := []byte(`{"invalid": "json"`)
 
 	_, invalidContainerIDErr := resources.ParseResource("not-a-resource-id")
+	_, invalidScopeIDErr := resources.ParseScope("not-a-scope")
 
 	tests := []struct {
 		name        string
@@ -204,8 +205,37 @@ func Test_readAnnotations(t *testing.T) {
 					},
 				},
 			},
+			annotations: deploymentAnnotations{
+				ConfigurationHash: "",
+				Status: &deploymentStatus{
+					Scope: "/planes/radius/local/resourceGroups/controller-test",
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "status-only-container-set",
+			deployment: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationRadiusStatus: `{"container":"/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/containers/test-container"}`,
+					},
+				},
+			},
 			annotations: deploymentAnnotations{ConfigurationHash: ""},
-			err:         fmt.Errorf("invalid status annotation: status.scope and status.container must either both be set or both be empty"),
+			err:         fmt.Errorf("invalid status annotation: status.scope must be set when status.container is set"),
+		},
+		{
+			name: "status-invalid-scope-only",
+			deployment: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						AnnotationRadiusStatus: `{"scope":"not-a-scope"}`,
+					},
+				},
+			},
+			annotations: deploymentAnnotations{ConfigurationHash: ""},
+			err:         fmt.Errorf("invalid status annotation: invalid status.scope: %w", invalidScopeIDErr),
 		},
 	}
 	for _, tt := range tests {

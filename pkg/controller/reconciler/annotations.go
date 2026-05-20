@@ -151,19 +151,25 @@ func validateDeploymentStatus(status *deploymentStatus) error {
 		return nil
 	}
 
-	hasScope := status.Scope != ""
-	hasContainer := status.Container != ""
-	if hasScope != hasContainer {
-		return fmt.Errorf("status.scope and status.container must either both be set or both be empty")
+	// The reconciler state machine may persist status.scope (and an in-progress operation) before
+	// status.container is known, so scope-only status is valid. However, if status.container is set
+	// then status.scope must also be set, the container type must be Applications.Core/containers,
+	// and the container's root scope must match status.scope.
+	var parsedScope resources.ID
+	if status.Scope != "" {
+		var err error
+		parsedScope, err = resources.ParseScope(status.Scope)
+		if err != nil {
+			return fmt.Errorf("invalid status.scope: %w", err)
+		}
 	}
 
-	if !hasScope {
+	if status.Container == "" {
 		return nil
 	}
 
-	parsedScope, err := resources.ParseScope(status.Scope)
-	if err != nil {
-		return fmt.Errorf("invalid status.scope: %w", err)
+	if status.Scope == "" {
+		return fmt.Errorf("status.scope must be set when status.container is set")
 	}
 
 	parsedContainer, err := resources.ParseResource(status.Container)
