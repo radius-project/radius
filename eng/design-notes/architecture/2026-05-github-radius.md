@@ -1,4 +1,4 @@
-# GitHub Radius: Application Graph Challenges
+# GitHub Radius: Application Graph Proposal
 
 **Author**: Zach Casper (@zachcasper)
 
