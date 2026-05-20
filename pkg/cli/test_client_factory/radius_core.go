@@ -30,7 +30,8 @@ import (
 )
 
 // NewRadiusCoreTestClientFactory creates a new client factory for testing purposes.
-func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfake.EnvironmentsServer, recipepackServer func() corerpfake.RecipePacksServer) (*v20250801preview.ClientFactory, error) {
+// applicationsServer is variadic for backwards compatibility; only the first value (if any) is used.
+func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfake.EnvironmentsServer, recipepackServer func() corerpfake.RecipePacksServer, applicationsServer ...func() corerpfake.ApplicationsServer) (*v20250801preview.ClientFactory, error) {
 	serverFactory := corerpfake.ServerFactory{}
 	if envServer != nil {
 		serverFactory.EnvironmentsServer = envServer()
@@ -42,6 +43,12 @@ func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfak
 		serverFactory.RecipePacksServer = recipepackServer()
 	} else {
 		serverFactory.RecipePacksServer = WithRecipePackServerNoError()
+	}
+
+	if len(applicationsServer) > 0 && applicationsServer[0] != nil {
+		serverFactory.ApplicationsServer = applicationsServer[0]()
+	} else {
+		serverFactory.ApplicationsServer = WithApplicationsServerNoError()
 	}
 
 	serverFactoryTransport := corerpfake.NewServerFactoryTransport(&serverFactory)
@@ -166,6 +173,51 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 			options *v20250801preview.EnvironmentsClientDeleteOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientDeleteResponse], errResp azfake.ErrorResponder) {
 			resp.SetResponse(http.StatusNoContent, v20250801preview.EnvironmentsClientDeleteResponse{}, nil)
+			return
+		},
+	}
+}
+
+func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
+	return corerpfake.ApplicationsServer{
+		Get: func(
+			ctx context.Context,
+			applicationName string,
+			options *v20250801preview.ApplicationsClientGetOptions,
+		) (resp azfake.Responder[v20250801preview.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.ApplicationsClientGetResponse{
+				ApplicationResource: v20250801preview.ApplicationResource{
+					Name: new(applicationName),
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
+		Delete: func(
+			ctx context.Context,
+			applicationName string,
+			options *v20250801preview.ApplicationsClientDeleteOptions,
+		) (resp azfake.Responder[v20250801preview.ApplicationsClientDeleteResponse], errResp azfake.ErrorResponder) {
+			resp.SetResponse(http.StatusNoContent, v20250801preview.ApplicationsClientDeleteResponse{}, nil)
+			return
+		},
+		NewListByScopePager: func(options *v20250801preview.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.ApplicationsClientListByScopeResponse]) {
+			resp.AddPage(
+				http.StatusOK,
+				v20250801preview.ApplicationsClientListByScopeResponse{
+					ApplicationResourceListResult: v20250801preview.ApplicationResourceListResult{
+						Value: []*v20250801preview.ApplicationResource{
+							{
+								Name: new("test-app-1"),
+							},
+							{
+								Name: new("test-app-2"),
+							},
+						},
+					},
+				},
+				nil,
+			)
 			return
 		},
 	}
