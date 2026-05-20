@@ -163,6 +163,7 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, obj)
 	})
+
 }
 
 func Test_Run(t *testing.T) {
@@ -212,6 +213,240 @@ types:
 		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
 		require.NoError(t, err)
 		require.NotNil(t, obj)
+	})
+
+	t.Run("errors on duplicate type across manifest files", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+
+		// Two manifest files with the same namespace and same type name.
+		manifest1 := `
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		manifest2 := `
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "a-containers.yaml"), []byte(manifest1), 0600)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "b-containers.yaml"), []byte(manifest2), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		err = svc.Run(context.Background())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "duplicate resource type Radius.Compute/containers")
+	})
+
+	t.Run("merges types from multiple files sharing a namespace", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+
+		manifest1 := `
+namespace: Radius.Compute
+types:
+  containers:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		manifest2 := `
+namespace: Radius.Compute
+types:
+  routes:
+    apiVersions:
+      "2025-08-01-preview":
+        schema: {}
+`
+		err := os.WriteFile(filepath.Join(tempDir, "containers.yaml"), []byte(manifest1), 0600)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "routes.yaml"), []byte(manifest2), 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		// Verify both types are registered under the same namespace.
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/containers")
+		require.NoError(t, err)
+		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/routes")
+		require.NoError(t, err)
+
+		// Verify the location contains both types.
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/locations/global")
+		require.NoError(t, err)
+		location := &datamodel.Location{}
+		require.NoError(t, obj.As(location))
+		assert.Contains(t, location.Properties.ResourceTypes, "containers")
+		assert.Contains(t, location.Properties.ResourceTypes, "routes")
+	})
+
+	t.Run("hydrates Radius.Core schemas from embedded OpenAPI", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		manifestPath := filepath.Join("..", "..", "..", "deploy", "manifest", "built-in-providers", "dev", "radius_core.yaml")
+		manifestContent, err := os.ReadFile(manifestPath)
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tempDir, "radius_core.yaml"), manifestContent, 0600)
+		require.NoError(t, err)
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		err = svc.Run(context.Background())
+		require.NoError(t, err)
+
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Radius.Core")
+		require.NoError(t, err)
+
+		summaryModel := &datamodel.ResourceProviderSummary{}
+		require.NoError(t, obj.As(summaryModel))
+		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
+
+		expectedDescriptions := map[string]string{
+			"applications":     "Radius Application resource",
+			"bicepConfigs":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
+			"environments":     "The environment resource",
+			"recipePacks":      "The recipe pack resource",
+			"terraformConfigs": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+		}
+		require.Len(t, expectedDescriptions, len(radiusCoreTypeOpenAPIDefinitions))
+		for typeName, expectedDescription := range expectedDescriptions {
+			resourceType := summaryModel.Properties.ResourceTypes[typeName]
+			require.NotNil(t, resourceType, "resource type %q should be registered", typeName)
+			require.NotNil(t, resourceType.Description, "resource type %q should have a description", typeName)
+			assert.Equal(t, expectedDescription, *resourceType.Description)
+
+			apiVersion := resourceType.APIVersions["2025-08-01-preview"]
+			require.NotNil(t, apiVersion, "resource type %q should have API version 2025-08-01-preview", typeName)
+			assert.Equal(t, "object", apiVersion.Schema["type"])
+			requireRenderableResourceTypeSchema(t, apiVersion.Schema)
+		}
+
+		applications := summaryModel.Properties.ResourceTypes["applications"]
+		applicationSchema := applications.APIVersions["2025-08-01-preview"].Schema
+
+		applicationProperties := requireSchemaProperties(t, applicationSchema)
+		environmentProperty := requireSchemaProperty(t, applicationProperties, "environment")
+		assert.Equal(t, "string", environmentProperty["type"])
+
+		statusProperty := requireSchemaProperty(t, applicationProperties, "status")
+		assert.NotContains(t, statusProperty, "$ref")
+		assert.Equal(t, "object", statusProperty["type"])
+
+		environments := summaryModel.Properties.ResourceTypes["environments"]
+		environmentSchema := environments.APIVersions["2025-08-01-preview"].Schema
+		environmentProperties := requireSchemaProperties(t, environmentSchema)
+		providersProperty := requireSchemaProperty(t, environmentProperties, "providers")
+		assert.NotContains(t, providersProperty, "$ref")
+		assert.Equal(t, "object", providersProperty["type"])
+
+		recipePacks := summaryModel.Properties.ResourceTypes["recipePacks"]
+		recipePackSchema := recipePacks.APIVersions["2025-08-01-preview"].Schema
+		recipePackProperties := requireSchemaProperties(t, recipePackSchema)
+		recipesProperty := requireSchemaProperty(t, recipePackProperties, "recipes")
+		additionalProperties, ok := recipesProperty["additionalProperties"].(map[string]any)
+		require.True(t, ok)
+		recipeDefinitionProperties := requireSchemaProperties(t, additionalProperties)
+		recipeKindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "recipeKind")
+		assert.NotContains(t, recipeKindProperty, "$ref")
+		assert.Equal(t, "string", recipeKindProperty["type"])
+
+		terraformConfigs := summaryModel.Properties.ResourceTypes["terraformConfigs"]
+		terraformConfigSchema := terraformConfigs.APIVersions["2025-08-01-preview"].Schema
+		terraformConfigProperties := requireSchemaProperties(t, terraformConfigSchema)
+		terraformrcProperty := requireSchemaProperty(t, terraformConfigProperties, "terraformrc")
+		assert.NotContains(t, terraformrcProperty, "$ref")
+		assert.Equal(t, "object", terraformrcProperty["type"])
+
+		bicepConfigs := summaryModel.Properties.ResourceTypes["bicepConfigs"]
+		bicepConfigSchema := bicepConfigs.APIVersions["2025-08-01-preview"].Schema
+		bicepConfigProperties := requireSchemaProperties(t, bicepConfigSchema)
+		registryAuthenticationsProperty := requireSchemaProperty(t, bicepConfigProperties, "registryAuthentications")
+		assert.NotContains(t, registryAuthenticationsProperty, "$ref")
+		assert.Equal(t, "object", registryAuthenticationsProperty["type"])
+
+		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Core/resourceTypes/applications/apiVersions/2025-08-01-preview")
+		require.NoError(t, err)
+
+		apiVersionModel := &datamodel.APIVersion{}
+		require.NoError(t, obj.As(apiVersionModel))
+		assert.Equal(t, applicationSchema, apiVersionModel.Properties.Schema)
+	})
+}
+
+func Test_hydrateBuiltInResourceProviderMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fails when mapped Radius.Core type is missing expected API version", func(t *testing.T) {
+		t.Parallel()
+
+		rp := &manifest.ResourceProvider{
+			Namespace: "Radius.Core",
+			Types: map[string]*manifest.ResourceType{
+				"applications": {
+					APIVersions: map[string]*manifest.ResourceTypeAPIVersion{
+						"2024-01-01-preview": {Schema: map[string]any{}},
+					},
+				},
+			},
+		}
+
+		err := hydrateBuiltInResourceProviderMetadata(rp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "mapped Radius.Core type applications is missing API version 2025-08-01-preview")
+	})
+
+	t.Run("fails when Radius.Core manifest type has no OpenAPI metadata mapping", func(t *testing.T) {
+		t.Parallel()
+
+		rp := &manifest.ResourceProvider{
+			Namespace: "Radius.Core",
+			Types: map[string]*manifest.ResourceType{
+				"widgets": {
+					APIVersions: map[string]*manifest.ResourceTypeAPIVersion{
+						"2025-08-01-preview": {Schema: map[string]any{}},
+					},
+				},
+			},
+		}
+
+		err := hydrateBuiltInResourceProviderMetadata(rp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Radius.Core type widgets has no OpenAPI metadata mapping")
+	})
+
+	t.Run("ignores non Radius.Core providers", func(t *testing.T) {
+		t.Parallel()
+
+		rp := &manifest.ResourceProvider{
+			Namespace: "MyCompany.Resources",
+			Types: map[string]*manifest.ResourceType{
+				"applications": {
+					APIVersions: map[string]*manifest.ResourceTypeAPIVersion{},
+				},
+			},
+		}
+
+		err := hydrateBuiltInResourceProviderMetadata(rp)
+		require.NoError(t, err)
 	})
 }
 
@@ -291,5 +526,69 @@ func createTestResourceProviderMultiType() manifest.ResourceProvider {
 				},
 			},
 		},
+	}
+}
+
+func requireSchemaProperties(t *testing.T, schema map[string]any) map[string]any {
+	t.Helper()
+
+	properties, ok := schema["properties"].(map[string]any)
+	require.True(t, ok)
+	require.NotEmpty(t, properties)
+	return properties
+}
+
+func requireSchemaProperty(t *testing.T, properties map[string]any, name string) map[string]any {
+	t.Helper()
+
+	property, ok := properties[name].(map[string]any)
+	require.True(t, ok)
+	require.NotEmpty(t, property)
+	return property
+}
+
+func requireRenderableResourceTypeSchema(t *testing.T, schema map[string]any) {
+	t.Helper()
+
+	properties := requireSchemaProperties(t, schema)
+	for name, property := range properties {
+		propertySchema, ok := property.(map[string]any)
+		require.True(t, ok, "property %q should be an object schema", name)
+		require.NotContains(t, propertySchema, "$ref", "property %q should have expanded refs", name)
+		require.IsType(t, "", propertySchema["type"], "property %q should have a concrete type", name)
+
+		if propertySchema["type"] == "object" {
+			requireRenderableNestedObjectSchema(t, name, propertySchema)
+		}
+	}
+}
+
+func requireRenderableNestedObjectSchema(t *testing.T, path string, schema map[string]any) {
+	t.Helper()
+
+	nestedSchema := schema
+	if _, ok := nestedSchema["properties"].(map[string]any); !ok {
+		additionalProperties, ok := schema["additionalProperties"].(map[string]any)
+		if !ok {
+			return
+		}
+		nestedSchema = additionalProperties
+	}
+
+	properties, ok := nestedSchema["properties"].(map[string]any)
+	if !ok {
+		return
+	}
+	require.NotEmpty(t, properties)
+	for name, property := range properties {
+		propertyPath := path + "." + name
+		propertySchema, ok := property.(map[string]any)
+		require.True(t, ok, "property %q should be an object schema", propertyPath)
+		require.NotContains(t, propertySchema, "$ref", "property %q should have expanded refs", propertyPath)
+		require.IsType(t, "", propertySchema["type"], "property %q should have a concrete type", propertyPath)
+
+		if propertySchema["type"] == "object" {
+			requireRenderableNestedObjectSchema(t, propertyPath, propertySchema)
+		}
 	}
 }

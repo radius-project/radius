@@ -115,7 +115,12 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		require.Empty(t, outputSink.Writes)
+		require.Equal(t, []any{
+			output.LogOutput{
+				Format: "Local workspace %s deleted",
+				Params: []any{"test-workspace"},
+			},
+		}, outputSink.Writes)
 	})
 	t.Run("Delete workspace bypass confirmation", func(t *testing.T) {
 		outputSink := &output.MockOutput{}
@@ -147,7 +152,12 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		require.Empty(t, outputSink.Writes)
+		require.Equal(t, []any{
+			output.LogOutput{
+				Format: "Local workspace %s deleted",
+				Params: []any{"test-workspace"},
+			},
+		}, outputSink.Writes)
 	})
 	t.Run("Delete workspace not confirmed", func(t *testing.T) {
 		outputSink := &output.MockOutput{}

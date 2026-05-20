@@ -1,0 +1,12 @@
+{
+  "resources": {
+    "Radius.Data/mySqlDatabases@2025-08-01-preview": {
+      "$ref": "types.json#/17"
+    }
+  },
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radiusradiusdata",
+    "version": "0.0.1"
+  }
+}

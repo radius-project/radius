@@ -116,5 +116,11 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		require.Equal(t, []any{
+			output.LogOutput{
+				Format: "%s/%s created",
+				Params: []any{"Applications.Test/exampleResources", "my-example"},
+			},
+		}, outputSink.Writes)
 	})
 }
