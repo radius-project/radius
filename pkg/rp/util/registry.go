@@ -20,9 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/url"
-	"strings"
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -48,13 +46,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 
 	repo.Client = client
 
-	// PlainHTTP can be enabled explicitly via the recipe definition. As a
-	// convenience, we also enable it automatically when the registry hostname
-	// is a loopback address (localhost / 127.0.0.1 / [::1]) since loopback
-	// registries are HTTP-only by convention. This matches docker/oras CLI
-	// behavior for "insecure registries" and lets local debug workflows use
-	// `make debug-publish-recipes` without modifying every recipe template.
-	if definition.PlainHTTP || isLoopbackRegistry(registryRepo) {
+	if definition.PlainHTTP {
 		repo.PlainHTTP = true
 	}
 
@@ -142,28 +134,6 @@ func parsePath(path string) (repository string, tag string, err error) {
 	repository = reference.Repository()
 	tag = reference.Tag()
 	return
-}
-
-// isLoopbackRegistry reports whether the registry portion of an OCI repository
-// path refers to a loopback address (localhost / 127.0.0.0/8 / [::1]). Loopback
-// registries are HTTP-only by convention and standard OCI tooling treats them
-// as "insecure" registries by default.
-func isLoopbackRegistry(repository string) bool {
-	host := repository
-	if i := strings.Index(host, "/"); i >= 0 {
-		host = host[:i]
-	}
-	if h, _, err := net.SplitHostPort(host); err == nil {
-		host = h
-	}
-	host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
-	if strings.EqualFold(host, "localhost") {
-		return true
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return ip.IsLoopback()
-	}
-	return false
 }
 
 // GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
