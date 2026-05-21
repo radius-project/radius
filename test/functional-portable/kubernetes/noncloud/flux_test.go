@@ -42,7 +42,9 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -217,7 +219,9 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	err = opts.Client.Create(ctx, secret)
 	defer func() {
 		err := opts.Client.Delete(ctx, secret)
-		require.NoError(t, err)
+		if controller_runtime.IgnoreNotFound(err) != nil {
+			t.Errorf("Error deleting secret %s/%s: %v", secret.Namespace, secret.Name, err)
+		}
 	}()
 	require.NoError(t, err)
 
@@ -237,13 +241,19 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	err = opts.Client.Create(ctx, fluxGitRepository)
 	defer func() {
 		err := opts.Client.Delete(ctx, fluxGitRepository)
-		require.NoError(t, err)
+		if controller_runtime.IgnoreNotFound(err) != nil {
+			t.Errorf("Error deleting GitRepository %s/%s: %v", fluxGitRepository.Namespace, fluxGitRepository.Name, err)
+		}
 	}()
 	require.NoError(t, err)
 
 	// Wait for the GitRepository to be ready.
 	_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
 	require.NoError(t, err)
+
+	// Track DeploymentTemplates created across steps so we can delete them and wait for
+	// the Radius finalizer to drain before tearing down namespaces.
+	var deploymentTemplates []*radappiov1alpha3.DeploymentTemplate
 
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
@@ -307,13 +317,8 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
 
 			deploymentTemplate, err := waitForDeploymentTemplateToBeReadyWithGeneration(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, stepNumber, opts.Client)
-			defer func() {
-				err := opts.Client.Delete(ctx, deploymentTemplate)
-				if controller_runtime.IgnoreNotFound(err) != nil {
-					t.Logf("Error deleting deployment template: %v", err)
-				}
-			}()
 			require.NoError(t, err)
+			deploymentTemplates = append(deploymentTemplates, deploymentTemplate)
 		}
 
 		scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", step.resourceGroup)
@@ -340,6 +345,37 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			t.Fatalf("Error asserting expected resources exist: %v", err)
 		}
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
+	}
+
+	// IMPORTANT: tear down in reverse order of dependencies before deleting namespaces.
+	// If we delete the namespaces while DeploymentTemplates (and the Radius resources behind them)
+	// still exist, two things happen:
+	//   1. The namespace is stuck Terminating because of the radapp.io/deployment-template-finalizer.
+	//   2. radius-rp recreates application namespaces (e.g. <env>-<app>) because the underlying
+	//      Applications.Core/applications and containers still exist in Radius.
+	// Deleting and waiting for the DeploymentTemplates first lets the Radius controller
+	// drain its finalizer and remove the Radius resources, after which namespace deletion succeeds.
+	//
+	// Use assert.* (not require.*) during teardown so that one stuck DeploymentTemplate does
+	// not skip teardown of the others (and the namespaces below).
+	for _, dt := range deploymentTemplates {
+		t.Logf("Deleting DeploymentTemplate: %s/%s", dt.Namespace, dt.Name)
+		err := opts.Client.Delete(ctx, dt)
+		if controller_runtime.IgnoreNotFound(err) != nil {
+			assert.NoError(t, err)
+		}
+	}
+	if len(deploymentTemplates) > 0 {
+		assert.Eventually(t, func() bool {
+			for _, dt := range deploymentTemplates {
+				current := &radappiov1alpha3.DeploymentTemplate{}
+				getErr := opts.Client.Get(ctx, types.NamespacedName{Name: dt.Name, Namespace: dt.Namespace}, current)
+				if !apierrors.IsNotFound(getErr) {
+					return false
+				}
+			}
+			return true
+		}, time.Minute*5, time.Second*5, "DeploymentTemplates were not deleted in time")
 	}
 
 	for _, namespace := range namespaces {
