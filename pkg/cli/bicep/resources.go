@@ -85,9 +85,9 @@ func ExtractResourceTypes(template map[string]any) []ResourceTypeEntry {
 		}
 
 		entry := ResourceTypeEntry{FullType: resourceType}
-		if idx := strings.Index(resourceType, "@"); idx >= 0 {
-			entry.Type = resourceType[:idx]
-			entry.APIVersion = resourceType[idx+1:]
+		if before, after, ok0 := strings.Cut(resourceType, "@"); ok0 {
+			entry.Type = before
+			entry.APIVersion = after
 		} else {
 			entry.Type = resourceType
 		}

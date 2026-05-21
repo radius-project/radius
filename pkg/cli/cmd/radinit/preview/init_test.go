@@ -1150,7 +1150,7 @@ type cloudProviderPromptMatcher struct {
 }
 
 // Matches implements gomock.Matcher
-func (*cloudProviderPromptMatcher) Matches(x interface{}) bool {
+func (*cloudProviderPromptMatcher) Matches(x any) bool {
 	return x == confirmCloudProviderPrompt || x == confirmCloudProviderAdditionalPrompt
 }
 

@@ -1,0 +1,41 @@
+{{- if .Values.rp.security.annotationProtection.enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: radius-rp-annotation-protection
+  labels:
+    app.kubernetes.io/name: applications-rp
+    app.kubernetes.io/part-of: radius
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: ["apps"]
+      apiVersions: ["v1"]
+      operations: ["UPDATE"]
+      resources: ["deployments"]
+  validations:
+  - expression: >-
+      request.userInfo.username == "system:serviceaccount:{{ .Release.Namespace }}:{{ .Values.rp.security.annotationProtection.allowedServiceAccountName }}" ||
+      (
+        (!has(oldObject.metadata.annotations) || !oldObject.metadata.annotations.exists(k, k == "radapp.io/status")) &&
+        (!has(object.metadata.annotations) || !object.metadata.annotations.exists(k, k == "radapp.io/status"))
+      ) ||
+      (
+        has(oldObject.metadata.annotations) && oldObject.metadata.annotations.exists(k, k == "radapp.io/status") &&
+        has(object.metadata.annotations) && object.metadata.annotations.exists(k, k == "radapp.io/status") &&
+        object.metadata.annotations["radapp.io/status"] == oldObject.metadata.annotations["radapp.io/status"]
+      )
+    message: "modifying annotation radapp.io/status is restricted to the Radius controller service account system:serviceaccount:{{ .Release.Namespace }}:{{ .Values.rp.security.annotationProtection.allowedServiceAccountName }}"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: radius-rp-annotation-protection-binding
+  labels:
+    app.kubernetes.io/name: applications-rp
+    app.kubernetes.io/part-of: radius
+spec:
+  policyName: radius-rp-annotation-protection
+  validationActions: [Deny]
+{{- end }}
