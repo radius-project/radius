@@ -105,14 +105,20 @@ func display(applicationResources []*v20231001preview.ApplicationGraphResource, 
 
 func makeHyperlink(resource *v20231001preview.ApplicationGraphOutputResource) string {
 	// Just azure for now.
-	provider := providerFromID(*resource.ID)
+	return MakeResourceHyperlink(*resource.ID, *resource.Name)
+}
+
+// MakeResourceHyperlink builds a terminal hyperlink for an Azure resource.
+// Returns an empty string for non-Azure resources.
+func MakeResourceHyperlink(resourceID, resourceName string) string {
+	provider := ProviderFromID(resourceID)
 	if provider != "azure" {
 		return ""
 	}
-	// https://portal.azure.com/#@{tenantId}/resource{resourceId}
-	url := fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", "72f988bf-86f1-41af-91ab-2d7cd011db47", *resource.ID)
 
-	// This is the magic incantation for a console hyperlink.
-	// \x1b]8;;h { URL } \x07 { link text } \x1b]8;;\x07
-	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, *resource.Name)
+	url := fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", "72f988bf-86f1-41af-91ab-2d7cd011db47", resourceID)
+
+	// Terminal hyperlink escape sequence.
+	// \x1b]8;;{URL}\x07{link text}\x1b]8;;\x07
+	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, resourceName)
 }

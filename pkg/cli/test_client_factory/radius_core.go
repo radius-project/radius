@@ -178,6 +178,7 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 	}
 }
 
+// WithApplicationsServerNoError returns an ApplicationsServer with default success behavior.
 func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 	return corerpfake.ApplicationsServer{
 		Get: func(
@@ -218,6 +219,19 @@ func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 				},
 				nil,
 			)
+			return
+		},
+		GetGraph: func(
+			ctx context.Context,
+			applicationName string,
+			body any,
+			options *v20250801preview.ApplicationsClientGetGraphOptions,
+		) (resp azfake.Responder[v20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+			resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientGetGraphResponse{
+				ApplicationGraphResponse: v20250801preview.ApplicationGraphResponse{
+					Resources: []*v20250801preview.ApplicationGraphResource{},
+				},
+			}, nil)
 			return
 		},
 	}
