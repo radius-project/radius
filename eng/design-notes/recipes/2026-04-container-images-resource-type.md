@@ -183,57 +183,30 @@ otherwise.
 
 ### Recipe registration
 
-The platform engineer deploys a single `platform.bicep` that:
+The platform engineer deploys **two** Bicep files: a
+`platform.bicep` that wires the environment and recipePack, and a
+separate `secrets.bicep` that declares the registry credentials.
+Splitting them keeps the env + recipePack + secret from forming a
+symbolic dependency cycle (BCP080) and lets credentials rotate
+independently from recipe configuration.
+
+`platform.bicep`:
 
 1. Declares a `Radius.Core/environments`.
-2. Declares an env-scoped `Radius.Security/secrets` of `kind: generic`
-   with `username` / `password` data keys carrying the registry
-   credentials. Its recipe materializes a Kubernetes Secret of the
-   same name in the environment namespace.
-3. Declares a `Radius.Core/recipePacks` registering the
+2. Declares a `Radius.Core/recipePacks` registering the
    `Radius.Compute/containerImages` recipe with two parameters —
-   `registry` (push target) and `registrySecretName` (the name of
-   the `Radius.Security/secrets` resource above; just a string).
-   The same pack typically registers `Radius.Compute/containers`
-   and `Radius.Security/secrets`.
+   `registry` (push target) and `registrySecretName` (a literal
+   string naming the `Radius.Security/secrets` resource declared
+   in `secrets.bicep`). The same pack typically registers
+   `Radius.Compute/containers` and `Radius.Security/secrets`.
 
 ```bicep
 extension radius
 
 param registryPath string
-param registryUsername string
-@secure()
-param registryPassword string
 param containerImagesTemplatePath string
 param containersTemplatePath string
 param envNamespace string = 'default'
-
-// Use a local var for the secret name so the recipePack can
-// reference it without creating a symbolic dependency on the
-// ghcrCreds resource (which would form an
-// env → recipes → ghcrCreds → env cycle, BCP080).
-var ghcrCredsName = 'ghcr-creds'
-
-resource env 'Radius.Core/environments@2025-08-01-preview' = {
-  name: 'default'
-  location: 'global'
-  properties: {
-    providers:    { kubernetes: { namespace: envNamespace } }
-    recipePacks:  [ recipes.id ]
-  }
-}
-
-resource ghcrCreds 'Radius.Security/secrets@2025-08-01-preview' = {
-  name: ghcrCredsName
-  properties: {
-    environment: env.id
-    kind: 'generic'
-    data: {
-      username: { value: registryUsername }
-      password: { value: registryPassword }
-    }
-  }
-}
 
 resource recipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'default-recipes'
@@ -249,7 +222,7 @@ resource recipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
         recipeLocation: containerImagesTemplatePath
         parameters: {
           registry:           registryPath
-          registrySecretName: ghcrCredsName
+          registrySecretName: 'ghcr-creds'
         }
       }
       'Radius.Compute/containers': {
@@ -259,7 +232,46 @@ resource recipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
     }
   }
 }
+
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'default'
+  location: 'global'
+  properties: {
+    providers:   { kubernetes: { namespace: envNamespace } }
+    recipePacks: [ recipes.id ]
+  }
+}
 ```
+
+`secrets.bicep`:
+
+```bicep
+extension radius
+
+param registryUsername string
+@secure()
+param registryPassword string
+
+resource env 'Radius.Core/environments@2025-08-01-preview' existing = {
+  name: 'default'
+}
+
+resource ghcrCreds 'Radius.Security/secrets@2025-08-01-preview' = {
+  name: 'ghcr-creds'
+  properties: {
+    environment: env.id
+    kind: 'generic'
+    data: {
+      username: { value: registryUsername }
+      password: { value: registryPassword }
+    }
+  }
+}
+```
+
+Deploy `platform.bicep` once (registers recipes, creates env),
+then `secrets.bicep` (creates the credential secret). Rotate
+credentials by re-deploying `secrets.bicep` alone.
 
 Key points:
 
@@ -272,27 +284,27 @@ Key points:
   developer's Bicep.
 * **Registry credentials** live in an env-scoped
   `Radius.Security/secrets` of `kind: generic`. The recipe pack
-  passes the secret's **name** (just a string) via the
-  `registrySecretName` parameter; the recipe reads the
-  underlying Kubernetes Secret via a `kubernetes_secret` data
-  source in its runtime namespace and assembles a Docker
-  `config.json` for `buildctl`. Kubernetes is the resolver, not
-  the Radius engine — no engine-side resource-ID dereferencing
-  is required. Credentials are not in developer Bicep, not as
-  plaintext in the recipe pack, and not in any chart-level
-  Secret mount.
-* **Why a `var` for the secret name and not `ghcrCreds.name`
-  directly?** Bicep tracks the symbolic reference even when the
-  evaluated value is constant, which forms a dependency cycle
-  (`env → recipes → ghcrCreds → env`) and fails with BCP080.
-  The `var ghcrCredsName = 'ghcr-creds'` lifts the name out so
-  the recipePack references a plain string. The Radius
-  `Radius.Security/secrets` recipe deterministically materializes
-  a K8s Secret of the same name in the env namespace, so the
-  recipe finds it at execution time.
-* The recipePack is the single declarative artifact: deploying
-  `platform.bicep` registers all three recipes; no imperative
-  `rad recipe register` is needed for them.
+  passes the secret's **name** (just a string literal) via the
+  `registrySecretName` parameter; the recipe reads the underlying
+  Kubernetes Secret via a `kubernetes_secret` data source in its
+  runtime namespace and assembles a Docker `config.json` for
+  `buildctl`. Kubernetes is the resolver, not the Radius engine —
+  no engine-side resource-ID dereferencing is required.
+  Credentials are not in developer Bicep, not as plaintext in the
+  recipe pack, and not in any chart-level Secret mount.
+* **Why two files?** A single file declaring the env, recipePack,
+  and secret triggers BCP080 (`env → recipes → ghcrCreds → env`)
+  because Bicep tracks symbolic references even when the
+  evaluated value is constant. Splitting the secret out — with
+  the recipePack hard-coding the secret's literal name and
+  `secrets.bicep` looking up the env via `existing` — breaks the
+  cycle without any cross-file symbolic edge. It also matches how
+  PEs typically manage credential lifecycle in production
+  (rotation independent of recipe config; secret material sourced
+  from KeyVault / ExternalSecrets / sealed secrets).
+* The recipePack is the single declarative artifact for recipe
+  registration: deploying `platform.bicep` registers all three
+  recipes; no imperative `rad recipe register` is needed.
 * Developers do not see or manage the registry host, the secret,
   or the recipe registration.
 
@@ -854,11 +866,12 @@ cluster like any other container.
   during the build won't work multi-arch under this design and will
   fail at build time with a clear error.
 * **Credential bootstrap.** The PE declares an env-scoped
-  `Radius.Security/secrets` and passes its **name** (a literal
-  string, typically via a local `var` to dodge a BCP080 cycle) into
-  the recipe pack's `registrySecretName` parameter. Operator UX for
-  rotating PATs, scoping per-application vs. per-environment
-  secrets, etc. is a separate workstream.
+  `Radius.Security/secrets` in a separate `secrets.bicep` (split
+  from the env/recipePack file to avoid a BCP080 cycle and decouple
+  credential rotation from recipe config) and passes its **name**
+  as a literal string into the recipe pack's `registrySecretName`
+  parameter. Operator UX for rotating PATs, scoping per-application
+  vs. per-environment secrets, etc. is a separate workstream.
 * **Local-context upload size.** The CLI tarball-upload path
   (Option 2 in [Local development workflow](#local-development-workflow))
   scales poorly for very large directories. `.dockerignore` and a
@@ -871,7 +884,7 @@ cluster like any other container.
 |---|---|---|
 | Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `build`. Optional: `environment`, `application`, `imageName`, `imageTag`. Output: `image`. |
 | Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by `terraform_data "validate_inputs"` and `terraform_data "validate_git_tag"` preconditions; the build resource `depends_on` both. When the PE-provided `registrySecretName` recipe variable is non-empty, the recipe reads the same-named Kubernetes Secret in `var.context.runtime.kubernetes.namespace` via a `kubernetes_secret` data source, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. Composes image ref from `registry`, `imageName` (defaults to lowercased resource name), and content-hash tag (or explicit `properties.imageTag` when supplied). No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
-| Recipe pack | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` registration flow: pack registers the `containerImages` recipe with `registry` and `registrySecretName` (string; the name of a `Radius.Security/secrets`) parameters; PE separately declares an env-scoped `Radius.Security/secrets` of `kind: generic` carrying `username` / `password`. Document the BCP080-cycle workaround (lift the secret name into a `var`). |
+| Recipe pack | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` registration flow: pack registers the `containerImages` recipe with `registry` and `registrySecretName` (string; the name of a `Radius.Security/secrets`) parameters; the secret is declared in a separate `secrets.bicep` (env looked up via `existing`) to avoid a BCP080 cycle and decouple credential rotation. |
 | dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`) listening on `tcp://0.0.0.0:1234`. Add `buildctl-init` init container that copies the `buildctl` binary into an `emptyDir` mounted onto the dynamic-rp container's `PATH`. Add `dynamicrp.buildkit.psaMode` value, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket emptyDir, no BuildKit-state emptyDir, no Docker `config.json` Secret mount. |
 | dynamic-rp recipe runner | `radius-project/radius` | Set `BUILDKIT_HOST=tcp://127.0.0.1:1234` and extend `PATH` with the `buildctl-init` mount in the recipe-execution environment. No Go code changes beyond environment plumbing. |
 | Contributor documentation | `radius-project/radius` (`docs/contributing/`) | Add `buildkit-recipes.md` covering the buildkit subsystem and the `local-exec`-via-`buildctl` recipe pattern, so the next person adding a build-style recipe doesn't have to reverse-engineer it. |
@@ -957,7 +970,7 @@ cluster like any other container.
 |---|---|---|
 | Resource type schema | resource-types-contrib | New `containerImages.yaml`: `build` required, `imageName`/`imageTag` optional, `environment` and `application` optional, no per-resource `registry` override, no `image` field. Output: `image`. |
 | Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<imageName>:<imageTag>` (`imageName` defaults to lowercased resource name), content-hash tag default for local contexts, validates every interpolated input via `terraform_data "validate_inputs"` preconditions, requires explicit `properties.imageTag` for git contexts via `terraform_data "validate_git_tag"`. When the PE-provided `registrySecretName` recipe variable is non-empty, reads the same-named K8s Secret via `data "kubernetes_secret"` in `var.context.runtime.kubernetes.namespace`, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
-| Sample recipe pack | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` showing how to register the recipe with `registry` and `registrySecretName` (string) parameters. Companion PE Bicep declares an env-scoped `Radius.Security/secrets` of `kind: generic` (data: `username`, `password`) and passes its name into the recipePack via a local `var` (BCP080-cycle workaround). Sample developer Bicep declares `Radius.Compute/containerImages` and `Radius.Compute/containers` with no credential or pull-Secret plumbing. |
+| Sample recipe pack | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` showing how to register the recipe with `registry` and `registrySecretName` (string literal) parameters. Companion PE Bicep is split into `platform.bicep` (env + recipePack) and `secrets.bicep` (env-scoped `Radius.Security/secrets` of `kind: generic` with `username` / `password`; env looked up via `existing`) to avoid a BCP080 cycle. Sample developer Bicep declares `Radius.Compute/containerImages` and `Radius.Compute/containers` with no credential or pull-Secret plumbing. |
 | Helm chart sidecar | radius | Add buildkitd container listening on `tcp://0.0.0.0:1234`, `buildctl-init` init container copying `buildctl` into an `emptyDir` on the dynamic-rp container's `PATH`, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket/state emptyDir, no Docker `config.json` Secret mount. |
 | Recipe-runner env plumbing | radius | Set `BUILDKIT_HOST` and extend `PATH` for the recipe execution. |
 | Contributor documentation | radius | `docs/contributing/contributing-code/contributing-code-writing/buildkit-recipes.md`: explains the sidecar, the `buildctl-init` init container, the `local-exec`-via-`buildctl` recipe pattern, and the shell-injection-safety contract recipes are expected to follow. |
