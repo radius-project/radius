@@ -69,9 +69,6 @@ env:
   # The region for AWS resources
   AWS_REGION: us-west-2
 
-  # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
-
   # The AKS cluster name
   AKS_CLUSTER_NAME: ${{ vars.LRT_AKS_CLUSTER_NAME }}
   # The resource group for AKS_CLUSTER_NAME resource.
@@ -119,7 +116,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           # Note: revoke is set to false for this long-running workflow (>1hr)
           # GitHub App tokens automatically expire after 1 hour.
@@ -234,11 +231,11 @@ jobs:
           rad version
 
       - name: Publish UDT types
-        run: |  
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH  
-          which rad || { echo "cannot find rad"; exit 1; }  
-          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force  
-        env:  
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force
+        env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Point dynamicrp testresources extension to test ACR
