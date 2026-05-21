@@ -251,6 +251,22 @@ func WithEnvironmentServer404OnGet() corerpfake.EnvironmentsServer {
 	}
 }
 
+// WithEnvironmentServer500OnGet returns an EnvironmentsServer that returns a non-404
+// server error on Get, simulating a transient/auth/network failure.
+func WithEnvironmentServer500OnGet() corerpfake.EnvironmentsServer {
+	return corerpfake.EnvironmentsServer{
+		Get: func(
+			ctx context.Context,
+			environmentName string,
+			options *v20250801preview.EnvironmentsClientGetOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("internal server error"))
+			errResp.SetResponseError(500, "Internal Server Error")
+			return
+		},
+	}
+}
+
 // WithEnvironmentServerNoRecipePacks returns an EnvironmentsServer that returns an existing
 // environment with no recipe packs on Get, and success on CreateOrUpdate.
 func WithEnvironmentServerNoRecipePacks() corerpfake.EnvironmentsServer {

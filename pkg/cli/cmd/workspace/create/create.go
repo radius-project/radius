@@ -114,7 +114,10 @@ func NewRunner(factory framework.Factory) *Runner {
 func ValidateApplicationsCoreEnvironment(ctx context.Context, ws *workspaces.Workspace, mgmtClient clients.ApplicationsManagementClient, envName string) (string, error) {
 	envID := ws.Scope + "/providers/" + datamodel.EnvironmentResourceType + "/" + envName
 	if _, err := mgmtClient.GetEnvironment(ctx, envName); err != nil {
-		return "", clierrors.Message("The environment %q does not exist. Run `rad env create` try again.", envID)
+		if clients.Is404Error(err) {
+			return "", clierrors.Message("The environment %q does not exist. Run `rad env create` and try again.", envID)
+		}
+		return "", clierrors.MessageWithCause(err, "Failed to get environment %q.", envID)
 	}
 	return envID, nil
 }

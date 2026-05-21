@@ -159,6 +159,26 @@ func Test_Validate_Environment(t *testing.T) {
 		require.Contains(t, err.Error(), "Radius.Core/environments/env1")
 		require.Contains(t, err.Error(), "rad env create --preview")
 	})
+
+	t.Run("non-404 error is propagated and not masked as not-found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			scope,
+			test_client_factory.WithEnvironmentServer500OnGet,
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner, cmd := newRunnerForEnvValidation(t, ctrl, factory)
+		require.NoError(t, cmd.ParseFlags([]string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"}))
+
+		err = runner.Validate(cmd, []string{"kubernetes"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed to get environment")
+		require.Contains(t, err.Error(), "Radius.Core/environments/env1")
+		require.NotContains(t, err.Error(), "does not exist")
+	})
 }
 
 func Test_Run(t *testing.T) {

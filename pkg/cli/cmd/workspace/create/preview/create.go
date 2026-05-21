@@ -108,7 +108,10 @@ func (r *Runner) validateRadiusCoreEnvironment(ctx context.Context, ws *workspac
 	}
 
 	if _, err := r.RadiusCoreClientFactory.NewEnvironmentsClient().Get(ctx, envName, nil); err != nil {
-		return "", clierrors.Message("The environment %q does not exist. Run `rad env create --preview` and try again.", envID)
+		if clients.Is404Error(err) {
+			return "", clierrors.Message("The environment %q does not exist. Run `rad env create --preview` and try again.", envID)
+		}
+		return "", clierrors.MessageWithCause(err, "Failed to get environment %q.", envID)
 	}
 	return envID, nil
 }
