@@ -72,10 +72,6 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 
 // addArgsFromCLI parses the --set arguments in order and adds them to the Helm chart values
 func addArgsFromCLI(helmChart *chart.Chart, options *RadiusChartOptions) error {
-	return addChartArgsFromCLI(helmChart, options.ChartOptions)
-}
-
-func addChartArgsFromCLI(helmChart *chart.Chart, options ChartOptions) error {
 	values := helmChart.Values
 
 	// Parse --set arguments in order so that the last one wins.

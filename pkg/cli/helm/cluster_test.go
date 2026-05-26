@@ -56,11 +56,11 @@ func Test_Helm_InstallRadius(t *testing.T) {
 			return "Pulled", nil
 		}).Times(1)
 	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Contour.ChartRepo, options.Contour.ReleaseName)).
+		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
 			pull := helm.NewPullWithOpts(pullopts...)
 			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: nginx-gateway-fabric\nversion: 0.1.0"), 0644)
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
 		}).Times(1)
@@ -76,11 +76,11 @@ func Test_Helm_InstallRadius(t *testing.T) {
 
 	// Mock Helm Get
 	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	// Mock Helm Install
 	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "radius", "radius-system", true).Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), options.Contour.ReleaseName, "radius-system", false).Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", false).Return(contourRelease, nil).Times(1)
 
 	// Mock Helm Chart Load
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)
@@ -266,7 +266,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return([]*release.Release{radiusRelease}, nil).Times(1)
-
+	
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
@@ -274,11 +274,11 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 
 	// Mock Helm Pull for Contour
 	mockHelmClient.EXPECT().
-		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Contour.ChartRepo, options.Contour.ReleaseName)).
+		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
 			pull := helm.NewPullWithOpts(pullopts...)
 			// Simulate downloading the chart to the temp dir
-			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: nginx-gateway-fabric\nversion: 0.1.0"), 0644)
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
 		}).Times(1)
@@ -287,7 +287,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
 
 	// Mock Helm Upgrade for Contour
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), options.Contour.ReleaseName, "radius-system", false).Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), "contour", "radius-system", false).Return(contourRelease, nil).Times(1)
 
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)

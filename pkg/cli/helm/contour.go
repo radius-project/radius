@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	contourHelmRepo            = "oci://ghcr.io/nginx/charts"
-	contourReleaseName         = "nginx-gateway-fabric"
-	ContourChartDefaultVersion = ""
+	contourHelmRepo            = "https://projectcontour.github.io/helm-charts"
+	contourReleaseName         = "contour"
+	ContourChartDefaultVersion = "0.1.0"
 )
 
 type ContourChartOptions struct {
@@ -38,7 +38,7 @@ type ContourChartOptions struct {
 	Wait bool
 }
 
-// prepareContourChart prepares the Helm chart for the Kubernetes ingress controller.
+// prepareContourChart prepares the Helm chart for Contour.
 func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
 	var helmChart *chart.Chart
 
@@ -63,12 +63,7 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 
 	err = addContourValues(helmChart, options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to add ingress controller values, err: %w", err)
-	}
-
-	err = addChartArgsFromCLI(helmChart, options.ChartOptions)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to add ingress controller CLI values, err: %w", err)
+		return nil, nil, fmt.Errorf("failed to add Contour values, err: %w", err)
 	}
 
 	return helmChart, helmConf, nil

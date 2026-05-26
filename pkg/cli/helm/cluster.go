@@ -209,7 +209,7 @@ type Impl struct {
 
 var _ Interface = &Impl{}
 
-// InstallRadius installs Radius and its ingress dependency on the cluster using the provided options.
+// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -230,26 +230,26 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	if clusterOptions.Contour.Disabled {
-		output.LogInfo("Ingress controller is disabled, skipping installation")
+		output.LogInfo("Contour is disabled, skipping installation")
 		return nil
 	}
 
-	// Install the Gateway API ingress controller.
-	output.LogInfo("Installing NGINX Gateway Fabric...")
+	// Install Contour
+	output.LogInfo("Installing Contour...")
 	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to prepare NGINX Gateway Fabric Helm chart, err: %w", err)
+		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
 
 	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
 	if err != nil {
-		return fmt.Errorf("failed to apply NGINX Gateway Fabric Helm chart, err: %w", err)
+		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
 
 	return nil
 }
 
-// UninstallRadius uninstalls Radius and its ingress dependency from the cluster using the provided options.
+// UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
