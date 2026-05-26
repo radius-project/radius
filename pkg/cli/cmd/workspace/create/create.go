@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/spf13/cobra"
 )
 
@@ -70,6 +71,13 @@ rad workspace create kubernetes`,
 	return cmd, runner
 }
 
+// EnvironmentValidator validates that the environment named envName exists in the
+// scope of ws, and returns the fully-qualified environment resource ID to be persisted
+// on the workspace. mgmtClient is the management client already created for the workspace
+// scope; implementations are free to ignore it (e.g. preview implementations that talk
+// to the Radius.Core resource provider directly).
+type EnvironmentValidator func(ctx context.Context, ws *workspaces.Workspace, mgmtClient clients.ApplicationsManagementClient, envName string) (envID string, err error)
+
 // Runner is the runner implementation for the `rad workspace create` command.
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
@@ -80,11 +88,16 @@ type Runner struct {
 	Output              output.Interface
 	HelmInterface       helm.Interface
 	KubernetesInterface kubernetes.Interface
+
+	// EnvironmentValidator is invoked to validate that the requested environment exists
+	// and to construct the environment resource ID stored on the workspace. When nil,
+	// the legacy Applications.Core/environments validator is used.
+	EnvironmentValidator EnvironmentValidator
 }
 
 // NewRunner creates a new instance of the `rad workspace create` runner.
 func NewRunner(factory framework.Factory) *Runner {
-	return &Runner{
+	r := &Runner{
 		ConnectionFactory:   factory.GetConnectionFactory(),
 		ConfigHolder:        factory.GetConfigHolder(),
 		ConfigFileInterface: factory.GetConfigFileInterface(),
@@ -92,6 +105,21 @@ func NewRunner(factory framework.Factory) *Runner {
 		HelmInterface:       factory.GetHelmInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 	}
+	r.EnvironmentValidator = ValidateApplicationsCoreEnvironment
+	return r
+}
+
+// ValidateApplicationsCoreEnvironment is the default EnvironmentValidator. It targets
+// Applications.Core/environments via the management client.
+func ValidateApplicationsCoreEnvironment(ctx context.Context, ws *workspaces.Workspace, mgmtClient clients.ApplicationsManagementClient, envName string) (string, error) {
+	envID := ws.Scope + "/providers/" + datamodel.EnvironmentResourceType + "/" + envName
+	if _, err := mgmtClient.GetEnvironment(ctx, envName); err != nil {
+		if clients.Is404Error(err) {
+			return "", clierrors.Message("The environment %q does not exist. Run `rad env create` and try again.", envID)
+		}
+		return "", clierrors.MessageWithCause(err, "Failed to get environment %q.", envID)
+	}
+	return envID, nil
 }
 
 // Validate runs validation for the `rad workspace create` command.
@@ -191,12 +219,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if r.Workspace.Scope == "" {
 			return clierrors.Message("Cannot set environment for workspace with empty scope. Use --group to set a scope.")
 		}
-		r.Workspace.Environment = r.Workspace.Scope + "/providers/applications.core/environments/" + env
 
-		_, err = client.GetEnvironment(cmd.Context(), env)
-		if err != nil {
-			return clierrors.Message("The environment %q does not exist. Run `rad env create` try again.", r.Workspace.Environment)
+		validator := r.EnvironmentValidator
+		if validator == nil {
+			validator = ValidateApplicationsCoreEnvironment
 		}
+		envID, err := validator(cmd.Context(), r.Workspace, client, env)
+		if err != nil {
+			return err
+		}
+		r.Workspace.Environment = envID
 	}
 
 	return nil

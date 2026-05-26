@@ -200,6 +200,7 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
+
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
 

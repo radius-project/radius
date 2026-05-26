@@ -363,7 +363,7 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	poller, err := r.startDeleteOperationIfNeeded(ctx, annotations)
+	poller, err := r.startDeleteOperationIfNeeded(ctx, deployment, annotations)
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
 		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
@@ -415,8 +415,7 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 		// the old resource and create a new one.
 		logger.Info("Container is already created but is out-of-date")
 
-		logger.Info("Starting DELETE operation.")
-		poller, err := deleteContainer(ctx, r.Radius, annotations.Status.Container)
+		poller, err := r.startDeleteOperationIfNeeded(ctx, deployment, annotations)
 		if err != nil {
 			return nil, nil, false, err
 		} else if poller != nil {
@@ -480,10 +479,39 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 	return poller, nil, false, nil
 }
 
-func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, annotations *deploymentAnnotations) (sdkclients.Poller[v20231001preview.ContainersClientDeleteResponse], error) {
+func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (sdkclients.Poller[v20231001preview.ContainersClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if annotations == nil || annotations.Status == nil {
+		logger.Info("Container is already deleted (or was never created).")
+		return nil, nil
+	}
+
 	if annotations.Status.Container == "" {
 		logger.Info("Container is already deleted (or was never created).")
+		return nil, nil
+	}
+
+	expectedDeploymentResourceID := makeKubernetesDeploymentResourceID(deployment.Namespace, deployment.Name)
+	container, err := fetchContainerResource(ctx, r.Radius, annotations.Status.Container)
+	if clients.Is404Error(err) {
+		logger.Info("Container was already deleted before cleanup began.", "container", annotations.Status.Container)
+		annotations.Status.Container = ""
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to fetch container before delete: %w", err)
+	}
+
+	if !containerHasResourceReference(&container, expectedDeploymentResourceID) {
+		logger.Info("Refusing cross-ownership delete attempt.",
+			"container", annotations.Status.Container,
+			"expectedDeploymentResource", expectedDeploymentResourceID,
+		)
+		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, EventContainerOwnershipMismatch,
+			fmt.Sprintf("Container %q does not reference deployment resource %q", annotations.Status.Container, expectedDeploymentResourceID))
+
+		// Clear status to avoid a persistent reconcile loop on a tampered annotation.
+		annotations.Status.Container = ""
 		return nil, nil
 	}
 

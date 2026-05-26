@@ -85,8 +85,8 @@ controller:
 
 de:
   image: deployment-engine
-  # Pin Deployment Engine to the v0.56.0 image for the v0.57.1 patch release.
-  tag: 0.56
+  # Default tag uses Chart AppVersion.
+  # tag: latest
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -141,6 +141,14 @@ rp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  security:
+    annotationProtection:
+      # Enable ValidatingAdmissionPolicy to protect radapp.io/status from user tampering.
+      # Keep disabled by default for compatibility with clusters that do not support
+      # admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy.
+      enabled: false
+      # Service account allowed to modify protected annotations.
+      allowedServiceAccountName: "applications-rp"
 
 dashboard:
   enabled: true

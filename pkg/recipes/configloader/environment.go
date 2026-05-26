@@ -213,9 +213,7 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 		// registry credentials (key=`token`).
 		if len(tfProps.Terraformrc.Credentials) > 0 {
 			config.RecipeConfig.Terraform.Credentials = make(map[string]datamodel.TerraformCredentialConfig, len(tfProps.Terraformrc.Credentials))
-			for host, cred := range tfProps.Terraformrc.Credentials {
-				config.RecipeConfig.Terraform.Credentials[host] = cred
-			}
+			maps.Copy(config.RecipeConfig.Terraform.Credentials, tfProps.Terraformrc.Credentials)
 		}
 
 		// Map env vars into the legacy shape.

@@ -28,7 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.29.15
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.71.11
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.302.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.303.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.57.2
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
 	github.com/aws/smithy-go v1.25.1
@@ -37,14 +37,14 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20260109001716-2fbdffcb221f // Pinned: fixes race condition where FinalModel() can return nil (PR #10742)
-	github.com/containerd/containerd v1.7.31
+	github.com/containerd/containerd v1.7.32
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.19.0
 	github.com/fluxcd/pkg/apis/meta v1.27.0
 	github.com/fluxcd/pkg/http/fetch v0.25.0
 	github.com/fluxcd/pkg/tar v1.2.0
-	github.com/fluxcd/source-controller/api v1.8.4
+	github.com/fluxcd/source-controller/api v1.8.5
 	github.com/getkin/kin-openapi v0.138.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-git/go-git/v5 v5.19.1
