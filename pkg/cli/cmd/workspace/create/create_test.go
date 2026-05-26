@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -130,6 +131,37 @@ func Test_Validate(t *testing.T) {
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 
+}
+
+func Test_ValidateApplicationsCoreEnvironment(t *testing.T) {
+	ws := &workspaces.Workspace{Scope: "/planes/radius/local/resourceGroups/rg1"}
+	wantID := "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/environments/env1"
+
+	t.Run("404 returns user-friendly does-not-exist message", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mgmt.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, radcli.Create404Error()).Times(1)
+
+		id, err := ValidateApplicationsCoreEnvironment(context.Background(), ws, mgmt, "env1")
+		require.Error(t, err)
+		require.Empty(t, id)
+		require.Contains(t, err.Error(), wantID)
+		require.Contains(t, err.Error(), "does not exist")
+		require.Contains(t, err.Error(), "rad env create")
+	})
+
+	t.Run("non-404 error is propagated and not masked as not-found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mgmt.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("connection refused")).Times(1)
+
+		id, err := ValidateApplicationsCoreEnvironment(context.Background(), ws, mgmt, "env1")
+		require.Error(t, err)
+		require.Empty(t, id)
+		require.Contains(t, err.Error(), "Failed to get environment")
+		require.Contains(t, err.Error(), wantID)
+		require.NotContains(t, err.Error(), "does not exist")
+	})
 }
 
 func Test_Run(t *testing.T) {

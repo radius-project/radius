@@ -69,9 +69,6 @@ env:
   # The region for AWS resources
   AWS_REGION: us-west-2
 
-  # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
-
   # The AKS cluster name
   AKS_CLUSTER_NAME: ${{ vars.LRT_AKS_CLUSTER_NAME }}
   # The resource group for AKS_CLUSTER_NAME resource.
@@ -119,7 +116,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           # Note: revoke is set to false for this long-running workflow (>1hr)
           # GitHub App tokens automatically expire after 1 hour.
@@ -234,11 +231,11 @@ jobs:
           rad version
 
       - name: Publish UDT types
-        run: |  
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH  
-          which rad || { echo "cannot find rad"; exit 1; }  
-          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force  
-        env:  
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force
+        env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Point dynamicrp testresources extension to test ACR
@@ -347,23 +344,31 @@ jobs:
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_OUTPUT
 
-      - name: Restore Bicep artifacts before running functional tests
-        # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
-        # so we can restore all Bicep artifacts before the tests start.
-        run: |
-          # Restore Radius Bicep types
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
-          # Restore AWS Bicep types
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
-        env:
-          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
-
       - name: Re-login to Azure before functional tests
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
+      - name: Restore Bicep artifacts before running functional tests
+        # Pre-warm the local Bicep artifact cache so the long-running test step
+        # never has to authenticate to a private ACR after the WIF
+        # client-assertion expires. The exact files chosen to run the command
+        # can be changed, but we need 1 that uses the Radius extension, 1 that
+        # uses the AWS extension and 1 that uses UDT testresources so we can
+        # restore all Bicep artifacts before the tests start. This step must
+        # run after "Re-login to Azure" so the private TEST_BICEP_TYPES_REGISTRY
+        # restore has fresh credentials.
+        run: |
+          # Restore Radius Bicep types (public ACR)
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
+          # Restore AWS Bicep types (public ACR)
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
+          # Restore UDT testresources Bicep types (private TEST_BICEP_TYPES_REGISTRY)
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/externalresource.bicep" --force
+        env:
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Run functional tests
         env:

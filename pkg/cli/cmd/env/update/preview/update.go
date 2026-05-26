@@ -228,7 +228,7 @@ func normalizeRecipePacks(recipepacks []string) []string {
 	seen := map[string]struct{}{}
 	result := []string{}
 	for _, value := range recipepacks {
-		for _, p := range strings.Split(value, ",") {
+		for p := range strings.SplitSeq(value, ",") {
 			trimmed := strings.TrimSpace(p)
 			if trimmed == "" {
 				continue

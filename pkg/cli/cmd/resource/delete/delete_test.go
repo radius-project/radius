@@ -512,7 +512,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
 						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
 					},
