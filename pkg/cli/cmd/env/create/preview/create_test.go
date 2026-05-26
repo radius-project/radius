@@ -189,17 +189,19 @@ func Test_Run(t *testing.T) {
 			ResourceGroupName:         "test-resource-group",
 		}
 
+		expectedOutput := []any{
+			output.LogOutput{
+				Format: "Radius.Core/environments/%s created",
+				Params: []any{
+					"testenv",
+				},
+			},
+		}
+
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 
-		require.Contains(t, outputSink.Writes, output.LogOutput{
-			Format: "Creating Radius Core Environment %q...",
-			Params: []interface{}{"testenv"},
-		})
-		require.Contains(t, outputSink.Writes, output.LogOutput{
-			Format: "Successfully created environment %q in resource group %q with default recipe pack.",
-			Params: []interface{}{"testenv", "test-resource-group"},
-		})
+		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
 
 	t.Run("creates default recipe pack when not found", func(t *testing.T) {

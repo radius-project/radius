@@ -58,5 +58,8 @@ type ResourceList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Resource{}, &ResourceList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &Resource{}, &ResourceList{})
+		return nil
+	})
 }

@@ -99,11 +99,8 @@ func Test_Run(t *testing.T) {
 			serverFactory: test_client_factory.WithEnvironmentServerNoError,
 			expectedLogs: []any{
 				output.LogOutput{
-					Format: msgDeletingEnvironmentPreview,
-					Params: []any{"test-env"},
-				},
-				output.LogOutput{
 					Format: msgEnvironmentDeletedPreview,
+					Params: []any{"test-env"},
 				},
 			},
 		},

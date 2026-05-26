@@ -228,7 +228,7 @@ func normalizeRecipePacks(recipepacks []string) []string {
 	seen := map[string]struct{}{}
 	result := []string{}
 	for _, value := range recipepacks {
-		for _, p := range strings.Split(value, ",") {
+		for p := range strings.SplitSeq(value, ",") {
 			trimmed := strings.TrimSpace(p)
 			if trimmed == "" {
 				continue
@@ -356,40 +356,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		env.Properties.RecipePacks = newRecipePacks
 	}
 
-	r.Output.LogInfo("Updating Environment...")
 	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, env, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to update environment %q.", r.EnvironmentName)
 	}
 
-	recipePackCount := 0
-	if env.Properties.RecipePacks != nil {
-		recipePackCount = len(env.Properties.RecipePacks)
-	}
-	providerCount := 0
-	if env.Properties.Providers != nil {
-		if env.Properties.Providers.Azure != nil {
-			providerCount++
-		}
-		if env.Properties.Providers.Aws != nil {
-			providerCount++
-		}
-		if env.Properties.Providers.Kubernetes != nil {
-			providerCount++
-		}
-	}
-	obj := environmentForDisplay{
-		Name:        *env.Name,
-		RecipePacks: recipePackCount,
-		Providers:   providerCount,
-	}
-
-	err = r.Output.WriteFormatted("table", obj, environmentFormat())
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("Successfully updated environment %q.", r.EnvironmentName)
+	r.Output.LogInfo("Radius.Core/environments/%s updated", r.EnvironmentName)
 
 	return nil
 }
