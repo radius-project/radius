@@ -1,8 +1,8 @@
-# Design Notes: Git App Graph Preview
+# Design Notes: Git App Graph Storage
 
-**Feature Branch**: `001-git-app-graph-preview`  
+**Feature Branch**: `003-git-app-graph-storage`  
 **Last Updated**: February 5, 2026  
-**Related**: [spec.md](spec.md)
+**Related**: [radius-graph-proposal.md](radius-graph-proposal.md)
 
 ---
 
@@ -226,7 +226,7 @@ The app graph is a **derived view** rather than a primary data store, which elim
 
 ## Implications for Implementation
 
-These conceptual foundations inform several implementation decisions in the [spec](spec.md):
+These conceptual foundations inform several implementation decisions in the [spec](radius-graph-proposal.md):
 
 1. **Committed Artifact Model**: The graph is committed to version control (`.radius/app-graph.json`) because it's a derived projection, not primary state
 
