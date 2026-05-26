@@ -1,11 +1,13 @@
 # Radius Extensibility Architecture
 
-Radius is extended by registering **resource types** (the API surface) and
-**recipes** (the implementation that provisions infrastructure for those
-types). Once both are in place, a Bicep deployment that references a resource
-of that type is routed by UCP to the dynamic resource provider, which selects
-the appropriate recipe from the target environment and runs it through a
-driver.
+Radius is extended by registering **resource types** (the API surface) and,
+for recipe-backed dynamic types, **recipes** (the implementation that
+provisions infrastructure for those types). A Bicep deployment that references
+a registered type is routed by UCP according to that type's `Location` record.
+When the location has no custom downstream address, UCP uses its default
+downstream, which is configured as dynamic-rp. dynamic-rp then either runs the
+selected recipe or uses an inert controller for types that declare manual
+resource provisioning.
 
 This document covers the three flows that make extensibility work:
 
@@ -23,8 +25,9 @@ graph TD
   Manifest["Manifest YAML<br/>Radius.&lt;Category&gt;/&lt;type&gt;.yaml"]
   Initializer["UCP initializer<br/>pkg/ucp/initializer"]
   UCP["UCP frontend<br/>pkg/ucp/frontend"]
-  DB["Database<br/>System.Resources/*"]
-  Env["Applications.Core/environments<br/>(stores recipe entries)"]
+  DB["Database<br/>System.Resources + Radius resources"]
+  Env["Environment<br/>Applications.Core recipes map<br/>or Radius.Core recipePacks refs"]
+  RecipePack["Radius.Core/recipePacks<br/>(stores recipe definitions)"]
   Proxy["UCP ProxyController<br/>radius/proxy.go"]
   Location["Location metadata<br/>downstream address + API versions"]
   DynRP["dynamic-rp<br/>pkg/dynamicrp"]
@@ -46,6 +49,9 @@ graph TD
   RecipeAuthor --> CLI
   CLI --> Env
   Env --> DB
+  RecipeAuthor --> RecipePack
+  RecipePack --> DB
+  Env --> RecipePack
 
   UCP --> Proxy
   Proxy --> Location
@@ -70,11 +76,17 @@ graph TD
 - **UCP `System.Resources` provider** — internal provider that owns the
   `resourceProviders`, `resourceTypes`, `apiVersions`, and `locations`
   resources used for routing and validation.
-- **dynamic-rp** — the generic resource provider that handles any registered
-  resource type without a dedicated implementation
+- **dynamic-rp** — the generic resource provider that handles registered
+  resource types routed to the default downstream instead of to a dedicated RP
   ([dynamic-rp.md](dynamic-rp.md)).
-- **Environment** — `Applications.Core/environments` resource that holds the
-  per-type recipe map (`properties.recipes[<type>][<recipeName>]`).
+- **Environment** — holds the recipe references used by the engine. The
+  `Applications.Core/environments` path uses a per-type recipe map
+  (`properties.recipes[<type>][<recipeName>]`); the newer
+  `Radius.Core/environments` path uses `properties.recipePacks` references and
+  optional `properties.recipeParameters` overrides.
+- **Recipe pack** — `Radius.Core/recipePacks` resource whose
+  `properties.recipes[<type>]` entries store recipe kind, location,
+  parameters, and `plainHTTP` for the `Radius.Core` environment path.
 - **Recipe engine** — selects a driver and runs the recipe to produce
   resources, values, and secrets.
 
@@ -167,12 +179,16 @@ sequenceDiagram
 
 ## Recipe Registration
 
-Recipes are not stored as their own UCP resource. They are entries on an
-**Environment** resource, keyed by the resource type the recipe targets.
+`rad recipe register` stores recipes as entries on an
+`Applications.Core/environments` resource, keyed by the resource type the
+recipe targets. That CLI path is not the only recipe storage model in the
+current code: `Radius.Core/recipePacks` are first-class resources, and
+`Radius.Core/environments` reference them through `properties.recipePacks`.
 
 - Command: [pkg/cli/cmd/recipe/register/register.go](../../pkg/cli/cmd/recipe/register/register.go)
 - Environment client: `pkg/cli/clients` (`CreateOrUpdateEnvironment`)
 - Environment data model / properties: `pkg/corerp/datamodel`, `pkg/corerp/api/v20231001preview`
+- Recipe pack resource model: [pkg/corerp/datamodel/recipepack.go](../../pkg/corerp/datamodel/recipepack.go), [pkg/corerp/setup/setup.go](../../pkg/corerp/setup/setup.go)
 
 `rad recipe register` does the following:
 
@@ -185,7 +201,7 @@ Recipes are not stored as their own UCP resource. They are entries on an
    `envResource.Properties.Recipes[<resourceType>][<recipeName>]`.
 4. Calls `CreateOrUpdateEnvironment` to persist.
 
-The resulting environment shape:
+The resulting `Applications.Core/environments` shape:
 
 ```yaml
 properties:
@@ -201,9 +217,16 @@ properties:
         templateVersion: v1.2.0
 ```
 
-The same map can be edited directly (e.g. by Bicep that defines the
-environment) — the CLI is just a convenience that performs the merge and
-update.
+The same `properties.recipes` map can be edited directly (e.g. by Bicep that
+defines an `Applications.Core` environment) — the CLI is a convenience that
+performs the merge and update.
+
+For the `Radius.Core` environment path, recipe definitions are stored on
+`Radius.Core/recipePacks` resources. During recipe loading,
+[configloader.LoadRecipe](../../pkg/recipes/configloader/environment.go)
+fetches the environment's recipe pack IDs, finds the first pack with a recipe
+whose key matches the resource type, and reconciles that recipe's parameters
+with environment-level `recipeParameters` for the same type.
 
 Recipe names are selected by the resource being deployed. For dynamic
 resources, omitting `properties.recipe` does not disable recipes;
@@ -214,8 +237,11 @@ types that should work without an explicit recipe block.
 
 ## Deployment Invocation
 
-Once the type and at least one recipe exist, a user deploys a Bicep file that
-references the type, e.g.:
+Once the type exists and its selected dynamic-rp path has the required backing
+configuration, a user deploys a Bicep file that references the type. For a
+recipe-backed type this means an environment recipe map entry or recipe pack
+definition exists; for a manual-provisioning type no recipe is required. For
+example:
 
 ```bicep
 resource cache 'Radius.Data/redisCaches@2025-08-01-preview' = {
@@ -268,7 +294,7 @@ sequenceDiagram
     Eng->>CfgLoader: LoadConfiguration(ResourceMetadata)
     Eng->>CfgLoader: LoadRecipe(environmentID, resourceType, recipeName)
     CfgLoader-->>Eng: EnvironmentDefinition (Driver, TemplatePath, ...)
-    Eng->>Eng: lookup driver by TemplateKind
+    Eng->>Eng: lookup driver by EnvironmentDefinition.Driver
     Eng->>Drv: driver.Execute
     Drv->>Infra: provision (Bicep via deployment engine / Terraform via tf binary)
     Drv-->>Eng: RecipeOutput (resources, values, secrets)
@@ -293,7 +319,8 @@ providers. A location with no address uses dynamic-rp; a location with an
 address routes to the RP implementation at that URL. UCP still validates the
 registered type and API version in both cases before forwarding the request.
 
-After proxying a successful mutating request, UCP may also update tracked
+After proxying a mutating top-level resource request that
+`ProxyController.ShouldTrackRequest` accepts, UCP may also update tracked
 resource state. If the downstream response is terminal it tries to update the
 tracked resource synchronously; otherwise it queues a background tracked
 resource update. This is separate from the dynamic-rp recipe operation queue.
@@ -343,27 +370,35 @@ The engine
    [`configloader.LoadConfiguration`](../../pkg/recipes/configloader/environment.go).
 2. Skips driver execution when the environment is simulated.
 3. Loads the recipe definition via
-   [`configloader.LoadRecipe`](../../pkg/recipes/configloader/environment.go),
-   which fetches the environment, looks up
-   `Properties.Recipes[resourceType][recipeName]`, and returns an
+   [`configloader.LoadRecipe`](../../pkg/recipes/configloader/environment.go).
+   For `Applications.Core` environments, this fetches the environment, looks
+   up `Properties.Recipes[resourceType][recipeName]`, and returns an
    `EnvironmentDefinition` whose `Driver` field is the `TemplateKind` string.
-4. Selects the driver from the engine's `Drivers` map keyed by template kind
+   For `Radius.Core` environments, this fetches the referenced recipe packs,
+   finds the definition keyed by the resource type, applies matching
+   environment-level recipe parameter overrides, and maps `RecipeKind` /
+   `RecipeLocation` into the same `EnvironmentDefinition` shape.
+4. Selects the driver from the engine's `Drivers` map keyed by
+   `EnvironmentDefinition.Driver`
    (see
    [pkg/recipes/controllerconfig/config.go](../../pkg/recipes/controllerconfig/config.go) —
    `recipes.TemplateKindBicep` maps to the bicep driver, `TemplateKindTerraform`
    to the terraform driver).
 5. Loads any driver-required secrets through `DriverWithSecrets` and the
-  environment's configured secret stores.
+    environment's configured secret stores.
 6. Calls `driver.Execute`. The bicep driver hands the template to the
    deployment engine; the terraform driver shells out to the terraform binary.
 7. Returns a `RecipeOutput` (`Resources`, `Values`, `Secrets`) to the
   controller.
 
-The dynamic resource processor then validates the output, records deployed
-resources and values under status, and copies computed or secret values back
-into top-level resource properties only when those property names are present
-in the registered schema. This schema filter prevents recipe output from
-inventing arbitrary user-visible properties.
+The dynamic resource processor records deployed resources, computed values,
+and secret references under status. It uses the registered schema as a filter
+when copying computed or secret values back into top-level resource
+properties, so recipe output only becomes user-visible when the property name
+exists in the schema and is not one of the basic Radius properties. The
+processor does not currently validate dynamic recipe output against the full
+registered schema; [pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)
+contains a TODO noting that schema-driven output validation is bypassed.
 
 ## Delete Invocation
 
@@ -413,26 +448,31 @@ up before the Radius resource record is removed.
   routing on the resource type — never type-specific switching in UCP.
 - dynamic-rp must remain type-agnostic. Schema validation and capability
   inspection drive behavior; there is no per-type code path here.
-- Recipes are owned by the environment, not the type. A type with no recipe
-  registered for the environment fails at `LoadRecipe` with
-  `RecipeNotFoundFailure`.
+- For the `Applications.Core` path, recipes are owned by the environment, not
+  the type. A type with no recipe registered for the environment fails at
+  `LoadRecipe` with `RecipeNotFoundFailure`. For the `Radius.Core` path,
+  recipes are stored on `Radius.Core/recipePacks`, and the environment owns
+  the list of recipe pack references and per-type parameter overrides.
 - Dynamic resources default to recipe name `default` when `properties.recipe`
   is omitted.
-- The driver lookup key is the recipe's `templateKind`. Adding a new driver
-  means registering it in the engine's `Drivers` map.
-- Recipe output only becomes user-visible resource properties when those
-  properties exist in the registered schema.
+- The driver lookup key is the recipe's `templateKind` for
+  `Applications.Core` recipes and the mapped `recipeKind` for
+  `Radius.Core` recipe packs. Adding a new driver means registering it in the
+  engine's `Drivers` map.
+- Dynamic recipe output only becomes user-visible resource properties when
+  those properties exist in the registered schema and are not basic Radius
+  properties such as `application` or `environment`.
 - Sensitive input fields marked by schema annotations are encrypted at rest and
   decrypted only for in-memory recipe execution.
 
 ## Change This Safely
 
 - Adding a new built-in resource type: add a manifest, register it through the
-  CLI or initializer, and (if it has a default behavior) wire a recipe in the
-  environment Bicep used by tests.
+  CLI or initializer, and (if it has default recipe-backed behavior) wire a
+  recipe through the environment recipe map or a recipe pack used by tests.
 - Adding a new recipe driver: implement `recipes/driver.Driver`, register it
   in [controllerconfig/config.go](../../pkg/recipes/controllerconfig/config.go),
-  and pick a stable `TemplateKind` string used by manifests and the CLI.
+  and pick a stable driver key used by `templateKind` or `recipeKind`.
 - Adding a new capability that changes the deployment path: extend
   `DynamicResourceController.selectController` and add the corresponding
   controller under
