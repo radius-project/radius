@@ -45,6 +45,16 @@ const (
 	// DeploymentFinalizer is the name of the finalizer added to Deployments.
 	DeploymentFinalizer = "radapp.io/deployment-finalizer"
 
+	// EventScopeMismatch is emitted when a deployment annotation references a scope outside
+	// of the deployment's ownership boundary.
+	EventScopeMismatch = "ScopeMismatch"
+
+	// EventContainerOwnershipMismatch is emitted when a container does not reference
+	// the source Kubernetes deployment resource.
+	EventContainerOwnershipMismatch = "ContainerOwnershipMismatch"
+
+	applicationsCoreContainersResourceType = "Applications.Core/containers"
+
 	// RecipeFinalizer is the name of the finalizer added to Recipes.
 	RecipeFinalizer = "radapp.io/recipe-finalizer"
 

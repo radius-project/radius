@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -34,7 +35,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
@@ -93,6 +96,118 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	}()
 
 	return radius, mgr.GetClient()
+}
+
+func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMismatch_BlocksDelete(t *testing.T) {
+	ctx := testcontext.New(t)
+	radius := NewMockRadiusClient()
+	reconciler := &DeploymentReconciler{
+		Radius:        radius,
+		EventRecorder: record.NewFakeRecorder(10),
+	}
+
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "current-app", Namespace: "current-namespace"}}
+	containerID := "/planes/radius/local/resourceGroups/tenant-b/providers/Applications.Core/containers/other-container"
+
+	radius.Update(func() {
+		radius.containers[containerID] = v20231001preview.ContainerResource{
+			Properties: &v20231001preview.ContainerProperties{
+				Resources: []*v20231001preview.ResourceReference{{
+					ID: new("/planes/kubernetes/local/namespaces/other-namespace/providers/apps/Deployment/other-app"),
+				}},
+			},
+		}
+	})
+
+	annotations := &deploymentAnnotations{Status: &deploymentStatus{Container: containerID}}
+	poller, err := reconciler.startDeleteOperationIfNeeded(ctx, deployment, annotations)
+	require.NoError(t, err)
+	require.Nil(t, poller)
+	require.Empty(t, annotations.Status.Container)
+	requireNoDeleteOperation(t, radius, containerID)
+
+	_, err = radius.Containers("/planes/radius/local/resourceGroups/tenant-b").Get(ctx, "other-container", nil)
+	require.NoError(t, err)
+}
+
+func Test_DeploymentReconciler_StartPutOrDeleteOperationIfNeeded_OwnershipMismatch_BlocksDelete(t *testing.T) {
+	ctx := testcontext.New(t)
+	radius := NewMockRadiusClient()
+	reconciler := &DeploymentReconciler{
+		Radius:        radius,
+		EventRecorder: record.NewFakeRecorder(10),
+	}
+
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "current-app", Namespace: "current-namespace"}}
+	otherContainerID := "/planes/radius/local/resourceGroups/tenant-b/providers/Applications.Core/containers/other-container"
+
+	radius.Update(func() {
+		radius.containers[otherContainerID] = v20231001preview.ContainerResource{
+			Properties: &v20231001preview.ContainerProperties{
+				Resources: []*v20231001preview.ResourceReference{{
+					ID: new("/planes/kubernetes/local/namespaces/other-namespace/providers/apps/Deployment/other-container"),
+				}},
+			},
+		}
+	})
+
+	annotations := &deploymentAnnotations{
+		Configuration: &deploymentConfiguration{},
+		Status: &deploymentStatus{
+			Scope:       "/planes/radius/local/resourceGroups/tenant-a",
+			Application: "/planes/radius/local/resourceGroups/tenant-a/providers/Applications.Core/applications/current-app",
+			Container:   otherContainerID,
+		},
+	}
+
+	updatePoller, deletePoller, waiting, err := reconciler.startPutOrDeleteOperationIfNeeded(ctx, deployment, annotations)
+	require.NoError(t, err)
+	require.NotNil(t, updatePoller)
+	require.Nil(t, deletePoller)
+	require.False(t, waiting)
+	requireNoDeleteOperation(t, radius, otherContainerID)
+
+	_, err = radius.Containers("/planes/radius/local/resourceGroups/tenant-b").Get(ctx, "other-container", nil)
+	require.NoError(t, err)
+}
+
+func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMatch_AllowsDelete(t *testing.T) {
+	ctx := testcontext.New(t)
+	radius := NewMockRadiusClient()
+	reconciler := &DeploymentReconciler{
+		Radius:        radius,
+		EventRecorder: record.NewFakeRecorder(10),
+	}
+
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "current-app", Namespace: "current-namespace"}}
+	containerID := "/planes/radius/local/resourceGroups/tenant-a/providers/Applications.Core/containers/current-app"
+
+	radius.Update(func() {
+		radius.containers[containerID] = v20231001preview.ContainerResource{
+			Properties: &v20231001preview.ContainerProperties{
+				Resources: []*v20231001preview.ResourceReference{{
+					ID: new(makeKubernetesDeploymentResourceID("current-namespace", "current-app")),
+				}},
+			},
+		}
+	})
+
+	annotations := &deploymentAnnotations{Status: &deploymentStatus{Container: containerID}}
+	poller, err := reconciler.startDeleteOperationIfNeeded(ctx, deployment, annotations)
+	require.NoError(t, err)
+	require.NotNil(t, poller)
+	require.Equal(t, containerID, annotations.Status.Container)
+}
+
+func requireNoDeleteOperation(t *testing.T, radius *mockRadiusClient, resourceID string) {
+	t.Helper()
+
+	radius.lock.Lock()
+	defer radius.lock.Unlock()
+
+	for _, operation := range radius.operations {
+		require.False(t, operation.Kind == http.MethodDelete && operation.ResourceID == resourceID, "unexpected delete operation for %s", resourceID)
+	}
 }
 
 // Creates a deployment with Radius enabled.

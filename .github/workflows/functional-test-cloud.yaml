@@ -53,6 +53,7 @@ env:
   GOTESTSUM_VER: 1.13.0
   # yq version
   YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
   HELM_VER: v3.19.4
   # KinD cluster version
@@ -81,8 +82,6 @@ env:
   ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
-  # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis
   # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
@@ -118,7 +117,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           permission-members: read
@@ -320,7 +319,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-pull-requests: write
 
@@ -452,7 +451,9 @@ jobs:
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
         run: |
           mkdir -p "${RUNNER_TEMP}/bin"
-          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@${{ env.YQ_VERSION }}
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
           echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       - name: Generate Bicep extensibility types from OpenAPI specs
@@ -543,7 +544,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
 
@@ -592,7 +593,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: |
@@ -1066,7 +1067,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
 

@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
@@ -115,6 +116,11 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 			return result, fmt.Errorf("failed to unmarshal status annotation: %w", err)
 		}
 
+		err = validateDeploymentStatus(&s)
+		if err != nil {
+			return result, fmt.Errorf("invalid status annotation: %w", err)
+		}
+
 		result.Status = &s
 	}
 
@@ -138,6 +144,41 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 	}
 
 	return result, nil
+}
+
+func validateDeploymentStatus(status *deploymentStatus) error {
+	if status == nil {
+		return nil
+	}
+
+	// The reconciler state machine may persist status.scope (and an in-progress operation) before
+	// status.container is known, so scope-only status is valid. When the environment or application
+	// changes, status.scope is updated to the new scope while status.container still references the
+	// previous container (which the reconciler then deletes), so we do not require status.scope to
+	// match the container's root scope.
+	if status.Scope != "" {
+		if _, err := resources.ParseScope(status.Scope); err != nil {
+			return fmt.Errorf("invalid status.scope: %w", err)
+		}
+	}
+
+	if status.Container == "" {
+		return nil
+	}
+
+	if status.Scope == "" {
+		return fmt.Errorf("status.scope must be set when status.container is set")
+	}
+
+	parsedContainer, err := resources.ParseResource(status.Container)
+	if err != nil {
+		return fmt.Errorf("invalid status.container: %w", err)
+	}
+	if !strings.EqualFold(parsedContainer.Type(), applicationsCoreContainersResourceType) {
+		return fmt.Errorf("status.container type %q is not %q", parsedContainer.Type(), applicationsCoreContainersResourceType)
+	}
+
+	return nil
 }
 
 // ApplyToDeployment applies the configuration and status to a Deployment.
