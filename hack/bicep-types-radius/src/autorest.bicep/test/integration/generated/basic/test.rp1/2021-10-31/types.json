@@ -42,15 +42,23 @@
         "flags": 10,
         "description": "The resource api version"
       },
-      "properties": {
+      "basicString": {
         "type": {
-          "$ref": "#/4"
+          "$ref": "#/0"
         },
-        "flags": 0
+        "flags": 0,
+        "description": "Description for a basic string property."
+      },
+      "stringEnum": {
+        "type": {
+          "$ref": "#/6"
+        },
+        "flags": 0,
+        "description": "Description for a basic enum property."
       },
       "tags": {
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/7"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -64,30 +72,10 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/8"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TestType1Properties",
-    "properties": {
-      "basicString": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Description for a basic string property."
-      },
-      "stringEnum": {
-        "type": {
-          "$ref": "#/7"
-        },
-        "flags": 0,
-        "description": "Description for a basic enum property."
       }
     }
   },
@@ -103,10 +91,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/5"
+        "$ref": "#/4"
       },
       {
-        "$ref": "#/6"
+        "$ref": "#/5"
       }
     ]
   },
@@ -131,7 +119,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/13"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -152,7 +140,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/18"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -186,6 +174,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/9"
+      },
+      {
         "$ref": "#/10"
       },
       {
@@ -193,9 +184,6 @@
       },
       {
         "$ref": "#/12"
-      },
-      {
-        "$ref": "#/13"
       }
     ]
   },
@@ -219,6 +207,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/14"
+      },
+      {
         "$ref": "#/15"
       },
       {
@@ -226,9 +217,6 @@
       },
       {
         "$ref": "#/17"
-      },
-      {
-        "$ref": "#/18"
       }
     ]
   },
@@ -270,43 +258,274 @@
       }
     ],
     "output": {
-      "$ref": "#/21"
+      "$ref": "#/20"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/21"
+      "$ref": "#/20"
     }
   },
   {
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/23"
+      "$ref": "#/22"
     }
   },
   {
     "$type": "ResourceType",
     "name": "Test.Rp1/testType1@2021-10-31",
-    "scopeType": 8,
     "body": {
       "$ref": "#/3"
     },
-    "flags": 0,
+    "readableScopes": 8,
+    "writableScopes": 8,
     "functions": {
       "listFoos": {
         "type": {
-          "$ref": "#/22"
+          "$ref": "#/21"
         },
         "description": "listFoos"
       },
       "listArrayOfFoos": {
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/23"
         },
         "description": "listArrayOfFoos"
       }
     }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Test.Rp1/testType2"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2021-10-31"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Test.Rp1/testType2",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/26"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "Polymorphic properties body."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/31"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/8"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "DiscriminatedObjectType",
+    "name": "TestType2Properties",
+    "discriminator": "kind",
+    "baseProperties": {},
+    "elements": {
+      "VariantA": {
+        "$ref": "#/29"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TestType2VariantA",
+    "properties": {
+      "valueA": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Value for variant A."
+      },
+      "kind": {
+        "type": {
+          "$ref": "#/30"
+        },
+        "flags": 1,
+        "description": "The polymorphic discriminator."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "VariantA"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Test.Rp1/testType2@2021-10-31",
+    "body": {
+      "$ref": "#/27"
+    },
+    "readableScopes": 8,
+    "writableScopes": 8,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Test.Rp1/testType3"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2021-10-31"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Test.Rp1/testType3",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/33"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/34"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/36"
+        },
+        "flags": 0,
+        "description": "Properties bag containing a 'name' child which would collide."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/37"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/8"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TestType3Properties",
+    "properties": {
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Conflicts with the standardized resource 'name' property."
+      },
+      "extra": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "A non-conflicting sibling."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Test.Rp1/testType3@2021-10-31",
+    "body": {
+      "$ref": "#/35"
+    },
+    "readableScopes": 8,
+    "writableScopes": 8,
+    "functions": {}
   }
 ]

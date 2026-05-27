@@ -123,6 +123,31 @@ export function generateTypes(
         continue;
       }
 
+      const flatten = isFlattenSafe(putProperty, getProperty);
+      if (flatten.flagged) {
+        if (flatten.safe) {
+          const parentFlags = parsePropertyFlags(
+            putProperty,
+            getProperty,
+            propertyName
+          );
+          const ok = expandFlattenedInto(
+            resourceProperties,
+            flatten.putChild,
+            flatten.getChild,
+            parentFlags,
+            propertyName
+          );
+          if (ok) {
+            continue;
+          }
+        } else if (flatten.reason) {
+          logWarning(
+            `Ignoring x-ms-client-flatten on '${propertyName}' of resource ${fullyQualifiedType}: ${flatten.reason}. Falling back to nested representation.`
+          );
+        }
+      }
+
       const propertyDefinition = parseType(
         putProperty?.schema,
         getProperty?.schema
@@ -402,6 +427,127 @@ export function generateTypes(
 
       yield { propertyName, putProperty, getProperty };
     }
+  }
+
+  function isFlattenSafe(
+    putProp: Property | undefined,
+    getProp: Property | undefined
+  ): {
+    flagged: boolean;
+    safe: boolean;
+    putChild?: ObjectSchema;
+    getChild?: ObjectSchema;
+    reason?: string;
+  } {
+    const putFlagged =
+      putProp?.extensions?.["x-ms-client-flatten"] === true;
+    const getFlagged =
+      getProp?.extensions?.["x-ms-client-flatten"] === true;
+    const flagged = putFlagged || getFlagged;
+    if (!flagged) {
+      return { flagged: false, safe: false };
+    }
+
+    const check = (
+      s: Schema | undefined
+    ): { ok: boolean; obj?: ObjectSchema; reason?: string } => {
+      if (!s) {
+        return { ok: true };
+      }
+      if (!(s instanceof ObjectSchema)) {
+        return {
+          ok: false,
+          reason: `child schema is not an object (type=${s.type})`
+        };
+      }
+      if (s.discriminator) {
+        return {
+          ok: false,
+          reason: `child schema '${getSerializedName(s)}' has a discriminator`
+        };
+      }
+      return { ok: true, obj: s };
+    };
+
+    const putCheck = check(putProp?.schema);
+    if (!putCheck.ok) {
+      return { flagged, safe: false, reason: putCheck.reason };
+    }
+    const getCheck = check(getProp?.schema);
+    if (!getCheck.ok) {
+      return { flagged, safe: false, reason: getCheck.reason };
+    }
+
+    return {
+      flagged,
+      safe: true,
+      putChild: putCheck.obj,
+      getChild: getCheck.obj
+    };
+  }
+
+  function flagsForFlattenedChild(
+    parentFlags: ObjectTypePropertyFlags,
+    childFlags: ObjectTypePropertyFlags
+  ): ObjectTypePropertyFlags {
+    // Required/Identifier/DeployTimeConstant on the wrapper property do not
+    // describe the children, so do not propagate them. ReadOnly/WriteOnly do
+    // describe access to anything beneath the wrapper, so OR them into each
+    // child's own flags.
+    const propagated =
+      parentFlags &
+      (ObjectTypePropertyFlags.ReadOnly | ObjectTypePropertyFlags.WriteOnly);
+    return propagated | childFlags;
+  }
+
+  function expandFlattenedInto(
+    target: Dictionary<ObjectTypeProperty>,
+    putChild: ObjectSchema | undefined,
+    getChild: ObjectSchema | undefined,
+    parentFlags: ObjectTypePropertyFlags,
+    parentSerializedName: string
+  ): boolean {
+    const candidates: Array<{
+      name: string;
+      putProp?: Property;
+      getProp?: Property;
+    }> = [];
+    for (const {
+      propertyName,
+      putProperty,
+      getProperty
+    } of getObjectTypeProperties(putChild, getChild, true)) {
+      candidates.push({
+        name: propertyName,
+        putProp: putProperty,
+        getProp: getProperty
+      });
+    }
+
+    for (const c of candidates) {
+      if (target[c.name]) {
+        logWarning(
+          `Cannot flatten property '${parentSerializedName}': child property '${c.name}' collides with an existing property on the parent. Falling back to nested representation.`
+        );
+        return false;
+      }
+    }
+
+    for (const c of candidates) {
+      const propType = parseType(c.putProp?.schema, c.getProp?.schema);
+      if (!propType) {
+        continue;
+      }
+      const description = (c.putProp?.schema ?? c.getProp?.schema)?.language
+        .default?.description;
+      const childFlags = parsePropertyFlags(c.putProp, c.getProp);
+      target[c.name] = createObjectProperty(
+        propType,
+        flagsForFlattenedChild(parentFlags, childFlags),
+        description
+      );
+    }
+    return true;
   }
 
   function flattenDiscriminatorSubTypes(schema: ObjectSchema | undefined) {
@@ -701,6 +847,27 @@ export function generateTypes(
       putProperty,
       getProperty
     } of getObjectTypeProperties(putSchema, getSchema, includeBaseProperties)) {
+      const flatten = isFlattenSafe(putProperty, getProperty);
+      if (flatten.flagged) {
+        if (flatten.safe) {
+          const parentFlags = parsePropertyFlags(putProperty, getProperty);
+          const ok = expandFlattenedInto(
+            definitionProperties,
+            flatten.putChild,
+            flatten.getChild,
+            parentFlags,
+            propertyName
+          );
+          if (ok) {
+            continue;
+          }
+        } else if (flatten.reason) {
+          logWarning(
+            `Ignoring x-ms-client-flatten on '${propertyName}' of '${definitionName}': ${flatten.reason}. Falling back to nested representation.`
+          );
+        }
+      }
+
       const propertyDefinition = parseType(
         putProperty?.schema,
         getProperty?.schema

@@ -42,43 +42,9 @@
         "flags": 10,
         "description": "The resource api version"
       },
-      "properties": {
-        "type": {
-          "$ref": "#/4"
-        },
-        "flags": 1,
-        "description": "Application properties"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/32"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/33"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ApplicationProperties",
-    "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/13"
+          "$ref": "#/12"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -92,10 +58,31 @@
       },
       "status": {
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/13"
         },
         "flags": 2,
         "description": "Status of a resource."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/31"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
       }
     }
   },
@@ -135,6 +122,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/4"
+      },
+      {
         "$ref": "#/5"
       },
       {
@@ -154,9 +144,6 @@
       },
       {
         "$ref": "#/11"
-      },
-      {
-        "$ref": "#/12"
       }
     ]
   },
@@ -166,21 +153,21 @@
     "properties": {
       "compute": {
         "type": {
-          "$ref": "#/15"
+          "$ref": "#/14"
         },
         "flags": 0,
         "description": "Represents backing compute resource"
       },
       "recipe": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/27"
         },
         "flags": 2,
         "description": "Recipe status at deployment time for a resource."
       },
       "outputResources": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -201,7 +188,7 @@
       },
       "identity": {
         "type": {
-          "$ref": "#/16"
+          "$ref": "#/15"
         },
         "flags": 0,
         "description": "IdentitySettings is the external identity setting."
@@ -209,10 +196,10 @@
     },
     "elements": {
       "aci": {
-        "$ref": "#/24"
+        "$ref": "#/23"
       },
       "kubernetes": {
-        "$ref": "#/26"
+        "$ref": "#/25"
       }
     }
   },
@@ -222,7 +209,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/22"
+          "$ref": "#/21"
         },
         "flags": 1,
         "description": "IdentitySettingKind is the kind of supported external identity setting"
@@ -243,7 +230,7 @@
       },
       "managedIdentity": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/22"
         },
         "flags": 0,
         "description": "The list of user assigned managed identities"
@@ -274,6 +261,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/16"
+      },
+      {
         "$ref": "#/17"
       },
       {
@@ -284,9 +274,6 @@
       },
       {
         "$ref": "#/20"
-      },
-      {
-        "$ref": "#/21"
       }
     ]
   },
@@ -309,7 +296,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/24"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -333,7 +320,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/26"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -391,7 +378,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -404,7 +391,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/29"
+      "$ref": "#/28"
     }
   },
   {
@@ -428,7 +415,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/37"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -449,7 +436,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/43"
+          "$ref": "#/42"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -483,6 +470,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/33"
+      },
+      {
         "$ref": "#/34"
       },
       {
@@ -490,9 +480,6 @@
       },
       {
         "$ref": "#/36"
-      },
-      {
-        "$ref": "#/37"
       }
     ]
   },
@@ -516,6 +503,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/38"
+      },
+      {
         "$ref": "#/39"
       },
       {
@@ -523,9 +513,6 @@
       },
       {
         "$ref": "#/41"
-      },
-      {
-        "$ref": "#/42"
       }
     ]
   },
@@ -567,28 +554,42 @@
       },
       "type": {
         "type": {
-          "$ref": "#/45"
+          "$ref": "#/44"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/46"
+          "$ref": "#/45"
         },
         "flags": 10,
         "description": "The resource api version"
       },
-      "properties": {
+      "provisioningState": {
         "type": {
-          "$ref": "#/48"
+          "$ref": "#/55"
         },
-        "flags": 1,
-        "description": "Bicep configuration properties."
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "referencedBy": {
+        "type": {
+          "$ref": "#/56"
+        },
+        "flags": 2,
+        "description": "Environments that reference this Bicep configuration."
+      },
+      "registryAuthentications": {
+        "type": {
+          "$ref": "#/62"
+        },
+        "flags": 0,
+        "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path."
       },
       "tags": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/63"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -602,37 +603,10 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/32"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "BicepConfigProperties",
-    "properties": {
-      "provisioningState": {
-        "type": {
-          "$ref": "#/57"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "referencedBy": {
-        "type": {
-          "$ref": "#/58"
-        },
-        "flags": 2,
-        "description": "Environments that reference this Bicep configuration."
-      },
-      "registryAuthentications": {
-        "type": {
-          "$ref": "#/64"
-        },
-        "flags": 0,
-        "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path."
       }
     }
   },
@@ -672,6 +646,12 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/47"
+      },
+      {
+        "$ref": "#/48"
+      },
+      {
         "$ref": "#/49"
       },
       {
@@ -688,12 +668,6 @@
       },
       {
         "$ref": "#/54"
-      },
-      {
-        "$ref": "#/55"
-      },
-      {
-        "$ref": "#/56"
       }
     ]
   },
@@ -709,7 +683,7 @@
     "properties": {
       "authenticationMethod": {
         "type": {
-          "$ref": "#/63"
+          "$ref": "#/61"
         },
         "flags": 0,
         "description": "Supported authentication methods for private Bicep registries."
@@ -760,13 +734,13 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/58"
+      },
+      {
+        "$ref": "#/59"
+      },
+      {
         "$ref": "#/60"
-      },
-      {
-        "$ref": "#/61"
-      },
-      {
-        "$ref": "#/62"
       }
     ]
   },
@@ -775,7 +749,7 @@
     "name": "BicepConfigPropertiesRegistryAuthentications",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/59"
+      "$ref": "#/57"
     }
   },
   {
@@ -790,7 +764,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/bicepConfigs@2025-08-01-preview",
     "body": {
-      "$ref": "#/47"
+      "$ref": "#/46"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -824,76 +798,42 @@
       },
       "type": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/65"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/66"
         },
         "flags": 10,
         "description": "The resource api version"
       },
-      "properties": {
-        "type": {
-          "$ref": "#/70"
-        },
-        "flags": 1,
-        "description": "Environment properties"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/88"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/33"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "EnvironmentProperties",
-    "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/79"
+          "$ref": "#/76"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "recipePacks": {
         "type": {
-          "$ref": "#/80"
+          "$ref": "#/77"
         },
         "flags": 0,
         "description": "List of Recipe Pack resource IDs linked to this environment."
       },
       "recipeParameters": {
         "type": {
-          "$ref": "#/83"
+          "$ref": "#/80"
         },
         "flags": 0,
         "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
       },
       "providers": {
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/81"
         },
         "flags": 0
       },
@@ -913,10 +853,31 @@
       },
       "simulated": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "Simulated environment."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/85"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
       }
     }
   },
@@ -956,6 +917,15 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/68"
+      },
+      {
+        "$ref": "#/69"
+      },
+      {
+        "$ref": "#/70"
+      },
+      {
         "$ref": "#/71"
       },
       {
@@ -969,15 +939,6 @@
       },
       {
         "$ref": "#/75"
-      },
-      {
-        "$ref": "#/76"
-      },
-      {
-        "$ref": "#/77"
-      },
-      {
-        "$ref": "#/78"
       }
     ]
   },
@@ -995,7 +956,7 @@
     "name": "RecipeParameterValue",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/81"
+      "$ref": "#/78"
     }
   },
   {
@@ -1003,7 +964,7 @@
     "name": "EnvironmentPropertiesRecipeParameters",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/82"
+      "$ref": "#/79"
     }
   },
   {
@@ -1012,20 +973,20 @@
     "properties": {
       "azure": {
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/82"
         },
         "flags": 0,
         "description": "The Azure cloud provider definition."
       },
       "kubernetes": {
         "type": {
-          "$ref": "#/86"
+          "$ref": "#/83"
         },
         "flags": 0
       },
       "aws": {
         "type": {
-          "$ref": "#/87"
+          "$ref": "#/84"
         },
         "flags": 0,
         "description": "The AWS cloud provider definition."
@@ -1052,7 +1013,7 @@
       },
       "identity": {
         "type": {
-          "$ref": "#/16"
+          "$ref": "#/15"
         },
         "flags": 0,
         "description": "IdentitySettings is the external identity setting."
@@ -1104,7 +1065,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/environments@2025-08-01-preview",
     "body": {
-      "$ref": "#/69"
+      "$ref": "#/67"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -1138,28 +1099,42 @@
       },
       "type": {
         "type": {
-          "$ref": "#/90"
+          "$ref": "#/87"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/88"
         },
         "flags": 10,
         "description": "The resource api version"
       },
-      "properties": {
+      "provisioningState": {
         "type": {
-          "$ref": "#/93"
+          "$ref": "#/98"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "referencedBy": {
+        "type": {
+          "$ref": "#/99"
+        },
+        "flags": 2,
+        "description": "List of environment IDs that reference this recipe pack"
+      },
+      "recipes": {
+        "type": {
+          "$ref": "#/105"
         },
         "flags": 1,
-        "description": "Recipe Pack properties"
+        "description": "Map of resource types to their recipe configurations"
       },
       "tags": {
         "type": {
-          "$ref": "#/110"
+          "$ref": "#/106"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1173,37 +1148,10 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/32"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RecipePackProperties",
-    "properties": {
-      "provisioningState": {
-        "type": {
-          "$ref": "#/102"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "referencedBy": {
-        "type": {
-          "$ref": "#/103"
-        },
-        "flags": 2,
-        "description": "List of environment IDs that reference this recipe pack"
-      },
-      "recipes": {
-        "type": {
-          "$ref": "#/109"
-        },
-        "flags": 1,
-        "description": "Map of resource types to their recipe configurations"
       }
     }
   },
@@ -1243,6 +1191,18 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/90"
+      },
+      {
+        "$ref": "#/91"
+      },
+      {
+        "$ref": "#/92"
+      },
+      {
+        "$ref": "#/93"
+      },
+      {
         "$ref": "#/94"
       },
       {
@@ -1253,18 +1213,6 @@
       },
       {
         "$ref": "#/97"
-      },
-      {
-        "$ref": "#/98"
-      },
-      {
-        "$ref": "#/99"
-      },
-      {
-        "$ref": "#/100"
-      },
-      {
-        "$ref": "#/101"
       }
     ]
   },
@@ -1280,14 +1228,14 @@
     "properties": {
       "recipeKind": {
         "type": {
-          "$ref": "#/107"
+          "$ref": "#/103"
         },
         "flags": 1,
         "description": "The type of recipe"
       },
       "plainHttp": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
@@ -1301,7 +1249,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/108"
+          "$ref": "#/104"
         },
         "flags": 0,
         "description": "Parameters to pass to the recipe"
@@ -1320,10 +1268,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/105"
+        "$ref": "#/101"
       },
       {
-        "$ref": "#/106"
+        "$ref": "#/102"
       }
     ]
   },
@@ -1332,7 +1280,7 @@
     "name": "RecipeDefinitionParameters",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/81"
+      "$ref": "#/78"
     }
   },
   {
@@ -1340,7 +1288,7 @@
     "name": "RecipePackPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/104"
+      "$ref": "#/100"
     }
   },
   {
@@ -1355,7 +1303,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/92"
+      "$ref": "#/89"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -1389,28 +1337,49 @@
       },
       "type": {
         "type": {
-          "$ref": "#/112"
+          "$ref": "#/108"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/113"
+          "$ref": "#/109"
         },
         "flags": 10,
         "description": "The resource api version"
       },
-      "properties": {
+      "provisioningState": {
         "type": {
-          "$ref": "#/115"
+          "$ref": "#/119"
         },
-        "flags": 1,
-        "description": "Terraform configuration properties."
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "referencedBy": {
+        "type": {
+          "$ref": "#/120"
+        },
+        "flags": 2,
+        "description": "Environments that reference this Terraform configuration."
+      },
+      "terraformrc": {
+        "type": {
+          "$ref": "#/121"
+        },
+        "flags": 0,
+        "description": "Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details."
+      },
+      "env": {
+        "type": {
+          "$ref": "#/131"
+        },
+        "flags": 0,
+        "description": "Environment variables injected during Terraform recipe execution."
       },
       "tags": {
         "type": {
-          "$ref": "#/137"
+          "$ref": "#/132"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1424,44 +1393,10 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/32"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TerraformConfigProperties",
-    "properties": {
-      "provisioningState": {
-        "type": {
-          "$ref": "#/124"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "referencedBy": {
-        "type": {
-          "$ref": "#/125"
-        },
-        "flags": 2,
-        "description": "Environments that reference this Terraform configuration."
-      },
-      "terraformrc": {
-        "type": {
-          "$ref": "#/126"
-        },
-        "flags": 0,
-        "description": "Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details."
-      },
-      "env": {
-        "type": {
-          "$ref": "#/136"
-        },
-        "flags": 0,
-        "description": "Environment variables injected during Terraform recipe execution."
       }
     }
   },
@@ -1501,6 +1436,21 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/111"
+      },
+      {
+        "$ref": "#/112"
+      },
+      {
+        "$ref": "#/113"
+      },
+      {
+        "$ref": "#/114"
+      },
+      {
+        "$ref": "#/115"
+      },
+      {
         "$ref": "#/116"
       },
       {
@@ -1508,21 +1458,6 @@
       },
       {
         "$ref": "#/118"
-      },
-      {
-        "$ref": "#/119"
-      },
-      {
-        "$ref": "#/120"
-      },
-      {
-        "$ref": "#/121"
-      },
-      {
-        "$ref": "#/122"
-      },
-      {
-        "$ref": "#/123"
       }
     ]
   },
@@ -1538,14 +1473,14 @@
     "properties": {
       "providerInstallation": {
         "type": {
-          "$ref": "#/127"
+          "$ref": "#/122"
         },
         "flags": 0,
         "description": "Provider installation configuration for Terraform CLI."
       },
       "credentials": {
         "type": {
-          "$ref": "#/135"
+          "$ref": "#/130"
         },
         "flags": 0,
         "description": "Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism."
@@ -1558,14 +1493,14 @@
     "properties": {
       "networkMirror": {
         "type": {
-          "$ref": "#/128"
+          "$ref": "#/123"
         },
         "flags": 0,
         "description": "Network mirror configuration for Terraform providers."
       },
       "direct": {
         "type": {
-          "$ref": "#/131"
+          "$ref": "#/126"
         },
         "flags": 0,
         "description": "Direct provider installation configuration."
@@ -1585,14 +1520,14 @@
       },
       "include": {
         "type": {
-          "$ref": "#/129"
+          "$ref": "#/124"
         },
         "flags": 0,
         "description": "Provider address patterns to include from this mirror."
       },
       "exclude": {
         "type": {
-          "$ref": "#/130"
+          "$ref": "#/125"
         },
         "flags": 0,
         "description": "Provider address patterns to exclude from this mirror."
@@ -1617,14 +1552,14 @@
     "properties": {
       "include": {
         "type": {
-          "$ref": "#/132"
+          "$ref": "#/127"
         },
         "flags": 0,
         "description": "Provider address patterns to include for direct installation."
       },
       "exclude": {
         "type": {
-          "$ref": "#/133"
+          "$ref": "#/128"
         },
         "flags": 0,
         "description": "Provider address patterns to exclude from direct installation."
@@ -1661,7 +1596,7 @@
     "name": "TerraformrcConfigCredentials",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/134"
+      "$ref": "#/129"
     }
   },
   {
@@ -1684,7 +1619,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/terraformConfigs@2025-08-01-preview",
     "body": {
-      "$ref": "#/114"
+      "$ref": "#/110"
     },
     "readableScopes": 0,
     "writableScopes": 0,
