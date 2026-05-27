@@ -1,10 +1,13 @@
 extension radius
 
-// This bicep template exercises the flattened authoring syntax enabled by
-// honoring x-ms-client-flatten in the Radius Bicep type generator. Fields that
-// previously had to live under a .properties{} envelope (environment,
-// extensions, application, container, connections, ...) are written directly
-// at the resource level here.
+// This bicep template exercises the read-side of x-ms-client-flatten support
+// in the Radius Bicep type generator. Resources are still *authored* using the
+// `properties: { ... }` envelope (because Radius RP only accepts that wire
+// format), but a second container resource derives its fields from the first
+// by reading flattened aliases — e.g. `ctnr.container.image` instead of
+// `ctnr.properties.container.image`. Those top-level aliases are emitted as
+// ReadOnly projections by the type generator, so authoring at the top level
+// (e.g. `ctnr.container = {...}`) is correctly rejected by Bicep.
 
 @description('Specifies the location for resources.')
 param location string = 'global'
@@ -21,51 +24,53 @@ param environment string
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-container-flatten'
   location: location
-  environment: environment
-  extensions: [
-    {
-      kind: 'kubernetesNamespace'
-      namespace: 'corerp-resources-container-flatten-app'
-    }
-  ]
+  properties: {
+    environment: environment
+    extensions: [
+      {
+        kind: 'kubernetesNamespace'
+        namespace: 'corerp-resources-container-flatten-app'
+      }
+    ]
+  }
 }
 
 resource ctnr 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'ctnr-ctnr-flatten'
   location: location
-  application: app.id
-  container: {
-    image: magpieimage
-    ports: {
-      web: {
-        containerPort: port
+  properties: {
+    application: app.id
+    container: {
+      image: magpieimage
+      ports: {
+        web: {
+          containerPort: port
+        }
       }
     }
+    connections: {}
   }
-  connections: {}
 }
 
-// Second container that references flattened fields on `ctnr` via cross-resource
-// references. Each `ctnr.<field>` access exercises the read-side of flatten:
-//   - ctnr.application                          (was ctnr.properties.application)
-//   - ctnr.container.image                      (was ctnr.properties.container.image)
-//   - ctnr.container.ports.web.containerPort    (was ctnr.properties.container.ports.web.containerPort)
-// If the type generator had failed to hoist any of these onto the resource
-// body, Bicep would refuse to compile this template ("property does not exist
-// on type ...") and the deploy step would error out before reaching the
-// cluster, so this resource doubles as a smoke test for the read side of
-// flattening.
+// Second container that derives its fields from `ctnr` via flattened
+// read-side aliases. Each `ctnr.<field>` reference here uses the top-level
+// alias surfaced by the type generator (read-only projection of
+// `ctnr.properties.<field>`). If the generator stopped hoisting any of these,
+// Bicep compilation would fail with "property does not exist on type ..." and
+// the deploy step would never run.
 resource ctnr2 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'ctnr-ctnr-flatten-2'
   location: location
-  application: ctnr.application
-  container: {
-    image: ctnr.container.image
-    ports: {
-      web: {
-        containerPort: ctnr.container.ports.web.containerPort
+  properties: {
+    application: ctnr.application
+    container: {
+      image: ctnr.container.image
+      ports: {
+        web: {
+          containerPort: ctnr.container.ports.web.containerPort
+        }
       }
     }
+    connections: {}
   }
-  connections: {}
 }

@@ -26,22 +26,15 @@ import (
 )
 
 // Test_Container_Flatten deploys an application with two container resources
-// whose bicep template uses the flattened authoring syntax (no .properties.{}
-// envelope). It relies on x-ms-client-flatten support in the Radius Bicep type
-// generator and exercises both sides of flatten:
-//
-//   - Authoring (lvalue) side: fields such as environment, extensions,
-//     application, container, and connections are written directly at the
-//     resource level.
-//   - Reference (rvalue) side: the second container resource declares its
-//     application, image, and container port by reading flattened fields
-//     directly off the first container (e.g. ctnr.container.image,
-//     ctnr.container.ports.web.containerPort). If the generator had failed to
-//     hoist any of those fields, Bicep compilation would fail and the deploy
-//     step would error out before ever reaching the cluster.
-//
-// The test passes only if both forms are accepted by Bicep against the
-// regenerated types and both pods come up healthy.
+// that exercise the read-side of x-ms-client-flatten support in the Radius
+// Bicep type generator. Both resources are *authored* with the legacy
+// `properties: { ... }` envelope (Radius RP only accepts that wire format),
+// but the second container derives its fields from the first via the
+// top-level read-only aliases the type generator now emits, e.g.
+// `ctnr.container.image` and `ctnr.container.ports.web.containerPort` instead
+// of `ctnr.properties.container.image` etc. If the generator regressed and
+// stopped hoisting those aliases, Bicep compilation would fail and the deploy
+// step would never reach the cluster.
 func Test_Container_Flatten(t *testing.T) {
 	template := "testdata/corerp-resources-container-flatten.bicep"
 	name := "corerp-resources-container-flatten"

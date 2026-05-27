@@ -1,25 +1,25 @@
 {
   "resources": {
     "Applications.Core/applications@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/61"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/72"
     },
     "Applications.Core/containers@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/133"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/164"
     },
     "Applications.Core/environments@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/173"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/217"
     },
     "Applications.Core/extenders@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/193"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/250"
     },
     "Applications.Core/gateways@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/215"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/283"
     },
     "Applications.Core/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/251"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/319"
     },
     "Applications.Core/volumes@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/289"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/357"
     },
     "Applications.Dapr/configurationStores@2023-10-01-preview": {
       "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/55"
@@ -34,16 +34,16 @@
       "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/114"
     },
     "Applications.Datastores/mongoDatabases@2023-10-01-preview": {
-      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/54"
+      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/68"
     },
     "Applications.Datastores/redisCaches@2023-10-01-preview": {
-      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/75"
+      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/103"
     },
     "Applications.Datastores/sqlDatabases@2023-10-01-preview": {
-      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/96"
+      "$ref": "applications/applications.datastores/2023-10-01-preview/types.json#/138"
     },
     "Applications.Messaging/rabbitMQQueues@2023-10-01-preview": {
-      "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/54"
+      "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/68"
     },
     "Radius.Compute/containers@2025-08-01-preview": {
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/125"
@@ -55,19 +55,19 @@
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/193"
     },
     "Radius.Core/applications@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/43"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/53"
     },
     "Radius.Core/bicepConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/64"
-    },
-    "Radius.Core/environments@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/86"
     },
+    "Radius.Core/environments@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/121"
+    },
     "Radius.Core/recipePacks@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/107"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/154"
     },
     "Radius.Core/terraformConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/133"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/192"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
       "$ref": "radius/radius.data/2025-08-01-preview/types.json#/17"

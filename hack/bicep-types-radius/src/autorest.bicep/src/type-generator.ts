@@ -131,16 +131,15 @@ export function generateTypes(
             getProperty,
             propertyName
           );
-          const ok = expandFlattenedInto(
+          // Hoist flattened children as ReadOnly aliases, then fall through to
+          // also emit the original wrapper property so authoring still works.
+          expandFlattenedInto(
             resourceProperties,
             flatten.putChild,
             flatten.getChild,
             parentFlags,
             propertyName
           );
-          if (ok) {
-            continue;
-          }
         } else if (flatten.reason) {
           logWarning(
             `Ignoring x-ms-client-flatten on '${propertyName}' of resource ${fullyQualifiedType}: ${flatten.reason}. Falling back to nested representation.`
@@ -439,10 +438,8 @@ export function generateTypes(
     getChild?: ObjectSchema;
     reason?: string;
   } {
-    const putFlagged =
-      putProp?.extensions?.["x-ms-client-flatten"] === true;
-    const getFlagged =
-      getProp?.extensions?.["x-ms-client-flatten"] === true;
+    const putFlagged = putProp?.extensions?.["x-ms-client-flatten"] === true;
+    const getFlagged = getProp?.extensions?.["x-ms-client-flatten"] === true;
     const flagged = putFlagged || getFlagged;
     if (!flagged) {
       return { flagged: false, safe: false };
@@ -490,14 +487,20 @@ export function generateTypes(
     parentFlags: ObjectTypePropertyFlags,
     childFlags: ObjectTypePropertyFlags
   ): ObjectTypePropertyFlags {
+    // Flattened children are emitted as ReadOnly *output projections* of the
+    // underlying `properties` payload. The original `properties` field is kept
+    // as the writable authoring envelope (so existing templates continue to
+    // compile and the RP wire format is unchanged). Hoisted children are only
+    // useful for reading back from deployed resources, e.g.
+    //   output image string = mycontainer.container.image
+    //
     // Required/Identifier/DeployTimeConstant on the wrapper property do not
-    // describe the children, so do not propagate them. ReadOnly/WriteOnly do
-    // describe access to anything beneath the wrapper, so OR them into each
-    // child's own flags.
-    const propagated =
-      parentFlags &
-      (ObjectTypePropertyFlags.ReadOnly | ObjectTypePropertyFlags.WriteOnly);
-    return propagated | childFlags;
+    // describe the children, so do not propagate them. WriteOnly is dropped on
+    // purpose: the flat alias is a read-side surface.
+    return (
+      ObjectTypePropertyFlags.ReadOnly |
+      (childFlags & ~ObjectTypePropertyFlags.Required)
+    );
   }
 
   function expandFlattenedInto(
@@ -851,16 +854,15 @@ export function generateTypes(
       if (flatten.flagged) {
         if (flatten.safe) {
           const parentFlags = parsePropertyFlags(putProperty, getProperty);
-          const ok = expandFlattenedInto(
+          // Hoist flattened children as ReadOnly aliases, then fall through to
+          // also emit the original wrapper property so authoring still works.
+          expandFlattenedInto(
             definitionProperties,
             flatten.putChild,
             flatten.getChild,
             parentFlags,
             propertyName
           );
-          if (ok) {
-            continue;
-          }
         } else if (flatten.reason) {
           logWarning(
             `Ignoring x-ms-client-flatten on '${propertyName}' of '${definitionName}': ${flatten.reason}. Falling back to nested representation.`

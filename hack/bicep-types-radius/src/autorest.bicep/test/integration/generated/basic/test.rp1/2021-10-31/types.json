@@ -46,19 +46,25 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "Description for a basic string property."
       },
       "stringEnum": {
         "type": {
           "$ref": "#/6"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "Description for a basic enum property."
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/7"
+        },
+        "flags": 0
       },
       "tags": {
         "type": {
-          "$ref": "#/7"
+          "$ref": "#/11"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -72,7 +78,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/12"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -100,6 +106,45 @@
   },
   {
     "$type": "ObjectType",
+    "name": "TestType1Properties",
+    "properties": {
+      "basicString": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Description for a basic string property."
+      },
+      "stringEnum": {
+        "type": {
+          "$ref": "#/10"
+        },
+        "flags": 0,
+        "description": "Description for a basic enum property."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Foo"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Bar"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/8"
+      },
+      {
+        "$ref": "#/9"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
     "name": "TrackedResourceTags",
     "properties": {},
     "additionalProperties": {
@@ -119,7 +164,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/13"
+          "$ref": "#/17"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -140,7 +185,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/18"
+          "$ref": "#/22"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -174,16 +219,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/9"
+        "$ref": "#/13"
       },
       {
-        "$ref": "#/10"
+        "$ref": "#/14"
       },
       {
-        "$ref": "#/11"
+        "$ref": "#/15"
       },
       {
-        "$ref": "#/12"
+        "$ref": "#/16"
       }
     ]
   },
@@ -207,16 +252,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/14"
+        "$ref": "#/18"
       },
       {
-        "$ref": "#/15"
+        "$ref": "#/19"
       },
       {
-        "$ref": "#/16"
+        "$ref": "#/20"
       },
       {
-        "$ref": "#/17"
+        "$ref": "#/21"
       }
     ]
   },
@@ -258,20 +303,20 @@
       }
     ],
     "output": {
-      "$ref": "#/20"
+      "$ref": "#/24"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/20"
+      "$ref": "#/24"
     }
   },
   {
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/22"
+      "$ref": "#/26"
     }
   },
   {
@@ -285,13 +330,13 @@
     "functions": {
       "listFoos": {
         "type": {
-          "$ref": "#/21"
+          "$ref": "#/25"
         },
         "description": "listFoos"
       },
       "listArrayOfFoos": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/27"
         },
         "description": "listArrayOfFoos"
       }
@@ -325,28 +370,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/29"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/30"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "Polymorphic properties body."
       },
       "tags": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/35"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -360,7 +405,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/12"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -374,7 +419,7 @@
     "baseProperties": {},
     "elements": {
       "VariantA": {
-        "$ref": "#/29"
+        "$ref": "#/33"
       }
     }
   },
@@ -391,7 +436,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/34"
         },
         "flags": 1,
         "description": "The polymorphic discriminator."
@@ -414,7 +459,7 @@
     "$type": "ResourceType",
     "name": "Test.Rp1/testType2@2021-10-31",
     "body": {
-      "$ref": "#/27"
+      "$ref": "#/31"
     },
     "readableScopes": 8,
     "writableScopes": 8,
@@ -448,28 +493,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/37"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/38"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/40"
         },
         "flags": 0,
         "description": "Properties bag containing a 'name' child which would collide."
       },
       "tags": {
         "type": {
-          "$ref": "#/37"
+          "$ref": "#/41"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -483,7 +528,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/12"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -522,7 +567,7 @@
     "$type": "ResourceType",
     "name": "Test.Rp1/testType3@2021-10-31",
     "body": {
-      "$ref": "#/35"
+      "$ref": "#/39"
     },
     "readableScopes": 8,
     "writableScopes": 8,

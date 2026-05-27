@@ -118,15 +118,33 @@ describe("x-ms-client-flatten functional tests", () => {
   }, 120000);
 
   describe("happy path: TestType1", () => {
-    it("hoists flattened child properties to the resource body", () => {
+    it("hoists flattened child properties to the resource body as ReadOnly aliases", () => {
       const body = resourceBody(types, "Test.Rp1/testType1");
 
       // Flattened children must appear at the top level.
       expect(body.properties).toHaveProperty("basicString");
       expect(body.properties).toHaveProperty("stringEnum");
 
-      // The wrapper "properties" envelope itself must NOT appear.
-      expect(body.properties).not.toHaveProperty("properties");
+      // ...as ReadOnly aliases (so they show up for output references but
+      // cannot be assigned to from a template body, which would generate a
+      // payload the RP cannot parse).
+      // ObjectTypePropertyFlags.ReadOnly = 0x02.
+      expect(body.properties.basicString.flags & 0x02).toBe(0x02);
+      expect(body.properties.stringEnum.flags & 0x02).toBe(0x02);
+      // ...and never Required (the wrapper `properties` carries Required).
+      // ObjectTypePropertyFlags.Required = 0x01.
+      expect(body.properties.basicString.flags & 0x01).toBe(0);
+      expect(body.properties.stringEnum.flags & 0x01).toBe(0);
+    });
+
+    it("keeps the writable `properties` envelope so existing templates still compile", () => {
+      const body = resourceBody(types, "Test.Rp1/testType1");
+
+      expect(body.properties).toHaveProperty("properties");
+      const propsRef = body.properties.properties.type.$ref;
+      const wrapper = types[indexOf(propsRef)];
+      expect(wrapper.$type).toBe("ObjectType");
+      expect(wrapper.name).toBe("TestType1Properties");
     });
 
     it("preserves standardized resource properties alongside flattened children", () => {
@@ -142,22 +160,6 @@ describe("x-ms-client-flatten functional tests", () => {
         "systemData"
       ]) {
         expect(body.properties).toHaveProperty(standard);
-      }
-    });
-
-    it("does not emit a TestType1Properties wrapper into the resource body", () => {
-      const body = resourceBody(types, "Test.Rp1/testType1");
-      for (const propName of Object.keys(body.properties)) {
-        const ref = body.properties[propName].type.$ref;
-        const referenced = types[indexOf(ref)];
-        if (
-          referenced.$type === "ObjectType" &&
-          referenced.name === "TestType1Properties"
-        ) {
-          throw new Error(
-            `Resource body property '${propName}' still points at the unflattened TestType1Properties wrapper`
-          );
-        }
       }
     });
 

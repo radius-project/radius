@@ -370,8 +370,12 @@
           }
         },
         "parameters": [
-          { "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter" },
-          { "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter" },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
           {
             "name": "typeName",
             "in": "path",
@@ -386,7 +390,9 @@
             "schema": { "$ref": "#/definitions/TestType2" },
             "description": "The request parameters"
           },
-          { "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter" }
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
         ]
       }
     },
@@ -402,8 +408,12 @@
           }
         },
         "parameters": [
-          { "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter" },
-          { "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter" },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
           {
             "name": "typeName",
             "in": "path",
@@ -418,7 +428,9 @@
             "schema": { "$ref": "#/definitions/TestType3" },
             "description": "The request parameters"
           },
-          { "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter" }
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
         ]
       }
     }

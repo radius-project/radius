@@ -46,14 +46,14 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1,
+        "flags": 2,
         "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
       },
       "application": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
       },
       "provisioningState": {
@@ -74,75 +74,82 @@
         "type": {
           "$ref": "#/31"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The connection secrets properties to the RabbitMQ instance"
       },
       "queue": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The name of the queue"
       },
       "host": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The hostname of the RabbitMQ instance"
       },
       "port": {
         "type": {
           "$ref": "#/32"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The port of the RabbitMQ instance. Defaults to 5672"
       },
       "vHost": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
       },
       "username": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The username to use when connecting to the RabbitMQ instance"
       },
       "resources": {
         "type": {
           "$ref": "#/34"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "List of the resource IDs that support the rabbitMQ resource"
       },
       "tls": {
         "type": {
           "$ref": "#/29"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
       },
       "recipe": {
         "type": {
           "$ref": "#/35"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
           "$ref": "#/39"
         },
-        "flags": 0,
+        "flags": 2,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/40"
+        },
+        "flags": 1,
+        "description": "RabbitMQQueue portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/54"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -156,7 +163,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/55"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -557,6 +564,196 @@
   },
   {
     "$type": "ObjectType",
+    "name": "RabbitMQQueueProperties",
+    "properties": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/49"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/31"
+        },
+        "flags": 0,
+        "description": "The connection secrets properties to the RabbitMQ instance"
+      },
+      "queue": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The name of the queue"
+      },
+      "host": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The hostname of the RabbitMQ instance"
+      },
+      "port": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 0,
+        "description": "The port of the RabbitMQ instance. Defaults to 5672"
+      },
+      "vHost": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
+      },
+      "username": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The username to use when connecting to the RabbitMQ instance"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/50"
+        },
+        "flags": 0,
+        "description": "List of the resource IDs that support the rabbitMQ resource"
+      },
+      "tls": {
+        "type": {
+          "$ref": "#/29"
+        },
+        "flags": 0,
+        "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/35"
+        },
+        "flags": 0,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/53"
+        },
+        "flags": 0,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/41"
+      },
+      {
+        "$ref": "#/42"
+      },
+      {
+        "$ref": "#/43"
+      },
+      {
+        "$ref": "#/44"
+      },
+      {
+        "$ref": "#/45"
+      },
+      {
+        "$ref": "#/46"
+      },
+      {
+        "$ref": "#/47"
+      },
+      {
+        "$ref": "#/48"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/33"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/51"
+      },
+      {
+        "$ref": "#/52"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
     "name": "TrackedResourceTags",
     "properties": {},
     "additionalProperties": {
@@ -576,7 +773,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/46"
+          "$ref": "#/60"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -597,7 +794,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/51"
+          "$ref": "#/65"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -631,16 +828,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/42"
+        "$ref": "#/56"
       },
       {
-        "$ref": "#/43"
+        "$ref": "#/57"
       },
       {
-        "$ref": "#/44"
+        "$ref": "#/58"
       },
       {
-        "$ref": "#/45"
+        "$ref": "#/59"
       }
     ]
   },
@@ -664,16 +861,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/47"
+        "$ref": "#/61"
       },
       {
-        "$ref": "#/48"
+        "$ref": "#/62"
       },
       {
-        "$ref": "#/49"
+        "$ref": "#/63"
       },
       {
-        "$ref": "#/50"
+        "$ref": "#/64"
       }
     ]
   },
@@ -701,7 +898,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/52"
+      "$ref": "#/66"
     }
   },
   {
@@ -715,7 +912,7 @@
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/67"
         },
         "description": "listSecrets"
       }
