@@ -44,3 +44,14 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
   }
   connections: {}
 }
+
+// Read-side flatten checks: each of these reads a field that previously lived
+// under a `.properties.` envelope. If the type generator failed to hoist any
+// of these onto the resource body, Bicep compilation would fail with
+// "property does not exist on type ..." and the deployment step would error
+// out before reaching the cluster. They double as a smoke test that flat
+// access works symmetrically for authoring and for cross-resource references.
+output appEnvironment string = app.environment
+output containerAppId string = container.application
+output containerImage string = container.container.image
+output containerPort int = container.container.ports.web.containerPort
