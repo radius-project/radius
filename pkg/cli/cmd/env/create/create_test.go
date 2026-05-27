@@ -192,6 +192,38 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Create command with --namespace flag",
+			Input:         []string{"testingenv", "--namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "mynamespace", r.Namespace)
+			},
+		},
+		{
+			Name:          "Create command with --kubernetes-namespace flag",
+			Input:         []string{"testingenv", "--kubernetes-namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "mynamespace", r.Namespace)
+			},
+		},
+		{
 			Name:          "Create command with both providers set",
 			Input:         []string{"testingenv", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup", "--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount"},
 			ExpectedValid: true,
@@ -320,14 +352,8 @@ func Test_Run(t *testing.T) {
 
 		expectedOutput := []any{
 			output.LogOutput{
-				Format: "Creating Environment...",
-			},
-			output.LogOutput{
-				Format: "Successfully created environment %q in resource group %q",
-				Params: []any{
-					"default",
-					"test-group",
-				},
+				Format: "Applications.Core/environments/%s created",
+				Params: []any{"default"},
 			},
 		}
 

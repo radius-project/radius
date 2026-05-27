@@ -140,6 +140,42 @@ func Test_Validate(t *testing.T) {
 				Config: configWithWorkspace,
 			},
 		},
+		{
+			Name:          "Create command with --kubernetes-namespace flag",
+			Input:         []string{"testingenv", "--kubernetes-namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Kubernetes)
+				require.NotNil(t, r.providers.Kubernetes.Namespace)
+				require.Equal(t, "mynamespace", *r.providers.Kubernetes.Namespace)
+			},
+		},
+		{
+			Name:          "Create command with --namespace flag (backward-compatible alias)",
+			Input:         []string{"testingenv", "--namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Kubernetes)
+				require.NotNil(t, r.providers.Kubernetes.Namespace)
+				require.Equal(t, "mynamespace", *r.providers.Kubernetes.Namespace)
+			},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

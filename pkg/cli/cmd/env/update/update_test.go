@@ -426,24 +426,9 @@ func Test_Update(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		obj := environmentForDisplay{
-			Name:        "test-env",
-			Recipes:     0,
-			Providers:   0,
-			ComputeKind: "kubernetes",
-		}
-
 		expected := []any{
 			output.LogOutput{
-				Format: "Updating Environment...",
-			},
-			output.FormattedOutput{
-				Format:  "table",
-				Obj:     obj,
-				Options: environmentFormat(),
-			},
-			output.LogOutput{
-				Format: "Successfully updated environment %q.",
+				Format: "Applications.Core/environments/%s updated",
 				Params: []any{"test-env"},
 			},
 		}

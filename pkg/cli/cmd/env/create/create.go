@@ -64,6 +64,9 @@ Applications deployed to an environment will inherit the container runtime, conf
 rad env create myenv
 
 ## Create environment with a specific namespace
+rad env create myenv --kubernetes-namespace mynamespace
+
+## Create environment with a specific namespace (deprecated --namespace alias)
 rad env create myenv --namespace mynamespace
 
 ## Create environment with Azure cloud provider
@@ -79,6 +82,8 @@ rad env create myenv --aws-region us-west-2 --aws-account-id *****
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
+	commonflags.AddKubernetesNamespaceFlag(cmd)
+	cmd.MarkFlagsMutuallyExclusive("namespace", commonflags.KubernetesNamespaceFlag)
 	commonflags.AddAzureSubscriptionFlag(cmd)
 	commonflags.AddAzureResourceGroupFlag(cmd)
 	cmd.MarkFlagsRequiredTogether(commonflags.AzureSubscriptionIdFlag, commonflags.AzureResourceGroupFlag)
@@ -143,7 +148,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Namespace, err = cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err
-	} else if r.Namespace == "" {
+	}
+
+	k8sNamespace, err := cmd.Flags().GetString(commonflags.KubernetesNamespaceFlag)
+	if err != nil {
+		return err
+	}
+	if k8sNamespace != "" {
+		r.Namespace = k8sNamespace
+	}
+	if r.Namespace == "" {
 		r.Namespace = r.EnvironmentName
 	}
 
