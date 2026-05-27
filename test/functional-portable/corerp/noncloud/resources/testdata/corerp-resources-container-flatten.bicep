@@ -30,7 +30,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   ]
 }
 
-resource container 'Applications.Core/containers@2023-10-01-preview' = {
+resource ctnr 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'ctnr-ctnr-flatten'
   location: location
   application: app.id
@@ -45,13 +45,27 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
   connections: {}
 }
 
-// Read-side flatten checks: each of these reads a field that previously lived
-// under a `.properties.` envelope. If the type generator failed to hoist any
-// of these onto the resource body, Bicep compilation would fail with
-// "property does not exist on type ..." and the deployment step would error
-// out before reaching the cluster. They double as a smoke test that flat
-// access works symmetrically for authoring and for cross-resource references.
-output appEnvironment string = app.environment
-output containerAppId string = container.application
-output containerImage string = container.container.image
-output containerPort int = container.container.ports.web.containerPort
+// Second container that references flattened fields on `ctnr` via cross-resource
+// references. Each `ctnr.<field>` access exercises the read-side of flatten:
+//   - ctnr.application                          (was ctnr.properties.application)
+//   - ctnr.container.image                      (was ctnr.properties.container.image)
+//   - ctnr.container.ports.web.containerPort    (was ctnr.properties.container.ports.web.containerPort)
+// If the type generator had failed to hoist any of these onto the resource
+// body, Bicep would refuse to compile this template ("property does not exist
+// on type ...") and the deploy step would error out before reaching the
+// cluster, so this resource doubles as a smoke test for the read side of
+// flattening.
+resource ctnr2 'Applications.Core/containers@2023-10-01-preview' = {
+  name: 'ctnr-ctnr-flatten-2'
+  location: location
+  application: ctnr.application
+  container: {
+    image: ctnr.container.image
+    ports: {
+      web: {
+        containerPort: ctnr.container.ports.web.containerPort
+      }
+    }
+  }
+  connections: {}
+}

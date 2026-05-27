@@ -25,23 +25,23 @@ import (
 	"github.com/radius-project/radius/test/validation"
 )
 
-// Test_Container_Flatten deploys a container application whose bicep template
-// uses the flattened authoring syntax (no .properties.{} envelope). It relies
-// on x-ms-client-flatten support in the Radius Bicep type generator:
+// Test_Container_Flatten deploys an application with two container resources
+// whose bicep template uses the flattened authoring syntax (no .properties.{}
+// envelope). It relies on x-ms-client-flatten support in the Radius Bicep type
+// generator and exercises both sides of flatten:
 //
 //   - Authoring (lvalue) side: fields such as environment, extensions,
 //     application, container, and connections are written directly at the
 //     resource level.
-//   - Reference (rvalue) side: the template also declares `output` statements
-//     that read flattened fields back from the deployed resources
-//     (e.g. container.container.image, container.container.ports.web.containerPort).
-//     If the generator had failed to hoist any of those fields, Bicep
-//     compilation would fail and the deploy step would error out before ever
-//     reaching the cluster.
+//   - Reference (rvalue) side: the second container resource declares its
+//     application, image, and container port by reading flattened fields
+//     directly off the first container (e.g. ctnr.container.image,
+//     ctnr.container.ports.web.containerPort). If the generator had failed to
+//     hoist any of those fields, Bicep compilation would fail and the deploy
+//     step would error out before ever reaching the cluster.
 //
 // The test passes only if both forms are accepted by Bicep against the
-// regenerated types and the deployed resources behave identically to the
-// legacy envelope form.
+// regenerated types and both pods come up healthy.
 func Test_Container_Flatten(t *testing.T) {
 	template := "testdata/corerp-resources-container-flatten.bicep"
 	name := "corerp-resources-container-flatten"
@@ -61,12 +61,18 @@ func Test_Container_Flatten(t *testing.T) {
 						Type: validation.ContainersResource,
 						App:  name,
 					},
+					{
+						Name: "ctnr-ctnr-flatten-2",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-ctnr-flatten"),
+						validation.NewK8sPodForResource(name, "ctnr-ctnr-flatten-2"),
 					},
 				},
 			},
