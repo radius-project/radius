@@ -86,7 +86,7 @@ graph TD
   optional `properties.recipeParameters` overrides.
 - **Recipe pack** — `Radius.Core/recipePacks` resource whose
   `properties.recipes[<type>]` entries store recipe kind, location,
-  parameters, and `plainHTTP` for the `Radius.Core` environment path.
+  parameters, and `plainHttp` for the `Radius.Core` environment path.
 - **Recipe engine** — selects a driver and runs the recipe to produce
   resources, values, and secrets.
 
