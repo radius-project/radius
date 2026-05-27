@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
@@ -237,8 +238,21 @@ func Test_Validate(t *testing.T) {
 			ValidateCallback: func(t *testing.T, runner framework.Runner) {
 				r := runner.(*Runner)
 				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Azure)
 				require.NotNil(t, r.providers.Azure.Scope)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testResourceGroup", *r.providers.Azure.Scope)
+				require.NotNil(t, r.providers.Aws)
 				require.NotNil(t, r.providers.Aws.Scope)
+				require.Equal(t, "/planes/aws/aws/accounts/testAWSAccount/regions/us-west-2", *r.providers.Aws.Scope)
+			},
+		},
+		{
+			Name:          "Create command with invalid Kubernetes namespace",
+			Input:         []string{"testingenv", "--kubernetes-namespace", "BadNamespace"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
 			},
 		},
 	}
@@ -253,6 +267,7 @@ func Test_Run(t *testing.T) {
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
+				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
 				Namespace: new("default"),
 			},
 		}
@@ -315,6 +330,7 @@ func Test_Run(t *testing.T) {
 		}
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
+				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
 				Namespace: new("default"),
 			},
 			Providers: testProviders,
@@ -369,6 +385,7 @@ func Test_Run(t *testing.T) {
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Compute: &corerp.KubernetesCompute{
+				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
 				Namespace: new("default"),
 			},
 		}
@@ -427,4 +444,24 @@ func createShowUCPError(appManagementClient *clients.MockApplicationsManagementC
 		GetResourceGroup(gomock.Any(), gomock.Any(), "invalidresourcegroup").
 		Return(testResourceGroup, clierrors.Message("The resource group %q could not be found.", "invalidresourcegroup")).Times(1)
 
+}
+
+func Test_FlagGroups(t *testing.T) {
+	t.Run("--namespace and --kubernetes-namespace are mutually exclusive", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--namespace", "ns1", "--kubernetes-namespace", "ns2"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
+
+	t.Run("--azure-subscription-id requires --azure-resource-group", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--azure-subscription-id", "00000000-0000-0000-0000-000000000000"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
+
+	t.Run("--aws-region requires --aws-account-id", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--aws-region", "us-west-2"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
 }

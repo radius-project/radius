@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -57,16 +58,13 @@ Applications deployed to an environment will inherit the container runtime, conf
 rad env create myenv
 
 ## Create environment with Azure cloud provider
-rad env create myenv --azure-subscription-id **** --azure-resource-group myrg
+rad env create myenv --azure-subscription-id <subscription-id> --azure-resource-group <resource-group>
 
 ## Create environment with AWS cloud provider
-rad env create myenv --aws-region us-west-2 --aws-account-id *****
+rad env create myenv --aws-region <region> --aws-account-id <account-id>
 
-## Create environment with Kubernetes cloud provider
+## Create environment with a specific Kubernetes namespace
 rad env create myenv --kubernetes-namespace mynamespace
-
-## Create environment with Kubernetes cloud provider using deprecated --namespace alias
-rad env create myenv --namespace mynamespace
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -82,7 +80,8 @@ rad env create myenv --namespace mynamespace
 	cmd.MarkFlagsRequiredTogether(commonflags.AWSRegionFlag, commonflags.AWSAccountIdFlag)
 	commonflags.AddKubernetesNamespaceFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
-	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, "namespace")
+	commonflags.MarkNamespaceFlagDeprecated(cmd)
+	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
 	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
@@ -158,12 +157,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Initialize providers
-	r.providers = &corerpv20250801.Providers{
-		Azure:      &corerpv20250801.ProvidersAzure{},
-		Aws:        &corerpv20250801.ProvidersAws{},
-		Kubernetes: &corerpv20250801.ProvidersKubernetes{},
-	}
+	// Initialize providers. Sub-structs are allocated lazily as flags are parsed.
+	r.providers = &corerpv20250801.Providers{}
 
 	// Validate Azure scope components
 	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
@@ -177,8 +172,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Azure.SubscriptionID = new(azureSubId)
-		r.providers.Azure.ResourceGroupName = new(azureRgId)
+		r.providers.Azure = &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    new(azureSubId),
+			ResourceGroupName: new(azureRgId),
+		}
 	}
 
 	// Validate AWS scope components
@@ -193,26 +190,25 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Aws.Region = new(awsRegion)
-		r.providers.Aws.AccountID = new(awsAccountId)
+		r.providers.Aws = &corerpv20250801.ProvidersAws{
+			Region:    new(awsRegion),
+			AccountID: new(awsAccountId),
+		}
 	}
 
-	// Validate Kubernetes scope components. Accept either --kubernetes-namespace
-	// or the backward-compatible --namespace alias (the two are mutually exclusive).
-	if cmd.Flags().Changed(commonflags.KubernetesNamespaceFlag) {
-		k8sNamespace, err := cmd.Flags().GetString(commonflags.KubernetesNamespaceFlag)
-		if err != nil {
-			return err
+	// Validate Kubernetes namespace. Accept either --kubernetes-namespace or the
+	// legacy --namespace alias (the two are mutually exclusive).
+	k8sNamespace, set, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
+	if err != nil {
+		return err
+	}
+	if set {
+		if err := prompt.ValidateKubernetesNamespace(k8sNamespace); err != nil {
+			return clierrors.Message("Invalid Kubernetes namespace %q: %s", k8sNamespace, err.Error())
 		}
-
-		r.providers.Kubernetes.Namespace = new(k8sNamespace)
-	} else if cmd.Flags().Changed("namespace") {
-		k8sNamespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			return err
+		r.providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+			Namespace: new(k8sNamespace),
 		}
-
-		r.providers.Kubernetes.Namespace = new(k8sNamespace)
 	}
 
 	return nil

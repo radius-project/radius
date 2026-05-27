@@ -34,14 +34,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
-)
-
-const (
-	azureScopeTemplate = "/subscriptions/%s/resourceGroups/%s"
-	awsScopeTemplate   = "/planes/aws/aws/accounts/%s/regions/%s"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env create` command.
@@ -66,14 +63,11 @@ rad env create myenv
 ## Create environment with a specific namespace
 rad env create myenv --kubernetes-namespace mynamespace
 
-## Create environment with a specific namespace (deprecated --namespace alias)
-rad env create myenv --namespace mynamespace
-
 ## Create environment with Azure cloud provider
-rad env create myenv --azure-subscription-id **** --azure-resource-group myrg
+rad env create myenv --azure-subscription-id <subscription-id> --azure-resource-group <resource-group>
 
 ## Create environment with AWS cloud provider
-rad env create myenv --aws-region us-west-2 --aws-account-id *****
+rad env create myenv --aws-region <region> --aws-account-id <account-id>
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -81,9 +75,10 @@ rad env create myenv --aws-region us-west-2 --aws-account-id *****
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	commonflags.AddNamespaceFlag(cmd)
 	commonflags.AddKubernetesNamespaceFlag(cmd)
-	cmd.MarkFlagsMutuallyExclusive("namespace", commonflags.KubernetesNamespaceFlag)
+	commonflags.AddNamespaceFlag(cmd)
+	commonflags.MarkNamespaceFlagDeprecated(cmd)
+	cmd.MarkFlagsMutuallyExclusive(commonflags.NamespaceFlag, commonflags.KubernetesNamespaceFlag)
 	commonflags.AddAzureSubscriptionFlag(cmd)
 	commonflags.AddAzureResourceGroupFlag(cmd)
 	cmd.MarkFlagsRequiredTogether(commonflags.AzureSubscriptionIdFlag, commonflags.AzureResourceGroupFlag)
@@ -145,19 +140,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.Namespace, err = cmd.Flags().GetString("namespace")
+	namespace, set, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
 	if err != nil {
 		return err
 	}
-
-	k8sNamespace, err := cmd.Flags().GetString(commonflags.KubernetesNamespaceFlag)
-	if err != nil {
-		return err
-	}
-	if k8sNamespace != "" {
-		r.Namespace = k8sNamespace
-	}
-	if r.Namespace == "" {
+	if set {
+		if err := prompt.ValidateKubernetesNamespace(namespace); err != nil {
+			return clierrors.Message("Invalid Kubernetes namespace %q: %s", namespace, err.Error())
+		}
+		r.Namespace = namespace
+	} else {
 		r.Namespace = r.EnvironmentName
 	}
 
@@ -182,11 +174,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Initialize providers
-	r.providers = &corerp.Providers{
-		Azure: &corerp.ProvidersAzure{},
-		Aws:   &corerp.ProvidersAws{},
-	}
+	r.providers = &corerp.Providers{}
 
 	// Validate Azure scope components
 	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
@@ -200,7 +188,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Azure.Scope = new(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
+		r.providers.Azure = &corerp.ProvidersAzure{
+			Scope: new(fmt.Sprintf(commonflags.AzureScopeTemplate, azureSubId, azureRgId)),
+		}
 	}
 
 	// Validate AWS scope components
@@ -215,7 +205,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Aws.Scope = new(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
+		r.providers.Aws = &corerp.ProvidersAws{
+			Scope: new(fmt.Sprintf(commonflags.AwsScopeTemplate, awsAccountId, awsRegion)),
+		}
 	}
 
 	return nil
@@ -234,6 +226,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	properties := &corerp.EnvironmentProperties{
 		Compute: &corerp.KubernetesCompute{
+			Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
 			Namespace: new(r.Namespace),
 		},
 	}

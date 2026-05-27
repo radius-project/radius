@@ -159,7 +159,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create command with --namespace flag (backward-compatible alias)",
+			Name:          "Create command with --namespace flag (legacy alias)",
 			Input:         []string{"testingenv", "--namespace", "mynamespace"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -176,8 +176,69 @@ func Test_Validate(t *testing.T) {
 				require.Equal(t, "mynamespace", *r.providers.Kubernetes.Namespace)
 			},
 		},
+		{
+			Name:          "Create command with invalid Kubernetes namespace",
+			Input:         []string{"testingenv", "--kubernetes-namespace", "BadNamespace"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+		},
+		{
+			Name:          "Create command with Azure provider flags",
+			Input:         []string{"testingenv", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Azure)
+				require.NotNil(t, r.providers.Azure.SubscriptionID)
+				require.NotNil(t, r.providers.Azure.ResourceGroupName)
+				require.Equal(t, "00000000-0000-0000-0000-000000000000", *r.providers.Azure.SubscriptionID)
+				require.Equal(t, "testResourceGroup", *r.providers.Azure.ResourceGroupName)
+			},
+		},
+		{
+			Name:          "Create command with invalid Azure subscription ID",
+			Input:         []string{"testingenv", "--azure-subscription-id", "not-a-guid", "--azure-resource-group", "testResourceGroup"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+		},
+		{
+			Name:          "Create command with AWS provider flags",
+			Input:         []string{"testingenv", "--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Aws)
+				require.NotNil(t, r.providers.Aws.Region)
+				require.NotNil(t, r.providers.Aws.AccountID)
+				require.Equal(t, "us-west-2", *r.providers.Aws.Region)
+				require.Equal(t, "testAWSAccount", *r.providers.Aws.AccountID)
+			},
+		},
 	}
-
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
@@ -338,4 +399,24 @@ func expectResourceGroupError(client *clients.MockApplicationsManagementClient, 
 		GetResourceGroup(gomock.Any(), "local", name).
 		Return(v20231001preview.ResourceGroupResource{}, err).
 		Times(1)
+}
+
+func Test_FlagGroups(t *testing.T) {
+	t.Run("--namespace and --kubernetes-namespace are mutually exclusive", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--namespace", "ns1", "--kubernetes-namespace", "ns2"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
+
+	t.Run("--azure-subscription-id requires --azure-resource-group", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--azure-subscription-id", "00000000-0000-0000-0000-000000000000"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
+
+	t.Run("--aws-region requires --aws-account-id", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--aws-region", "us-west-2"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
 }

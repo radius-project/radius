@@ -28,17 +28,15 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 )
 
-const (
-	envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
-	azureScopeTemplate       = "/subscriptions/%s/resourceGroups/%s"
-	awsScopeTemplate         = "/planes/aws/aws/accounts/%s/regions/%s"
-)
+const envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
 
 // NewCommand creates an instance of the command and runner for the `rad env update` command.
 //
@@ -56,20 +54,22 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "update [environment]",
 		Short: "Update environment configuration",
 		Long: `Update environment configuration
-	
+
 This command updates the configuration of an environment for properties that are able to be changed.
-		
+
 Properties that can be updated include:
 - providers (Azure, AWS)
 - namespace
+
+All other properties require the environment to be deleted and recreated.
 `,
 		Args: cobra.ExactArgs(1),
 		Example: `
 ## Add Azure cloud provider for deploying Azure resources
-rad env update myenv --azure-subscription-id **** --azure-resource-group myrg
+rad env update myenv --azure-subscription-id <subscription-id> --azure-resource-group <resource-group>
 
 ## Add AWS cloud provider for deploying AWS resources
-rad env update myenv --aws-region us-west-2 --aws-account-id *****
+rad env update myenv --aws-region <region> --aws-account-id <account-id>
 
 ## Remove Azure cloud provider
 rad env update myenv --clear-azure
@@ -78,14 +78,17 @@ rad env update myenv --clear-azure
 rad env update myenv --clear-aws
 
 ## Update the Kubernetes namespace
-rad env update myenv --namespace mynamespace
+rad env update myenv --kubernetes-namespace mynamespace
 `,
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddKubernetesNamespaceFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
+	commonflags.MarkNamespaceFlagDeprecated(cmd)
+	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
 	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	commonflags.AddAzureScopeFlags(cmd)
@@ -160,7 +163,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Azure.Scope = new(fmt.Sprintf(azureScopeTemplate, azureSubId, azureRgId))
+		r.providers.Azure.Scope = new(fmt.Sprintf(commonflags.AzureScopeTemplate, azureSubId, azureRgId))
 	}
 
 	r.clearEnvAzure, err = cmd.Flags().GetBool(commonflags.ClearEnvAzureFlag)
@@ -181,7 +184,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Aws.Scope = new(fmt.Sprintf(awsScopeTemplate, awsAccountId, awsRegion))
+		r.providers.Aws.Scope = new(fmt.Sprintf(commonflags.AwsScopeTemplate, awsAccountId, awsRegion))
 	}
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
@@ -189,9 +192,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.Namespace, err = cmd.Flags().GetString("namespace")
+	namespace, set, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
 	if err != nil {
 		return err
+	}
+	if set {
+		if err := prompt.ValidateKubernetesNamespace(namespace); err != nil {
+			return clierrors.Message("Invalid Kubernetes namespace %q: %s", namespace, err.Error())
+		}
+		r.Namespace = namespace
 	}
 
 	return nil
@@ -240,12 +249,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Update namespace if user provided one. Preserve the existing compute Kind
 	// and other fields by updating the namespace in place when possible.
 	if r.Namespace != "" {
-		if compute, ok := env.Properties.Compute.(*corerp.KubernetesCompute); ok {
+		switch compute := env.Properties.Compute.(type) {
+		case *corerp.KubernetesCompute:
 			compute.Namespace = new(r.Namespace)
-		} else {
+		case nil:
 			env.Properties.Compute = &corerp.KubernetesCompute{
+				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
 				Namespace: new(r.Namespace),
 			}
+		default:
+			return clierrors.Message("Cannot update namespace on environment %q: existing compute kind is not Kubernetes.", r.EnvName)
 		}
 	}
 
