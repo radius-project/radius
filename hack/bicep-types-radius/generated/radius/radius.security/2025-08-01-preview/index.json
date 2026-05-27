@@ -1,0 +1,12 @@
+{
+  "resources": {
+    "Radius.Security/secrets@2025-08-01-preview": {
+      "$ref": "types.json#/22"
+    }
+  },
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radiusradiussecurity",
+    "version": "0.0.1"
+  }
+}

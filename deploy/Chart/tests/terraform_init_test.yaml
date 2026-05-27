@@ -1,0 +1,96 @@
+suite: test terraform init container path mismatch fix
+templates:
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+tests:
+  # Regression test for https://github.com/radius-project/radius/pull/11880
+  # The pre-mounted Terraform binary path written by the init container MUST
+  # match the constants in pkg/recipes/terraform/install.go:
+  #   defaultGlobalTerraformBinary = "/terraform/.terraform-global/terraform"
+  #   defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
+  # If these strings drift, ensureGlobalTerraformBinary falls through to
+  # downloadAndInstallTerraform and the init container's work is wasted.
+  - it: rp init container writes terraform binary to the global path expected by install.go
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'GLOBAL_DIR="/terraform/\.terraform-global"'
+        template: rp/deployment.yaml
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'cp terraform "\$GLOBAL_DIR/terraform"'
+        template: rp/deployment.yaml
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'touch "\$GLOBAL_DIR/\.terraform-ready"'
+        template: rp/deployment.yaml
+
+  - it: dynamic-rp init container writes terraform binary to the global path expected by install.go
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'GLOBAL_DIR="/terraform/\.terraform-global"'
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'cp terraform "\$GLOBAL_DIR/terraform"'
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'touch "\$GLOBAL_DIR/\.terraform-ready"'
+        template: dynamic-rp/deployment.yaml
+
+  - it: rp template fails when rp.terraform.path is overridden away from /terraform
+    set:
+      rp.terraform.path: "/other"
+    asserts:
+      - failedTemplate:
+          errorMessage: 'rp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
+        template: rp/deployment.yaml
+
+  - it: dynamic-rp template fails when dynamicrp.terraform.path is overridden away from /terraform
+    set:
+      dynamicrp.terraform.path: "/other"
+    asserts:
+      - failedTemplate:
+          errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
+        template: dynamic-rp/deployment.yaml
+
+  - it: rp template still fails when rp.terraform.path is overridden, even with terraform pre-download disabled
+    set:
+      global.terraform.enabled: false
+      rp.terraform.path: "/other"
+    asserts:
+      - failedTemplate:
+          errorMessage: 'rp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
+        template: rp/deployment.yaml
+
+  - it: dynamic-rp template still fails when dynamicrp.terraform.path is overridden, even with terraform pre-download disabled
+    set:
+      global.terraform.enabled: false
+      dynamicrp.terraform.path: "/other"
+    asserts:
+      - failedTemplate:
+          errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
+        template: dynamic-rp/deployment.yaml
+
+  # Regression test for the second half of #11880: after fixing the
+  # binary-path mismatch the runtime actually uses the pre-mounted
+  # binary, so its version MUST match terraformVersion in
+  # pkg/recipes/terraform/version.go (currently "1.14.9"). If these
+  # drift the runtime download fallback and the pre-mount install
+  # different versions, causing recipes to behave differently between
+  # cold and warm starts (see Test_TerraformRecipe_Context failure).
+  - it: rp init container pins terraform version to match pkg/recipes/terraform/version.go
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_VERSION="1\.14\.9"'
+        template: rp/deployment.yaml
+
+  - it: dynamic-rp init container pins terraform version to match pkg/recipes/terraform/version.go
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_VERSION="1\.14\.9"'
+        template: dynamic-rp/deployment.yaml

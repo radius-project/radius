@@ -16,6 +16,65 @@ Code reviews for Radius take place as part of the pull-request process. See the 
 
 Contributors and reviewers might communicate about a pull-request outside Github, for example on a video call or in chat. We encourage this when it is helpful, and we ask that contributors update Github with the important feedback and conclusions reached so that the information is visible to others.
 
+### Optional: AI-assisted review with the `radius-code-review` skill
+
+If you use GitHub Copilot (CLI or the VS Code extension), the repository ships an opinionated skill at [`.github/skills/radius-code-review/SKILL.md`](../../../../.github/skills/radius-code-review/SKILL.md) that produces a structured review for a given pull-request. The skill generates three artifacts under `.copilot-tracking/`:
+
+- `pr-analysis-<n>.md` — per-file analysis of the changes
+- `pr-review-<n>.md` — review comments and overall assessment
+- `pr-review-<n>.sh` — a shell script that posts the review via the GitHub REST API
+
+**Prerequisites**
+
+- Authenticated [`gh` CLI](https://cli.github.com/) (the skill uses it to fetch PR metadata and diffs).
+- [`jq`](https://jqlang.org/) installed locally (the generated posting script depends on it).
+- One of:
+  - The [GitHub Copilot app](https://github.com/features/copilot).
+  - [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-cli), or
+  - VS Code with the [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) extension. Prompt files must be enabled — see VS Code's [prompt files documentation](https://code.visualstudio.com/docs/copilot/copilot-customization#_prompt-files-experimental).
+
+**From Copilot CLI**
+
+Run the CLI from the repository root, then in the chat session enter:
+
+```text
+/radius-code-review Review PR #<pr-number>
+```
+
+The skill is auto-discovered from `.github/skills/`. It will fetch the PR, analyze each changed file, and write the three artifacts to `.copilot-tracking/`.
+
+**From the GitHub Copilot app**
+
+Open Copilot for this repository, then ask:
+
+```text
+Use the radius-code-review skill to review PR #<pr-number>.
+```
+
+You can also use:
+
+```text
+/radius-code-review Review PR #<pr-number>
+```
+
+The app will invoke the skill, then generate the same `.copilot-tracking/` artifacts as the CLI flow.
+
+**From VS Code Copilot Chat**
+
+Open the Copilot Chat panel in the repository, then in the chat input type:
+
+```text
+/radius.code-review
+```
+
+VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt you for the PR number. That prompt is a thin shim that instructs Copilot to read `SKILL.md` and follow it — the workflow and outputs are identical to the CLI path.
+
+**Reviewer responsibilities still apply**
+
+- **You own the review.** AI-generated feedback is a starting point, not the final word. Read each comment, drop the ones that are wrong or low-value, and refine the rest before posting.
+- **Verify line numbers, paths, and claims against the actual diff.** The skill produces a script you can edit; do not run it blind.
+- The rest of this document (philosophy, what good feedback looks like, the code-review pyramid) applies equally whether your first draft came from the skill or from your own reading.
+
 ## Philosophy
 
 As maintainers we like the [code review pyramid](https://www.morling.dev/blog/the-code-review-pyramid/) as a guiding principle. 
@@ -186,4 +245,3 @@ We encourage anyone to report a [code of conduct](https://github.com/radius-proj
 It is **explicitly** a responsibility of approvers and maintainers to report a violation if they suspect one. If a code of conduct violation occurs in a pull-request, follow the instructions [here](https://docs.github.com/en/communities/moderating-comments-and-conversations/managing-disruptive-comments) to minimize the comment and report the violation.
 
 Approvers and maintainers (or anyone else with write-access) **MUST NOT** edit any *other* contributor's comments to maintain trust and transparency. If you do this by accident, please restore the original content and apologize with your own comment. 
-
