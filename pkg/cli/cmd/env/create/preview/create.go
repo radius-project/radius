@@ -39,10 +39,8 @@ import (
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad env create` command.
-
-// NewCommand creates a new Cobra command and a Runner object to handle the command's logic, and adds flags to the command
-// for environment name, workspace, resource group, and cloud provider configuration.
+// NewCommand creates a new Cobra command and a Runner object to handle the `rad env create` command,
+// and adds flags for environment name, workspace, resource group, Kubernetes namespace, and cloud provider configuration.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 

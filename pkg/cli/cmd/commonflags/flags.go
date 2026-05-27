@@ -178,7 +178,7 @@ func AddKubernetesScopeFlags(cmd *cobra.Command) {
 
 // AddNamespaceFlag adds a flag to the given command that allows the user to specify a Kubernetes namespace.
 func AddKubernetesNamespaceFlag(cmd *cobra.Command) {
-	cmd.Flags().String(KubernetesNamespaceFlag, "", "The namespace where Kubernetes resources will be deployed (preview)")
+	cmd.Flags().String(KubernetesNamespaceFlag, "", "The namespace where Kubernetes resources will be deployed")
 }
 
 // AddKubeContextFlagVar adds a flag to the given command that allows the user to specify a Kubernetes context to use.

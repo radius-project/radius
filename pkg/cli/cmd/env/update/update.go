@@ -258,7 +258,7 @@ func (r *Runner) Run(ctx context.Context) error {
 				Namespace: new(r.Namespace),
 			}
 		default:
-			return clierrors.Message("Cannot update namespace on environment %q: existing compute kind is not Kubernetes.", r.EnvName)
+			return clierrors.Message("Cannot update namespace on environment %q: existing compute kind is not Kubernetes", r.EnvName)
 		}
 	}
 
