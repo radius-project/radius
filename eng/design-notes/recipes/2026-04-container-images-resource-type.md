@@ -84,7 +84,7 @@ manifest list is pushed.
 
 A developer has a service in `./frontend` of their working tree.
 They add a `containerImages` resource to their Bicep file, set
-`build.context: './frontend'`, and reference the resulting image
+`build.source: './frontend'`, and reference the resulting image
 from a `containers` resource. `rad deploy` tarballs the local
 directory, uploads it to dynamic-rp, builds via the in-cluster
 BuildKit, pushes to the recipe-configured registry, and rolls the
@@ -96,7 +96,7 @@ or `docker push`.
 A developer has already pushed their code to a git repository and
 wants to build directly from there instead of uploading their
 working tree. The same Bicep, but
-`build.context: 'git::https://github.com/alice/myapp.git//frontend'`.
+`build.source: 'git::https://github.com/alice/myapp.git//frontend'`.
 BuildKit clones the repo inside the cluster on each deployment. 
 All git url constructs (refs, tags, sha, branch) are supported.
 
@@ -119,8 +119,8 @@ extension containerImages
 extension containers
 
 param environment string
-param imageTag string
-param buildContext string
+param tag string
+param buildSource string
 
 resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'myapp'
@@ -132,8 +132,8 @@ resource frontendImage 'Radius.Compute/containerImages@2025-08-01-preview' = {
   properties: {
     environment: environment
     application: app.id
-    imageTag:    imageTag
-    build: { context: buildContext }
+    tag:         tag
+    build: { source: buildSource }
   }
 }
 
@@ -144,7 +144,7 @@ resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
     application: app.id
     containers: {
       app: {
-        image: frontendImage.properties.image
+        image: frontendImage.properties.imageReference
         ports: { web: { containerPort: 3000 } }
       }
     }
@@ -166,18 +166,17 @@ The developer never writes the registry, the repository path, or
 the tag. The final image reference is composed by the recipe:
 
 ```
-<registry>/<imageName>:<imageTag>
+<registry>/<resource-name>:<tag>
 ghcr.io/mycompany/todolist-app:sha256-d4f2…
 └──────┬────────┘ └─────┬────┘ └─────┬─────┘
-   from registry    from imageName  content-addressable
-   recipe param     (defaults to    tag (default)
-                    resource name)
+   from registry    lowercased    content-addressable
+   recipe param     resource name tag (default)
 ```
 
 Tags default to a content-addressable digest (see [Tag strategy](#tag-strategy)).
-Developers can override per-resource by setting `properties.imageTag`.
-When `build.context` is a remote git URL the recipe cannot cheaply
-hash the tree, so `properties.imageTag` is required and a
+Developers can override per-resource by setting `properties.tag`.
+When `build.source` is a remote git URL the recipe cannot cheaply
+hash the tree, so `properties.tag` is required and a
 `terraform_data "validate_git_tag"` precondition fails the deploy
 otherwise.
 
@@ -277,11 +276,10 @@ Key points:
 
 * The **`registry`** recipe parameter is the full prefix
   (registry host plus optional namespace/org); the resource
-  name (or optional `imageName` override) supplies the final
-  path segment. Different environments point their recipePack
-  at different registries (dev → `ghcr.io/alice`,
-  prod → `myorg.azurecr.io/prod`) without any change to the
-  developer's Bicep.
+  name supplies the final path segment. Different environments
+  point their recipePack at different registries
+  (dev → `ghcr.io/alice`, prod → `myorg.azurecr.io/prod`)
+  without any change to the developer's Bicep.
 * **Registry credentials** live in an env-scoped
   `Radius.Security/secrets` of `kind: generic`. The recipe pack
   passes the secret's **name** (just a string literal) via the
@@ -322,7 +320,7 @@ to be part of the application graph.
 ### Sample output
 
 `rad deploy` reports build progress through the recipe execution log
-and produces an image reference at `properties.image`. Downstream
+and produces an image reference at `properties.imageReference`. Downstream
 resources that consume that output redeploy with the new digest on
 the next reconciliation.
 
@@ -400,22 +398,20 @@ Properties:
 |---|---|---|---|
 | `environment` | string | no | The Radius Environment ID. Optional so a single built image can be shared across environments. |
 | `application` | string | no | The Radius Application ID. Optional so a single built image can be shared across applications. |
-| `imageName` | string | no | Override the image name. Defaults to the lowercased resource name. |
-| `imageTag` | string | no | Tag for the produced image. Defaults to a content-addressable digest computed from the build inputs (see [Tag strategy](#tag-strategy)). Required when `build.context` is a git URL. |
-| `build.context` | string | yes | Source location. Either a git URL (`git::https://…`) or — for local development workflows — a path that the rad CLI uploads as a tarball. See [Local development workflow](#local-development-workflow). |
+| `tag` | string | no | Tag for the produced image. Defaults to a content-addressable digest computed from the build inputs (see [Tag strategy](#tag-strategy)). Required when `build.source` is a git URL. |
+| `build.source` | string | yes | Source location. Either a git URL (`git::https://…`) or — for local development workflows — a path that the rad CLI uploads as a tarball. See [Local development workflow](#local-development-workflow). |
 | `build.dockerfile` | string | no | Path to the Dockerfile relative to the context. Defaults to `Dockerfile`. |
 | `build.platforms` | string[] | no | Target platforms (e.g. `["linux/amd64", "linux/arm64"]`). When omitted, defaults to `["linux/amd64", "linux/arm64"]`. |
 
 The resource **name** (e.g. `todolist-app`) is what the developer
 writes in `resource <name> 'Radius.Compute/containerImages@…'`, and
-becomes the final path segment of the image reference unless
-overridden by `imageName`.
+becomes the final path segment of the image reference.
 
 ##### Outputs
 
 | Output | Description |
 |---|---|
-| `properties.image` | The full resolved image reference, e.g. `ghcr.io/mycompany/todolist-app:sha256-d4f2…`. Downstream `Radius.Compute/containers` resources reference this so they pick up new digests automatically. |
+| `properties.imageReference` | The full resolved image reference, e.g. `ghcr.io/mycompany/todolist-app:sha256-d4f2…`. Downstream `Radius.Compute/containers` resources reference this so they pick up new digests automatically. |
 
 ##### Tag strategy
 
@@ -424,19 +420,19 @@ inputs: a SHA over the build context contents, the Dockerfile, and
 the requested platforms. Two reasons:
 
 1. **Correct reconciliation.** Downstream `containers` resources
-   reference `frontendImage.properties.image`. If the tag is
+   reference `frontendImage.properties.imageReference`. If the tag is
    something stable like `latest`, a code change produces a new
    image at the registry but the `containers` resource sees no
    property change and Kubernetes does not roll the Deployment.
    With a content-hash tag, every code change produces a new
-   `properties.image` value, downstream sees a real change, and
+   `properties.imageReference` value, downstream sees a real change, and
    reconciliation does the right thing.
 2. **Immutability.** Pinned tags can't be overwritten by accident
    from another developer pushing to the same name. Useful for
    audit and rollback.
 
 Developers who need explicit tags (semver releases, git SHAs) set
-`properties.imageTag` directly and accept responsibility for picking
+`properties.tag` directly and accept responsibility for picking
 unique values.
 
 #### Terraform recipe
@@ -483,7 +479,7 @@ and is intentionally small. Its contract:
   provider gives for free.
 
   A separate `terraform_data "validate_git_tag"` precondition
-  rejects git-context resources that omit `properties.imageTag`. A
+  rejects git-context resources that omit `properties.tag`. A
   content-hash tag default cannot apply to remote git contexts
   because the recipe has no inexpensive way to hash a remote tree
   before invoking BuildKit; the recipe fails fast with a clear
@@ -530,14 +526,13 @@ locals {
   }) : ""
 
   resource_name = lower(var.context.resource.name)
-  image_name    = lower(try(var.context.resource.properties.imageName, local.resource_name))
   registry      = var.registry
-  context_sha   = sha256(...)  # over context + dockerfile + platforms
+  context_sha   = sha256(...)  # over source + dockerfile + platforms
   resolved_tag  = coalesce(
-    try(var.context.resource.properties.imageTag, null),
+    try(var.context.resource.properties.tag, null),
     "sha256-${substr(local.context_sha, 0, 16)}",
   )
-  image_ref     = "${local.registry}/${local.image_name}:${local.resolved_tag}"
+  image_ref     = "${local.registry}/${local.resource_name}:${local.resolved_tag}"
   platforms_csv = join(",", local.platforms)
 }
 
@@ -759,7 +754,7 @@ suited to a different inner-loop tempo:
 
 ##### Option 1 — Git context (default for CI / GitOps)
 
-The developer sets `build.context` to a `git::https://…` URL.
+The developer sets `build.source` to a `git::https://…` URL.
 BuildKit clones the repo inside the cluster and builds. This is
 the right answer for CI pipelines and GitOps reconciliation
 (Flux, Argo, etc.) where the source of truth is the git
@@ -768,7 +763,7 @@ because the developer has to push every change.
 
 ##### Option 2 — `rad` CLI tarball upload (proposed for inner-loop dev)
 
-The developer sets `build.context` to a local path
+The developer sets `build.source` to a local path
 (`./frontend`). The `rad deploy` CLI detects local-path contexts,
 tars the directory (honoring `.dockerignore`), and uploads the
 tarball to dynamic-rp as part of the deployment payload.
@@ -882,14 +877,14 @@ cluster like any other container.
 
 | Component | Repo | Change |
 |---|---|---|
-| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `build`. Optional: `environment`, `application`, `imageName`, `imageTag`. Output: `image`. |
-| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by `terraform_data "validate_inputs"` and `terraform_data "validate_git_tag"` preconditions; the build resource `depends_on` both. When the PE-provided `registrySecretName` recipe variable is non-empty, the recipe reads the same-named Kubernetes Secret in `var.context.runtime.kubernetes.namespace` via a `kubernetes_secret` data source, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. Composes image ref from `registry`, `imageName` (defaults to lowercased resource name), and content-hash tag (or explicit `properties.imageTag` when supplied). No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
+| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `build`. Optional: `environment`, `application`, `tag`. Output: `imageReference`. |
+| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by `terraform_data "validate_inputs"` and `terraform_data "validate_git_tag"` preconditions; the build resource `depends_on` both. When the PE-provided `registrySecretName` recipe variable is non-empty, the recipe reads the same-named Kubernetes Secret in `var.context.runtime.kubernetes.namespace` via a `kubernetes_secret` data source, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. Composes image ref from `registry`, the lowercased resource name, and content-hash tag (or explicit `properties.tag` when supplied). No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
 | Recipe pack | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` registration flow: pack registers the `containerImages` recipe with `registry` and `registrySecretName` (string; the name of a `Radius.Security/secrets`) parameters; the secret is declared in a separate `secrets.bicep` (env looked up via `existing`) to avoid a BCP080 cycle and decouple credential rotation. |
 | dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`) listening on `tcp://0.0.0.0:1234`. Add `buildctl-init` init container that copies the `buildctl` binary into an `emptyDir` mounted onto the dynamic-rp container's `PATH`. Add `dynamicrp.buildkit.psaMode` value, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket emptyDir, no BuildKit-state emptyDir, no Docker `config.json` Secret mount. |
 | dynamic-rp recipe runner | `radius-project/radius` | Set `BUILDKIT_HOST=tcp://127.0.0.1:1234` and extend `PATH` with the `buildctl-init` mount in the recipe-execution environment. No Go code changes beyond environment plumbing. |
 | Contributor documentation | `radius-project/radius` (`docs/contributing/`) | Add `buildkit-recipes.md` covering the buildkit subsystem and the `local-exec`-via-`buildctl` recipe pattern, so the next person adding a build-style recipe doesn't have to reverse-engineer it. |
 | dynamic-rp context-upload endpoint | `radius-project/radius` | New endpoint accepting tarball uploads from the rad CLI; staged in an emptyDir for the recipe to consume. (Local development workflow, Option 2a.) |
-| `rad` CLI local-context detection | `radius-project/radius` | When `build.context` is a local path, tar with `.dockerignore` honored and POST to dynamic-rp before recipe execution. |
+| `rad` CLI local-context detection | `radius-project/radius` | When `build.source` is a local path, tar with `.dockerignore` honored and POST to dynamic-rp before recipe execution. |
 
 ### Error handling
 
@@ -968,13 +963,13 @@ cluster like any other container.
 
 | Workstream | Repo | Notes |
 |---|---|---|
-| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `build` required, `imageName`/`imageTag` optional, `environment` and `application` optional, no per-resource `registry` override, no `image` field. Output: `image`. |
-| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<imageName>:<imageTag>` (`imageName` defaults to lowercased resource name), content-hash tag default for local contexts, validates every interpolated input via `terraform_data "validate_inputs"` preconditions, requires explicit `properties.imageTag` for git contexts via `terraform_data "validate_git_tag"`. When the PE-provided `registrySecretName` recipe variable is non-empty, reads the same-named K8s Secret via `data "kubernetes_secret"` in `var.context.runtime.kubernetes.namespace`, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
+| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `build` required, `tag` optional, `environment` and `application` optional, no per-resource `registry` override. Output: `imageReference`. |
+| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource-name>:<tag>` from the lowercased resource name, content-hash tag default for local contexts, validates every interpolated input via `terraform_data "validate_inputs"` preconditions, requires explicit `properties.tag` for git contexts via `terraform_data "validate_git_tag"`. When the PE-provided `registrySecretName` recipe variable is non-empty, reads the same-named K8s Secret via `data "kubernetes_secret"` in `var.context.runtime.kubernetes.namespace`, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
 | Sample recipe pack | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` showing how to register the recipe with `registry` and `registrySecretName` (string literal) parameters. Companion PE Bicep is split into `platform.bicep` (env + recipePack) and `secrets.bicep` (env-scoped `Radius.Security/secrets` of `kind: generic` with `username` / `password`; env looked up via `existing`) to avoid a BCP080 cycle. Sample developer Bicep declares `Radius.Compute/containerImages` and `Radius.Compute/containers` with no credential or pull-Secret plumbing. |
 | Helm chart sidecar | radius | Add buildkitd container listening on `tcp://0.0.0.0:1234`, `buildctl-init` init container copying `buildctl` into an `emptyDir` on the dynamic-rp container's `PATH`, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket/state emptyDir, no Docker `config.json` Secret mount. |
 | Recipe-runner env plumbing | radius | Set `BUILDKIT_HOST` and extend `PATH` for the recipe execution. |
 | Contributor documentation | radius | `docs/contributing/contributing-code/contributing-code-writing/buildkit-recipes.md`: explains the sidecar, the `buildctl-init` init container, the `local-exec`-via-`buildctl` recipe pattern, and the shell-injection-safety contract recipes are expected to follow. |
-| Local-context upload (CLI ↔ dynamic-rp) | radius | rad CLI tarballs local `build.context`, POSTs to dynamic-rp; dynamic-rp stages for the recipe. (Local development workflow Option 2a.) |
+| Local-context upload (CLI ↔ dynamic-rp) | radius | rad CLI tarballs local `build.source`, POSTs to dynamic-rp; dynamic-rp stages for the recipe. (Local development workflow Option 2a.) |
 | End-to-end test for `buildctl` ↔ rootless BuildKit | radius | **Resolved**: validated end-to-end (rootless BuildKit + buildctl + multi-arch + push to GHCR + digest into `Radius.Compute/containers`) in the demo repo before merging the chart change. |
 | Functional test matrix | radius | Cross-platform CI: managed K8s (default `baseline` mode), opt-in `restricted` mode on K8s 1.33+, k3d. |
 
