@@ -35,7 +35,7 @@ flowchart LR
 
 ## Authoring flow
 
-The author can specify an icon for all resource types in a given YAML defintion, or specify a different icon for each type.
+The author can specify an icon for all resource types in a given YAML definition, or specify a different icon for each type.
 
 ```mermaid
 flowchart TD
