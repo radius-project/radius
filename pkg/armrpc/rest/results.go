@@ -74,7 +74,7 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.V(ucplog.LevelDebug).Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), logging.LogHTTPStatusCode, http.StatusOK)
 
-	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	bytes, err := marshalResourceBody(ctx, r.Body)
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
@@ -116,7 +116,7 @@ func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req 
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.V(ucplog.LevelDebug).Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), logging.LogHTTPStatusCode, http.StatusCreated)
 
-	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	bytes, err := marshalResourceBody(ctx, r.Body)
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
@@ -150,7 +150,7 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.V(ucplog.LevelDebug).Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), logging.LogHTTPStatusCode, http.StatusCreated)
 
-	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	bytes, err := marshalResourceBody(ctx, r.Body)
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
@@ -201,7 +201,7 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.V(ucplog.LevelDebug).Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), logging.LogHTTPStatusCode, http.StatusAccepted)
 
-	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	bytes, err := marshalResourceBody(ctx, r.Body)
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
