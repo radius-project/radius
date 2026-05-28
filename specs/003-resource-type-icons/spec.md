@@ -114,7 +114,7 @@ A contributor creates a sibling `icon.svg` file next to a resource type definiti
 
 ### Story 3 — Built-in types ship with custom icons (P2)
 
-On a fresh install, every `Applications.Core/*` type listed in FR-013 (`environments`, `applications`, `containers`, `gateways`, `secretStores`, `extenders`) renders with its own distinct icon — not the default, not the same as each other. These types drive a new user's first-run experience.
+On a fresh install, every `Applications.Core/*` type listed in FR-008 (`environments`, `applications`, `containers`, `gateways`, `secretStores`, `extenders`) renders with its own distinct icon — not the default, not the same as each other. These types drive a new user's first-run experience.
 
 **Why P2**: New users see built-ins before contributed types. The first graph they render must be meaningful.
 
