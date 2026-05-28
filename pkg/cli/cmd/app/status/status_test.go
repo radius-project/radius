@@ -169,7 +169,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     applicationStatus,
-				Options: statusFormat(),
+				Options: StatusFormat(),
 			},
 			output.LogOutput{
 				Format: "",
@@ -177,7 +177,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     applicationStatus.Gateways,
-				Options: gatewayFormat(),
+				Options: GatewayFormat(),
 			},
 		}
 
