@@ -31,6 +31,6 @@
 
 ## Notes
 
-- "Content Quality / No implementation details" is interpreted strictly: the spec talks about *what* must happen (sibling SVG files, embedded icon data on the published definition, a default-icon contract, a self-contained graph response, dashboard rendering with fallback) but does **not** name Go packages, TypeSpec models, file paths inside the Radius repo, embed mechanisms, or sanitiser libraries. Implementation specifics (e.g., `go:embed`, `manifest.ResourceType`, TypeSpec model edits, build-script names) are intentionally deferred to `/speckit.plan`.
+- "Content Quality / No implementation details" is interpreted strictly: the spec talks about *what* must happen (sibling SVG files, embedded icon data on the published definition, a default-icon contract, a self-contained graph response, dashboard rendering with fallback) but does **not** name Go packages, TypeSpec models, file paths inside the Radius repo, embed mechanisms, or sanitizer libraries. Implementation specifics (e.g., `go:embed`, `manifest.ResourceType`, TypeSpec model edits, build-script names) are intentionally deferred to `/speckit.plan`.
 - The spec assumes a 32 KiB icon size cap and `icons/default.svg` as the default-icon path. Both are documented in **Assumptions** rather than left as `[NEEDS CLARIFICATION]`, per the "make informed guesses with reasonable defaults" guidance.
 - Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`.

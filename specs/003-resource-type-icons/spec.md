@@ -131,7 +131,7 @@ A pull request that adds a malformed, oversized, or non-SVG icon is rejected by 
 ### Edge Cases
 
 - Unsupported format (PNG/JPEG/GIF) in a type folder → build fails with an actionable error pointing to SVG.
-- Empty or unparseable SVG → build fails before publishing.
+- Empty or SVG that cannot be parsed → build fails before publishing.
 - YAML declares multiple types under `types:` → each type is resolved independently per FR-002a (per-type file → shared `icon.svg` → default at runtime).
 - Sibling `icon.<typeName>.svg` whose `<typeName>` does not match any type in the YAML → build fails with an actionable error (FR-002b).
 - Both `icon.<typeName>.svg` and `icon.svg` present → the per-type file wins for that one type; other types in the YAML still use `icon.svg`.
@@ -240,7 +240,7 @@ A pull request that adds a malformed, oversized, or non-SVG icon is rejected by 
 ## Success Criteria *(mandatory)*
 
 - **SC-001**: 100% of resource types registered with a freshly built control plane have a resolvable icon (custom or default), with no operator intervention.
-- **SC-002**: 100% of nodes in any application-graph response carry a resolvable `iconHash`. With `includeIcons=true`, the `icons` map contains exactly one entry per distinct hash referenced (zero duplicates), verifiable on a sample app with 50+ same-type nodes (N → 1 dedup).
+- **SC-002**: 100% of nodes in any application-graph response carry a resolvable `iconHash`. With `includeIcons=true`, the `icons` map contains exactly one entry per distinct hash referenced (zero duplicates).
 - **SC-003**: Every `Applications.Core/*` type listed in FR-008 renders with its own distinct icon (not the default, not the same as each other) in the dashboard on a fresh install.
 - **SC-004**: A contributor adds a custom icon by dropping one SVG file and running the existing publish command — under 5 minutes end-to-end once the SVG is in hand.
 - **SC-005**: A PR introducing a malformed, oversized, or non-SVG icon is rejected by CI with a single actionable error.
@@ -272,7 +272,7 @@ If any of these turn out false during planning, revisit the spec.
 - **A-002**: Auth/authz for the resource-type and graph endpoints is unchanged; icons inherit existing controls.
 - **A-003**: Some types — **externally-registered types** — reach the control plane via paths that bypass the build-time icon-resolution step (e.g. hand-edited manifests via `rad resource-type create`). The runtime default-substitution behavior in FR-011 covers this origin.
 - **A-004**: Icons are static and global per type — no per-environment, per-tenant, per-instance, per-theme, or per-locale variants in v1.
-- **A-005**: A typical graph has tens of nodes; hundreds of same-type nodes are realistic. With the 32 KiB cap and per-response dedup (FR-013), response size scales with *distinct* icons (typically a handful), not node count — no pagination needed.
+- **A-005**: A typical graph has tens of nodes; hundreds of same-type nodes are realistic. With the 32 KiB cap and per-response deduplication (FR-013), response size scales with *distinct* icons (typically a handful), not node count — no pagination needed.
 - **A-006**: The dashboard is the only first-party rendering surface for icons in v1. Other Radius surfaces (`rad app graph` text and `-o json`) do not render icons and do not need bytes by default.
 
 ## Design Alternatives Considered
