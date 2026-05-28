@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/radius-project/radius/pkg/graph/persistence"
 	"github.com/radius-project/radius/pkg/graph/serialize"
@@ -43,8 +44,15 @@ type Options struct {
 //
 //	<namespace>/<name>.json                  // when Key.Version == ""
 //	<namespace>/<name>/<version>.json        // when Key.Version != ""
+//
+// Concurrency: `git worktree add` refuses to add a second worktree for a
+// branch that is already checked out, so concurrent Save/Load/List/Delete
+// calls on the same Store would otherwise fail nondeterministically. The
+// persistence.Store contract requires implementations to be safe for
+// concurrent use, so all operations are serialized through mu.
 type Store struct {
 	branch string
+	mu     sync.Mutex
 }
 
 // NewStore returns a git-backed Store. The repository is auto-detected via
@@ -63,6 +71,9 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serializ
 	if payload == nil {
 		return errors.New("git: nil payload")
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	wt, err := OpenOrCreate(ctx, s.branch)
 	if err != nil {
@@ -83,6 +94,9 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serializ
 
 // Load returns the payload previously stored under key, or persistence.ErrNotFound.
 func (s *Store) Load(ctx context.Context, key persistence.Key) (*serialize.Payload, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	wt, err := OpenOrCreate(ctx, s.branch)
 	if err != nil {
 		return nil, err
@@ -105,6 +119,9 @@ func (s *Store) Load(ctx context.Context, key persistence.Key) (*serialize.Paylo
 // List returns keys present on the branch under namespace. An empty namespace
 // lists every key on the branch.
 func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	wt, err := OpenOrCreate(ctx, s.branch)
 	if err != nil {
 		return nil, err
@@ -149,6 +166,9 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 
 // Delete removes the file for key and commits the deletion.
 func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	wt, err := OpenOrCreate(ctx, s.branch)
 	if err != nil {
 		return err
