@@ -269,15 +269,34 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			return ctrl.Result{}, err
 		}
 
+		// If any owned DR has a Spec.Id not in the new outputResources set, it
+		// is a residual from the diff-delete above whose UCP cascade is still
+		// in flight. Hold Phrase at ReadyPendingCleanup until those drain so
+		// Ready reflects the true steady state.
+		residualsPresent, err := r.hasResidualDeploymentResources(ctx, deploymentTemplate, outputResources)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		// If we get here, the operation was a success. Update the status and continue.
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.StatusHash = hash
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
+		if residualsPresent {
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+		} else {
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
+		}
 
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+
+		if residualsPresent {
+			// Requeue as a backstop; the Owns(&DeploymentResource{}) watch also
+			// wakes us up when DRs are removed.
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		return ctrl.Result{}, nil
@@ -348,6 +367,19 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 
 	// If we get here then it means we can process the result of the operation.
 	logger.Info("Resource is in desired state.")
+
+	// If we're still in ReadyPendingCleanup from a prior reconcile, re-evaluate
+	// residuals (woken by the Owns watch) and only transition to Ready once
+	// they've drained.
+	if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup {
+		residualsPresent, err := r.hasResidualDeploymentResources(ctx, deploymentTemplate, deploymentTemplate.Status.OutputResources)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if residualsPresent {
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+		}
+	}
 
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
 	err = r.Client.Status().Update(ctx, deploymentTemplate)
@@ -535,6 +567,31 @@ func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1al
 		}
 	}
 	return false
+}
+
+// hasResidualDeploymentResources reports whether any DeploymentResource owned
+// by this DeploymentTemplate has a Spec.Id that is not in currentOutputResources
+// (i.e., a residual from a prior diff whose deletion is still draining).
+func (r *DeploymentTemplateReconciler) hasResidualDeploymentResources(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate, currentOutputResources []string) (bool, error) {
+	desired := make(map[string]struct{}, len(currentOutputResources))
+	for _, id := range currentOutputResources {
+		desired[id] = struct{}{}
+	}
+
+	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
+	if err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
+		return false, err
+	}
+
+	for _, dr := range deploymentResourceList.Items {
+		if !isOwnedBy(dr, deploymentTemplate) {
+			continue
+		}
+		if _, ok := desired[dr.Spec.Id]; !ok {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // computeHash computes a hash of the DeploymentTemplate's spec (desired state)

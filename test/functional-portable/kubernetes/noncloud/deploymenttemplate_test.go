@@ -415,3 +415,24 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		return apierrors.IsNotFound(err)
 	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
 }
+
+// deleteDeploymentTemplateAndWait deletes a DeploymentTemplate and blocks
+// until it (and all its owned DeploymentResources / Radius finalizers) is
+// fully removed from the API server. Used to sequence Radius-side teardown
+// before the K8s namespace delete in functional tests.
+func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types.NamespacedName, opts rp.RPTestOptions) {
+	dt := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+	}
+	err := opts.Client.Delete(ctx, dt)
+	if controller_runtime.IgnoreNotFound(err) != nil {
+		require.NoError(t, err, "failed to delete DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
+	}
+
+	require.Eventually(t, func() bool {
+		got := &radappiov1alpha3.DeploymentTemplate{}
+		err := opts.Client.Get(ctx, nn, got)
+		return apierrors.IsNotFound(err)
+	}, time.Minute*10, time.Second*5,
+		"waiting for DeploymentTemplate %s/%s to be fully deleted", nn.Namespace, nn.Name)
+}
