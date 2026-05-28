@@ -49,29 +49,7 @@ func TestNewStore_HonorsBranch(t *testing.T) {
 func TestPathFor(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		key  persistence.Key
-		want string
-	}{
-		{
-			name: "no version",
-			key:  persistence.Key{Namespace: "main", Name: "app"},
-			want: "main/app.json",
-		},
-		{
-			name: "with version",
-			key:  persistence.Key{Namespace: "main", Name: "app", Version: "v1"},
-			want: "main/app/v1.json",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tc.want, pathFor(tc.key))
-		})
-	}
+	assert.Equal(t, "main/app.json", pathFor(persistence.Key{Namespace: "main", Name: "app"}))
 }
 
 func TestKeyFromPath(t *testing.T) {
@@ -83,14 +61,9 @@ func TestKeyFromPath(t *testing.T) {
 		want persistence.Key
 	}{
 		{
-			name: "no version",
+			name: "namespaced",
 			path: "main/app.json",
 			want: persistence.Key{Namespace: "main", Name: "app"},
-		},
-		{
-			name: "with version",
-			path: "main/app/v1.json",
-			want: persistence.Key{Namespace: "main", Name: "app", Version: "v1"},
 		},
 		{
 			name: "single segment",
@@ -187,7 +160,7 @@ func TestStore_List(t *testing.T) {
 
 	keys := []persistence.Key{
 		{Namespace: "main", Name: "app"},
-		{Namespace: "main", Name: "app", Version: "v1"},
+		{Namespace: "main", Name: "other"},
 		{Namespace: "feature", Name: "other"},
 	}
 	for _, k := range keys {
@@ -199,15 +172,12 @@ func TestStore_List(t *testing.T) {
 
 	// Sort for deterministic comparison.
 	sort.Slice(got, func(i, j int) bool {
-		if got[i].Name != got[j].Name {
-			return got[i].Name < got[j].Name
-		}
-		return got[i].Version < got[j].Version
+		return got[i].Name < got[j].Name
 	})
 
 	require.Len(t, got, 2)
 	assert.Equal(t, persistence.Key{Namespace: "main", Name: "app"}, got[0])
-	assert.Equal(t, persistence.Key{Namespace: "main", Name: "app", Version: "v1"}, got[1])
+	assert.Equal(t, persistence.Key{Namespace: "main", Name: "other"}, got[1])
 
 	all, err := s.List(ctx, "")
 	require.NoError(t, err)
@@ -224,6 +194,34 @@ func TestStore_ListMissingNamespaceReturnsEmpty(t *testing.T) {
 	got, err := s.List(context.Background(), "does-not-exist")
 	require.NoError(t, err)
 	assert.Empty(t, got)
+}
+
+func TestPathForKey_RejectsEmptyNamespaceOrName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		key  persistence.Key
+	}{
+		{name: "empty namespace", key: persistence.Key{Name: "n"}},
+		{name: "empty name", key: persistence.Key{Namespace: "ns"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := pathForKey(tc.key)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestPathForKey_AcceptsValidKey(t *testing.T) {
+	t.Parallel()
+
+	got, err := pathForKey(persistence.Key{Namespace: "main", Name: "app"})
+	require.NoError(t, err)
+	assert.Equal(t, "main/app.json", got)
 }
 
 // Compile-time assertion documenting that *Store satisfies persistence.Store

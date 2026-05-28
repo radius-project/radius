@@ -42,8 +42,9 @@ type Options struct {
 //
 // Key → path layout on the branch:
 //
-//	<namespace>/<name>.json                  // when Key.Version == ""
-//	<namespace>/<name>/<version>.json        // when Key.Version != ""
+//	<namespace>/<name>.json
+//
+// Key.Version is currently ignored by this backend.
 //
 // Concurrency: `git worktree add` refuses to add a second worktree for a
 // branch that is already checked out, so concurrent Save/Load/List/Delete
@@ -71,6 +72,10 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serializ
 	if payload == nil {
 		return errors.New("git: nil payload")
 	}
+	path, err := pathForKey(key)
+	if err != nil {
+		return err
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -81,19 +86,24 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serializ
 	}
 	defer wt.Remove(ctx)
 
-	if err := wt.WriteFile(pathFor(key), payload.Data); err != nil {
+	if err := wt.WriteFile(path, payload.Data); err != nil {
 		return err
 	}
 
 	msg := opts.Message
 	if msg == "" {
-		msg = fmt.Sprintf("radius: update %s", pathFor(key))
+		msg = fmt.Sprintf("radius: update %s", path)
 	}
 	return wt.CommitAndPush(ctx, msg)
 }
 
 // Load returns the payload previously stored under key, or persistence.ErrNotFound.
 func (s *Store) Load(ctx context.Context, key persistence.Key) (*serialize.Payload, error) {
+	path, err := pathForKey(key)
+	if err != nil {
+		return nil, err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -103,7 +113,7 @@ func (s *Store) Load(ctx context.Context, key persistence.Key) (*serialize.Paylo
 	}
 	defer wt.Remove(ctx)
 
-	data, err := wt.ReadFile(pathFor(key))
+	data, err := wt.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, persistence.ErrNotFound
@@ -166,6 +176,11 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 
 // Delete removes the file for key and commits the deletion.
 func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
+	path, err := pathForKey(key)
+	if err != nil {
+		return err
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -175,44 +190,48 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 	}
 	defer wt.Remove(ctx)
 
-	if err := wt.RemoveFile(pathFor(key)); err != nil {
+	if err := wt.RemoveFile(path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return persistence.ErrNotFound
 		}
 		return err
 	}
 
-	msg := fmt.Sprintf("radius: delete %s", pathFor(key))
+	msg := fmt.Sprintf("radius: delete %s", path)
 	return wt.CommitAndPush(ctx, msg)
 }
 
 // pathFor returns the in-repo relative path used to store a payload for key.
+// Key.Version is ignored. Callers handling untrusted Key values should use
+// pathForKey, which additionally validates Namespace and Name.
 func pathFor(key persistence.Key) string {
-	if key.Version == "" {
-		return fmt.Sprintf("%s/%s.json", key.Namespace, key.Name)
+	return fmt.Sprintf("%s/%s.json", key.Namespace, key.Name)
+}
+
+// pathForKey is pathFor with a check that Key.Namespace and Key.Name are
+// non-empty so that the resulting path is always rooted under a namespace
+// directory on the branch.
+func pathForKey(key persistence.Key) (string, error) {
+	if key.Namespace == "" {
+		return "", errors.New("git: key namespace must not be empty")
 	}
-	return fmt.Sprintf("%s/%s/%s.json", key.Namespace, key.Name, key.Version)
+	if key.Name == "" {
+		return "", errors.New("git: key name must not be empty")
+	}
+	return pathFor(key), nil
 }
 
 // keyFromPath inverts pathFor for a relative posix path of the form
-// "<namespace>/<name>.json" or "<namespace>/<name>/<version>.json".
+// "<namespace>/<name>.json".
 func keyFromPath(rel string) persistence.Key {
 	parts := strings.Split(rel, "/")
-	switch len(parts) {
-	case 2:
+	if len(parts) == 2 {
 		return persistence.Key{
 			Namespace: parts[0],
 			Name:      strings.TrimSuffix(parts[1], ".json"),
 		}
-	case 3:
-		return persistence.Key{
-			Namespace: parts[0],
-			Name:      parts[1],
-			Version:   strings.TrimSuffix(parts[2], ".json"),
-		}
-	default:
-		return persistence.Key{Name: strings.TrimSuffix(rel, ".json")}
 	}
+	return persistence.Key{Name: strings.TrimSuffix(rel, ".json")}
 }
 
 // Compile-time check that *Store satisfies persistence.Store.
