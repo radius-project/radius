@@ -45,7 +45,7 @@ keeps working and Bicep's type checker rejects `ctnr.container = {...}`
 called from `OKResponse.Apply`, `CreatedResponse.Apply`,
 `CreatedAsyncResponse.Apply`, and `AcceptedAsyncResponse.Apply`. The helper:
 
-1. Unmarshals the marshaled body into `map[string]any`.
+1. Decodes the marshaled body into `map[string]any`.
 2. Walks the value. For any object that contains a `"properties"` map, each
    child key is copied onto the parent object as a top-level alias. The
    original `properties` object is preserved.
