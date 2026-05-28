@@ -17,14 +17,11 @@ limitations under the License.
 package resource_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
@@ -38,26 +35,16 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: "corerp-resources-app-env-env",
-						Type: validation.EnvironmentsResource,
+						Type: validation.CoreEnvironmentsResource,
 					},
 					{
 						Name: "corerp-resources-app-env-app",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 				},
 			},
 			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				expectedNS := []string{
-					"corerp-resources-app-env",
-					"corerp-resources-app-env-env-corerp-resources-app-env-app",
-				}
-				for _, ns := range expectedNS {
-					_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, ns, metav1.GetOptions{})
-					require.NoErrorf(t, err, "%s must be created", ns)
-				}
-			},
 		},
 	})
 

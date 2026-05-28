@@ -562,13 +562,64 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentShowPreview runs the "env show" command for the specified environment name and returns the output as a string, returning
-// an error if the command fails.
+// EnvironmentDeletePreview runs the "env delete" command with the --preview flag for the specified environment name
+// and returns the output as a string, returning an error if the command fails.
 func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, groupName string) (string, error) {
 	args := []string{
 		"env",
 		"delete",
 		environmentName,
+		"--preview",
+		"--yes",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// ApplicationShowPreview runs the "application show" command with the --preview flag for the specified application name
+// and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) ApplicationShowPreview(ctx context.Context, applicationName, groupName string) (string, error) {
+	args := []string{
+		"application",
+		"show",
+		"-a", applicationName,
+		"--preview",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// ApplicationListPreview runs the "application list" command with the --preview flag
+// and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) ApplicationListPreview(ctx context.Context, groupName string) (string, error) {
+	args := []string{
+		"application",
+		"list",
+		"--preview",
+	}
+
+	if groupName != "" {
+		args = append(args, "--group", groupName)
+	}
+
+	return cli.RunCommand(ctx, args)
+}
+
+// ApplicationDeletePreview runs the "application delete" command with the --preview flag for the specified application name
+// and returns the output as a string, returning an error if the command fails.
+func (cli *CLI) ApplicationDeletePreview(ctx context.Context, applicationName, groupName string) (string, error) {
+	args := []string{
+		"application",
+		"delete",
+		"-a", applicationName,
 		"--preview",
 		"--yes",
 	}
