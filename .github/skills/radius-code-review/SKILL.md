@@ -69,11 +69,32 @@ Create `.copilot-tracking/pr-review-${prNumber}.md` containing:
 
   ```text
   path/to/file.ext
-      Line X: Specific issue description
-      Line Y: Suggestion for improvement
+      Line X (anchor: `unique code snippet from line X`): Specific issue description
+      Line Y (anchor: `unique code snippet from line Y`): Suggestion for improvement
   ```
 
 Keep comments concise, actionable, and specific. Remove purely complimentary comments.
+
+### Line-number accuracy (mandatory)
+
+Wrong line numbers are the most common defect in generated reviews because they
+are hand-transcribed and GitHub silently attaches a comment to whatever diff
+line you name — there is no error when the number is off. To prevent this:
+
+- **Never type a line number from memory.** For every comment, look up the exact
+  line by searching the file for a unique substring on that line:
+
+  ```bash
+  grep -n 'func pathForKey' pkg/graph/persistence/git/git_store.go
+  ```
+
+- Record an **anchor** (the unique code snippet you grepped for) next to each
+  comment in the review markdown. The anchor — not the integer — is the source
+  of truth. The generated script resolves the line number from the anchor at
+  build time (see Step 5) so a stale integer can never reach GitHub.
+- The cited line must also be part of the PR diff on the `RIGHT` side. If the
+  anchored line is not in the diff, attach to the nearest changed line and say
+  so in the comment body, or omit the inline comment.
 
 ## Step 3: Validate Your Review
 
@@ -83,6 +104,23 @@ Follow the **Step 3: Validate Your Review** section in `.github/instructions/cod
 - Comments are clear and actionable
 - No purely complimentary noise remains
 - Findings align with the actual diff
+
+**Mandatory line-number verification.** Before generating the script, print the
+actual content at every cited line and confirm it matches the comment's anchor.
+Do not rely on visual inspection of the markdown alone:
+
+```bash
+# For each (path, line) pair in the review, show the real file content.
+while IFS=: read -r f n; do
+    printf '%-55s %s\n' "$f:$n" "$(sed -n "${n}p" "$f")"
+done <<'EOF'
+pkg/graph/persistence/git/git_store.go:214
+pkg/graph/build/build.go:143
+EOF
+```
+
+If any printed line does not contain the comment's anchor snippet, fix the line
+number (re-`grep`) before continuing.
 
 ## Step 4: Assess Contributor Documentation Impact
 
@@ -96,6 +134,7 @@ Requirements:
 
 - Use the GitHub REST API (`POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`) rather than `gh` CLI, because the API supports posting multiple inline comments in one review. See [GitHub docs](https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#create-a-review-for-a-pull-request).
 - Iterate over each comment in `pr-review-${prNumber}.md` and include it in the review payload.
+- **Resolve every comment's line number from its anchor snippet at runtime** (see the `line_for` helper below) instead of hard-coding integers. The helper must fail if the anchor matches zero or more than one line, so a wrong or stale anchor aborts the script instead of mis-placing a comment.
 - Include an overall review body taken from the overall PR assessment section.
 - Use `jq` for both response parsing and request payload construction. Never build JSON by string interpolation, and never parse GitHub API responses with `grep`/`sed` — the PR response contains multiple `"sha":` fields and arbitrary field ordering.
 - Read `GITHUB_TOKEN` from the environment; fail fast with a clear error if it is unset. Fail fast with a clear error if `jq` is not installed.
@@ -161,14 +200,32 @@ echo "Using commit SHA: ${COMMIT_SHA}"
 
 REVIEW_BODY="Overall assessment goes here."
 
-# One object per inline comment. Use --arg to escape body text safely.
-COMMENTS_JSON=$(jq -n '
-[
-    {path: $p1, line: 1, side: "RIGHT", body: $b1}
-]
-' \
-    --arg p1 "path/to/file.ext" \
-    --arg b1 "Comment body (jq handles escaping).")
+# Resolve a line number from a unique anchor snippet, failing loudly if the
+# anchor is missing or ambiguous. This prevents stale/hand-typed line numbers
+# from silently landing a comment on the wrong line.
+line_for() {
+    local file="$1" anchor="$2" matches
+    matches=$(grep -nF -- "${anchor}" "${file}" || true)
+    local count
+    count=$(printf '%s' "${matches}" | grep -c . || true)
+    if [ "${count}" -ne 1 ]; then
+        echo "❌ anchor '${anchor}' matched ${count} lines in ${file} (need exactly 1)" >&2
+        exit 1
+    fi
+    printf '%s' "${matches%%:*}"
+}
+
+# Body text uses single quotes so backticks and double quotes need no escaping.
+P1="path/to/file.ext"
+B1='Comment body; jq handles JSON escaping.'
+L1=$(line_for "${P1}" 'unique code snippet on the target line')
+
+# One object per inline comment. Line numbers come from line_for, not literals.
+COMMENTS_JSON=$(jq -n \
+    --arg p1 "${P1}" --argjson l1 "${L1}" --arg b1 "${B1}" \
+    '[
+        {path: $p1, line: $l1, side: "RIGHT", body: $b1}
+    ]')
 
 PAYLOAD=$(jq -n \
     --arg commit_id "${COMMIT_SHA}" \
@@ -226,6 +283,8 @@ Before finishing:
 - [ ] `.copilot-tracking/` exists and contains all three artifacts
 - [ ] Analysis covers every changed file in the PR
 - [ ] Review comments are specific, actionable, and free of generic praise
+- [ ] Every comment records an anchor snippet, and each cited line number was resolved by `grep`/`sed` against the file (never typed from memory)
+- [ ] Line-number verification (Step 3) was run and every printed line matches its anchor
 - [ ] All cited file paths and line numbers match the PR diff
 - [ ] Generated script passes `shellcheck -x` with no errors (variables quoted, JSON built via `jq`)
 - [ ] Script uses the resolved head commit SHA, not `HEAD`
