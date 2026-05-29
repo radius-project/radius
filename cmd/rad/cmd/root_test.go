@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,5 +69,51 @@ func Test_prettyPrintJSON(t *testing.T) {
 		require.Contains(t, result, "nested")
 		require.Contains(t, result, "inner")
 		require.Contains(t, result, "array")
+	})
+}
+
+func Test_wirePreviewSubcommand(t *testing.T) {
+	t.Run("routes to legacy runner when --preview is not set", func(t *testing.T) {
+		legacyCalled := false
+		previewCalled := false
+
+		legacyCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
+		}
+		previewCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
+		}
+
+		wirePreviewSubcommand(legacyCmd, previewCmd)
+
+		legacyCmd.SetArgs([]string{})
+		err := legacyCmd.Execute()
+		require.NoError(t, err)
+		require.True(t, legacyCalled, "legacy runner should have been called")
+		require.False(t, previewCalled, "preview runner should not have been called")
+	})
+
+	t.Run("routes to preview runner when --preview is set", func(t *testing.T) {
+		legacyCalled := false
+		previewCalled := false
+
+		legacyCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
+		}
+		previewCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
+		}
+
+		wirePreviewSubcommand(legacyCmd, previewCmd)
+
+		legacyCmd.SetArgs([]string{"--preview"})
+		err := legacyCmd.Execute()
+		require.NoError(t, err)
+		require.False(t, legacyCalled, "legacy runner should not have been called")
+		require.True(t, previewCalled, "preview runner should have been called")
 	})
 }

@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 const (
@@ -186,7 +187,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Build the fully qualified Radius.Core application ID for ownership matching
-	applicationID := r.Workspace.Scope + "/providers/Radius.Core/applications/" + r.ApplicationName
+	applicationID := r.Workspace.Scope + "/providers/" + datamodel.ApplicationResourceType_v20250801preview + "/" + r.ApplicationName
 
 	resourcesList, err := listResourcesOwnedByApplication(ctx, managementClient, applicationID)
 	if err != nil && !clients.Is404Error(err) {
