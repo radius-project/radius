@@ -50,11 +50,11 @@ type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGr
 // for all core resource types. This is the default recipe pack that gets injected into
 // environments that have no recipe packs configured.
 func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
-	bicepKind := corerpv20250801.RecipeKindBicep
 	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
 	for _, def := range GetCoreTypesRecipeInfo() {
+		recipeKind := corerpv20250801.RecipeKind(def.RecipeKind)
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
-			RecipeKind:     &bicepKind,
+			RecipeKind:     &recipeKind,
 			RecipeLocation: to.Ptr(def.RecipeLocation),
 		}
 	}
@@ -110,7 +110,9 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 type CoreTypesRecipeInfo struct {
 	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
 	ResourceType string
-	// RecipeLocation is the OCI registry location for the recipe.
+	// RecipeKind is the kind of recipe to run for the resource type.
+	RecipeKind string
+	// RecipeLocation is the location for the recipe.
 	RecipeLocation string
 }
 
@@ -119,28 +121,43 @@ type CoreTypesRecipeInfo struct {
 // The OCI tag is set to the current Radius version channel (e.g., "0.40" or "edge").
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 	tag := version.Channel()
+	gitRef := tag
 	if version.IsEdgeChannel() {
 		tag = "latest"
+		gitRef = "main"
 	}
+	bicepKind := string(corerpv20250801.RecipeKindBicep)
+	terraformKind := string(corerpv20250801.RecipeKindTerraform)
+
 	return []CoreTypesRecipeInfo{
 		{
 			ResourceType:   "Radius.Compute/containers",
+			RecipeKind:     bicepKind,
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:" + tag,
 		},
 		{
 			ResourceType:   "Radius.Compute/persistentVolumes",
+			RecipeKind:     bicepKind,
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
 		},
 		{
+			ResourceType:   "Radius.Compute/gateways",
+			RecipeKind:     terraformKind,
+			RecipeLocation: "git::https://github.com/radius-project/resource-types-contrib.git//Compute/gateways/recipes/kubernetes-contour-httpproxy/terraform?ref=" + gitRef,
+		},
+		{
 			ResourceType:   "Radius.Compute/routes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			RecipeKind:     terraformKind,
+			RecipeLocation: "git::https://github.com/radius-project/resource-types-contrib.git//Compute/routes/recipes/kubernetes-contour-httpproxy/terraform?ref=" + gitRef,
 		},
 		{
 			ResourceType:   "Radius.Security/secrets",
+			RecipeKind:     bicepKind,
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
 		{
 			ResourceType:   "Radius.Data/mySqlDatabases",
+			RecipeKind:     bicepKind,
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
 		},
 	}
