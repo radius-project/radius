@@ -1,18 +1,18 @@
-# Replace Built-In Contour Behavior with a Contour HTTPProxy Recipe Pack
+# Move Contour Routing to Gateway API Recipes
 
 * **Author**: Will Smith (@willdavsmith)
 
 ## Overview
 
-Radius currently installs Contour by default on Kubernetes, and today's built-in ingress behavior uses Contour `HTTPProxy` resources. This design note documents that the same behavior can be provided by recipes instead of Radius core code.
+Radius currently installs Contour by default on Kubernetes and has built-in code that renders Contour `HTTPProxy` resources for application ingress. This design moves application route rendering out of Radius core and into recipes, using Kubernetes Gateway API as the default Contour-backed path.
 
-The compatibility recipe pack uses the existing Radius resource model:
+Radius keeps installing Contour by default for now. When Contour install is enabled, Radius also creates the shared Gateway API infrastructure used by the default route recipe:
 
-- `Radius.Compute/containers` renders the Kubernetes workload and `Service`.
-- `Radius.Compute/gateways` renders the root Contour `projectcontour.io/v1 HTTPProxy` that acts as the gateway.
-- `Radius.Compute/routes` renders child Contour `HTTPProxy` resources included by the root proxy.
+- `GatewayClass/contour`
+- `Gateway/radius` in `radius-system`
+- HTTP listener on port 80 with routes allowed from application namespaces
 
-This keeps the user-facing Radius application model stable while moving Contour-specific rendering into `resource-types-contrib`.
+With that infrastructure in place, the default `Radius.Compute/routes` recipe can create Gateway API route resources such as `HTTPRoute` and attach them to the shared `radius-system/radius` Gateway.
 
 ## Current Radius Behavior
 
@@ -24,11 +24,11 @@ Today `rad install kubernetes` installs Contour by default after installing the 
 - Default chart version: `0.1.0`
 - Opt-out flag: `rad install kubernetes --skip-contour-install`
 
-Radius also includes built-in Kubernetes rendering for Contour `HTTPProxy` resources. The gateway renderer creates the root `HTTPProxy` that acts as the gateway, and route rendering creates child `HTTPProxy` resources included by that root proxy. The Radius RP ClusterRole already includes permissions for `projectcontour.io/httpproxies`.
+Radius also includes built-in Kubernetes rendering for Contour `HTTPProxy` resources. Gateway rendering creates a root `HTTPProxy`, route rendering creates child `HTTPProxy` resources, and the Radius RP ClusterRole includes permissions for `projectcontour.io/httpproxies`.
 
-This design does not change the default install behavior. It only moves the Contour-specific application rendering path into recipes. Whether Radius should stop installing Contour by default should be reviewed separately.
+This change keeps default Contour installation in place, but replaces the default application routing implementation with Gateway API recipes. Removing Contour from the default install remains a separate design review decision.
 
-Radius already has default recipe pack behavior for development scenarios. `rad init --preview` creates a default recipe pack named `default` in `/planes/radius/local/resourceGroups/default`, and links it to the created environment. `rad deploy` also creates or fetches that default recipe pack and injects it into environment resources that do not specify recipe packs. The current default pack includes core Kubernetes recipes such as containers, persistent volumes, routes, and secrets.
+Radius already has a default recipe pack experience for development scenarios. `rad init --preview` creates a default recipe pack named `default` in `/planes/radius/local/resourceGroups/default` and links it to the created environment. `rad deploy` also creates or fetches that default recipe pack and injects it into environment resources that do not specify recipe packs.
 
 ## Objectives
 
@@ -36,184 +36,170 @@ Radius already has default recipe pack behavior for development scenarios. `rad 
 
 ### Goals
 
-- Mirror today's Contour `HTTPProxy` behavior with a contributed recipe pack.
-- Keep applications using `Radius.Compute/gateways`, `Radius.Compute/routes`, and `Radius.Compute/containers`.
-- Move Contour-specific rendering out of Radius core.
-- Show that users can swap to Gateway API by changing recipe packs.
-- Keep removal of default Contour installation as a separate design review decision.
+- Keep Contour installed by default for now.
+- Create the shared Contour Gateway API `Gateway` during Radius install when Contour install is enabled.
+- Use the existing `Radius.Compute/routes` recipe to render Gateway API route resources by default.
+- Remove the need for a `Radius.Compute/gateways` recipe in the default path.
+- Allow users to swap ingress behavior by changing recipe packs.
 
 ### Non goals
 
 - Do not change the Radius application resource model.
-- Do not require users to move to Gateway API.
 - Do not remove Contour from the default Radius install as part of this change.
+- Do not require users to define a gateway resource in application Bicep.
 
 ## User Experience
 
-Users continue deploying the same application shape. The selected recipe pack determines whether Radius renders Contour HTTPProxy resources or Gateway API resources.
+Users deploy routes with the existing `Radius.Compute/routes` resource. They do not need to define `Radius.Compute/gateways` for the default Contour path.
 
-```bash
-rad deploy contour-httpproxy-recipe-pack.bicep --group default -e default
-rad env update default --recipe-packs contour-httpproxy-pack --preview
-rad deploy app.bicep --application contour-httpproxy-demo -e default
+```bicep
+resource route 'Radius.Compute/routes@2025-08-01-preview' = {
+  name: 'web'
+  properties: {
+    application: app.id
+    environment: environment
+    kind: 'HTTP'
+    hostnames: [
+      'web.example.com'
+    ]
+    rules: [
+      {
+        matches: [
+          {
+            httpPath: '/'
+          }
+        ]
+        destinationContainer: {
+          resourceId: web.id
+          containerName: 'web'
+          containerPort: 80
+        }
+      }
+    ]
+  }
+}
 ```
 
-To use Gateway API instead, users attach a different recipe pack:
-
-```bash
-rad env update default --recipe-packs contour-gateway-api-pack --preview
-rad deploy app.bicep --application contour-gateway-api-demo -e default -p gatewayClassName=contour
-```
-
-The application Bicep does not need provider-specific logic for this swap.
+The default route recipe attaches HTTP and TLS routes to `Gateway/radius` in `radius-system`. Users who want a different Gateway API controller, such as NGINX Gateway Fabric, can select a different recipe pack or pass recipe parameters that target a different Gateway.
 
 ## Design
 
-The Contour HTTPProxy recipe pack provides parity with today's implementation:
+The default Kubernetes route path becomes:
 
 ```text
-Radius.Compute/containers -> Kubernetes Deployment + Service
-Radius.Compute/gateways   -> root Contour HTTPProxy
-Radius.Compute/routes     -> child Contour HTTPProxy resources
+Radius install with Contour enabled -> GatewayClass/contour + Gateway/radius
+Radius.Compute/containers           -> Kubernetes Deployment + Service
+Radius.Compute/routes               -> Gateway API HTTPRoute/TLSRoute/TCPRoute/UDPRoute
 ```
 
-The gateway recipe maps Radius gateway properties to the root `HTTPProxy`:
+The route recipe defaults are:
 
-- gateway hostname -> `HTTPProxy.spec.virtualhost.fqdn`
-- gateway TLS settings -> `HTTPProxy.spec.virtualhost.tls`
-- route references -> `HTTPProxy.spec.includes[]`
+- `gateway_name`: `radius`
+- `gateway_namespace`: `radius-system`
 
-The route recipe maps Radius route properties to child `HTTPProxy` resources:
+For HTTP and TLS routes, the route must include at least one hostname when attaching to the shared default Gateway. This prevents multiple applications from unintentionally claiming the same catch-all listener.
 
-- `rules[].matches[].httpPath` -> `HTTPProxy.spec.routes[].conditions[].prefix`
-- `rules[].destinationContainer` -> `HTTPProxy.spec.routes[].services[]`
-- recipe parameter `hostname` or route hostnames -> `HTTPProxy.spec.virtualhost.fqdn`
-
-The recipe execution identity needs permission to manage `HTTPProxy` resources:
+The Radius dynamic RP needs permission to manage Gateway API route resources:
 
 ```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: radius-contour-httpproxy-recipes
-rules:
-  - apiGroups:
-      - projectcontour.io
-    resources:
-      - httpproxies
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
+apiGroups:
+  - gateway.networking.k8s.io
+resources:
+  - gateways
+  - httproutes
+  - tlsroutes
+  - tcproutes
+  - udproutes
+  - referencegrants
+verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 ```
-
-Gateway API remains available as a separate recipe pack:
-
-```text
-Radius.Compute/gateways -> Gateway API Gateway
-Radius.Compute/routes   -> Gateway API HTTPRoute
-Radius.Compute/containers -> Kubernetes Deployment + Service
-```
-
-This lets users switch from Contour HTTPProxy to Contour Gateway API, NGINX Gateway Fabric, or another Gateway API controller without Radius core changes.
 
 ## Default Recipe Registration
 
-Radius already has a default recipe pack experience. The question for Contour is how that existing default should include HTTPProxy parity while Contour remains installed by default.
+The existing `default` recipe pack should use the Gateway API `Radius.Compute/routes` recipe. Contour installation and recipe selection are separate concerns:
 
-Contour installation and recipe-pack selection are separate decisions:
-
-- Installing Contour adds the ingress controller and its CRDs to the cluster.
-- Selecting Contour HTTPProxy recipes makes the default Radius application model resolve to Contour-backed Kubernetes resources.
-
-While `rad install kubernetes` continues installing Contour by default, the default recipe pack experience should include the Contour HTTPProxy gateway and route behavior. This preserves today's default experience while allowing Radius core to stop rendering Contour resources directly.
-
-The default environment setup should be:
-
-```text
-rad init --preview or rad deploy with an environment
-  -> creates or fetches the default recipe pack
-  -> includes Contour HTTPProxy recipes while Contour is the default ingress controller
-  -> attaches the default pack to the environment when no explicit recipe packs are set
-```
-
-There are two implementation options:
-
-- Extend the existing `default` recipe pack with Contour HTTPProxy gateway and route recipes.
-- Keep ingress recipes in a separate default-attached pack.
+- Installing Contour adds the ingress controller and Gateway API support to the cluster.
+- Radius install creates the shared Contour `Gateway` when Contour install is enabled.
+- The default route recipe renders application routes that attach to that Gateway.
 
 The default recipes should be pinned to the Radius release or another explicit artifact version. The default experience should not depend on floating latest recipe artifacts.
 
-If Radius later stops installing Contour by default, default Contour recipe selection should be revisited at the same time. A default HTTPProxy route recipe without Contour installed would make the default environment fail for gateway and route deployments.
+If Radius later stops installing Contour by default, default Gateway creation and default route recipe selection should be revisited together.
 
-## API design
+## API Design
 
 No Radius API changes are required.
 
 This design uses existing resource types:
 
-- `Radius.Compute/gateways@2025-08-01-preview`
 - `Radius.Compute/routes@2025-08-01-preview`
 - `Radius.Compute/containers@2025-08-01-preview`
 - `Radius.Core/recipePacks@2025-08-01-preview`
 
 ## Implementation Details
 
-`resource-types-contrib` should provide:
+Radius should:
 
-- A container recipe that renders Kubernetes workload and service resources.
-- A Contour HTTPProxy route recipe.
-- A Contour HTTPProxy gateway recipe that renders the root proxy.
-- Gateway API gateway and route recipes as an alternate pack.
+- Continue installing Contour by default unless `--skip-contour-install` is set.
+- Create or update the default Contour `GatewayClass` and `Gateway` after Contour installation.
+- Delete the managed default `Gateway` and `GatewayClass` during uninstall.
+- Grant the dynamic RP Gateway API permissions.
 
-The existing default recipe pack flow should include Contour HTTPProxy gateway and route behavior while Contour remains installed by default. Contour installation can remain part of the default Radius install while this capability is introduced. Removing Contour from the default install should be reviewed separately because it changes installation behavior for existing users.
+`resource-types-contrib` should:
+
+- Keep the Kubernetes container recipe rendering workload and service resources.
+- Use Gateway API as the default Kubernetes route recipe.
+- Default the route recipe to `Gateway/radius` in `radius-system`.
+- Validate that HTTP and TLS routes include hostnames when using the shared Gateway.
 
 ## Error Handling
 
-- If Contour is not installed, the HTTPProxy recipe fails because the `projectcontour.io` API group is unavailable.
-- If the recipe execution identity lacks RBAC for `httpproxies`, recipe deployment fails.
-- If the rendered HTTPProxy is invalid, tests should wait for `HTTPProxy.status.currentStatus=valid` and dump Kubernetes diagnostics on timeout.
+- If Contour is not installed, the default shared Gateway is not created.
+- If the recipe execution identity lacks Gateway API RBAC, route deployment fails.
+- If a route has no hostname for HTTP or TLS, the default route recipe fails validation.
+- If a rendered Gateway API route is invalid, e2e tests should dump the route status and gateway diagnostics.
 
-## Test plan
+## Test Plan
 
-The demo validates the capability with three end-to-end paths:
+The demo validates the default recipe shape end to end:
 
-- Contour HTTPProxy recipes: https://github.com/willdavsmith/radius-nginx-demo/actions/runs/26118318051
-- Contour Gateway API recipes: https://github.com/willdavsmith/radius-nginx-demo/actions/runs/26118318008
-- NGINX Gateway API recipes: https://github.com/willdavsmith/radius-nginx-demo/actions/runs/26118318007
-
-The HTTPProxy test verifies that Radius can deploy the same app model through recipes and receive traffic through Contour Envoy.
+- Contour Gateway API recipes: https://github.com/willdavsmith/radius-nginx-demo/actions/runs/26665457465
+- NGINX Gateway API recipes: https://github.com/willdavsmith/radius-nginx-demo/actions/runs/26665457417
 
 ## Security
 
-The main security consideration is Kubernetes RBAC. The recipe execution identity needs explicit permissions for `projectcontour.io/httpproxies`.
+The main security consideration is Kubernetes RBAC. The recipe execution identity needs explicit permissions for Gateway API route resources.
+
+Because the default Gateway allows routes from application namespaces, route hostnames are required for HTTP and TLS routes. This avoids accidental catch-all route attachment to the shared Gateway.
 
 Recipe artifacts should be published from trusted locations. The local registry and module server used in the demo are test infrastructure, not a production distribution model.
 
 ## Compatibility
 
-The HTTPProxy recipe pack preserves compatibility with today's Contour behavior.
+Keeping Contour installed by default preserves the default install experience. The application model remains stable because users continue defining containers and routes.
 
-Keeping Contour installed by default and including Contour HTTPProxy behavior in the default recipe pack experience initially preserves install and behavior compatibility. If default Contour installation is removed later, migration guidance should tell users to either install Contour and attach the HTTPProxy recipe pack, or install a Gateway API controller and attach a Gateway API recipe pack.
+This changes the Kubernetes ingress implementation from Contour `HTTPProxy` to Gateway API route resources. Users who require direct HTTPProxy behavior can use an alternate recipe pack, but the default path should be Gateway API because it works with Contour today and lets users swap Gateway API controllers without Radius core changes.
 
-## Development plan
+## Development Plan
 
-1. Add the Contour HTTPProxy recipe pack to `resource-types-contrib`.
-2. Document the required HTTPProxy RBAC.
-3. Include Contour HTTPProxy behavior in the existing default recipe pack experience while Radius installs Contour by default.
-4. Keep e2e coverage for HTTPProxy, Contour Gateway API, and NGINX Gateway API recipe packs.
-5. Document how to switch between HTTPProxy and Gateway API recipe packs.
-6. Review default Contour installation separately.
+1. Add default Contour Gateway API infrastructure creation to Radius install and cleanup to uninstall.
+2. Grant Gateway API permissions to the dynamic RP.
+3. Update the default Kubernetes route recipe to attach to `radius-system/radius`.
+4. Validate Contour Gateway API and NGINX Gateway API e2e paths in the demo.
+5. Review default Contour installation separately.
 
-## Alternatives considered
+## Alternatives Considered
 
-### Move directly to Gateway API recipes
+### Preserve HTTPProxy as the default recipe path
 
-Gateway API is portable and should be available as a recipe pack, but it does not exactly match today's Contour HTTPProxy implementation.
+This matches the current implementation more closely, but it keeps the default path tied to Contour-specific APIs. Gateway API gives Radius the same application shape while allowing alternate Gateway API controllers through recipe packs.
 
 ### Keep Contour rendering in Radius core
 
