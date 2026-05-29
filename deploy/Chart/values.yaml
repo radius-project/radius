@@ -144,7 +144,8 @@ dynamicrp:
     psaMode: baseline
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
-    # Raise limits.memory for multi-arch builds with QEMU emulation.
+    # Default limits suit small/medium image builds; raise for large
+    # contexts or memory-heavy compilations.
     resources:
       requests:
         cpu: "200m"
