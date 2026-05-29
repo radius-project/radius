@@ -262,7 +262,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 						Namespace: deploymentTemplate.Namespace,
 					},
 				})
-				if err != nil {
+				if client.IgnoreNotFound(err) != nil {
 					return ctrl.Result{}, err
 				}
 			}
