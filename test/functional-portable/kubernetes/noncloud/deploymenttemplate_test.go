@@ -417,7 +417,7 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 }
 
 // deleteDeploymentTemplateAndWait deletes a DeploymentTemplate and blocks
-// until it (and all its owned DeploymentResources / Radius finalizers) is
+// until it (and all its owned DeploymentResources / Radius finalizers) are
 // fully removed from the API server. Used to sequence Radius-side teardown
 // before the K8s namespace delete in functional tests.
 func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types.NamespacedName, opts rp.RPTestOptions) {
