@@ -136,13 +136,6 @@ func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Install
 		} else {
 			logger.Error(err, "Pre-mounted global Terraform binary verification failed")
 		}
-	} else {
-		// Logged at INFO so that operators can correlate slow cold-starts
-		// with the network download. The Helm chart is supposed to mount
-		// a pre-baked binary at globalBinary with marker globalMarker; if
-		// they're missing, recipe execution will block on a network fetch.
-		logger.Info("No pre-mounted global Terraform binary found; will download",
-			"expected_binary", globalBinary, "expected_marker", globalMarker)
 	}
 
 	// Download and install Terraform
