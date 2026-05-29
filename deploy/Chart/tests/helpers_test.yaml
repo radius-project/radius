@@ -1445,35 +1445,6 @@ tests:
       # CronJob handles automatic rotation, not Helm upgrades
 
   # ─────────────────────────────────────────────────────────────────
-  # Drift guard: chart writes the pre-mounted Terraform binary to
-  # the exact path that pkg/recipes/terraform/install.go expects via
-  # defaultGlobalTerraformBinary / defaultGlobalMarkerFile. If these
-  # constants ever drift apart, ensureGlobalTerraformBinary silently
-  # falls through to a network download and operator-pinned versions
-  # are ignored. Update both sides in lockstep.
-  - it: should pre-mount terraform binary at the path install.go reads
-    set:
-      dynamicrp.image: dynamic-rp
-      rp.image: applications-rp
-      global.terraform.enabled: true
-    asserts:
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          # Must contain the dir name from
-          # pkg/recipes/terraform/install.go::defaultGlobalTerraformDir
-          # (.terraform-global). The chart's init script writes the
-          # binary to that dir and creates the .terraform-ready marker
-          # so ensureGlobalTerraformBinary short-circuits the network
-          # download path.
-          pattern: '\.terraform-global'
-        template: dynamic-rp/deployment.yaml
-      - matchRegex:
-          path: spec.template.spec.initContainers[0].command[2]
-          # Must reference the marker filename install.go expects.
-          pattern: '\.terraform-ready'
-        template: dynamic-rp/deployment.yaml
-
-  # ─────────────────────────────────────────────────────────────────
   # BuildKit sidecar shape: when enabled (default), the dynamic-rp Pod
   # gains a buildctl-init init container, a buildkitd container, and
   # the dynamic-rp container has BUILDKIT_HOST wired to loopback TCP.

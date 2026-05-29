@@ -7,38 +7,3 @@ APP VERSION: {{ .Chart.AppVersion }}
   kubectl --namespace {{ $.Release.Namespace }} get pods -l "app.kubernetes.io/part-of=radius"
 
 Visit https://docs.radapp.io to start Radius.
-
-{{- if and .Values.dynamicrp.buildkit.enabled (eq .Values.dynamicrp.buildkit.psaMode "restricted") }}
-{{- if not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version) }}
-
-WARNING: dynamicrp.buildkit.psaMode is "restricted" but this cluster
-is running Kubernetes {{ .Capabilities.KubeVersion.Version }}, which
-predates user-namespace support (added in 1.30, stable in 1.33). The
-buildkitd sidecar will fail to start. Reinstall without
-`--set dynamicrp.buildkit.psaMode=restricted` to fall back to the
-default `baseline` profile.
-{{- end }}
-{{- end }}
-{{- if .Values.dynamicrp.buildkit.enabled }}
-
-NOTE: The Radius.Compute/containerImages recipe pushes built images
-using credentials supplied by the platform engineer. Create a
-`kubernetes.io/dockerconfigjson` Secret in the {{ $.Release.Namespace }}
-namespace (developers never see it) and pass its name to the recipe
-at registration time:
-
-  kubectl create secret docker-registry registry-creds \
-    --namespace {{ $.Release.Namespace }} \
-    --docker-server=ghcr.io \
-    --docker-username=<user> \
-    --docker-password=<token>
-
-  rad recipe register default \
-    --resource-type Radius.Compute/containerImages \
-    --template-kind terraform \
-    --template-path git::https://github.com/radius-project/resource-types-contrib.git//Compute/containerImages/recipes/kubernetes/terraform \
-    --parameters registry=ghcr.io/myorg \
-    --parameters registrySecretName=registry-creds
-
-See the resource type README for instructions.
-{{- end }}
