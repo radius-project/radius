@@ -136,7 +136,7 @@ Below command exist today in Radius to access the deployed application graph:
 
 ```
 #Show graph for specified application. Default to default application
-rad app graph [my-application]
+rad app graph -a [my-application]
 ```
 
 We will enhance the above command to 
@@ -153,7 +153,7 @@ We build on the existing `rad app graph command` to access other kinds of graphs
 
 ```
 #Show modeled graph for specified my-app.bicep. Default ./app.bicep
-rad app graph [--bicep [/path/to/my-app.bicep]] [-o /path/to/output.json]
+rad app graph [/path/to/my-app.bicep] [-o /path/to/output.json]
 
 Compiling app.bicep → /tmp/app.json
 Parsed 4 resources, 3 connections
@@ -174,7 +174,7 @@ The details of implementation are at a high level and require further research/e
 
 ```
 #Show a dry-run of  app.bicep if deployed using recipes in environment env in group grp
-rad app graph --bicep [app.bicep] -e env [-g grp]
+rad app graph [app.bicep] -e env [-g grp]
 ```
 The command 
 
@@ -343,8 +343,8 @@ With this, if a new push arrives on the same PR branch while a previous graph bu
 
 | Test | Description |
 |------|-------------|
-| E2E modeled graph | Compile a test `app.bicep`, run `rad app graph --bicep`, verify output JSON matches expected artifact |
-| E2E planned graph | Run `rad app graph --bicep -e simulated-env`, verify `outputResources` are populated for resources backed by recipes |
+| E2E modeled graph | Compile a test `app.bicep`, run `rad app graph app.bicep`, verify output JSON matches expected artifact |
+| E2E planned graph | Run `rad app graph app.bicep -e simulated-env`, verify `outputResources` are populated for resources backed by recipes |
 | E2E deployed graph| Enhance existing test to capture new details |
 
 ## Security
@@ -364,12 +364,12 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 
 1. **Introduce `pkg/cli/gitstate/`** — encapsulate orphan-branch fetch / worktree / commit / push so callers do not deal with raw git commands. This is the neccessaryu to make storage configurable
 2. **Extend `ApplicationGraphResponse`** in both `corerpv20231001preview` (`Applications.Core/applications`) and `corerpv20250801preview` (`Radius.Core/applications`) with three optional fields — `diffHash`, `appDefinitionLine`, `codeReference` — and add the `diffHash` computation in `pkg/cli/graph/`. No new envelope type; the graph type is derived from `provisioningState` + `outputResources`.
-3. **Add `rad app graph --bicep [path]`** for the modeled graph.
+3. **Add `rad app graph app.bicep`** for the modeled graph.
    - Compile Bicep → ARM JSON, parse resources/connections/`dependsOn`.
    - Identify a robust mechanism to map each resource back to its source line (candidates: scanning the `.bicep` file for `resource` declarations, or using Bicep sourcemap output if available) and emit `appDefinitionLine` + `codeReference` so the UI can deep-link from a node to source code.
    - Compute `diffHash` per resource.
    - Persist via the persistence abstraction (see task 6).
-4. **Add `rad app graph --bicep -e env [-g grp]`** for the planned graph.
+4. **Add `rad app graph app.bicep -e env [-g grp]`** for the planned graph.
    - Reuse the modeled-graph pipeline, then resolve recipe outputs against the target environment to populate `outputResources`. Prototype both static inference (`bicep build` / `terraform graph` on the recipe) and the simulated-environment approach; pick one based on findings.
 5. **Enhance `rad app graph [app-name]`** to persist the deployed graph artifact to `{branch}/deployments/groupname-envname/app-graph.json` on the `radius-graph` orphan branch when running in repo-radius context. No change to behavior outside that context.
 6. **Make persistence pluggable** — introduce a small `GraphStore` interface in `pkg/cli/graph/` with a git-orphan-branch implementation backed by `pkg/cli/gitstate/` and a local-file implementation. All three commands above write through this interface so the persistence target is decoupled from graph construction and new targets (e.g., blob storage) can be added later.
@@ -385,10 +385,10 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 | Phase | Scope | Priority |
 |-------|-------|----------|
 | **Phase 1: Foundations** | `pkg/cli/gitstate/`, `ApplicationGraphResponse` schema extensions (`diffHash` / `appDefinitionLine` / `codeReference`), `GraphStore` abstraction, diffHash computation | P0 |
-| **Phase 2: Modeled graph** | `rad app graph --bicep` with source-line mapping and `codeReference` | P0 |
-| **Phase 3: Deployed graph persistence** | `rad app graph [app-name]` writes to `radius-graph` orphan branch in repo-radius context | P0 |
+| **Phase 2: Modeled graph** | `rad app graph app.bicep` with source-line mapping and `codeReference` | P0 |
+| **Phase 3: Deployed graph persistence** | `rad app graph -a app-name` writes to `radius-graph` orphan branch in repo-radius context | P0 |
 | **Phase 4: Repo-radius E2E** | Wire the CLI into the repo-radius workflow + browser extension and validate end-to-end | P0 |
-| **Phase 5: Planned graph detailed design+impl** | `rad app graph --bicep -e env [-g grp]`; recipe resolution to populate `outputResources` | P1 |
+| **Phase 5: Planned graph detailed design+impl** | `rad app graph app.bicep -e env [-g grp]`; recipe resolution to populate `outputResources` | P1 |
 
 ## Open Questions
 
@@ -396,7 +396,7 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 
 2. **Cross-control-plane deployment tracking:** When the same `app.bicep` is deployed potentially by multiple Radius control planes (e.g., an ephemeral CI plane and a persistent staging plane), each control plane maintains its own independent view of the application in its own database. In addition, users can use cloud provider cli/ portals to change the configuration to suit their needs. If an instance of control plane or an  user modifies the resources of the  application, then Radius's stored state and `getGraph` output become stale.
 
-Note that the modeled graph (`rad app graph --bicep`) is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. It depicts the app graph as inferred from the code.
+Note that the modeled graph is unaffected — it always reads from the Bicep source in the repository and is independent of any control plane. It depicts the app graph as inferred from the code.
 
 Only the deployed graph (from `getGraph`) is affected by this problem.
 
