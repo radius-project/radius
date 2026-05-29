@@ -34,19 +34,14 @@ spec:
     spec:
       serviceAccountName: dynamic-rp
       {{- if and .Values.dynamicrp.buildkit.enabled (eq .Values.dynamicrp.buildkit.psaMode "restricted") }}
-      # User namespaces let the rootless BuildKit sidecar satisfy
-      # PodSecurityAdmission "restricted" without Unconfined profiles.
-      # Requires Kubernetes >= 1.30 with the UserNamespacesSupport
-      # feature gate enabled (stable in 1.33).
+      # User namespaces let rootless BuildKit satisfy PSA "restricted"
+      # without Unconfined profiles. Requires Kubernetes >= 1.30.
       hostUsers: false
       {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # fsGroup makes the shared emptyDir volume that holds the
-      # buildctl binary (copied from the rootless BuildKit init
-      # container) group-owned by GID 65532, so the dynamic-rp
-      # container (UID/GID 65532) can read and exec it. The
-      # buildkitd sidecar listens on TCP, so no socket sharing is
-      # required.
+      # fsGroup 65532 lets the dynamic-rp container (UID 65532) read
+      # the buildctl binary copied into the shared emptyDir by the
+      # buildctl-init init container.
       securityContext:
         fsGroup: 65532
       {{- end }}
@@ -169,10 +164,9 @@ spec:
           runAsUser: 65532
       {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # Copy buildctl out of the BuildKit image into a shared volume so
-      # the dynamic-rp container can invoke it from `local-exec` inside
-      # Terraform recipes. We use buildctl rather than the Docker Engine
-      # API because buildkitd does not implement the latter.
+      # Stage buildctl out of the BuildKit image into a shared volume
+      # for the dynamic-rp container to exec from recipe local-exec
+      # blocks. buildkitd does not implement the Docker Engine API.
       - name: buildctl-init
         image: "{{ .Values.dynamicrp.buildkit.image }}"
         command: ["/bin/sh", "-c", "cp /usr/bin/buildctl /tools/buildctl && chmod 0755 /tools/buildctl"]
@@ -200,16 +194,13 @@ spec:
         - name: K8S_CLUSTER
           value: 'true'
         {{- if .Values.dynamicrp.buildkit.enabled }}
-        # Recipes invoke `buildctl` (mounted from the buildctl-init
-        # init container) which reads this env to dial the in-Pod
-        # buildkitd sidecar over loopback TCP.
+        # buildctl dials buildkitd over loopback TCP.
         - name: BUILDKIT_HOST
           value: "tcp://127.0.0.1:1234"
-        # buildctl reads ~/.docker/config.json for registry credentials.
-        # Make `~` deterministic for the recipe runner process.
+        # buildctl reads ~/.docker/config.json; fix HOME for the runner.
         - name: HOME
           value: "/home/rpuser"
-        # Put the mounted buildctl on PATH.
+        # buildctl lives in the mounted emptyDir.
         - name: PATH
           value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/buildctl"
         {{- end }}
@@ -260,12 +251,9 @@ spec:
         resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # Rootless BuildKit sidecar. Listens on loopback TCP inside the
-      # Pod network namespace. The dynamic-rp container reaches it via
-      # BUILDKIT_HOST=tcp://127.0.0.1:1234 and invokes `buildctl` for
-      # recipe-driven image builds. TCP-over-loopback avoids the
-      # cross-user-namespace socket-permission issues that plague
-      # rootless buildkit + emptyDir sharing.
+      # Rootless BuildKit sidecar. Listens on Pod-local loopback TCP;
+      # the dynamic-rp container reaches it via BUILDKIT_HOST. No
+      # host Docker socket, no privileged containers.
       - name: buildkitd
         image: "{{ .Values.dynamicrp.buildkit.image }}"
         args:
@@ -288,21 +276,17 @@ spec:
           runAsUser: 1000
           runAsGroup: 1000
           {{- if eq .Values.dynamicrp.buildkit.psaMode "baseline" }}
-          # On clusters without user namespaces, BuildKit's rootless
-          # mode needs unconfined seccomp/AppArmor to drop into the
-          # nested user namespace. PSA `baseline` permits this; PSA
-          # `restricted` does not.
+          # Rootless BuildKit needs Unconfined seccomp/AppArmor on
+          # clusters without user namespaces. PSA baseline permits;
+          # restricted does not.
           seccompProfile:
             type: Unconfined
           appArmorProfile:
             type: Unconfined
-          # rootlesskit execs /usr/bin/newuidmap, which relies on
-          # file capabilities to write the UID/GID map. With
-          # allowPrivilegeEscalation=false, the kernel sets
-          # no_new_privs=1 and nullifies file caps on execve, so
-          # newuidmap fails with "Could not set caps". PSA baseline
-          # permits allowPrivilegeEscalation=true; PSA restricted
-          # forbids it and requires user-namespace support instead.
+          # rootlesskit's newuidmap relies on file capabilities, which
+          # the kernel nullifies when no_new_privs=1 (set by
+          # allowPrivilegeEscalation=false). PSA baseline permits true;
+          # restricted requires user namespaces instead.
           allowPrivilegeEscalation: true
           {{- else }}
           allowPrivilegeEscalation: false
