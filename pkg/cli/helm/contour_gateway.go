@@ -52,27 +52,21 @@ var (
 	}
 )
 
-// ContourGatewayReconciler manages the default Gateway API resources used by
-// Radius.Compute/routes when Contour is installed by Radius.
-type ContourGatewayReconciler interface {
-	Reconcile(ctx context.Context, kubeContext string) error
-	Delete(ctx context.Context, kubeContext string) error
-}
+var (
+	configureDefaultContourGateway = ensureDefaultContourGateway
+	removeDefaultContourGateway    = deleteDefaultContourGateway
+)
 
-type DynamicContourGatewayReconciler struct {
-	Client dynamic.Interface
-}
-
-func NewContourGatewayReconciler() *DynamicContourGatewayReconciler {
-	return &DynamicContourGatewayReconciler{}
-}
-
-func (r *DynamicContourGatewayReconciler) Reconcile(ctx context.Context, kubeContext string) error {
-	client, err := r.client(kubeContext)
+func ensureDefaultContourGateway(ctx context.Context, kubeContext string) error {
+	client, err := newDynamicClient(kubeContext)
 	if err != nil {
 		return err
 	}
 
+	return reconcileDefaultContourGateway(ctx, client)
+}
+
+func reconcileDefaultContourGateway(ctx context.Context, client dynamic.Interface) error {
 	if err := reconcileGatewayClass(ctx, client); err != nil {
 		return err
 	}
@@ -80,12 +74,16 @@ func (r *DynamicContourGatewayReconciler) Reconcile(ctx context.Context, kubeCon
 	return reconcileGateway(ctx, client)
 }
 
-func (r *DynamicContourGatewayReconciler) Delete(ctx context.Context, kubeContext string) error {
-	client, err := r.client(kubeContext)
+func deleteDefaultContourGateway(ctx context.Context, kubeContext string) error {
+	client, err := newDynamicClient(kubeContext)
 	if err != nil {
 		return err
 	}
 
+	return deleteDefaultContourGatewayResources(ctx, client)
+}
+
+func deleteDefaultContourGatewayResources(ctx context.Context, client dynamic.Interface) error {
 	if err := deleteManagedResource(ctx, client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace), DefaultContourGatewayName); err != nil {
 		return err
 	}
@@ -93,11 +91,7 @@ func (r *DynamicContourGatewayReconciler) Delete(ctx context.Context, kubeContex
 	return deleteManagedResource(ctx, client.Resource(gatewayClassGVR), ContourGatewayClassName)
 }
 
-func (r *DynamicContourGatewayReconciler) client(kubeContext string) (dynamic.Interface, error) {
-	if r.Client != nil {
-		return r.Client, nil
-	}
-
+func newDynamicClient(kubeContext string) (dynamic.Interface, error) {
 	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
 		ContextName: kubeContext,
 		QPS:         kubeutil.DefaultCLIQPS,

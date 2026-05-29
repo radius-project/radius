@@ -28,13 +28,12 @@ import (
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 )
 
-func TestDynamicContourGatewayReconciler_ReconcileCreatesResources(t *testing.T) {
+func TestReconcileDefaultContourGatewayCreatesResources(t *testing.T) {
 	t.Parallel()
 
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	reconciler := &DynamicContourGatewayReconciler{Client: client}
 
-	err := reconciler.Reconcile(context.Background(), "test-context")
+	err := reconcileDefaultContourGateway(context.Background(), client)
 	require.NoError(t, err)
 
 	gatewayClass, err := client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
@@ -50,7 +49,7 @@ func TestDynamicContourGatewayReconciler_ReconcileCreatesResources(t *testing.T)
 	require.True(t, isRadiusManaged(gateway))
 }
 
-func TestDynamicContourGatewayReconciler_ReconcileAllowsExistingMatchingGatewayClass(t *testing.T) {
+func TestReconcileDefaultContourGatewayAllowsExistingMatchingGatewayClass(t *testing.T) {
 	t.Parallel()
 
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), &unstructured.Unstructured{
@@ -65,13 +64,11 @@ func TestDynamicContourGatewayReconciler_ReconcileAllowsExistingMatchingGatewayC
 			},
 		},
 	})
-	reconciler := &DynamicContourGatewayReconciler{Client: client}
-
-	err := reconciler.Reconcile(context.Background(), "test-context")
+	err := reconcileDefaultContourGateway(context.Background(), client)
 	require.NoError(t, err)
 }
 
-func TestDynamicContourGatewayReconciler_ReconcileRejectsConflictingGatewayClass(t *testing.T) {
+func TestReconcileDefaultContourGatewayRejectsConflictingGatewayClass(t *testing.T) {
 	t.Parallel()
 
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), &unstructured.Unstructured{
@@ -86,22 +83,19 @@ func TestDynamicContourGatewayReconciler_ReconcileRejectsConflictingGatewayClass
 			},
 		},
 	})
-	reconciler := &DynamicContourGatewayReconciler{Client: client}
-
-	err := reconciler.Reconcile(context.Background(), "test-context")
+	err := reconcileDefaultContourGateway(context.Background(), client)
 	require.ErrorContains(t, err, "already exists with controllerName")
 }
 
-func TestDynamicContourGatewayReconciler_DeleteOnlyManagedResources(t *testing.T) {
+func TestDeleteDefaultContourGatewayResourcesOnlyDeletesManagedResources(t *testing.T) {
 	t.Parallel()
 
 	unmanagedGatewayClass := newContourGatewayClass()
 	unmanagedGatewayClass.SetLabels(nil)
 	managedGateway := newContourGateway()
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), unmanagedGatewayClass, managedGateway)
-	reconciler := &DynamicContourGatewayReconciler{Client: client}
 
-	err := reconciler.Delete(context.Background(), "test-context")
+	err := deleteDefaultContourGatewayResources(context.Background(), client)
 	require.NoError(t, err)
 
 	_, err = client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})

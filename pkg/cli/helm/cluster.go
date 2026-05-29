@@ -205,9 +205,6 @@ type Interface interface {
 type Impl struct {
 	// HelmClient is the Helm client used to interact with the Kubernetes cluster.
 	Helm HelmClient
-
-	// GatewayReconciler manages Gateway API resources installed alongside Contour.
-	GatewayReconciler ContourGatewayReconciler
 }
 
 var _ Interface = &Impl{}
@@ -249,11 +246,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
 
-	if i.GatewayReconciler != nil {
-		output.LogInfo("Configuring Radius Contour Gateway...")
-		if err := i.GatewayReconciler.Reconcile(ctx, kubeContext); err != nil {
-			return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
-		}
+	output.LogInfo("Configuring Radius Contour Gateway...")
+	if err := configureDefaultContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
 	}
 
 	return nil
@@ -266,9 +261,9 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		return err
 	}
 
-	if i.GatewayReconciler != nil && !clusterOptions.Contour.Disabled {
+	if !clusterOptions.Contour.Disabled {
 		output.LogInfo("Deleting Radius Contour Gateway...")
-		if err := i.GatewayReconciler.Delete(ctx, kubeContext); err != nil {
+		if err := removeDefaultContourGateway(ctx, kubeContext); err != nil {
 			return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
 		}
 	}
@@ -389,11 +384,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	output.LogInfo("Contour upgrade complete")
 
-	if i.GatewayReconciler != nil {
-		output.LogInfo("Configuring Radius Contour Gateway...")
-		if err := i.GatewayReconciler.Reconcile(ctx, kubeContext); err != nil {
-			return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
-		}
+	output.LogInfo("Configuring Radius Contour Gateway...")
+	if err := configureDefaultContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
 	}
 
 	return nil

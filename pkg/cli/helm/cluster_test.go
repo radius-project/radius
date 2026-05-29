@@ -34,14 +34,12 @@ import (
 )
 
 func Test_Helm_InstallRadius(t *testing.T) {
-	t.Parallel()
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	gatewayReconciler := &fakeContourGatewayReconciler{}
-	impl := &Impl{Helm: mockHelmClient, GatewayReconciler: gatewayReconciler}
+	gatewayCalls := stubDefaultContourGateway(t)
+	impl := &Impl{Helm: mockHelmClient}
 	ctx := context.Background()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -88,19 +86,17 @@ func Test_Helm_InstallRadius(t *testing.T) {
 
 	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
-	require.Equal(t, 1, gatewayReconciler.reconcileCalls)
-	require.Equal(t, kubeContext, gatewayReconciler.kubeContext)
+	require.Equal(t, 1, gatewayCalls.configureCalls)
+	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
-	t.Parallel()
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	gatewayReconciler := &fakeContourGatewayReconciler{}
-	impl := &Impl{Helm: mockHelmClient, GatewayReconciler: gatewayReconciler}
+	gatewayCalls := stubDefaultContourGateway(t)
+	impl := &Impl{Helm: mockHelmClient}
 	ctx := context.Background()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -121,17 +117,16 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
-	require.Equal(t, 1, gatewayReconciler.deleteCalls)
-	require.Equal(t, kubeContext, gatewayReconciler.kubeContext)
+	require.Equal(t, 1, gatewayCalls.removeCalls)
+	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
 }
 
 func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
-	t.Parallel()
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
+	stubDefaultContourGateway(t)
 	impl := &Impl{Helm: mockHelmClient}
 	ctx := context.Background()
 	kubeContext := "test-context"
@@ -202,22 +197,36 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	require.Equal(t, "", state.ContourVersion)
 }
 
-type fakeContourGatewayReconciler struct {
-	reconcileCalls int
-	deleteCalls    int
+type defaultContourGatewayCalls struct {
+	configureCalls int
+	removeCalls    int
 	kubeContext    string
 }
 
-func (f *fakeContourGatewayReconciler) Reconcile(ctx context.Context, kubeContext string) error {
-	f.reconcileCalls++
-	f.kubeContext = kubeContext
-	return nil
-}
+func stubDefaultContourGateway(t *testing.T) *defaultContourGatewayCalls {
+	t.Helper()
 
-func (f *fakeContourGatewayReconciler) Delete(ctx context.Context, kubeContext string) error {
-	f.deleteCalls++
-	f.kubeContext = kubeContext
-	return nil
+	originalConfigure := configureDefaultContourGateway
+	originalRemove := removeDefaultContourGateway
+	calls := &defaultContourGatewayCalls{}
+
+	configureDefaultContourGateway = func(ctx context.Context, kubeContext string) error {
+		calls.configureCalls++
+		calls.kubeContext = kubeContext
+		return nil
+	}
+	removeDefaultContourGateway = func(ctx context.Context, kubeContext string) error {
+		calls.removeCalls++
+		calls.kubeContext = kubeContext
+		return nil
+	}
+
+	t.Cleanup(func() {
+		configureDefaultContourGateway = originalConfigure
+		removeDefaultContourGateway = originalRemove
+	})
+
+	return calls
 }
 
 func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
@@ -244,12 +253,11 @@ func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 }
 
 func Test_Helm_UpgradeRadius(t *testing.T) {
-	t.Parallel()
-
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
+	gatewayCalls := stubDefaultContourGateway(t)
 	impl := &Impl{Helm: mockHelmClient}
 	ctx := context.Background()
 	kubeContext := "test-context"
@@ -315,6 +323,8 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
+	require.Equal(t, 1, gatewayCalls.configureCalls)
+	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
 }
 
 func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
