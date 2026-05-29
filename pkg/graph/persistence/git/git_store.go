@@ -18,6 +18,7 @@ package git
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -25,26 +26,24 @@ import (
 	"strings"
 	"sync"
 
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	"github.com/radius-project/radius/pkg/graph/serialize"
 )
 
 // Options configures a Store.
 type Options struct {
-	// Branch is the orphan branch used to persist payloads. If empty,
+	// Branch is the orphan branch used to persist graphs. If empty,
 	// DefaultGraphBranch is used.
 	Branch string
 }
 
 // Store is a persistence.Store backed by a git orphan branch. Each saved
-// payload is committed as a file on the branch using a StateWorktree, so the
-// application's working tree is never touched.
+// graph is committed as a JSON file on the branch using a StateWorktree, so
+// the application's working tree is never touched.
 //
 // Key → path layout on the branch:
 //
 //	<namespace>/<name>.json
-//
-// Key.Version is currently ignored by this backend.
 //
 // Concurrency: `git worktree add` refuses to add a second worktree for a
 // branch that is already checked out, so concurrent Save/Load/List/Delete
@@ -67,14 +66,19 @@ func NewStore(opts Options) (*Store, error) {
 	return &Store{branch: branch}, nil
 }
 
-// Save commits payload to the configured orphan branch under pathFor(key).
-func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serialize.Payload, opts persistence.SaveOptions) error {
-	if payload == nil {
-		return errors.New("git: nil payload")
+// Save commits graph to the configured orphan branch under pathFor(key).
+func (s *Store) Save(ctx context.Context, key persistence.Key, graph *corerpv20250801preview.ApplicationGraphResponse, opts persistence.SaveOptions) error {
+	if graph == nil {
+		return errors.New("git: nil graph")
 	}
 	path, err := pathForKey(key)
 	if err != nil {
 		return err
+	}
+
+	data, err := json.MarshalIndent(graph, "", "  ")
+	if err != nil {
+		return fmt.Errorf("git: marshal graph: %w", err)
 	}
 
 	s.mu.Lock()
@@ -86,7 +90,7 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serializ
 	}
 	defer wt.Remove(ctx)
 
-	if err := wt.WriteFile(path, payload.Data); err != nil {
+	if err := wt.WriteFile(path, data); err != nil {
 		return err
 	}
 
@@ -97,8 +101,8 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, payload *serializ
 	return wt.CommitAndPush(ctx, msg)
 }
 
-// Load returns the payload previously stored under key, or persistence.ErrNotFound.
-func (s *Store) Load(ctx context.Context, key persistence.Key) (*serialize.Payload, error) {
+// Load returns the graph previously stored under key, or persistence.ErrNotFound.
+func (s *Store) Load(ctx context.Context, key persistence.Key) (*corerpv20250801preview.ApplicationGraphResponse, error) {
 	path, err := pathForKey(key)
 	if err != nil {
 		return nil, err
@@ -120,10 +124,11 @@ func (s *Store) Load(ctx context.Context, key persistence.Key) (*serialize.Paylo
 		}
 		return nil, err
 	}
-	return &serialize.Payload{
-		ContentType: "application/json",
-		Data:        data,
-	}, nil
+	graph := &corerpv20250801preview.ApplicationGraphResponse{}
+	if err := json.Unmarshal(data, graph); err != nil {
+		return nil, fmt.Errorf("git: unmarshal graph at %s: %w", path, err)
+	}
+	return graph, nil
 }
 
 // List returns keys present on the branch under namespace. An empty namespace
@@ -201,9 +206,9 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 	return wt.CommitAndPush(ctx, msg)
 }
 
-// pathFor returns the in-repo relative path used to store a payload for key.
-// Key.Version is ignored. Callers handling untrusted Key values should use
-// pathForKey, which additionally validates Namespace and Name.
+// pathFor returns the in-repo relative path used to store a graph for key.
+// Callers handling untrusted Key values should use pathForKey, which
+// additionally validates Namespace and Name.
 func pathFor(key persistence.Key) string {
 	return fmt.Sprintf("%s/%s.json", key.Namespace, key.Name)
 }

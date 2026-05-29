@@ -25,8 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	"github.com/radius-project/radius/pkg/graph/serialize"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 func TestNewStore_DefaultsBranch(t *testing.T) {
@@ -102,19 +103,25 @@ func TestStore_SaveLoadDeleteRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	key := persistence.Key{Namespace: "main", Name: "app"}
-	payload := &serialize.Payload{
-		ContentType: "application/json",
-		Format:      "cytoscape",
-		Data:        []byte(`{"elements":[]}`),
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			{
+				ID:                to.Ptr("resource-id"),
+				Name:              to.Ptr("frontend"),
+				Type:              to.Ptr("Applications.Core/containers"),
+				ProvisioningState: to.Ptr("Succeeded"),
+			},
+		},
 	}
 
-	require.NoError(t, s.Save(ctx, key, payload, persistence.SaveOptions{Message: "test save"}))
+	require.NoError(t, s.Save(ctx, key, graph, persistence.SaveOptions{Message: "test save"}))
 
 	got, err := s.Load(ctx, key)
 	require.NoError(t, err)
 	require.NotNil(t, got)
-	assert.Equal(t, payload.Data, got.Data)
-	assert.Equal(t, "application/json", got.ContentType)
+	require.Len(t, got.Resources, 1)
+	assert.Equal(t, "frontend", *got.Resources[0].Name)
+	assert.Equal(t, "Applications.Core/containers", *got.Resources[0].Type)
 
 	require.NoError(t, s.Delete(ctx, key))
 
@@ -164,7 +171,7 @@ func TestStore_List(t *testing.T) {
 		{Namespace: "feature", Name: "other"},
 	}
 	for _, k := range keys {
-		require.NoError(t, s.Save(ctx, k, &serialize.Payload{Data: []byte(`{}`)}, persistence.SaveOptions{}))
+		require.NoError(t, s.Save(ctx, k, &corerpv20250801preview.ApplicationGraphResponse{}, persistence.SaveOptions{}))
 	}
 
 	got, err := s.List(ctx, "main")

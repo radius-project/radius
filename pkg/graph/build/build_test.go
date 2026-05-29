@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,8 +49,7 @@ func TestBuildStaticGraph_ValidMultiResource(t *testing.T) {
 						"container": {"image": "myregistry/frontend:latest"},
 						"connections": {
 							"backend": {"source": "[resourceId('Applications.Core/containers', 'backend')]"}
-						},
-						"codeReference": "src/frontend/index.ts#L1"
+						}
 					}
 				},
 				"dependsOn": ["app"]
@@ -68,53 +68,28 @@ func TestBuildStaticGraph_ValidMultiResource(t *testing.T) {
 		}
 	}`
 
-	bicepSource := `resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'myapp'
-}
-
-resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'frontend'
-  properties: {
-    application: app.id
-    container: { image: 'myregistry/frontend:latest' }
-    codeReference: 'src/frontend/index.ts#L1'
-  }
-}
-
-resource backend 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'backend'
-  properties: {
-    application: app.id
-    container: { image: 'myregistry/backend:latest' }
-  }
-}
-`
-
 	dir := t.TempDir()
 	armPath := filepath.Join(dir, "app.json")
-	bicepPath := filepath.Join(dir, "app.bicep")
-
 	require.NoError(t, os.WriteFile(armPath, []byte(armJSON), 0o644))
-	require.NoError(t, os.WriteFile(bicepPath, []byte(bicepSource), 0o644))
 
-	artifact, err := BuildStaticGraph(armPath, bicepPath)
+	resp, err := BuildStaticGraph(armPath)
 	require.NoError(t, err)
-	require.NotNil(t, artifact)
-
-	assert.Equal(t, "1.0.0", artifact.Version)
-	assert.Equal(t, "app.bicep", artifact.SourceFile)
-	assert.Len(t, artifact.Application.Resources, 3)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Resources, 3)
 
 	// Verify resources are sorted by ID.
-	for i := 1; i < len(artifact.Application.Resources); i++ {
+	for i := 1; i < len(resp.Resources); i++ {
 		assert.True(t,
-			artifact.Application.Resources[i-1].ID < artifact.Application.Resources[i].ID,
+			derefString(resp.Resources[i-1].ID) < derefString(resp.Resources[i].ID),
 			"resources should be sorted by ID")
 	}
 
-	// Every resource gets a diff hash.
-	for _, r := range artifact.Application.Resources {
-		assert.NotEmpty(t, r.DiffHash, "resource %s should have a diff hash", r.Name)
+	// Every resource has the expected basic fields populated.
+	for _, r := range resp.Resources {
+		assert.NotEmpty(t, derefString(r.ID))
+		assert.NotEmpty(t, derefString(r.Type))
+		assert.NotEmpty(t, derefString(r.Name))
+		assert.Equal(t, provisioningStateSucceeded, derefString(r.ProvisioningState))
 	}
 }
 
@@ -142,27 +117,16 @@ func TestBuildStaticGraph_DependsOnEdgeExtraction(t *testing.T) {
 		}
 	}`
 
-	bicepSource := `resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'myapp'
-}
-resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'frontend'
-}
-`
-
 	dir := t.TempDir()
 	armPath := filepath.Join(dir, "app.json")
-	bicepPath := filepath.Join(dir, "app.bicep")
-
 	require.NoError(t, os.WriteFile(armPath, []byte(armJSON), 0o644))
-	require.NoError(t, os.WriteFile(bicepPath, []byte(bicepSource), 0o644))
 
-	artifact, err := BuildStaticGraph(armPath, bicepPath)
+	resp, err := BuildStaticGraph(armPath)
 	require.NoError(t, err)
 
-	var frontend, app *Resource
-	for _, r := range artifact.Application.Resources {
-		switch r.Name {
+	var frontend, app *corerpv20250801preview.ApplicationGraphResource
+	for _, r := range resp.Resources {
+		switch derefString(r.Name) {
 		case "frontend":
 			frontend = r
 		case "myapp":
@@ -176,7 +140,7 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
 	// Frontend should have at least one outbound connection (to the app).
 	outbound := 0
 	for _, c := range frontend.Connections {
-		if c.Direction == DirectionOutbound {
+		if c.Direction != nil && *c.Direction == corerpv20250801preview.DirectionOutbound {
 			outbound++
 		}
 	}
@@ -185,94 +149,17 @@ resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
 	// App should receive a reciprocal inbound edge.
 	inbound := 0
 	for _, c := range app.Connections {
-		if c.Direction == DirectionInbound {
+		if c.Direction != nil && *c.Direction == corerpv20250801preview.DirectionInbound {
 			inbound++
 		}
 	}
 	assert.GreaterOrEqual(t, inbound, 1, "app should have at least one inbound connection")
 }
 
-func TestBuildStaticGraph_CodeReferencePassthrough(t *testing.T) {
-	t.Parallel()
-
-	armJSON := `{
-		"resources": {
-			"cache": {
-				"type": "Applications.Datastores/redisCaches@2023-10-01-preview",
-				"properties": {
-					"name": "cache",
-					"properties": {
-						"codeReference": "src/cache/redis.ts#L10"
-					}
-				}
-			}
-		}
-	}`
-
-	dir := t.TempDir()
-	armPath := filepath.Join(dir, "app.json")
-	bicepPath := filepath.Join(dir, "app.bicep")
-
-	require.NoError(t, os.WriteFile(armPath, []byte(armJSON), 0o644))
-	require.NoError(t, os.WriteFile(bicepPath, []byte(""), 0o644))
-
-	artifact, err := BuildStaticGraph(armPath, bicepPath)
-	require.NoError(t, err)
-	require.Len(t, artifact.Application.Resources, 1)
-
-	assert.Equal(t, "src/cache/redis.ts#L10", artifact.Application.Resources[0].CodeReference)
-}
-
-func TestBuildStaticGraph_SourceLineMapping(t *testing.T) {
-	t.Parallel()
-
-	armJSON := `{
-		"resources": {
-			"app": {
-				"type": "Applications.Core/applications@2023-10-01-preview",
-				"properties": {"name": "myapp"}
-			},
-			"frontend": {
-				"type": "Applications.Core/containers@2023-10-01-preview",
-				"properties": {"name": "frontend"}
-			}
-		}
-	}`
-
-	bicepSource := `// comment
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'myapp'
-}
-
-resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'frontend'
-}
-`
-
-	dir := t.TempDir()
-	armPath := filepath.Join(dir, "app.json")
-	bicepPath := filepath.Join(dir, "app.bicep")
-
-	require.NoError(t, os.WriteFile(armPath, []byte(armJSON), 0o644))
-	require.NoError(t, os.WriteFile(bicepPath, []byte(bicepSource), 0o644))
-
-	artifact, err := BuildStaticGraph(armPath, bicepPath)
-	require.NoError(t, err)
-
-	for _, r := range artifact.Application.Resources {
-		switch r.Name {
-		case "myapp":
-			assert.Equal(t, int32(2), r.AppDefinitionLine)
-		case "frontend":
-			assert.Equal(t, int32(6), r.AppDefinitionLine)
-		}
-	}
-}
-
 func TestBuildStaticGraph_MissingArmFile(t *testing.T) {
 	t.Parallel()
 
-	_, err := BuildStaticGraph("/nonexistent/path.json", "/nonexistent/app.bicep")
+	_, err := BuildStaticGraph("/nonexistent/path.json")
 	assert.Error(t, err)
 }
 
@@ -281,12 +168,9 @@ func TestBuildStaticGraph_InvalidArmJSON(t *testing.T) {
 
 	dir := t.TempDir()
 	armPath := filepath.Join(dir, "app.json")
-	bicepPath := filepath.Join(dir, "app.bicep")
-
 	require.NoError(t, os.WriteFile(armPath, []byte("{not-valid-json"), 0o644))
-	require.NoError(t, os.WriteFile(bicepPath, []byte(""), 0o644))
 
-	_, err := BuildStaticGraph(armPath, bicepPath)
+	_, err := BuildStaticGraph(armPath)
 	assert.Error(t, err)
 }
 
@@ -308,25 +192,6 @@ func TestExtractResourceType(t *testing.T) {
 			assert.Equal(t, tc.expected, extractResourceType(tc.input))
 		})
 	}
-}
-
-func TestNormalizeSourceFilePath_RelativeToCwd(t *testing.T) {
-	t.Parallel()
-
-	// Absolute path inside the cwd → returns a slash-style relative path.
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	got := normalizeSourceFilePath(filepath.Join(cwd, "sub", "app.bicep"))
-	assert.Equal(t, "sub/app.bicep", got)
-}
-
-func TestNormalizeSourceFilePath_AbsoluteOutsideCwd_FallsBackToBase(t *testing.T) {
-	t.Parallel()
-
-	// Use an absolute path that is outside the cwd; expect just the basename.
-	outside := filepath.Join(t.TempDir(), "other", "app.bicep")
-	got := normalizeSourceFilePath(outside)
-	assert.Equal(t, "app.bicep", got)
 }
 
 func TestResolveResourceIDExpression(t *testing.T) {

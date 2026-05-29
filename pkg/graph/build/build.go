@@ -17,15 +17,15 @@ limitations under the License.
 package build
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
+
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // armTemplate represents the relevant parts of a compiled ARM JSON template.
@@ -45,20 +45,15 @@ type armResource struct {
 // resourceIDRegexp matches resourceId('Type', 'name') expressions in ARM JSON.
 var resourceIDRegexp = regexp.MustCompile(`resourceId\('([^']+)',\s*'([^']+)'\)`)
 
-// resourceDeclRegexp matches Bicep resource declarations like
-// "resource foo 'Type@version' = {".
-var resourceDeclRegexp = regexp.MustCompile(`^\s*resource\s+(\w+)\s+'[^']+'\s*=`)
-
 const (
 	defaultResourceGroup       = "default"
 	defaultPlane               = "/planes/radius/local"
 	provisioningStateSucceeded = "Succeeded"
-	artifactVersion            = "1.0.0"
 )
 
-// BuildStaticGraph parses a compiled ARM JSON file and the original Bicep
-// source to produce a StaticGraphArtifact.
-func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, error) {
+// BuildStaticGraph parses a compiled ARM JSON file and returns the application
+// graph as a corerpv20250801preview.ApplicationGraphResponse.
+func BuildStaticGraph(armJSONPath string) (*corerpv20250801preview.ApplicationGraphResponse, error) {
 	armData, err := os.ReadFile(armJSONPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading ARM JSON file %s: %w", armJSONPath, err)
@@ -69,13 +64,6 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 		return nil, fmt.Errorf("parsing ARM JSON: %w", err)
 	}
 
-	// Parse source line mappings from the Bicep file.
-	lineMap, err := parseSourceLineMap(bicepPath)
-	if err != nil {
-		// Non-fatal: we can still build the graph without line numbers.
-		lineMap = map[string]int{}
-	}
-
 	// Build resource lookup for symbolic name → constructed resource ID.
 	resourceIDs := make(map[string]string, len(tmpl.Resources))
 	for symbolicName, res := range tmpl.Resources {
@@ -83,32 +71,15 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 	}
 
 	// Build resources and connections.
-	resources := make([]*Resource, 0, len(tmpl.Resources))
-	for symbolicName, res := range tmpl.Resources {
-		resourceID := resourceIDs[symbolicName]
-		resourceType := extractResourceType(res.Type)
-		resourceName := extractResourceName(res)
-		authorableProperties := extractAuthorableProperties(res)
-
-		r := &Resource{
-			ID:                resourceID,
-			Type:              resourceType,
-			Name:              resourceName,
-			ProvisioningState: provisioningStateSucceeded,
-			Connections:       []*Connection{},
-			OutputResources:   []*OutputResource{},
-		}
-
-		// Copy authorable codeReference from properties.
-		if codeRef, ok := authorableProperties["codeReference"]; ok {
-			if s, ok := codeRef.(string); ok {
-				r.CodeReference = s
-			}
-		}
-
-		// Map source line number.
-		if line, ok := lineMap[symbolicName]; ok {
-			r.AppDefinitionLine = int32(line)
+	resources := make([]*corerpv20250801preview.ApplicationGraphResource, 0, len(tmpl.Resources))
+	for _, res := range tmpl.Resources {
+		r := &corerpv20250801preview.ApplicationGraphResource{
+			ID:                to.Ptr(constructResourceID(res)),
+			Type:              to.Ptr(extractResourceType(res.Type)),
+			Name:              to.Ptr(extractResourceName(res)),
+			ProvisioningState: to.Ptr(provisioningStateSucceeded),
+			Connections:       []*corerpv20250801preview.ApplicationGraphConnection{},
+			OutputResources:   []*corerpv20250801preview.ApplicationGraphOutputResource{},
 		}
 
 		// Extract connections from properties.connections.
@@ -117,37 +88,27 @@ func BuildStaticGraph(armJSONPath, bicepPath string) (*StaticGraphArtifact, erro
 		// Extract dependency edges from dependsOn.
 		for _, dep := range res.DependsOn {
 			if depID, ok := resourceIDs[dep]; ok {
-				r.Connections = append(r.Connections, &Connection{
-					ID:        depID,
-					Direction: DirectionOutbound,
+				r.Connections = append(r.Connections, &corerpv20250801preview.ApplicationGraphConnection{
+					ID:        to.Ptr(depID),
+					Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
 				})
 			}
 		}
-
-		// Compute diff hash.
-		r.DiffHash = ComputeDiffHash(authorableProperties, res.DependsOn...)
 
 		resources = append(resources, r)
 	}
 
 	// Sort resources by ID for deterministic output.
 	sort.Slice(resources, func(i, j int) bool {
-		return resources[i].ID < resources[j].ID
+		return derefString(resources[i].ID) < derefString(resources[j].ID)
 	})
 
 	// Add inbound connections (reverse edges).
 	addInboundConnections(resources)
 
-	artifact := &StaticGraphArtifact{
-		Version:     artifactVersion,
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		SourceFile:  normalizeSourceFilePath(bicepPath),
-		Application: Application{
-			Resources: resources,
-		},
-	}
-
-	return artifact, nil
+	return &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: resources,
+	}, nil
 }
 
 func extractAuthorableProperties(res armResource) map[string]interface{} {
@@ -156,48 +117,6 @@ func extractAuthorableProperties(res armResource) map[string]interface{} {
 	}
 
 	return res.Properties
-}
-
-func normalizeSourceFilePath(bicepPath string) string {
-	cleaned := filepath.Clean(bicepPath)
-	if filepath.IsAbs(cleaned) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return filepath.ToSlash(filepath.Base(cleaned))
-		}
-
-		rel, err := filepath.Rel(cwd, cleaned)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return filepath.ToSlash(filepath.Base(cleaned))
-		}
-
-		cleaned = rel
-	}
-
-	return filepath.ToSlash(cleaned)
-}
-
-// parseSourceLineMap reads a Bicep file and maps symbolic resource names to
-// their declaration line numbers (1-based).
-func parseSourceLineMap(bicepPath string) (map[string]int, error) {
-	f, err := os.Open(bicepPath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	lineMap := make(map[string]int)
-	scanner := bufio.NewScanner(f)
-	lineNum := 0
-	for scanner.Scan() {
-		lineNum++
-		line := scanner.Text()
-		matches := resourceDeclRegexp.FindStringSubmatch(line)
-		if len(matches) >= 2 {
-			lineMap[matches[1]] = lineNum
-		}
-	}
-	return lineMap, scanner.Err()
 }
 
 // constructResourceID builds a Radius-style resource ID from an ARM resource.
@@ -235,7 +154,7 @@ func extractResourceName(res armResource) string {
 
 // extractConnections parses the properties.connections map and resolves
 // resourceId() expressions to full resource IDs.
-func extractConnections(res armResource, resourceIDs map[string]string) []*Connection {
+func extractConnections(res armResource, resourceIDs map[string]string) []*corerpv20250801preview.ApplicationGraphConnection {
 	connMap, ok := extractAuthorableProperties(res)["connections"]
 	if !ok {
 		return nil
@@ -246,7 +165,7 @@ func extractConnections(res armResource, resourceIDs map[string]string) []*Conne
 		return nil
 	}
 
-	var connections []*Connection
+	var connections []*corerpv20250801preview.ApplicationGraphConnection
 	// Sort keys for deterministic output.
 	keys := make([]string, 0, len(connectionsObj))
 	for k := range connectionsObj {
@@ -269,9 +188,9 @@ func extractConnections(res armResource, resourceIDs map[string]string) []*Conne
 		// Try to resolve resourceId() expression.
 		targetID := resolveResourceIDExpression(source, resourceIDs)
 		if targetID != "" {
-			connections = append(connections, &Connection{
-				ID:        targetID,
-				Direction: DirectionOutbound,
+			connections = append(connections, &corerpv20250801preview.ApplicationGraphConnection{
+				ID:        to.Ptr(targetID),
+				Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
 			})
 		}
 	}
@@ -299,19 +218,19 @@ func resolveResourceIDExpression(expr string, resourceIDs map[string]string) str
 
 // addInboundConnections adds reverse (Inbound) connection edges to resources
 // that are referenced by outbound connections from other resources.
-func addInboundConnections(resources []*Resource) {
-	resourceByID := make(map[string]*Resource, len(resources))
+func addInboundConnections(resources []*corerpv20250801preview.ApplicationGraphResource) {
+	resourceByID := make(map[string]*corerpv20250801preview.ApplicationGraphResource, len(resources))
 	for _, r := range resources {
-		resourceByID[r.ID] = r
+		resourceByID[derefString(r.ID)] = r
 	}
 
 	for _, r := range resources {
 		for _, conn := range r.Connections {
-			if conn.Direction != DirectionOutbound {
+			if conn.Direction == nil || *conn.Direction != corerpv20250801preview.DirectionOutbound {
 				continue
 			}
 
-			target, ok := resourceByID[conn.ID]
+			target, ok := resourceByID[derefString(conn.ID)]
 			if !ok {
 				continue
 			}
@@ -319,18 +238,26 @@ func addInboundConnections(resources []*Resource) {
 			// Check if inbound connection already exists.
 			alreadyExists := false
 			for _, existing := range target.Connections {
-				if existing.ID == r.ID && existing.Direction == DirectionInbound {
+				if derefString(existing.ID) == derefString(r.ID) &&
+					existing.Direction != nil && *existing.Direction == corerpv20250801preview.DirectionInbound {
 					alreadyExists = true
 					break
 				}
 			}
 
 			if !alreadyExists {
-				target.Connections = append(target.Connections, &Connection{
+				target.Connections = append(target.Connections, &corerpv20250801preview.ApplicationGraphConnection{
 					ID:        r.ID,
-					Direction: DirectionInbound,
+					Direction: to.Ptr(corerpv20250801preview.DirectionInbound),
 				})
 			}
 		}
 	}
+}
+
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

@@ -14,19 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package build constructs a static application graph artifact from a
-// compiled ARM JSON template and its original Bicep source.
+// Package build constructs a static application graph from a compiled ARM
+// JSON template.
 //
-// The build output (StaticGraphArtifact) is intended for two consumers:
-//
-//   - Persistence: it is JSON-marshaled and written to a persistence.Store
-//     (typically the git orphan-branch Store under pkg/graph/persistence/git).
-//   - Visualization: it can be adapted to the canonical pkg/graph.Graph type
-//     via ToGraph, then handed to a serializer such as
-//     pkg/graph/serialize/cytoscape.
-//
-// This package replaces the github-demo branch's pkg/cli/graph/{build,diffhash}.go
-// and intentionally does not depend on pkg/corerp generated types so that the
-// extra resource fields (codeReference, appDefinitionLine, diffHash) can be
-// carried without modifying generated API models.
+// BuildStaticGraph returns a corerpv20250801preview.ApplicationGraphResponse
+// (the generated TypeSpec model) so the same shape can be persisted, served
+// over the API, and rendered by clients without an intermediate type.
 package build
