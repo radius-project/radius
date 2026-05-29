@@ -40,7 +40,8 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
+	gatewayReconciler := &fakeContourGatewayReconciler{}
+	impl := &Impl{Helm: mockHelmClient, GatewayReconciler: gatewayReconciler}
 	ctx := context.Background()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -87,6 +88,8 @@ func Test_Helm_InstallRadius(t *testing.T) {
 
 	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
+	require.Equal(t, 1, gatewayReconciler.reconcileCalls)
+	require.Equal(t, kubeContext, gatewayReconciler.kubeContext)
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
@@ -96,7 +99,8 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
+	gatewayReconciler := &fakeContourGatewayReconciler{}
+	impl := &Impl{Helm: mockHelmClient, GatewayReconciler: gatewayReconciler}
 	ctx := context.Background()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -117,6 +121,8 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
+	require.Equal(t, 1, gatewayReconciler.deleteCalls)
+	require.Equal(t, kubeContext, gatewayReconciler.kubeContext)
 }
 
 func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
@@ -196,6 +202,24 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	require.Equal(t, "", state.ContourVersion)
 }
 
+type fakeContourGatewayReconciler struct {
+	reconcileCalls int
+	deleteCalls    int
+	kubeContext    string
+}
+
+func (f *fakeContourGatewayReconciler) Reconcile(ctx context.Context, kubeContext string) error {
+	f.reconcileCalls++
+	f.kubeContext = kubeContext
+	return nil
+}
+
+func (f *fakeContourGatewayReconciler) Delete(ctx context.Context, kubeContext string) error {
+	f.deleteCalls++
+	f.kubeContext = kubeContext
+	return nil
+}
+
 func Test_Helm_CheckRadiusInstall_ErrorOnQuery(t *testing.T) {
 	t.Parallel()
 
@@ -266,7 +290,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
 		Return([]*release.Release{radiusRelease}, nil).Times(1)
-	
+
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).

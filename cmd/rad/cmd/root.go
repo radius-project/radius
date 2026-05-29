@@ -272,7 +272,8 @@ func initSubCommands() {
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface: &helm.Impl{
-			Helm: helm.NewHelmClient(),
+			Helm:              helm.NewHelmClient(),
+			GatewayReconciler: helm.NewContourGatewayReconciler(),
 		},
 		NamespaceInterface: &namespace.Impl{},
 		AWSClient:          aws.NewClient(),
