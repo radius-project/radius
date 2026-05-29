@@ -426,10 +426,10 @@ func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types
 	}
 	err := opts.Client.Delete(ctx, dt)
 	if controller_runtime.IgnoreNotFound(err) != nil {
-		require.NoError(t, err, "failed to delete DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
+		require.NoErrorf(t, err, "failed to delete DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
 	}
 
-	require.Eventually(t, func() bool {
+	require.Eventuallyf(t, func() bool {
 		got := &radappiov1alpha3.DeploymentTemplate{}
 		err := opts.Client.Get(ctx, nn, got)
 		return apierrors.IsNotFound(err)

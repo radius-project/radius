@@ -562,7 +562,7 @@ func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) 
 
 func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {
 	for _, ownerRef := range resource.OwnerReferences {
-		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name {
+		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name && ownerRef.UID == owner.UID {
 			return true
 		}
 	}
