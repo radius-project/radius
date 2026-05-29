@@ -103,7 +103,7 @@ The system consists of four components that work together:
 
 Developer authors/modifies app.bicep. This could be through UI Buttons and/or Agents that create the PR on user's behalf.                
 1. Developer/Agent pushes branch and opens PR   
-2. Developer/Agent merges the new app deifintion to main
+2. Developer/Agent merges the new app definition to main
 
 **Radius**
 
@@ -117,7 +117,7 @@ they commit the graph artifact to an orphan branch as app-graph.json. If not, th
 
 **Browser extension**
 
-1. Reads the app-graph.json commited to orphan branches 
+1. Reads the app-graph.json committed to orphan branches 
 2. Parse and render using Cytoscape.
 
 We will merge Workflows,  Browser extension and Graph-renderer cytoscape.js java scripts into the github-extension repository. Radius changes will be merged into the Radius repository.
@@ -182,7 +182,7 @@ The command
 2. Parses resources, connections, `dependsOn`, and `codeReference` from the JSON.
 3. Detects source line mappings by scanning the Bicep file for `resource` declarations.
 4. Computes a `diffHash` for each resource based on relevant properties.
-5. Resolves resources craeted by recipes.
+5. Resolves resources created by recipes.
 6. Commits the resulting `ApplicationGraphResponse` JSON to `{source-branch}/scopename-envname/app-graph.json` on the orphan `radius-graph` branch, if it is run in the context of a github runner (repo radius). Otherwise writes the JSON to `app-graph.json` in the current directory.
 
 There are 2 potential approaches to how the recipe resources command can be resolved:
@@ -196,9 +196,9 @@ There are 2 potential approaches to how the recipe resources command can be reso
 5. Integrate back to the `ApplicationGraphResponse` through the `outputResources` field. 
 6. Commit to orphan branch
 
-*simulated inferences [prefered]*
+*simulated inferences [preferred]*
 
-Radius currently supports a simulated environment. At a high level, this makes an entry in Radius datastore for each reasource, identical to what a `rad deploy` does. But the deployment status is used to indicate the resources have not been deployed yet. The simulated environment also does not do a dry-run on the recipes. 
+Radius currently supports a simulated environment. At a high level, this makes an entry in Radius datastore for each resource, identical to what a `rad deploy` does. But the deployment status is used to indicate the resources have not been deployed yet. The simulated environment also does not do a dry-run on the recipes. 
 We could choose to reuse this idea and enhance it so that we populate outputResources using dry-run abilities of bicep and terraform.
 We prefer this approach, since it 
 
@@ -207,9 +207,9 @@ We prefer this approach, since it
 
 ##### Git dependency
 
-While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Flux. If we use workflows to own orphan branch + graph data handling, these functionalities will not be tested extensively as part of core Radius. We dont have reliable and automatic methods to make sure workflows meet the requirement, since that is not part of core Radius. The functionalities invoving branches are used only context of repo radius and are auto detected by cli. Therefore, we are handling git interactions through a new package in Radius (pkg/cli/gitstate/).  
+While it is ideal for Radius to not take an additional dependencies, Radius already has a git dependency because of Flux. If we use workflows to own orphan branch + graph data handling, these functionalities will not be tested extensively as part of core Radius. We dont have reliable and automatic methods to make sure workflows meet the requirement, since that is not part of core Radius. The functionalities involving branches are used only context of repo radius and are auto detected by cli. Therefore, we are handling git interactions through a new package in Radius (pkg/cli/gitstate/).  
 
-##### Detecing repo-radius mode
+##### Detecting repo-radius mode
 
 GitHub Actions guarantees that the [`GITHUB_ACTIONS`](https://docs.github.com/en/actions/reference/workflows-and-actions/variables) environment variable is set to `true` for every step that runs inside a runner . `rad app graph` could check `os.Getenv("GITHUB_ACTIONS") == "true"` to detect repo-radius mode, and handle command outputs/ persistence accordingly. 
 
@@ -305,11 +305,11 @@ All three commands take an optional -o argument which can write to a specified f
 
 **Run-time graph persistence via `rad shutdown`:**
 
-The `rad shutdown` command backs up PostgreSQL state and tears down the k3d cluster. A natural extension is to call `getGraph` for each deployed application during shutdown and write the graph JSON to the `radius-graph` orphan branch as `deployments\scopename-envname\app-graph.json`. This would make run-time graphs available for visualization even after the cluster is destroyed, and will be updated everytiem there is a deployment — enabling the UI to show deployed infrastructure topology from the last known state.
+The `rad shutdown` command backs up PostgreSQL state and tears down the k3d cluster. A natural extension is to call `getGraph` for each deployed application during shutdown and write the graph JSON to the `radius-graph` orphan branch as `deployments\scopename-envname\app-graph.json`. This would make run-time graphs available for visualization even after the cluster is destroyed, and will be updated every time there is a deployment — enabling the UI to show deployed infrastructure topology from the last known state.
 
 #### Workflow 
 
-The workflow will be responsible for installing rad cli, running the rad graph command on appropritate events (merge to main, PR against main from a fork). 
+The workflow will be responsible for installing rad cli, running the rad graph command on appropriate events (merge to main, PR against main from a fork). 
 
 ##### Concurrent PR handling
 
@@ -362,7 +362,7 @@ This plan covers only the Radius-side work. Browser extension, workflow authorin
 
 **Tasks (Radius CLI)**
 
-1. **Introduce `pkg/cli/gitstate/`** — encapsulate orphan-branch fetch / worktree / commit / push so callers do not deal with raw git commands. This is the neccessaryu to make storage configurable
+1. **Introduce `pkg/cli/gitstate/`** — encapsulate orphan-branch fetch / worktree / commit / push so callers do not deal with raw git commands. This is necessary to make storage configurable
 2. **Extend `ApplicationGraphResponse`** in both `corerpv20231001preview` (`Applications.Core/applications`) and `corerpv20250801preview` (`Radius.Core/applications`) with three optional fields — `diffHash`, `appDefinitionLine`, `codeReference` — and add the `diffHash` computation in `pkg/cli/graph/`. No new envelope type; the graph type is derived from `provisioningState` + `outputResources`.
 3. **Add `rad app graph app.bicep`** for the modeled graph.
    - Compile Bicep → ARM JSON, parse resources/connections/`dependsOn`.
@@ -413,7 +413,7 @@ Possible approaches to drift:
 
 Drawing from these approaches, Radius could offer `rad` commands to detect drift and apply a refresh. At a high level, this would involve:
 
-1. Query the Application resource for its `lastModifiedAt` (UTC) and `lastModifiedBy`. If a newer timestamp from a different control plane is found, offer a `rad` command to refresh the local state. This addresses concurrent updates by multiple Radius instances, but doesn not detect drifts induced by users.
+1. Query the Application resource for its `lastModifiedAt` (UTC) and `lastModifiedBy`. If a newer timestamp from a different control plane is found, offer a `rad` command to refresh the local state. This addresses concurrent updates by multiple Radius instances, but does not detect drifts induced by users.
 
 2. Query each resource of the application against its actual cloud provider state. If the deployed properties differ from what Radius has recorded, enable updating the stored state to match the actual deployment. This addresses changes made directly through cloud provider consoles or CLIs.
 
@@ -444,7 +444,7 @@ Drawing from these approaches, Radius could offer `rad` commands to detect drift
 
 **Chosen approach:** Orphan branch. Clean separation from application code, natural per-branch organization, accessible via GitHub API. This is consistent with the `filesystem-state` branch's choice of orphan branches for PostgreSQL state persistence, validated by the same analysis (see [GitHub Actions Workspace](../2026-03-github-workspace-design.md) alternatives considered).
 
-The implemnentation should be decoupled from the persistence target as part of an extensible design.
+The implementation should be decoupled from the persistence target as part of an extensible design.
 
 ---
 ### Resource property selection
