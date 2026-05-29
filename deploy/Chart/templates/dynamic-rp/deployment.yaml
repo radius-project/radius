@@ -197,9 +197,6 @@ spec:
         # buildctl dials buildkitd over loopback TCP.
         - name: BUILDKIT_HOST
           value: "tcp://127.0.0.1:1234"
-        # buildctl reads ~/.docker/config.json; fix HOME for the runner.
-        - name: HOME
-          value: "/home/rpuser"
         # buildctl lives in the mounted emptyDir.
         - name: PATH
           value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/buildctl"
