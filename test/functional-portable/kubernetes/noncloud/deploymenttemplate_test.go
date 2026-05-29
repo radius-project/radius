@@ -429,10 +429,25 @@ func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types
 		require.NoErrorf(t, err, "failed to delete DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
 	}
 
+	// Capture any non-NotFound Get error so we surface it instead of burning
+	// the 10-minute budget masking a real API/RBAC/connectivity failure as
+	// "still deleting".
+	var lastErr error
 	require.Eventuallyf(t, func() bool {
 		got := &radappiov1alpha3.DeploymentTemplate{}
 		err := opts.Client.Get(ctx, nn, got)
-		return apierrors.IsNotFound(err)
+		switch {
+		case apierrors.IsNotFound(err):
+			lastErr = nil
+			return true
+		case err != nil:
+			lastErr = err
+			return true
+		default:
+			lastErr = nil
+			return false
+		}
 	}, time.Minute*10, time.Second*5,
 		"waiting for DeploymentTemplate %s/%s to be fully deleted", nn.Namespace, nn.Name)
+	require.NoErrorf(t, lastErr, "unexpected error fetching DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
 }
