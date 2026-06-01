@@ -46,6 +46,9 @@ const (
 	CoreEnvironmentsResource = "radius.core/environments"
 	CoreApplicationsResource = "radius.core/applications"
 
+	// Radius.Compute resource types (new provider).
+	ComputeContainersResource = "radius.compute/containers"
+
 	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
 	DaprSecretStoresResource        = "applications.dapr/secretStores"

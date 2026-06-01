@@ -526,16 +526,23 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentUpdatePreview runs the "env update" command for the specified environment name and returns the output as a string, returning
-// an error if the command fails.
-func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, groupName, recipepack string) (string, error) {
+// EnvironmentUpdatePreview runs the "env update --preview" command for the specified environment name
+// and returns the output as a string, returning an error if the command fails.
+// Optional parameters groupName, recipePack, and kubernetesNamespace are applied when non-empty.
+func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, groupName, recipePack, kubernetesNamespace string) (string, error) {
 	args := []string{
 		"env",
 		"update",
 		environmentName,
-		"--recipe-packs",
-		recipepack,
 		"--preview",
+	}
+
+	if recipePack != "" {
+		args = append(args, "--recipe-packs", recipePack)
+	}
+
+	if kubernetesNamespace != "" {
+		args = append(args, "--kubernetes-namespace", kubernetesNamespace)
 	}
 
 	if groupName != "" {
@@ -571,39 +578,6 @@ func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, g
 		environmentName,
 		"--preview",
 		"--yes",
-	}
-
-	if groupName != "" {
-		args = append(args, "--group", groupName)
-	}
-
-	return cli.RunCommand(ctx, args)
-}
-
-// ApplicationShowPreview runs the "application show" command with the --preview flag for the specified application name
-// and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ApplicationShowPreview(ctx context.Context, applicationName, groupName string) (string, error) {
-	args := []string{
-		"application",
-		"show",
-		"-a", applicationName,
-		"--preview",
-	}
-
-	if groupName != "" {
-		args = append(args, "--group", groupName)
-	}
-
-	return cli.RunCommand(ctx, args)
-}
-
-// ApplicationListPreview runs the "application list" command with the --preview flag
-// and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ApplicationListPreview(ctx context.Context, groupName string) (string, error) {
-	args := []string{
-		"application",
-		"list",
-		"--preview",
 	}
 
 	if groupName != "" {
