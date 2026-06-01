@@ -342,6 +342,31 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		t.Logf("Successfully asserted expected resources exist in %s", scope)
 	}
 
+	// Tear down each DeploymentTemplate (and wait for full drainage of its
+	// owned DeploymentResources) before deleting the K8s namespaces. This
+	// avoids racing parallel Radius delete cascades against the namespace
+	// delete; without it, Test_Flux_Complex intermittently times out for
+	// 10 minutes waiting for a stuck namespace.
+	//
+	// We union DTs across all steps because some tests intentionally remove
+	// DTs in later steps (Test_Flux_Complex step 3 is an empty config), and
+	// iterating only the last step would miss DTs created by earlier steps.
+	seen := map[types.NamespacedName]struct{}{}
+	for _, step := range steps {
+		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
+		require.NoError(t, err)
+		for _, configEntry := range radiusConfig.Config {
+			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
+			nn := types.NamespacedName{Name: name, Namespace: namespace}
+			if _, ok := seen[nn]; ok {
+				continue
+			}
+			seen[nn] = struct{}{}
+			t.Logf("Deleting DeploymentTemplate (and waiting): %s/%s", nn.Namespace, nn.Name)
+			deleteDeploymentTemplateAndWait(ctx, t, nn, opts)
+		}
+	}
+
 	for _, namespace := range namespaces {
 		t.Logf("Deleting namespace: %s", namespace)
 		deleteNamespace(ctx, t, namespace, opts)
