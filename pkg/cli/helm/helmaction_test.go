@@ -25,6 +25,7 @@ import (
 	containerderrors "github.com/containerd/containerd/remotes/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"helm.sh/helm/v3/pkg/chart"
 )
 
@@ -90,40 +91,43 @@ func Test_parseUserValuesFromCLI(t *testing.T) {
 	assert.Equal(t, prometheus["path"], "path")
 }
 
-// Test_parseUserValuesFromCLI_DoesNotMutateChart guards against the bug fixed in
-// issue #11218: parseUserValuesFromCLI must build a fresh values map and must not
-// touch helmChart.Values. If it did, the user-supplied overrides would get stored
-// on the Helm release alongside the chart defaults, breaking ResetThenReuseValues
-// semantics on subsequent upgrades.
-func Test_parseUserValuesFromCLI_DoesNotMutateChart(t *testing.T) {
-	var helmChart chart.Chart
-	helmChart.Values = map[string]any{
+func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	helmChart := &chart.Chart{
+		Values: map[string]any{
 		"global": map[string]any{
 			"existing": "untouched",
 		},
+		},
 	}
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("test-chart").Return(helmChart, nil).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
 	options := &RadiusChartOptions{
 		ChartOptions: ChartOptions{
-			SetArgs: []string{"global.zipkin.url=url"},
+			Namespace: "radius-system",
+			ChartPath: "test-chart",
+			SetArgs:   []string{"global.zipkin.url=url"},
 		},
 	}
 
-	values, err := parseUserValuesFromCLI(options)
+	_, _, values, err := prepareRadiusChart(helmAction, *options, "")
 	require.NoError(t, err)
 
-	// The user-supplied map must contain the parsed override.
 	global, ok := values["global"].(map[string]any)
 	require.True(t, ok)
 	zipkin, ok := global["zipkin"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "url", zipkin["url"])
 
-	// The chart values must be completely untouched (still contains only `existing`).
 	chartGlobal, ok := helmChart.Values["global"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "untouched", chartGlobal["existing"])
 	_, hasZipkin := chartGlobal["zipkin"]
-	assert.False(t, hasZipkin, "parseUserValuesFromCLI must not mutate helmChart.Values")
+	assert.False(t, hasZipkin, "prepareRadiusChart must not mutate helmChart.Values")
 }
 
 func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
