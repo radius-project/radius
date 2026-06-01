@@ -205,7 +205,7 @@ REVIEW_BODY="Overall assessment goes here."
 # from silently landing a comment on the wrong line.
 line_for() {
     local file="$1" anchor="$2" matches
-    matches=$(grep -nF -- "${anchor}" "${file}" || true)
+    matches=$(git show "${COMMIT_SHA}:${file}" | grep -nF -- "${anchor}" || true)
     local count
     count=$(printf '%s' "${matches}" | grep -c . || true)
     if [ "${count}" -ne 1 ]; then
