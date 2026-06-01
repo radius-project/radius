@@ -57,9 +57,7 @@ func Test_isHelmGHCR403Error(t *testing.T) {
 	assert.False(t, result)
 }
 
-func Test_addArgsFromCLI(t *testing.T) {
-	var helmChart chart.Chart
-	helmChart.Values = map[string]any{}
+func Test_parseUserValuesFromCLI(t *testing.T) {
 	options := &RadiusChartOptions{
 		ChartOptions: ChartOptions{
 			SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
@@ -67,10 +65,8 @@ func Test_addArgsFromCLI(t *testing.T) {
 		},
 	}
 
-	err := addArgsFromCLI(&helmChart, options)
+	values, err := parseUserValuesFromCLI(options)
 	require.NoError(t, err)
-
-	values := helmChart.Values
 
 	_, ok := values["global"]
 	assert.True(t, ok)
@@ -94,19 +90,51 @@ func Test_addArgsFromCLI(t *testing.T) {
 	assert.Equal(t, prometheus["path"], "path")
 }
 
-func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
+// Test_parseUserValuesFromCLI_DoesNotMutateChart guards against the bug fixed in
+// issue #11218: parseUserValuesFromCLI must build a fresh values map and must not
+// touch helmChart.Values. If it did, the user-supplied overrides would get stored
+// on the Helm release alongside the chart defaults, breaking ResetThenReuseValues
+// semantics on subsequent upgrades.
+func Test_parseUserValuesFromCLI_DoesNotMutateChart(t *testing.T) {
 	var helmChart chart.Chart
-	helmChart.Values = map[string]any{}
+	helmChart.Values = map[string]any{
+		"global": map[string]any{
+			"existing": "untouched",
+		},
+	}
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			SetArgs: []string{"global.zipkin.url=url"},
+		},
+	}
+
+	values, err := parseUserValuesFromCLI(options)
+	require.NoError(t, err)
+
+	// The user-supplied map must contain the parsed override.
+	global, ok := values["global"].(map[string]any)
+	require.True(t, ok)
+	zipkin, ok := global["zipkin"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "url", zipkin["url"])
+
+	// The chart values must be completely untouched (still contains only `existing`).
+	chartGlobal, ok := helmChart.Values["global"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "untouched", chartGlobal["existing"])
+	_, hasZipkin := chartGlobal["zipkin"]
+	assert.False(t, hasZipkin, "parseUserValuesFromCLI must not mutate helmChart.Values")
+}
+
+func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	options := &RadiusChartOptions{
 		ChartOptions: ChartOptions{
 			SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
 		},
 	}
 
-	err := addArgsFromCLI(&helmChart, options)
+	values, err := parseUserValuesFromCLI(options)
 	require.NoError(t, err)
-
-	values := helmChart.Values
 
 	// validate image, tag for rp should have been overridden with latest
 	o := values["rp"].(map[string]any)
