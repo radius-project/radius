@@ -175,10 +175,6 @@ ghcr.io/mycompany/todolist-app:sha256-d4f2…
 
 Tags default to a content-addressable digest (see [Tag strategy](#tag-strategy)).
 Developers can override per-resource by setting `properties.tag`.
-When `build.source` is a remote git URL the recipe cannot cheaply
-hash the tree, so `properties.tag` is required and a
-`terraform_data "validate_git_tag"` precondition fails the deploy
-otherwise.
 
 ### Recipe registration
 
@@ -368,10 +364,10 @@ The following are the high-level components of this design:
 │  └───────────┼────────────┘                      │                  │
 │              │                                   │                  │
 │   ┌──────────┴──────────┐  emptyDir              │                  │
-│   │ buildctl-init       │  /opt/buildctl/bin     │                  │
-│   │ (initContainer,     │  (buildctl binary)     │                  │
-│   │  copies buildctl    │                        │                  │
-│   │  from BuildKit img) │                        │                  │
+│   │ buildctl-init       │  mounted into          │                  │
+│   │ (initContainer,     │  dynamic-rp at         │                  │
+│   │  copies buildctl    │  /usr/local/bin/       │                  │
+│   │  from BuildKit img) │  buildctl (subPath)    │                  │
 │   └─────────────────────┘                        │                  │
 │                                                  │                  │
 └──────────────────────────────────────────────────┼──────────────────┘
@@ -395,12 +391,13 @@ Properties:
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `environment` | string | no | The Radius Environment ID. Optional so a single built image can be shared across environments. |
-| `application` | string | no | The Radius Application ID. Optional so a single built image can be shared across applications. |
-| `tag` | string | no | Tag for the produced image. Defaults to a content-addressable digest computed from the build inputs (see [Tag strategy](#tag-strategy)). Required when `build.source` is a git URL. |
-| `build.source` | string | yes | Source location. Either a git URL (`git::https://…`) or — for local development workflows — a path that the rad CLI uploads as a tarball. See [Local development workflow](#local-development-workflow). |
+| `environment` | string | yes | The Radius Environment ID. Required by the schema; matches the convention used by other resource types in this PR's first wave. |
+| `application` | string | yes | The Radius Application ID. Required by the schema; matches the convention used by other resource types in this PR's first wave. |
+| `tag` | string | no | Tag for the produced image. Defaults to a content-addressable digest computed from the build inputs (see [Tag strategy](#tag-strategy)). For git sources, pin to an immutable ref (SHA or tag) so the computed default is genuinely content-addressable; with a moving ref like `?ref=main` the hash stays stable across upstream advances. |
+| `build.source` | string | yes | Source location. Either a git URL (`git::https://…?ref=<sha>//<subdir>`) — BuildKit clones the repo inside the cluster — or a local filesystem path on the dynamic-rp Pod. Inner-loop "tarball my working tree and upload it" support is a follow-up (see [Phasing](#phasing)). |
 | `build.dockerfile` | string | no | Path to the Dockerfile relative to the context. Defaults to `Dockerfile`. |
 | `build.platforms` | string[] | no | Target platforms (e.g. `["linux/amd64", "linux/arm64"]`). When omitted, defaults to `["linux/amd64", "linux/arm64"]`. |
+| `build.args` | object | no | Map of `--build-arg` values passed to the build (e.g. `{ VERSION: 'v1.2.3' }`). Keys must match `[A-Za-z_][A-Za-z0-9_]*`; values must not contain shell metacharacters. Included in the content-addressable tag hash. |
 
 The resource **name** (e.g. `todolist-app`) is what the developer
 writes in `resource <name> 'Radius.Compute/containerImages@…'`, and
@@ -415,8 +412,11 @@ becomes the final path segment of the image reference.
 ##### Tag strategy
 
 The default tag is a **content-addressable hash** of the build
-inputs: a SHA over the build context contents, the Dockerfile, and
-the requested platforms. Two reasons:
+inputs. For local sources, the hash is taken over the build context
+file tree, the dockerfile path, the requested platforms, and
+`build.args`. For git sources, the hash is taken over the resolved
+git URL (including ref and subdir), the dockerfile path, platforms,
+and `build.args`. Two reasons:
 
 1. **Correct reconciliation.** Downstream `containers` resources
    reference `frontendImage.properties.imageReference`. If the tag is
@@ -454,9 +454,10 @@ and is intentionally small. Its contract:
   and `password` data keys. The `Radius.Security/secrets` recipe
   materializes a Kubernetes Secret of the same name in the
   environment namespace; this recipe reads it via a
-  `kubernetes_secret` data source in `var.context.runtime.kubernetes.namespace`,
-  base64-decodes the keys, composes a Docker `config.json`, writes
-  it via `local_sensitive_file`, and exports `DOCKER_CONFIG` so
+  `kubernetes_secret` data source in `var.context.runtime.kubernetes.namespace`
+  (the provider auto-decodes `.data` values, so no `base64decode`
+  is needed), composes a Docker `config.json`, writes it via
+  `local_sensitive_file`, and exports `DOCKER_CONFIG` so
   `buildctl` picks it up. The parameter defaults to empty; when
   empty, the recipe skips the auth path entirely (public-registry /
   local-kind-registry flow). Kubernetes is the resolver — no
@@ -470,20 +471,12 @@ and is intentionally small. Its contract:
 * **Input validation**: every value interpolated into the
   `buildctl` command line is gated by a `terraform_data
   "validate_inputs"` resource with `precondition` blocks (registry,
-  image name, image tag, dockerfile path, build context, platforms)
-  matched against tight regexes. The build resource declares
-  `depends_on = [validate_inputs]` so a bad input fails before any
-  shell invocation. This compensates for the fact that
-  `local-exec` lacks the structured-parameter contract a Terraform
-  provider gives for free.
-
-  A separate `terraform_data "validate_git_tag"` precondition
-  rejects git-context resources that omit `properties.tag`. A
-  content-hash tag default cannot apply to remote git contexts
-  because the recipe has no inexpensive way to hash a remote tree
-  before invoking BuildKit; the recipe fails fast with a clear
-  message rather than silently push a non-content-addressable image
-  on every reconciliation.
+  image name, image tag, dockerfile path, build context, platforms,
+  and build-arg keys/values) matched against tight regexes. The
+  build resource declares `depends_on = [validate_inputs]` so a
+  bad input fails before any shell invocation. This compensates
+  for the fact that `local-exec` lacks the structured-parameter
+  contract a Terraform provider gives for free.
 * **Recipe parameters**: `registry` (e.g. `ghcr.io/mycompany`) and
   `registrySecretName` (string; the name of a `Radius.Security/secrets`
   resource whose recipe materializes a same-named K8s Secret).
@@ -511,10 +504,9 @@ data "kubernetes_secret" "registry_creds" {
 }
 
 locals {
-  # kubernetes_secret data source returns .data as base64-encoded
-  # (unlike kubernetes_secret resource which exposes plain text).
-  registry_username = local.use_auth ? base64decode(data.kubernetes_secret.registry_creds[0].data["username"]) : ""
-  registry_password = local.use_auth ? base64decode(data.kubernetes_secret.registry_creds[0].data["password"]) : ""
+  # kubernetes_secret data source auto-decodes; values are plain text.
+  registry_username = local.use_auth ? data.kubernetes_secret.registry_creds[0].data["username"] : ""
+  registry_password = local.use_auth ? data.kubernetes_secret.registry_creds[0].data["password"] : ""
 
   docker_config_json = local.use_auth ? jsonencode({
     auths = {
@@ -526,13 +518,32 @@ locals {
 
   resource_name = lower(var.context.resource.name)
   registry      = var.registry
-  context_sha   = sha256(...)  # over source + dockerfile + platforms
+  is_git_source = can(regex("^git::", local.build_source))
+  build_args    = try(var.context.resource.properties.build.args, {})
+
+  # For local sources, hash the file tree. For git sources, hash the
+  # resolved BuildKit URL (incl. ref and subdir). Both include the
+  # dockerfile path, platforms, and build args, so any input change
+  # produces a new tag.
+  context_hash = local.is_git_source ? sha256(jsonencode({
+    url        = local.buildctl_git_url
+    dockerfile = local.dockerfile
+    platforms  = local.platforms
+    args       = local.build_args
+    })) : sha256(join("", concat(
+    [for f in fileset(local.build_source, "**") : "${f}:${filesha1("${local.build_source}/${f}")}"],
+    [local.dockerfile],
+    local.platforms,
+    [jsonencode(local.build_args)],
+  )))
+
   resolved_tag  = coalesce(
     try(var.context.resource.properties.tag, null),
-    "sha256-${substr(local.context_sha, 0, 16)}",
+    "sha256-${substr(local.context_hash, 0, 16)}",
   )
   image_ref     = "${local.registry}/${local.resource_name}:${local.resolved_tag}"
   platforms_csv = join(",", local.platforms)
+  build_arg_flags = join(" ", [for k, v in local.build_args : "--opt build-arg:${k}=${v}"])
 }
 
 resource "local_sensitive_file" "docker_config" {
@@ -543,19 +554,20 @@ resource "local_sensitive_file" "docker_config" {
 }
 
 # Validate every value that will be interpolated into the buildctl
-# command line. The build resource depends on this so bad inputs
-# fail before any shell invocation.
+# command line, including build-arg keys (env-var-name shape) and
+# values (no shell metacharacters). The build resource depends on
+# this so bad inputs fail before any shell invocation.
 resource "terraform_data" "validate_inputs" {
   lifecycle {
-    precondition { condition = can(regex("^[a-z0-9./:_-]+$", local.registry))      error_message = "..." }
-    precondition { condition = can(regex("^[a-z0-9-]+$",    local.image_name))     error_message = "..." }
-    precondition { condition = can(regex("^[A-Za-z0-9._-]+$", local.resolved_tag)) error_message = "..." }
-    # ...dockerfile, build_context, platforms
+    precondition { condition = can(regex("^[a-z0-9.:/_-]+$",            local.registry))      error_message = "..." }
+    precondition { condition = can(regex("^[a-z0-9][a-z0-9._-]*$",      local.image_name))    error_message = "..." }
+    precondition { condition = can(regex("^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$", local.resolved_tag)) error_message = "..." }
+    # ...dockerfile, build_source, platforms, build_args keys/values
   }
 }
 
 resource "terraform_data" "build_push" {
-  triggers_replace = { src_sha = local.context_sha }
+  triggers_replace = { src_sha = local.context_hash }
   depends_on       = [terraform_data.validate_inputs, local_sensitive_file.docker_config]
 
   provisioner "local-exec" {
@@ -565,9 +577,9 @@ resource "terraform_data" "build_push" {
     command = <<-EOT
       buildctl build \
         --frontend=dockerfile.v0 \
-        --opt context=${local.build_context} \
-        --opt filename=${local.dockerfile} \
+        ${local.context_flags} \
         --opt platform=${local.platforms_csv} \
+        ${local.build_arg_flags} \
         --output type=image,name=${local.image_ref},push=true
     EOT
   }
@@ -595,8 +607,8 @@ for foreign architectures.
 #### dynamic-rp Helm chart changes
 
 The chart change has four parts: adding the sidecar, dropping a
-`buildctl` binary onto the recipe runner's PATH, wiring the
-endpoint, and choosing a Pod security profile.
+`buildctl` binary onto the recipe runner's standard `PATH`, wiring
+the endpoint, and choosing a Pod security profile.
 
 **1. Sidecar container.** Add a second container to the dynamic-rp
 Deployment, using the upstream
@@ -608,14 +620,19 @@ matching upstream's recommended manifest.
 **2. `buildctl-init` init container.** A short init container
 built from the same `moby/buildkit:<pinned-version>-rootless`
 image copies `/usr/bin/buildctl` into an `emptyDir` that is
-mounted into the dynamic-rp container at a fixed path on `PATH`.
-This is the only thing shared between the two containers: no
-build socket and no BuildKit state directory, since the recipe
-talks to buildkitd over Pod loopback TCP.
+mounted into the dynamic-rp container at `/usr/local/bin/buildctl`
+via `subPath: buildctl`. Mounting the single file (rather than the
+whole emptyDir over `/usr/local/bin`) puts the binary on the
+image's existing `PATH` without shadowing the rest of the
+directory or requiring a `PATH` env-var override. This is the
+only thing shared between the two containers: no build socket and
+no BuildKit state directory, since the recipe talks to buildkitd
+over Pod loopback TCP.
 
-**3. Endpoint wiring.** dynamic-rp gets two env vars:
-`BUILDKIT_HOST=tcp://127.0.0.1:1234` and a `PATH` that includes
-the `buildctl-init` emptyDir. No Docker `config.json` is mounted
+**3. Endpoint wiring.** dynamic-rp gets a single env var,
+`BUILDKIT_HOST=tcp://127.0.0.1:1234`. `buildctl` is already on the
+container's standard `PATH` via the subPath mount described above,
+so no `PATH` override is needed. No Docker `config.json` is mounted
 at chart level; registry credentials reach the recipe through the
 `registrySecretName` recipe parameter (a string naming a
 `Radius.Security/secrets` whose own recipe materializes a same-named
@@ -634,22 +651,28 @@ about the ~50 MiB idle footprint.
 
 **4. Pod security profile.** Selected by the Helm value
 `dynamicrp.buildkit.psaMode`, with two settings sharing the same
-image and endpoint:
+image and endpoint. Both modes use pod-level
+`securityContext.fsGroup: 65532` (so the dynamic-rp container, UID
+65532, can read the `buildctl` binary the init container drops
+into the shared emptyDir) plus `supplementalGroups: [65532]` (so
+buildkitd, UID 1000, can write to the chown'd buildkit-state
+volume).
 
-| Mode | Pod / sidecar security controls | When to use |
+| Mode | Sidecar security controls | When to use |
 |---|---|---|
 | **`baseline`** (default) | Sidecar sets `seccompProfile: Unconfined`, `appArmorProfile: Unconfined`, args `--oci-worker-no-process-sandbox`. Compatible with PSA `baseline`. | Default. Works on every supported Kubernetes version, including older clusters and local dev environments (kind, k3d, Docker Desktop) without extra configuration. |
-| **`restricted`** | `pod.spec.hostUsers: false`, pod-level `securityContext.fsGroup: 65532` (so the dynamic-rp container can read the `buildctl` binary the init container drops into the shared emptyDir). Sidecar has no `Unconfined` profiles, no `--oci-worker-no-process-sandbox`. Compatible with PSA `restricted`. | Opt-in for operators who enforce PSA `restricted` cluster-wide and run Kubernetes user namespaces (stable in 1.33+, beta on-by-default in 1.30+). |
+| **`restricted`** | `pod.spec.hostUsers: false`. Sidecar has no `Unconfined` profiles, no `--oci-worker-no-process-sandbox`. Compatible with PSA `restricted`. | Opt-in for operators who enforce PSA `restricted` cluster-wide and run Kubernetes user namespaces (stable in 1.33+, beta on-by-default in 1.30+). |
 
 Neither mode uses `privileged: true`, mounts host paths, or
 requires added Linux capabilities. Defaulting to `baseline` keeps
 the install command a one-liner on every cluster Radius supports;
 operators who need the stricter posture explicitly opt in.
 
-The chart includes a Helm `NOTES.txt` preflight that surfaces a
-clear message ("Kubernetes ≥ 1.30 with UserNamespacesSupport
-required; reinstall without `--set dynamicrp.buildkit.psaMode=restricted`")
-if `restricted` is selected on an incompatible cluster.
+A Helm `NOTES.txt` preflight that surfaces a clear message when
+`restricted` is selected on a pre-1.30 cluster ("Kubernetes ≥ 1.30
+with UserNamespacesSupport required; reinstall without
+`--set dynamicrp.buildkit.psaMode=restricted`") is a planned
+follow-up (see [Phasing](#phasing)).
 
 #### Implementation choice: recipe vs. built-in provider
 
@@ -876,14 +899,42 @@ cluster like any other container.
 
 | Component | Repo | Change |
 |---|---|---|
-| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `build`. Optional: `environment`, `application`, `tag`. Output: `imageReference`. |
-| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by `terraform_data "validate_inputs"` and `terraform_data "validate_git_tag"` preconditions; the build resource `depends_on` both. When the PE-provided `registrySecretName` recipe variable is non-empty, the recipe reads the same-named Kubernetes Secret in `var.context.runtime.kubernetes.namespace` via a `kubernetes_secret` data source, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. Composes image ref from `registry`, the lowercased resource name, and content-hash tag (or explicit `properties.tag` when supplied). No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
-| Recipe pack | `radius-project/resource-types-contrib` (samples / docs) | Document the `Radius.Core/recipePacks` registration flow: pack registers the `containerImages` recipe with `registry` and `registrySecretName` (string; the name of a `Radius.Security/secrets`) parameters; the secret is declared in a separate `secrets.bicep` (env looked up via `existing`) to avoid a BCP080 cycle and decouple credential rotation. |
-| dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`) listening on `tcp://0.0.0.0:1234`. Add `buildctl-init` init container that copies the `buildctl` binary into an `emptyDir` mounted onto the dynamic-rp container's `PATH`. Add `dynamicrp.buildkit.psaMode` value, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket emptyDir, no BuildKit-state emptyDir, no Docker `config.json` Secret mount. |
-| dynamic-rp recipe runner | `radius-project/radius` | Set `BUILDKIT_HOST=tcp://127.0.0.1:1234` and extend `PATH` with the `buildctl-init` mount in the recipe-execution environment. No Go code changes beyond environment plumbing. |
-| Contributor documentation | `radius-project/radius` (`docs/contributing/`) | Add `buildkit-recipes.md` covering the buildkit subsystem and the `local-exec`-via-`buildctl` recipe pattern, so the next person adding a build-style recipe doesn't have to reverse-engineer it. |
-| dynamic-rp context-upload endpoint | `radius-project/radius` | New endpoint accepting tarball uploads from the rad CLI; staged in an emptyDir for the recipe to consume. (Local development workflow, Option 2a.) |
-| `rad` CLI local-context detection | `radius-project/radius` | When `build.source` is a local path, tar with `.dockerignore` honored and POST to dynamic-rp before recipe execution. |
+| Resource type schema | `radius-project/resource-types-contrib` | Add `Compute/containerImages/containerImages.yaml`. Required: `environment`, `application`, `build`. Optional: `tag`. Output: `imageReference`. |
+| Terraform recipe | `radius-project/resource-types-contrib` | Add `Compute/containerImages/recipes/kubernetes/terraform/{main.tf,var.tf}`. Recipe shells out to `buildctl` via a `terraform_data` + `local-exec` provisioner targeting `BUILDKIT_HOST`. Inputs are validated by a `terraform_data "validate_inputs"` precondition block; the build resource `depends_on` it. When the PE-provided `registrySecretName` recipe variable is non-empty, the recipe reads the same-named Kubernetes Secret in `var.context.runtime.kubernetes.namespace` via a `kubernetes_secret` data source (the provider auto-decodes `.data`), renders `config.json` via `local_sensitive_file`, and exports `DOCKER_CONFIG`. Composes image ref from `registry`, the lowercased resource name, and content-hash tag (or explicit `properties.tag` when supplied). The content hash includes `build.args` and, for git sources, the resolved BuildKit URL (incl. ref + subdir). No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
+| dynamic-rp Helm chart | `radius-project/radius` (`deploy/Chart`) | Add `buildkitd` sidecar (default-on, opt-out via `dynamicrp.buildkit.enabled`) listening on `tcp://0.0.0.0:1234`. Add `buildctl-init` init container that copies the `buildctl` binary into an `emptyDir`, mounted into dynamic-rp at `/usr/local/bin/buildctl` via `subPath: buildctl` so it lands on the existing `PATH` without overriding the env var or shadowing `/usr/local/bin`. Add `dynamicrp.buildkit.psaMode` value, pod-level `fsGroup: 65532` + `supplementalGroups: [65532]` whenever the sidecar is enabled. No socket emptyDir, no BuildKit-state emptyDir mounted into dynamic-rp, no Docker `config.json` Secret mount, no `PATH` env-var override. |
+| dynamic-rp recipe runner | `radius-project/radius` | Set `BUILDKIT_HOST=tcp://127.0.0.1:1234` in the recipe-execution environment. `buildctl` is already on `PATH` via the subPath mount above. No Go code changes beyond environment plumbing. |
+
+Follow-ups tracked separately (see [Phasing](#phasing)): sample
+recipe pack Bicep, `NOTES.txt` preflight, contributor doc, local
+context tarball upload (rad CLI + dynamic-rp endpoint + recipe
+hook).
+
+### Phasing
+
+This design is delivered across three waves:
+
+* **Wave 1 (initial PRs):** the resource type schema and Kubernetes
+  Terraform recipe in resource-types-contrib, plus the dynamic-rp
+  chart change in radius (sidecar, init container, env wiring, PSA
+  values, `fsGroup`/`supplementalGroups`). Sufficient to drive a
+  build + push end-to-end against `build.source: git::https://…`.
+* **Wave 2 (independent follow-ups):** Helm `NOTES.txt` preflight
+  for `psaMode=restricted` on incompatible clusters; sample
+  `platform.bicep` + `secrets.bicep` recipe-pack Bicep files in
+  resource-types-contrib; contributor doc
+  `docs/contributing/contributing-code/contributing-code-writing/buildkit-recipes.md`
+  in radius covering the sidecar + the `local-exec`-via-`buildctl`
+  pattern. None blocks Wave 1.
+* **Wave 3 (coordinated pair):** local-context tarball upload to
+  support `build.source: './frontend'` from a developer
+  workstation. Three coordinated changes: a new dynamic-rp endpoint
+  accepting tarball uploads (staged in an emptyDir), a rad CLI
+  hook that detects local paths and POSTs the staged tarball
+  before recipe execution, and a recipe-side change to read from
+  the staged context path. Until Wave 3 lands, local-path
+  `build.source` requires the directory to be present on the
+  dynamic-rp Pod's filesystem and is not the recommended
+  workflow.
 
 ### Error handling
 
@@ -922,8 +973,9 @@ cluster like any other container.
   `Radius.Security/secrets` recipe materializes a Kubernetes Secret
   of that same name in the environment namespace; the
   containerImages recipe reads it via a `kubernetes_secret` data
-  source in its runtime namespace, base64-decodes the keys, and
-  uses them to write a Docker `config.json` consumed by `buildctl`.
+  source in its runtime namespace (the provider auto-decodes
+  `.data`) and uses the values to write a Docker `config.json`
+  consumed by `buildctl`.
   Credentials are never developer-Bicep parameters and never
   mounted at chart level. Cluster image pull is a separate
   platform-engineer concern (e.g. a cluster-wide pull secret on the
@@ -960,17 +1012,18 @@ cluster like any other container.
 
 ## Development plan
 
+See [Phasing](#phasing) for the wave split. Wave 1 workstreams:
+
 | Workstream | Repo | Notes |
 |---|---|---|
-| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `build` required, `tag` optional, `environment` and `application` optional, no per-resource `registry` override. Output: `imageReference`. |
-| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource-name>:<tag>` from the lowercased resource name, content-hash tag default for local contexts, validates every interpolated input via `terraform_data "validate_inputs"` preconditions, requires explicit `properties.tag` for git contexts via `terraform_data "validate_git_tag"`. When the PE-provided `registrySecretName` recipe variable is non-empty, reads the same-named K8s Secret via `data "kubernetes_secret"` in `var.context.runtime.kubernetes.namespace`, base64-decodes `username` / `password`, renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
-| Sample recipe pack | resource-types-contrib (samples) | Example `Radius.Core/recipePacks` showing how to register the recipe with `registry` and `registrySecretName` (string literal) parameters. Companion PE Bicep is split into `platform.bicep` (env + recipePack) and `secrets.bicep` (env-scoped `Radius.Security/secrets` of `kind: generic` with `username` / `password`; env looked up via `existing`) to avoid a BCP080 cycle. Sample developer Bicep declares `Radius.Compute/containerImages` and `Radius.Compute/containers` with no credential or pull-Secret plumbing. |
-| Helm chart sidecar | radius | Add buildkitd container listening on `tcp://0.0.0.0:1234`, `buildctl-init` init container copying `buildctl` into an `emptyDir` on the dynamic-rp container's `PATH`, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, pod-level `fsGroup: 65532` in `restricted` mode, NOTES.txt preflight. No socket/state emptyDir, no Docker `config.json` Secret mount. |
-| Recipe-runner env plumbing | radius | Set `BUILDKIT_HOST` and extend `PATH` for the recipe execution. |
-| Contributor documentation | radius | `docs/contributing/contributing-code/contributing-code-writing/buildkit-recipes.md`: explains the sidecar, the `buildctl-init` init container, the `local-exec`-via-`buildctl` recipe pattern, and the shell-injection-safety contract recipes are expected to follow. |
-| Local-context upload (CLI ↔ dynamic-rp) | radius | rad CLI tarballs local `build.source`, POSTs to dynamic-rp; dynamic-rp stages for the recipe. (Local development workflow Option 2a.) |
+| Resource type schema | resource-types-contrib | New `containerImages.yaml`: `environment`, `application`, `build` required; `tag` optional; `build.args` supported. Output: `imageReference`. No per-resource `registry` override. |
+| Terraform recipe | resource-types-contrib | `main.tf` composes `<registry>/<resource-name>:<tag>` from the lowercased resource name, content-hash tag default (over file tree or resolved git URL, plus dockerfile, platforms, and `build.args`), validates every interpolated input via a `terraform_data "validate_inputs"` precondition. When the PE-provided `registrySecretName` recipe variable is non-empty, reads the same-named K8s Secret via `data "kubernetes_secret"` in `var.context.runtime.kubernetes.namespace` (provider auto-decodes), renders `config.json` via `local_sensitive_file`, then shells out to `buildctl` via `local-exec` against `BUILDKIT_HOST`. No per-resource pull Secret, no ServiceAccount patch — cluster image pull is out-of-band. |
+| Helm chart sidecar | radius | Add buildkitd container listening on `tcp://0.0.0.0:1234`, `buildctl-init` init container copying `buildctl` into an `emptyDir` mounted into dynamic-rp at `/usr/local/bin/buildctl` via `subPath`, `dynamicrp.buildkit.enabled` (default `true`) and `dynamicrp.buildkit.psaMode` values with `restricted` and `baseline` templates, pod-level `fsGroup: 65532` + `supplementalGroups: [65532]` whenever the sidecar is enabled. No socket/state emptyDir, no Docker `config.json` Secret mount, no `PATH` env-var override. |
+| Recipe-runner env plumbing | radius | Set `BUILDKIT_HOST` in the recipe-execution environment. `buildctl` is already on the standard `PATH` via the subPath mount. |
 | End-to-end test for `buildctl` ↔ rootless BuildKit | radius | **Resolved**: validated end-to-end (rootless BuildKit + buildctl + multi-arch + push to GHCR + digest into `Radius.Compute/containers`) in the demo repo before merging the chart change. |
 | Functional test matrix | radius | Cross-platform CI: managed K8s (default `baseline` mode), opt-in `restricted` mode on K8s 1.33+, k3d. |
+
+Wave 2 and Wave 3 workstreams are enumerated in [Phasing](#phasing).
 
 ## Open questions
 
