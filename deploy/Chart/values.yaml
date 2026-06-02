@@ -141,12 +141,6 @@ dynamicrp:
     # Set false to skip provisioning the sidecar. Disabling makes
     # Radius.Compute/containerImages unusable.
     enabled: true
-    # Pod-security-admission profile the sidecar runs under.
-    #   baseline (default): Unconfined seccomp/AppArmor; works on any
-    #     supported Kubernetes (including kind/k3d/Docker Desktop).
-    #   restricted: Kubernetes user namespaces (hostUsers=false).
-    #     Requires Kubernetes >= 1.30 with UserNamespacesSupport.
-    psaMode: baseline
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
     # Default limits suit small/medium image builds; raise for large
