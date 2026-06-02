@@ -761,6 +761,73 @@ func Test_Run_NoDashboard(t *testing.T) {
 	require.Equal(t, expected, outputSink.Writes)
 }
 
+// Test_Run_ExtensibleEnvironment verifies that `rad run` does not attempt to start log streaming or
+// port-forwarding when the deployment targets an environment configured using the extensible
+// Radius.Core/environments resource type. Instead, it surfaces a not-supported/deprecation warning and
+// completes successfully.
+func Test_Run_ExtensibleEnvironment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	deployMock := deploy.NewMockInterface(ctrl)
+	deployMock.EXPECT().
+		DeployWithProgress(gomock.Any(), gomock.Any()).
+		Return(clients.DeploymentResult{}, nil).
+		Times(1)
+
+	// No port-forwarding or log streaming should be attempted for extensible compute runtimes.
+	portforwardMock := portforward.NewMockInterface(ctrl)
+	logstreamMock := logstream.NewMockInterface(ctrl)
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{
+			"kind":    "kubernetes",
+			"context": "kind-kind",
+		},
+		Name: "kind-kind",
+	}
+	outputSink := &output.MockOutput{}
+	providers := &clients.Providers{
+		Radius: &clients.RadiusProvider{},
+	}
+	runner := &Runner{
+		Runner: deploycmd.Runner{
+			Deploy:          deployMock,
+			Output:          outputSink,
+			FilePath:        "app.bicep",
+			ApplicationName: "test-application",
+			Parameters:      map[string]map[string]any{},
+			// Template is empty so the deploy path doesn't attempt recipe pack setup, but the
+			// inspection result records a Radius.Core/environments resource to drive the warning.
+			Template:  map[string]any{},
+			Workspace: workspace,
+			Providers: providers,
+			TemplateInspectionResult: bicep.TemplateInspectionResult{
+				ContainsEnvironmentResource: true,
+				EnvironmentResources: []map[string]any{
+					{"type": "Radius.Core/environments@2025-08-01-preview"},
+				},
+			},
+		},
+		Logstream:   logstreamMock,
+		Portforward: portforwardMock,
+	}
+
+	ctx := testcontext.New(t)
+	err := runner.Run(ctx)
+	require.NoError(t, err)
+
+	expected := []any{
+		output.LogOutput{
+			Format: "",
+		},
+		output.LogOutput{
+			Format: extensibleComputeNotSupportedMessage,
+		},
+	}
+	require.Equal(t, expected, outputSink.Writes)
+}
+
 type PortForwardOptionsMatcher struct {
 	LabelSelector labels.Selector
 }

@@ -45,6 +45,12 @@ const (
 	radiusSystemNamespace = "radius-system"
 	dashboardLabelName    = "dashboard"
 	dashboardLabelPartOf  = "radius"
+
+	// extensibleComputeNotSupportedMessage is displayed when `rad run` is used with an environment that is
+	// configured using the extensible Radius.Core/environments resource type. The log streaming and
+	// port-forwarding features of `rad run` are inherently Kubernetes-specific and are not supported for
+	// extensible compute runtimes.
+	extensibleComputeNotSupportedMessage = "The `rad run` command is not supported for compute runtimes configured using the extensible `Radius.Core/environments` and is planned for deprecation in a future release. Please manually set up port forwarding and log streaming based on the specific compute runtime or platform you have configured in your Environment."
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -139,6 +145,17 @@ func (r *Runner) Run(ctx context.Context) error {
 	err := r.Runner.Run(ctx)
 	if err != nil {
 		return err
+	}
+
+	// `rad run` only supports Kubernetes-based compute runtimes. When the deployment targets an
+	// environment configured using the extensible Radius.Core/environments resource type, the
+	// log streaming and port-forwarding features are not supported. The deployment itself has
+	// already succeeded at this point, so we surface a deprecation/not-supported warning and exit
+	// successfully instead of failing.
+	if r.usesExtensibleEnvironment() {
+		r.Output.LogInfo("")
+		r.Output.LogInfo(extensibleComputeNotSupportedMessage)
+		return nil
 	}
 
 	kubeContext, ok := r.Workspace.KubernetesContext()
@@ -263,6 +280,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// usesExtensibleEnvironment reports whether the deployment targets an environment configured using the
+// extensible Radius.Core/environments resource type, either referenced as a pre-existing environment or
+// created as part of the template being deployed. `rad run`'s log streaming and port-forwarding features
+// are Kubernetes-specific and are not supported for these extensible compute runtimes.
+func (r *Runner) usesExtensibleEnvironment() bool {
+	// A pre-existing environment was resolved during validation and is backed by Radius.Core/environments.
+	if r.EnvResult != nil && !r.EnvResult.UseApplicationsCore && r.EnvResult.RadiusCoreEnv != nil {
+		return true
+	}
+
+	// The template being deployed defines one or more Radius.Core/environments resources.
+	if len(r.TemplateInspectionResult.EnvironmentResources) > 0 {
+		return true
+	}
+
+	return false
 }
 
 func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMessage) {
