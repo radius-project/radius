@@ -25,9 +25,11 @@ These tenets are ordered. When two tenets conflict, the higher-priority tenet wi
 
 4. **The application graph is inspectable before deployment.** The developer can see exactly what application resources exist and what cloud resources will be provisioned before any cloud API is called. This is the plan/preview capability described in the PRFAQ.
 
-5. **Core Radius is reused, not forked.** UCP, the resource providers, the ARM deployment engine, and the recipe resolver are unchanged. GitHub Radius is a new front door, not a new backend.
+5. **There is a migration path between Kubernetes-based Radius and GitHub Radius.** A developer can move an application definition from one to the other. An application authored in Bicep for Kubernetes-based Radius can be imported into GitHub Radius, and an application defined in GitHub Radius can be exported to Bicep for use with `rad deploy`.
 
-6. **The application graph on the Deployment panel is the developer's view of the application.** The developer defines and modifies the application through conversation with Copilot and sees the result as an application graph on the Deployment panel. A `.bicep` file is not the method of defining or modifying an application.
+6. **Core Radius is reused, not forked.** UCP, the resource providers, the ARM deployment engine, and the recipe resolver are unchanged. GitHub Radius is a new front door, not a new backend.
+
+7. **The application graph on the Deployment panel is the developer's view of the application.** The developer defines and modifies the application through conversation with Copilot and sees the result as an application graph on the Deployment panel. A `.bicep` file is not the method of defining or modifying an application.
 
 ## The source-of-truth problem in today's Radius
 
@@ -118,17 +120,7 @@ graph TD
     K -->|reads| J
 ```
 
-In this architecture, there are five representations of the application that can exist simultaneously:
-
-1. **`app.bicep`** — the agent-generated Bicep file (the "authored" source).
-2. **`app-graph.json`** — the modeled graph derived from compiling `app.bicep`, persisted to the Radius data store. Contains application resources and connections but no cloud resource mappings.
-3. **`scopename-envname/app-graph.json`** — the planned graph derived from compiling `app.bicep` with recipe resolution against an environment, persisted to the Radius data store. Contains application resources plus cloud resource mappings (container → EKS, database → RDS).
-4. **The application resources in the control plane** — what the ARM deployment engine created from the compiled Bicep (the "deployed" source).
-5. **`rad app graph -a app`** — the control plane's deployed view of the application, which reflects (4), not (1), (2), or (3).
-
-If the agent modifies `app.bicep` without recompiling, representations (1) and (2) disagree. If the agent recompiles but does not redeploy, representations (2)/(3) and (4) disagree. After deployment, the modeled graph (2) and the deployed graph (5) coexist. If the agent updates `app.bicep` without redeploying, or if a deployment enriches the control plane with metadata not present in the Bicep file, the graph outputs diverge until the next deployment reconciles them. This is the same multi-source-of-truth problem that exists in today's Kubernetes-based Radius, with additional derived artifacts that must be kept in sync.
-
-The persisted graph files are derived artifacts from `app.bicep`. The Bicep file remains the authoritative source, and the graph files are caches that must be regenerated whenever the Bicep changes. If the agent modifies `app.bicep` without re-running `rad app graph`, the graph files are stale and the Deployment panel shows the old graph. This creates a consistency obligation: every edit to `app.bicep` must be followed by a compilation step to update the graph files, and every compilation step requires the Bicep toolchain.
+In this architecture, five representations of the application coexist: `app.bicep` (the authored source), `app-graph.json` (the modeled graph), the planned graph, the control plane's application resources, and the deployed graph view. Any of these can diverge from the others. If the agent modifies `app.bicep` without recompiling, the graph files are stale and the Deployment panel shows the old graph. If the agent recompiles but does not redeploy, the graph and the control plane disagree. Every edit to `app.bicep` must be followed by a compilation step to update the graph files, and every compilation step requires the Bicep toolchain.
 
 ### Bicep toolchain requirements
 
@@ -220,7 +212,42 @@ graph TD
     B -->|reads| G[Deployment Panel]
 ```
 
-In this architecture, there is exactly one representation of the application that is authoritative at all times: the JSON graph in the Radius data store. Everything else is derived.
+In this architecture, there is exactly one representation of the application that is authoritative at all times: the JSON graph in the Radius data store. Everything else is derived. The graph is progressively enriched through the three phases:
+
+**After Phase 1 (modeled):** the graph contains the application resources the agent defined.
+
+```
+Radius.Core/applications: todo-list-app
+├── Radius.Compute/containers: app
+│   └── Radius.Compute/containerImages: app-image
+└── Radius.Data/mySqlDatabases: mysql
+```
+
+**After Phase 2 (planned):** the graph is enriched with cloud resources that will be provisioned, with placeholder IDs.
+
+```
+Radius.Core/applications: todo-list-app
+├── Radius.Compute/containers: app
+│   ├── AWS.EKS/deployment: TBD
+│   ├── AWS.EKS/service: TBD
+│   └── Radius.Compute/containerImages: app-image
+│       └── AWS.ECR/containerImages: TBD
+└── Radius.Data/mySqlDatabases: mysql
+    └── AWS.RDS/dbInstance: TBD
+```
+
+**After Phase 3 (deployed):** placeholder IDs are replaced with actual cloud provider resource IDs.
+
+```
+Radius.Core/applications: todo-list-app
+├── Radius.Compute/containers: app
+│   ├── AWS.EKS/deployment: arn:aws:eks:us-east-1:123456789:deployment/todo-app
+│   ├── AWS.EKS/service: arn:aws:eks:us-east-1:123456789:service/todo-svc
+│   └── Radius.Compute/containerImages: app-image
+│       └── AWS.ECR/containerImages: arn:aws:ecr:us-east-1:123456789:repository/todo-app
+└── Radius.Data/mySqlDatabases: mysql
+    └── AWS.RDS/dbInstance: arn:aws:rds:us-east-1:123456789:db:todo-mysql
+```
 
 ### Pros
 
@@ -297,12 +324,11 @@ graph TD
 
 ### Pros
 
-- **Single source of truth.** The data store is authoritative, identical to Option B.
-- **No tooling on the developer's workstation.** Satisfies Tenet 1, identical to Option B.
-- **Plan/preview does not require Bicep compilation.** Identical to Option B.
+Option C shares all of Option B's advantages for application modeling and plan/preview: single source of truth, no developer-side tooling, no Bicep compilation for plan/preview, native structured data for the agent, and straightforward JSON diffing.
+
+The additional advantage over Option B:
+
 - **Zero Bicep in the entire pipeline.** The Bicep compiler is not present on the developer's workstation or in the Actions runner. No `bicepconfig.json`, no Bicep extensions, no Bicep CLI versioning. The deployment path has the fewest moving parts of any option.
-- **The agent writes structured data natively.** Identical to Option B.
-- **History and diffing are straightforward.** Identical to Option B.
 
 ### Cons
 
@@ -317,19 +343,12 @@ graph TD
 
 | Criterion | Option A: Bicep | Option B: JSON + transient Bicep | Option C: JSON, no Bicep |
 |-----------|----------------|----------------------------------|--------------------------|
-| Sources of truth | 5 (app.bicep, modeled graph, planned graph, control plane, deployed graph) | 1 (data store) | 1 (data store) |
-| Developer installs | Copilot app + Bicep compiler + extensions (or accepts latency) | Copilot app only | Copilot app only |
-| Plan/preview latency | Minutes (remote compilation) or requires local tooling | No Bicep compilation required | No Bicep compilation required |
-| Type enforcement | Bicep compiler at compile time | JSON Schema at write boundary + Bicep compiler as safety net | JSON Schema at write boundary only |
-| Agent authoring reliability | Lower (DSL syntax, compile-fix-retry loops) | High (structured JSON) | High (structured JSON) |
-| Toolchain in runner | Bicep CLI, bicepconfig.json, Radius extensions | Bicep CLI, bicepconfig.json, Radius extensions | None |
-| Core Radius changes | None (existing flow) | None (generator produces valid Bicep for rad deploy) | None (rad deploy already accepts ARM JSON) |
-| History/diffing | Bicep text diffs (syntactically meaningful) | JSON diffs (semantically meaningful) | JSON diffs (semantically meaningful) |
-| New components | None (but plan/preview problem remains) | 1 generator (JSON → Bicep), JSON Schema | 2 generators (JSON → ARM JSON, JSON → Bicep for export), JSON Schema |
-| Export to Bicep (Q21) | Already in Bicep | Same generator, output kept | Separate generator required |
-| Migration to K8s Radius | File is already there; use directly with `rad deploy` | Generator produces export | Generator produces export |
-| Generator risk | None; no generator in deployment path | Generator bugs cause deployment failures (caught by compiler) | Generator bugs cause deployment failures (no compiler safety net) |
-| Debugging deployment failures | Bicep source available | Generated Bicep available | ARM JSON only |
+| Sources of truth | 5 (Tenet 2 ❌) | 1 | 1 |
+| Developer installs | Bicep toolchain (Tenet 1 ❌) or accepts latency (Tenets 3, 4 ❌) | Copilot app only | Copilot app only |
+| Plan/preview | Requires Bicep compilation | Reads data store directly | Reads data store directly |
+| Type enforcement | Bicep compiler at authoring time | JSON Schema at write boundary + Bicep compiler at deploy time | JSON Schema at write boundary only |
+| New components | None | 1 generator (JSON → Bicep) | 2 generators (JSON → ARM JSON, JSON → Bicep for export) |
+| Compiler safety net | Yes (authoring) | Yes (deployment) | No |
 
 ## Recommendation
 
@@ -341,7 +360,7 @@ The recommendation rests on three arguments.
 
 **Second, Bicep was the right choice for human authors; JSON is the right choice for AI agents.** Bicep provided type safety, autocomplete, and readable syntax for developers typing in an editor. In GitHub Radius, the consumer is an AI agent. The properties that matter for an AI agent are structured data, schema validation, and direct read/write without compilation. JSON Schema validation at the write boundary, derived from the same `resource-types-contrib` schemas that produce the Bicep type definitions, provides equivalent type enforcement. The Bicep investment is not abandoned: in Option B, Bicep continues as the generated deployment artifact and the export format for migration to Kubernetes-based Radius. Recipes in `resource-types-contrib` continue to be authored in Bicep and Terraform.
 
-**Third, Option B requires one generator; Option C requires two.** Both options satisfy all six tenets. The deciding factor is engineering cost and risk. Option B's JSON-to-Bicep generator serves both the deployment path and the export-to-Bicep migration path (PRFAQ Q21). The Bicep compiler validates the generator's output before the ARM deployment engine processes it, catching generator bugs with clear diagnostics. Option C eliminates the Bicep compiler from the runner but requires a separate JSON-to-ARM-JSON generator for deployment and a JSON-to-Bicep generator for export. Two generators that share schema logic but diverge in output format create a code duplication risk and remove the compiler's diagnostic value.
+**Third, Option B requires one generator; Option C requires two.** Both options satisfy all seven tenets. The deciding factor is engineering cost and risk. Option B's JSON-to-Bicep generator serves both the deployment path and the export-to-Bicep migration path (PRFAQ Q21). The Bicep compiler validates the generator's output before the ARM deployment engine processes it, catching generator bugs with clear diagnostics. Option C eliminates the Bicep compiler from the runner but requires a separate JSON-to-ARM-JSON generator for deployment and a JSON-to-Bicep generator for export. Two generators that share schema logic but diverge in output format create a code duplication risk and remove the compiler's diagnostic value.
 
 The generator required by Option B is new engineering work, but it is bounded: it is a deterministic, pure function from JSON to Bicep, testable with fixtures, and reusable for export.
 
@@ -351,6 +370,6 @@ Core Radius is reused unchanged. The `radius-runner` container receives a genera
 
 An alternative pattern for plan/preview in Options B and C was considered: instead of the Copilot agent reading the JSON graph from the data store, calling Core Radius for recipe resolution, and writing enrichments back, Core Radius would read the data store directly, resolve recipes, and write placeholder cloud resources back itself.
 
-This pattern was excluded because it violates Tenet 5 (Core Radius is reused, not forked). Core Radius today has no knowledge of the GitHub Radius data store. It operates on resource types and environments. If Core reads and writes the data store directly, it requires a new integration to the GitHub Radius data store (read/write access), knowledge of the JSON graph schema (parsing, traversal, enrichment), and a new API surface that couples Core to a GitHub Radius storage concept. That is a change to Core Radius, not reuse of it.
+This pattern was excluded because it violates Tenet 6 (Core Radius is reused, not forked). Core Radius today has no knowledge of the GitHub Radius data store. It operates on resource types and environments. If Core reads and writes the data store directly, it requires a new integration to the GitHub Radius data store (read/write access), knowledge of the JSON graph schema (parsing, traversal, enrichment), and a new API surface that couples Core to a GitHub Radius storage concept. That is a change to Core Radius, not reuse of it.
 
 The current pattern keeps the boundary clean. The Copilot agent reads from the data store (which it already does for Phase 1), calls Core for recipe resolution (a narrow API: resource type + environment → cloud resource mappings), and writes enrichments back to the data store (the same read-enrich-write pattern used in Phase 3 after deployment). Code complexity is low because all three steps reuse existing capabilities. One pattern serves both plan/preview and post-deployment enrichment.
