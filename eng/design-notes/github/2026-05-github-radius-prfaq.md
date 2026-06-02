@@ -78,19 +78,11 @@ GitHub Radius is designed to deploy to AWS, Azure, or Google Cloud only. Enablin
 
 Only the Copilot app. There is no separate Radius CLI, no Dashboard, no local Kubernetes cluster, and no agent process to run on the workstation. The first time a developer asks Copilot to deploy an application in a given repository, Copilot offers to enable the deployment capability for that repository and installs the necessary agent skills and workflows on the developer's behalf with their consent. That is a one-time action per repository.
 
-**Q11: Where is GitHub Radius' data stored?**
-
-The application graph is stored as a set of JSON files in a hidden `.radius` branch in the Git repository. GitHub Radius leverages Git to highlight individual changes to the application graph and track its evolution over time. The developer never edits these files directly. Copilot uses the Radius agent skills to read and write to the application graph on the developer's behalf based on the conversation. Keeping the definition in the repository means the application travels with the code: cloning the repository is enough to deploy it from any other workstation, with no external system to provision first.
-
-**Q12: Why is there no `.bicep` or `.tf` file for me to author?**
-
-In GitHub Radius, developers don’t author IaC directly. Instead, the application is defined as a structured JSON graph that Copilot reads and writes on the developer’s behalf. Validation, consistency, and history are handled through tool schemas and Git-based diffs on the `.radius` branch. Traditional IaC files like Bicep or Terraform are designed for humans to write and maintain. In GitHub Radius, that responsibility shifts to the Copilot. Introducing a separate IaC layer would create duplicate representations and a translation step between them, increasing complexity without improving reliability.
-
-**Q13: How do I customize the application beyond what Copilot inferred?**
+**Q11: How do I customize the application beyond what Copilot inferred?**
 
 Just ask. Copilot understands the application as a graph of abstract resources, so the simplest way to make a change is to describe the change in conversation. Examples: "add a Redis cache to the web service," "use a custom domain on the API," or "swap postgres for a managed database in test and prod but keep it as a container in dev." Copilot updates the application graph and offers to redeploy the affected environments. 
 
-**Q14: How do I define multiple environments such as dev, test, stage, and prod?** 
+**Q12: How do I define multiple environments such as dev, test, stage, and prod?** 
 
 The first time Copilot is asked to deploy an application, it creates an environment after asking a series of questions including:
 
@@ -104,45 +96,41 @@ To create subsequent environments, simply ask Copilot to create a new environmen
 
 > [!NOTE]
 >
-> **Internal**: ECS, ACA, and Cloud Run are not MVP features. See the fast-follow list in Q27.
+> **Internal**: ECS, ACA, and Cloud Run are not MVP features. See the fast-follow list in Q24.
 
-**Q15: How are cloud credentials handled?**
+**Q13: How are cloud credentials handled?**
 
 GitHub Radius uses GitHub's native cloud federation. When a developer asks Copilot to create an environment, Copilot walks them through setting up a federated trust relationship between GitHub and their cloud account, stores the configuration as a GitHub environment, and validates that the federation works before continuing. No long-lived cloud credentials are ever copied into Copilot or stored on the workstation. The deployment workflow that runs in GitHub Actions exchanges a short-lived GitHub token for short-lived cloud credentials at deployment time.
 
-**Q16: How does the deployment actually run? Is there a Radius control plane?**
+**Q14: How does the deployment actually run? Is there a Radius control plane?**
 
 There is no long-running control plane. Synchronous operations the developer expects to happen instantly, such as viewing the application graph or editing application resources, happen in the agent's process and complete in seconds. Asynchronous operations the developer already expects to take minutes, such as building images and provisioning cloud resources, happen in a GitHub Actions runner inside the developer's own repository. The Radius deployment engine runs inside the runner, performs the requested operation, writes status back to the `.radius` branch as it progresses, and exits. The developer's cloud credentials are stored as GitHub environment secrets and never leave GitHub.
 
-**Q17: Is GitHub Radius idempotent? Does it detect drift?**
+**Q15: Is GitHub Radius idempotent? Does it detect drift?**
 
 Yes. GitHub Radius compares the deployed application against the application graph and reconciles the two. The developer can ask Copilot at any time whether anything in the cloud differs from what they expect, and Copilot will report drift in natural language: resources that are missing, resources that have been modified outside the application graph, or resources present in the cloud that the application graph does not know about. Copilot offers two reconciliation paths for each case: update the application graph to match reality, or redeploy to make reality match the application graph.
 
 > [!NOTE]
 >
-> **Internal**: Drift detection is not a MVP feature. See the fast-follow list in Q27.
+> **Internal**: Drift detection is not a MVP feature. See the fast-follow list in Q24.
 
-**Q18: How does promotion between environments work?**
+**Q16: How does promotion between environments work?**
 
 The developer asks Copilot to promote the application to the next environment by name, such as "promote to test." Copilot reuses the same application graph, layers in environment-specific configuration, shows the diff between what exists in the target environment today and what will exist after the promotion, and deploys on approval.
 
-**Q19: How does GitHub Radius prevent surprise cloud bills?**
-
-Every deployment is preceded by a plan that visualizes exactly which cloud resources will be created, modified, or destroyed, along with detailed parameters such as SKUs which will be used. Developers can review the plan to estimate costs on their own. GitHub Radius does not provide cost estimates. 
-
-**Q20: What happens when I am done with a project?**
+**Q17: What happens when I am done with a project?**
 
 The developer asks Copilot to tear down a specific environment or every environment for the application. Copilot highlights on the Deployment panel exactly what will be destroyed, requires explicit confirmation, and dispatches a teardown workflow.
 
-**Q21: How can I migrate from GitHub Radius to Kubernetes-based Radius?**
+**Q18: How can I migrate from GitHub Radius to Kubernetes-based Radius?**
 
 Migrating from GitHub Radius to Kubernetes-based Radius is easy. Both Radius options use the same set of resource types and recipes. After you install Radius on your Kubernetes cluster and configure your environments, ask Copilot to export your applications as Bicep files. You can take these `app.bicep` files and deploy them using `rad deploy`. It is not possible to migrate environments, credentials, or deployed applications from GitHub Radius to Kubernetes-based Radius.
 
 > [!NOTE]
 >
-> **Internal**: Export to Bicep is not a MVP feature. See the fast-follow list in Q27.
+> **Internal**: Export to Bicep is not a MVP feature. See the fast-follow list in Q24.
 
-**Q22: How does GitHub Radius compare to GitHub Spark?**
+**Q19: How does GitHub Radius compare to GitHub Spark?**
 
 GitHub Spark and GitHub Radius solve different problems. Spark creates new micro apps from scratch through natural language conversation. The developer describes what they want, Spark generates the code and hosts the result on GitHub's infrastructure. The developer never sees a cloud account or a deployment step because Spark owns the full stack.
 
@@ -152,7 +140,7 @@ In short: Spark is for creating and hosting new lightweight apps on GitHub. Radi
 
 ### Internal FAQs
 
-**Q23: How is GitHub Radius different from the Kubernetes-based versions of Radius?**
+**Q20: How is GitHub Radius different from the Kubernetes-based versions of Radius?**
 
 Earlier versions of Radius were delivered as a Kubernetes-hosted control plane with a `rad` CLI as the primary client. That shape is the right fit for enterprise platform teams running shared infrastructure for many developers, and it remains the right option for those teams. GitHub Radius is a different delivery of the same core idea, optimized for individual developers, small teams, and open-source maintainers who are using the Copilot app. Key changes include:
 
@@ -164,7 +152,7 @@ Earlier versions of Radius were delivered as a Kubernetes-hosted control plane w
 * Resource groups are not used in GitHub Radius.
 * Workspaces are not used in GitHub Radius.
 
-**Q24: How does GitHub Radius relate to Repo Radius?**
+**Q21: How does GitHub Radius relate to Repo Radius?**
 
 Repo Radius was an earlier effort with the goal to ship a version of Radius for platform engineers to run within their continuous deployment pipeline, specifically GitHub Actions. It leveraged the Kubernetes-based Radius, adding capabilities to deploy to external Kubernetes clusters and store state in a Git repository rather than etcd.
 
@@ -172,19 +160,11 @@ GitHub Radius is an end-to-end solution for GitHub developers built around the C
 
 We do not have concrete plans to ship Repo Radius as a standalone deployment option today. GitHub Radius is the priority.
 
-**Q25: Why are application definitions no longer in Bicep? Doesn't that go against our objective with Radius?**
+**Q22: Are applications still being defined using Bicep?**
 
-In GitHub Radius, developers no longer define applications in Bicep. Bicep continues to be used under the hood for deployments but the application definition itself is a JSON graph the Radius skills read and write to directly. When a human authored infrastructure, Bicep provided type checking, IDE autocomplete, schema-driven validation, and reviewable text diffs in pull requests. Every one of those capabilities exists because a human is the one typing, and humans make mistakes that a type system can catch before deployment.
+In GitHub Radius, developers no longer define applications themselves—Copilot is. The file format is used to store the application definition is an implementation detail which will be addressed in the technical design. The only thing to consider is that there must be a migration path from GitHub Radius to Kubernetes-based Radius.
 
-The objective of Radius has always been to let developers work at the application level rather than the infrastructure level. Bicep was the means, not the end. It was the best available means when the consumer of the application definition was a human typing in an editor. In GitHub Radius, the human is not the one typing. The AI agent is. That changes several things.
-
-First, an AI agent does not benefit from the affordances Bicep provides to humans. It does not need autocomplete; it generates complete definitions. It does not need syntax highlighting or bracket matching; it reads and writes structured data natively. It does not need a compiler to catch type errors; it validates against JSON Schema at the tool boundary before any write is committed. The capabilities that made Bicep essential for human authors are redundant when the author is an AI agent.
-
-Second, inserting Bicep between the AI agent and the application graph creates two sources of truth and a translation layer between them. The AI agent would have to generate .bicep files, invoke the Bicep compiler to produce the graph, and then reconcile any compilation errors—all to arrive at the same JSON the AI agent could have generated directly. Every round-trip through that translation layer is an opportunity for the two representations to diverge. Removing the intermediary does not reduce safety; it increases it, because there is exactly one representation of the application and no translation step where meaning can be lost.
-
-Third, Bicep requires tooling. The Bicep compiler must be installed, kept up to date, and invoked as a build step. In a world where 100% of interaction happens inside the Copilot app, every external tool dependency is friction. The developer should not need to install a compiler to deploy an application any more than they should need to install a CLI. By writing directly to the application graph, GitHub Radius eliminates the Bicep compiler, the Bicep extensions, the `bicepconfig.json`, and the build step that Bicep would require which keeps the entire lifecycle inside the Copilot app with zero local tooling.
-
-**Q26: What new features does GitHub Radius introduce over the Kubernetes-based version?**
+**Q23: What new features does GitHub Radius introduce over the Kubernetes-based version?**
 
 GitHub Radius introduces several new capabilities. The following constitutes the GitHub Radius minimum-viable product (MVP):
 
@@ -196,7 +176,7 @@ GitHub Radius introduces several new capabilities. The following constitutes the
 * **Git-native graph storage.** Kubernetes-based Radius stores state in etcd on a Kubernetes cluster. The `.radius` orphan branch means "clone the repo and you can deploy" — no external state store to provision. This also enables auditable history via git diff.
 * **Deployment to external EKS and AKS clusters**. Because GitHub Radius no longer runs as a perpetually-running Kubernetes-hosted control plane, GitHub Radius has the ability to deploy to an EKS or AKS cluster other than its host.
 
-**Q27: Once GitHub Radius launches, what are the fast-follow features?**
+**Q24: Once GitHub Radius launches, what are the fast-follow features?**
 
 After GitHub Radius launches, the following are fast-follow features:
 
@@ -205,23 +185,23 @@ After GitHub Radius launches, the following are fast-follow features:
 * **Google Cloud support**. As with Kubernetes-based Radius, support for Google Cloud is planned but is not considered a MVP requirement.
 * **Additional serverless platform support.** In addition to supporting Kubernetes and ACI today, GitHub Radius will support ECS, ACA, and Cloud Run (in this order) in the future.
 
-**Q28: What about the existing resource types and recipes in the `resource-types-contrib` repo?**
+**Q25: What about the existing resource types and recipes in the `resource-types-contrib` repo?**
 
 GitHub Radius continues to use resource types and recipes as the mechanism by which abstract application resources become concrete cloud resources. The Radius `resource-types-contrib` recipe library is reused, now with greater importance. What changes is the expectation of how mature and comprehensive the resource types and recipes must be.
 
 In Kubernetes-based Radius, the enterprise's platform engineer was expected to either bring their own recipes or substantially customize Radius' recipes. In GitHub Radius, the Radius project is now responsible for ensuring the resource types and recipes are production ready and follow security and cost best practices. Because of this shift, the Radius project will need to invest more resources in the development, testing, and maturing of the existing recipe library.
 
-**Q29: How does the developer know Radius is involved?**
+**Q26: How does the developer know Radius is involved?**
 
 By design, they do not, unless they look. The Copilot app is the surface. The conversation is the interface. The application graph is stored in their repository. If a developer wants to understand how the capability works or where to ask for help, a discreet "powered by Radius" reference and an `/about` command in the skills point at the Radius project and community. We expect the vast majority of users will never need either.
 
-**Q30: What is the relationship between GitHub Radius and the Kubernetes-based version going forward?** 
+**Q27: What is the relationship between GitHub Radius and the Kubernetes-based version going forward?** 
 
 Our objective remains the broad adoption of Kubernetes-based Radius by enterprises. GitHub Radius is targeted at a distinctly different non-enterprise persona. We believe that, with Radius built into the Copilot app, enterprises will gain greater exposure to Radius, which will drive adoption of Kubernetes-based Radius. 
 
 Developers who use GitHub Radius for side projects and prototypes will encounter Radius's application graph, and when they move to an enterprise team with shared infrastructure needs, they will already understand the mental model and advocate for Kubernetes-based Radius.
 
-**Q31: What new GitHub Radius features will be implemented in Kubernetes-based Radius?**
+**Q28: What new GitHub Radius features will be implemented in Kubernetes-based Radius?**
 
 Our primary objective is building GitHub Radius. However, in several situations it is appropriate to generalize new GitHub Radius features and deliver them as Radius features in both GitHub Radius and Kubernetes-based Radius. These generalizable features include:
 
@@ -230,7 +210,7 @@ Our primary objective is building GitHub Radius. However, in several situations 
 
 Kubernetes-based Radius will also benefit from the larger number of resource types and more mature recipes in the `resource-types-contrib` repository.
 
-**Q32: What new GitHub Radius features are not generalizable but could be implemented in Kubernetes-based Radius?**
+**Q29: What new GitHub Radius features are not generalizable but could be implemented in Kubernetes-based Radius?**
 
 Many other new GitHub Radius features could be implemented in Kubernetes-based Radius. However, they are not generalizable enough across the two solutions. 
 
