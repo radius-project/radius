@@ -50,7 +50,7 @@ When a developer uses Copilot to deploy an application, three steps are involved
 
 First, Copilot analyzes the repository. It looks at the source layout, Dockerfiles, framework hints, and declared dependencies, and produces a model of the application referred to as the *application graph*. This application graph includes abstract application resources that compose the application such as web services, workers, and databases, along with the relationships between them. Developers can explore this graph and the details of each resource in the Deployment panel in the Copilot app and ask Copilot to make changes as needed.
 
-Second, before the application can be deployed, an environment must be defined. Before deploying, Copilot will help the developer define a deployment environment in AWS, Azure, or Google Cloud and configure authentication between Copilot and the cloud provider. Once the environment has been selected, Copilot will update the application graph on the Deployment panel with cloud provider-specific placeholder resources so the developer can examine exactly what cloud resources are planned. 
+Second, before the application can be deployed, an environment must be defined. Before deploying, Copilot will help the developer define a deployment environment in AWS, Azure, or Google Cloud and configure authentication between Copilot and the cloud provider. Once the environment has been selected, Copilot will update the application graph on the Deployment panel with cloud provider-specific placeholder resources so the developer can examine exactly what cloud resources are planned.
 
 Finally, once confirmed by the developer, Copilot dispatches a workflow in GitHub Actions which starts the Radius deployment engine. The deployment engine reads the application graph, provisions the required resources in the developer's cloud account, and streams progress back to the Deployment panel in the Copilot app. Once completed, the application graph in the Deployment panel contains the full set of abstract application resources which constitute the model of the application, as well as the set of actual deployed cloud resources with real cloud resource identifiers. 
 
@@ -76,7 +76,7 @@ GitHub Radius is designed to deploy to AWS, Azure, or Google Cloud only. Enablin
 
 **Q10: What does the developer have to install?**
 
-Only the Copilot app. There is no separate Radius CLI, no Dashboard, no local Kubernetes cluster, and no agent process to run on the workstation. The first time a developer asks Copilot to deploy an application in a given repository, Copilot offers to enable the deployment capability for that repository and installs the necessary agent skills and workflows on the developer's behalf with their consent. That is a one-time action per repository.
+Only the Copilot app. There is no separate Radius or Bicep CLI, no Dashboard, no local Kubernetes cluster, and no agent process to run on the workstation. The first time a developer asks Copilot to deploy an application in a given repository, Copilot offers to enable the deployment capability for that repository and installs the necessary agent skills and workflows on the developer's behalf with their consent. That is a one-time action per repository.
 
 **Q11: How do I customize the application beyond what Copilot inferred?**
 
