@@ -38,15 +38,6 @@ spec:
       # without Unconfined profiles. Requires Kubernetes >= 1.30.
       hostUsers: false
       {{- end }}
-      {{- if .Values.dynamicrp.buildkit.enabled }}
-      # fsGroup 65532 lets the dynamic-rp container (UID 65532) and the
-      # buildctl-init init container share the buildctl-bin emptyDir.
-      # supplementalGroups grants buildkitd (UID 1000) access to its
-      # state volume after the fsGroup chown.
-      securityContext:
-        fsGroup: 65532
-        supplementalGroups: [65532]
-      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
@@ -169,6 +160,31 @@ spec:
       # Stage buildctl out of the BuildKit image into a shared volume
       # for the dynamic-rp container to exec from recipe local-exec
       # blocks. buildkitd does not implement the Docker Engine API.
+      # Chown the BuildKit emptyDir volumes to the UIDs that need to write
+      # to them, replacing the previous Pod-level fsGroup. Pod-level fsGroup
+      # would also be applied to the radius-encryption-key Secret mount
+      # (chowning it to that group and ORing in group-read), which would
+      # let buildkitd in the same Pod read the encryption key. Scoping
+      # permissions per-volume here keeps the Secret least-privilege.
+      - name: buildkit-volumes-init
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          chown 65532:65532 /tools && chmod 0755 /tools
+          chown 1000:1000 /state && chmod 0700 /state
+        volumeMounts:
+        - name: buildctl-bin
+          mountPath: /tools
+        - name: buildkit-state
+          mountPath: /state
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+            add: ["CHOWN"]
       - name: buildctl-init
         image: "{{ .Values.dynamicrp.buildkit.image }}"
         command: ["/bin/sh", "-c", "cp /usr/bin/buildctl /tools/buildctl && chmod 0755 /tools/buildctl"]
@@ -248,7 +264,7 @@ spec:
           readOnly: true
         {{- end }}
         {{- if .Values.dynamicrp.resources }}
-        resources:{{ toYaml .Values.rp.resources | nindent 10 }}
+        resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
       # Rootless BuildKit sidecar. Listens on Pod-local loopback TCP;
