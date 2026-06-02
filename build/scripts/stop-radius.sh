@@ -4,17 +4,23 @@ set -e
 # PostgreSQL connection strings - try Docker first, fallback to local user
 POSTGRES_ADMIN_CONNECTION="postgresql://postgres:radius_pass@localhost:5432/postgres"
 POSTGRES_FALLBACK_CONNECTION="postgresql://$(whoami)@localhost:5432/postgres"
+POSTGRES_CONTAINER_NAME="radius-postgres"
 
 # Helper function to execute PostgreSQL commands with proper connection
+# Tries: 1) local psql with Docker connection, 2) local psql with fallback connection (current user on localhost), 3) docker exec
 psql_exec() {
   local sql="$1"
-  if psql "$POSTGRES_ADMIN_CONNECTION" -c "$sql" >/dev/null 2>&1; then
-    return 0
-  elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "$sql" >/dev/null 2>&1; then
-    return 0
-  else
-    return 1
+  if command -v psql >/dev/null 2>&1; then
+    if psql "$POSTGRES_ADMIN_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+      return 0
+    elif psql "$POSTGRES_FALLBACK_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+      return 0
+    fi
   fi
+  if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "$sql" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
 }
 
 echo "🧹 Full environment cleanup: stopping debug processes, deleting k3d cluster, deleting PostgreSQL data and schema..."
@@ -69,19 +75,31 @@ if command -v psql >/dev/null 2>&1; then
   psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "TRUNCATE TABLE resources;" 2>/dev/null || true
   psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "TRUNCATE TABLE resources;" 2>/dev/null || true
   
-  # Drop databases if they exist using helper function
+  # Drop databases and users
   psql_exec "DROP DATABASE IF EXISTS applications_rp;" || true
   psql_exec "DROP DATABASE IF EXISTS ucp;" || true
   psql_exec "DROP DATABASE IF EXISTS radius;" || true
-  
-  # Drop users if they exist using helper function
   psql_exec "DROP USER IF EXISTS applications_rp;" || true
   psql_exec "DROP USER IF EXISTS ucp;" || true
   psql_exec "DROP USER IF EXISTS radius;" || true
   
   echo "✅ Database nuclear cleanup complete"
+elif docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then
+  # Fall back to docker exec for truncation (needs specific database target)
+  docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d applications_rp -c "TRUNCATE TABLE resources;" 2>/dev/null || true
+  docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d ucp -c "TRUNCATE TABLE resources;" 2>/dev/null || true
+  
+  # Drop databases and users via psql_exec (handles docker exec fallback)
+  psql_exec "DROP DATABASE IF EXISTS applications_rp;" || true
+  psql_exec "DROP DATABASE IF EXISTS ucp;" || true
+  psql_exec "DROP DATABASE IF EXISTS radius;" || true
+  psql_exec "DROP USER IF EXISTS applications_rp;" || true
+  psql_exec "DROP USER IF EXISTS ucp;" || true
+  psql_exec "DROP USER IF EXISTS radius;" || true
+  
+  echo "✅ Database nuclear cleanup complete (via Docker)"
 else
-  echo "⚠️  psql not available - skipping database cleanup"
+  echo "⚠️  Neither psql nor Docker container available - skipping database cleanup"
 fi
 
 # Nuclear k3d cleanup

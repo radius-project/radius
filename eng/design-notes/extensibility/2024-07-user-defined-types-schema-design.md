@@ -32,7 +32,7 @@ types:
 
 The `schema` serves as a contract, defining what properties developers are allowed to set and what data is provided to applications. Essentially, the schema of a resource type is its API.
 
-The ability to define schema allows for differentiation and customization. For instance, in case of a databse UDT, an organization might use t-shirt sizes to describe the storage capacity of a database (e.g., S, M, L) or define their own vocabulary for fault domains (e.g., zonal, regional).
+The ability to define schema allows for differentiation and customization. For instance, in case of a database UDT, an organization might use t-shirt sizes to describe the storage capacity of a database (e.g., S, M, L) or define their own vocabulary for fault domains (e.g., zonal, regional).
 
 Technically, defining schemas is complex. It should be described with OpenAPI,  which represents the state of the art but is a challenging tool to wield. It includes many constructs that are not conducive to good API design. Consequently, every project leveraging OpenAPI tends to define its own supported subset of its functionality.
 

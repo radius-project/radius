@@ -54,17 +54,17 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Delete Radius Application",
 		Long:  "Delete the specified Radius Application deployed in the default environment",
 		Example: `
-# Delete current application
-rad app delete
-
-# Delete current application and bypass confirmation prompt
-rad app delete --yes
+# Delete specified application and bypass confirmation prompt
+rad app delete --yes --application my-app
 
 # Delete specified application
 rad app delete my-app
 
 # Delete specified application in a specified resource group
 rad app delete my-app --group my-group
+
+# Force delete an application with resources stuck in a non-terminal state
+rad app delete my-app --force
 `,
 		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -74,6 +74,7 @@ rad app delete my-app --group my-group
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddConfirmationFlag(cmd)
+	commonflags.AddForceFlag(cmd)
 
 	return cmd, runner
 }
@@ -90,6 +91,7 @@ type Runner struct {
 	EnvironmentName string
 	Scope           string
 	Confirm         bool
+	Force           bool
 	Workspace       *workspaces.Workspace
 }
 
@@ -110,7 +112,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the workspace, scope, application name, and confirm flag from the command line arguments and
 // request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -148,6 +150,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	r.Force, err = cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -166,7 +173,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	app, err := client.GetApplication(ctx, r.ApplicationName)
 	if clients.Is404Error(err) {
-		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
 		return nil
 	} else if err != nil {
 		return err
@@ -178,6 +185,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if r.Force {
+		r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
+	}
+
 	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
@@ -194,18 +206,19 @@ func (r *Runner) Run(ctx context.Context) error {
 	deleted, err := r.Delete.DeleteApplicationWithProgress(ctx, client, clients.DeleteOptions{
 		ApplicationNameOrID: r.ApplicationName,
 		ProgressText:        progressText,
+		Force:               r.Force,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+			r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
 			return nil
 		}
 		return clierrors.Message("Failed to delete application '%s': %v", r.ApplicationName, err)
 	}
 	if deleted {
-		r.Output.LogInfo("Application %s deleted successfully", r.ApplicationName)
+		r.Output.LogInfo("Applications.Core/applications/%s deleted", r.ApplicationName)
 	} else {
-		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
 		return nil
 	}
 

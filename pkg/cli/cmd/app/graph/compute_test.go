@@ -22,13 +22,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_providerFromID(t *testing.T) {
+func Test_ProviderFromID(t *testing.T) {
 	t.Run("parse valid resource ID", func(t *testing.T) {
-		require.Equal(t, "aws", providerFromID(awsMemoryDBResourceID))
-		require.Equal(t, "azure", providerFromID(azureRedisCacheResourceID))
+		require.Equal(t, "aws", ProviderFromID(awsMemoryDBResourceID))
+		require.Equal(t, "azure", ProviderFromID(azureRedisCacheResourceID))
 	})
 
 	t.Run("parse invalid resource ID", func(t *testing.T) {
-		require.Equal(t, "", providerFromID("\ndkdkfkdfs\t"))
+		require.Equal(t, "", ProviderFromID("\ndkdkfkdfs\t"))
 	})
 }

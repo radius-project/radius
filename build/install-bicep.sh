@@ -43,9 +43,6 @@ fi
 mkdir -p "$OUTPUT_DIR"
 cat <<EOF > $OUTPUT_DIR/bicepconfig.json
 {
-  "experimentalFeaturesEnabled": {
-    "extensibility": true
-  },
   "extensions": {
     "radius": "br:biceptypes.azurecr.io/radius:${REL_CHANNEL}",
     "aws": "br:biceptypes.azurecr.io/aws:${REL_CHANNEL}"
@@ -59,12 +56,17 @@ if [ "$ARCH" = "arm64" ]; then
   BICEP_ARCH="arm64"
 fi
 
+# Bicep CLI version. Pinned because Bicep v0.43+ tightened
+# ContainerRegistryClientFactory.ThrowIfRegistryNotTrusted to reject br:localhost:5000/... targets,
+# breaking publish-extension to local registries used by our CI and local dev workflows.
+BICEP_VER="v0.42.1"
+
 # Check if bicep binary already exists in the target location
 if [ -f "$OUTPUT_DIR/bicep" ]; then
   echo "Bicep CLI already exists at $OUTPUT_DIR/bicep, skipping download."
 else
-  echo "Downloading Bicep CLI..."
-  if ! curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-$BICEP_ARCH; then
+  echo "Downloading Bicep CLI ${BICEP_VER}..."
+  if ! curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-${BICEP_ARCH}"; then
     echo "Failed to download Bicep CLI. Please check your internet connection or the URL."
     exit 1
   fi

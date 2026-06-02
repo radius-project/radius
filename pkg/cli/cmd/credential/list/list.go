@@ -77,7 +77,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate() checks if the workspace and output format are valid and sets them in the Runner struct, returning an error if either is invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}

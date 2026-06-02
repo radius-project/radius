@@ -22,7 +22,6 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/cmd/resourceprovider/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -77,25 +76,20 @@ type Runner struct {
 
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
-	Logger                           func(format string, args ...any)
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-provider create` command.
 func NewRunner(factory framework.Factory) *Runner {
-	output := factory.GetOutput()
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
-		Output:       output,
-		Logger: func(format string, args ...any) {
-			output.LogInfo(format, args...)
-		},
+		Output:       factory.GetOutput(),
 	}
 }
 
 // Validate runs validation for the `rad resource-provider create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -126,23 +120,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	// Proceed with registering manifests
-	if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, r.Logger); err != nil {
+	// Proceed with registering manifests. Use a nil logger to suppress verbose
+	// progress messages; the concise success line is emitted below.
+	if err := manifest.RegisterFile(ctx, r.UCPClientFactory, "local", r.ResourceProviderManifestFilePath, nil); err != nil {
 		return err
 	}
 
-	response, err := r.UCPClientFactory.NewResourceProvidersClient().Get(ctx, "local", r.ResourceProvider.Namespace, nil)
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("")
-
-	err = r.Output.WriteFormatted(r.Format, response, common.GetResourceProviderTableFormat())
-	if err != nil {
-		return err
-	}
-
+	r.Output.LogInfo("System.Resources/resourceProviders/%s created", r.ResourceProvider.Namespace)
 	return nil
 }
 

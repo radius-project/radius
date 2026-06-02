@@ -87,7 +87,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks if the given command and arguments are valid, and if so, sets the resource group name and workspace in the
 // Runner struct. It returns an error if the resource group name is invalid or if the workspace or resource group cannot be found.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -119,8 +119,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
-
 	err = client.CreateOrUpdateResourceGroup(ctx, "local", r.UCPResourceGroupName, &v20231001preview.ResourceGroupResource{
 		Location: to.Ptr(v1.LocationGlobal),
 	})
@@ -128,7 +126,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("resource group %q created", r.UCPResourceGroupName)
+	r.Output.LogInfo("System.Resources/resourceGroups/%s created", r.UCPResourceGroupName)
 	return nil
 
 }

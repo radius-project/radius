@@ -71,7 +71,7 @@ runs:
         done
 
     - name: Create ${{ inputs.test_group_name }} Result Report
-      uses: EnricoMi/publish-unit-test-result-action@34d7c956a59aed1bfebf31df77b8de55db9bbaaf # v2.21.0
+      uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # v2.23.0
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}
@@ -79,7 +79,7 @@ runs:
           ${{ inputs.result_directory }}/processed/*.xml
 
     - name: Upload ${{ inputs.test_group_name }} Results
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: always()
       with:
         name: ${{ inputs.artifact_name }}

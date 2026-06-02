@@ -58,6 +58,10 @@ type DeploymentResourceReconciler struct {
 
 	// DelayInterval is the amount of time to wait between operations.
 	DelayInterval time.Duration
+
+	// DeleteRetryInterval overrides DeleteRetryDelay for delete-path error
+	// requeues. If zero, DeleteRetryDelay is used.
+	DeleteRetryInterval time.Duration
 }
 
 // Reconcile is the main reconciliation loop for the DeploymentResource resource.
@@ -166,7 +170,10 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 				return ctrl.Result{}, statusErr
 			}
 
-			return ctrl.Result{}, err
+			// Bounded RequeueAfter instead of returning the error: avoids
+			// controller-runtime's exponential rate-limiter for transient
+			// dependency errors during a delete cascade.
+			return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
 		}
 
 		// If we get here, the operation was a success. Update the status and remove finalizer.
@@ -230,7 +237,11 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	if err != nil {
 		logger.Error(err, "Unable to delete resource.")
 		r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
-		return ctrl.Result{}, err
+		if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
+			return ctrl.Result{}, statusErr
+		}
+		// Bounded retry; see reconcileOperation.
+		return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
 	} else if deletePoller != nil && !deletePoller.Done() {
 		// We've successfully started an operation. Update the status and requeue.
 		token, err := deletePoller.ResumeToken()
@@ -260,7 +271,8 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 				if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
 					return ctrl.Result{}, statusErr
 				}
-				return ctrl.Result{}, err
+				// Bounded retry; see reconcileOperation.
+				return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
 			}
 		}
 	}
@@ -302,6 +314,13 @@ func (r *DeploymentResourceReconciler) requeueDelay() time.Duration {
 	}
 
 	return delay
+}
+
+func (r *DeploymentResourceReconciler) deleteRetryDelay() time.Duration {
+	if r.DeleteRetryInterval != 0 {
+		return r.DeleteRetryInterval
+	}
+	return DeleteRetryDelay
 }
 
 // completeDeleteOperation removes the finalizer and updates the resource status to mark it as deleted.

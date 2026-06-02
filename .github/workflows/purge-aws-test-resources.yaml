@@ -46,7 +46,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        uses: aws-actions/configure-aws-credentials@acca2b1b2070338fb9fd1ca27ecee81d687e58e5 # v6.1.2
         with:
           aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
@@ -57,7 +57,7 @@ jobs:
           ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
 
       - name: Create issue for failing purge aws test resources run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         if: failure()
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}

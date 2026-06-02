@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/test/testutil"
@@ -272,6 +273,61 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, err, engineErr)
 	})
+}
+
+func TestGetRecipeMetadataFromRegistry_ConfiguredParameterValuesAppearedInResponse(t *testing.T) {
+	// Regression test for https://github.com/radius-project/radius/issues/9454
+	// Operator-configured parameter values stored in the environment must appear in
+	// the GetRecipeMetadata response so that `rad recipe show` can display them.
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+	mEngine := engine.NewMockEngine(mctrl)
+
+	recipeProperties := datamodel.EnvironmentRecipeProperties{
+		TemplateKind: "bicep",
+		TemplatePath: "ghcr.io/example/recipes/redis:1.0",
+		Parameters: map[string]any{
+			"location": "eastus",
+		},
+	}
+	recipeDataModel := &datamodel.Recipe{
+		Name:         "redis-prod",
+		ResourceType: "Applications.Datastores/redisCaches",
+	}
+
+	// Engine returns the template schema from the registry — no "value" keys here,
+	// only parameter definitions (type, defaultValue, etc.).
+	recipeData := map[string]any{
+		"parameters": map[string]any{
+			"location": map[string]any{
+				"type": "string",
+			},
+		},
+	}
+	mEngine.EXPECT().
+		GetRecipeMetadata(gomock.Any(), gomock.Any()).
+		Return(recipeData, nil)
+
+	databaseClient := database.NewMockClient(mctrl)
+	opts := ctrl.Options{DatabaseClient: databaseClient}
+	ctl, err := NewGetRecipeMetadata(opts, mEngine)
+	require.NoError(t, err)
+
+	controller := ctl.(*GetRecipeMetadata)
+	result, err := controller.GetRecipeMetadataFromRegistry(
+		context.Background(),
+		recipeProperties,
+		recipeDataModel,
+		"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/applications.core/environments/env0",
+	)
+	require.NoError(t, err)
+
+	// The operator configured location="eastus". That value must appear in the response
+	// so the CLI can display it. Without the fix, this assertion fails because only
+	// {"type": "string"} is returned — the "value" key is absent.
+	locationParam, ok := result["location"].(map[string]any)
+	require.True(t, ok, "location parameter should be present in response")
+	require.Equal(t, "eastus", locationParam["value"], "operator-configured value should appear in response")
 }
 
 func TestParseAndFormatRecipeParams(t *testing.T) {

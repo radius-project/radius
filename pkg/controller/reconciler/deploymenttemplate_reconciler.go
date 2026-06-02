@@ -182,7 +182,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 		logger.Info("Creating output resources.")
 
-		// Get outputResources from the response
+		// Get outputResources from the response. A nil OutputResources field is
+		// treated as an empty set so we still run the diff-delete logic below;
+		// otherwise a deployment whose response omits OutputResources would
+		// leave previously-tracked DRs dangling and stick the DT in
+		// ReadyPendingCleanup forever.
 		outputResources := make([]string, 0)
 		if resp.Properties != nil && resp.Properties.OutputResources != nil {
 			for _, resource := range resp.Properties.OutputResources {
@@ -190,76 +194,76 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 					outputResources = append(outputResources, *resource.ID)
 				}
 			}
+		}
 
-			// Compare outputResources with existing DeploymentResources
-			// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
-			// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
-			// if is present in both, do nothing
+		// Compare outputResources with existing DeploymentResources
+		// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+		// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
+		// if is present in both, do nothing
 
-			existingOutputResources := make(map[string]bool)
-			for _, resource := range deploymentTemplate.Status.OutputResources {
-				existingOutputResources[resource] = true
-			}
+		existingOutputResources := make(map[string]bool)
+		for _, resource := range deploymentTemplate.Status.OutputResources {
+			existingOutputResources[resource] = true
+		}
 
-			newOutputResources := make(map[string]bool)
-			for _, resource := range outputResources {
-				newOutputResources[resource] = true
-			}
+		newOutputResources := make(map[string]bool)
+		for _, resource := range outputResources {
+			newOutputResources[resource] = true
+		}
 
-			for _, outputResourceId := range outputResources {
-				if _, ok := existingOutputResources[outputResourceId]; !ok {
-					// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
+		for _, outputResourceId := range outputResources {
+			if _, ok := existingOutputResources[outputResourceId]; !ok {
+				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
-					logger.Info("Creating DeploymentResource.", "resourceId", outputResourceId)
-					resourceName, err := generateDeploymentResourceName(outputResourceId)
-					if err != nil {
+				logger.Info("Creating DeploymentResource.", "resourceId", outputResourceId)
+				resourceName, err := generateDeploymentResourceName(outputResourceId)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				deploymentResource := &radappiov1alpha3.DeploymentResource{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceName,
+						Namespace: deploymentTemplate.Namespace,
+					},
+					Spec: radappiov1alpha3.DeploymentResourceSpec{
+						Id: outputResourceId,
+					},
+				}
+
+				if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+					// Add the DeploymentTemplate as the owner of the DeploymentResource
+					if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
 						return ctrl.Result{}, err
 					}
 
-					deploymentResource := &radappiov1alpha3.DeploymentResource{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      resourceName,
-							Namespace: deploymentTemplate.Namespace,
-						},
-						Spec: radappiov1alpha3.DeploymentResourceSpec{
-							Id: outputResourceId,
-						},
-					}
-
-					if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-						// Add the DeploymentTemplate as the owner of the DeploymentResource
-						if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
-							return ctrl.Result{}, err
-						}
-
-						// Create the DeploymentResource
-						err = r.Client.Create(ctx, deploymentResource)
-						if err != nil {
-							return ctrl.Result{}, err
-						}
+					// Create the DeploymentResource
+					err = r.Client.Create(ctx, deploymentResource)
+					if err != nil {
+						return ctrl.Result{}, err
 					}
 				}
 			}
+		}
 
-			for _, resource := range deploymentTemplate.Status.OutputResources {
-				if _, ok := newOutputResources[resource]; !ok {
-					// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+		for _, resource := range deploymentTemplate.Status.OutputResources {
+			if _, ok := newOutputResources[resource]; !ok {
+				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
 
-					logger.Info("Deleting resource.", "resourceId", resource)
-					resourceName, err := generateDeploymentResourceName(resource)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
+				logger.Info("Deleting resource.", "resourceId", resource)
+				resourceName, err := generateDeploymentResourceName(resource)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
 
-					err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      resourceName,
-							Namespace: deploymentTemplate.Namespace,
-						},
-					})
-					if err != nil {
-						return ctrl.Result{}, err
-					}
+				err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceName,
+						Namespace: deploymentTemplate.Namespace,
+					},
+				})
+				if client.IgnoreNotFound(err) != nil {
+					return ctrl.Result{}, err
 				}
 			}
 		}
@@ -269,15 +273,34 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			return ctrl.Result{}, err
 		}
 
+		// If any owned DR has a Spec.Id not in the new outputResources set, it
+		// is a residual from the diff-delete above whose UCP cascade is still
+		// in flight. Hold Phrase at ReadyPendingCleanup until those drain so
+		// Ready reflects the true steady state.
+		residualsPresent, err := r.hasResidualDeploymentResources(ctx, deploymentTemplate, outputResources)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		// If we get here, the operation was a success. Update the status and continue.
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.StatusHash = hash
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
+		if residualsPresent {
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+		} else {
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
+		}
 
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+
+		if residualsPresent {
+			// Requeue as a backstop; the Owns(&DeploymentResource{}) watch also
+			// wakes us up when DRs are removed.
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		return ctrl.Result{}, nil
@@ -348,6 +371,19 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 
 	// If we get here then it means we can process the result of the operation.
 	logger.Info("Resource is in desired state.")
+
+	// If we're still in ReadyPendingCleanup from a prior reconcile, re-evaluate
+	// residuals (woken by the Owns watch) and only transition to Ready once
+	// they've drained.
+	if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup {
+		residualsPresent, err := r.hasResidualDeploymentResources(ctx, deploymentTemplate, deploymentTemplate.Status.OutputResources)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if residualsPresent {
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+		}
+	}
 
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
 	err = r.Client.Status().Update(ctx, deploymentTemplate)
@@ -530,11 +566,36 @@ func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) 
 
 func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {
 	for _, ownerRef := range resource.OwnerReferences {
-		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name {
+		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name && ownerRef.UID == owner.UID {
 			return true
 		}
 	}
 	return false
+}
+
+// hasResidualDeploymentResources reports whether any DeploymentResource owned
+// by this DeploymentTemplate has a Spec.Id that is not in currentOutputResources
+// (i.e., a residual from a prior diff whose deletion is still draining).
+func (r *DeploymentTemplateReconciler) hasResidualDeploymentResources(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate, currentOutputResources []string) (bool, error) {
+	desired := make(map[string]struct{}, len(currentOutputResources))
+	for _, id := range currentOutputResources {
+		desired[id] = struct{}{}
+	}
+
+	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
+	if err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
+		return false, err
+	}
+
+	for _, dr := range deploymentResourceList.Items {
+		if !isOwnedBy(dr, deploymentTemplate) {
+			continue
+		}
+		if _, ok := desired[dr.Spec.Id]; !ok {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // computeHash computes a hash of the DeploymentTemplate's spec (desired state)

@@ -211,10 +211,22 @@ func GetResourceTypeSchema(schema map[string]any) map[string]FieldSchema {
 				Description: description,
 				IsRequired:  isRequired,
 				IsReadOnly:  isReadOnly,
-				Properties:  GetResourceTypeSchema(prop),
+				Properties:  GetResourceTypeSchema(getNestedSchema(prop)),
 			}
 		}
 	}
 
 	return fieldSchema
+}
+
+func getNestedSchema(schema map[string]any) map[string]any {
+	if _, ok := schema["properties"].(map[string]any); ok {
+		return schema
+	}
+
+	if additionalProperties, ok := schema["additionalProperties"].(map[string]any); ok {
+		return additionalProperties
+	}
+
+	return schema
 }

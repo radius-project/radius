@@ -92,7 +92,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad resource-provider delete` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -140,9 +140,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if deleted {
-		r.Output.LogInfo("Resource provider %q deleted.", r.ResourceProviderNamespace)
+		r.Output.LogInfo("System.Resources/resourceProviders/%s deleted", r.ResourceProviderNamespace)
 	} else {
-		r.Output.LogInfo("Resource provider %q does not exist or has already been deleted.", r.ResourceProviderNamespace)
+		r.Output.LogInfo("System.Resources/resourceProviders/%s not found", r.ResourceProviderNamespace)
 	}
 
 	return nil

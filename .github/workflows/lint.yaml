@@ -30,6 +30,10 @@ concurrency:
   group: lint-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+env:
+  YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
+
 permissions: {}
 
 jobs:
@@ -65,7 +69,7 @@ jobs:
           cache: true
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: .node-version
 
@@ -74,6 +78,15 @@ jobs:
 
       - name: Install controller-gen
         run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
+
+      - name: Install yq
+        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       - name: Install helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
@@ -93,7 +106,7 @@ jobs:
         run: make tsp-format-check
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
           version-file: .golangci-lint-version
           args: --timeout=10m
@@ -130,7 +143,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup NodeJS
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: .node-version
 

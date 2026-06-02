@@ -93,7 +93,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad resource-type delete` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -145,9 +145,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if deleted {
-		r.Output.LogInfo("Resource type %q deleted.", r.ResourceTypeName)
+		r.Output.LogInfo("%s deleted", r.ResourceTypeName)
 	} else {
-		r.Output.LogInfo("Resource type %q does not exist or has already been deleted.", r.ResourceTypeName)
+		r.Output.LogInfo("%s not found", r.ResourceTypeName)
 	}
 
 	return nil

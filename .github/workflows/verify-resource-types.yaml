@@ -1,0 +1,105 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# This workflow verifies that the resource type manifest files committed in
+# deploy/manifest/built-in-providers/ match the versions in the
+# resource-types-contrib module pinned in go.mod.
+#
+# It runs "make sync-resource-types", which re-copies the manifest files from
+# the Go module cache, and then checks for any diff.
+#
+# - If there is no diff, the committed copies are in sync and the check passes.
+# - If there is a diff, the committed copies have drifted from the pinned
+#   version and the check fails. The developer must run
+#   "make sync-resource-types" locally and commit the updated files.
+#
+# This catches:
+#   - A go.mod bump without re-running "make sync-resource-types"
+#   - Manual edits to copied manifest files that drift from upstream
+#   - New entries in defaults.yaml without re-syncing
+#
+# Similar in spirit to the "go mod tidy" check, ensuring generated/copied
+# artifacts are consistent with their source.
+
+name: Verify resource type manifests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release/*
+    paths:
+      # Trigger when the default list, the copied manifests, the dependency
+      # version (go.mod/go.sum), or the sync logic (Makefile, resource-types.mk)
+      # changes.
+      - 'go.mod'
+      - 'go.sum'
+      - 'deploy/manifest/defaults.yaml'
+      - 'deploy/manifest/built-in-providers/**'
+      - 'Makefile'
+      - 'build/resource-types.mk'
+
+permissions: {}
+
+env:
+  YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
+
+concurrency:
+  group: verify-resource-types-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  verify-resource-types:
+    name: Verify resource type copies are in sync
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+
+      - name: Install yq
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+
+      # Re-run the copy step (without bumping the version) to regenerate the
+      # manifest files from the module version pinned in go.mod.
+      - name: Sync resource types from pinned version
+        run: make sync-resource-types
+
+      # If the regenerated files differ from what's committed, the PR has drift.
+      - name: Check for drift
+        run: |
+          if ! git diff --exit-code deploy/manifest/built-in-providers/; then
+            echo ""
+            echo "ERROR: Resource type manifest copies are out of sync with the pinned"
+            echo "resource-types-contrib version in deploy/manifest/defaults.yaml."
+            echo ""
+            echo "Run 'make sync-resource-types' and commit the updated files."
+            exit 1
+          fi
+          echo "Resource type manifest copies are in sync."

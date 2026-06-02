@@ -3,6 +3,7 @@
 # PostgreSQL connection strings - try Docker first, then Homebrew local
 POSTGRES_DOCKER_CONNECTION="postgresql://postgres:radius_pass@localhost:5432/postgres"
 POSTGRES_HOMEBREW_CONNECTION="postgres"
+POSTGRES_CONTAINER_NAME="radius-postgres"
 set -e
 
 # Get the script directory and repository root
@@ -23,29 +24,43 @@ print_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 print_error() { echo -e "${RED}✗${NC} $1"; }
 
 # Helper function to execute PostgreSQL commands with proper connection
+# Tries: 1) local psql with Docker connection, 2) local psql with fallback connection (current user on localhost), 3) docker exec
 psql_exec() {
   local sql="$1"
-  if psql "$POSTGRES_DOCKER_CONNECTION" -c "$sql" >/dev/null 2>&1; then
-    return 0
-  elif psql "$POSTGRES_HOMEBREW_CONNECTION" -c "$sql" >/dev/null 2>&1; then
-    return 0
-  else
-    return 1
+  if command -v psql >/dev/null 2>&1; then
+    if psql "$POSTGRES_DOCKER_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+      return 0
+    elif psql "$POSTGRES_HOMEBREW_CONNECTION" -c "$sql" >/dev/null 2>&1; then
+      return 0
+    fi
   fi
+  if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "$sql" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
 }
 
 # Helper function to determine which PostgreSQL connection is working
 detect_postgres_connection() {
-  if psql "$POSTGRES_DOCKER_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
-    echo "docker"
-    export POSTGRES_WORKING_CONNECTION="$POSTGRES_DOCKER_CONNECTION"
-  elif psql "$POSTGRES_HOMEBREW_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
-    echo "homebrew"
-    export POSTGRES_WORKING_CONNECTION="$POSTGRES_HOMEBREW_CONNECTION"
-  else
-    echo "none"
-    export POSTGRES_WORKING_CONNECTION=""
+  if command -v psql >/dev/null 2>&1; then
+    if psql "$POSTGRES_DOCKER_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+      echo "docker"
+      export POSTGRES_WORKING_CONNECTION="$POSTGRES_DOCKER_CONNECTION"
+      return
+    elif psql "$POSTGRES_HOMEBREW_CONNECTION" -c "SELECT 1;" >/dev/null 2>&1; then
+      echo "homebrew"
+      export POSTGRES_WORKING_CONNECTION="$POSTGRES_HOMEBREW_CONNECTION"
+      return
+    fi
   fi
+  if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1 \
+     && docker port "$POSTGRES_CONTAINER_NAME" 5432/tcp >/dev/null 2>&1; then
+    echo "docker-exec"
+    export POSTGRES_WORKING_CONNECTION=""
+    return
+  fi
+  echo "none"
+  export POSTGRES_WORKING_CONNECTION=""
 }
 
 check_prerequisites() {
@@ -60,15 +75,26 @@ check_prerequisites() {
   command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl -> https://kubernetes.io/docs/tasks/tools/")
   command -v terraform >/dev/null 2>&1 || missing_tools+=("terraform -> https://developer.hashicorp.com/terraform/install")
   if ! command -v psql >/dev/null 2>&1; then
-    missing_tools+=("psql (PostgreSQL client) -> https://www.postgresql.org/download/")
+    if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then
+      if docker port "$POSTGRES_CONTAINER_NAME" 5432/tcp >/dev/null 2>&1; then
+        print_info "PostgreSQL accessible via Docker container ($POSTGRES_CONTAINER_NAME)"
+      else
+        advisory_msgs+=("PostgreSQL running in Docker container '$POSTGRES_CONTAINER_NAME' but port 5432 is not published. Ensure port is published: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
+      fi
+    else
+      advisory_msgs+=("psql client not found and Docker container '$POSTGRES_CONTAINER_NAME' not running. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
+    fi
   else
     postgres_type=$(detect_postgres_connection)
     case $postgres_type in
       "docker")
-        print_info "PostgreSQL accessible via Docker (postgres user)"
+        print_info "PostgreSQL accessible via local psql (Docker connection)"
         ;;
       "homebrew")
         print_info "PostgreSQL accessible via Homebrew (local user)"
+        ;;
+      "docker-exec")
+        print_info "PostgreSQL accessible via Docker container ($POSTGRES_CONTAINER_NAME)"
         ;;
       "none")
         advisory_msgs+=("PostgreSQL not reachable. Quick start: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15")
@@ -150,119 +176,105 @@ mkdir -p "$DEBUG_ROOT/logs"
 
 # Initialize PostgreSQL database if needed
 echo "🗄️  Initializing PostgreSQL database (idempotent)..."
-if command -v psql >/dev/null 2>&1; then
-  # Detect which PostgreSQL connection is working
-  postgres_type=$(detect_postgres_connection)
-  # Manually set the working connection based on the type
-  if [ "$postgres_type" = "docker" ]; then
-    POSTGRES_WORKING_CONNECTION="$POSTGRES_DOCKER_CONNECTION"
-  elif [ "$postgres_type" = "homebrew" ]; then
-    POSTGRES_WORKING_CONNECTION="$POSTGRES_HOMEBREW_CONNECTION"
-  else
-    POSTGRES_WORKING_CONNECTION=""
-  fi
-  if [ "$postgres_type" = "none" ]; then
-    print_error "Cannot connect to PostgreSQL"
-    echo "Troubleshooting:"
-    echo "  - macOS: brew services start postgresql"
-    echo "  - Linux: sudo systemctl start postgresql"
-    echo "  - Or run disposable container: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"
-    echo "Re-run: make debug-start"
-    echo "Docs: docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md#prerequisites"
-    exit 1
-  fi
-  
-  # Create applications_rp user if it doesn't exist
-  if ! psql_exec "CREATE USER applications_rp WITH PASSWORD 'radius_pass';"; then
-    echo "(applications_rp user exists)"
-  else
-    echo "Created user applications_rp"
-  fi
-  if ! psql_exec "CREATE DATABASE applications_rp OWNER applications_rp;"; then
-    echo "(applications_rp database exists)"
-  else
-    echo "Created database applications_rp"
-  fi
-  
-  # Grant privileges
-  psql_exec "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" || true
-  
-  # Create the resources table in applications_rp database using the working connection
-  if [ "$postgres_type" = "docker" ]; then
-    applications_rp_connection=$(echo "$POSTGRES_WORKING_CONNECTION" | sed 's|/postgres$|/applications_rp|')
-  else
-    applications_rp_connection="applications_rp"
-  fi
-  
-  if psql "$applications_rp_connection" -c "
-  CREATE TABLE IF NOT EXISTS resources (
-    id TEXT PRIMARY KEY NOT NULL,
-    original_id TEXT NOT NULL,
-    resource_type TEXT NOT NULL,
-    root_scope TEXT NOT NULL,
-    routing_scope TEXT NOT NULL,
-    etag TEXT NOT NULL,
-    created_at timestamp(6) with time zone DEFAULT CURRENT_TIMESTAMP,
-    resource_data jsonb NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
-  
-  -- Grant table-level permissions to the applications_rp user
-  GRANT ALL PRIVILEGES ON TABLE resources TO applications_rp;
-  GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO applications_rp;
-  "; then
-    echo "✅ applications_rp tables created/verified"
-  else
-    print_warning "Could not verify/create applications_rp tables"
-  fi
-  
-  # Also create UCP database for completeness
-  if ! psql_exec "CREATE USER ucp WITH PASSWORD 'radius_pass';"; then
-    echo "(ucp user exists)"
-  else
-    echo "Created user ucp"
-  fi
-  if ! psql_exec "CREATE DATABASE ucp OWNER ucp;"; then
-    echo "(ucp database exists)"
-  else
-    echo "Created database ucp"
-  fi
-  psql_exec "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" || true
-  
-  # Create the resources table in ucp database using the working connection
-  if [ "$postgres_type" = "docker" ]; then
-    ucp_connection=$(echo "$POSTGRES_WORKING_CONNECTION" | sed 's|/postgres$|/ucp|')
-  else
-    ucp_connection="postgresql://ucp:radius_pass@localhost:5432/ucp"
-  fi
-  
-  if psql "$ucp_connection" -c "
-  CREATE TABLE IF NOT EXISTS resources (
-    id TEXT PRIMARY KEY NOT NULL,
-    original_id TEXT NOT NULL,
-    resource_type TEXT NOT NULL,
-    root_scope TEXT NOT NULL,
-    routing_scope TEXT NOT NULL,
-    etag TEXT NOT NULL,
-    created_at timestamp(6) with time zone DEFAULT CURRENT_TIMESTAMP,
-    resource_data jsonb NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
-  
-  -- Grant table-level permissions to the ucp user
-  GRANT ALL PRIVILEGES ON TABLE resources TO ucp;
-  GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ucp;
-  "; then
-    echo "✅ UCP tables created/verified"
-  else
-    print_warning "Could not verify/create UCP tables"
-  fi
-  
-  print_success "Database initialization complete (idempotent)"
+
+# Detect which PostgreSQL connection is working
+postgres_type=$(detect_postgres_connection)
+# Manually set the working connection based on the type
+if [ "$postgres_type" = "docker" ]; then
+  POSTGRES_WORKING_CONNECTION="$POSTGRES_DOCKER_CONNECTION"
+elif [ "$postgres_type" = "homebrew" ]; then
+  POSTGRES_WORKING_CONNECTION="$POSTGRES_HOMEBREW_CONNECTION"
 else
-  print_error "psql not available - database cannot be initialized"
+  POSTGRES_WORKING_CONNECTION=""
+fi
+
+if [ "$postgres_type" = "none" ]; then
+  print_error "Cannot connect to PostgreSQL"
+  echo "Troubleshooting:"
+  echo "  - Start Docker container: docker run --name radius-postgres -e POSTGRES_PASSWORD=radius_pass -p 5432:5432 -d postgres:15"
+  echo "  - macOS: brew services start postgresql"
+  echo "  - Linux: sudo systemctl start postgresql"
+  echo "Re-run: make debug-start"
+  echo "Docs: docs/contributing/contributing-code/contributing-code-debugging/radius-os-processes-debugging.md#prerequisites"
   exit 1
 fi
+
+# Create applications_rp user if it doesn't exist
+if ! psql_exec "CREATE USER applications_rp WITH PASSWORD 'radius_pass';"; then
+  echo "(applications_rp user exists)"
+else
+  echo "Created user applications_rp"
+fi
+if ! psql_exec "CREATE DATABASE applications_rp OWNER applications_rp;"; then
+  echo "(applications_rp database exists)"
+else
+  echo "Created database applications_rp"
+fi
+
+# Grant privileges
+psql_exec "GRANT ALL PRIVILEGES ON DATABASE applications_rp TO applications_rp;" || true
+
+# Also create UCP database for completeness
+if ! psql_exec "CREATE USER ucp WITH PASSWORD 'radius_pass';"; then
+  echo "(ucp user exists)"
+else
+  echo "Created user ucp"
+fi
+if ! psql_exec "CREATE DATABASE ucp OWNER ucp;"; then
+  echo "(ucp database exists)"
+else
+  echo "Created database ucp"
+fi
+psql_exec "GRANT ALL PRIVILEGES ON DATABASE ucp TO ucp;" || true
+
+# Helper: create the resources table and grant permissions in a given database
+# Usage: init_db_tables <db_name> <db_user>
+init_db_tables() {
+  local db="$1"
+  local db_user="$2"
+  local table_sql="
+CREATE TABLE IF NOT EXISTS resources (
+  id TEXT PRIMARY KEY NOT NULL,
+  original_id TEXT NOT NULL,
+  resource_type TEXT NOT NULL,
+  root_scope TEXT NOT NULL,
+  routing_scope TEXT NOT NULL,
+  etag TEXT NOT NULL,
+  created_at timestamp(6) with time zone DEFAULT CURRENT_TIMESTAMP,
+  resource_data jsonb NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
+GRANT ALL PRIVILEGES ON TABLE resources TO ${db_user};
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${db_user};
+"
+
+  if [ "$postgres_type" = "docker-exec" ]; then
+    docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d "$db" -c "$table_sql"
+  elif [ "$postgres_type" = "docker" ]; then
+    local conn
+    conn=$(echo "$POSTGRES_WORKING_CONNECTION" | sed "s|/postgres\$|/${db}|")
+    psql "$conn" -c "$table_sql"
+  else
+    # Homebrew/local: use bare database name for peer auth compatibility
+    psql "$db" -c "$table_sql"
+  fi
+}
+
+if init_db_tables "applications_rp" "applications_rp"; then
+  echo "✅ applications_rp tables created/verified"
+else
+  print_error "Could not create applications_rp tables - database cannot be initialized"
+  exit 1
+fi
+
+if init_db_tables "ucp" "ucp"; then
+  echo "✅ UCP tables created/verified"
+else
+  print_error "Could not create UCP tables - database cannot be initialized"
+  exit 1
+fi
+
+print_success "Database initialization complete (idempotent)"
 
 # Start UCP with dlv
 echo "Starting UCP with dlv on port 40001..."

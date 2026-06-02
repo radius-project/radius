@@ -45,6 +45,11 @@ on:
 permissions: {}
 
 env:
+  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
+  GOTESTSUM_VER: 1.13.0
+  # yq version
+  YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
   HELM_VER: v3.19.4
   # KinD cluster version
@@ -87,6 +92,9 @@ env:
   GIT_HTTP_PASSWORD: not-a-secret-password
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
+  # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
+  # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
+  BICEP_VER: v0.42.1
 
 jobs:
   changes:
@@ -223,17 +231,30 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
 
+      - name: Install gotestsum (test reporting tool)
+        run: |
+          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
+
       - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: .node-version
+
+      - name: Install yq
+        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         run: |
           make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
 
       - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.name }}_radius_bicep_types
           path: ./hack/bicep-types-radius/generated
@@ -248,6 +269,13 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${{ env.BICEP_VER }}/bicep-linux-x64"
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+
       - name: Publish bicep types
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
@@ -261,9 +289,6 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {
-              "extensibility": true
-            },
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
@@ -431,13 +456,6 @@ jobs:
         run: |
           make publish-test-terraform-recipes
 
-      - name: Setup and verify bicep CLI
-        run: |
-          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
-
       - name: Publish bicep types
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
@@ -457,9 +475,6 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {
-              "extensibility": true
-            },
             "extensions": {
               "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
               "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
@@ -532,7 +547,7 @@ jobs:
           kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
 
       - name: Upload Pod logs for failed tests
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() && steps.radius-logs-events.outcome == 'success'
         with:
           name: ${{ matrix.name }}-radius-pod-logs
@@ -554,7 +569,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -576,7 +591,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
@@ -593,7 +608,7 @@ jobs:
       issues: write
     steps:
       - name: Create failure issue for failing scheduled run
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ github.token }}
           script: |

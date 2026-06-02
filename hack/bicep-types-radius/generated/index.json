@@ -45,14 +45,35 @@
     "Applications.Messaging/rabbitMQQueues@2023-10-01-preview": {
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/55"
     },
+    "Radius.Compute/containers@2025-08-01-preview": {
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/125"
+    },
+    "Radius.Compute/persistentVolumes@2025-08-01-preview": {
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/140"
+    },
+    "Radius.Compute/routes@2025-08-01-preview": {
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/193"
+    },
     "Radius.Core/applications@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/44"
     },
+    "Radius.Core/bicepConfigs@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/66"
+    },
     "Radius.Core/environments@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/67"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/89"
     },
     "Radius.Core/recipePacks@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/89"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/111"
+    },
+    "Radius.Core/terraformConfigs@2025-08-01-preview": {
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/138"
+    },
+    "Radius.Data/mySqlDatabases@2025-08-01-preview": {
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/17"
+    },
+    "Radius.Security/secrets@2025-08-01-preview": {
+      "$ref": "radius/radius.security/2025-08-01-preview/types.json#/22"
     }
   },
   "resourceFunctions": {},

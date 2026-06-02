@@ -68,6 +68,10 @@ Fixes: #<issue>
 
 We **squash** pull-requests as part of the merge process, which means that intermediate commits will have their messages appended. We prefer to have a single commit in the git history for each PR.
 
+## Signing your commits
+
+See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide.
+
 ## Automated tests
 
 Our GitHub Actions workflows will run against your pull request to validate the changes. This will run the unit tests, integration tests, and functional tests.
@@ -86,15 +90,15 @@ If CodeQL fails due to your changes, please work with the maintainers to resolve
 
 ### Spell checking
 
-The PR check workflow runs a spell checker ([pyspelling](https://pypi.org/project/pyspelling/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.github/configs/en-custom.txt) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but pyspelling doesn't know them.
+The PR check workflow runs a spell checker ([cspell](https://cspell.org/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but cspell doesn't know them.
 
-If you install pyspelling locally you can run the spell check on your machine with this command (from the root folder of the repo):
+If you install cspell locally you can run the spell check on your machine with this command (from the root folder of the repo):
 
 ```bash
 make spellcheck
 ```
 
-Note: Pyspelling has a dependency on [Aspell](http://aspell.net/), which must also be present on your system to run pyspelling.
+Note: cspell requires [Node.js](https://nodejs.org/). Install it globally with `npm install -g cspell`.
 
 ## Code review
 
@@ -103,6 +107,28 @@ The maintainers or other contributors will add comments to your pull request giv
 ### Being proactive
 
 It can be helpful for you to comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This will help reviewers focus their attention as well as save them time.
+
+### Optional: self-review with the `radius-code-review` skill
+
+If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
+
+**Prerequisites**
+
+- Authenticated [`gh` CLI](https://cli.github.com/) and [`jq`](https://jqlang.org/) installed locally.
+- One of: the [GitHub Copilot app](https://github.com/features/copilot), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-cli), or VS Code with the [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) extension (with prompt files enabled — see VS Code's [prompt files docs](https://code.visualstudio.com/docs/copilot/copilot-customization#_prompt-files-experimental)).
+
+**Suggested workflow**
+
+1. Push your branch and open the pull request.
+2. Run the skill against your PR using one of:
+   - **GitHub Copilot app**: open Copilot for this repository and ask `Use the radius-code-review skill to review PR #<your-pr-number>.` (or `/radius-code-review Review PR #<your-pr-number>`).
+   - **Copilot CLI** (from the repo root): `/radius-code-review Review PR #<your-pr-number>`
+   - **VS Code Copilot Chat**: type `/radius.code-review` in the chat input; VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt you for the PR number.
+3. Read the generated `pr-analysis-<n>.md` and `pr-review-<n>.md` under `.copilot-tracking/`. Treat the output as a draft, not a verdict.
+4. Apply the fixes you agree with, push the updates, and discard or push back on the suggestions you disagree with.
+5. Do **not** post the AI-generated review to your own PR as-is. The script under `.copilot-tracking/pr-review-<n>.sh` is a starting point if you want to surface specific findings, but a human reviewer's review is still required for merge.
+
+See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md#optional-ai-assisted-review-with-the-radius-code-review-skill) for the reviewer perspective on this skill.
 
 ### Resolving Feedback
 

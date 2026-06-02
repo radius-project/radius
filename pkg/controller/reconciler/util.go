@@ -226,7 +226,7 @@ func fetchResource(ctx context.Context, radius RadiusClient, resourceID string) 
 }
 
 func deleteContainer(ctx context.Context, radius RadiusClient, containerID string) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
-	id, err := resources.Parse(containerID)
+	id, err := parseContainerResourceID(containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -252,8 +252,44 @@ func deleteContainer(ctx context.Context, radius RadiusClient, containerID strin
 	return nil, nil
 }
 
+func makeKubernetesDeploymentResourceID(namespace string, name string) string {
+	return "/planes/kubernetes/local/namespaces/" + namespace + "/providers/apps/Deployment/" + name
+}
+
+func containerHasResourceReference(container *corerpv20231001preview.ContainerResource, expectedResourceID string) bool {
+	if container == nil || container.Properties == nil {
+		return false
+	}
+
+	for _, resource := range container.Properties.Resources {
+		if resource == nil || resource.ID == nil {
+			continue
+		}
+
+		if strings.EqualFold(*resource.ID, expectedResourceID) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func fetchContainerResource(ctx context.Context, radius RadiusClient, containerID string) (corerpv20231001preview.ContainerResource, error) {
+	id, err := parseContainerResourceID(containerID)
+	if err != nil {
+		return corerpv20231001preview.ContainerResource{}, err
+	}
+
+	response, err := radius.Containers(id.RootScope()).Get(ctx, id.Name(), nil)
+	if err != nil {
+		return corerpv20231001preview.ContainerResource{}, err
+	}
+
+	return response.ContainerResource, nil
+}
+
 func createOrUpdateContainer(ctx context.Context, radius RadiusClient, containerID string, properties *corerpv20231001preview.ContainerProperties) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
-	id, err := resources.Parse(containerID)
+	id, err := parseContainerResourceID(containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -282,6 +318,19 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 	}
 
 	return nil, nil
+}
+
+func parseContainerResourceID(containerID string) (resources.ID, error) {
+	id, err := resources.ParseResource(containerID)
+	if err != nil {
+		return resources.ID{}, err
+	}
+
+	if !strings.EqualFold(id.Type(), applicationsCoreContainersResourceType) {
+		return resources.ID{}, fmt.Errorf("resource type %q is not %q", id.Type(), applicationsCoreContainersResourceType)
+	}
+
+	return id, nil
 }
 
 func generateDeploymentResourceName(resourceId string) (string, error) {

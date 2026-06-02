@@ -4,8 +4,9 @@
 
 # Spell checking is not case sensitive
 # Keep word lists in alphabetical order so the file is easier to manage
+---
 import:
-  - ../../cspell.yaml
+  - ../../../../.github/configs/.cspell.yml
 words:
   - kubelet
   - noreuse
@@ -15,4 +16,3 @@ overrides:
     words:
       - ngroups
       - transactionoptimized
-

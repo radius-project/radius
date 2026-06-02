@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -169,20 +168,14 @@ func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) 
 //
 // - '--application' flag
 // - first positional arg
-// - workspace default application
-// - directory config application
 //
 
-// RequireApplicationArgs checks if an application name is provided as an argument, and if not, checks if a default
-// application is set in the workspace. If no application name is provided, it returns an error.
+// RequireApplicationArgs checks if an application name is provided as an argument or via the '--application' flag.
+// If no application name is provided, it returns an error.
 func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
 	applicationName, err := ReadApplicationNameArgs(cmd, args)
 	if err != nil {
 		return "", err
-	}
-
-	if applicationName == "" {
-		applicationName = workspace.DirectoryConfig.Workspace.Application
 	}
 
 	if applicationName == "" {
@@ -193,24 +186,16 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 	return applicationName, nil
 }
 
-// ReadApplicationName reads the application name from the following sources in priority order and returns
+// ReadApplicationName reads the application name from the '--application' flag and returns
 // the empty string if no application is set.
 //
-// - '--application' flag
-// - workspace default application
-// - directory config application
-//
 
-// ReadApplicationName reads the application name from the command line flag and, if not provided, from the workspace
-// configuration. It returns an error if the flag is not set correctly.
+// ReadApplicationName reads the application name from the command line.
+// It returns an error if the flag is not set correctly.
 func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
 	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return "", err
-	}
-
-	if applicationName == "" {
-		applicationName = workspace.DirectoryConfig.Workspace.Application
 	}
 
 	return applicationName, nil
@@ -385,7 +370,7 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 
 // RequireWorkspace reads the workspace name from the command flags, retrieves the workspace from the configuration, and
 // returns it, or a fallback workspace if none is found. It also handles any errors that may occur during the process.
-func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.DirectoryConfig) (*workspaces.Workspace, error) {
+func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Workspace, error) {
 	name, err := cmd.Flags().GetString("workspace")
 	if err != nil {
 		return nil, err
@@ -405,10 +390,6 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.Direct
 	// Lets use the fallback configuration.
 	if ws == nil {
 		ws = workspaces.MakeFallbackWorkspace()
-	}
-
-	if dc != nil {
-		ws.DirectoryConfig = *dc
 	}
 
 	return ws, nil

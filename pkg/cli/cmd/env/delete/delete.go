@@ -31,10 +31,8 @@ import (
 )
 
 const (
-	msgEnvironmentDeleted    = "Environment deleted"
-	msgEnvironmentNotFound   = "Environment '%s' does not exist or has already been deleted."
-	msgDeletingEnvironment   = "Deleting environment %s...\n"
-	msgDeletingResourceCount = "Deleting %d resource(s) in environment %s...\n"
+	msgEnvironmentDeleted  = "Applications.Core/environments/%s deleted"
+	msgEnvironmentNotFound = "Applications.Core/environments/%s not found"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
@@ -101,7 +99,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate takes in a command and a slice of strings and sets the workspace, scope, environment name, confirmation and output
 // format of the runner based on the command and the strings. It returns an error if any of these values cannot be set.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -166,16 +164,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 		if !confirmed {
-			r.Output.LogInfo("Environment %q NOT deleted", r.EnvironmentName)
 			return nil
 		}
 	}
-
-	// Show progress messages
-	if totalResourceCount > 0 {
-		r.Output.LogInfo(msgDeletingResourceCount, totalResourceCount, r.EnvironmentName)
-	}
-	r.Output.LogInfo(msgDeletingEnvironment, r.EnvironmentName)
 
 	deleted, err := client.DeleteEnvironment(ctx, r.EnvironmentName)
 	if err != nil {
@@ -183,7 +174,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if deleted {
-		r.Output.LogInfo(msgEnvironmentDeleted)
+		r.Output.LogInfo(msgEnvironmentDeleted, r.EnvironmentName)
 	} else {
 		r.Output.LogInfo(msgEnvironmentNotFound, r.EnvironmentName)
 	}

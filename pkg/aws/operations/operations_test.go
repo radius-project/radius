@@ -222,7 +222,7 @@ func Test_GeneratePatch(t *testing.T) {
 			},
 		},
 		{
-			"Remove object",
+			"Unspecified properties are preserved (no remove)",
 			map[string]any{
 				"A": map[string]any{
 					"B": map[string]any{
@@ -241,19 +241,7 @@ func Test_GeneratePatch(t *testing.T) {
 					"G": map[string]any{},
 				},
 			},
-			jsondiff.Patch{
-				{
-					Type: "remove",
-					Path: "/A",
-					OldValue: map[string]any{
-						"B": map[string]any{
-							"C": "D",
-							"E": "F",
-						},
-					},
-					Value: nil,
-				},
-			},
+			nil,
 		},
 		{
 			"Updating create-and-write-only property noops",
