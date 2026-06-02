@@ -104,7 +104,7 @@ GitHub Radius uses GitHub's native cloud federation. When a developer asks Copil
 
 **Q14: How does the deployment actually run? Is there a Radius control plane?**
 
-There is no long-running control plane. Synchronous operations the developer expects to happen instantly, such as viewing the application graph or editing application resources, happen in the agent's process and complete in seconds. Asynchronous operations the developer already expects to take minutes, such as building images and provisioning cloud resources, happen in a GitHub Actions runner inside the developer's own repository. The Radius deployment engine runs inside the runner, performs the requested operation, writes status back to the `.radius` branch as it progresses, and exits. The developer's cloud credentials are stored as GitHub environment secrets and never leave GitHub.
+There is no long-running control plane. Synchronous operations the developer expects to happen instantly, such as viewing the application graph or editing application resources, happen in the agent's process and complete in seconds. Asynchronous operations the developer already expects to take minutes, such as building images and provisioning cloud resources, happen in a GitHub Actions runner inside the developer's own repository. The Radius deployment engine runs inside the runner, performs the requested operation, writes status back to Radius data store, and exits. The developer's cloud credentials are stored as GitHub environment secrets and never leave GitHub.
 
 **Q15: Is GitHub Radius idempotent? Does it detect drift?**
 
@@ -144,8 +144,8 @@ In short: Spark is for creating and hosting new lightweight apps on GitHub. Radi
 
 Earlier versions of Radius were delivered as a Kubernetes-hosted control plane with a `rad` CLI as the primary client. That shape is the right fit for enterprise platform teams running shared infrastructure for many developers, and it remains the right option for those teams. GitHub Radius is a different delivery of the same core idea, optimized for individual developers, small teams, and open-source maintainers who are using the Copilot app. Key changes include:
 
-* The Radius control plane (referred to as the Radius deployment engine above for customers) runs ephemerally in a GitHub Actions runner instead of permanently on Kubernetes. 
-* The GitHub Radius data store is a set of JSON files in a Git orphaned branch named `.radius` rather than etcd. 
+* The Radius control plane (referred to as the Radius deployment engine above for customers) runs ephemerally in a GitHub Actions runner instead of permanently on Kubernetes.
+* The GitHub Radius data store is stored within the Git repository and is not tightly bound to the Radius control plane. The exact implementtion of the storage including the file format is left to the technical design.
 * Environments and environment metadata are stored as GitHub Environments and environment variables respectively rather than as Application.Core/environments or Radius.Core/environments resources.
 * Deployments are stored as GitHub Deployments.
 * The Radius CLI is replaced with Copilot and a set of agent skills and associated scripts which read and write from/to the Radius data store (for applications and resources) and GitHub (for environments and deployments).
@@ -162,7 +162,7 @@ We do not have concrete plans to ship Repo Radius as a standalone deployment opt
 
 **Q22: Are applications still being defined using Bicep?**
 
-In GitHub Radius, developers no longer define applications themselves—Copilot is. The file format is used to store the application definition is an implementation detail which will be addressed in the technical design. The only thing to consider is that there must be a migration path from GitHub Radius to Kubernetes-based Radius.
+In GitHub Radius, developers no longer define applications themselves--Copilot does. Along with the overall storage design, the application definition file format will be defined in the technical design. 
 
 **Q23: What new features does GitHub Radius introduce over the Kubernetes-based version?**
 
@@ -173,7 +173,7 @@ GitHub Radius introduces several new capabilities. The following constitutes the
 * **Preview deployments.** The ability to preview the cloud resources that will be created prior to an actual deployment. When previewing a deployment to a specific environment, the user is presented with an application graph which contains the abstract application resources (Radius.Compute/containers, Radius.Data/postgreSqlDatabases, etc.) as well as placeholder cloud resources (Kubernetes Deployment and Service, AWS RDS, Azure PostgreSQL Database Flexible Server, etc.).
 * **Guided credentialing.** Kubernetes-based Radius assumes credentials are configured by a platform engineer using pre-existing credentials or with more advanced workload identity. GitHub Radius walks the developer through OIDC federation setup end-to-end without leaving the conversation.
 * **Credentials are now tied to environments**. In Kubernetes-based Radius, there can be only a single credential for every AWS or Azure environment. Having only a single credential for production and non-production environments is a feature gap. In GitHub Radius, each environment has its own cloud provider credential.
-* **Git-native graph storage.** Kubernetes-based Radius stores state in etcd on a Kubernetes cluster. The `.radius` orphan branch means "clone the repo and you can deploy" — no external state store to provision. This also enables auditable history via git diff.
+* **Git-native graph storage.** Kubernetes-based Radius stores state in etcd on a Kubernetes cluster. GitHub Radius stores its applicaion graph external to the control plane within the Git repository.
 * **Deployment to external EKS and AKS clusters**. Because GitHub Radius no longer runs as a perpetually-running Kubernetes-hosted control plane, GitHub Radius has the ability to deploy to an EKS or AKS cluster other than its host.
 
 **Q24: Once GitHub Radius launches, what are the fast-follow features?**
