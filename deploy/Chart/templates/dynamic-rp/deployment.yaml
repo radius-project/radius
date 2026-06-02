@@ -39,11 +39,13 @@ spec:
       hostUsers: false
       {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # fsGroup 65532 lets the dynamic-rp container (UID 65532) read
-      # the buildctl binary copied into the shared emptyDir by the
-      # buildctl-init init container.
+      # fsGroup 65532 lets the dynamic-rp container (UID 65532) and the
+      # buildctl-init init container share the buildctl-bin emptyDir.
+      # supplementalGroups grants buildkitd (UID 1000) access to its
+      # state volume after the fsGroup chown.
       securityContext:
         fsGroup: 65532
+        supplementalGroups: [65532]
       {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
@@ -197,9 +199,6 @@ spec:
         # buildctl dials buildkitd over loopback TCP.
         - name: BUILDKIT_HOST
           value: "tcp://127.0.0.1:1234"
-        # buildctl lives in the mounted emptyDir.
-        - name: PATH
-          value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/buildctl"
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
@@ -229,9 +228,13 @@ spec:
           mountPath: /var/secrets/encryption
           readOnly: true
         {{- if .Values.dynamicrp.buildkit.enabled }}
-        # buildctl binary copied by the buildctl-init init container.
+        # Mount the single buildctl file (copied by buildctl-init into
+        # the shared emptyDir) at a path already on the dynamic-rp
+        # image's PATH. Uses subPath so we mount the file alone instead
+        # of shadowing /usr/local/bin with an emptyDir.
         - name: buildctl-bin
-          mountPath: /buildctl
+          mountPath: /usr/local/bin/buildctl
+          subPath: buildctl
           readOnly: true
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
