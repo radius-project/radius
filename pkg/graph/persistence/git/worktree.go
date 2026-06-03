@@ -158,9 +158,12 @@ func (w *StateWorktree) Remove(ctx context.Context) {
 
 // commit stages all changes in the worktree and creates a commit.
 func (w *StateWorktree) commit(ctx context.Context, msg string) error {
-	// Configure committer identity for CI environments.
-	_ = gitExecIn(ctx, w.Path, "config", "user.name", "github-actions[bot]")
-	_ = gitExecIn(ctx, w.Path, "config", "user.email", "github-actions[bot]@users.noreply.github.com")
+	// Set a fallback committer identity when the environment does not
+	// already provide one.
+	if !hasGitIdentity(ctx, w.Path) {
+		_ = gitExecIn(ctx, w.Path, "config", "user.name", "github-actions[bot]")
+		_ = gitExecIn(ctx, w.Path, "config", "user.email", "github-actions[bot]@users.noreply.github.com")
+	}
 
 	if err := gitExecIn(ctx, w.Path, "add", "-A"); err != nil {
 		return fmt.Errorf("failed to stage state files: %w", err)
@@ -292,4 +295,28 @@ func gitExecIn(ctx context.Context, dir string, args ...string) error {
 		return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, stderr.String())
 	}
 	return nil
+}
+
+// hasGitIdentity reports whether both user.name and user.email are configured
+// (in any of: worktree, repo-local, global, system, or environment). When
+// either is missing, the caller should fall back to a bot identity so that
+// commits do not fail in environments such as CI where no user is configured.
+func hasGitIdentity(ctx context.Context, dir string) bool {
+	return gitConfigGet(ctx, dir, "user.name") != "" &&
+		gitConfigGet(ctx, dir, "user.email") != ""
+}
+
+// gitConfigGet returns the trimmed value of a git config key, or an empty
+// string if the key is unset or git fails. It uses `git config` (not
+// `--get-all`) so the standard precedence (env > worktree > local > global
+// > system) is honored.
+func gitConfigGet(ctx context.Context, dir, key string) string {
+	cmd := exec.CommandContext(ctx, "git", "config", "--get", key)
+	cmd.Dir = dir
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(stdout.String())
 }
