@@ -17,8 +17,14 @@ limitations under the License.
 package helm
 
 import (
+	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 func TestBuildContourValues_HostNetworkEnabled(t *testing.T) {
@@ -66,4 +72,63 @@ func TestBuildContourValues_HostNetworkDisabled_ReturnsEmpty(t *testing.T) {
 	if len(values) != 0 {
 		t.Errorf("expected empty values map when HostNetwork is false, got: %v", values)
 	}
+}
+
+func Test_prepareContourChart_LoadChartError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("bad-contour-chart").Return(nil, errors.New("chart not found")).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := ContourChartOptions{
+		ChartOptions: ChartOptions{
+			Namespace: "radius-system",
+			ChartPath: "bad-contour-chart",
+		},
+	}
+
+	_, _, _, err := prepareContourChart(helmAction, options, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load Helm chart")
+}
+
+func Test_prepareContourChart_DoesNotMutateChartValues(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	helmChart := &chart.Chart{
+		Values: map[string]any{
+			"envoy": map[string]any{
+				"existing": "default-value",
+			},
+		},
+	}
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("test-contour-chart").Return(helmChart, nil).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := ContourChartOptions{
+		ChartOptions: ChartOptions{
+			Namespace: "radius-system",
+			ChartPath: "test-contour-chart",
+		},
+		HostNetwork: true,
+	}
+
+	_, _, values, err := prepareContourChart(helmAction, options, "")
+	require.NoError(t, err)
+
+	// Verify that user values contain HostNetwork overrides
+	envoy, ok := values["envoy"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, envoy["hostNetwork"])
+
+	// Verify that helmChart.Values remains unchanged
+	chartEnvoy, ok := helmChart.Values["envoy"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "default-value", chartEnvoy["existing"])
+	_, hasHostNetwork := chartEnvoy["hostNetwork"]
+	assert.False(t, hasHostNetwork, "prepareContourChart must not mutate helmChart.Values")
 }
