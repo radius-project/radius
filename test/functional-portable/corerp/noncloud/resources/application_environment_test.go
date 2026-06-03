@@ -34,12 +34,12 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-app-env-env",
-						Type: validation.CoreEnvironmentsResource,
-					},
-					{
 						Name: "corerp-resources-app-env-app",
 						Type: validation.CoreApplicationsResource,
+					},
+					{
+						Name: "corerp-resources-app-env-env",
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},
