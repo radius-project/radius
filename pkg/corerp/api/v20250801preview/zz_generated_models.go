@@ -47,6 +47,20 @@ type ApplicationGraphResource struct {
 
 	// REQUIRED; The resource type.
 	Type *string
+
+	// Reference to the line in the application definition (Bicep file) where this resource is declared. Format: '#L'. Populated
+	// for modeled and planned graphs; absent for deployed graphs that have no source
+	// available.
+	AppDefinitionLine *string
+
+	// Optional reference to the source code or directory associated with this resource (e.g. the path to a container's source).
+	// Populated by tooling that builds modeled or planned graphs from a repository.
+	CodeReference *string
+
+	// Stable hash over the authorable properties of this resource (excluding application/environment) and its sorted dependsOn
+	// list. Used by tooling to classify resources as added, removed, modified, or
+	// unchanged across graphs. Format: 'sha256:'.
+	DiffHash *string
 }
 
 // ApplicationGraphResponse - Describes the application architecture and its dependencies.
