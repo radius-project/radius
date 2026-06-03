@@ -45,6 +45,9 @@ func initTestRepo(t *testing.T) string {
 	if testing.Short() {
 		t.Skip("skipping git-backed test in -short mode")
 	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("skipping git-backed test: git binary not found in PATH")
+	}
 
 	dir := t.TempDir()
 
