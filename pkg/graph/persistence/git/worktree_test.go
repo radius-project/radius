@@ -42,6 +42,10 @@ func runGit(t *testing.T, dir string, args ...string) string {
 func initTestRepo(t *testing.T) string {
 	t.Helper()
 
+	if testing.Short() {
+		t.Skip("skipping git-backed test in -short mode")
+	}
+
 	dir := t.TempDir()
 
 	for _, args := range [][]string{
