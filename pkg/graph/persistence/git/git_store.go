@@ -66,12 +66,12 @@ func NewStore(opts Options) (*Store, error) {
 	return &Store{branch: branch}, nil
 }
 
-// Save commits graph to the configured orphan branch under pathFor(key).
+// Save commits graph to the configured orphan branch under constructPathForKey(key).
 func (s *Store) Save(ctx context.Context, key persistence.Key, graph *corerpv20250801preview.ApplicationGraphResponse, opts persistence.SaveOptions) error {
 	if graph == nil {
 		return errors.New("git: nil graph")
 	}
-	path, err := pathForKey(key)
+	path, err := constructPathForKey(key)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, graph *corerpv202
 
 // Load returns the graph previously stored under key, or persistence.ErrNotFound.
 func (s *Store) Load(ctx context.Context, key persistence.Key) (*corerpv20250801preview.ApplicationGraphResponse, error) {
-	path, err := pathForKey(key)
+	path, err := constructPathForKey(key)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 
 // Delete removes the file for key and commits the deletion.
 func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
-	path, err := pathForKey(key)
+	path, err := constructPathForKey(key)
 	if err != nil {
 		return err
 	}
@@ -206,28 +206,42 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 	return wt.CommitAndPush(ctx, msg)
 }
 
-// pathFor returns the in-repo relative path used to store a graph for key.
-// Callers handling untrusted Key values should use pathForKey, which
-// additionally validates Namespace and Name.
-func pathFor(key persistence.Key) string {
-	return fmt.Sprintf("%s/%s.json", key.Namespace, key.Name)
+// constructPathForKey returns the in-repo relative path used to store a
+// graph for key, after validating that Key.Namespace and Key.Name are safe
+// to embed in a path. The resulting path is always rooted under a single
+// namespace directory on the branch:
+//
+//	<namespace>/<name>.json
+func constructPathForKey(key persistence.Key) (string, error) {
+	if err := validateKeyPart("namespace", key.Namespace); err != nil {
+		return "", err
+	}
+	if err := validateKeyPart("name", key.Name); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s.json", key.Namespace, key.Name), nil
 }
 
-// pathForKey is pathFor with a check that Key.Namespace and Key.Name are
-// non-empty so that the resulting path is always rooted under a namespace
-// directory on the branch.
-func pathForKey(key persistence.Key) (string, error) {
-	if key.Namespace == "" {
-		return "", errors.New("git: key namespace must not be empty")
+// validateKeyPart rejects empty values and any value that could escape the
+// intended namespace directory (path separators, parent-directory tokens, or
+// embedded NUL bytes). The field name is included in the error so callers
+// can tell which part of the key was invalid.
+func validateKeyPart(field, value string) error {
+	switch {
+	case value == "":
+		return fmt.Errorf("git: key %s must not be empty", field)
+	case value == "." || value == "..":
+		return fmt.Errorf("git: key %s must not be %q (path traversal)", field, value)
+	case strings.ContainsAny(value, `/\`):
+		return fmt.Errorf("git: key %s must not contain path separators", field)
+	case strings.Contains(value, "\x00"):
+		return fmt.Errorf("git: key %s must not contain NUL bytes", field)
 	}
-	if key.Name == "" {
-		return "", errors.New("git: key name must not be empty")
-	}
-	return pathFor(key), nil
+	return nil
 }
 
-// keyFromPath inverts pathFor for a relative posix path of the form
-// "<namespace>/<name>.json".
+// keyFromPath inverts constructPathForKey for a relative posix path of
+// the form "<namespace>/<name>.json".
 func keyFromPath(rel string) persistence.Key {
 	parts := strings.Split(rel, "/")
 	if len(parts) == 2 {

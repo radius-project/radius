@@ -47,12 +47,6 @@ func TestNewStore_HonorsBranch(t *testing.T) {
 	assert.Equal(t, "custom", s.branch)
 }
 
-func TestPathFor(t *testing.T) {
-	t.Parallel()
-
-	assert.Equal(t, "main/app.json", pathFor(persistence.Key{Namespace: "main", Name: "app"}))
-}
-
 func TestKeyFromPath(t *testing.T) {
 	t.Parallel()
 
@@ -203,7 +197,7 @@ func TestStore_ListMissingNamespaceReturnsEmpty(t *testing.T) {
 	assert.Empty(t, got)
 }
 
-func TestPathForKey_RejectsEmptyNamespaceOrName(t *testing.T) {
+func TestConstructPathForKey_RejectsEmptyNamespaceOrName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -217,16 +211,44 @@ func TestPathForKey_RejectsEmptyNamespaceOrName(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := pathForKey(tc.key)
+			_, err := constructPathForKey(tc.key)
 			require.Error(t, err)
 		})
 	}
 }
 
-func TestPathForKey_AcceptsValidKey(t *testing.T) {
+func TestConstructPathForKey_RejectsTraversalAndSeparators(t *testing.T) {
 	t.Parallel()
 
-	got, err := pathForKey(persistence.Key{Namespace: "main", Name: "app"})
+	tests := []struct {
+		name string
+		key  persistence.Key
+	}{
+		{name: "namespace dot-dot", key: persistence.Key{Namespace: "..", Name: "n"}},
+		{name: "name dot-dot", key: persistence.Key{Namespace: "ns", Name: ".."}},
+		{name: "namespace dot", key: persistence.Key{Namespace: ".", Name: "n"}},
+		{name: "name dot", key: persistence.Key{Namespace: "ns", Name: "."}},
+		{name: "namespace forward slash", key: persistence.Key{Namespace: "a/b", Name: "n"}},
+		{name: "name forward slash", key: persistence.Key{Namespace: "ns", Name: "a/b"}},
+		{name: "namespace backslash", key: persistence.Key{Namespace: `a\b`, Name: "n"}},
+		{name: "name backslash", key: persistence.Key{Namespace: "ns", Name: `a\b`}},
+		{name: "namespace NUL", key: persistence.Key{Namespace: "a\x00b", Name: "n"}},
+		{name: "name NUL", key: persistence.Key{Namespace: "ns", Name: "a\x00b"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := constructPathForKey(tc.key)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestConstructPathForKey_AcceptsValidKey(t *testing.T) {
+	t.Parallel()
+
+	got, err := constructPathForKey(persistence.Key{Namespace: "main", Name: "app"})
 	require.NoError(t, err)
 	assert.Equal(t, "main/app.json", got)
 }
