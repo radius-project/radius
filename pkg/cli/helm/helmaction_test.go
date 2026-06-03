@@ -244,160 +244,160 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 }
 
 func Test_ApplyHelmChart_InstallError(t *testing.T) {
-ctrl := gomock.NewController(t)
-defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-mockHelmClient := NewMockHelmClient(ctrl)
-helmAction := NewHelmAction(mockHelmClient)
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
 
-helmConf := &helm.Configuration{}
-helmChart := &chart.Chart{}
-vals := map[string]any{"key": "value"}
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
 
-// QueryRelease: not installed
-mockHelmClient.EXPECT().
-RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
-Return(nil, driver.ErrReleaseNotFound).Times(1)
+	// QueryRelease: not installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(nil, driver.ErrReleaseNotFound).Times(1)
 
-// Install returns an error
-mockHelmClient.EXPECT().
-RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true).
-Return(nil, errors.New("install failed")).Times(1)
+	// Install returns an error
+	mockHelmClient.EXPECT().
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true).
+		Return(nil, errors.New("install failed")).Times(1)
 
-err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
-ReleaseName: "myrelease",
-Namespace:   "myns",
-Wait:        true,
-}, vals)
-require.Error(t, err)
-assert.Contains(t, err.Error(), "failed to run Helm install")
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run Helm install")
 }
 
 func Test_ApplyHelmChart_ReinstallPath(t *testing.T) {
-ctrl := gomock.NewController(t)
-defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-mockHelmClient := NewMockHelmClient(ctrl)
-helmAction := NewHelmAction(mockHelmClient)
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
 
-helmConf := &helm.Configuration{}
-helmChart := &chart.Chart{}
-vals := map[string]any{"key": "value"}
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
 
-existingRelease := &release.Release{
-Name:  "myrelease",
-Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-Info:  &release.Info{Status: release.StatusDeployed},
-}
+	existingRelease := &release.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &release.Info{Status: release.StatusDeployed},
+	}
 
-// QueryRelease: already installed
-mockHelmClient.EXPECT().
-RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
-Return(existingRelease, nil).Times(1)
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
 
-// Reinstall triggers upgrade with reuseValues=true
-mockHelmClient.EXPECT().
-RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
-Return(existingRelease, nil).Times(1)
+	// Reinstall triggers upgrade with reuseValues=true
+	mockHelmClient.EXPECT().
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
+		Return(existingRelease, nil).Times(1)
 
-err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
-ReleaseName: "myrelease",
-Namespace:   "myns",
-Wait:        true,
-Reinstall:   true,
-}, vals)
-require.NoError(t, err)
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   true,
+	}, vals)
+	require.NoError(t, err)
 }
 
 func Test_ApplyHelmChart_ReinstallError(t *testing.T) {
-ctrl := gomock.NewController(t)
-defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-mockHelmClient := NewMockHelmClient(ctrl)
-helmAction := NewHelmAction(mockHelmClient)
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
 
-helmConf := &helm.Configuration{}
-helmChart := &chart.Chart{}
-vals := map[string]any{"key": "value"}
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
 
-existingRelease := &release.Release{
-Name:  "myrelease",
-Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-Info:  &release.Info{Status: release.StatusDeployed},
-}
+	existingRelease := &release.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &release.Info{Status: release.StatusDeployed},
+	}
 
-// QueryRelease: already installed
-mockHelmClient.EXPECT().
-RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
-Return(existingRelease, nil).Times(1)
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
 
-// Reinstall triggers upgrade but fails
-mockHelmClient.EXPECT().
-RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
-Return(nil, errors.New("upgrade failed")).Times(1)
+	// Reinstall triggers upgrade but fails
+	mockHelmClient.EXPECT().
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
+		Return(nil, errors.New("upgrade failed")).Times(1)
 
-err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
-ReleaseName: "myrelease",
-Namespace:   "myns",
-Wait:        true,
-Reinstall:   true,
-}, vals)
-require.Error(t, err)
-assert.Contains(t, err.Error(), "failed to run Helm upgrade")
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   true,
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run Helm upgrade")
 }
 
 func Test_ApplyHelmChart_AlreadyInstalled_NoReinstall(t *testing.T) {
-ctrl := gomock.NewController(t)
-defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-mockHelmClient := NewMockHelmClient(ctrl)
-helmAction := NewHelmAction(mockHelmClient)
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
 
-helmConf := &helm.Configuration{}
-helmChart := &chart.Chart{}
-vals := map[string]any{"key": "value"}
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
 
-existingRelease := &release.Release{
-Name:  "myrelease",
-Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-Info:  &release.Info{Status: release.StatusDeployed},
-}
+	existingRelease := &release.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &release.Info{Status: release.StatusDeployed},
+	}
 
-// QueryRelease: already installed
-mockHelmClient.EXPECT().
-RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
-Return(existingRelease, nil).Times(1)
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
 
-// No install or upgrade should be called
-err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
-ReleaseName: "myrelease",
-Namespace:   "myns",
-Wait:        true,
-Reinstall:   false,
-}, vals)
-require.NoError(t, err)
+	// No install or upgrade should be called
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   false,
+	}, vals)
+	require.NoError(t, err)
 }
 
 func Test_ApplyHelmChart_QueryReleaseError(t *testing.T) {
-ctrl := gomock.NewController(t)
-defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-mockHelmClient := NewMockHelmClient(ctrl)
-helmAction := NewHelmAction(mockHelmClient)
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
 
-helmConf := &helm.Configuration{}
-helmChart := &chart.Chart{}
-vals := map[string]any{}
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{}
 
-// QueryRelease returns an error (not ErrReleaseNotFound)
-mockHelmClient.EXPECT().
-RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
-Return(nil, errors.New("connection refused")).Times(1)
+	// QueryRelease returns an error (not ErrReleaseNotFound)
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(nil, errors.New("connection refused")).Times(1)
 
-err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
-ReleaseName: "myrelease",
-Namespace:   "myns",
-}, vals)
-require.Error(t, err)
-assert.Contains(t, err.Error(), "failed to query Helm release")
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to query Helm release")
 }
