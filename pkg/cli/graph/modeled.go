@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 )
@@ -32,7 +33,6 @@ import (
 const (
 	defaultPlane             = "local"
 	defaultResourceGroup     = "default"
-	provisioningNotSpecified = "NotSpecified"
 	applicationsResourceType = "Applications.Core/applications"
 	environmentsResourceType = "Applications.Core/environments"
 	recipePacksResourceType  = "Radius.Core/recipePacks"
@@ -55,17 +55,13 @@ var resourceIDExpression = regexp.MustCompile(`^\[resourceId\(([^)]*)\)\]$`)
 // each resource. It does not contain output resources or runtime status —
 // those are only available for planned and deployed graphs.
 func BuildModeledGraph(template map[string]any) (*corerpv20250801preview.ApplicationGraphResponse, error) {
-	rawResources, ok := template["resources"].([]any)
-	if !ok {
+	rawResources := collectResources(template["resources"])
+	if rawResources == nil {
 		return emptyGraph(), nil
 	}
 
 	graphResources := make([]*corerpv20250801preview.ApplicationGraphResource, 0, len(rawResources))
-	for _, raw := range rawResources {
-		entry, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
+	for _, entry := range rawResources {
 		resource, err := buildModeledResource(entry)
 		if err != nil {
 			return nil, err
@@ -79,6 +75,158 @@ func BuildModeledGraph(template map[string]any) (*corerpv20250801preview.Applica
 	graph := &corerpv20250801preview.ApplicationGraphResponse{Resources: graphResources}
 	addInboundConnections(graph)
 	return graph, nil
+}
+
+// collectResources normalizes the "resources" section of an ARM JSON
+// template into a slice of resource entries in the classic (flat) shape
+// expected by buildModeledResource. Bicep emits two layouts:
+//
+//   - languageVersion 1.x: an array of entries, each with top-level
+//     "type", "name", and "properties".
+//   - languageVersion 2.0 (symbolic-name codegen): an object keyed by
+//     symbolic name. Each entry's "type" includes the API version suffix
+//     ("Foo/bar@2024-01-01"), the resource's name and authored properties
+//     are nested under "properties.name" / "properties.properties", and
+//     "dependsOn" plus connection "[reference('sym').id]" expressions
+//     refer to other resources by symbolic name.
+//
+// In the symbolic case we strip the @version, hoist the inner properties,
+// and rewrite symbolic references to the equivalent
+// [resourceId('TYPE', 'NAME')] form so the rest of the pipeline (and the
+// stable diff hash) is independent of codegen mode.
+func collectResources(raw any) []map[string]any {
+	switch v := raw.(type) {
+	case []any:
+		out := make([]map[string]any, 0, len(v))
+		for _, item := range v {
+			if entry, ok := item.(map[string]any); ok {
+				out = append(out, entry)
+			}
+		}
+		return out
+	case map[string]any:
+		symbols := buildSymbolTable(v)
+		out := make([]map[string]any, 0, len(v))
+		for _, item := range v {
+			entry, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			out = append(out, normalizeSymbolicEntry(entry, symbols))
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+// symbolicReference matches a reference() expression that points to a
+// resource by symbolic name in languageVersion 2.0 templates.
+var symbolicReference = regexp.MustCompile(`^\[reference\('([^']+)'\)\.[^\]]+\]$`)
+
+// symbolEntry holds the version-stripped resource type and authored name
+// for a single symbolic-name entry.
+type symbolEntry struct {
+	resourceType string
+	name         string
+}
+
+func buildSymbolTable(resources map[string]any) map[string]symbolEntry {
+	table := make(map[string]symbolEntry, len(resources))
+	for symbol, item := range resources {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		typeWithVersion, _ := entry["type"].(string)
+		wrapper, _ := entry["properties"].(map[string]any)
+		name, _ := wrapper["name"].(string)
+		table[symbol] = symbolEntry{
+			resourceType: stripAPIVersion(typeWithVersion),
+			name:         name,
+		}
+	}
+	return table
+}
+
+func normalizeSymbolicEntry(entry map[string]any, symbols map[string]symbolEntry) map[string]any {
+	resourceType := stripAPIVersion(stringAt(entry, "type"))
+	wrapper, _ := entry["properties"].(map[string]any)
+	name, _ := wrapper["name"].(string)
+	innerProps, _ := wrapper["properties"].(map[string]any)
+	rewriteSymbolicConnections(innerProps, symbols)
+
+	rawDeps, _ := entry["dependsOn"].([]any)
+	newDeps := make([]any, 0, len(rawDeps))
+	for _, d := range rawDeps {
+		s, ok := d.(string)
+		if !ok {
+			continue
+		}
+		if sym, ok := symbols[s]; ok && sym.resourceType != "" && sym.name != "" {
+			newDeps = append(newDeps, fmt.Sprintf("[resourceId('%s', '%s')]", sym.resourceType, sym.name))
+			continue
+		}
+		newDeps = append(newDeps, s)
+	}
+
+	return map[string]any{
+		"type":       resourceType,
+		"name":       name,
+		"properties": innerProps,
+		"dependsOn":  newDeps,
+	}
+}
+
+// rewriteSymbolicConnections rewrites each connection's "source" expression
+// from [reference('sym').id] (or .properties.id) to the equivalent
+// [resourceId('TYPE','NAME')] form, in place.
+func rewriteSymbolicConnections(properties map[string]any, symbols map[string]symbolEntry) {
+	if properties == nil {
+		return
+	}
+	connections, ok := properties["connections"].(map[string]any)
+	if !ok {
+		return
+	}
+	for _, raw := range connections {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		source, ok := entry["source"].(string)
+		if !ok {
+			continue
+		}
+		matches := symbolicReference.FindStringSubmatch(source)
+		if len(matches) != 2 {
+			continue
+		}
+		sym, ok := symbols[matches[1]]
+		if !ok || sym.resourceType == "" || sym.name == "" {
+			continue
+		}
+		entry["source"] = fmt.Sprintf("[resourceId('%s', '%s')]", sym.resourceType, sym.name)
+	}
+}
+
+// stripAPIVersion removes the trailing "@version" suffix from an ARM type
+// string. languageVersion 2.0 emits types as "Foo/bar@2024-01-01" while
+// the classic codegen uses a separate "apiVersion" field; the modeled
+// graph stores only the bare type.
+func stripAPIVersion(t string) string {
+	if i := strings.IndexByte(t, '@'); i >= 0 {
+		return t[:i]
+	}
+	return t
+}
+
+func stringAt(m map[string]any, key string) string {
+	if m == nil {
+		return ""
+	}
+	s, _ := m[key].(string)
+	return s
 }
 
 // buildModeledResource converts a single ARM JSON resource entry into an
@@ -111,7 +259,7 @@ func buildModeledResource(entry map[string]any) (*corerpv20250801preview.Applica
 		ID:                to.Ptr(buildResourceID(resourceType, name)),
 		Name:              to.Ptr(name),
 		Type:              to.Ptr(resourceType),
-		ProvisioningState: to.Ptr(provisioningNotSpecified),
+		ProvisioningState: to.Ptr(string(v1.ProvisioningStateNotSpecified)),
 		Connections:       outboundConnections(properties),
 		OutputResources:   []*corerpv20250801preview.ApplicationGraphOutputResource{},
 		DiffHash:          to.Ptr(hash),

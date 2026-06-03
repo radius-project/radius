@@ -25,7 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	"github.com/radius-project/radius/pkg/graph/persistence/git"
+	gitstore "github.com/radius-project/radius/pkg/graph/persistence/git"
 	"github.com/spf13/cobra"
 )
 
@@ -99,6 +99,11 @@ type Runner struct {
 	BicepFilePath string
 
 	Format string
+
+	// GraphStore persists modeled graphs to the radius-graph orphan branch
+	// when running in repo-radius mode. Defaulted in NewRunner; tests may
+	// substitute a mock implementation.
+	GraphStore persistence.Store
 }
 
 // NewRunner creates a new instance of the `rad app graph` runner.
@@ -108,6 +113,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		Output:            factory.GetOutput(),
 		ConnectionFactory: factory.GetConnectionFactory(),
 		Bicep:             factory.GetBicep(),
+		GraphStore:        factory.GetGraphStore(),
 	}
 }
 
@@ -255,7 +261,11 @@ func (r *Runner) writeToLocalFile(graph *corerpv20250801preview.ApplicationGraph
 	if err := os.WriteFile(defaultModeledGraphFile, data, 0o644); err != nil {
 		return fmt.Errorf("write modeled graph to %q: %w", defaultModeledGraphFile, err)
 	}
-	r.Output.LogInfo("Parsed %d resources. Wrote modeled graph to %s", len(graph.Resources), defaultModeledGraphFile)
+	absPath, err := filepath.Abs(defaultModeledGraphFile)
+	if err != nil {
+		absPath = defaultModeledGraphFile
+	}
+	r.Output.LogInfo("Parsed %d resources. Wrote modeled graph to %s", len(graph.Resources), absPath)
 	return nil
 }
 
@@ -267,19 +277,18 @@ func (r *Runner) persistToOrphanBranch(ctx context.Context, graph *corerpv202508
 		return clierrors.Message("Cannot determine source branch from GITHUB_HEAD_REF or GITHUB_REF_NAME; cannot persist modeled graph.")
 	}
 
-	store, err := git.NewStore(git.Options{})
-	if err != nil {
-		return fmt.Errorf("initialize git graph store: %w", err)
+	if r.GraphStore == nil {
+		return clierrors.Message("Modeled graph store is not configured.")
 	}
 
 	key := persistence.Key{Namespace: branch, Name: modeledGraphKeyName}
 	opts := persistence.SaveOptions{
 		Message: fmt.Sprintf("radius: update modeled graph for %s", branch),
 	}
-	if err := store.Save(ctx, key, graph, opts); err != nil {
-		return fmt.Errorf("commit modeled graph to %s branch: %w", git.DefaultGraphBranch, err)
+	if err := r.GraphStore.Save(ctx, key, graph, opts); err != nil {
+		return fmt.Errorf("commit modeled graph to %s branch: %w", gitstore.DefaultGraphBranch, err)
 	}
 
-	r.Output.LogInfo("Parsed %d resources. Committed %s/%s.json to branch %s", len(graph.Resources), branch, modeledGraphKeyName, git.DefaultGraphBranch)
+	r.Output.LogInfo("Parsed %d resources. Committed %s/%s.json to branch %s", len(graph.Resources), branch, modeledGraphKeyName, gitstore.DefaultGraphBranch)
 	return nil
 }
