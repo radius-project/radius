@@ -108,6 +108,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/graph/persistence/git"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -254,6 +255,7 @@ func init() {
 }
 
 func initSubCommands() {
+	graphStore, _ := git.NewStore(git.Options{})
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
 			FileSystem: filesystem.OSFileSystem{},
@@ -277,6 +279,7 @@ func initSubCommands() {
 		NamespaceInterface: &namespace.Impl{},
 		AWSClient:          aws.NewClient(),
 		AzureClient:        azure.NewClient(),
+		GraphStore:         graphStore,
 	}
 
 	deployCmd, _ := cmd_deploy.NewCommand(framework)
