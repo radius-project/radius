@@ -141,12 +141,10 @@ func TestStore_DeleteMissingKeyReturnsErrNotFound(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
 	err = s.Delete(context.Background(), persistence.Key{Namespace: "ns", Name: "missing"})
-	_ = ctx
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, persistence.ErrNotFound))
 }
