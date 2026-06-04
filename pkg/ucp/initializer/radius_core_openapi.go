@@ -19,6 +19,7 @@ package initializer
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/manifest"
@@ -236,8 +237,6 @@ func resolveOpenAPIValue(value any, definitions map[string]map[string]any, resol
 // cloneMap returns a shallow copy so unresolved external refs are not mutated while local refs expand.
 func cloneMap(value map[string]any) map[string]any {
 	result := map[string]any{}
-	for key, child := range value {
-		result[key] = child
-	}
+	maps.Copy(result, value)
 	return result
 }

@@ -19,6 +19,7 @@ package initializer
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -107,9 +108,7 @@ func (w *Service) Run(ctx context.Context) error {
 				return fmt.Errorf("duplicate resource type %s/%s found in multiple manifest files", rp.Namespace, typeName)
 			}
 		}
-		for typeName, resourceType := range rp.Types {
-			existing.Types[typeName] = resourceType
-		}
+		maps.Copy(existing.Types, rp.Types)
 
 		// Preserve location from whichever file specifies one. If multiple
 		// files set a location, the later file wins.
