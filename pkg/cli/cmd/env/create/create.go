@@ -85,7 +85,6 @@ rad env create myenv --aws-region <region> --aws-account-id <account-id>
 	commonflags.AddAWSRegionFlag(cmd)
 	commonflags.AddAWSAccountFlag(cmd)
 	cmd.MarkFlagsRequiredTogether(commonflags.AWSRegionFlag, commonflags.AWSAccountIdFlag)
-	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }

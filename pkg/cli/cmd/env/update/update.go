@@ -93,7 +93,6 @@ rad env update myenv --kubernetes-namespace mynamespace
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
-	commonflags.AddOutputFlag(cmd)
 	//TODO: https://github.com/radius-project/radius/issues/5247
 	commonflags.AddEnvironmentNameFlag(cmd)
 

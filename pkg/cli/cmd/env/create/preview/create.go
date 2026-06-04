@@ -80,7 +80,6 @@ rad env create myenv --kubernetes-namespace mynamespace
 	commonflags.AddNamespaceFlag(cmd)
 	commonflags.MarkNamespaceFlagDeprecated(cmd)
 	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
-	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }
