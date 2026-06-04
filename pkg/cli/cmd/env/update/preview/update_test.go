@@ -134,11 +134,10 @@ func Test_ValidateRecipePackParsing(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create command
 			cmd := &cobra.Command{}
-			// Validate uses cli.RequireWorkspace / RequireScope / RequireOutput,
+			// Validate uses cli.RequireWorkspace / RequireScope,
 			// which expect these flags to be defined on the command.
 			commonflags.AddWorkspaceFlag(cmd)
 			commonflags.AddResourceGroupFlag(cmd)
-			commonflags.AddOutputFlag(cmd)
 			commonflags.AddEnvironmentNameFlag(cmd)
 			cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "")
 			cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "")
