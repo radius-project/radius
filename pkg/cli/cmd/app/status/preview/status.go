@@ -31,8 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -123,7 +123,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
 
 	// Fetch the application resource.
-	application, err := appClient.Get(ctx, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
+	application, err := appClient.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q was not found or has been deleted.", r.ApplicationName)
 	} else if err != nil {

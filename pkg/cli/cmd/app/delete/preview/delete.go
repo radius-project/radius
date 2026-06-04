@@ -154,7 +154,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
 
 	// Check if the application exists
-	_, err := appClient.Get(ctx, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
+	_, err := appClient.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
 		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
 		return nil
@@ -226,7 +226,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Re-check for 404 in case the app was concurrently deleted during resource cleanup.
 	r.Output.LogInfo(msgDeletingApplicationPreview, r.ApplicationName)
 
-	_, err = appClient.Delete(ctx, r.ApplicationName, &corerpv20250801.ApplicationsClientDeleteOptions{})
+	_, err = appClient.Delete(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientDeleteOptions{})
 	if clients.Is404Error(err) {
 		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
 		return nil

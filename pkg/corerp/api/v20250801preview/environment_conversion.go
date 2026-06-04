@@ -51,7 +51,12 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 
 	// Convert RecipeParameters
 	if src.Properties.RecipeParameters != nil {
-		converted.Properties.RecipeParameters = src.Properties.RecipeParameters
+		converted.Properties.RecipeParameters = map[string]map[string]any{}
+		for k, v := range src.Properties.RecipeParameters {
+			if v != nil {
+				converted.Properties.RecipeParameters[k] = v.AdditionalProperties
+			}
+		}
 	}
 
 	// Convert Providers
@@ -101,7 +106,10 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	// Convert RecipeParameters
 	if len(env.Properties.RecipeParameters) > 0 {
-		dst.Properties.RecipeParameters = env.Properties.RecipeParameters
+		dst.Properties.RecipeParameters = map[string]*RecipeParameterValue{}
+		for k, v := range env.Properties.RecipeParameters {
+			dst.Properties.RecipeParameters[k] = &RecipeParameterValue{AdditionalProperties: v}
+		}
 	}
 
 	// Convert Providers

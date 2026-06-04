@@ -345,6 +345,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 			Get: func(
 				_ context.Context,
 				_ string,
+				_ string,
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				errResp.SetError(fmt.Errorf("Environment not found"))

@@ -120,7 +120,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	_, err = envClient.Get(cmd.Context(), r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
+	_, err = envClient.Get(cmd.Context(), r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("Unable to switch environments as requested environment %s does not exist.", r.EnvironmentName)
 	} else if err != nil {

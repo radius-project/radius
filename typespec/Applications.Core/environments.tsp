@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -167,7 +167,7 @@ model RecipeProperties {
   templatePath: string;
 
   @doc("Key/value parameters to pass to the recipe template at deployment.")
-  parameters?: {};
+  parameters?: Record<unknown>;
 }
 
 @doc("Represents Bicep recipe properties.")
@@ -218,7 +218,7 @@ model RecipeGetMetadataResponse {
   templateVersion?: string;
 
   @doc("The key/value parameters to pass to the recipe template at deployment.")
-  parameters: {};
+  parameters: Record<unknown>;
 
   @doc("Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).")
   plainHttp?: boolean;
