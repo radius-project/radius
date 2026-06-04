@@ -134,6 +134,12 @@ func (s *Store) Load(ctx context.Context, key persistence.Key) (*corerpv20250801
 // List returns keys present on the branch under namespace. An empty namespace
 // lists every key on the branch.
 func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, error) {
+	if namespace != "" {
+		if err := validateKeyPart("namespace", namespace); err != nil {
+			return nil, err
+		}
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

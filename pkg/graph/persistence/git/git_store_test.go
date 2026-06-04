@@ -197,6 +197,33 @@ func TestStore_ListMissingNamespaceReturnsEmpty(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+func TestStore_ListRejectsInvalidNamespace(t *testing.T) {
+	repoDir := initTestRepo(t)
+	chdir(t, repoDir)
+
+	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		namespace string
+	}{
+		{name: "dot-dot", namespace: ".."},
+		{name: "dot", namespace: "."},
+		{name: "forward slash", namespace: "a/b"},
+		{name: "backslash", namespace: `a\b`},
+		{name: "NUL", namespace: "a\x00b"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.List(context.Background(), tc.namespace)
+			require.Error(t, err)
+			assert.Nil(t, got)
+		})
+	}
+}
+
 func TestConstructPathForKey_RejectsEmptyNamespaceOrName(t *testing.T) {
 	t.Parallel()
 
