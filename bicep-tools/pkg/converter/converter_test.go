@@ -387,7 +387,7 @@ func TestConvert_IsDeterministic(t *testing.T) {
 	}
 
 	// Run the conversion 10 times to catch any rare, random ordering bugs.
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		next, err := Convert(provider)
 		if err != nil {
 			t.Fatalf("expected no error on run %d, got: %v", i+2, err)
