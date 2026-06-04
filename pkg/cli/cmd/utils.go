@@ -128,7 +128,8 @@ func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspace
 	}
 
 	clientOptions := sdk.NewClientOptions(connection)
-	clientFactory, err := v20250801preview.NewClientFactory(rootScope, &tokencredentials.AnonymousCredential{}, clientOptions)
+	_ = rootScope
+	clientFactory, err := v20250801preview.NewClientFactory(&tokencredentials.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}

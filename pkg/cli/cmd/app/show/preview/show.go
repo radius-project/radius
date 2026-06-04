@@ -119,7 +119,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	client := r.RadiusCoreClientFactory.NewApplicationsClient()
 
-	resp, err := client.Get(ctx, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
+	resp, err := client.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q was not found or has been deleted.", r.ApplicationName)
 	} else if err != nil {

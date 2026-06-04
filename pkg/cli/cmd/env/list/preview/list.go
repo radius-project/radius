@@ -102,7 +102,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	client := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	pager := client.NewListByScopePager(&corerpv20250801.EnvironmentsClientListByScopeOptions{})
+	pager := client.NewListByScopePager(r.Workspace.Scope, &corerpv20250801.EnvironmentsClientListByScopeOptions{})
 
 	var environments []*corerpv20250801.EnvironmentResource
 	for pager.More() {

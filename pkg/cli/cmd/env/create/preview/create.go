@@ -289,7 +289,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, *resource, nil)
+	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
 		return err
 	}

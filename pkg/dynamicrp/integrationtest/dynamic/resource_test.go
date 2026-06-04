@@ -453,7 +453,7 @@ func createLocation(server *ucptesthost.TestHost, resourceType string) {
 		Properties: &v20231001preview.LocationProperties{
 			ResourceTypes: map[string]*v20231001preview.LocationResourceType{
 				resourceType: {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 						apiVersion: {},
 					},
 				},

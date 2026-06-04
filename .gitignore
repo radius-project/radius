@@ -59,6 +59,9 @@ pkg/handlers/gomock_*
 # node modules
 node_modules
 
+# TypeSpec Go emitter temp output
+typespec/**/.tsp-go-tmp/
+
 # terraform state
 .terraform/
 

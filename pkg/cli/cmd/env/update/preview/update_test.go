@@ -250,6 +250,7 @@ func Test_Run(t *testing.T) {
 			CreateOrUpdate: test_client_factory.WithEnvironmentServerNoError().CreateOrUpdate,
 			Get: func(
 				ctx context.Context,
+				rootScope string,
 				environmentName string,
 				options *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -366,6 +367,7 @@ func Test_Run_RecipePacksReplaced(t *testing.T) {
 		return fake.EnvironmentsServer{
 			Get: func(
 				_ context.Context,
+				_ string,
 				environmentName string,
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -383,6 +385,7 @@ func Test_Run_RecipePacksReplaced(t *testing.T) {
 			},
 			CreateOrUpdate: func(
 				_ context.Context,
+				_ string,
 				_ string,
 				resource v20250801preview.EnvironmentResource,
 				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
@@ -658,7 +661,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 			return corerpfake.RecipePacksServer{
 				Get: test_client_factory.WithRecipePackServerNoError().Get,
 				CreateOrUpdate: func(
-					ctx context.Context, name string,
+					ctx context.Context, rootScope string, name string,
 					resource v20250801preview.RecipePackResource,
 					_ *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -684,7 +687,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
 			return corerpfake.RecipePacksServer{
 				Get: func(
-					ctx context.Context, name string,
+					ctx context.Context, rootScope string, name string,
 					_ *v20250801preview.RecipePacksClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 					// Pack has both this env and another env in referencedBy.
@@ -701,7 +704,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, name string,
+					ctx context.Context, rootScope string, name string,
 					resource v20250801preview.RecipePackResource,
 					_ *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -728,7 +731,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
 			return corerpfake.RecipePacksServer{
 				Get: func(
-					ctx context.Context, name string,
+					ctx context.Context, rootScope string, name string,
 					_ *v20250801preview.RecipePacksClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 					result := v20250801preview.RecipePacksClientGetResponse{
@@ -744,7 +747,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, name string,
+					ctx context.Context, rootScope string, name string,
 					resource v20250801preview.RecipePackResource,
 					_ *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -773,7 +776,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
 			return corerpfake.RecipePacksServer{
 				Get: func(
-					ctx context.Context, name string,
+					ctx context.Context, rootScope string, name string,
 					_ *v20250801preview.RecipePacksClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 					errResp.SetResponseError(404, "Not Found")
@@ -793,12 +796,14 @@ func Test_syncRecipePackReferences(t *testing.T) {
 // recipePackCreateOrUpdateNoError returns a CreateOrUpdate handler that echoes the resource back.
 func recipePackCreateOrUpdateNoError() func(
 	ctx context.Context,
+	rootScope string,
 	recipePackName string,
 	resource v20250801preview.RecipePackResource,
 	options *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
 ) (azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], azfake.ErrorResponder) {
 	return func(
 		ctx context.Context,
+		rootScope string,
 		recipePackName string,
 		resource v20250801preview.RecipePackResource,
 		options *v20250801preview.RecipePacksClientCreateOrUpdateOptions,

@@ -179,7 +179,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		envClient := envClientFactory.NewEnvironmentsClient()
 
-		resp, err := envClient.Get(ctx, ID.Name(), &corerpv20250801.EnvironmentsClientGetOptions{})
+		resp, err := envClient.Get(ctx, ID.RootScope(), ID.Name(), &corerpv20250801.EnvironmentsClientGetOptions{})
 		if clients.Is404Error(err) {
 			continue
 		} else if err != nil {
@@ -200,7 +200,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		res.Properties.RecipePacks = newRecipePacks
 
-		_, err = envClient.CreateOrUpdate(ctx, ID.Name(), res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+		_, err = envClient.CreateOrUpdate(ctx, ID.RootScope(), ID.Name(), res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to update environment %s.", *env)
 		}
