@@ -412,6 +412,14 @@ unchanged.
 > out of scope for this flow. Tests that require `AZURE_MSSQL_*` env vars
 > auto-skip when those vars are absent.
 
+> **Known limitation — Flux tests:** `Test_Flux_Basic` and `Test_Flux_Complex`
+> in `test/functional-portable/kubernetes/noncloud` fail under this
+> OS-process flow. The Radius `FluxController` runs on the host and fetches
+> artifacts from the in-cluster Flux source-controller using the cluster-DNS
+> URL `http://source-controller.flux-system.svc.cluster.local./...`, which
+> the host cannot resolve. These tests require the controller to run inside
+> the cluster (the standard `rad install kubernetes` path or CI).
+
 ## Troubleshooting
 
 ### Components Won't Start

@@ -67,6 +67,33 @@ $(info Using local git-http-backend: GIT_HTTP_SERVER_URL=$(GIT_HTTP_SERVER_URL))
 endif
 endif
 endif
+
+# When the Radius controller is running as a host OS process (local debug flow),
+# the in-cluster Flux source-controller URL cannot be resolved from the host, so
+# Test_Flux_* would fail to fetch artifacts. Auto-skip those tests in that case.
+ifeq ($(origin RADIUS_SKIP_FLUX_TESTS), undefined)
+ifneq ($(wildcard $(CURDIR)/debug_files/logs/controller.pid),)
+ifneq ($(shell pid=$$(cat $(CURDIR)/debug_files/logs/controller.pid 2>/dev/null); kill -0 $$pid 2>/dev/null && echo up),)
+export RADIUS_SKIP_FLUX_TESTS := 1
+$(info Radius controller running as host OS process: skipping Flux tests (RADIUS_SKIP_FLUX_TESTS=1))
+endif
+endif
+endif
+
+# Auto-detect the OS-process UCP started by `make debug-start`. When it's live,
+# route the functional tests' rad CLI subprocess AND the in-process
+# cli.LoadConfig("") calls at the project-local debug config instead of
+# ~/.rad/config.yaml. Without this, tests pick up whichever workspace happens
+# to be "default" in the user's home directory (e.g. an AKS workspace) and fail
+# with DNS errors when the cluster URL is unreachable from the host.
+ifeq ($(origin RAD_CONFIG_FILE), undefined)
+ifneq ($(wildcard $(CURDIR)/debug_files/logs/ucp.pid),)
+ifneq ($(shell pid=$$(cat $(CURDIR)/debug_files/logs/ucp.pid 2>/dev/null); kill -0 $$pid 2>/dev/null && echo up),)
+export RAD_CONFIG_FILE := $(CURDIR)/build/configs/rad-debug-config.yaml
+$(info Using debug rad config: RAD_CONFIG_FILE=$(RAD_CONFIG_FILE))
+endif
+endif
+endif
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.30.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)

@@ -171,6 +171,9 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 	if ! command -v terraform >/dev/null 2>&1; then \
 		MISSING_TOOLS="$$MISSING_TOOLS terraform"; \
 	fi; \
+	if ! command -v yq >/dev/null 2>&1; then \
+		MISSING_TOOLS="$$MISSING_TOOLS yq"; \
+	fi; \
 	if [ -n "$$MISSING_TOOLS" ]; then \
 		echo "❌ Missing required tools:$$MISSING_TOOLS"; \
 		echo ""; \
@@ -180,6 +183,7 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 		echo "  k3d: https://k3d.io/v5.6.0/#installation"; \
 		echo "  kubectl: https://kubernetes.io/docs/tasks/tools/"; \
 		echo "  terraform: https://learn.hashicorp.com/tutorials/terraform/install-cli"; \
+		echo "  yq: go install github.com/mikefarah/yq/v4@$(YQ_VERSION)"; \
 		exit 1; \
 	fi; \
 	echo "🔍 Checking PostgreSQL connectivity..."; \

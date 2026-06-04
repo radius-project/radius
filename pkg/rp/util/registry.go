@@ -20,7 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
+	"os"
+	"strings"
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -29,6 +32,11 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
+
+// insecureLoopbackRegistriesEnvVar opts a process into using plain HTTP for OCI
+// recipe pulls whose registry host is a loopback address. Intended for local
+// developer stacks where the registry container is unauthenticated HTTP.
+const insecureLoopbackRegistriesEnvVar = "RADIUS_INSECURE_LOOPBACK_REGISTRIES"
 
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
 // if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
@@ -46,7 +54,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 
 	repo.Client = client
 
-	if definition.PlainHTTP {
+	if definition.PlainHTTP || shouldForcePlainHTTP(definition.TemplatePath) {
 		repo.PlainHTTP = true
 	}
 
@@ -145,4 +153,31 @@ func GetRegistrySecrets(definition recipes.Configuration, templatePath string, s
 	}
 
 	return secrets[definition.RecipeConfig.Bicep.Authentication[parsedURL.Host].Secret], nil
+}
+
+// shouldForcePlainHTTP returns true when the caller has opted into plain-HTTP
+// recipe pulls for loopback registries via RADIUS_INSECURE_LOOPBACK_REGISTRIES
+// and templatePath points at a loopback host. Used by local OS-process debug
+// stacks where the registry container speaks HTTP only.
+func shouldForcePlainHTTP(templatePath string) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(insecureLoopbackRegistriesEnvVar)))
+	if v != "1" && v != "true" && v != "yes" {
+		return false
+	}
+
+	ref, err := dockerParser.Parse(templatePath)
+	if err != nil {
+		return false
+	}
+	host := ref.Registry()
+	if h, _, splitErr := net.SplitHostPort(host); splitErr == nil {
+		host = h
+	}
+	if host == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		return true
+	}
+	return false
 }
