@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 )
 
 // ServiceError conforms to the OData v4 error format.
@@ -37,12 +36,12 @@ import (
 // being the Details field having more structure.  We need that structure to unfold the
 // error messages.
 type ServiceError struct {
-	Code           string                   `json:"code,omitempty" yaml:"code,omitempty"`
-	Message        string                   `json:"message,omitempty" yaml:"message,omitempty"`
-	Target         *string                  `json:"target,omitempty" yaml:"target,omitempty"`
-	Details        []*generated.ErrorDetail `json:"details,omitempty" yaml:"details,omitempty"`
-	InnerError     map[string]any           `json:"innererror,omitempty" yaml:"innererror,omitempty"`
-	AdditionalInfo []map[string]any         `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
+	Code           string           `json:"code,omitempty" yaml:"code,omitempty"`
+	Message        string           `json:"message,omitempty" yaml:"message,omitempty"`
+	Target         *string          `json:"target,omitempty" yaml:"target,omitempty"`
+	Details        []*ErrorDetail   `json:"details,omitempty" yaml:"details,omitempty"`
+	InnerError     map[string]any   `json:"innererror,omitempty" yaml:"innererror,omitempty"`
+	AdditionalInfo []map[string]any `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
 }
 
 // UnfoldServiceError unfolds the Details field in the given azure.ServiceError,
@@ -51,7 +50,7 @@ type ServiceError struct {
 //
 // This is needed because for custom RP, errors are not treated as structured
 // JSON, even if we follow the error format from ARM.
-func UnfoldServiceError(in *generated.ErrorDetail) *ServiceError {
+func UnfoldServiceError(in *ErrorDetail) *ServiceError {
 	out := &ServiceError{
 		Code:    *in.Code,
 		Message: *in.Message,
@@ -64,15 +63,15 @@ func UnfoldServiceError(in *generated.ErrorDetail) *ServiceError {
 	if in.Details == nil {
 		return out
 	}
-	out.Details = make([]*generated.ErrorDetail, len(in.Details))
+	out.Details = make([]*ErrorDetail, len(in.Details))
 	for i, d := range in.Details {
-		out.Details[i] = &generated.ErrorDetail{}
+		out.Details[i] = &ErrorDetail{}
 		// First we attempt to deserialize this raw form to the format
 		// of armerrors.ErrorDetail.
 		if err := roundTripJSON(d, out.Details[i]); err != nil {
 			// If the deserialization didn't work, we fall back to
 			// just extracting out the fields using the contract in OData V4 error.
-			*out.Details[i] = generated.ErrorDetail{
+			*out.Details[i] = ErrorDetail{
 				Code:    extractString(d.Code),
 				Message: extractString(d.Message),
 				Target:  extractString(d.Target),
@@ -89,9 +88,9 @@ func UnfoldServiceError(in *generated.ErrorDetail) *ServiceError {
 
 // UnfoldErrorDetails extract the Message field of a given *radclient.ErrorDetail
 // into its correspoding Details field, which is structured.
-func UnfoldErrorDetails(d *generated.ErrorDetail) generated.ErrorDetail {
+func UnfoldErrorDetails(d *ErrorDetail) ErrorDetail {
 	if d == nil {
-		return generated.ErrorDetail{}
+		return ErrorDetail{}
 	}
 
 	new := *d
@@ -108,7 +107,7 @@ func UnfoldErrorDetails(d *generated.ErrorDetail) generated.ErrorDetail {
 		return new
 	}
 
-	resp := &generated.ErrorResponse{}
+	resp := &ErrorResponse{}
 	err := json.Unmarshal([]byte(*d.Message), &resp)
 	if err != nil || cmp.Equal(resp.Error, v1.ErrorDetails{}) {
 		return new
@@ -123,7 +122,7 @@ func UnfoldErrorDetails(d *generated.ErrorDetail) generated.ErrorDetail {
 }
 
 type WrappedErrorResponse struct {
-	ErrorResponse generated.ErrorResponse
+	ErrorResponse ErrorResponse
 }
 
 // Error returns the error message from the ErrorResponse struct.
@@ -135,7 +134,7 @@ func (w WrappedErrorResponse) Error() string {
 // and unfold nested JSON messages into structured radclient.ErrorDetail field.
 //
 // If the given error isn't wrapping a *radclient.ErrorResponse, nil is returned.
-func TryUnfoldErrorResponse(err error) *generated.ErrorDetail {
+func TryUnfoldErrorResponse(err error) *ErrorDetail {
 	inner, ok := errors.Unwrap(err).(WrappedErrorResponse)
 	if cmp.Equal(inner.ErrorResponse.Error, v1.ErrorDetails{}) || !ok {
 		return nil

@@ -25,7 +25,7 @@ endif
 
 # generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-cleanup generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-genericcliclient generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed: generate-pnpm-installed
@@ -87,12 +87,6 @@ generate-controller: generate-controller-gen-installed ## Generates the CRDs for
 generate-cleanup: ## Deletes all generated code.
 	@echo "$(ARROW) Deleting generated code..."
 	find . -type f -name 'zz_*.go' ! -name 'zz_*.deepcopy.go' -delete
-	@echo "$(ARROW) Done."
-
-.PHONY: generate-genericcliclient
-generate-genericcliclient: generate-tsp-installed
-	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
-	pnpm -C typespec exec autorest ../pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod && go fmt ./pkg/cli/clients_new/generated/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client
@@ -157,6 +151,18 @@ generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Genera
 	cp typespec/UCP/.tsp-go-tmp/fake/zz_generated_*.go pkg/ucp/api/v20231001preview/fake/
 	rm -rf typespec/UCP/.tsp-go-tmp
 	go fmt ./pkg/ucp/api/v20231001preview/...
+	@echo "$(ARROW) Done."
+
+.PHONY: generate-genericcliclient
+generate-genericcliclient: generate-tsp-installed ## Generates the generic CLI client SDK (TypeSpec Go emitter).
+	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
+	cd typespec/GenericResource && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/cli/clients_new/generated/zz_generated_*.go
+	rm -f pkg/cli/clients_new/generated/fake/zz_generated_*.go
+	cp typespec/GenericResource/.tsp-go-tmp/zz_generated_*.go pkg/cli/clients_new/generated/
+	cp typespec/GenericResource/.tsp-go-tmp/fake/zz_generated_*.go pkg/cli/clients_new/generated/fake/
+	rm -rf typespec/GenericResource/.tsp-go-tmp
+	go fmt ./pkg/cli/clients_new/generated/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-mockgen-installed

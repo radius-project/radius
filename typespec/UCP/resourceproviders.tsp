@@ -206,14 +206,20 @@ model ResourceTypeSummaryResultApiVersion {
 // typespec-autorest. Without the opt-out on ApiVersionResource.name, the
 // emitter would hard-code the {apiVersionName} path segment to the spec's
 // api-version value and drop it from the generated method signature.
-@@Azure.ClientGenerator.Core.apiVersion(ResourceTypeProperties.defaultApiVersion,
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceTypeProperties.defaultApiVersion,
   false
 );
-@@Azure.ClientGenerator.Core.apiVersion(LocationResourceType.apiVersions, false);
-@@Azure.ClientGenerator.Core.apiVersion(ResourceProviderSummaryResourceType.apiVersions,
+@@Azure.ClientGenerator.Core.apiVersion(
+  LocationResourceType.apiVersions,
   false
 );
-@@Azure.ClientGenerator.Core.apiVersion(ResourceProviderSummaryResourceType.defaultApiVersion,
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceProviderSummaryResourceType.apiVersions,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceProviderSummaryResourceType.defaultApiVersion,
   false
 );
 @@Azure.ClientGenerator.Core.apiVersion(ApiVersionResource.name, false);
