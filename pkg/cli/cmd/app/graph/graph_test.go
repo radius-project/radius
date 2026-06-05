@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -375,6 +376,43 @@ func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
 	require.True(t, os.IsNotExist(statErr), "modeled graph must not be written locally in repo-radius mode")
 }
 
+// TestRunner_RunModeled_RealGitStore_SlashBranch exercises the GitHub Actions
+// path end-to-end through the real git-backed Store (no mocks) using a
+// slash-containing source branch (e.g. "feature/foo"), which is the typical
+// shape GITHUB_HEAD_REF takes for pull_request events. The mock-based tests
+// above never call constructPathForKey/validateKeyPart, so they don't catch
+// that path separators in Key.Namespace are rejected by the real Store.
+func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
+	repoDir := initGitRepo(t)
+	chdirT(t, repoDir)
+
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "feature/foo")
+	t.Setenv("GITHUB_REF_NAME", "")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	store, err := gitstore.NewStore(gitstore.Options{Branch: "test-graph-" + t.Name()})
+	require.NoError(t, err)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    store,
+	}
+
+	err = runner.Run(context.Background())
+	require.NoError(t, err, "runModeled must accept slash-containing GITHUB_HEAD_REF values")
+}
+
 func TestRunner_RunModeled_FallsBackToRefName(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -526,6 +564,56 @@ func withTempCwd(t *testing.T) {
 		_ = os.Chdir(original)
 	})
 	require.True(t, filepath.IsAbs(tmp))
+}
+
+// chdirT switches the current working directory to dir for the duration of
+// the test and restores the original on cleanup.
+func chdirT(t *testing.T, dir string) {
+	t.Helper()
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+}
+
+// initGitRepo creates a minimal git repo in a temp directory with one
+// initial commit, so that worktree-based operations on the real git Store
+// have a HEAD to branch from. The test is skipped when the git binary is
+// unavailable or when running with -short.
+func initGitRepo(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping git-backed test in -short mode")
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("skipping git-backed test: git binary not found in PATH")
+	}
+
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"init"},
+		{"config", "user.name", "test"},
+		{"config", "user.email", "test@test.com"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoErrorf(t, err, "git %v failed: %s", args, string(out))
+	}
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("test"), 0o644))
+
+	for _, args := range [][]string{
+		{"add", "-A"},
+		{"commit", "-m", "init"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoErrorf(t, err, "git %v failed: %s", args, string(out))
+	}
+
+	return dir
 }
 
 // saveAssertion returns a Save implementation that asserts the inbound
