@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -269,8 +270,15 @@ func (r *Runner) writeToLocalFile(graph *corerpv20250801preview.ApplicationGraph
 	return nil
 }
 
-// persistToOrphanBranch commits graph to <source-branch>/app-graph.json on
-// the radius-graph orphan branch via the git-backed persistence Store.
+// persistToOrphanBranch commits graph to <encoded-source-branch>/app-graph.json
+// on the radius-graph orphan branch via the git-backed persistence Store.
+//
+// The raw branch name is encoded with url.QueryEscape before being used as
+// the key namespace. Real PR branches routinely contain path separators
+// ("feature/foo", "dependabot/..."), which the git store rejects in a
+// single namespace segment. Percent-encoding collapses each branch to a
+// single safe segment while keeping distinct branches distinct (so
+// "feature/foo" and "feature-foo" do not collide).
 func (r *Runner) persistToOrphanBranch(ctx context.Context, graph *corerpv20250801preview.ApplicationGraphResponse) error {
 	branch := sourceBranch()
 	if branch == "" {
@@ -281,7 +289,8 @@ func (r *Runner) persistToOrphanBranch(ctx context.Context, graph *corerpv202508
 		return clierrors.Message("Modeled graph store is not configured.")
 	}
 
-	key := persistence.Key{Namespace: branch, Name: modeledGraphKeyName}
+	namespace := url.QueryEscape(branch)
+	key := persistence.Key{Namespace: namespace, Name: modeledGraphKeyName}
 	opts := persistence.SaveOptions{
 		Message: fmt.Sprintf("radius: update modeled graph for %s", branch),
 	}
@@ -289,6 +298,6 @@ func (r *Runner) persistToOrphanBranch(ctx context.Context, graph *corerpv202508
 		return fmt.Errorf("commit modeled graph to %s branch: %w", gitstore.DefaultGraphBranch, err)
 	}
 
-	r.Output.LogInfo("Parsed %d resources. Committed %s/%s.json to branch %s", len(graph.Resources), branch, modeledGraphKeyName, gitstore.DefaultGraphBranch)
+	r.Output.LogInfo("Parsed %d resources. Committed %s/%s.json to branch %s", len(graph.Resources), namespace, modeledGraphKeyName, gitstore.DefaultGraphBranch)
 	return nil
 }

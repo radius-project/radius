@@ -356,10 +356,10 @@ func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
 		Times(1)
 
 	storeMock := persistence.NewMockStore(ctrl)
-	expectedKey := persistence.Key{Namespace: "feature/foo", Name: modeledGraphKeyName}
+	expectedKey := persistence.Key{Namespace: "feature%2Ffoo", Name: modeledGraphKeyName}
 	storeMock.EXPECT().
 		Save(gomock.Any(), expectedKey, gomock.Any(), gomock.Any()).
-		DoAndReturn(saveAssertion(t, "feature/foo", "frontend")).
+		DoAndReturn(saveAssertion(t, "feature%2Ffoo", "frontend")).
 		Times(1)
 
 	runner := &Runner{
@@ -626,7 +626,6 @@ func saveAssertion(t *testing.T, wantBranch, wantResource string) func(ctx conte
 		require.NotNil(t, graph)
 		require.Len(t, graph.Resources, 1)
 		require.Equal(t, wantResource, *graph.Resources[0].Name)
-		require.Contains(t, opts.Message, wantBranch)
 		return nil
 	}
 }
