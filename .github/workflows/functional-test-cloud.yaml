@@ -565,7 +565,12 @@ jobs:
     if: always() && needs.setup.result == 'success' && needs.build.result == 'success'
     # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
-      fail-fast: true
+      # Keep matrix legs independent. With fail-fast: true, a single failing
+      # (often flaky) leg cancels all in-progress siblings. GitHub's
+      # "Re-run failed jobs" reliably re-runs only failure-concluded jobs, so
+      # cancelled siblings can stay stale on the PR and the checks never fully
+      # update to green even after a successful re-run.
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04]
         name: [corerp-cloud, ucp-cloud]
