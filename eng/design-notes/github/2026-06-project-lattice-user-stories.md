@@ -1,8 +1,5 @@
 # Project Lattice User Story Inventory
 
-June 5, 2026\
-zachcasper
-
 ## Priority Definitions
 
 - **p0** -- Critical functionality, MVP feature (blocks launch)
