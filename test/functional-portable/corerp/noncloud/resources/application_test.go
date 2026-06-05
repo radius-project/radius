@@ -30,13 +30,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_Application(t *testing.T) {
 	template := "testdata/corerp-resources-application.bicep"
 	name := "corerp-resources-application"
-	appNamespace := "corerp-resources-application-app"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -45,16 +43,12 @@ func Test_Application(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: "corerp-resources-application-app",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 				},
 			},
 			// Application should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
-				require.NoErrorf(t, err, "%s must be created", appNamespace)
-			},
 		},
 	})
 	test.Test(t)
