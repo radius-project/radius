@@ -255,7 +255,13 @@ func init() {
 }
 
 func initSubCommands() {
-	graphStore, _ := git.NewStore(git.Options{})
+	graphStore, err := git.NewStore(git.Options{})
+	if err != nil {
+		// graphStore is required only when we are in repo radius
+		// it can be nil otherwise.
+		graphStore = nil
+		return
+	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
 			FileSystem: filesystem.OSFileSystem{},

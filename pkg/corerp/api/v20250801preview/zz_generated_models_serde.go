@@ -80,8 +80,6 @@ func (a *ApplicationGraphOutputResource) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ApplicationGraphResource.
 func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "appDefinitionLine", a.AppDefinitionLine)
-	populate(objectMap, "codeReference", a.CodeReference)
 	populate(objectMap, "connections", a.Connections)
 	populate(objectMap, "diffHash", a.DiffHash)
 	populate(objectMap, "id", a.ID)
@@ -101,12 +99,6 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "appDefinitionLine":
-			err = unpopulate(val, "AppDefinitionLine", &a.AppDefinitionLine)
-			delete(rawMsg, key)
-		case "codeReference":
-			err = unpopulate(val, "CodeReference", &a.CodeReference)
-			delete(rawMsg, key)
 		case "connections":
 			err = unpopulate(val, "Connections", &a.Connections)
 			delete(rawMsg, key)

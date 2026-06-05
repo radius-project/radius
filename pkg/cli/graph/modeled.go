@@ -19,6 +19,7 @@ package graph
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -106,9 +107,18 @@ func collectResources(raw any) []map[string]any {
 		return out
 	case map[string]any:
 		symbols := buildSymbolTable(v)
+		// Iterate symbolic-name keys in sorted order so the resulting
+		// resource slice (and the stable diff hash derived from it) is
+		// deterministic across runs. Go map iteration is randomized,
+		// which would otherwise produce noisy diffs.
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 		out := make([]map[string]any, 0, len(v))
-		for _, item := range v {
-			entry, ok := item.(map[string]any)
+		for _, k := range keys {
+			entry, ok := v[k].(map[string]any)
 			if !ok {
 				continue
 			}
