@@ -64,7 +64,7 @@ As the application is modified, changes are highlighted on the application graph
 
 **Q8: What clouds does Lattice support?**
 
-Lattice supports AWS and Azure. The same conversation works regardless of the target. The developer's existing cloud knowledge does not need to transfer between providers, because Lattice handles the provider-specific translation.
+Lattice supports AWS and Azure. The same conversation works regardless of the target. The developer's existing cloud knowledge does not need to transfer between providers, because Lattice handles the provider-specific translation. Enabling deployments to Google Cloud is a future feature.
 
 **Q9: Can Lattice deploy to my local development workstation or my on-premises environment?**
 
@@ -100,15 +100,11 @@ Lattice uses GitHub's native cloud federation. When a developer asks Copilot to 
 
 **Q14: How does the deployment actually run?**
 
-There is no long-running control plane. Synchronous operations the developer expects to happen instantly, such as viewing the application graph or editing application resources, happen in the agent's process and complete in seconds. Asynchronous operations the developer already expects to take minutes, such as building images and provisioning cloud resources, happen in a GitHub Actions runner inside the developer's own repository. The Radius deployment engine runs inside the runner, performs the requested operation, writes status back to the Radius data store, and exits. The developer's cloud credentials are stored as GitHub environment secrets and never leave GitHub.
+Viewing the application graph or editing application resources, happen in the agent's process and complete in seconds. Deploying applications happen in a GitHub Actions runner inside the developer's repository. The Radius deployment engine runs inside the runner, performs the requested operation, writes status back to the Radius data store, and exits. The developer's cloud credentials are stored as GitHub environment secrets and never leave GitHub.
 
 **Q15: Does Lattice detect drift?**
 
 In the future, Lattice will compare the deployed application against the application graph and reconcile the two. The developer will be able to ask Copilot at any time whether anything in the cloud differs from what they expect, and Copilot will report drift in natural language: resources that are missing, resources that have been modified outside the application graph, or resources present in the cloud that the application graph does not know about. Copilot will offer two reconciliation paths for each case: update the application graph to match reality, or redeploy to make reality match the application graph.
-
-> [!NOTE]
->
-> **Internal**: Drift detection is not a MVP feature. See the fast-follow list in Q24.
 
 **Q16: How does promotion between environments work?**
 
@@ -120,11 +116,7 @@ The developer asks Copilot to tear down a specific environment or every environm
 
 **Q18: How can I migrate from Lattice to self-hosted Radius?**
 
-Migrating from Lattice to self-hosted Radius is easy. Both Radius options use the same set of resource types and recipes. After you install Radius on your Kubernetes cluster and configure your environments, ask Copilot to export your applications as Bicep files. You can take these `app.bicep` files and deploy them using `rad deploy`. It is not possible to migrate environments, credentials, or deployed applications from Lattice to self-hosted Radius.
-
-> [!NOTE]
->
-> **Internal**: Export to Bicep is not a MVP feature. See the fast-follow list in Q24.
+Migrating from Lattice to self-hosted Radius is easy. Lattice uses Radius under the covers and both use the same set of resource types and recipes. After you install Radius on your Kubernetes cluster and configure your environments, ask Copilot to export your applications as Bicep files. You can take these `app.bicep` files and deploy them using `rad deploy`. It is not possible to migrate environments, credentials, or deployed applications from Lattice to self-hosted Radius.
 
 **Q19: How does Lattice compare to GitHub Spark?**
 
@@ -144,7 +136,7 @@ The second goal is to increase Radius adoption. Lattice is the new top of the fu
 
 **Q21: What are our project tenets?**
 
-These are the project tenets for Project Lattice. A strong tenet is a stable, testable, and non-negotiable constraint that resolves a meaningful tension between competing priorities and guides decisions when tradeoffs are required. These tenets are ordered by priority. When two tenets conflict, the higher-priority tenet wins.
+A strong tenet is a stable, testable, and non-negotiable constraint that resolves a meaningful tension between competing priorities and guides decisions when tradeoffs are required. These tenets are ordered by priority. When two tenets conflict, the higher-priority tenet wins.
 
 1. **Individual developers, not enterprises.** Lattice is designed for individual developers and teams without dedicated platform engineers. When a feature would require a platform engineer to configure or maintain, we do not build it. Enterprise-scale operational requirements are out of scope.
 2. **Always portable to Radius.** Lattice runs on the same core as self-hosted Radius—we will never fork it. As a result, developers can migrate their Lattice application to self-hosted Radius using a documented migration process with no manual edits to application definitions. Complete feature parity between Lattice and self-hosted Radius is not a goal.
@@ -157,7 +149,7 @@ These are the project tenets for Project Lattice. A strong tenet is a stable, te
 Self-hosted Radius runs as a control plane hosted on Kubernetes with a `rad` CLI as the primary client. That shape is the right fit for enterprise platform teams running shared infrastructure for many developers, and it remains the right option for those teams. Lattice is a different delivery of the same core idea, optimized for individual developers, small teams, and open-source maintainers who are using the Copilot app. Key changes include:
 
 * The Radius control plane (referred to as the Radius deployment engine above for customers) runs ephemerally in a GitHub Actions runner instead of permanently on Kubernetes.
-* The Lattice data store is stored within the Git repository and is not tightly bound to the Radius control plane. The exact implementation of the storage including the file format is left to the technical design.
+* The data store is stored within the Git repository and is not tightly bound to the Radius control plane. The exact implementation of the storage including the file format is left to the technical design.
 * Environments and environment metadata are stored as GitHub Environments and environment variables respectively rather than as Application.Core/environments or Radius.Core/environments resources.
 * Deployments are stored as GitHub Deployments.
 * The Radius CLI is replaced with Copilot and a set of agent skills and associated scripts which read and write from/to the Radius data store (for applications and resources) and GitHub (for environments and deployments).
@@ -181,7 +173,6 @@ Lattice introduces several new capabilities. The following constitutes the Latti
 After Lattice launches, the following are fast-follow features:
 
 * **Drift detection and reconciliation.** Self-hosted Radius lacks a "what's different between my application graph and what's actually deployed?" capability. Lattice adds explicit drift detection with two reconciliation paths (update application graph to match reality, or redeploy to match application graph).
-* **Export to Bicep**. To support a migration from Lattice to self-hosted Radius, Lattice will have the ability to export an `app.bicep` file for one or all applications stored in Lattice.
 * **Additional serverless platform support.** In addition to supporting Kubernetes and ACI today, Lattice will support ECS, ACA, and Cloud Run (in this order) in the future.
 
 **Q25: What about the existing resource types and recipes in the `resource-types-contrib` repo?**
