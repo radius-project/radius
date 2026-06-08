@@ -260,7 +260,6 @@ func initSubCommands() {
 		// graphStore is required only when we are in repo radius
 		// it can be nil otherwise.
 		graphStore = nil
-		return
 	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
