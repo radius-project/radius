@@ -51,11 +51,22 @@ jobs:
           persist-credentials: false
 
       - name: Test CLI download
-        run: make test-cli-download OS=${{ matrix.os }} ARCH=${{ matrix.arch }} FILE=${{ matrix.file }} EXT=${{ matrix.ext }}
+        env:
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_ARCH: ${{ matrix.arch }}
+          MATRIX_FILE: ${{ matrix.file }}
+          MATRIX_EXT: ${{ matrix.ext }}
+        run: make test-cli-download OS="${MATRIX_OS}" ARCH="${MATRIX_ARCH}" FILE="${MATRIX_FILE}" EXT="${MATRIX_EXT}"
 
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
         run: |
-          gh issue create --title "CLI nightly test failed - ${{ matrix.os }}-${{ matrix.arch }}" --body "Test failed on ${{ github.repository }} for ${{ matrix.os }}-${{ matrix.arch }}. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details." --label "test-failure" --repo ${{ github.repository }}
+          gh issue create \
+            --title "CLI nightly test failed - ${MATRIX_OS}-${MATRIX_ARCH}" \
+            --body "Test failed on ${GITHUB_REPOSITORY} for ${MATRIX_OS}-${MATRIX_ARCH}. See [workflow logs](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) for more details." \
+            --label "test-failure" \
+            --repo "${GITHUB_REPOSITORY}"
         env:
           GH_TOKEN: ${{ github.token }}
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_ARCH: ${{ matrix.arch }}

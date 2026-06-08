@@ -55,7 +55,7 @@ jobs:
 
       - name: Delete old AWS resources
         run: |
-          ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
+          ./.github/scripts/delete-aws-resources.sh "${AWS_RESOURCE_TYPES}"
 
       - name: Create issue for failing purge aws test resources run
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
