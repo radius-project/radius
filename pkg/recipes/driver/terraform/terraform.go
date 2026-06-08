@@ -444,7 +444,8 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 					}
 					outputResource.AdditionalProperties = map[string]string{
 						"arn": arn,
-						rpv1.OutputResourceConsistentPhysicalIDProperty: arn,
+						rpv1.OutputResourceProviderResourceIDProperty:     arn,
+						rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 					}
 					recipeResources = append(recipeResources, outputResource)
 				}

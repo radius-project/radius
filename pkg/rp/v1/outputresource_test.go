@@ -159,35 +159,59 @@ func TestGetGCOutputResources_ResourceDiffersByID(t *testing.T) {
 	require.Equal(t, before, diff)
 }
 
-func TestOutputResourceMatches_ConsistentPhysicalID(t *testing.T) {
+func TestOutputResourceMatches_ProviderResourceID(t *testing.T) {
 	first := OutputResource{
 		ID: resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"),
 		AdditionalProperties: map[string]string{
-			OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDKindProperty: OutputResourceProviderResourceIDKindAWSARN,
 		},
 	}
 	second := OutputResource{
 		ID: resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"),
 		AdditionalProperties: map[string]string{
-			OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDKindProperty: OutputResourceProviderResourceIDKindAWSARN,
 		},
 	}
 
 	require.True(t, OutputResourceMatches(first, second))
 }
 
-func TestOutputResourceMatches_DifferentConsistentPhysicalID(t *testing.T) {
+func TestOutputResourceMatches_DifferentProviderResourceID(t *testing.T) {
 	id := resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket")
 	first := OutputResource{
 		ID: id,
 		AdditionalProperties: map[string]string{
-			OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDKindProperty: OutputResourceProviderResourceIDKindAWSARN,
 		},
 	}
 	second := OutputResource{
 		ID: id,
 		AdditionalProperties: map[string]string{
-			OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::other-bucket",
+			OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::other-bucket",
+			OutputResourceProviderResourceIDKindProperty: OutputResourceProviderResourceIDKindAWSARN,
+		},
+	}
+
+	require.False(t, OutputResourceMatches(first, second))
+}
+
+func TestOutputResourceMatches_DifferentProviderResourceIDKind(t *testing.T) {
+	id := resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket")
+	first := OutputResource{
+		ID: id,
+		AdditionalProperties: map[string]string{
+			OutputResourceProviderResourceIDProperty:     "shared-resource-id",
+			OutputResourceProviderResourceIDKindProperty: OutputResourceProviderResourceIDKindAWSARN,
+		},
+	}
+	second := OutputResource{
+		ID: id,
+		AdditionalProperties: map[string]string{
+			OutputResourceProviderResourceIDProperty:     "shared-resource-id",
+			OutputResourceProviderResourceIDKindProperty: "otherKind",
 		},
 	}
 
@@ -200,7 +224,7 @@ func TestOutputResourceMatches_FallsBackToID(t *testing.T) {
 	second := OutputResource{
 		ID: id,
 		AdditionalProperties: map[string]string{
-			OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+			OutputResourceProviderResourceIDProperty: "arn:aws:s3:::my-bucket",
 		},
 	}
 

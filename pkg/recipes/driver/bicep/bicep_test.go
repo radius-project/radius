@@ -400,7 +400,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_Bicep_PrepareRecipeResponse_AWSResourceAddsConsistentPhysicalID(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_AWSResourceAddsProviderResourceID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := processors.NewMockResourceClient(ctrl)
 	d := &bicepDriver{ResourceClient: client}
@@ -426,13 +426,14 @@ func Test_Bicep_PrepareRecipeResponse_AWSResourceAddsConsistentPhysicalID(t *tes
 			RadiusManaged: new(true),
 			AdditionalProperties: map[string]string{
 				"arn": "arn:aws:s3:::my-bucket",
-				rpv1.OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+				rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+				rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 			},
 		},
 	}, actualResponse.OutputResources)
 }
 
-func Test_Bicep_PrepareRecipeResponse_ExplicitAWSResourceAddsConsistentPhysicalID(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_ExplicitAWSResourceAddsProviderResourceID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := processors.NewMockResourceClient(ctrl)
 	d := &bicepDriver{ResourceClient: client}
@@ -460,7 +461,8 @@ func Test_Bicep_PrepareRecipeResponse_ExplicitAWSResourceAddsConsistentPhysicalI
 			RadiusManaged: new(true),
 			AdditionalProperties: map[string]string{
 				"arn": "arn:aws:s3:::my-bucket",
-				rpv1.OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+				rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+				rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 			},
 		},
 	}, actualResponse.OutputResources)

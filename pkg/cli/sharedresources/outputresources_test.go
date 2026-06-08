@@ -35,7 +35,8 @@ func TestOutputResourcesFromGenericResource(t *testing.T) {
 					map[string]any{
 						"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket",
 						"additionalProperties": map[string]any{
-							rpv1.OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+							rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+							rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 						},
 					},
 				},
@@ -47,10 +48,11 @@ func TestOutputResourcesFromGenericResource(t *testing.T) {
 
 	require.Len(t, outputResources, 1)
 	require.Equal(t, "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket", outputResources[0].ID.String())
-	require.Equal(t, "arn:aws:s3:::my-bucket", outputResources[0].AdditionalProperties[rpv1.OutputResourceConsistentPhysicalIDProperty])
+	require.Equal(t, "arn:aws:s3:::my-bucket", outputResources[0].AdditionalProperties[rpv1.OutputResourceProviderResourceIDProperty])
+	require.Equal(t, rpv1.OutputResourceProviderResourceIDKindAWSARN, outputResources[0].AdditionalProperties[rpv1.OutputResourceProviderResourceIDKindProperty])
 }
 
-func TestFindSharedReferences_MatchesConsistentPhysicalID(t *testing.T) {
+func TestFindSharedReferences_MatchesProviderResourceID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -80,7 +82,7 @@ func TestFindSharedReferences_MatchesConsistentPhysicalID(t *testing.T) {
 	}}, references)
 }
 
-func makeResource(resourceID string, outputResourceID string, consistentPhysicalID string) generated.GenericResource {
+func makeResource(resourceID string, outputResourceID string, providerResourceID string) generated.GenericResource {
 	return generated.GenericResource{
 		ID: &resourceID,
 		Properties: map[string]any{
@@ -89,7 +91,8 @@ func makeResource(resourceID string, outputResourceID string, consistentPhysical
 					map[string]any{
 						"id": outputResourceID,
 						"additionalProperties": map[string]any{
-							rpv1.OutputResourceConsistentPhysicalIDProperty: consistentPhysicalID,
+							rpv1.OutputResourceProviderResourceIDProperty:     providerResourceID,
+							rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 						},
 					},
 				},

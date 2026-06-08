@@ -644,7 +644,8 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 						RadiusManaged: new(true),
 						AdditionalProperties: map[string]string{
 							"arn": "arn:aws:s3:::my-bucket",
-							rpv1.OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+							rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+							rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 						},
 					},
 				},

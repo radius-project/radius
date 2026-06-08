@@ -29,9 +29,15 @@ import (
 )
 
 const (
-	// OutputResourceConsistentPhysicalIDProperty is the AdditionalProperties key used to compare output resources that
-	// have different Radius IDs but reference the same physical cloud resource.
-	OutputResourceConsistentPhysicalIDProperty = "consistentPhysicalId"
+	// OutputResourceProviderResourceIDProperty is the AdditionalProperties key for the provider-native resource ID.
+	// Radius uses this to compare output resources that have different Radius IDs but reference the same provider resource.
+	OutputResourceProviderResourceIDProperty = "providerResourceId"
+
+	// OutputResourceProviderResourceIDKindProperty is the AdditionalProperties key for the provider-native resource ID kind.
+	OutputResourceProviderResourceIDKindProperty = "providerResourceIdKind"
+
+	// OutputResourceProviderResourceIDKindAWSARN is the providerResourceIdKind value for AWS ARNs.
+	OutputResourceProviderResourceIDKindAWSARN = "awsArn"
 )
 
 // OutputResource represents the output of rendering a resource
@@ -190,12 +196,18 @@ func GetGCOutputResources(after []OutputResource, before []OutputResource) []Out
 	return diff
 }
 
-// OutputResourceMatches compares output resources by physical identity when both resources expose one, otherwise by ID.
+// OutputResourceMatches compares output resources by provider resource ID when both resources expose one, otherwise by ID.
 func OutputResourceMatches(x OutputResource, y OutputResource) bool {
-	xPhysicalID := x.AdditionalProperties[OutputResourceConsistentPhysicalIDProperty]
-	yPhysicalID := y.AdditionalProperties[OutputResourceConsistentPhysicalIDProperty]
-	if xPhysicalID != "" && yPhysicalID != "" {
-		return xPhysicalID == yPhysicalID
+	xProviderResourceID := x.AdditionalProperties[OutputResourceProviderResourceIDProperty]
+	yProviderResourceID := y.AdditionalProperties[OutputResourceProviderResourceIDProperty]
+	if xProviderResourceID != "" && yProviderResourceID != "" {
+		xProviderResourceIDKind := x.AdditionalProperties[OutputResourceProviderResourceIDKindProperty]
+		yProviderResourceIDKind := y.AdditionalProperties[OutputResourceProviderResourceIDKindProperty]
+		if xProviderResourceIDKind != "" && yProviderResourceIDKind != "" && xProviderResourceIDKind != yProviderResourceIDKind {
+			return false
+		}
+
+		return xProviderResourceID == yProviderResourceID
 	}
 
 	return resources.IDEquals(x.ID, y.ID)
