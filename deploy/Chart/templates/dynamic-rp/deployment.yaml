@@ -186,8 +186,11 @@ spec:
         - /bin/sh
         - -c
         - |
-          chown 65532:65532 /tools && chmod 0755 /tools
-          chown 1000:1000 /state && chmod 0700 /state
+          set -e
+          # chmod BEFORE chown: after we transfer ownership we can no
+          # longer chmod (the container only has CAP_CHOWN, not CAP_FOWNER).
+          chmod 0755 /tools && chown 65532:65532 /tools
+          chmod 0700 /state && chown 1000:1000 /state
         volumeMounts:
         - name: buildctl-bin
           mountPath: /tools
