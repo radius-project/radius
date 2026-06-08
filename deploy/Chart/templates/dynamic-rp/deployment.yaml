@@ -305,6 +305,17 @@ spec:
         args:
         - --addr
         - tcp://127.0.0.1:1234
+        # Skip creating per-build-step PID namespaces. Required when
+        # the buildkitd container can't unshare(CLONE_NEWPID) under
+        # PSA baseline's RuntimeDefault seccomp + dropped capabilities.
+        # Documented in moby/buildkit/docs/rootless.md as the K8s
+        # workaround when /proc mask cannot be lifted via
+        # --security-opt systempaths=unconfined (no Pod-spec
+        # equivalent of that exists). Same caveats apply (build steps
+        # can kill the buildkitd daemon process and potentially each
+        # other), but those are mitigated by the per-pod user namespace
+        # from hostUsers: false.
+        - --oci-worker-no-process-sandbox
         readinessProbe:
           exec:
             command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
