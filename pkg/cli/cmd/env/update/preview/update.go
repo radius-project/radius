@@ -94,7 +94,6 @@ rad env update myenv --recipe-packs pack1,pack2
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
 	commonflags.AddKubernetesScopeFlags(cmd)
-	commonflags.AddOutputFlag(cmd)
 	//TODO: https://github.com/radius-project/radius/issues/5247
 	commonflags.AddEnvironmentNameFlag(cmd)
 
@@ -106,7 +105,6 @@ type Runner struct {
 	ConfigHolder            *framework.ConfigHolder
 	Output                  output.Interface
 	Workspace               *workspaces.Workspace
-	Format                  string
 	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
 	EnvironmentName    string
@@ -144,11 +142,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
-	if err != nil {
-		return err
-	}
-
-	r.Format, err = cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}

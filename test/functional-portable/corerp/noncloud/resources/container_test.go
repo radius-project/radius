@@ -32,33 +32,35 @@ import (
 func Test_Container(t *testing.T) {
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
-	appNamespace := "corerp-resources-container-app"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "ctnr-ctnr",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
+					name: {
 						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
 					},
 				},
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }

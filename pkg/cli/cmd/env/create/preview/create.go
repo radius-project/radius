@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -38,10 +39,8 @@ import (
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad env create` command.
-
-// NewCommand creates a new Cobra command and a Runner object to handle the command's logic, and adds flags to the command
-// for environment name, workspace, resource group.
+// NewCommand creates a new Cobra command and a Runner object to handle the `rad env create` command,
+// and adds flags for environment name, workspace, resource group, Kubernetes namespace, and cloud provider configuration.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -51,14 +50,36 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long: `Create a new Radius Environment
 Radius Environments are prepared "landing zones" for Radius Applications.
 Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
-		Args:    cobra.ExactArgs(1),
-		Example: `rad env create myenv`,
-		RunE:    framework.RunCommand(runner),
+		Args: cobra.ExactArgs(1),
+		Example: `
+## Create environment
+rad env create myenv
+
+## Create environment with Azure cloud provider
+rad env create myenv --azure-subscription-id <subscription-id> --azure-resource-group <resource-group>
+
+## Create environment with AWS cloud provider
+rad env create myenv --aws-region <region> --aws-account-id <account-id>
+
+## Create environment with a specific Kubernetes namespace
+rad env create myenv --kubernetes-namespace mynamespace
+`,
+		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddAzureSubscriptionFlag(cmd)
+	commonflags.AddAzureResourceGroupFlag(cmd)
+	cmd.MarkFlagsRequiredTogether(commonflags.AzureSubscriptionIdFlag, commonflags.AzureResourceGroupFlag)
+	commonflags.AddAWSRegionFlag(cmd)
+	commonflags.AddAWSAccountFlag(cmd)
+	cmd.MarkFlagsRequiredTogether(commonflags.AWSRegionFlag, commonflags.AWSAccountIdFlag)
+	commonflags.AddKubernetesNamespaceFlag(cmd)
+	commonflags.AddNamespaceFlag(cmd)
+	commonflags.MarkNamespaceFlagDeprecated(cmd)
+	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
 
 	return cmd, runner
 }
@@ -77,6 +98,8 @@ type Runner struct {
 	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 	ConfigFileInterface       framework.ConfigFileInterface
 	ConnectionFactory         connections.Factory
+
+	providers *corerpv20250801.Providers
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -90,7 +113,8 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad env create` command.
-// Validate checks if the workspace, environment name, scope, and resource group exist and returns an error if any of them are invalid or missing.
+// Validate checks if the workspace, environment name, scope, resource group, and cloud provider flags
+// are valid and returns an error if any of them are invalid or missing.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
@@ -128,6 +152,60 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("Resource group %q could not be found.", r.ResourceGroupName)
 	} else if err != nil {
 		return err
+	}
+
+	// Initialize providers. Sub-structs are allocated lazily as flags are parsed.
+	r.providers = &corerpv20250801.Providers{}
+
+	// Validate Azure scope components
+	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
+		azureSubId, err := cli.RequireAzureSubscriptionId(cmd)
+		if err != nil {
+			return err
+		}
+
+		azureRgId, err := cmd.Flags().GetString(commonflags.AzureResourceGroupFlag)
+		if err != nil {
+			return err
+		}
+
+		r.providers.Azure = &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    new(azureSubId),
+			ResourceGroupName: new(azureRgId),
+		}
+	}
+
+	// Validate AWS scope components
+	if cmd.Flags().Changed(commonflags.AWSRegionFlag) || cmd.Flags().Changed(commonflags.AWSAccountIdFlag) {
+		awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)
+		if err != nil {
+			return err
+		}
+
+		awsAccountId, err := cmd.Flags().GetString(commonflags.AWSAccountIdFlag)
+		if err != nil {
+			return err
+		}
+
+		r.providers.Aws = &corerpv20250801.ProvidersAws{
+			Region:    new(awsRegion),
+			AccountID: new(awsAccountId),
+		}
+	}
+
+	// Validate Kubernetes namespace. Accept either --kubernetes-namespace or the
+	// legacy --namespace alias (the two are mutually exclusive).
+	k8sNamespace, set, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
+	if err != nil {
+		return err
+	}
+	if set {
+		if err := prompt.ValidateKubernetesNamespace(k8sNamespace); err != nil {
+			return clierrors.Message("Invalid Kubernetes namespace %q: %s", k8sNamespace, err.Error())
+		}
+		r.providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+			Namespace: new(k8sNamespace),
+		}
 	}
 
 	return nil
@@ -170,11 +248,32 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	properties := &corerpv20250801.EnvironmentProperties{
+		RecipePacks: []*string{to.Ptr(recipepack.DefaultRecipePackID())},
+	}
+
+	// Set providers if any were configured.
+	if r.providers != nil {
+		hasAzure := r.providers.Azure != nil && (r.providers.Azure.SubscriptionID != nil || r.providers.Azure.ResourceGroupName != nil)
+		hasAws := r.providers.Aws != nil && (r.providers.Aws.AccountID != nil || r.providers.Aws.Region != nil)
+		hasK8s := r.providers.Kubernetes != nil && r.providers.Kubernetes.Namespace != nil
+		if hasAzure || hasAws || hasK8s {
+			properties.Providers = &corerpv20250801.Providers{}
+			if hasAzure {
+				properties.Providers.Azure = r.providers.Azure
+			}
+			if hasAws {
+				properties.Providers.Aws = r.providers.Aws
+			}
+			if hasK8s {
+				properties.Providers.Kubernetes = r.providers.Kubernetes
+			}
+		}
+	}
+
 	resource := &corerpv20250801.EnvironmentResource{
-		Location: to.Ptr(v1.LocationGlobal),
-		Properties: &corerpv20250801.EnvironmentProperties{
-			RecipePacks: []*string{to.Ptr(recipepack.DefaultRecipePackID())},
-		},
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: properties,
 	}
 
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
@@ -184,5 +283,5 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Radius.Core/environments/%s created", r.EnvironmentName)
-  return nil
+	return nil
 }

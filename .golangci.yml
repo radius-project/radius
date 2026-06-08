@@ -36,6 +36,12 @@ linters:
 
     govet:
       # Only run a subset of analyzers to match v1 behavior
+      # Disable the 'inline' analyzer: it surfaces unfixable diagnostics for
+      # stdlib generic functions carrying '//go:fix inline' directives (e.g.
+      # slices.Contains, maps.Clear), which the inliner cannot rewrite because
+      # type parameter inference is not yet supported.
+      disable:
+        - inline
       enable:
         - asmdecl
         - assign
