@@ -603,7 +603,15 @@ jobs:
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      # Include run_attempt so each re-run uses a distinct resource group.
+      # UNIQUE_ID is generated in the separate `setup` job, which is NOT
+      # re-executed by "Re-run failed jobs", so it stays constant across
+      # attempts. The delete step uses `az group delete --no-wait`, so a
+      # re-run would otherwise try to recreate the same resource group while
+      # the previous attempt's deletion is still in progress, failing with
+      # "ResourceGroupBeingDeleted". The radtest- prefix is preserved so the
+      # purge workflow still cleans up any orphaned groups.
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}-${{ github.run_attempt }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
