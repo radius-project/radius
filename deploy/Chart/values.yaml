@@ -141,22 +141,19 @@ dynamicrp:
     # Set false to skip provisioning the sidecar. Disabling makes
     # Radius.Compute/containerImages unusable.
     #
-    # When enabled, the dynamic-rp Pod sets hostUsers: false so the
-    # rootless BuildKit sidecar can run under PSA baseline. This requires:
-    #   - Kubernetes >= 1.29 (UserNamespacesSupport beta+default-on)
-    #   - Linux kernel >= 6.3 on nodes (tmpfs idmap mounts)
-    #   - runc >= 1.2 (or crun >= 1.9)
-    #   - containerd >= 2.0 (or CRI-O >= 1.25)
-    # On older clusters the buildkitd container will not start; either
-    # upgrade the cluster or set this to false.
+    # PSA mode: the sidecar runs under PSA "privileged" (the default
+    # for unlabeled namespaces). It is NOT compatible with PSA
+    # "baseline" or "restricted" because rootless BuildKit requires
+    # Unconfined seccomp + AppArmor profiles, and we couldn't find an
+    # off-the-shelf BuildKit configuration today that satisfies PSA
+    # baseline and still works for actual image builds. Operators who
+    # need stricter PSA enforcement should keep this sidecar disabled
+    # and label radius-system "privileged" only when this resource
+    # type is needed; or apply a Localhost seccomp profile via a node
+    # DaemonSet (see deploy/Chart/PSA-NOTES.md for details).
     enabled: true
-    # BuildKit image. NON-rootless variant: the chart uses Kubernetes
-    # user namespaces (hostUsers: false) to neutralize the privilege of
-    # running buildkitd as root, rather than relying on rootlesskit
-    # (which requires Unconfined seccomp/AppArmor that PSA baseline
-    # forbids). See deployment.yaml comment on the buildkitd container
-    # securityContext for the full rationale.
-    image: "moby/buildkit:v0.13.2"
+    # Pinned rootless BuildKit image.
+    image: "moby/buildkit:v0.13.2-rootless"
     # Default limits suit small/medium image builds; raise for large
     # contexts or memory-heavy compilations.
     resources:

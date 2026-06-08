@@ -33,25 +33,6 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
-      {{- if .Values.dynamicrp.buildkit.enabled }}
-      # User namespaces let rootless BuildKit satisfy PSA "baseline"
-      # (and, with a bit more security context tightening, "restricted")
-      # without requiring Unconfined seccomp/AppArmor. The kernel maps
-      # the in-pod root user (UID 0 inside the user namespace) to an
-      # unprivileged UID on the host, so rootlesskit's privilege-elevation
-      # path is satisfied at the kernel level instead of at the security-
-      # profile level.
-      #
-      # Requires:
-      #   - Kubernetes >= 1.29 (UserNamespacesSupport is beta+default-on)
-      #   - Linux kernel >= 6.3 on the node (idmap mounts for tmpfs)
-      #   - runc >= 1.2 or crun >= 1.9
-      #   - containerd >= 2.0 or CRI-O >= 1.25
-      # On clusters that don't meet these requirements the buildkitd
-      # container will fail to start; either disable the sidecar
-      # (--set dynamicrp.buildkit.enabled=false) or upgrade the cluster.
-      hostUsers: false
-      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
@@ -189,10 +170,8 @@ spec:
           set -e
           # chmod BEFORE chown: after we transfer ownership we can no
           # longer chmod (the container only has CAP_CHOWN, not CAP_FOWNER).
-          # /tools needs to be readable+exec by UID 65532 (dynamic-rp).
-          # /state stays root-owned because buildkitd runs as UID 0.
           chmod 0755 /tools && chown 65532:65532 /tools
-          chmod 0700 /state
+          chmod 0700 /state && chown 1000:1000 /state
         volumeMounts:
         - name: buildctl-bin
           mountPath: /tools
@@ -286,35 +265,30 @@ spec:
         resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
       {{- if .Values.dynamicrp.buildkit.enabled }}
-      # BuildKit sidecar. Listens on Pod-local loopback TCP;
+      # Rootless BuildKit sidecar. Listens on Pod-local loopback TCP;
       # the dynamic-rp container reaches it via BUILDKIT_HOST. No
       # host Docker socket, no privileged containers.
       #
-      # Uses the NON-rootless image. The pod sets hostUsers: false so the
-      # kernel gives the pod its own user namespace -- buildkitd's "root"
-      # (UID 0 inside the container) is mapped to an unprivileged UID on
-      # the host, so even though buildkitd runs as root with default
-      # capabilities, it can't do anything destructive outside the pod's
-      # user namespace. This is the moby/buildkit pod.userns.yaml
-      # configuration adapted for PSA baseline (we drop privileged: true
-      # since baseline forbids it; the user namespace makes it unnecessary
-      # because root-in-namespace gets the namespace-scoped capabilities
-      # buildkitd needs for mount/pivot_root/etc).
+      # PSA notes (verified empirically on AKS / EKS / k3d, runs
+      # documented in deploy/Chart/PSA-NOTES.md):
+      #   - This pod runs cleanly in PSA mode "privileged" (the default
+      #     for unlabeled namespaces).
+      #   - PSA "baseline" rejects this pod because of the Unconfined
+      #     seccomp + AppArmor profiles below. Those profiles are
+      #     required by rootless BuildKit to set up its rootlesskit
+      #     user-namespace shim. Switching to the non-rootless image
+      #     and hostUsers: false makes admission pass baseline, but
+      #     BuildKit's per-step process sandbox still fails inside
+      #     image builds. There is no off-the-shelf BuildKit config
+      #     today that satisfies PSA baseline AND can build images;
+      #     this is an upstream gap in moby/buildkit's K8s user-namespace
+      #     support. See https://github.com/moby/buildkit/issues for
+      #     the current state.
       - name: buildkitd
         image: "{{ .Values.dynamicrp.buildkit.image }}"
         args:
         - --addr
         - tcp://127.0.0.1:1234
-        # Skip creating per-build-step PID namespaces. Required when
-        # the buildkitd container can't unshare(CLONE_NEWPID) under
-        # PSA baseline's RuntimeDefault seccomp + dropped capabilities.
-        # Documented in moby/buildkit/docs/rootless.md as the K8s
-        # workaround when /proc mask cannot be lifted via
-        # --security-opt systempaths=unconfined (no Pod-spec
-        # equivalent of that exists). Same caveats apply (build steps
-        # can kill the buildkitd daemon process and potentially each
-        # other), but those are mitigated by the per-pod user namespace
-        # from hostUsers: false.
         - --oci-worker-no-process-sandbox
         readinessProbe:
           exec:
@@ -326,32 +300,25 @@ spec:
             command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
           initialDelaySeconds: 30
           periodSeconds: 30
-        # PSA-baseline-compatible:
-        #  - runAsUser: 0 is fine because hostUsers: false maps it to
-        #    an unprivileged host UID.
-        #  - Default capabilities (CHOWN, DAC_OVERRIDE, FOWNER, FSETID,
-        #    KILL, MKNOD, NET_BIND_SERVICE, SETFCAP, SETGID, SETPCAP,
-        #    SETUID, SYS_CHROOT, AUDIT_WRITE, NET_RAW) are all in PSA
-        #    baseline's allowed list. Crucially, inside the pod's user
-        #    namespace, UID 0 also gets the namespace-scoped capabilities
-        #    that buildkitd needs (CAP_SYS_ADMIN-equivalent within the
-        #    namespace), even though those caps don't exist on the host.
-        #  - RuntimeDefault seccomp is PSA-baseline-required.
-        #  - appArmorProfile intentionally unset: kubelet picks the
-        #    runtime default on AppArmor hosts; unset is PSA-baseline-ok
-        #    and keeps the chart deployable on AppArmor-disabled hosts.
         securityContext:
-          runAsUser: 0
-          runAsGroup: 0
-          runAsNonRoot: false
-          allowPrivilegeEscalation: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          # Rootless BuildKit needs Unconfined seccomp + AppArmor to set
+          # up its rootlesskit user-namespace shim (newuidmap, unshare).
+          # PSA baseline forbids both; this means the radius-system
+          # namespace must be PSA-labeled "privileged" (or unlabeled,
+          # which defaults to privileged) when buildkit is enabled.
           seccompProfile:
-            type: RuntimeDefault
+            type: Unconfined
+          appArmorProfile:
+            type: Unconfined
+          # rootlesskit's newuidmap relies on file capabilities, which
+          # the kernel nullifies under no_new_privs=1 (set when
+          # allowPrivilegeEscalation: false).
+          allowPrivilegeEscalation: true
         volumeMounts:
         - name: buildkit-state
-          # Non-rootless image uses /var/lib/buildkit for its state
-          # (rootless image used /home/user/.local/share/buildkit).
-          mountPath: /var/lib/buildkit
+          mountPath: /home/user/.local/share/buildkit
         {{- with .Values.dynamicrp.buildkit.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
