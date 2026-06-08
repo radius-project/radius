@@ -64,9 +64,16 @@ global:
     enabled: true
     # Init image used to pre-download Terraform binaries.
     initImage: "alpine:3.23.4"
-    # URL for downloading Terraform binary
-    # Leave empty to automatically fetch the latest version from HashiCorp
-    # Or provide a complete direct download URL for custom sources
+    # Terraform version to pre-download. MUST match terraformVersion in
+    # pkg/recipes/terraform/version.go -- the runtime download fallback
+    # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
+    # pins to that version, so the pre-mounted binary must match or
+    # recipes will see behavior differences between cold and warm starts.
+    version: "1.14.9"
+    # URL for downloading Terraform binary. Leave empty to download the
+    # version specified by `version` from releases.hashicorp.com. Provide
+    # a complete direct download URL to override (e.g., for air-gapped or
+    # custom builds); when set, `version` is ignored.
     downloadUrl: ""
     # Configure Terraform log level for terraform-exec execution
     # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
@@ -85,8 +92,8 @@ controller:
 
 de:
   image: deployment-engine
-  # Pin Deployment Engine to the v0.56.0 image for the v0.57.1 patch release.
-  tag: 0.56
+  # Default tag uses Chart AppVersion.
+  # tag: latest
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -141,6 +148,14 @@ rp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  security:
+    annotationProtection:
+      # Enable ValidatingAdmissionPolicy to protect radapp.io/status from user tampering.
+      # Keep disabled by default for compatibility with clusters that do not support
+      # admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy.
+      enabled: false
+      # Service account allowed to modify protected annotations.
+      allowedServiceAccountName: "applications-rp"
 
 dashboard:
   enabled: true
