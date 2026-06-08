@@ -302,10 +302,15 @@ spec:
             command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
           initialDelaySeconds: 30
           periodSeconds: 30
-        # PSA-baseline-compatible. The Pod's hostUsers: false gives
-        # rootlesskit a real user namespace, so we don't need the
-        # Unconfined seccomp/AppArmor escape hatches that plain rootless
-        # BuildKit normally requires.
+        # PSA-baseline-compatible. The Pod's hostUsers: false gives the
+        # whole pod a kernel-managed user namespace, but rootlesskit
+        # (the shim inside moby/buildkit:*-rootless) still wants to set
+        # up its own nested user namespace via newuidmap. newuidmap is
+        # a setuid binary that relies on file capabilities, which the
+        # kernel nullifies under no_new_privs=1. So
+        # allowPrivilegeEscalation MUST be true for rootless BuildKit
+        # to start, even with hostUsers: false. This is permitted by
+        # PSA baseline (only PSA restricted forbids it).
         #
         # appArmorProfile is intentionally unset (rather than RuntimeDefault):
         # PSA baseline accepts unset, the kubelet applies the runtime default
@@ -316,7 +321,7 @@ spec:
           runAsUser: 1000
           runAsGroup: 1000
           runAsNonRoot: true
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: true
           seccompProfile:
             type: RuntimeDefault
           capabilities:
