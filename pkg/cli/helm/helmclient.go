@@ -47,6 +47,9 @@ type HelmClient interface {
 	// then overlays vals. When reuseValues is false, the previous release's stored
 	// user values are discarded and only vals (merged over the new chart's defaults)
 	// are used.
+	//
+	// See https://helm.sh/docs/helm/helm_upgrade/#options for details on
+	// --reset-then-reuse-values behavior.
 	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*release.Release, error)
 
 	// RunHelmUninstall uninstalls the Helm chart.
@@ -109,6 +112,8 @@ func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmC
 // When reuseValues is false, only vals (merged over the new chart's defaults) are used; any user-supplied
 // values stored on the previous release are discarded. The vals map should contain only user-supplied
 // overrides; passing nil is equivalent to passing an empty map.
+//
+// See https://helm.sh/docs/helm/helm_upgrade/#options for details on --reset-then-reuse-values behavior.
 func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*release.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = namespace
