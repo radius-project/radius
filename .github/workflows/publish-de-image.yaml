@@ -105,5 +105,6 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ steps.get-token.outputs.token }}
+          RUN_ID: ${{ steps.monitor-remote-workflow.outputs.run_id }}
         run: |
-          gh run view "${{ steps.monitor-remote-workflow.outputs.run_id }}" --repo azure-octo/radius-publisher --log-failed || true
+          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true
