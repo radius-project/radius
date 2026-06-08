@@ -65,6 +65,11 @@ const (
 	// DeploymentTemplatePhraseReady indicates that the Deployment Template is ready.
 	DeploymentTemplatePhraseReady DeploymentTemplatePhrase = "Ready"
 
+	// DeploymentTemplatePhraseReadyPendingCleanup indicates that the latest deployment
+	// succeeded but residual DeploymentResources removed from the previous generation
+	// are still draining. The reconciler transitions to Ready once they are gone.
+	DeploymentTemplatePhraseReadyPendingCleanup DeploymentTemplatePhrase = "ReadyPendingCleanup"
+
 	// DeploymentTemplatePhraseFailed indicates that the Deployment Template has failed.
 	DeploymentTemplatePhraseFailed DeploymentTemplatePhrase = "Failed"
 
