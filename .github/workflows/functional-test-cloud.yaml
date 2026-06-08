@@ -237,7 +237,7 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -324,7 +324,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -378,7 +378,7 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -565,7 +565,12 @@ jobs:
     if: always() && needs.setup.result == 'success' && needs.build.result == 'success'
     # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
-      fail-fast: true
+      # Keep matrix legs independent. With fail-fast: true, a single failing
+      # (often flaky) leg cancels all in-progress siblings. GitHub's
+      # "Re-run failed jobs" reliably re-runs only failure-concluded jobs, so
+      # cancelled siblings can stay stale on the PR and the checks never fully
+      # update to green even after a successful re-run.
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04]
         name: [corerp-cloud, ucp-cloud]
@@ -614,14 +619,14 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
 
       - name: Checkout Samples repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -688,7 +693,7 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -759,7 +764,7 @@ jobs:
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

@@ -85,6 +85,7 @@ CoreRP
 CreateOrUpdate
 CreateOrUpdateEnvironment
 CustomConfigValidationCheck
+Cytoscape
 DCO
 DML
 DSL
@@ -296,6 +297,7 @@ ProvidersAws
 ProvidersAzure
 ProvidersKubernetes
 PubSubBroker
+Pulumi
 Qube
 RCs
 RDBMS
@@ -1175,6 +1177,7 @@ testrp
 testsyncresources
 tf
 tfexec
+tfvars
 tgz
 th
 throughs

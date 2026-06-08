@@ -134,6 +134,11 @@ type RPTest struct {
 	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct RPTest)
 
+	// PreSetup is called after CreateInitialResources but before test steps.
+	// Use this for setup that requires the CLI, such as creating preview environments
+	// with recipe packs for tests using Radius.Core/Radius.Compute resource types.
+	PreSetup func(ctx context.Context, t *testing.T, test RPTest)
+
 	// RequiredFeatures specifies the optional features that are required
 	// for this test to run.
 	RequiredFeatures []RequiredFeature
@@ -221,6 +226,48 @@ func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...
 		FastCleanup:      fastCleanup,
 		InitialResources: initialResources,
 	}
+}
+
+// NewPreviewEnvPreSetup creates a PreSetup function that provisions a preview environment
+// and configures its Kubernetes namespace for recipe-driven resource deployment.
+// It returns the PreSetup function and the environment resource ID.
+//
+// The preview environment is created via `rad env create <name> --preview`, which automatically
+// registers a default recipe pack (including container recipes). The environment is then updated
+// to set the Kubernetes namespace where recipes will deploy resources.
+//
+// The environment name is derived from the test name with "-env" suffix to avoid collisions.
+// The kubernetesNamespace parameter specifies where recipes should deploy K8s resources —
+// this typically matches the test's expected pod namespace (often the test name).
+//
+// t.Cleanup is registered immediately after env creation (before update) to prevent
+// resource leaks if the update step fails.
+func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNamespace string) (preSetup func(ctx context.Context, t *testing.T, test RPTest), envID string) {
+	envName := testName + "-env"
+	envID = fmt.Sprintf("%s/providers/Radius.Core/environments/%s", workspaceScope, envName)
+
+	preSetup = func(ctx context.Context, t *testing.T, test RPTest) {
+		cli := radcli.NewCLI(t, test.Options.ConfigFilePath)
+
+		// Create the preview environment. The --preview flag also creates a default recipe pack
+		// with container and other resource recipes registered.
+		_, err := cli.EnvironmentCreatePreview(ctx, envName, "")
+		require.NoError(t, err, "failed to create preview environment")
+
+		// Register cleanup immediately after create, before update, to prevent leaks on update failure.
+		t.Cleanup(func() {
+			_, err := cli.EnvironmentDeletePreview(ctx, envName, "")
+			if err != nil {
+				t.Logf("failed to delete preview environment %s: %v", envName, err)
+			}
+		})
+
+		// Set the Kubernetes namespace so recipes know where to deploy resources.
+		_, err = cli.EnvironmentUpdatePreview(ctx, envName, "", "", kubernetesNamespace)
+		require.NoError(t, err, "failed to set kubernetes namespace on preview environment")
+	}
+
+	return preSetup, envID
 }
 
 // K8sSecretResource creates the secret resource from the given namespace, name, secretType and key-value pairs,
@@ -389,6 +436,10 @@ func (ct RPTest) Test(t *testing.T) {
 	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
+	if ct.PreSetup != nil {
+		ct.PreSetup(ctx, t, ct)
+	}
+
 	success := true
 	for i, step := range ct.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
@@ -510,7 +561,7 @@ func (ct RPTest) Test(t *testing.T) {
 
 		for _, resource := range step.RPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
-			
+
 			if ct.FastCleanup {
 				// Fast cleanup: initiate deletion but don't wait for completion
 				// This avoids timeout issues with recipe-based resources (like DynamicRP postgres)

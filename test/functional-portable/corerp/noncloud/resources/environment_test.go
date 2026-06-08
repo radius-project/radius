@@ -35,7 +35,7 @@ func Test_Environment(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: "corerp-resources-environment-env",
-						Type: validation.EnvironmentsResource,
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},

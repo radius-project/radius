@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -87,6 +88,41 @@ func Test_Validate(t *testing.T) {
 				"--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount",
 			},
 			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Update Env Command with namespace flag",
+			Input:         []string{"default", "--namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "mynamespace", r.Namespace)
+			},
+		},
+		{
+			Name:          "Update Env Command with --kubernetes-namespace flag",
+			Input:         []string{"default", "--kubernetes-namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "mynamespace", r.Namespace)
+			},
+		},
+		{
+			Name:          "Update Env Command with invalid Kubernetes namespace",
+			Input:         []string{"default", "--kubernetes-namespace", "BadNamespace"},
+			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -353,6 +389,164 @@ func Test_Update(t *testing.T) {
 		require.Equal(t, expected, outputSink.Writes)
 	})
 
+	t.Run("Success: Update Environment With Namespace", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		environment := corerp.EnvironmentResource{
+			Name: new("test-env"),
+			Properties: &corerp.EnvironmentProperties{
+				Compute: &corerp.KubernetesCompute{
+					Namespace: new("old-namespace"),
+					Kind:      new("kubernetes"),
+				},
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvironment(gomock.Any(), "test-env").
+			Return(environment, nil).
+			Times(1)
+
+		testProviders := &corerp.Providers{
+			Azure: &corerp.ProvidersAzure{},
+			Aws:   &corerp.ProvidersAws{},
+		}
+
+		expectedEnvProperties := &corerp.EnvironmentProperties{
+			Compute: &corerp.KubernetesCompute{
+				Namespace: new("new-namespace"),
+				Kind:      new("kubernetes"),
+			},
+		}
+		appManagementClient.EXPECT().
+			CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: expectedEnvProperties,
+			}).
+			Return(nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name:  "kind-kind",
+			Scope: "/planes/radius/local/resourceGroups/test-group",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			EnvName:           "test-env",
+			Namespace:         "new-namespace",
+			providers:         testProviders,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{
+				Format: "Applications.Core/environments/%s updated",
+				Params: []any{"test-env"},
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Success: Update Environment With Namespace When Compute Is Nil", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		environment := corerp.EnvironmentResource{
+			Name:       new("test-env"),
+			Properties: &corerp.EnvironmentProperties{
+				// Compute is nil — exercises the nil-branch which must set Kind.
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvironment(gomock.Any(), "test-env").
+			Return(environment, nil).
+			Times(1)
+
+		expectedEnvProperties := &corerp.EnvironmentProperties{
+			Compute: &corerp.KubernetesCompute{
+				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
+				Namespace: new("new-namespace"),
+			},
+		}
+		appManagementClient.EXPECT().
+			CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
+				Location:   to.Ptr(v1.LocationGlobal),
+				Properties: expectedEnvProperties,
+			}).
+			Return(nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{"kind": "kubernetes", "context": "kind-kind"},
+			Name:       "kind-kind",
+			Scope:      "/planes/radius/local/resourceGroups/test-group",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			EnvName:           "test-env",
+			Namespace:         "new-namespace",
+			providers:         &corerp.Providers{},
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+	})
+
+	t.Run("Failure: Update Environment With Namespace When Compute Is Non-Kubernetes", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// Use a non-Kubernetes concrete compute type to exercise the default branch.
+		environment := corerp.EnvironmentResource{
+			Name: new("test-env"),
+			Properties: &corerp.EnvironmentProperties{
+				Compute: &corerp.AzureContainerInstanceCompute{},
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			GetEnvironment(gomock.Any(), "test-env").
+			Return(environment, nil).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{"kind": "kubernetes", "context": "kind-kind"},
+			Name:       "kind-kind",
+			Scope:      "/planes/radius/local/resourceGroups/test-group",
+		}
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Workspace:         workspace,
+			Output:            outputSink,
+			EnvName:           "test-env",
+			Namespace:         "new-namespace",
+			providers:         &corerp.Providers{},
+		}
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "existing compute kind is not Kubernetes")
+	})
+
 	t.Run("Update Environment With Existing Providers", func(t *testing.T) {
 		testCases := []struct {
 			name              string
@@ -507,5 +701,25 @@ func Test_Update(t *testing.T) {
 				require.Equal(t, expected, outputSink.Writes)
 			})
 		}
+	})
+}
+
+func Test_FlagGroups(t *testing.T) {
+	t.Run("--namespace and --kubernetes-namespace are mutually exclusive", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--namespace", "ns1", "--kubernetes-namespace", "ns2"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
+
+	t.Run("--azure-subscription-id requires --azure-resource-group", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--azure-subscription-id", "00000000-0000-0000-0000-000000000000"}))
+		require.Error(t, cmd.ValidateFlagGroups())
+	})
+
+	t.Run("--aws-region requires --aws-account-id", func(t *testing.T) {
+		cmd, _ := NewCommand(&framework.Impl{})
+		require.NoError(t, cmd.ParseFlags([]string{"--aws-region", "us-west-2"}))
+		require.Error(t, cmd.ValidateFlagGroups())
 	})
 }
