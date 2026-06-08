@@ -303,14 +303,18 @@ spec:
         # rootlesskit a real user namespace, so we don't need the
         # Unconfined seccomp/AppArmor escape hatches that plain rootless
         # BuildKit normally requires.
+        #
+        # appArmorProfile is intentionally unset (rather than RuntimeDefault):
+        # PSA baseline accepts unset, the kubelet applies the runtime default
+        # automatically on AppArmor-enabled hosts, and leaving it unset keeps
+        # the chart deployable on hosts without AppArmor (e.g. k3d nodes that
+        # don't expose AppArmor to the inner k3s/containerd).
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
           runAsNonRoot: true
           allowPrivilegeEscalation: false
           seccompProfile:
-            type: RuntimeDefault
-          appArmorProfile:
             type: RuntimeDefault
           capabilities:
             drop: ["ALL"]
