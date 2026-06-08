@@ -32,7 +32,7 @@ Note, this only applies when we want to update the app core image, if we need to
    go run ./cmd/rad/main.go workspace create kubernetes
    go run ./cmd/rad/main.go group create radius-rg
    go run ./cmd/rad/main.go switch radius-rg
-   go run ./cmd/rad/main.go env create radius-rg --namespace default
+   go run ./cmd/rad/main.go env create radius-rg --kubernetes-namespace default
    go run ./cmd/rad/main.go env switch radius-rg
    ```
 
@@ -81,7 +81,7 @@ The above steps will not configure the ability for Radius to talk with azure res
    go run ./cmd/rad/main.go workspace create kubernetes
    go run ./cmd/rad/main.go group create radius-rg
    go run ./cmd/rad/main.go switch radius-rg
-   go run ./cmd/rad/main.go env create radius-rg --namespace default
+   go run ./cmd/rad/main.go env create radius-rg --kubernetes-namespace default
    go run ./cmd/rad/main.go env switch radius-rg
    go run ./cmd/rad/main.go env update radius-rg --azure-subscription-id <subscriptionId> --azure-resource-group <resourcegroupName>
    go run ./cmd/rad/main.go credential register azure sp --client-id <appId> --client-secret <pwd> --tenant-id <tenantId>
