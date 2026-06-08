@@ -351,6 +351,9 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 // semantics): the upgrade starts from the new chart defaults, re-applies the previously stored user overrides,
 // and then overlays the current invocation's --set / --set-file values. Set ClusterOptions.ResetValues to true
 // to opt out and use only the current invocation's overrides.
+//
+// See the Helm upgrade documentation for details on ResetThenReuseValues behavior:
+// https://helm.sh/docs/helm/helm_upgrade/#options
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	helmAction := NewHelmAction(i.Helm)
 
