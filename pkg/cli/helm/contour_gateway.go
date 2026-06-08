@@ -205,6 +205,16 @@ func newContourGateway() *unstructured.Unstructured {
 							},
 						},
 					},
+					map[string]any{
+						"name":     "https",
+						"protocol": "HTTPS",
+						"port":     int64(443),
+						"allowedRoutes": map[string]any{
+							"namespaces": map[string]any{
+								"from": "All",
+							},
+						},
+					},
 				},
 			},
 		},

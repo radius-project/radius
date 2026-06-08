@@ -47,6 +47,28 @@ func TestReconcileDefaultContourGatewayCreatesResources(t *testing.T) {
 	gatewayClassName, _, _ := unstructured.NestedString(gateway.Object, "spec", "gatewayClassName")
 	require.Equal(t, ContourGatewayClassName, gatewayClassName)
 	require.True(t, isRadiusManaged(gateway))
+	listeners, _, _ := unstructured.NestedSlice(gateway.Object, "spec", "listeners")
+	require.Len(t, listeners, 2)
+	require.Equal(t, map[string]any{
+		"name":     "http",
+		"protocol": "HTTP",
+		"port":     int64(80),
+		"allowedRoutes": map[string]any{
+			"namespaces": map[string]any{
+				"from": "All",
+			},
+		},
+	}, listeners[0])
+	require.Equal(t, map[string]any{
+		"name":     "https",
+		"protocol": "HTTPS",
+		"port":     int64(443),
+		"allowedRoutes": map[string]any{
+			"namespaces": map[string]any{
+				"from": "All",
+			},
+		},
+	}, listeners[1])
 }
 
 func TestReconcileDefaultContourGatewayAllowsExistingMatchingGatewayClass(t *testing.T) {

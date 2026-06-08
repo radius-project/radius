@@ -37,7 +37,7 @@ Radius already has a default recipe pack experience for development scenarios. `
 ### Goals
 
 - Keep Contour installed by default for now.
-- Create the shared Contour Gateway API `Gateway` during Radius install when Contour install is enabled.
+- Create the shared Contour Gateway API `Gateway` during Radius install when Contour install is enabled, with HTTP and HTTPS listeners for existing HTTPProxy behavior.
 - Use the existing `Radius.Compute/routes` recipe to render Gateway API route resources by default.
 - Keep Gateway API infrastructure out of the application model in the default path.
 - Allow users to swap ingress behavior by changing recipe packs.
