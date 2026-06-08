@@ -19,6 +19,7 @@ func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
 				"ports": map[string]any{},
 			},
 		},
+		"configInline": map[string]any{},
 	}
 	testChart := &chart.Chart{Values: chartVals}
 	opts := ContourChartOptions{HostNetwork: true}
@@ -50,9 +51,11 @@ func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
 	if !reflect.DeepEqual(servicePorts, wantService) {
 		t.Errorf("service ports mismatch.\nexpected: %v\ngot:      %v", wantService, servicePorts)
 	}
+
+	assertDefaultGatewayRef(t, testChart.Values)
 }
 
-func TestAddContourValues_HostNetworkDisabled_NoChange(t *testing.T) {
+func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *testing.T) {
 	// Arrange
 	original := map[string]any{
 		"envoy": map[string]any{
@@ -61,6 +64,7 @@ func TestAddContourValues_HostNetworkDisabled_NoChange(t *testing.T) {
 				"ports": map[string]any{"http": 3000, "https": 3443},
 			},
 		},
+		"configInline": map[string]any{},
 	}
 	testChart := &chart.Chart{Values: cloneMap(original)}
 	opts := ContourChartOptions{HostNetwork: false}
@@ -70,10 +74,12 @@ func TestAddContourValues_HostNetworkDisabled_NoChange(t *testing.T) {
 		t.Fatalf("addContourValues returned error: %v", err)
 	}
 
-	// Assert – chart values should be unchanged.
-	if !reflect.DeepEqual(testChart.Values, original) {
-		t.Errorf("expected chart values to remain unchanged when HostNetwork is false")
+	// Assert - host network chart values should be unchanged.
+	if !reflect.DeepEqual(testChart.Values["envoy"], original["envoy"]) {
+		t.Errorf("expected envoy chart values to remain unchanged when HostNetwork is false")
 	}
+
+	assertDefaultGatewayRef(t, testChart.Values)
 }
 
 // cloneMap does a shallow copy of a map[string]any for test isolation.
@@ -81,4 +87,19 @@ func cloneMap(src map[string]any) map[string]any {
 	out := make(map[string]any, len(src))
 	maps.Copy(out, src)
 	return out
+}
+
+func assertDefaultGatewayRef(t *testing.T, values map[string]any) {
+	t.Helper()
+
+	configInline := values["configInline"].(map[string]any)
+	gateway := configInline["gateway"].(map[string]any)
+	gatewayRef := gateway["gatewayRef"].(map[string]any)
+
+	if name := gatewayRef["name"]; name != DefaultContourGatewayName {
+		t.Errorf("expected gatewayRef.name=%s, got %v", DefaultContourGatewayName, name)
+	}
+	if namespace := gatewayRef["namespace"]; namespace != DefaultContourGatewayNamespace {
+		t.Errorf("expected gatewayRef.namespace=%s, got %v", DefaultContourGatewayNamespace, namespace)
+	}
 }
