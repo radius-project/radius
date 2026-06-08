@@ -11,16 +11,15 @@ clusters accordingly.
 | PSA mode (radius-system namespace) | BuildKit sidecar status |
 |------------------------------------|-------------------------|
 | `privileged` (default for unlabeled namespaces) | ✅ Supported, validated end-to-end |
-| `baseline` | ❌ Not supported |
-| `restricted` | ❌ Not supported |
+| `baseline` | ❌ Not supported (upstream BuildKit limitation) |
+| `restricted` | ❌ Not supported (upstream BuildKit limitation) |
 
 Operators who need their cluster to enforce PSA `baseline` or
 `restricted` cluster-wide should:
 
 1. Keep `Radius.Compute/containerImages` disabled
-   (`--set dynamicrp.buildkit.enabled=false`), and label radius-system
-   accordingly. The chart will install cleanly under `baseline` /
-   `restricted` without the sidecar.
+   (`--set dynamicrp.buildkit.enabled=false`). The chart will install
+   cleanly under `baseline` / `restricted` without the sidecar.
 2. If the resource type IS needed, label only the `radius-system`
    namespace as `privileged`:
    `kubectl label ns radius-system pod-security.kubernetes.io/enforce=privileged --overwrite`.
@@ -30,52 +29,93 @@ Operators who need their cluster to enforce PSA `baseline` or
 
 ## Why baseline/restricted don't work
 
-BuildKit's official Kubernetes guidance offers two configurations:
+This is **not a Radius-specific problem.** Building OCI images inside
+a Kubernetes Pod requires Linux capabilities (mount, unshare,
+pivot_root, /proc manipulation) that PSA baseline and restricted both
+disallow. BuildKit's maintainer (AkihiroSuda, also the author of
+rootlesskit) has confirmed this is fundamental:
 
-- `pod.rootless.yaml`: `moby/buildkit:*-rootless` image.
-  Requires `seccompProfile: Unconfined` AND `appArmorProfile: Unconfined`.
-  Both are forbidden by PSA `baseline`.
-- `pod.userns.yaml`: `moby/buildkit:*` (non-rootless) image with
-  `hostUsers: false` and `privileged: true`. `privileged: true` is
-  forbidden by PSA `baseline`.
+> "The default apparmor profile prohibits mounting, so it still
+> cannot be enabled."
+> — moby/buildkit#4022 (the upstream issue asking exactly this question)
 
-We tried a third configuration: non-rootless image + `hostUsers: false`
-without `privileged: true`. PSA `baseline` accepts the pod, the
-buildkitd process starts and serves, but actual image builds fail
-inside BuildKit's snapshotter / runc machinery with cryptic
-"operation not permitted" errors. This is an upstream gap in
-BuildKit's K8s user-namespace support: the
-`--oci-worker-no-process-sandbox` flag that K8s deployments use to
-work around the lack of `--security-opt systempaths=unconfined` is
-gated to the rootless image only.
+The same constraint applies to alternative builders:
 
-(Validation runs: AKS PSA baseline workflow #27160081225, EKS PSA
-baseline workflow #27164309017 / #27164822141, k3d PSA baseline
-workflow #27154219074. Full debug logs in the demo repo's actions
-history.)
+- **Kaniko**: ARCHIVED June 2025; no longer maintained.
+- **img** (`genuinetools/img`): unmaintained since 2024.
+- **Buildah**: needs `seccompProfile: Unconfined` for rootless mounts;
+  PSA baseline forbids Unconfined seccomp.
+- **BuildKit rootless**: needs Unconfined seccomp + AppArmor for
+  rootlesskit's newuidmap/unshare; both forbidden by baseline.
+- **BuildKit + `hostUsers: false` + non-rootless image**: chart
+  admission passes baseline AND the daemon starts, BUT actual image
+  builds fail in the snapshotter machinery (BuildKit's per-build-step
+  PID-namespace creation hits seccomp restrictions; the
+  `--oci-worker-no-process-sandbox` workaround is gated to the
+  rootless image only). Tracked as the same constraint in
+  moby/buildkit#4022 and moby/buildkit#3217 ("Rootless does not
+  start on GKE Autopilot" — GKE Autopilot enforces a security
+  posture similar to PSA baseline).
 
-## What about Localhost seccomp profiles?
+Per the [PSA spec](https://kubernetes.io/docs/concepts/security/pod-security-standards/):
+- Baseline forbids `seccompProfile.type: Unconfined`
+- Baseline forbids `appArmorProfile.type: Unconfined`
+- Baseline forbids adding capabilities outside the allow-list (which
+  excludes `SYS_ADMIN`, required for `mount`/`unshare`)
+- Baseline forbids `procMount: Unmasked`
 
-PSA `baseline` accepts `seccompProfile.type: Localhost` (only forbids
-`Unconfined`), so in principle a custom seccomp profile that allows
-the syscalls rootlesskit needs (mount, pivot_root, unshare with
-`CLONE_NEWUSER`, etc.) but is otherwise restrictive could work.
-Implementing this requires:
+Every in-cluster image builder hits at least one of these.
 
-- A node-side seccomp profile JSON installed at
-  `/var/lib/kubelet/seccomp/` on every node.
-- Either a separate DaemonSet shipping it, or out-of-band node
-  provisioning.
+## Validation runs
 
-We have not built or validated this approach. Operators with an
-existing seccomp-profile distribution mechanism may pursue it as a
-cluster-specific extension; we'd be interested in PRs.
+The findings above were verified by running E2E with PSA enforcement
+on:
 
-## Future work to revisit baseline support
+- AKS PSA baseline workflow (`e2e-aks-psa-baseline.yaml`)
+- EKS PSA baseline workflow (`e2e-eks-psa-baseline.yaml`) — run
+  #27164309017 proved admission + daemon-start; run #27164822141
+  confirmed the `--oci-worker-no-process-sandbox` flag is rootless-only
+- k3d PSA baseline workflow (`e2e-k3d-psa-baseline.yaml`) — admission
+  passed, daemon blocked by inner-Docker AppArmor
 
-- BuildKit upstream needs to add a non-rootless K8s configuration
-  that doesn't require `privileged: true`. Tracking issues:
-  - https://github.com/moby/buildkit/blob/master/examples/kubernetes/pod.userns.yaml
-- Kubernetes user-namespace defaults (`hostUsers: false`) become
-  cluster-default in K8s 1.36+ (GA April 2026), which may shift
-  upstream BuildKit's stance.
+Full debug logs available in the demo repo's Actions history.
+
+## Possible future paths
+
+- **Localhost seccomp profile via DaemonSet.** PSA baseline accepts
+  `seccompProfile.type: Localhost`, so in principle a custom seccomp
+  profile that allows the syscalls BuildKit needs (mount, pivot_root,
+  unshare with `CLONE_NEWUSER`, /proc operations) could work. Requires
+  shipping a JSON profile to every node's
+  `/var/lib/kubelet/seccomp/` directory via a DaemonSet, plus
+  validating it doesn't expose more than the standard runtime default.
+  Untested.
+- **Out-of-cluster builds.** Move image building to an external
+  CI/CD pipeline; have `Radius.Compute/containerImages` orchestrate
+  remote builds rather than building in-cluster. Pursuing this in
+  the longer term would sidestep the entire PSA-baseline problem.
+- **K8s 1.36+ user namespaces (GA April 2026).** May shift upstream
+  BuildKit's stance on requiring Unconfined seccomp. Worth a
+  re-evaluation in 6-12 months once Linux distros and BuildKit
+  catch up.
+- **Direct sandboxed builders.** Newer experimental tools like
+  `crane` (go-containerregistry) can construct images from layers
+  without invoking the OCI runtime at all, sidestepping the entire
+  seccomp/cap problem — but only support a narrow subset of
+  Dockerfile features.
+
+## References
+
+- moby/buildkit#4022 — "Question: buildkit rootless + AppArmor on
+  k8s- could Kubernetes UserNamespacesStatelessPodsSupport feature
+  (v1.25 alpha) make this possible?" — confirms AppArmor is the
+  fundamental blocker.
+- moby/buildkit#3217 — "Rootless does not start on GKE Autopilot" —
+  same constraint manifesting on Google's managed K8s.
+- Kubernetes Pod Security Standards spec:
+  https://kubernetes.io/docs/concepts/security/pod-security-standards/
+- BuildKit rootless docs (lists every required `--security-opt`):
+  https://github.com/moby/buildkit/blob/master/docs/rootless.md
+- Kaniko archival notice (June 2025):
+  https://github.com/GoogleContainerTools/kaniko
+
