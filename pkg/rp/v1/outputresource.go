@@ -28,6 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	// OutputResourceConsistentPhysicalIDProperty is the AdditionalProperties key used to compare output resources that
+	// have different Radius IDs but reference the same physical cloud resource.
+	OutputResourceConsistentPhysicalIDProperty = "consistentPhysicalId"
+)
+
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	// LocalID is a logical identifier scoped to the owning Radius resource. This is only needed or used
@@ -170,7 +176,7 @@ func GetGCOutputResources(after []OutputResource, before []OutputResource) []Out
 	for _, beforeResource := range before {
 		found := false
 		for _, afterResource := range after {
-			if resources.IDEquals(beforeResource.ID, afterResource.ID) {
+			if OutputResourceMatches(beforeResource, afterResource) {
 				found = true
 				break
 			}
@@ -182,4 +188,15 @@ func GetGCOutputResources(after []OutputResource, before []OutputResource) []Out
 	}
 
 	return diff
+}
+
+// OutputResourceMatches compares output resources by physical identity when both resources expose one, otherwise by ID.
+func OutputResourceMatches(x OutputResource, y OutputResource) bool {
+	xPhysicalID := x.AdditionalProperties[OutputResourceConsistentPhysicalIDProperty]
+	yPhysicalID := y.AdditionalProperties[OutputResourceConsistentPhysicalIDProperty]
+	if xPhysicalID != "" && yPhysicalID != "" {
+		return xPhysicalID == yPhysicalID
+	}
+
+	return resources.IDEquals(x.ID, y.ID)
 }

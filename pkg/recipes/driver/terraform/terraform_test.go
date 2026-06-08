@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	gomock "go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
@@ -52,9 +53,6 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 		Providers: datamodel.Providers{
 			Azure: datamodel.ProvidersAzure{
 				Scope: "scope",
-			},
-			AWS: datamodel.ProvidersAWS{
-				Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
 			},
 		},
 	}
@@ -640,6 +638,16 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"},
+				OutputResources: []rpv1.OutputResource{
+					{
+						ID:            resources.MustParse("/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"),
+						RadiusManaged: new(true),
+						AdditionalProperties: map[string]string{
+							"arn": "arn:aws:s3:::my-bucket",
+							rpv1.OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+						},
+					},
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -818,6 +826,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, opts.Configuration, tt.state)
+			if tt.desc != "AWS S3 bucket ARN uses Terraform AWS output resource identity" {
+				recipeResponse.OutputResources = nil
+			}
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

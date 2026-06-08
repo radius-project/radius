@@ -122,6 +122,9 @@ type RecipeOutput struct {
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 
+	// OutputResources represents deployed output resources with Radius-owned metadata.
+	OutputResources []rpv1.OutputResource `json:"-"`
+
 	// Secrets represents the key/value pairs of secret values of the deployed resource.
 	Secrets map[string]any
 

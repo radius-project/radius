@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/sharedresources"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -194,6 +195,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	if err := r.warnSharedOutputResources(ctx, managementClient, resourcesList); err != nil {
+		return err
+	}
+
 	// Delete associated resources in parallel
 	if len(resourcesList) > 0 {
 		r.Output.LogInfo(msgDeletingResources, len(resourcesList), r.ApplicationName)
@@ -235,6 +240,32 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo(msgApplicationDeletedPreview)
+	return nil
+}
+
+func (r *Runner) warnSharedOutputResources(ctx context.Context, client clients.ApplicationsManagementClient, resourcesList []generated.GenericResource) error {
+	excludedResourceIDs := map[string]bool{}
+	for _, resource := range resourcesList {
+		if resource.ID != nil {
+			excludedResourceIDs[*resource.ID] = true
+		}
+	}
+
+	for _, resource := range resourcesList {
+		if len(sharedresources.OutputResourcesFromGenericResource(resource)) == 0 {
+			continue
+		}
+
+		shared, err := sharedresources.FindSharedReferences(ctx, client, resource, excludedResourceIDs)
+		if err != nil {
+			return err
+		}
+
+		for _, reference := range shared {
+			r.Output.LogInfo("WARNING: Output resource %s is also referenced by %s. Deleting application %s may affect another app or environment.", reference.OutputResourceID, reference.ResourceID, r.ApplicationName)
+		}
+	}
+
 	return nil
 }
 

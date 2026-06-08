@@ -119,6 +119,9 @@ model ApplicationGraphOutputResource {
   @doc("The resource ID.")
   id: string;
 
+  @doc("Additional provider-specific output resource properties.")
+  additionalProperties?: Record<string>;
+
   @doc("The resource type.")
   type: string;
 

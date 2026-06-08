@@ -22,11 +22,13 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/sharedresources"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -154,7 +156,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environmentID, applicationID, err := r.extractEnvironmentAndApplicationIDs(ctx, client)
+	resource, environmentID, applicationID, err := r.extractEnvironmentAndApplicationIDs(ctx, client)
 	if clients.Is404Error(err) {
 		r.Output.LogInfo("%s/%s not found", r.FullyQualifiedResourceTypeName, r.ResourceName)
 		return nil
@@ -164,6 +166,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	if r.Force {
 		r.Output.LogInfo("WARNING: Force deleting a resource in a non-terminal state may leave orphaned external resources that require manual cleanup.")
+	}
+
+	if err := r.warnSharedOutputResources(ctx, client, resource); err != nil {
+		return err
 	}
 
 	// Prompt user to confirm deletion
@@ -200,10 +206,31 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client clients.ApplicationsManagementClient) (environmentID resources.ID, applicationID resources.ID, err error) {
-	resource, err := client.GetResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
+func (r *Runner) warnSharedOutputResources(ctx context.Context, client clients.ApplicationsManagementClient, resource generated.GenericResource) error {
+	if len(sharedresources.OutputResourcesFromGenericResource(resource)) == 0 {
+		return nil
+	}
+	resourceID := ""
+	if resource.ID != nil {
+		resourceID = *resource.ID
+	}
+
+	shared, err := sharedresources.FindSharedReferences(ctx, client, resource, map[string]bool{resourceID: true})
 	if err != nil {
-		return resources.ID{}, resources.ID{}, err
+		return err
+	}
+
+	for _, reference := range shared {
+		r.Output.LogInfo("WARNING: Output resource %s is also referenced by %s. Deleting this resource may affect another app or environment.", reference.OutputResourceID, reference.ResourceID)
+	}
+
+	return nil
+}
+
+func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client clients.ApplicationsManagementClient) (resource generated.GenericResource, environmentID resources.ID, applicationID resources.ID, err error) {
+	resource, err = client.GetResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
+	if err != nil {
+		return generated.GenericResource{}, resources.ID{}, resources.ID{}, err
 	}
 
 	// Note: The following cases are all possible:
@@ -217,48 +244,48 @@ func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client
 	if resource.Properties["environment"] != nil {
 		environmentID, err = convertToResourceID(resource.Properties["environment"])
 		if err != nil {
-			return resources.ID{}, resources.ID{}, err
+			return generated.GenericResource{}, resources.ID{}, resources.ID{}, err
 		}
 	}
 
 	if resource.Properties["application"] != nil {
 		applicationID, err = convertToResourceID(resource.Properties["application"])
 		if err != nil {
-			return resources.ID{}, resources.ID{}, err
+			return generated.GenericResource{}, resources.ID{}, resources.ID{}, err
 		}
 	}
 
 	// Detect case 4: (no environment or application)
 	if environmentID.IsEmpty() && applicationID.IsEmpty() {
-		return resources.ID{}, resources.ID{}, nil
+		return resource, resources.ID{}, resources.ID{}, nil
 	}
 
 	// At this point we have the environment and application IDs **if** they were returned by
 	// the API. That covers case 1 & 2. Now we need to handle case 3, by doing an additional
 	// lookup.
 	if !environmentID.IsEmpty() {
-		return environmentID, applicationID, nil // Case 1 or Case 2
+		return resource, environmentID, applicationID, nil // Case 1 or Case 2
 	}
 
 	if applicationID.IsEmpty() {
-		return resources.ID{}, resources.ID{}, nil
+		return resource, resources.ID{}, resources.ID{}, nil
 	}
 
 	application, err := client.GetApplication(ctx, applicationID.String())
 	if clients.Is404Error(err) {
 		// Ignore 404s for this case, and just assume there is no application. The user is
 		// likely just doing cleanup and we don't want to block them.
-		return environmentID, resources.ID{}, nil
+		return resource, environmentID, resources.ID{}, nil
 	} else if err != nil {
-		return resources.ID{}, resources.ID{}, err
+		return generated.GenericResource{}, resources.ID{}, resources.ID{}, err
 	}
 
 	environmentID, err = resources.ParseResource(*application.Properties.Environment)
 	if err != nil {
-		return resources.ID{}, resources.ID{}, err
+		return generated.GenericResource{}, resources.ID{}, resources.ID{}, err
 	}
 
-	return environmentID, applicationID, nil
+	return resource, environmentID, applicationID, nil
 }
 
 func convertToResourceID(value any) (resources.ID, error) {

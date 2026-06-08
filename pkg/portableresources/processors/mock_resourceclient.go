@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -73,6 +74,45 @@ func (c *MockResourceClientDeleteCall) Do(f func(context.Context, string) error)
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockResourceClientDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockResourceClientDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Get mocks base method.
+func (m *MockResourceClient) Get(arg0 context.Context, arg1 string) (generated.GenericResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", arg0, arg1)
+	ret0, _ := ret[0].(generated.GenericResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockResourceClientMockRecorder) Get(arg0, arg1 any) *MockResourceClientGetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockResourceClient)(nil).Get), arg0, arg1)
+	return &MockResourceClientGetCall{Call: call}
+}
+
+// MockResourceClientGetCall wrap *gomock.Call
+type MockResourceClientGetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockResourceClientGetCall) Return(arg0 generated.GenericResource, arg1 error) *MockResourceClientGetCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockResourceClientGetCall) Do(f func(context.Context, string) (generated.GenericResource, error)) *MockResourceClientGetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockResourceClientGetCall) DoAndReturn(f func(context.Context, string) (generated.GenericResource, error)) *MockResourceClientGetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

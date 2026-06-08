@@ -60,6 +60,26 @@ func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, kubern
 	return &resourceClient{arm: arm, connection: connection, kubernetesClient: kubernetesClient}
 }
 
+// Get gets a resource through UCP.
+func (c *resourceClient) Get(ctx context.Context, id string) (generated.GenericResource, error) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	client, err := generated.NewGenericResourcesClient(parsed.Type(), parsed.RootScope(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	response, err := client.Get(ctx, parsed.Name(), nil)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
+	return response.GenericResource, nil
+}
+
 // Delete attempts to delete a resource, either through UCP, Azure, or Kubernetes, depending on the resource type.
 func (c *resourceClient) Delete(ctx context.Context, id string) error {
 	parsed, err := resources.ParseResource(id)

@@ -586,6 +586,9 @@ type OperationListResult struct {
 
 // OutputResource - Properties of an output resource.
 type OutputResource struct {
+	// Additional provider-specific output resource properties.
+	AdditionalProperties map[string]*string
+
 	// The UCP resource ID of the underlying resource.
 	ID *string
 

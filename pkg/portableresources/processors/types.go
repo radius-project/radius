@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -66,6 +67,9 @@ func (e *ValidationError) Error() string {
 
 // ResourceClient is a client used by resource processors for interacting with UCP resources.
 type ResourceClient interface {
+	// Get gets a resource by id.
+	Get(ctx context.Context, id string) (generated.GenericResource, error)
+
 	// Delete deletes a resource by id.
 	//
 	// If the API version is omitted, then an attempt will be made to look up the API version.

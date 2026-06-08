@@ -583,6 +583,13 @@
         "radiusManaged": {
           "type": "boolean",
           "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        },
+        "additionalProperties": {
+          "type": "object",
+          "description": "Additional provider-specific output resource properties.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

@@ -1327,6 +1327,7 @@ func (o *OperationListResult) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type OutputResource.
 func (o OutputResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "additionalProperties", o.AdditionalProperties)
 	populate(objectMap, "id", o.ID)
 	populate(objectMap, "localId", o.LocalID)
 	populate(objectMap, "radiusManaged", o.RadiusManaged)
@@ -1342,6 +1343,9 @@ func (o *OutputResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "additionalProperties":
+			err = unpopulate(val, "AdditionalProperties", &o.AdditionalProperties)
+			delete(rawMsg, key)
 		case "id":
 			err = unpopulate(val, "ID", &o.ID)
 			delete(rawMsg, key)

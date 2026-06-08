@@ -206,7 +206,7 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 		TemplateVersion: definition.TemplateVersion,
 	}
 
-	var deployedResources []string
+	var deployedResources []rpv1.OutputResource
 	if tfState.Values != nil && tfState.Values.RootModule != nil {
 		var err error
 		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule, configuration)
@@ -221,9 +221,10 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	}
 
 	for _, val := range deployedResources {
-		if !slices.Contains(uniqueResourceIDs, strings.ToLower(val)) {
-			recipeResponse.Resources = append(recipeResponse.Resources, val)
+		if !slices.Contains(uniqueResourceIDs, strings.ToLower(val.ID.String())) {
+			recipeResponse.Resources = append(recipeResponse.Resources, val.ID.String())
 		}
+		recipeResponse.OutputResources = append(recipeResponse.OutputResources, val)
 	}
 
 	return recipeResponse, nil
@@ -350,9 +351,9 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
-func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration) ([]string, error) {
+func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration) ([]rpv1.OutputResource, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	recipeResources := []string{}
+	recipeResources := []rpv1.OutputResource{}
 	if module == nil {
 		return recipeResources, nil
 	}
@@ -377,11 +378,11 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 					if apiVersion, ok := manifest["apiVersion"].(string); ok {
 						providerVersion := strings.Split(apiVersion, "/")
 						if len(providerVersion) == 0 {
-							return []string{}, errors.New("apiVersion is empty")
+							return []rpv1.OutputResource{}, errors.New("apiVersion is empty")
 						}
 						provider = providerVersion[0]
 					} else {
-						return []string{}, errors.New("unable to get apiVersion information from the resource")
+						return []rpv1.OutputResource{}, errors.New("unable to get apiVersion information from the resource")
 					}
 
 					if kind, ok := manifest["kind"].(string); ok {
@@ -396,7 +397,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				if resource.AttributeValues != nil {
 					if metadataList, ok := resource.AttributeValues["metadata"].([]any); ok {
 						if len(metadataList) == 0 {
-							return []string{}, errors.New("")
+							return []rpv1.OutputResource{}, errors.New("")
 						}
 						metadata := metadataList[0].(map[string]any)
 						if name, ok := metadata["name"].(string); ok {
@@ -411,18 +412,22 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 			}
 			kubernetesResourceID, err := kubernetesresources.ToUCPResourceID(namespace, resourceType, resourceName, provider)
 			if err != nil {
-				return []string{}, err
+				return []rpv1.OutputResource{}, err
 			}
-			recipeResources = append(recipeResources, kubernetesResourceID)
+			outputResource, err := outputResourceFromID(kubernetesResourceID)
+			if err != nil {
+				return []rpv1.OutputResource{}, err
+			}
+			recipeResources = append(recipeResources, outputResource)
 		case TerraformAzureProvider:
 			if resource.AttributeValues != nil {
 				if id, ok := resource.AttributeValues["id"].(string); ok {
-					_, err := resources.ParseResource(id)
+					outputResource, err := outputResourceFromID(id)
 					if err != nil {
 						// The Azure resources Ids that doesnt not follow relative ID format are mostly Non ARM resources and not added to the recipe output.
 						logger.Info("Resource ID does not represent ARM resource and is not added to recipe output", "ResourceID", id)
 					} else {
-						recipeResources = append(recipeResources, id)
+						recipeResources = append(recipeResources, outputResource)
 					}
 				}
 			}
@@ -431,9 +436,17 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
 					awsResourceID, err := terraformAWSResourceID(configuration.Providers.AWS.Scope, resource, arn)
 					if err != nil {
-						return []string{}, err
+						return []rpv1.OutputResource{}, err
 					}
-					recipeResources = append(recipeResources, awsResourceID)
+					outputResource, err := outputResourceFromID(awsResourceID)
+					if err != nil {
+						return []rpv1.OutputResource{}, err
+					}
+					outputResource.AdditionalProperties = map[string]string{
+						"arn": arn,
+						rpv1.OutputResourceConsistentPhysicalIDProperty: arn,
+					}
+					recipeResources = append(recipeResources, outputResource)
 				}
 			}
 		default:
@@ -444,12 +457,24 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	for _, childModule := range module.ChildModules {
 		modResources, err := d.getDeployedOutputResources(ctx, childModule, configuration)
 		if err != nil {
-			return []string{}, err
+			return []rpv1.OutputResource{}, err
 		}
 		recipeResources = append(recipeResources, modResources...)
 	}
 
 	return recipeResources, nil
+}
+
+func outputResourceFromID(resourceID string) (rpv1.OutputResource, error) {
+	id, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return rpv1.OutputResource{}, err
+	}
+
+	return rpv1.OutputResource{
+		ID:            id,
+		RadiusManaged: new(true),
+	}, nil
 }
 
 func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn string) (string, error) {
@@ -496,22 +521,22 @@ func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn st
 }
 
 func terraformAWSResourceName(resource *tfjson.StateResource, arnSegments []string) string {
-	resourcePath := strings.Join(arnSegments[5:], ":")
-	resourcePath = strings.TrimRight(resourcePath, "/:")
-	if resourcePath != "" {
-		parts := strings.FieldsFunc(resourcePath, func(r rune) bool {
-			return r == '/' || r == ':'
-		})
-		if len(parts) == 0 {
-			return resourcePath
-		}
-
-		return parts[len(parts)-1]
-	}
-
 	if id, ok := resource.AttributeValues["id"].(string); ok && id != "" {
 		return id
 	}
 
-	return ""
+	resourcePath := strings.Join(arnSegments[5:], ":")
+	resourcePath = strings.TrimRight(resourcePath, "/:")
+	if resourcePath == "" {
+		return ""
+	}
+
+	parts := strings.FieldsFunc(resourcePath, func(r rune) bool {
+		return r == '/' || r == ':'
+	})
+	if len(parts) == 0 {
+		return resourcePath
+	}
+
+	return parts[len(parts)-1]
 }

@@ -176,6 +176,9 @@ model OutputResource {
 
   @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
   radiusManaged?: boolean;
+
+  @doc("Additional provider-specific output resource properties.")
+  additionalProperties?: Record<string>;
 }
 
 @doc("Describes a reference to an existing resource")

@@ -101,3 +101,24 @@ func Test_GetOutputResourcesFromRecipe_Invalid(t *testing.T) {
 	require.IsType(t, &ValidationError{}, err)
 	require.Equal(t, "resource id \"/////asdf////\" returned by recipe is invalid", err.Error())
 }
+
+func Test_GetOutputResourcesFromRecipe_MetadataOutputResource(t *testing.T) {
+	id := resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket")
+	output := recipes.RecipeOutput{
+		Resources: []string{id.String()},
+		OutputResources: []rpv1.OutputResource{
+			{
+				ID:            id,
+				RadiusManaged: new(true),
+				AdditionalProperties: map[string]string{
+					"arn": "arn:aws:s3:::my-bucket",
+					rpv1.OutputResourceConsistentPhysicalIDProperty: "arn:aws:s3:::my-bucket",
+				},
+			},
+		},
+	}
+
+	actual, err := GetOutputResourcesFromRecipe(&output)
+	require.NoError(t, err)
+	require.Equal(t, output.OutputResources, actual)
+}

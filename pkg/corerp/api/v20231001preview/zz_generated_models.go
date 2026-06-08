@@ -32,6 +32,9 @@ type ApplicationGraphOutputResource struct {
 
 	// REQUIRED; The resource type.
 	Type *string
+
+	// Additional provider-specific output resource properties.
+	AdditionalProperties map[string]*string
 }
 
 // ApplicationGraphResource - Describes a resource in the application graph.
@@ -1112,6 +1115,9 @@ type OperationListResult struct {
 
 // OutputResource - Properties of an output resource.
 type OutputResource struct {
+	// Additional provider-specific output resource properties.
+	AdditionalProperties map[string]*string
+
 	// The UCP resource ID of the underlying resource.
 	ID *string
 
