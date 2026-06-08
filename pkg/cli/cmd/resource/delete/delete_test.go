@@ -144,7 +144,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
 						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
 					},
@@ -187,7 +187,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
 						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
 					},
@@ -236,7 +236,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
 						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
 					},
@@ -293,7 +293,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
 					},
 				}, nil).
@@ -351,7 +351,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
 					},
 				}, nil).
@@ -417,7 +417,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{},
+					Properties: map[string]any{},
 				}, nil).
 				Times(1)
 
@@ -466,7 +466,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient.EXPECT().
 				GetResource(gomock.Any(), "Applications.Core/containers", "test-container").
 				Return(generated.GenericResource{
-					Properties: map[string]interface{}{
+					Properties: map[string]any{
 						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/my-test-env",
 						"application": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/my-test-app",
 					},

@@ -116,9 +116,10 @@ type CoreTypesRecipeInfo struct {
 
 // GetCoreTypesRecipeInfo returns recipe information for all core types.
 // Each definition represents a recipe for one core resource type.
-// The OCI tag is set to the current Radius version channel (e.g., "0.40" or "edge").
+// The OCI tag is set to the full semver release version (e.g., "0.58.0") to match the
+// tags used by the recipes publishing pipeline. For edge/dev builds, "latest" is used.
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
-	tag := version.Channel()
+	tag := version.Release()
 	if version.IsEdgeChannel() {
 		tag = "latest"
 	}
