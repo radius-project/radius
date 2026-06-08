@@ -19,6 +19,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -35,7 +36,8 @@ import (
 )
 
 const (
-	moduleRootDir = ".terraform/modules"
+	moduleRootDir                         = ".terraform/modules"
+	missingTerraformConfigurationTemplate = "The Terraform configuration in location %s is not found."
 )
 
 // moduleInspectResult contains the result of inspecting a Terraform module config.
@@ -102,7 +104,16 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	//
 	// If the template path is for a submodule, we'll add the submodule path to the module directory.
 	_, subModule := getter.SourceDirSubdir(recipe.TemplatePath)
-	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule))
+	moduleDir := filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule)
+	hasConfig, err := hasTerraformConfigFiles(moduleDir)
+	if err != nil {
+		return nil, fmt.Errorf("error loading the module: %w", err)
+	}
+	if !hasConfig {
+		return nil, fmt.Errorf(missingTerraformConfigurationTemplate, recipe.TemplatePath)
+	}
+
+	mod, diags := tfconfig.LoadModule(moduleDir)
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
@@ -158,4 +169,39 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	}
 
 	return result, nil
+}
+
+// hasTerraformConfigFiles reports whether moduleDir contains any regular Terraform configuration files.
+func hasTerraformConfigFiles(moduleDir string) (bool, error) {
+	info, err := os.Stat(moduleDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if !info.IsDir() {
+		return false, nil
+	}
+
+	entries, err := os.ReadDir(moduleDir)
+	if err != nil {
+		return false, err
+	}
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return false, err
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+
+		name := entry.Name()
+		if strings.HasSuffix(name, ".tf") || strings.HasSuffix(name, ".tf.json") {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
