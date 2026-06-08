@@ -33,6 +33,25 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # User namespaces let rootless BuildKit satisfy PSA "baseline"
+      # (and, with a bit more security context tightening, "restricted")
+      # without requiring Unconfined seccomp/AppArmor. The kernel maps
+      # the in-pod root user (UID 0 inside the user namespace) to an
+      # unprivileged UID on the host, so rootlesskit's privilege-elevation
+      # path is satisfied at the kernel level instead of at the security-
+      # profile level.
+      #
+      # Requires:
+      #   - Kubernetes >= 1.29 (UserNamespacesSupport is beta+default-on)
+      #   - Linux kernel >= 6.3 on the node (idmap mounts for tmpfs)
+      #   - runc >= 1.2 or crun >= 1.9
+      #   - containerd >= 2.0 or CRI-O >= 1.25
+      # On clusters that don't meet these requirements the buildkitd
+      # container will fail to start; either disable the sidecar
+      # (--set dynamicrp.buildkit.enabled=false) or upgrade the cluster.
+      hostUsers: false
+      {{- end }}
       {{- if .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
@@ -270,7 +289,6 @@ spec:
         args:
         - --addr
         - tcp://127.0.0.1:1234
-        - --oci-worker-no-process-sandbox
         readinessProbe:
           exec:
             command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
@@ -281,21 +299,21 @@ spec:
             command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
           initialDelaySeconds: 30
           periodSeconds: 30
+        # PSA-baseline-compatible. The Pod's hostUsers: false gives
+        # rootlesskit a real user namespace, so we don't need the
+        # Unconfined seccomp/AppArmor escape hatches that plain rootless
+        # BuildKit normally requires.
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
-          # Rootless BuildKit needs Unconfined seccomp/AppArmor on
-          # clusters without user namespaces. PSA baseline permits this;
-          # PSA restricted does not (tracked as a follow-up: would
-          # require hostUsers: false on K8s >= 1.30 + UserNamespacesSupport).
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
           seccompProfile:
-            type: Unconfined
+            type: RuntimeDefault
           appArmorProfile:
-            type: Unconfined
-          # rootlesskit's newuidmap relies on file capabilities, which
-          # the kernel nullifies when no_new_privs=1 (set by
-          # allowPrivilegeEscalation=false). PSA baseline permits true.
-          allowPrivilegeEscalation: true
+            type: RuntimeDefault
+          capabilities:
+            drop: ["ALL"]
         volumeMounts:
         - name: buildkit-state
           mountPath: /home/user/.local/share/buildkit

@@ -140,6 +140,15 @@ dynamicrp:
   buildkit:
     # Set false to skip provisioning the sidecar. Disabling makes
     # Radius.Compute/containerImages unusable.
+    #
+    # When enabled, the dynamic-rp Pod sets hostUsers: false so the
+    # rootless BuildKit sidecar can run under PSA baseline. This requires:
+    #   - Kubernetes >= 1.29 (UserNamespacesSupport beta+default-on)
+    #   - Linux kernel >= 6.3 on nodes (tmpfs idmap mounts)
+    #   - runc >= 1.2 (or crun >= 1.9)
+    #   - containerd >= 2.0 (or CRI-O >= 1.25)
+    # On older clusters the buildkitd container will not start; either
+    # upgrade the cluster or set this to false.
     enabled: true
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
