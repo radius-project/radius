@@ -20,6 +20,7 @@ func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
 			},
 		},
 		"configInline": map[string]any{},
+		"gatewayAPI":   map[string]any{},
 	}
 	testChart := &chart.Chart{Values: chartVals}
 	opts := ContourChartOptions{HostNetwork: true}
@@ -53,6 +54,7 @@ func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
 	}
 
 	assertDefaultGatewayRef(t, testChart.Values)
+	assertGatewayAPIManageCRDs(t, testChart.Values)
 }
 
 func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *testing.T) {
@@ -65,6 +67,7 @@ func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *tes
 			},
 		},
 		"configInline": map[string]any{},
+		"gatewayAPI":   map[string]any{},
 	}
 	testChart := &chart.Chart{Values: cloneMap(original)}
 	opts := ContourChartOptions{HostNetwork: false}
@@ -80,6 +83,7 @@ func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *tes
 	}
 
 	assertDefaultGatewayRef(t, testChart.Values)
+	assertGatewayAPIManageCRDs(t, testChart.Values)
 }
 
 // cloneMap does a shallow copy of a map[string]any for test isolation.
@@ -101,5 +105,14 @@ func assertDefaultGatewayRef(t *testing.T, values map[string]any) {
 	}
 	if namespace := gatewayRef["namespace"]; namespace != DefaultContourGatewayNamespace {
 		t.Errorf("expected gatewayRef.namespace=%s, got %v", DefaultContourGatewayNamespace, namespace)
+	}
+}
+
+func assertGatewayAPIManageCRDs(t *testing.T, values map[string]any) {
+	t.Helper()
+
+	gatewayAPI := values["gatewayAPI"].(map[string]any)
+	if manageCRDs := gatewayAPI["manageCRDs"]; manageCRDs != true {
+		t.Errorf("expected gatewayAPI.manageCRDs=true, got %v", manageCRDs)
 	}
 }

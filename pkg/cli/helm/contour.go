@@ -90,6 +90,14 @@ func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error
 		},
 	}
 
+	gatewayAPINode, ok := helmChart.Values["gatewayAPI"].(map[string]any)
+	if !ok || gatewayAPINode == nil {
+		gatewayAPINode = map[string]any{}
+		helmChart.Values["gatewayAPI"] = gatewayAPINode
+	}
+
+	gatewayAPINode["manageCRDs"] = true
+
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/projectcontour/helm-charts/blob/81304159bb794a6d5ec874d1f29c696f63cff6ad/charts/contour/values.yaml#L962
