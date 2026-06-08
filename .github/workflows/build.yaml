@@ -479,7 +479,7 @@ jobs:
             --verify-tag \
             --prerelease
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create GitHub Official Release
         if: ${{ !contains(env.REL_VERSION, 'rc') }}
@@ -490,7 +490,7 @@ jobs:
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
             --verify-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
 
   # Comprehensive build summary that checks all critical build jobs.
   # Use this as the required status check in PR branch protection rules.
