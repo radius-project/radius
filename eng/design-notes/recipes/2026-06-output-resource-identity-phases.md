@@ -4,19 +4,30 @@
 
 ## Overview
 
-Radius output resources currently use a single `id` field for two related but different concepts:
+AWS Terraform recipes currently populate output resources by reading Terraform state, extracting each resource ARN, and converting that ARN into a CloudControl-shaped Radius AWS resource ID. That conversion assumes the ARN contains enough information to infer an AWS-plane resource type, account, region, and resource name.
 
-- the Radius resource ID that describes the producer and lifecycle path; and
-- the physical or provider-native resource identity used to decide whether two Radius resources reference the same provider object.
+That assumption is not valid for all AWS resources. The immediate bug is S3: an S3 bucket ARN has the shape:
 
-Those identities are not always the same. AWS makes this visible because Bicep deployments use CloudControl-shaped resource IDs while Terraform recipes discover Terraform provider resources from Terraform state. For an S3 bucket named `shared-bucket`, the same physical AWS bucket can appear as:
+```text
+arn:aws:s3:::shared-bucket
+```
+
+This ARN does not contain an account ID, a region, or a CloudControl resource type token such as `Bucket`. Radius cannot generically parse this ARN into a valid `AWS.S3/Bucket` resource ID, so Terraform recipes that produce S3 bucket output resources can fail.
+
+The Phase 1 fix is to stop forcing Terraform-discovered AWS resources into CloudControl-shaped IDs. Terraform output resources should instead use Terraform-shaped Radius IDs under `Terraform.AWS`, built from Terraform state and the configured AWS provider scope:
+
+```text
+/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket
+```
+
+That fixes the malformed-ID failure, but it also makes the broader identity problem explicit. The same physical AWS bucket can be referenced by a Bicep deployment using a CloudControl-shaped ID and by a Terraform recipe using a Terraform-shaped ID:
 
 ```text
 /planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket
 /planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket
 ```
 
-The two Radius IDs should remain different because they represent different lifecycle systems. Radius still needs a consistent provider-native identity for delete warnings, shared-resource detection, app graph grouping, and future clients.
+Those two Radius IDs should remain different because they represent different lifecycle systems. Radius still needs a consistent provider-native identity for delete warnings, shared-resource detection, app graph grouping, and future clients.
 
 This document tracks a phased solution:
 
