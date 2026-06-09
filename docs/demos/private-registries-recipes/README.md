@@ -1,12 +1,12 @@
 # E2E Demo: Private Registries & Repositories with Terraform and Bicep config resource types
 
 This demo validates the work delivered in
-[radius-project/radius#11798 — *Private registries and repositories support for
+[radius-project/radius#11798 - *Private registries and repositories support for
 compute extensibility*](https://github.com/radius-project/radius/issues/11798).
 
 With compute extensibility, Radius introduced the `Radius.Core/environments`
-resource. Private recipe registry authentication — which used to live inline on
-`Applications.Core/environments` under `recipeConfig` — is now expressed as
+resource. Private recipe registry authentication - which used to live inline on
+`Applications.Core/environments` under `recipeConfig` - is now expressed as
 **standalone, reusable resources**:
 
 | Resource | Purpose |
@@ -21,12 +21,12 @@ many environments.
 This walkthrough proves the feature works end-to-end against **real private
 registries in the cloud**, across three scenarios:
 
-1. **Private Bicep recipe registry** (OCI, e.g. Azure Container Registry) — `Radius.Core/bicepConfigs` with `BasicAuth`.
-2. **Private Terraform module registry/repository** — `Radius.Core/terraformConfigs` with a `credentials` token.
-3. **Combined** — a single environment that references *both* config resources.
+1. **Private Bicep recipe registry** (OCI, e.g. Azure Container Registry) - `Radius.Core/bicepConfigs` with `BasicAuth`.
+2. **Private Terraform module registry/repository** - `Radius.Core/terraformConfigs` with a `credentials` token.
+3. **Combined** - a single environment that references *both* config resources.
 
 > Design references:
-> [Terraform & Bicep settings feature spec — User Story 8 (Private Bicep Recipes)](https://github.com/radius-project/design-notes/blob/main/features/2025-08-14-terraform-bicep-settings.md#user-story-8--private-bicep-recipes),
+> [Terraform & Bicep settings feature spec - User Story 8 (Private Bicep Recipes)](https://github.com/radius-project/design-notes/blob/main/features/2025-08-14-terraform-bicep-settings.md#user-story-8--private-bicep-recipes),
 > [Available Terraform settings](https://github.com/radius-project/design-notes/blob/main/features/2025-08-14-terraform-bicep-settings.md#available-terraform-settings),
 > [Reusable Terraform and Bicep config architecture doc](../../architecture/terraform-bicep-config.md).
 >
@@ -109,7 +109,7 @@ recipe in [`./recipes`](./recipes). Run the commands from this demo directory.
 
 ---
 
-## Scenario 1 — Private Bicep recipe registry (OCI)
+## Scenario 1 - Private Bicep recipe registry (OCI)
 
 **Goal:** publish a Bicep recipe to a *private* OCI registry and have Radius pull
 it using credentials supplied through a `Radius.Core/bicepConfigs` resource.
@@ -130,7 +130,7 @@ Set your registry details.
   ```
 
 Authenticate your local tooling to the registry once so you can push the
-artifact (example for Azure Container Registry — use the equivalent for your
+artifact (example for Azure Container Registry - use the equivalent for your
 provider):
 
 ```bash
@@ -198,12 +198,12 @@ kubectl get pods -n private-bicep-demo
 ```
 
 A successful deployment means Radius authenticated to your **private** OCI
-registry, pulled the Bicep recipe, and executed it — the Redis pod should be
+registry, pulled the Bicep recipe, and executed it - the Redis pod should be
 `Running` in `private-bicep-demo`.
 
 ---
 
-## Scenario 2 — Private Terraform module registry / repository
+## Scenario 2 - Private Terraform module registry / repository
 
 **Goal:** authenticate to a *private* Terraform module source via a token carried
 by a `Radius.Core/terraformConfigs` resource. Radius renders a `.terraformrc`
@@ -224,7 +224,7 @@ by a `Radius.Core/terraformConfigs` resource. Radius renders a `.terraformrc`
   $env:TF_REGISTRY_TOKEN    = "<your-terraform-registry-token>"
   ```
 
-> `TF_RECIPE_LOCATION` is whatever module source your private recipe lives at —
+> `TF_RECIPE_LOCATION` is whatever module source your private recipe lives at -
 > a private registry module address or an HTTP module archive URL.
 
 ### 2.2 Deploy the environment + app
@@ -260,7 +260,7 @@ A successful deployment means Radius rendered a `.terraformrc` with your token,
 authenticated to the **private** Terraform registry, downloaded the module, and
 ran `terraform apply`.
 
-> **Tip — confirm the credentials were applied.** Because the config sets
+> **Tip - confirm the credentials were applied.** Because the config sets
 > `TF_LOG: INFO`, the recipe execution logs include the Terraform run. Tail the
 > recipe engine logs to observe the module download from your private host:
 > ```bash
@@ -269,9 +269,9 @@ ran `terraform apply`.
 
 ---
 
-## Scenario 3 — Combined (one environment, both private registries)
+## Scenario 3 - Combined (one environment, both private registries)
 
-**Goal:** demonstrate the reusability goal of #11798 — a single
+**Goal:** demonstrate the reusability goal of #11798 - a single
 `Radius.Core/environments` that references **both** a `terraformConfigs` and a
 `bicepConfigs` resource.
 
@@ -370,7 +370,7 @@ the demo focuses on the paths that are wired end-to-end:
 ## Automated E2E runner
 
 The [`./scripts`](./scripts) folder provides a cross-platform runner that
-executes the whole walkthrough non-interactively — ideal for E2E validation:
+executes the whole walkthrough non-interactively - ideal for E2E validation:
 
 | Platform | Script |
 | --- | --- |
@@ -440,9 +440,9 @@ kubectl delete namespace private-bicep-demo private-tf-demo private-combined-dem
 | Path | Description |
 | --- | --- |
 | [`PREREQUISITES.md`](./PREREQUISITES.md) | High-level steps to set up the private Bicep (OCI) and Terraform registries the demo needs. |
-| [`bicep/bicep-private-registry.bicep`](./bicep/bicep-private-registry.bicep) | Scenario 1 — private Bicep (OCI) registry via `bicepConfigs` (BasicAuth). |
-| [`bicep/terraform-private-registry.bicep`](./bicep/terraform-private-registry.bicep) | Scenario 2 — private Terraform registry via `terraformConfigs` (credentials token). |
-| [`bicep/combined.bicep`](./bicep/combined.bicep) | Scenario 3 — one environment referencing both configs. |
+| [`bicep/bicep-private-registry.bicep`](./bicep/bicep-private-registry.bicep) | Scenario 1 - private Bicep (OCI) registry via `bicepConfigs` (BasicAuth). |
+| [`bicep/terraform-private-registry.bicep`](./bicep/terraform-private-registry.bicep) | Scenario 2 - private Terraform registry via `terraformConfigs` (credentials token). |
+| [`bicep/combined.bicep`](./bicep/combined.bicep) | Scenario 3 - one environment referencing both configs. |
 | [`recipes/redis-recipe.bicep`](./recipes/redis-recipe.bicep) | Sample Bicep recipe to publish to your private OCI registry for Scenario 1. |
 | [`scripts/run-e2e.sh`](./scripts/run-e2e.sh) | Linux / macOS E2E runner that automates the full walkthrough. |
 | [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) | Cross-platform PowerShell (pwsh 7+) E2E runner that automates the full walkthrough. |
