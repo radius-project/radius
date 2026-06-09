@@ -40,13 +40,15 @@ registries in the cloud**, across three scenarios:
 
 Every `rad`, `kubectl`, and `git` command in this guide is **identical on all
 platforms**. Only the way you set shell variables differs. Where a step needs a
-variable, both forms are shown:
+variable, both forms are shown. The PowerShell form uses
+[`pwsh`](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
+(PowerShell 7+), which runs the same on Windows, Linux, and macOS:
 
 - **Linux / macOS (bash / zsh):**
   ```bash
   export REGISTRY="myregistry.azurecr.io"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   $env:REGISTRY = "myregistry.azurecr.io"
   ```
@@ -118,7 +120,7 @@ Set your registry details.
   export BICEP_REGISTRY="myregistry.azurecr.io"
   export BICEP_RECIPE="${BICEP_REGISTRY}/recipes/redis:latest"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   $env:BICEP_REGISTRY = "myregistry.azurecr.io"
   $env:BICEP_RECIPE   = "$($env:BICEP_REGISTRY)/recipes/redis:latest"
@@ -138,7 +140,7 @@ Publish the recipe:
   ```bash
   rad bicep publish --file ./recipes/redis-recipe.bicep --target "br:${BICEP_RECIPE}"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   rad bicep publish --file ./recipes/redis-recipe.bicep --target "br:$($env:BICEP_RECIPE)"
   ```
@@ -155,7 +157,7 @@ or a service principal. Capture them:
   export BICEP_REGISTRY_USERNAME="<token-name-or-app-id>"
   export BICEP_REGISTRY_PASSWORD="<token-password-or-secret>"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   $env:BICEP_REGISTRY_USERNAME = "<token-name-or-app-id>"
   $env:BICEP_REGISTRY_PASSWORD = "<token-password-or-secret>"
@@ -176,7 +178,7 @@ bicepConfig, and an app that runs the recipe.
     --parameters registryUsername="$BICEP_REGISTRY_USERNAME" \
     --parameters registryPassword="$BICEP_REGISTRY_PASSWORD"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   rad deploy ./bicep/bicep-private-registry.bicep `
     --parameters registryHostname="$env:BICEP_REGISTRY" `
@@ -212,7 +214,7 @@ by a `Radius.Core/terraformConfigs` resource. Radius renders a `.terraformrc`
   export TF_RECIPE_LOCATION="app.terraform.io/my-org/redis/kubernetes"
   export TF_REGISTRY_TOKEN="<your-terraform-registry-token>"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   $env:TF_REGISTRY_HOST     = "app.terraform.io"
   $env:TF_RECIPE_LOCATION   = "app.terraform.io/my-org/redis/kubernetes"
@@ -236,7 +238,7 @@ pack pointing at the private module, the environment, and an app.
     --parameters recipeLocation="$TF_RECIPE_LOCATION" \
     --parameters terraformRegistryToken="$TF_REGISTRY_TOKEN"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   rad deploy ./bicep/terraform-private-registry.bicep `
     --parameters terraformRegistryHostname="$env:TF_REGISTRY_HOST" `
@@ -283,7 +285,7 @@ into one environment.
     --parameters bicepRegistryUsername="$BICEP_REGISTRY_USERNAME" \
     --parameters bicepRegistryPassword="$BICEP_REGISTRY_PASSWORD"
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   rad deploy ./bicep/combined.bicep `
     --parameters terraformRegistryHostname="$env:TF_REGISTRY_HOST" `
@@ -369,8 +371,11 @@ executes the whole walkthrough non-interactively — ideal for E2E validation:
 
 | Platform | Script |
 | --- | --- |
-| Linux / macOS | [`scripts/run-e2e.sh`](./scripts/run-e2e.sh) |
-| Windows (PowerShell) | [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) |
+| Linux / macOS (bash) | [`scripts/run-e2e.sh`](./scripts/run-e2e.sh) |
+| Any OS (PowerShell 7+ / pwsh) | [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) |
+
+> The PowerShell runner requires [`pwsh`](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
+> (PowerShell 7+) and runs identically on Windows, Linux, and macOS.
 
 Both scripts read the **same environment variables** documented in the scenarios
 above, create the Radius group and namespaces, publish the sample Bicep recipe
@@ -391,7 +396,7 @@ Set the variables for the scenario(s) you want, then run:
   ./scripts/run-e2e.sh --scenario bicep      # or terraform | combined | all
   ./scripts/run-e2e.sh --cleanup             # tear everything down
   ```
-- **Windows (PowerShell):**
+- **PowerShell (pwsh, cross-platform):**
   ```powershell
   $env:BICEP_REGISTRY          = "myregistry.azurecr.io"
   $env:BICEP_RECIPE            = "$($env:BICEP_REGISTRY)/recipes/redis:latest"
@@ -401,14 +406,14 @@ Set the variables for the scenario(s) you want, then run:
   $env:TF_RECIPE_LOCATION      = "app.terraform.io/my-org/redis/kubernetes"
   $env:TF_REGISTRY_TOKEN       = "<your-terraform-registry-token>"
 
-  .\scripts\run-e2e.ps1 -Scenario bicep      # or terraform | combined | all
-  .\scripts\run-e2e.ps1 -Cleanup             # tear everything down
+  pwsh ./scripts/run-e2e.ps1 -Scenario bicep   # or terraform | combined | all
+  pwsh ./scripts/run-e2e.ps1 -Cleanup          # tear everything down
   ```
 
 Useful flags: `--scenario` / `-Scenario` selects `bicep`, `terraform`,
 `combined`, or `all`; `--skip-publish` / `-SkipPublish` reuses an already-pushed
 recipe; `--cleanup` / `-Cleanup` deletes all demo resources. Pass `--help` (bash)
-or `Get-Help .\scripts\run-e2e.ps1` (PowerShell) for full details.
+or `Get-Help ./scripts/run-e2e.ps1` (pwsh) for full details.
 
 ---
 
@@ -436,4 +441,4 @@ kubectl delete namespace private-bicep-demo private-tf-demo private-combined-dem
 | [`bicep/combined.bicep`](./bicep/combined.bicep) | Scenario 3 — one environment referencing both configs. |
 | [`recipes/redis-recipe.bicep`](./recipes/redis-recipe.bicep) | Sample Bicep recipe to publish to your private OCI registry for Scenario 1. |
 | [`scripts/run-e2e.sh`](./scripts/run-e2e.sh) | Linux / macOS E2E runner that automates the full walkthrough. |
-| [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) | Windows (PowerShell) E2E runner that automates the full walkthrough. |
+| [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) | Cross-platform PowerShell (pwsh 7+) E2E runner that automates the full walkthrough. |
