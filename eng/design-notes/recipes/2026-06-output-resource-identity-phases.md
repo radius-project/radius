@@ -1,36 +1,33 @@
 # Output Resource Identity Phases
 
 * **Author**: Will Smith (@willdavsmith)
-* **Status**: Draft
 
 ## Overview
 
-Radius output resources currently use a single `id` field for two different ideas:
+Radius output resources currently use a single `id` field for two related but different concepts:
 
-- the Radius resource ID used to describe the producer and lifecycle path; and
-- the physical cloud resource identity used to decide whether two Radius resources reference the same object.
+- the Radius resource ID that describes the producer and lifecycle path; and
+- the physical or provider-native resource identity used to decide whether two Radius resources reference the same provider object.
 
-Those identities are not always the same. AWS makes this visible because Bicep deployments use CloudControl-shaped resource IDs while Terraform recipes discover Terraform provider resources from state.
-
-For an S3 bucket named `shared-bucket`, the same physical AWS bucket can appear as:
+Those identities are not always the same. AWS makes this visible because Bicep deployments use CloudControl-shaped resource IDs while Terraform recipes discover Terraform provider resources from Terraform state. For an S3 bucket named `shared-bucket`, the same physical AWS bucket can appear as:
 
 ```text
 /planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket
 /planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket
 ```
 
-The two Radius IDs should remain different because they represent different lifecycle systems. Radius still needs a consistent physical identity for delete warnings, shared-resource detection, app graph grouping, and future clients.
+The two Radius IDs should remain different because they represent different lifecycle systems. Radius still needs a consistent provider-native identity for delete warnings, shared-resource detection, app graph grouping, and future clients.
 
-This document tracks the planned phased solution:
+This document tracks a phased solution:
 
-1. Phase 1: Fix AWS Terraform output resource IDs so Terraform resources use `Terraform.AWS` IDs. This resolves [#11838](https://github.com/radius-project/radius/issues/11838).
-2. Phase 2: Add transitional physical identity metadata and use it for shared-resource delete warnings. This resolves [#12020](https://github.com/radius-project/radius/issues/12020).
+1. Phase 1: Fix AWS Terraform output resource IDs so Terraform resources use `Terraform.AWS` IDs.
+2. Phase 2: Add transitional provider resource identity metadata and use it for shared-resource delete warnings.
 3. Phase 3: Promote provider resource identity to first-class output resource fields so future clients do not need custom `additionalProperties` logic.
 
-## Terms
+## Terms and definitions
 
 | Term | Definition |
-| --- | --- |
+|---|---|
 | Output resource | A resource reference stored in `status.outputResources` on a Radius resource. |
 | Producer ID | The output resource `id` that identifies the Radius resource provider namespace and lifecycle path. |
 | Physical identity | A stable identifier for the underlying provider object, independent of which Radius producer referenced it. |
@@ -40,15 +37,139 @@ This document tracks the planned phased solution:
 | Terraform-shaped type | A Radius type derived from Terraform provider state, for example `Terraform.AWS/aws_s3_bucket`. |
 | ARN | Amazon resource name. ARNs uniquely identify many AWS resources, but ARN formats are service-specific and do not always include account, region, or CloudControl type information. |
 
-## Design Principles
+## Objectives
 
-- The output resource `id` should identify the producer and lifecycle path.
-- Radius should not force Terraform resources into CloudControl-shaped IDs when the mapping is not guaranteed.
-- Physical-resource comparison should use provider-native identity when available.
-- Dashboard and future clients should not each implement custom comparison rules.
-- The solution should preserve existing output resource ID behavior for Azure, Kubernetes, and AWS resources without physical identity metadata.
+> **Issue Reference:** [#11838](https://github.com/radius-project/radius/issues/11838), [#12020](https://github.com/radius-project/radius/issues/12020)
 
-## Phase 1: Terraform AWS Output IDs
+### Goals
+
+- Fix AWS Terraform recipe output resources for resources with ARNs that omit account, region, or resource type information.
+- Keep `status.outputResources[].id` as a Radius/UCP resource ID that describes producer and lifecycle ownership.
+- Avoid emitting malformed or misleading AWS CloudControl-shaped IDs for Terraform-managed resources.
+- Allow Radius to detect when AWS Bicep and Terraform output resources reference the same provider resource.
+- Provide a path to first-class provider resource identity so future clients do not each implement custom `additionalProperties` matching.
+- Preserve existing Azure and Kubernetes output resource behavior.
+
+### Non goals
+
+- Manage Terraform-created AWS resources through AWS CloudControl.
+- Build or maintain a Terraform AWS provider type to CloudControl type mapper.
+- Replace `status.outputResources[].id` with arbitrary provider-native IDs such as ARNs.
+- Add server-side delete enforcement in Phase 2. Phase 2 warnings remain advisory.
+- Guarantee provider resource identity for every provider resource type. Resources without provider-native identity continue to compare by producer ID.
+- Change Terraform state storage or Terraform apply/destroy behavior.
+
+### User scenarios
+
+#### Terraform S3 recipe succeeds
+
+A user deploys a Terraform recipe that creates an S3 bucket. The S3 ARN has the shape:
+
+```text
+arn:aws:s3:::shared-bucket
+```
+
+Radius should not fail while trying to infer a CloudControl type or account from that ARN. The output resource should use a Terraform-shaped Radius ID:
+
+```text
+/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket
+```
+
+#### Shared S3 bucket across Bicep and Terraform recipes
+
+Team 1 provisions or references an existing S3 bucket from a Bicep recipe in Environment A. Team 2 references the same S3 bucket from a Terraform recipe in Environment B. When Team 2 deletes its Radius resource, Radius should detect that another app or environment still references the same S3 bucket and show a warning.
+
+The producer IDs differ:
+
+```text
+/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket
+/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket
+```
+
+Both output resources carry the same provider resource ID:
+
+```text
+arn:aws:s3:::shared-bucket
+```
+
+## User Experience
+
+Phase 1 changes the IDs users see in `status.outputResources` for AWS Terraform recipes. Terraform-managed AWS resources use `Terraform.AWS` provider IDs rather than CloudControl-shaped `AWS.*` IDs.
+
+**Sample Output:**
+
+```json
+{
+  "status": {
+    "outputResources": [
+      {
+        "id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket",
+        "radiusManaged": true
+      }
+    ]
+  }
+}
+```
+
+Phase 2 adds optional provider resource metadata:
+
+```json
+{
+  "status": {
+    "outputResources": [
+      {
+        "id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket",
+        "radiusManaged": true,
+        "additionalProperties": {
+          "arn": "arn:aws:s3:::shared-bucket",
+          "providerResourceId": "arn:aws:s3:::shared-bucket",
+          "providerResourceIdKind": "awsArn"
+        }
+      }
+    ]
+  }
+}
+```
+
+**Sample Recipe Contract:**
+
+No recipe input contract changes are required. Existing `result.resources` and recipe-derived output resources continue to be supported.
+
+## Design
+
+### High Level Design
+
+The selected design separates producer identity from provider identity.
+
+- `status.outputResources[].id` remains a Radius/UCP resource ID. It identifies the producer namespace, type, scope, and lifecycle path.
+- `providerResourceId` identifies the provider-native resource when Radius can determine one.
+- `providerResourceIdKind` identifies the provider resource ID format, for example `awsArn`.
+
+Phase 1 fixes the Terraform AWS producer ID. Phase 2 stores provider identity as transitional metadata under `additionalProperties`. Phase 3 promotes that provider identity to first-class output resource fields.
+
+### Architecture Diagram
+
+```text
+Terraform state                  Bicep / CloudControl response
+  type: aws_s3_bucket              id: AWS.S3/Bucket/shared-bucket
+  arn: arn:aws:s3:::bucket         properties.Arn: arn:aws:s3:::bucket
+        |                                      |
+        v                                      v
+Terraform driver                     Bicep driver / deployment processor
+  id: Terraform.AWS/...              id: AWS.S3/Bucket/...
+  providerResourceId: ARN            providerResourceId: ARN
+        |                                      |
+        +------------------+-------------------+
+                           v
+              status.outputResources
+                           |
+                           v
+           shared resource comparison / app graph
+```
+
+### Detailed Design
+
+#### Phase 1: Terraform AWS output IDs
 
 Phase 1 changes AWS Terraform output resource IDs to use a Terraform-specific resource provider namespace:
 
@@ -64,26 +185,14 @@ Examples:
 /planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_cloudwatch_log_group/%2Fapp%2Forders
 ```
 
-### Why This Fixes #11838
+The previous AWS Terraform behavior parsed an ARN and tried to emit a CloudControl-shaped ID. That fails for S3 because `arn:aws:s3:::shared-bucket` has no account ID, no region, and no CloudControl resource type token such as `Bucket`. Phase 1 avoids inventing missing CloudControl information. The account comes from the configured AWS provider scope, the empty ARN region becomes `global`, and the Terraform resource type comes from Terraform state.
 
-The previous AWS Terraform behavior parsed an ARN and tried to emit a CloudControl-shaped ID. That fails for S3:
+Terraform provider `id` values are provider-defined, so Radius should prefer the ARN resource component when it has a usable final physical-name segment. If that is unavailable, Radius can use simple provider state attributes such as `id`. Radius should not use the Terraform block name as the physical name. In `resource "aws_s3_bucket" "storage"`, `storage` is a local Terraform label, not the AWS bucket name.
 
-```text
-arn:aws:s3:::shared-bucket
-```
-
-This ARN has no account ID, no region, and no CloudControl resource type token such as `Bucket`. Phase 1 avoids inventing missing CloudControl information. The account comes from the configured AWS provider scope, the empty ARN region becomes `global`, and the Terraform resource type comes from Terraform state.
-
-### Resource Name Selection
-
-Terraform provider `id` values are provider-defined, so Radius should prefer the ARN resource component when it has a usable final physical-name segment. If that is unavailable, Radius can use simple provider state attributes such as `id`.
-
-Radius should not use the Terraform block name as the physical name. In `resource "aws_s3_bucket" "storage"`, `storage` is a local Terraform label, not the AWS bucket name.
-
-### Adversarial Examples
+Adversarial examples:
 
 | Terraform resource type | Example ARN | CloudControl type | Why Terraform IDs are safer |
-| --- | --- | --- | --- |
+|---|---|---|---|
 | `aws_s3_bucket` | `arn:aws:s3:::shared-bucket` | `AWS::S3::Bucket` | ARN lacks account, region, and a `Bucket` type segment. |
 | `aws_sqs_queue` | `arn:aws:sqs:us-west-2:123456789012:orders` | `AWS::SQS::Queue` | ARN has a bare resource name; Terraform `id` is commonly a queue URL. |
 | `aws_sns_topic` | `arn:aws:sns:us-east-1:123456789012:orders` | `AWS::SNS::Topic` | ARN has no type token from which to infer `Topic`. |
@@ -91,15 +200,9 @@ Radius should not use the Terraform block name as the physical name. In `resourc
 | `aws_lb` | `arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/web/50dc...` | `AWS::ElasticLoadBalancingV2::LoadBalancer` | Terraform abbreviates the type, ARN service is long, and CloudControl uses another service spelling. |
 | `aws_s3_bucket_versioning` | Often bucket-name based rather than a standalone ARN. | Usually modeled as configuration on `AWS::S3::Bucket`. | Not every Terraform resource maps to a standalone CloudControl resource. |
 
-### Phase 1 Tests
+#### Phase 2: Transitional provider resource metadata
 
-- Unit test Terraform AWS S3 state with `arn:aws:s3:::<bucket>` and verify a `Terraform.AWS/aws_s3_bucket` output resource ID.
-- Unit test AWS resources whose ARN includes account and region and verify they no longer emit CloudControl-shaped IDs from Terraform state.
-- Preserve existing Azure and Kubernetes output resource behavior.
-
-## Phase 2: Shared Physical Identity Metadata
-
-Phase 2 keeps producer IDs distinct but adds an optional physical comparison key:
+Phase 2 keeps producer IDs distinct but adds an optional provider resource comparison key:
 
 ```json
 {
@@ -115,48 +218,17 @@ Phase 2 keeps producer IDs distinct but adds an optional physical comparison key
 
 For AWS resources, `providerResourceId` is the ARN when Radius can read one, and `providerResourceIdKind` is `awsArn`. Radius should not synthesize account or region into an ARN. S3 bucket ARNs omit those fields because the bucket name is already globally unique within the AWS partition.
 
-### Phase 2 Behavior
+Phase 2 behavior:
 
 - AWS Terraform output resources store `additionalProperties.arn`, `additionalProperties.providerResourceId`, and `additionalProperties.providerResourceIdKind` when Terraform state has an `arn` attribute.
 - AWS Bicep output resources keep CloudControl-shaped IDs and store the same ARN metadata when CloudControl resource properties expose `ARN`, `Arn`, or `arn`.
 - Delete warning logic compares output resources by `providerResourceId` when both sides have it, then falls back to producer ID equality. If both sides provide `providerResourceIdKind`, the kind must also match.
-- Application graph output resources preserve `additionalProperties` so clients can inspect the physical identity.
+- Application graph output resources preserve `additionalProperties` so clients can inspect the provider identity.
 - Warnings remain advisory. Phase 2 does not add server-side delete enforcement.
 
-### Edge Case: Shared Bucket Across Environments
+#### Phase 3: First-class provider resource identity
 
-Phase 2 covers the reviewed shared-resource scenario:
-
-1. Team 1 provisions or references an existing S3 bucket from a Bicep recipe in Environment A.
-2. Team 2 references the same S3 bucket from a Terraform recipe in Environment B.
-3. Team 2 deletes their Radius resource.
-4. Radius compares the Bicep `AWS.S3/Bucket` output resource and Terraform `Terraform.AWS/aws_s3_bucket` output resource by ARN.
-5. The CLI warns that another app or environment still references the same physical bucket.
-
-The producer IDs differ, but both output resources carry:
-
-```text
-arn:aws:s3:::shared-bucket
-```
-
-### Phase 2 Limitations
-
-- This is not a universal client model. Clients that need grouping must understand `additionalProperties.providerResourceId`.
-- Resources without ARNs continue to compare by producer ID only.
-- `providerResourceId` is status metadata and must not contain secrets.
-- ARN extraction from CloudControl properties starts with common property names. Schema-driven extraction may be needed for broader AWS coverage.
-
-### Phase 2 Tests
-
-- Unit test `OutputResourceMatches` for physical ID match, physical ID mismatch, and ID fallback.
-- Unit test Terraform output resources with ARN metadata.
-- Unit test AWS Bicep output resources with `ARN`, `Arn`, `arn`, and missing ARN properties.
-- Unit test resource and application delete warnings for Bicep-shaped and Terraform-shaped output resources that share the same ARN.
-- Verify the app graph preserves output resource `additionalProperties`.
-
-## Phase 3: First-Class Provider Resource ID
-
-Phase 3 moves the provider resource identity out of ad hoc metadata and into the output resource contract:
+Phase 3 moves provider resource identity out of ad hoc metadata and into the output resource contract:
 
 ```json
 {
@@ -167,9 +239,7 @@ Phase 3 moves the provider resource identity out of ad hoc metadata and into the
 }
 ```
 
-The goal is for Radius to expose a first-class provider resource identity so dashboard, CLI, APIs, and future clients can use one contract instead of independently reading `additionalProperties`.
-
-### Phase 3 Behavior
+Phase 3 behavior:
 
 - Persist `providerResourceId` and `providerResourceIdKind` on output resources when a producer can determine provider-native identity.
 - Use `providerResourceId` for server-side and client-facing resource association.
@@ -177,77 +247,192 @@ The goal is for Radius to expose a first-class provider resource identity so das
 - Use Phase 2 `additionalProperties.providerResourceId` and `additionalProperties.providerResourceIdKind` as the migration source or compatibility fallback.
 - Allow APIs such as app graph to group or annotate output resources by provider resource identity.
 
-### Why Phase 3 Is Needed
-
 Phase 2 is sufficient for delete warnings, but it does not solve every client concern. For example, a dashboard app graph should not have to know that `additionalProperties.providerResourceId` is a Radius comparison key. A first-class field makes provider resource identity a platform contract.
 
-### Phase 3 Open Questions
+#### Advantages
+
+- Fixes malformed AWS Terraform output resource IDs without an unreliable type map.
+- Preserves lifecycle ownership in the producer ID.
+- Enables cross-producer matching when a real provider resource identity exists.
+- Evolves from transitional Phase 2 metadata to first-class Phase 3 fields using the same field names.
+- Avoids making every future client infer Radius identity rules from raw output resource IDs.
+
+#### Disadvantages
+
+- Producer IDs differ for the same physical object.
+- Phase 2 requires clients that need grouping to understand `providerResourceId` in `additionalProperties` until Phase 3 lands.
+- Resources without reliable provider resource metadata still fall back to ID matching.
+- ARN extraction from CloudControl properties starts with common property names. Schema-driven extraction may be needed for broader AWS coverage.
+
+#### Proposed Option
+
+Use Terraform-shaped AWS output resource IDs for Terraform recipe output resources, and add provider resource identity as a separate field. In Phase 2 this is transitional metadata in `additionalProperties`; in Phase 3 it becomes part of the output resource API model.
+
+### API design
+
+Phase 1 has no public schema change. It changes the value shape of AWS Terraform output resource IDs.
+
+Phase 2 has no public schema change. It uses existing `additionalProperties`:
+
+```json
+{
+  "additionalProperties": {
+    "arn": "arn:aws:s3:::shared-bucket",
+    "providerResourceId": "arn:aws:s3:::shared-bucket",
+    "providerResourceIdKind": "awsArn"
+  }
+}
+```
+
+Phase 3 adds first-class fields to `OutputResource`:
+
+```typespec
+model OutputResource {
+  localId?: string;
+  id?: string;
+  radiusManaged?: boolean;
+  providerResourceId?: string;
+  providerResourceIdKind?: string;
+  additionalProperties?: Record<string>;
+}
+```
+
+The exact TypeSpec shape and API versioning are Phase 3 work.
+
+### CLI Design
+
+No new CLI commands are proposed.
+
+Phase 2 updates existing delete flows to warn when another Radius resource references the same provider resource ID. The warning is advisory and does not change `--force` semantics.
+
+### Implementation Details
+
+#### UCP
+
+No Phase 1 or Phase 2 UCP routing changes are required.
+
+#### Bicep
+
+For AWS Bicep output resources, the Bicep deployment path should read deployed resource properties and copy ARN metadata into `OutputResource.AdditionalProperties` when the properties include `ARN`, `Arn`, or `arn`.
+
+#### Deployment Engine
+
+The deployment processor should preserve output resource `AdditionalProperties` when persisting deployed output resources. This lets provider resource metadata survive from recipe or Bicep deployment output into resource status.
+
+#### Core RP
+
+The Core RP should preserve output resource `AdditionalProperties` in app graph output resource data so clients can inspect Phase 2 metadata.
+
+#### Portable Resources / Recipes RP
+
+The portable resource processors should preserve metadata-rich recipe output resources and continue parsing plain `result.resources` string IDs as Radius/UCP resource IDs.
+
+The Terraform driver should build AWS Terraform output resource IDs from Terraform state and AWS provider configuration:
+
+- `resource.ProviderName` identifies AWS provider resources.
+- `resource.Type` becomes the Terraform-shaped resource type under `Terraform.AWS`.
+- ARN provides partition, region, and a candidate name when possible.
+- The configured AWS provider scope provides account.
+- Empty ARN region becomes `global`.
+- ARN is copied to `additionalProperties.arn`, `additionalProperties.providerResourceId`, and `additionalProperties.providerResourceIdKind`.
+
+### Error Handling
+
+- If a Terraform AWS ARN is malformed, the Terraform driver should return a recipe output error rather than emitting a malformed resource ID.
+- If the configured AWS provider scope is missing account information, the Terraform driver should return an error because the Terraform-shaped output resource ID requires an account scope.
+- If AWS Bicep output resource properties do not contain an ARN, Radius should still persist the output resource without provider resource identity metadata.
+- If either side of a shared-resource comparison lacks provider resource identity, Radius should fall back to producer ID comparison.
+- If both sides provide `providerResourceIdKind` and the kinds differ, the output resources should not match.
+
+## Test plan
+
+Phase 1:
+
+- Unit test Terraform AWS S3 state with `arn:aws:s3:::<bucket>` and verify a `Terraform.AWS/aws_s3_bucket` output resource ID.
+- Unit test AWS resources whose ARN includes account and region and verify they no longer emit CloudControl-shaped IDs from Terraform state.
+- Preserve existing Azure and Kubernetes output resource behavior.
+
+Phase 2:
+
+- Unit test output resource comparison for provider resource ID match, provider resource ID mismatch, provider resource ID kind mismatch, and ID fallback.
+- Unit test Terraform output resources with ARN metadata.
+- Unit test AWS Bicep output resources with `ARN`, `Arn`, `arn`, and missing ARN properties.
+- Unit test resource and application delete warnings for Bicep-shaped and Terraform-shaped output resources that share the same ARN.
+- Verify the app graph preserves output resource `AdditionalProperties`.
+
+Phase 3:
+
+- Add API serialization/deserialization tests for first-class `providerResourceId` and `providerResourceIdKind`.
+- Add app graph tests showing clients can group or inspect output resources without reading `additionalProperties`.
+- Add compatibility tests that Phase 2 metadata can be used as a migration fallback.
+
+## Security
+
+This design does not change AWS, Azure, or Kubernetes credential handling.
+
+`providerResourceId` is status metadata and will appear in API responses, CLI output, logs, and dashboard data. It must not contain secrets. AWS ARNs are generally identifiers, not credentials. Producers should only populate provider resource IDs from provider-native identity fields, not from secret values or connection strings.
+
+## Compatibility
+
+- Phase 1 changes AWS Terraform output resource IDs. Existing Terraform-created AWS output resources are repopulated with `Terraform.AWS` IDs on the next recipe deployment.
+- Phase 2 adds optional metadata. Existing resources without metadata continue to compare by ID.
+- Phase 3 should treat Phase 2 `additionalProperties.providerResourceId` and `additionalProperties.providerResourceIdKind` values as compatibility input during migration.
+- Existing Azure and Kubernetes output resource behavior is unchanged by Phase 1 and Phase 2.
+- Older clients that ignore `additionalProperties` continue to see output resource IDs as before, except for the intended Phase 1 AWS Terraform ID shape change.
+
+## Monitoring and Logging
+
+The Terraform driver should log when an AWS resource cannot be represented as an output resource because required identity fields are missing or invalid.
+
+Delete warning flows should continue to use existing CLI output. No new metrics are required for Phase 1 or Phase 2.
+
+## Development plan
+
+1. Phase 1: Merge AWS Terraform output resource ID changes for [#11838](https://github.com/radius-project/radius/issues/11838).
+2. Phase 2: Merge shared-resource comparison and AWS ARN metadata changes for [#12020](https://github.com/radius-project/radius/issues/12020).
+3. Phase 3: Open a follow-up issue or design review for first-class `providerResourceId` and `providerResourceIdKind` fields before changing the public output resource contract.
+
+## Open Questions
 
 - Should `providerResourceId` always be paired with `providerResourceIdKind`, or can a missing kind be treated as an opaque provider ID?
 - Should Radius normalize ARN case or preserve provider output exactly?
 - Should Radius expose graph grouping directly, or only expose provider resource IDs and let clients group?
 - Should server-side delete validation use provider resource identity, and if so, which operations should enforce it?
 
-## Options Considered
+## Alternatives considered
 
-### Option 1: Convert Terraform AWS Resources To CloudControl IDs
+### Convert Terraform AWS resources to CloudControl IDs
 
 This would make Terraform and Bicep output resources share the same ID when a Terraform type maps cleanly to CloudControl.
 
-Pros:
+Advantages:
 
 - Existing ID comparison would work for mapped resources.
 - App graph clients would not need a second identity field for those cases.
 
-Cons:
+Disadvantages:
 
 - Requires maintaining or generating a Terraform-to-CloudControl type map.
 - Does not cover Terraform resources that represent configuration, relationships, or provider-specific resources.
 - ARN and Terraform type strings do not guarantee enough information to infer CloudControl type.
 - Incorrect mappings would imply CloudControl lifecycle semantics for Terraform-managed resources.
 
-### Option 2: Terraform Producer IDs Plus Physical Identity
-
-This is the selected phased direction.
-
-Pros:
-
-- Fixes malformed AWS Terraform output resource IDs without an unreliable type map.
-- Preserves lifecycle ownership in the producer ID.
-- Enables cross-producer matching when a real physical identity exists.
-- Can evolve from transitional metadata in Phase 2 to first-class `providerResourceId` in Phase 3.
-
-Cons:
-
-- Producer IDs differ for the same physical object.
-- Phase 2 requires clients to understand `providerResourceId` in `additionalProperties` until Phase 3 lands.
-- Resources without reliable physical identity metadata still fall back to ID matching.
-
-### Option 3: Use ARN As The Output Resource ID
+### Use ARN as the output resource ID
 
 This would avoid producer-specific Radius IDs for AWS resources with ARNs.
 
-Pros:
+Advantages:
 
 - ARN is the AWS-native identity for many resources.
 - Bicep and Terraform would naturally converge for many AWS resources.
 
-Cons:
+Disadvantages:
 
 - `status.outputResources[].id` is a Radius resource ID today, not an arbitrary provider ID.
 - ARNs do not identify the Radius producer or lifecycle path.
 - Some resources do not expose ARNs, and some Terraform resources are not standalone AWS resources.
 - This would be a larger API contract change than Phase 1 or Phase 2.
 
-## Migration And Compatibility
+## Design Review Notes
 
-- Phase 1 changes AWS Terraform output resource IDs. Existing Terraform-created AWS output resources will be repopulated with `Terraform.AWS` IDs on the next recipe deployment.
-- Phase 2 adds optional metadata. Existing resources without metadata continue to compare by ID.
-- Phase 3 should treat Phase 2 `additionalProperties.providerResourceId` values as compatibility input during migration.
-- Existing Azure and Kubernetes output resource behavior is unchanged by Phase 1 and Phase 2.
-
-## Rollout Plan
-
-1. Merge Phase 1 in the existing #11838 PR.
-2. Merge Phase 2 in a separate draft PR after review, stacked conceptually on Phase 1.
-3. Open a follow-up issue or design review for Phase 3 before changing the public output resource contract.
+To be updated during design review.
