@@ -10,7 +10,7 @@ Radius can pull recipes from registries that require authentication, so you need
   that authenticates with a token.
 - **Scenario 3 (Combined):** both of the above.
 
-You do **not** need every provider listed below — pick whichever one you already
+You do **not** need every provider listed below - pick whichever one you already
 have access to. Each section is a short, provider-agnostic checklist plus one
 concrete example. Once a registry is ready, return to the
 [demo README](./README.md) and supply the values it produced.
@@ -35,7 +35,7 @@ Before setting up any registry, make sure you have:
 
 ---
 
-## Part A — Private Bicep (OCI) registry
+## Part A - Private Bicep (OCI) registry
 
 **Goal:** a private OCI registry you can `rad bicep publish` to, and a
 username/password pair the cluster can use to pull from it (the demo's Bicep
@@ -44,7 +44,7 @@ scenarios use `BasicAuth`).
 ### High-level steps (any OCI provider)
 
 1. **Create a private OCI registry.** Any registry that speaks the OCI artifact
-   spec works — Azure Container Registry (ACR), GitHub Container Registry (GHCR),
+   spec works - Azure Container Registry (ACR), GitHub Container Registry (GHCR),
    Amazon ECR, Google Artifact Registry, Docker Hub (private repo), Harbor, etc.
    Ensure it is **private** (not anonymously pullable) so the demo actually
    exercises authentication.
@@ -54,13 +54,13 @@ scenarios use `BasicAuth`).
    admin account.
 3. **Authenticate your local tooling once** so you can push the recipe artifact
    (e.g. `az acr login`, `docker login`, `gh auth token | docker login`).
-4. **Record these values** — you'll pass them to the demo:
-   - `BICEP_REGISTRY` — the registry hostname, e.g. `myregistry.azurecr.io`.
-   - `BICEP_RECIPE` — the full artifact reference, e.g.
+4. **Record these values** - you'll pass them to the demo:
+   - `BICEP_REGISTRY` - the registry hostname, e.g. `myregistry.azurecr.io`.
+   - `BICEP_RECIPE` - the full artifact reference, e.g.
      `myregistry.azurecr.io/recipes/redis:latest`.
-   - `BICEP_REGISTRY_USERNAME` / `BICEP_REGISTRY_PASSWORD` — the pull credentials.
+   - `BICEP_REGISTRY_USERNAME` / `BICEP_REGISTRY_PASSWORD` - the pull credentials.
 
-### Concrete example — Azure Container Registry (ACR)
+### Concrete example - Azure Container Registry (ACR)
 
 ```bash
 # 1. Create a private ACR (Basic SKU is fine for a demo).
@@ -73,7 +73,7 @@ az acr token create \
   --name radius-demo-pull \
   --repository recipes/redis content/read content/write
 
-# The command prints a token password — capture it now (it is shown once).
+# The command prints a token password - capture it now (it is shown once).
 
 # 3. Log in locally so you can publish the recipe.
 az acr login --name myregistry
@@ -88,7 +88,7 @@ export BICEP_REGISTRY_USERNAME="radius-demo-pull"
 export BICEP_REGISTRY_PASSWORD="<token-password-from-step-2>"
 ```
 
-### Concrete example — GitHub Container Registry (GHCR)
+### Concrete example - GitHub Container Registry (GHCR)
 
 ```bash
 # 1/2. Create a classic PAT with write:packages + read:packages scope at
@@ -112,7 +112,7 @@ publishes [`recipes/redis-recipe.bicep`](./recipes/redis-recipe.bicep) to
 
 ---
 
-## Part B — Private Terraform module registry / repository
+## Part B - Private Terraform module registry / repository
 
 **Goal:** a private Terraform module source that authenticates with a **token**,
 plus the module address Radius should fetch. The demo's
@@ -128,20 +128,20 @@ that host.
    - **Self-hosted OSS:** run your own private module registry. Lightweight,
      open-source options implement the
      [Terraform Module Registry protocol](https://developer.hashicorp.com/terraform/internals/module-registry-protocol)
-     and authenticate with a token — for example
+     and authenticate with a token - for example
      [Terralist](https://www.terralist.io/) (also acts as a provider registry),
      or an Artifactory/Harbor Terraform registry. These are a good fit when you
      want a fully private registry without a SaaS account.
-2. **Publish (or identify) a module** that provisions the demo resource — a
+2. **Publish (or identify) a module** that provisions the demo resource - a
    Kubernetes Redis cache matches the sample. Note its full module address.
 3. **Create an API token** with permission to read the module from that registry.
-4. **Record these values** — you'll pass them to the demo:
-   - `TF_REGISTRY_HOST` — the registry hostname, e.g. `app.terraform.io`.
-   - `TF_RECIPE_LOCATION` — the module source address, e.g.
+4. **Record these values** - you'll pass them to the demo:
+   - `TF_REGISTRY_HOST` - the registry hostname, e.g. `app.terraform.io`.
+   - `TF_RECIPE_LOCATION` - the module source address, e.g.
      `app.terraform.io/my-org/redis/kubernetes`.
-   - `TF_REGISTRY_TOKEN` — the API token.
+   - `TF_REGISTRY_TOKEN` - the API token.
 
-### Concrete example — HCP Terraform (Terraform Cloud)
+### Concrete example - HCP Terraform (Terraform Cloud)
 
 1. Sign in at <https://app.terraform.io> and create (or use) an organization.
 2. Publish a private module to the organization's **Registry** (for a demo, you
@@ -155,7 +155,7 @@ export TF_RECIPE_LOCATION="app.terraform.io/my-org/redis/kubernetes"
 export TF_REGISTRY_TOKEN="<your-terraform-registry-token>"
 ```
 
-### Concrete example — self-hosted OSS registry ([Terralist](https://www.terralist.io/))
+### Concrete example - self-hosted OSS registry ([Terralist](https://www.terralist.io/))
 
 For a fully private setup without a SaaS account, run an open-source registry
 such as [Terralist](https://www.terralist.io/), which implements the Terraform
@@ -177,10 +177,10 @@ export TF_REGISTRY_TOKEN="<your-terralist-api-token>"
 ```
 
 > Any registry that implements the Terraform module registry protocol and
-> authenticates with a token works the same way — Radius only needs the host, the
+> authenticates with a token works the same way - Radius only needs the host, the
 > module address, and the token.
 
-> `TF_RECIPE_LOCATION` is whatever module source your private recipe lives at — a
+> `TF_RECIPE_LOCATION` is whatever module source your private recipe lives at - a
 > private registry module address or an HTTP module archive URL. The demo's
 > [Scenario 2](./README.md#scenario-2--private-terraform-module-registry--repository)
 > stores the token in a `SecretStore` and references it from a
@@ -189,7 +189,7 @@ export TF_REGISTRY_TOKEN="<your-terralist-api-token>"
 > **Git-based private modules (PAT auth):** authenticating to a private **Git**
 > module source with a personal access token is a separate path that the new
 > `Radius.Core/terraformConfigs` resource does not cover yet. For Git PAT auth
-> today, use the legacy `Applications.Core/environments` `recipeConfig` path —
+> today, use the legacy `Applications.Core/environments` `recipeConfig` path -
 > see [Known limitations](./README.md#known-limitations-as-of-this-demo).
 
 ---
