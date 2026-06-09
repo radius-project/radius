@@ -105,42 +105,11 @@ Repo Radius is a backend designed to be driven by a separate frontend component 
 
 #### Step 1: Environment setup (prerequisite)
 
-The frontend uses the GitHub API to create a GitHub Environment. This GitHub Environment becomes the Radius environment when running in Repo Radius mode. The GitHub Environment must specify the following properties as environment variables, corresponding to the properties on `Radius.Core/environments`:
-
-**For AWS:**
-
-| Variable | Description |
-| --- | --- |
-| `AWS_ACCOUNT_ID` | The AWS account ID |
-| `AWS_REGION` | The AWS region (e.g., `us-east-1`) |
-| `EKS_CLUSTER_NAME` | The EKS cluster name |
-| `KUBERNETES_NAMESPACE` | The Kubernetes namespace for application workloads |
-
-**For Azure:**
-
-| Variable | Description |
-| --- | --- |
-| `AZURE_SUBSCRIPTION_ID` | The Azure subscription ID |
-| `AZURE_RESOURCE_GROUP` | The Azure resource group |
-| `AKS_CLUSTER_NAME` | The AKS cluster name |
-| `KUBERNETES_NAMESPACE` | The Kubernetes namespace for application workloads |
+The frontend creates a GitHub Environment. The environment stores cloud provider details (e.g., AWS account and region, or Azure subscription and resource group) and Kubernetes cluster details (e.g., the EKA or AKS cluster name and Kubernetes namespace) for application workloads.
 
 #### Step 2: OIDC setup (prerequisite)
 
-The frontend guides the user through configuring OIDC federated identity with their cloud provider and updates the GitHub Environment with the required environment variables.
-
-**For Azure:**
-
-| Variable | Description |
-| --- | --- |
-| `AZURE_CLIENT_ID` | The Azure AD application (client) ID |
-| `AZURE_TENANT_ID` | The Azure AD tenant ID |
-
-**For AWS:**
-
-| Variable | Description |
-| --- | --- |
-| `AWS_IAM_ROLE_ARN` | The IAM role ARN for OIDC federation |
+The frontend guides the user through configuring OIDC federated identity with their cloud provider so that the workflow can authenticate using short-lived tokens rather than stored credentials. The Azure client and tenat ID and AWS IAM role are stored in the GitHub Environment.
 
 #### Step 3: Workflow dispatch
 
