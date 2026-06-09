@@ -97,7 +97,8 @@ function Confirm-Namespace {
 }
 
 function Initialize-Group {
-    rad group create $RadGroup 2>$null | Out-Null
+    # Group may already exist; allow that but let 'rad group switch' validate.
+    rad group create $RadGroup | Out-Null
     rad group switch $RadGroup
 }
 
