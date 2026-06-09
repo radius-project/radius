@@ -114,6 +114,19 @@ export function generateTypes(
       );
     }
 
+    // Precompute the full set of sibling names so flatten collision checks
+    // catch both already-emitted siblings (e.g. the standardized envelope
+    // props) and siblings still pending later in the loop. Without this,
+    // a flattened child colliding with a *later* sibling would slip through.
+    const resourceSiblingNames = new Set<string>(Object.keys(resourceProperties));
+    for (const { propertyName } of getObjectTypeProperties(
+      putSchema,
+      getSchema,
+      true
+    )) {
+      resourceSiblingNames.add(propertyName);
+    }
+
     for (const {
       propertyName,
       putProperty,
@@ -126,18 +139,13 @@ export function generateTypes(
       const flatten = isFlattenSafe(putProperty, getProperty);
       if (flatten.flagged) {
         if (flatten.safe) {
-          const parentFlags = parsePropertyFlags(
-            putProperty,
-            getProperty,
-            propertyName
-          );
           // Hoist flattened children as ReadOnly aliases, then fall through to
           // also emit the original wrapper property so authoring still works.
           expandFlattenedInto(
             resourceProperties,
             flatten.putChild,
             flatten.getChild,
-            parentFlags,
+            resourceSiblingNames,
             propertyName
           );
         } else if (flatten.reason) {
@@ -484,7 +492,6 @@ export function generateTypes(
   }
 
   function flagsForFlattenedChild(
-    parentFlags: ObjectTypePropertyFlags,
     childFlags: ObjectTypePropertyFlags
   ): ObjectTypePropertyFlags {
     // Flattened children are emitted as ReadOnly *output projections* of the
@@ -495,11 +502,17 @@ export function generateTypes(
     //   output image string = mycontainer.container.image
     //
     // Required/Identifier/DeployTimeConstant on the wrapper property do not
-    // describe the children, so do not propagate them. WriteOnly is dropped on
-    // purpose: the flat alias is a read-side surface.
+    // describe the children, so do not propagate them. WriteOnly is masked off
+    // explicitly: a PUT-only child would otherwise be emitted as
+    // ReadOnly | WriteOnly, which is a contradictory combination — the flat
+    // alias is unambiguously a read-side surface.
     return (
       ObjectTypePropertyFlags.ReadOnly |
-      (childFlags & ~ObjectTypePropertyFlags.Required)
+      (childFlags &
+        ~(
+          ObjectTypePropertyFlags.Required |
+          ObjectTypePropertyFlags.WriteOnly
+        ))
     );
   }
 
@@ -507,9 +520,9 @@ export function generateTypes(
     target: Dictionary<ObjectTypeProperty>,
     putChild: ObjectSchema | undefined,
     getChild: ObjectSchema | undefined,
-    parentFlags: ObjectTypePropertyFlags,
+    siblingNames: Set<string>,
     parentSerializedName: string
-  ): boolean {
+  ): void {
     const candidates: Array<{
       name: string;
       putProp?: Property;
@@ -527,12 +540,16 @@ export function generateTypes(
       });
     }
 
+    // Collision check uses the precomputed sibling-name set rather than
+    // `target` because expansion happens mid-loop in the nested path: a child
+    // that collides with a sibling emitted *later* would not yet be present in
+    // `target`. The set includes every sibling, present or pending.
     for (const c of candidates) {
-      if (target[c.name]) {
+      if (siblingNames.has(c.name)) {
         logWarning(
           `Cannot flatten property '${parentSerializedName}': child property '${c.name}' collides with an existing property on the parent. Falling back to nested representation.`
         );
-        return false;
+        return;
       }
     }
 
@@ -546,11 +563,10 @@ export function generateTypes(
       const childFlags = parsePropertyFlags(c.putProp, c.getProp);
       target[c.name] = createObjectProperty(
         propType,
-        flagsForFlattenedChild(parentFlags, childFlags),
+        flagsForFlattenedChild(childFlags),
         description
       );
     }
-    return true;
   }
 
   function flattenDiscriminatorSubTypes(schema: ObjectSchema | undefined) {
@@ -845,6 +861,18 @@ export function generateTypes(
       namedDefinitions[definitionName] = definition;
     }
 
+    // Precompute the full sibling-name set so flatten collision checks see
+    // siblings that have not been emitted yet (otherwise a child colliding
+    // with a later sibling would slip through).
+    const definitionSiblingNames = new Set<string>();
+    for (const { propertyName } of getObjectTypeProperties(
+      putSchema,
+      getSchema,
+      includeBaseProperties
+    )) {
+      definitionSiblingNames.add(propertyName);
+    }
+
     for (const {
       propertyName,
       putProperty,
@@ -853,14 +881,13 @@ export function generateTypes(
       const flatten = isFlattenSafe(putProperty, getProperty);
       if (flatten.flagged) {
         if (flatten.safe) {
-          const parentFlags = parsePropertyFlags(putProperty, getProperty);
           // Hoist flattened children as ReadOnly aliases, then fall through to
           // also emit the original wrapper property so authoring still works.
           expandFlattenedInto(
             definitionProperties,
             flatten.putChild,
             flatten.getChild,
-            parentFlags,
+            definitionSiblingNames,
             propertyName
           );
         } else if (flatten.reason) {

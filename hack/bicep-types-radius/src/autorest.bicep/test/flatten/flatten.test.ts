@@ -25,7 +25,8 @@
 
 import os from "os";
 import path from "path";
-import { readFile, rm, mkdir } from "fs/promises";
+import { readFile, rm, mkdir, mkdtemp } from "fs/promises";
+import { ObjectTypePropertyFlags } from "bicep-types";
 import { defaultLogger, executeCmd } from "../integration/utils";
 
 const extensionDir = path.resolve(`${__dirname}/../../`);
@@ -111,11 +112,18 @@ function resourceBody(
 
 describe("x-ms-client-flatten functional tests", () => {
   let types: GeneratedType[];
+  let stagingDir: string;
 
   beforeAll(async () => {
-    const stagingDir = path.join(__dirname, "temp");
+    stagingDir = await mkdtemp(path.join(os.tmpdir(), "flatten-types-"));
     types = await generate(stagingDir);
   }, 120000);
+
+  afterAll(async () => {
+    if (stagingDir) {
+      await rm(stagingDir, { recursive: true, force: true });
+    }
+  });
 
   describe("happy path: TestType1", () => {
     it("hoists flattened child properties to the resource body as ReadOnly aliases", () => {
@@ -128,13 +136,18 @@ describe("x-ms-client-flatten functional tests", () => {
       // ...as ReadOnly aliases (so they show up for output references but
       // cannot be assigned to from a template body, which would generate a
       // payload the RP cannot parse).
-      // ObjectTypePropertyFlags.ReadOnly = 0x02.
-      expect(body.properties.basicString.flags & 0x02).toBe(0x02);
-      expect(body.properties.stringEnum.flags & 0x02).toBe(0x02);
+      expect(body.properties.basicString.flags & ObjectTypePropertyFlags.ReadOnly).toBe(
+        ObjectTypePropertyFlags.ReadOnly
+      );
+      expect(body.properties.stringEnum.flags & ObjectTypePropertyFlags.ReadOnly).toBe(
+        ObjectTypePropertyFlags.ReadOnly
+      );
       // ...and never Required (the wrapper `properties` carries Required).
-      // ObjectTypePropertyFlags.Required = 0x01.
-      expect(body.properties.basicString.flags & 0x01).toBe(0);
-      expect(body.properties.stringEnum.flags & 0x01).toBe(0);
+      expect(body.properties.basicString.flags & ObjectTypePropertyFlags.Required).toBe(0);
+      expect(body.properties.stringEnum.flags & ObjectTypePropertyFlags.Required).toBe(0);
+      // ...and never WriteOnly (read-side surface only).
+      expect(body.properties.basicString.flags & ObjectTypePropertyFlags.WriteOnly).toBe(0);
+      expect(body.properties.stringEnum.flags & ObjectTypePropertyFlags.WriteOnly).toBe(0);
     });
 
     it("keeps the writable `properties` envelope so existing templates still compile", () => {
@@ -198,6 +211,11 @@ describe("x-ms-client-flatten functional tests", () => {
       const wrapperProps = wrapper!.properties as Record<string, unknown>;
       expect(wrapperProps).toHaveProperty("name");
       expect(wrapperProps).toHaveProperty("extra");
+
+      // Fall-back-to-nested-representation contract: the non-colliding child
+      // `extra` must NOT have been partially hoisted to the resource body —
+      // collision on any child rejects the whole flatten.
+      expect(body.properties).not.toHaveProperty("extra");
 
       // The resource body's standardized "name" was not overwritten by the
       // child: it should still resolve to a plain StringType.
