@@ -23,7 +23,7 @@ Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius 
 * Replacing the existing persistent control plane deployment model. Repo Radius is an alternative delivery mechanism, not a replacement.
 * Supporting non-GitHub source control platforms (GitLab, Bitbucket, Azure DevOps).
 * Running Repo Radius outside of GitHub Actions (e.g., locally on a developer's workstation as the primary mode).
-* Multi-repository orchestration at the infrastructure layer. Multi-repo applications (User Story #14) may use Repo Radius per-repo, but cross-repo state coordination is deferred.
+* Multi-repository orchestration at the infrastructure layer. Multi-repo applications may use Repo Radius per-repo, but cross-repo state coordination is deferred.
 * Building the Copilot agent, browser extension, or Deployment panel UI. These are separate components that consume Repo Radius capabilities.
 
 ## User profile and challenges
@@ -32,7 +32,7 @@ Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius 
 
 The primary user is a **developer** working on a cloud-native application hosted on GitHub. They may be an individual developer, a small team, or part of a larger organization. They do not have a dedicated platform engineering team and may not have deep Kubernetes expertise. They want to deploy their application to AWS or Azure without managing infrastructure.
 
-A secondary user is a **platform engineer** evaluating Radius. Repo Radius provides a low-friction entry point: they can try Radius on a real application without provisioning a Kubernetes cluster, and later migrate to a self-hosted Radius installation if needed (User Story #38).
+A secondary user is a **platform engineer** evaluating Radius. Repo Radius provides a low-friction entry point: they can try Radius on a real application without provisioning a Kubernetes cluster, and later migrate to a self-hosted Radius installation if needed.
 
 ### Challenge(s) faced by the user
 
@@ -43,7 +43,7 @@ A secondary user is a **platform engineer** evaluating Radius. Repo Radius provi
 
 ### Positive user outcome
 
-The developer enables Lattice on their GitHub repository and deploys their application to AWS or Azure without provisioning or managing any infrastructure beyond their cloud account. Radius runs on demand within GitHub Actions, starts quickly, deploys their application, and shuts down. State is stored alongside their code in the same GitHub repository. If they outgrow Repo Radius, they can migrate to a self-hosted Radius installation.
+The developer, or a solution which uses Repo Radius, creates the Radius workflow in the GitHub repository, then deploys their application to AWS or Azure without provisioning or managing any infrastructure beyond their cloud account. Radius runs on demand within GitHub Actions, starts quickly, deploys their application, and shuts down. State is stored in the same GitHub account. If they outgrow Repo Radius, they can migrate to a self-hosted Radius installation.
 
 ## Key scenarios
 
@@ -67,15 +67,12 @@ The developer triggers a new deployment days or weeks after the last one. Repo R
 
 A developer who has outgrown Repo Radius can export their application definitions and environment configurations and migrate to a persistent Radius installation on Kubernetes.
 
-## Key dependencies
+## Key dependencies and risks
 
-* **External UI** - Repo Radius is designed to be embedded in a developer solution which includes an application graph visualization, AI-based modeling of the application, and a user interface to configure environments and visualize deployments. Repo Radius must ship with a separate UX component.
-* **Customizable Terraform backend** - Radius currently stores Terraform state in a Kubernetes secret on the host cluster. Since the Repo Radius cluster is ephemeral, Terraform state must be stored in a persistent external backend. This depends on the Terraform and Bicep Settings feature specification.
-
-## Key risks
-
-* **Radius startup time** - Radius must start quickly enough within a GitHub Actions runner that the developer experience feels responsive. If startup takes minutes, the experience degrades significantly.
-* **State consistency** - Persisting state to orphan branches and repository variables introduces eventual consistency challenges. Concurrent deployments to the same environment could cause conflicts.
+* **Dependency: External UI** - Repo Radius is designed to be embedded in a developer solution which includes an application graph visualization, AI-based modeling of the application, and a user interface to configure environments and visualize deployments. Repo Radius must ship with a separate UX component.
+* **Dependency: Customizable Terraform backend** - Radius currently stores Terraform state in a Kubernetes secret on the host cluster. Since the Repo Radius cluster is ephemeral, Terraform state must be stored in a persistent external backend. This depends on the Terraform and Bicep Settings feature specification.
+* **Risk: Radius startup time** - Radius must start quickly enough within a GitHub Actions runner that the developer experience feels responsive. If startup takes minutes, the experience degrades significantly.
+* **Risk: State consistency** - Persisting state to orphan branches and repository variables introduces eventual consistency challenges. Concurrent deployments to the same environment could cause conflicts.
 
 ## Key assumptions to test and questions to answer
 
@@ -86,12 +83,12 @@ A developer who has outgrown Repo Radius can export their application definition
 
 ## Current state
 
-Radius currently requires a Kubernetes cluster with a persistent installation. The following related work provides building blocks for Repo Radius:
+Work on many Repo Radius components or dependencies is already in flight. This includes:
 
-* **[Feature Specification: Deploy to External AKS and EKS Clusters](https://github.com/radius-project/radius/blob/main/eng/design-notes/environments/2026-05-external-kubernetes.md)**: Describes the ability to deploy to an AKS or EKS cluster not hosting Radius. Required by Repo Radius since the Kubernetes cluster is now ephemeral.
-* **[Terraform and Bicep Settings Feature Specification](https://github.com/radius-project/design-notes/blob/main/features/2025-08-14-terraform-bicep-settings.md)**: Describes the ability to store the Terraform backend (state store) outside of Kubernetes. Required by Repo Radius since the Kubernetes cluster is now ephemeral.
-  * Many of this feature spec's functionality has been implemented in Radius, however, the customizable Terraform backend **has not**. This must be implemented as part of Repo Radius.
-* **[GitHub Actions Workspace with Git-Backed State Persistence](https://github.com/radius-project/radius/pull/11457)**: Draft technical design for storing the Radius data store within an orphaned Git branch. Design is likely being modified due to security drawbacks identified.
+* **Deploy to External AKS and EKS Clusters**: [Feature spec](https://github.com/radius-project/radius/blob/main/eng/design-notes/environments/2026-05-external-kubernetes.md) is reviewed and merged.
+* **Externalize Radius state store**: The [technical design](https://github.com/radius-project/radius/pull/11457) is in draft.
+* **Workflow including OIDC authentication**: A [prototype workflow](https://github.com/radius-project/github-extension/blob/0378b1e349d09fe0f7f09c978c0e7a32c214a72a/.copilot/extensions/radius/src/shared/github-client.ts#L1581) has been implemented which includes OIDC authentication to AWS and Azure. The two differences between the prototype workflow and this spec are (1) the standardized workflow inputs and outputs and (2) loading of the external Radius state store.
+* **Customizable Terraform backend**: The [Terraform and Bicep Settings Feature Specification](https://github.com/radius-project/design-notes/blob/main/features/2025-08-14-terraform-bicep-settings.md) includes details for supporting Terraform backends (the state store) outside the Kubernetes cluster.
 
 ## Details of user problem
 
@@ -107,7 +104,7 @@ After Repo Radius is implemented, a UX component can offer developers a complete
 
 ### Detailed user experience
 
-Repo Radius is a backend designed to be driven by an external UX component (Copilot app, CLI, browser extension, or third-party integration). The UX component interacts with Repo Radius entirely through GitHub APIs. The following steps describe the interaction model.
+Repo Radius is a backend designed to be driven by an external UX component (Copilot app, CLI, browser extension, or other integration). The UX component interacts with Repo Radius entirely through GitHub APIs. The following steps describe the interaction model.
 
 #### Step 1: Environment setup (prerequisite)
 
@@ -150,7 +147,13 @@ The UX component guides the user through configuring OIDC federated identity wit
 
 #### Step 3: Workflow dispatch
 
-The UX component calls the GitHub API `workflow_dispatch` to initiate a Repo Radius workflow. The workflow accepts a GitHub Environment name and one or more `rad` CLI commands.
+The UX component calls the GitHub API `workflow_dispatch` to initiate a Repo Radius workflow. The workflow accepts the following inputs:
+
+| Input | Required | Description |
+| --- | --- | --- |
+| `environment` | Yes | The GitHub Environment name to use as the Radius environment. |
+| `radius_commands` | Yes | A single `rad` CLI command string or a JSON-encoded array of strings. Each string is a `rad` CLI command with the `rad` prefix omitted. |
+| `configuration_file` | No | Path to a Bicep file deployed before `radius_commands` to configure the Radius control plane (e.g., Terraform backend settings). Defaults to `.radius/radius.bicep`. |
 
 **Single command:**
 
@@ -165,7 +168,7 @@ POST /repos/{owner}/{repo}/actions/workflows/radius/dispatches
 }
 ```
 
-**Multiple commands:**
+**Multiple commands with explicit configuration file:**
 
 ```json
 POST /repos/{owner}/{repo}/actions/workflows/radius/dispatches
@@ -173,12 +176,11 @@ POST /repos/{owner}/{repo}/actions/workflows/radius/dispatches
   "ref": "main",
   "inputs": {
     "environment": "production",
+    "configuration_file": ".radius/radius.bicep",
     "radius_commands": "[\"deploy app.bicep\", \"app graph\"]"
   }
 }
 ```
-
-The `radius_commands` input accepts either a single command string or a JSON-encoded array of strings. Each string is a `rad` CLI command with the `rad` prefix omitted.
 
 #### Step 4: Workflow execution
 
@@ -192,11 +194,11 @@ The single Repo Radius workflow is executed within a GitHub Actions runner. A pr
 
 * **Configure cloud provider credentials.** Cloud credentials from the OIDC exchange are injected into the Radius control plane via the standard `rad credential register` commands.
 
-* **Configure the Terraform backend.** The workflow configures a persistent Terraform backend outside of the ephemeral cluster so that Terraform state survives across workflow runs. The backend is defined in a `terraform.bicep` file in the `.radius` directory and applied via a `rad deploy terraform.bicep` command included in the `radius_commands` input.
+* **Deploy the configuration file.** If the `configuration_file` input is provided (or the default `.radius/radius.bicep` exists), the workflow runs `rad deploy <configuration_file>`. This file configures the Radius control plane for the repository, including the Terraform backend location and other settings.
 
 * **Create a Radius environment based on the GitHub Environment.** The workflow creates a Radius resource group and environment with the properties from the GitHub Environment passed as an input to the workflow.
 
-* **Execute `rad` CLI commands.** The workflow runs each command from the `radius_commands` input (e.g., `rad deploy app.bicep`). The workflow provides structured updates for each step in the workflow log. The output of each command is captured as a GitHub Actions workflow artifact for post-execution consumption by the UX component.
+* **Execute `rad` CLI commands.** The workflow parses the `radius_commands` input and runs each command (e.g., `rad deploy app.bicep`). The workflow provides structured updates for each step in the workflow log. The output of each command is captured as a GitHub Actions workflow artifact for post-execution consumption by the UX component.
 
 * **Persist the Radius data store.** The workflow writes the updated Radius data store back to the configured storage location so that subsequent workflow runs can resume from the current state. 
 
@@ -220,4 +222,4 @@ Integrate with GitHub's OIDC federation to securely provide AWS and Azure creden
 
 ### Investment 5: Customizable Terraform backend
 
-Enable Radius to store Terraform state in a persistent backend outside of the ephemeral Kubernetes cluster. The backend configuration is defined in a `terraform.bicep` file in the `.radius` directory and applied as part of the workflow's `rad` CLI commands. This depends on the Terraform and Bicep Settings feature specification.
+Enable Radius to store Terraform state in a persistent backend outside of the ephemeral Kubernetes cluster. The backend configuration is defined in the `configuration_file` (default `.radius/radius.bicep`) and deployed before user commands. This depends on the Terraform and Bicep Settings feature specification.
