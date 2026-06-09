@@ -122,9 +122,16 @@ that host.
 ### High-level steps (any token-authenticated registry)
 
 1. **Choose a private module source** that authenticates over HTTPS with a bearer
-   token — for example Terraform Cloud / HCP Terraform (`app.terraform.io`), a
-   self-hosted private module registry, or an Artifactory/Harbor Terraform
-   registry.
+   token. You have two broad options:
+   - **Cloud / hosted (official):** Terraform Cloud / HCP Terraform
+     (`app.terraform.io`).
+   - **Self-hosted OSS:** run your own private module registry. Lightweight,
+     open-source options implement the
+     [Terraform Module Registry protocol](https://developer.hashicorp.com/terraform/internals/module-registry-protocol)
+     and authenticate with a token — for example
+     [Terralist](https://www.terralist.io/) (also acts as a provider registry),
+     or an Artifactory/Harbor Terraform registry. These are a good fit when you
+     want a fully private registry without a SaaS account.
 2. **Publish (or identify) a module** that provisions the demo resource — a
    Kubernetes Redis cache matches the sample. Note its full module address.
 3. **Create an API token** with permission to read the module from that registry.
@@ -147,6 +154,31 @@ export TF_REGISTRY_HOST="app.terraform.io"
 export TF_RECIPE_LOCATION="app.terraform.io/my-org/redis/kubernetes"
 export TF_REGISTRY_TOKEN="<your-terraform-registry-token>"
 ```
+
+### Concrete example — self-hosted OSS registry ([Terralist](https://www.terralist.io/))
+
+For a fully private setup without a SaaS account, run an open-source registry
+such as [Terralist](https://www.terralist.io/), which implements the Terraform
+module (and provider) registry protocol and supports token-based auth.
+
+1. **Deploy Terralist** following its
+   [documentation](https://www.terralist.io/docs/) (it ships as a single binary /
+   container and uses a SQL database plus object storage for module/provider
+   artifacts). Expose it over HTTPS at a hostname you control, e.g.
+   `registry.mycompany.com`.
+2. **Publish a module** (a small Kubernetes Redis module works for the demo) to
+   your Terralist instance and note its address.
+3. **Create an API token** in Terralist for Radius to pull the module.
+
+```bash
+export TF_REGISTRY_HOST="registry.mycompany.com"
+export TF_RECIPE_LOCATION="registry.mycompany.com/my-org/redis/kubernetes"
+export TF_REGISTRY_TOKEN="<your-terralist-api-token>"
+```
+
+> Any registry that implements the Terraform module registry protocol and
+> authenticates with a token works the same way — Radius only needs the host, the
+> module address, and the token.
 
 > `TF_RECIPE_LOCATION` is whatever module source your private recipe lives at — a
 > private registry module address or an HTTP module archive URL. The demo's
@@ -190,6 +222,8 @@ Tear down the throwaway registries and credentials when you're done:
   the PAT at <https://github.com/settings/tokens>.
 - **HCP Terraform:** delete the module from the registry and revoke the token in
   **User settings → Tokens**.
+- **Self-hosted (e.g. Terralist):** revoke the API token and remove the module
+  (and the instance itself if it was stood up only for the demo).
 
 See the demo README's [Cleanup](./README.md#cleanup) section to remove the Radius
 applications, group, and namespaces.
