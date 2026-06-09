@@ -472,11 +472,9 @@ func (d *bicepDriver) outputResourceFromID(ctx context.Context, resourceID strin
 		return outputResource, nil
 	}
 
-	outputResource.AdditionalProperties = map[string]string{
-		"arn": arn,
-		rpv1.OutputResourceProviderResourceIDProperty:     arn,
-		rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
-	}
+	outputResource.ProviderResourceID = arn
+	outputResource.ProviderResourceIDKind = rpv1.OutputResourceProviderResourceIDKindAWSARN
+	outputResource.AdditionalProperties = map[string]string{"arn": arn}
 
 	return outputResource, nil
 }

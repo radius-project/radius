@@ -218,6 +218,12 @@ func BuildExternalOutputResources(outputResources []OutputResource) []map[string
 		if or.LocalID != "" {
 			externalOutput["LocalID"] = or.LocalID
 		}
+		if or.ProviderResourceID != "" {
+			externalOutput[OutputResourceProviderResourceIDProperty] = or.ProviderResourceID
+		}
+		if or.ProviderResourceIDKind != "" {
+			externalOutput[OutputResourceProviderResourceIDKindProperty] = or.ProviderResourceIDKind
+		}
 		if len(or.AdditionalProperties) > 0 {
 			externalOutput["additionalProperties"] = or.AdditionalProperties
 		}

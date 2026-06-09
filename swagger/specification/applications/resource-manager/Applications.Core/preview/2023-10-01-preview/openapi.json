@@ -2270,6 +2270,14 @@
           "type": "string",
           "description": "The resource ID."
         },
+        "providerResourceId": {
+          "type": "string",
+          "description": "The provider-native resource ID of the underlying resource."
+        },
+        "providerResourceIdKind": {
+          "type": "string",
+          "description": "The kind of provider-native resource ID."
+        },
         "additionalProperties": {
           "type": "object",
           "description": "Additional provider-specific output resource properties.",
@@ -3949,6 +3957,14 @@
         "radiusManaged": {
           "type": "boolean",
           "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        },
+        "providerResourceId": {
+          "type": "string",
+          "description": "The provider-native resource ID of the underlying resource."
+        },
+        "providerResourceIdKind": {
+          "type": "string",
+          "description": "The kind of provider-native resource ID."
         },
         "additionalProperties": {
           "type": "object",

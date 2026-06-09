@@ -199,6 +199,12 @@ type OutputResource struct {
 	// being compared to determine dependency relationships.
 	LocalID *string
 
+	// The provider-native resource ID of the underlying resource.
+	ProviderResourceID *string
+
+	// The kind of provider-native resource ID.
+	ProviderResourceIDKind *string
+
 	// Determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool
 }

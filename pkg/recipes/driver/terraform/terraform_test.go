@@ -640,12 +640,12 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"},
 				OutputResources: []rpv1.OutputResource{
 					{
-						ID:            resources.MustParse("/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"),
-						RadiusManaged: new(true),
+						ID:                     resources.MustParse("/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"),
+						RadiusManaged:          new(true),
+						ProviderResourceID:     "arn:aws:s3:::my-bucket",
+						ProviderResourceIDKind: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 						AdditionalProperties: map[string]string{
 							"arn": "arn:aws:s3:::my-bucket",
-							rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
-							rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 						},
 					},
 				},

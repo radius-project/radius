@@ -34,9 +34,10 @@ func TestOutputResourcesFromGenericResource(t *testing.T) {
 				"outputResources": []any{
 					map[string]any{
 						"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket",
+						rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
+						rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 						"additionalProperties": map[string]any{
-							rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
-							rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
+							"arn": "arn:aws:s3:::my-bucket",
 						},
 					},
 				},
@@ -48,8 +49,9 @@ func TestOutputResourcesFromGenericResource(t *testing.T) {
 
 	require.Len(t, outputResources, 1)
 	require.Equal(t, "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket", outputResources[0].ID.String())
-	require.Equal(t, "arn:aws:s3:::my-bucket", outputResources[0].AdditionalProperties[rpv1.OutputResourceProviderResourceIDProperty])
-	require.Equal(t, rpv1.OutputResourceProviderResourceIDKindAWSARN, outputResources[0].AdditionalProperties[rpv1.OutputResourceProviderResourceIDKindProperty])
+	require.Equal(t, "arn:aws:s3:::my-bucket", outputResources[0].ProviderResourceID)
+	require.Equal(t, rpv1.OutputResourceProviderResourceIDKindAWSARN, outputResources[0].ProviderResourceIDKind)
+	require.Equal(t, "arn:aws:s3:::my-bucket", outputResources[0].AdditionalProperties["arn"])
 }
 
 func TestFindSharedReferences_MatchesProviderResourceID(t *testing.T) {
@@ -90,10 +92,8 @@ func makeResource(resourceID string, outputResourceID string, providerResourceID
 				"outputResources": []any{
 					map[string]any{
 						"id": outputResourceID,
-						"additionalProperties": map[string]any{
-							rpv1.OutputResourceProviderResourceIDProperty:     providerResourceID,
-							rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
-						},
+						rpv1.OutputResourceProviderResourceIDProperty:     providerResourceID,
+						rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 					},
 				},
 			},

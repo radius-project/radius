@@ -112,8 +112,10 @@ func OutputResourcesFromGenericResource(resource generated.GenericResource) []rp
 		}
 
 		result = append(result, rpv1.OutputResource{
-			ID:                   parsedID,
-			AdditionalProperties: stringMap(outputResource["additionalProperties"]),
+			ID:                     parsedID,
+			ProviderResourceID:     stringValueAny(outputResource[rpv1.OutputResourceProviderResourceIDProperty]),
+			ProviderResourceIDKind: stringValueAny(outputResource[rpv1.OutputResourceProviderResourceIDKindProperty]),
+			AdditionalProperties:   stringMap(outputResource["additionalProperties"]),
 		})
 	}
 
@@ -142,6 +144,14 @@ func stringMap(value any) map[string]string {
 	default:
 		return nil
 	}
+}
+
+func stringValueAny(value any) string {
+	stringValue, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return stringValue
 }
 
 func stringValue(value *string) string {

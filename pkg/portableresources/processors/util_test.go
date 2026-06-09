@@ -108,12 +108,12 @@ func Test_GetOutputResourcesFromRecipe_MetadataOutputResource(t *testing.T) {
 		Resources: []string{id.String()},
 		OutputResources: []rpv1.OutputResource{
 			{
-				ID:            id,
-				RadiusManaged: new(true),
+				ID:                     id,
+				RadiusManaged:          new(true),
+				ProviderResourceID:     "arn:aws:s3:::my-bucket",
+				ProviderResourceIDKind: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 				AdditionalProperties: map[string]string{
 					"arn": "arn:aws:s3:::my-bucket",
-					rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
-					rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 				},
 			},
 		},

@@ -422,12 +422,12 @@ func Test_Bicep_PrepareRecipeResponse_AWSResourceAddsProviderResourceID(t *testi
 	require.NoError(t, err)
 	require.Equal(t, []rpv1.OutputResource{
 		{
-			ID:            resources.MustParse(outputResourceID),
-			RadiusManaged: new(true),
+			ID:                     resources.MustParse(outputResourceID),
+			RadiusManaged:          new(true),
+			ProviderResourceID:     "arn:aws:s3:::my-bucket",
+			ProviderResourceIDKind: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 			AdditionalProperties: map[string]string{
 				"arn": "arn:aws:s3:::my-bucket",
-				rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
-				rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 			},
 		},
 	}, actualResponse.OutputResources)
@@ -457,12 +457,12 @@ func Test_Bicep_PrepareRecipeResponse_ExplicitAWSResourceAddsProviderResourceID(
 	require.NoError(t, err)
 	require.Equal(t, []rpv1.OutputResource{
 		{
-			ID:            resources.MustParse(outputResourceID),
-			RadiusManaged: new(true),
+			ID:                     resources.MustParse(outputResourceID),
+			RadiusManaged:          new(true),
+			ProviderResourceID:     "arn:aws:s3:::my-bucket",
+			ProviderResourceIDKind: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 			AdditionalProperties: map[string]string{
 				"arn": "arn:aws:s3:::my-bucket",
-				rpv1.OutputResourceProviderResourceIDProperty:     "arn:aws:s3:::my-bucket",
-				rpv1.OutputResourceProviderResourceIDKindProperty: rpv1.OutputResourceProviderResourceIDKindAWSARN,
 			},
 		},
 	}, actualResponse.OutputResources)

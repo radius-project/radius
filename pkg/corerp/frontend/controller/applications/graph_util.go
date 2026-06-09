@@ -447,12 +447,14 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
-func outputResourceEntryFromID(id resources.ID, additionalProperties map[string]string) corerpv20231001preview.ApplicationGraphOutputResource {
+func outputResourceEntryFromID(id resources.ID, providerResourceID string, providerResourceIDKind string, additionalProperties map[string]string) corerpv20231001preview.ApplicationGraphOutputResource {
 	return corerpv20231001preview.ApplicationGraphOutputResource{
-		ID:                   new(id.String()),
-		AdditionalProperties: outputResourceAdditionalProperties(additionalProperties),
-		Name:                 new(id.Name()),
-		Type:                 new(id.Type()),
+		ID:                     new(id.String()),
+		ProviderResourceID:     stringPtrOrNil(providerResourceID),
+		ProviderResourceIDKind: stringPtrOrNil(providerResourceIDKind),
+		AdditionalProperties:   outputResourceAdditionalProperties(additionalProperties),
+		Name:                   new(id.Name()),
+		Type:                   new(id.Type()),
 	}
 }
 
@@ -466,6 +468,13 @@ func outputResourceAdditionalProperties(additionalProperties map[string]string) 
 		result[key] = to.Ptr(value)
 	}
 	return result
+}
+
+func stringPtrOrNil(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return to.Ptr(value)
 }
 
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
@@ -497,8 +506,10 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 		// This is the wire format returned by the API for an output resource.
 		// Wire format: { "id": "<resource id>" }
 		type outputResourceWireFormat struct {
-			ID                   resources.ID      `json:"id"`
-			AdditionalProperties map[string]string `json:"additionalProperties"`
+			ID                     resources.ID      `json:"id"`
+			ProviderResourceID     string            `json:"providerResourceId"`
+			ProviderResourceIDKind string            `json:"providerResourceIdKind"`
+			AdditionalProperties   map[string]string `json:"additionalProperties"`
 		}
 
 		data := outputResourceWireFormat{}
@@ -508,7 +519,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 		}
 
 		// Now build the entry from the API data
-		entry := outputResourceEntryFromID(data.ID, data.AdditionalProperties)
+		entry := outputResourceEntryFromID(data.ID, data.ProviderResourceID, data.ProviderResourceIDKind, data.AdditionalProperties)
 		entries = append(entries, &entry)
 	}
 

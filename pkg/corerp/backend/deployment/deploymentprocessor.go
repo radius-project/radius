@@ -299,10 +299,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 		// Build database resource - copy updated properties to Resource field
 		outputResource := rpv1.OutputResource{
-			LocalID:              outputResource.LocalID,
-			ID:                   outputResource.ID,
-			RadiusManaged:        outputResource.RadiusManaged,
-			AdditionalProperties: outputResource.AdditionalProperties,
+			LocalID:                outputResource.LocalID,
+			ID:                     outputResource.ID,
+			RadiusManaged:          outputResource.RadiusManaged,
+			ProviderResourceID:     outputResource.ProviderResourceID,
+			ProviderResourceIDKind: outputResource.ProviderResourceIDKind,
+			AdditionalProperties:   outputResource.AdditionalProperties,
 		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
 	}
