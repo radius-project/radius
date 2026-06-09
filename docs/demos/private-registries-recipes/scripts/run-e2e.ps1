@@ -1,8 +1,9 @@
-#Requires -Version 5.1
+#Requires -Version 7.0
 
 <#
 .SYNOPSIS
-    E2E runner for the "Private Registries & Repositories" demo (Windows).
+    E2E runner for the "Private Registries & Repositories" demo (cross-platform
+    PowerShell / pwsh).
 
 .DESCRIPTION
     Automates the manual walkthrough in ..\README.md: creates the Radius group
@@ -22,13 +23,13 @@
     Delete all demo resources and exit.
 
 .EXAMPLE
-    .\run-e2e.ps1 -Scenario bicep
+    pwsh ./run-e2e.ps1 -Scenario bicep
 
 .EXAMPLE
-    .\run-e2e.ps1 -Scenario terraform -SkipPublish
+    pwsh ./run-e2e.ps1 -Scenario terraform -SkipPublish
 
 .EXAMPLE
-    .\run-e2e.ps1 -Cleanup
+    pwsh ./run-e2e.ps1 -Cleanup
 
 .NOTES
     Environment variables:
@@ -208,7 +209,7 @@ function Main {
     }
 
     Write-Host '============================================================'
-    Write-Host "Done. Run '.\run-e2e.ps1 -Cleanup' to remove demo resources."
+    Write-Host "Done. Run 'pwsh ./run-e2e.ps1 -Cleanup' to remove demo resources."
     Write-Host '============================================================'
 }
 
