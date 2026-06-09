@@ -404,10 +404,10 @@ func waitForDeploymentTemplateToBeReadyWithGenerationTimeout(t *testing.T, ctx c
 	}
 
 	if lastDeploymentTemplate != nil {
-		return lastDeploymentTemplate, fmt.Errorf("deploymentTemplate %s not ready after %.0f seconds: phrase=%s observedGeneration=%d expectedGeneration=%d", name.Name, timeout.Seconds(), lastDeploymentTemplate.Status.Phrase, lastDeploymentTemplate.Status.ObservedGeneration, generation)
+		return lastDeploymentTemplate, fmt.Errorf("deploymentTemplate %s not ready after %s: phrase=%s observedGeneration=%d expectedGeneration=%d", name.Name, timeout, lastDeploymentTemplate.Status.Phrase, lastDeploymentTemplate.Status.ObservedGeneration, generation)
 	}
 
-	return nil, fmt.Errorf("deploymentTemplate %s not found after %f seconds", name.Name, timeout.Seconds())
+	return nil, fmt.Errorf("deploymentTemplate %s not found after %s", name.Name, timeout)
 }
 
 // waitForGitRepositoryReady watches the creation of the GitRepository object
