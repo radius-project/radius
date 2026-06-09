@@ -378,13 +378,13 @@ func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.
 }
 
 func waitForDeploymentTemplateToBeReadyWithGenerationTimeout(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch, timeout, interval time.Duration) (*radappiov1alpha3.DeploymentTemplate, error) {
-	var lastSeen *radappiov1alpha3.DeploymentTemplate
+	var lastDeploymentTemplate *radappiov1alpha3.DeploymentTemplate
 
 	for start := time.Now(); time.Since(start) < timeout; {
 		deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
 		err := client.Get(ctx, name, deploymentTemplate)
 		if err == nil {
-			lastSeen = deploymentTemplate
+			lastDeploymentTemplate = deploymentTemplate
 
 			if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
 				if deploymentTemplate.Status.ObservedGeneration == int64(generation) {
@@ -403,8 +403,8 @@ func waitForDeploymentTemplateToBeReadyWithGenerationTimeout(t *testing.T, ctx c
 		time.Sleep(interval)
 	}
 
-	if lastSeen != nil {
-		return lastSeen, fmt.Errorf("deploymentTemplate %s not ready after %.0f seconds: phrase=%s observedGeneration=%d expectedGeneration=%d", name.Name, timeout.Seconds(), lastSeen.Status.Phrase, lastSeen.Status.ObservedGeneration, generation)
+	if lastDeploymentTemplate != nil {
+		return lastDeploymentTemplate, fmt.Errorf("deploymentTemplate %s not ready after %.0f seconds: phrase=%s observedGeneration=%d expectedGeneration=%d", name.Name, timeout.Seconds(), lastDeploymentTemplate.Status.Phrase, lastDeploymentTemplate.Status.ObservedGeneration, generation)
 	}
 
 	return nil, fmt.Errorf("deploymentTemplate %s not found after %f seconds", name.Name, timeout.Seconds())
