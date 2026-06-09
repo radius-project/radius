@@ -88,12 +88,14 @@ After this feature, I can set `location` directly to `registry.terraform.io/terr
          'Radius.Data/mySqlDatabases': {
            kind: 'terraform'
            location: 'registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0'
+           // Specify the module's input parameters
            parameters: {
              identifier: '{{context.resource.name}}'
              db_name: '{{context.resource.properties.database}}'
              engine: 'mysql'
              instance_class: 'db.t3.micro'
            }
+           // Map the module's outputs to the resource's properties
            outputs: {
              host: 'db_instance_address'
              port: 'db_instance_port'
@@ -146,8 +148,6 @@ A `{{context.*}}` expression system that resolves Radius application runtime con
 ### Feature 3: Output Mapping
 
 An `outputs` field on `RecipeDefinition` that maps module output names to resource property names. Provides a stable property interface for resource consumers regardless of the underlying module's output naming. Sensitive outputs are automatically routed to the Secrets map.
-
----
 
 ## Usage Examples
 
@@ -232,3 +232,37 @@ resource devenv 'Radius.Core/environments@2025-08-01-preview' = {
 ```
 
 Environment parameters merge with Recipe-level parameters. Environment takes precedence for overlapping keys.
+
+### Secrets Output Mapping
+
+```bicep
+resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'aws-data-pack'
+  properties: {
+    recipes: {
+      'Radius.Data/mySqlDatabases': {
+        kind: 'terraform'
+        location: 'registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0'
+        parameters: {
+          identifier: '{{context.resource.name}}'
+          db_name: '{{context.resource.properties.database}}'
+          engine: 'mysql'
+          instance_class: 'db.t3.micro'
+          manage_master_user_password: true
+        }
+        outputs: {
+          values: {
+            host: 'db_instance_address'
+            port: 'db_instance_port'
+            database: 'db_instance_name'
+          }
+          secrets: {
+            secret: 'db_master_user_secret_arn'
+            connectionString: 'db_instance_endpoint'
+          }
+        }
+      }
+    }
+  }
+}
+```
