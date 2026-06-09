@@ -100,7 +100,9 @@ ensure_namespace() {
 }
 
 setup_group() {
-    rad group create "${RAD_GROUP}" >/dev/null 2>&1 || true
+    # Group may already exist; suppress only the duplicate notice on stdout
+    # while letting real errors surface. 'rad group switch' below validates it.
+    rad group create "${RAD_GROUP}" >/dev/null || true
     rad group switch "${RAD_GROUP}"
 }
 
@@ -166,7 +168,7 @@ run_combined() {
         --parameters bicepRegistryPassword="${BICEP_REGISTRY_PASSWORD}"
 
     echo "Verifying Scenario 3"
-    rad resource show Radius.Core/environments combined-env || true
+    rad resource show Radius.Core/environments combined-env
     rad resource list Radius.Core/terraformConfigs
     rad resource list Radius.Core/bicepConfigs
 }
