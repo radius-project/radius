@@ -32,7 +32,7 @@ func Test_GetApplicationStatusTableFormat(t *testing.T) {
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, statusFormat())
+	err := output.Write(output.FormatTable, obj, buffer, StatusFormat())
 	require.NoError(t, err)
 
 	expected := "APPLICATION  RESOURCES\ntest         3\n"
@@ -46,7 +46,7 @@ func Test_GetApplicationGatewaysTableFormat(t *testing.T) {
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, gatewayFormat())
+	err := output.Write(output.FormatTable, obj, buffer, GatewayFormat())
 	require.NoError(t, err)
 
 	expected := "GATEWAY   ENDPOINT\ntest      test-endpoint\n"

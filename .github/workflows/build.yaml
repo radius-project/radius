@@ -103,7 +103,7 @@ jobs:
     steps:
       - name: Checkout
         if: needs.changes.outputs.only_changed != 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -132,14 +132,14 @@ jobs:
       - name: Copy cli binaries to release (unix-like)
         if: matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
-          mkdir ${{ env.RELEASE_PATH }}
-          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}
+          mkdir "${RELEASE_PATH}"
+          cp "./dist/${GOOS}_${GOARCH}/release/rad" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}"
 
       - name: Copy cli binaries to release (windows)
         if: matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
-          mkdir ${{ env.RELEASE_PATH }}
-          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
+          mkdir "${RELEASE_PATH}"
+          cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}.exe"
 
       - name: Upload CLI binary
         if: needs.changes.outputs.only_changed != 'true'
@@ -150,7 +150,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: needs.changes.outputs.only_changed != 'true'
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -164,14 +164,14 @@ jobs:
       - name: Push latest rad cli binary to GHCR (unix-like)
         if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
-          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ./rad
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/${{ matrix.target_os }}-${{ matrix.target_arch }}:latest ./rad --annotation "org.opencontainers.image.source=${{ env.IMAGE_SRC }}"
+          cp "./dist/${GOOS}_${GOARCH}/release/rad" ./rad
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
       - name: Copy cli binaries to release (windows)
         if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
-          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ./rad.exe
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/${{ matrix.target_os }}-${{ matrix.target_arch }}:latest ./rad.exe --annotation "org.opencontainers.image.source=${{ env.IMAGE_SRC }}"
+          cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" ./rad.exe
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
       - name: Skip
         if: needs.changes.outputs.only_changed == 'true'
@@ -209,7 +209,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -229,17 +229,17 @@ jobs:
           cache: true
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
@@ -322,7 +322,7 @@ jobs:
       OCI_REPOSITORY: radius-project/helm-chart
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -341,17 +341,20 @@ jobs:
 
       - name: Run Helm linter
         run: |
-          helm lint ${{ env.HELM_CHARTS_DIR }}
+          helm lint "${HELM_CHARTS_DIR}"
 
       - name: Package Helm chart
         run: |
-          mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
-          helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --app-version ${{ env.REL_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
+          mkdir -p "${ARTIFACT_DIR}/${HELM_PACKAGE_DIR}"
+          helm package "${HELM_CHARTS_DIR}" --version "${CHART_VERSION}" --app-version "${REL_VERSION}" --destination "${ARTIFACT_DIR}/${HELM_PACKAGE_DIR}"
 
       - name: Push helm chart to GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_ACTOR: ${{ github.actor }}
         run: |
-          echo ${{ github.token }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
-          helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
+          echo "${GH_TOKEN}" | helm registry login -u "${GH_ACTOR}" --password-stdin "${OCI_REGISTRY}"
+          helm push "${ARTIFACT_DIR}/${HELM_PACKAGE_DIR}/radius-${CHART_VERSION}.tgz" "oci://${OCI_REGISTRY}/${OCI_REPOSITORY}"
 
   build-and-push-bicep-types:
     name: Dispatch Bicep Types publish
@@ -364,7 +367,7 @@ jobs:
       contents: read # Required for actions/checkout
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -377,10 +380,10 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
 
       - name: Get App Token
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get-token
         with:
-          app-id: ${{ secrets.RADIUS_PUBLISHER_BOT_APP_ID }}
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
           permission-metadata: read
           permission-actions: read
@@ -432,8 +435,9 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ steps.get-token.outputs.token }}
+          RUN_ID: ${{ steps.monitor-remote-workflow.outputs.run_id }}
         run: |
-          gh run view "${{ steps.monitor-remote-workflow.outputs.run_id }}" --repo azure-octo/radius-publisher --log-failed || true
+          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true
 
   publish-release:
     name: Publish GitHub Release
@@ -445,7 +449,7 @@ jobs:
       contents: write # Required for creating releases
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -466,31 +470,31 @@ jobs:
 
       - name: generate checksum files
         run: |
-          cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
-          ls -l ${{ env.RELEASE_PATH }}
+          cd "${RELEASE_PATH}" && for i in *; do sha256sum -b "$i" > "$i.sha256"; done && cd -
+          ls -l "${RELEASE_PATH}"
 
       - name: Create GitHub RC Release (pre-release and auto-generate release notes)
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
-          gh release create v${{ env.REL_VERSION }} \
-            ${{ env.RELEASE_PATH }}/* \
-            --title "Radius v${{ env.REL_VERSION }}" \
+          gh release create "v${REL_VERSION}" \
+            "${RELEASE_PATH}"/* \
+            --title "Radius v${REL_VERSION}" \
             --generate-notes \
             --verify-tag \
             --prerelease
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create GitHub Official Release
         if: ${{ !contains(env.REL_VERSION, 'rc') }}
         run: |
-          gh release create v${{ env.REL_VERSION }} \
-            ${{ env.RELEASE_PATH }}/* \
-            --title "Radius v${{ env.REL_VERSION }}" \
-            --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
+          gh release create "v${REL_VERSION}" \
+            "${RELEASE_PATH}"/* \
+            --title "Radius v${REL_VERSION}" \
+            --notes-file "docs/release-notes/v${REL_VERSION}.md" \
             --verify-tag
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
 
   # Comprehensive build summary that checks all critical build jobs.
   # Use this as the required status check in PR branch protection rules.

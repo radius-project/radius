@@ -30,7 +30,7 @@ global:
   appendRootCA:
     # Auto-enabled when global.rootCA.cert is provided via --set-file
     # Init image to normalize and prepare certs directory
-    initImage: "alpine:3.23"
+    initImage: "alpine:3.23.4"
     # Working and target mount paths
     workDir: "/work/certs"
     targetMountPath: "/etc/ssl/certs"
@@ -62,9 +62,18 @@ global:
   terraform:
     # Enable terraform binary pre-downloading during pod startup
     enabled: true
-    # URL for downloading Terraform binary
-    # Leave empty to automatically fetch the latest version from HashiCorp
-    # Or provide a complete direct download URL for custom sources
+    # Init image used to pre-download Terraform binaries.
+    initImage: "alpine:3.23.4"
+    # Terraform version to pre-download. MUST match terraformVersion in
+    # pkg/recipes/terraform/version.go -- the runtime download fallback
+    # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
+    # pins to that version, so the pre-mounted binary must match or
+    # recipes will see behavior differences between cold and warm starts.
+    version: "1.14.9"
+    # URL for downloading Terraform binary. Leave empty to download the
+    # version specified by `version` from releases.hashicorp.com. Provide
+    # a complete direct download URL to override (e.g., for air-gapped or
+    # custom builds); when set, `version` is ignored.
     downloadUrl: ""
     # Configure Terraform log level for terraform-exec execution
     # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
@@ -139,6 +148,14 @@ rp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  security:
+    annotationProtection:
+      # Enable ValidatingAdmissionPolicy to protect radapp.io/status from user tampering.
+      # Keep disabled by default for compatibility with clusters that do not support
+      # admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy.
+      enabled: false
+      # Service account allowed to modify protected annotations.
+      allowedServiceAccountName: "applications-rp"
 
 dashboard:
   enabled: true
@@ -246,7 +263,7 @@ encryption:
   rotation:
     # Enable automatic key rotation via CronJob
     enabled: true
-    
+
     # Cron schedule for key rotation
     # Format: minute hour day month weekday
     # Note: Cron day-of-month only supports 1-31, cannot use */90
@@ -256,11 +273,11 @@ encryption:
     #   "0 2 1 */2 *"  - Every 2 months on the 1st at 2 AM
     #   "*/2 * * * *"  - Every 2 minutes (for testing only)
     schedule: "0 0 1 */3 *"
-    
+
     # Number of days a key remains valid for encryption (default: 90 days)
     # After this period, a new key version is generated
     intervalDays: 90
-    
+
     # Grace period in days for keeping old keys after expiration (default: 1 day)
     # During this period, old encrypted data can still be decrypted
     # Keys are removed after: expiresAt + gracePeriodDays

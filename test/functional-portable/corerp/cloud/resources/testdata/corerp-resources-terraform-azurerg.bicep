@@ -8,6 +8,9 @@ param moduleServer string
 @description('Name of the Radius Application.')
 param appName string
 
+@description('Per-run seed used to ensure the Azure resource group name does not collide across concurrent CI runs that share a test subscription.')
+param uniqueSeed string = ''
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-terraform-azrg-env'
   properties: {
@@ -27,7 +30,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/azure-rg.zip'
           parameters: {
-            name: 'tfrg${uniqueString(resourceGroup().id)}'
+            name: 'tfrg${uniqueString(resourceGroup().id, uniqueSeed)}'
             location: location
           }
         }

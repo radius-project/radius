@@ -85,7 +85,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 			return nil, err
 		}
 
-		return getConfigurationV20250801(envV20250801)
+		return getConfigurationV20250801(ctx, envV20250801, e.ArmClientOptions)
 	}
 
 }
@@ -146,7 +146,7 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 	return &config, nil
 }
 
-func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource) (*recipes.Configuration, error) {
+func getConfigurationV20250801(ctx context.Context, environment *v20250801preview.EnvironmentResource, armOptions *arm.ClientOptions) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:      recipes.RuntimeConfiguration{},
 		Providers:    datamodel.Providers{},
@@ -188,6 +188,83 @@ func getConfigurationV20250801(environment *v20250801preview.EnvironmentResource
 
 	if envDatamodel.Properties.Simulated {
 		config.Simulated = true
+	}
+
+	// Resolve TerraformConfig resource if referenced.
+	if envDatamodel.Properties.TerraformConfig != "" {
+		tfConfig, err := util.FetchTerraformConfig(ctx, envDatamodel.Properties.TerraformConfig, armOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch terraformConfig %q: %w", envDatamodel.Properties.TerraformConfig, err)
+		}
+
+		tfDM, err := tfConfig.ConvertTo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert terraformConfig: %w", err)
+		}
+
+		tfProps := tfDM.(*datamodel.TerraformConfig).Properties
+
+		// Pass terraformrc.credentials through to the shared driver. The driver
+		// renders these as native `credentials "host" {}` blocks in the generated
+		// .terraformrc and resolves the `token` value from the referenced secret
+		// store at execution time. We deliberately do NOT bridge into the legacy
+		// `Authentication.Git.PAT` map here: that path is for git-based module
+		// source authentication (key=`pat`), a different mechanism than HTTP
+		// registry credentials (key=`token`).
+		if len(tfProps.Terraformrc.Credentials) > 0 {
+			config.RecipeConfig.Terraform.Credentials = make(map[string]datamodel.TerraformCredentialConfig, len(tfProps.Terraformrc.Credentials))
+			maps.Copy(config.RecipeConfig.Terraform.Credentials, tfProps.Terraformrc.Credentials)
+		}
+
+		// Map env vars into the legacy shape.
+		if len(tfProps.Env) > 0 {
+			config.RecipeConfig.Env = datamodel.EnvironmentVariables{
+				AdditionalProperties: tfProps.Env,
+			}
+		}
+
+		// Map provider_installation through to the shared driver. The driver writes a
+		// .terraformrc and points Terraform at it via TF_CLI_CONFIG_FILE when this is set.
+		if tfProps.Terraformrc.ProviderInstallation != nil {
+			config.RecipeConfig.Terraform.ProviderInstallation = tfProps.Terraformrc.ProviderInstallation
+		}
+	}
+
+	// Resolve BicepConfig resource if referenced.
+	if envDatamodel.Properties.BicepConfig != "" {
+		bcConfig, err := util.FetchBicepConfig(ctx, envDatamodel.Properties.BicepConfig, armOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch bicepConfig %q: %w", envDatamodel.Properties.BicepConfig, err)
+		}
+
+		bcDM, err := bcConfig.ConvertTo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert bicepConfig: %w", err)
+		}
+
+		bcProps := bcDM.(*datamodel.BicepConfig).Properties
+
+		// Map the new host-keyed map into the legacy BicepConfigProperties shape.
+		// The Bicep driver looks up credentials by the host parsed from the recipe
+		// template path, so the map key (registry hostname) is what matters.
+		// Only BasicAuth is wired today; AzureWI and AwsIrsa are accepted by the
+		// schema but not yet threaded into the driver (see follow-up).
+		if len(bcProps.RegistryAuthentications) > 0 {
+			authMap := make(map[string]datamodel.RegistrySecretConfig, len(bcProps.RegistryAuthentications))
+			for host, auth := range bcProps.RegistryAuthentications {
+				if auth.BasicAuthSecretId == "" {
+					continue
+				}
+				authMap[host] = datamodel.RegistrySecretConfig{
+					Secret: auth.BasicAuthSecretId,
+				}
+			}
+			if len(authMap) > 0 {
+				config.RecipeConfig.Bicep = datamodel.BicepConfigProperties{
+					Authentication: authMap,
+				}
+			}
+		}
 	}
 
 	return &config, nil

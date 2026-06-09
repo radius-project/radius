@@ -50,7 +50,7 @@ data:
     tracerProvider:
       enabled: true
       serviceName: "applications-rp"
-      zipkin: 
+      zipkin:
         url: {{ .Values.global.zipkin.url }}
     {{- end }}
     bicep:
