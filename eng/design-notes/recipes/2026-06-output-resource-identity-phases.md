@@ -29,7 +29,7 @@ That fixes the malformed-ID failure, but it also makes the broader identity prob
 
 Those two Radius IDs should remain different because they represent different lifecycle systems. Radius still needs a consistent provider-native identity for delete warnings, shared-resource detection, app graph grouping, and future clients.
 
-This document tracks a phased solution:
+This document proposes a phased solution:
 
 1. Phase 1: Fix AWS Terraform output resource IDs so Terraform resources use `Terraform.AWS` IDs.
 2. Phase 2: Add first-class provider resource identity metadata on output resources and use it for shared-resource delete warnings.
@@ -105,7 +105,7 @@ arn:aws:s3:::shared-bucket
 
 ## User Experience
 
-Phase 1 changes the IDs users see in `status.outputResources` for AWS Terraform recipes. Terraform-managed AWS resources use `Terraform.AWS` provider IDs rather than CloudControl-shaped `AWS.*` IDs.
+Phase 1 changes the IDs users see in `status.outputResources` for AWS Terraform recipes. Terraform-managed AWS resources use `Terraform.AWS` provider IDs rather than CloudControl-shaped `AWS.*` IDs. The immediate user-visible fix is that Terraform S3 recipe output no longer fails while Radius attempts to parse `arn:aws:s3:::<bucket>` into a CloudControl-shaped ID.
 
 **Sample Output:**
 
@@ -356,7 +356,7 @@ Phase 2:
 - Unit test Terraform output resources with ARN metadata.
 - Unit test AWS Bicep output resources with `ARN`, `Arn`, `arn`, and missing ARN properties.
 - Unit test resource and application delete warnings for Bicep-shaped and Terraform-shaped output resources that share the same ARN.
-- Verify the app graph preserves output resource `AdditionalProperties`.
+- Verify the app graph preserves output resource `providerResourceId`, `providerResourceIdKind`, and `AdditionalProperties`.
 
 Phase 3:
 
@@ -387,7 +387,7 @@ Delete warning flows should continue to use existing CLI output. No new metrics 
 ## Development plan
 
 1. Phase 1: Merge AWS Terraform output resource ID changes for [#11838](https://github.com/radius-project/radius/issues/11838).
-2. Phase 2: Merge shared-resource comparison and AWS ARN metadata changes for [#12020](https://github.com/radius-project/radius/issues/12020).
+2. Phase 2: Merge shared-resource comparison and first-class provider resource identity fields for [#12020](https://github.com/radius-project/radius/issues/12020).
 3. Phase 3: Open a follow-up issue or design review for making app graph, dashboard, CLI, and other APIs consistently use provider resource identity.
 
 ## Open Questions
