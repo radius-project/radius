@@ -307,13 +307,13 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
 
 			deploymentTemplate, err := waitForDeploymentTemplateToBeReadyWithGeneration(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, stepNumber, opts.Client)
-			defer func() {
+			require.NoError(t, err)
+			defer func(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) {
 				err := opts.Client.Delete(ctx, deploymentTemplate)
 				if controller_runtime.IgnoreNotFound(err) != nil {
 					t.Logf("Error deleting deployment template: %v", err)
 				}
-			}()
-			require.NoError(t, err)
+			}(deploymentTemplate)
 		}
 
 		scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", step.resourceGroup)
@@ -374,13 +374,18 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 }
 
 func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {
-	var timeout time.Duration = 60 * time.Second
-	var interval time.Duration = 1 * time.Second
+	return waitForDeploymentTemplateToBeReadyWithGenerationTimeout(t, ctx, name, generation, client, 60*time.Second, time.Second)
+}
+
+func waitForDeploymentTemplateToBeReadyWithGenerationTimeout(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch, timeout, interval time.Duration) (*radappiov1alpha3.DeploymentTemplate, error) {
+	var lastSeen *radappiov1alpha3.DeploymentTemplate
 
 	for start := time.Now(); time.Since(start) < timeout; {
 		deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
 		err := client.Get(ctx, name, deploymentTemplate)
 		if err == nil {
+			lastSeen = deploymentTemplate
+
 			if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
 				if deploymentTemplate.Status.ObservedGeneration == int64(generation) {
 					t.Logf("DeploymentTemplate %s is ready with generation: %d", name.Name, deploymentTemplate.Status.ObservedGeneration)
@@ -391,11 +396,15 @@ func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.
 			} else {
 				t.Logf("DeploymentTemplate %s phrase: %s, looking for %s", name.Name, deploymentTemplate.Status.Phrase, radappiov1alpha3.DeploymentTemplatePhraseReady)
 			}
-
-			return deploymentTemplate, nil
+		} else if controller_runtime.IgnoreNotFound(err) != nil {
+			return nil, err
 		}
 
 		time.Sleep(interval)
+	}
+
+	if lastSeen != nil {
+		return lastSeen, fmt.Errorf("deploymentTemplate %s not ready after %.0f seconds: phrase=%s observedGeneration=%d expectedGeneration=%d", name.Name, timeout.Seconds(), lastSeen.Status.Phrase, lastSeen.Status.ObservedGeneration, generation)
 	}
 
 	return nil, fmt.Errorf("deploymentTemplate %s not found after %f seconds", name.Name, timeout.Seconds())
