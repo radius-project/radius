@@ -47,6 +47,11 @@ type ApplicationGraphResource struct {
 
 	// REQUIRED; The resource type.
 	Type *string
+
+	// Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify
+	// resources as added, removed, modified, or unchanged across graphs. Format:
+	// 'sha256:{hex}'.
+	DiffHash *string
 }
 
 // ApplicationGraphResponse - Describes the application architecture and its dependencies.

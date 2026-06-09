@@ -7,15 +7,23 @@ package graph
 
 import (
 	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/graph/persistence"
+	gitstore "github.com/radius-project/radius/pkg/graph/persistence/git"
 	"github.com/radius-project/radius/test/radcli"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -269,4 +277,355 @@ func Test_Run_JSON(t *testing.T) {
 	require.True(t, ok, "expected FormattedOutput but got %T", outputSink.Writes[0])
 	require.Equal(t, output.FormatJson, formatted.Format)
 	require.Equal(t, graph, formatted.Obj)
+}
+
+const sampleBicepPath = "/tmp/app.bicep"
+
+// sampleTemplate returns a minimal ARM template containing a single
+// Applications.Core/containers resource.
+func sampleTemplate() map[string]any {
+	return map[string]any{
+		"resources": []any{
+			map[string]any{
+				"type":       "Applications.Core/containers",
+				"name":       "frontend",
+				"properties": map[string]any{"image": "nginx"},
+			},
+		},
+	}
+}
+
+func TestIsModeledGraphArg(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]bool{
+		"":                 false,
+		"my-app":           false,
+		"./app.bicep":      true,
+		"/abs/app.BICEP":   true,
+		"./app.json":       false,
+		"./app.txt":        false,
+		"./nested/x.bicep": true,
+	}
+	for in, want := range cases {
+		require.Equal(t, want, isModeledGraphArg(in), in)
+	}
+}
+
+func TestRunner_RunModeled_LocalFilesystem(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+	}
+
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
+
+	contents, err := os.ReadFile(defaultModeledGraphFile)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "frontend")
+	require.Contains(t, string(contents), "Applications.Core/containers")
+}
+
+func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "feature/foo")
+	t.Setenv("GITHUB_REF_NAME", "42/merge")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	storeMock := persistence.NewMockStore(ctrl)
+	expectedKey := persistence.Key{Namespace: "feature%2Ffoo", Name: modeledGraphKeyName}
+	storeMock.EXPECT().
+		Save(gomock.Any(), expectedKey, gomock.Any(), gomock.Any()).
+		DoAndReturn(saveAssertion(t, "feature%2Ffoo", "frontend")).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    storeMock,
+	}
+
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
+
+	_, statErr := os.Stat(defaultModeledGraphFile)
+	require.True(t, os.IsNotExist(statErr), "modeled graph must not be written locally in repo-radius mode")
+}
+
+// TestRunner_RunModeled_RealGitStore_SlashBranch exercises the GitHub Actions
+// path end-to-end through the real git-backed Store (no mocks) using a
+// slash-containing source branch (e.g. "feature/foo"), which is the typical
+// shape GITHUB_HEAD_REF takes for pull_request events. The mock-based tests
+// above never call constructPathForKey/validateKeyPart, so they don't catch
+// that path separators in Key.Namespace are rejected by the real Store.
+func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
+	repoDir := initGitRepo(t)
+	chdirT(t, repoDir)
+
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "feature/foo")
+	t.Setenv("GITHUB_REF_NAME", "")
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	store, err := gitstore.NewStore(gitstore.Options{Branch: "test-graph-" + t.Name()})
+	require.NoError(t, err)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    store,
+	}
+
+	err = runner.Run(context.Background())
+	require.NoError(t, err, "runModeled must accept slash-containing GITHUB_HEAD_REF values")
+}
+
+func TestRunner_RunModeled_FallsBackToRefName(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "")
+	t.Setenv("GITHUB_REF_NAME", "main")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	storeMock := persistence.NewMockStore(ctrl)
+	storeMock.EXPECT().
+		Save(gomock.Any(), persistence.Key{Namespace: "main", Name: modeledGraphKeyName}, gomock.Any(), gomock.Any()).
+		Return(nil).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    storeMock,
+	}
+
+	require.NoError(t, runner.Run(context.Background()))
+}
+
+func TestRunner_RunModeled_NoBranchInEnv(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "")
+	t.Setenv("GITHUB_REF_NAME", "")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    persistence.NewMockStore(ctrl),
+	}
+
+	err := runner.Run(context.Background())
+	require.Error(t, err)
+}
+
+func TestRunner_RunModeled_BicepCompileError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(nil, errors.New("syntax error")).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+	}
+
+	err := runner.Run(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "syntax error")
+}
+
+func TestRunner_RunModeled_NilGraphStore(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "feature/foo")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    nil,
+	}
+
+	err := runner.Run(context.Background())
+	require.Error(t, err)
+}
+
+func TestRunner_RunModeled_StoreSaveError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	withTempCwd(t)
+	t.Setenv("GITHUB_ACTIONS", "true")
+	t.Setenv("GITHUB_HEAD_REF", "feature/foo")
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(sampleBicepPath).
+		Return(sampleTemplate(), nil).
+		Times(1)
+
+	storeMock := persistence.NewMockStore(ctrl)
+	storeMock.EXPECT().
+		Save(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(errors.New("push rejected")).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:         bicepMock,
+		Output:        &output.MockOutput{},
+		BicepFilePath: sampleBicepPath,
+		GraphStore:    storeMock,
+	}
+
+	err := runner.Run(context.Background())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "push rejected")
+	require.Contains(t, err.Error(), gitstore.DefaultGraphBranch)
+}
+
+// withTempCwd switches the current working directory to a freshly-created
+// temp directory and restores the original on test cleanup.
+func withTempCwd(t *testing.T) {
+	t.Helper()
+	original, err := os.Getwd()
+	require.NoError(t, err)
+	tmp := t.TempDir()
+	require.NoError(t, os.Chdir(tmp))
+	t.Cleanup(func() {
+		_ = os.Chdir(original)
+	})
+	require.True(t, filepath.IsAbs(tmp))
+}
+
+// chdirT switches the current working directory to dir for the duration of
+// the test and restores the original on cleanup.
+func chdirT(t *testing.T, dir string) {
+	t.Helper()
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+}
+
+// initGitRepo creates a minimal git repo in a temp directory with one
+// initial commit, so that worktree-based operations on the real git Store
+// have a HEAD to branch from. The test is skipped when the git binary is
+// unavailable or when running with -short.
+func initGitRepo(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping git-backed test in -short mode")
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("skipping git-backed test: git binary not found in PATH")
+	}
+
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"init"},
+		{"config", "user.name", "test"},
+		{"config", "user.email", "test@test.com"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoErrorf(t, err, "git %v failed: %s", args, string(out))
+	}
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("test"), 0o644))
+
+	for _, args := range [][]string{
+		{"add", "-A"},
+		{"commit", "-m", "init"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoErrorf(t, err, "git %v failed: %s", args, string(out))
+	}
+
+	return dir
+}
+
+// saveAssertion returns a Save implementation that asserts the inbound
+// payload before recording success.
+func saveAssertion(t *testing.T, wantBranch, wantResource string) func(ctx context.Context, key persistence.Key, graph *corerpv20250801preview.ApplicationGraphResponse, opts persistence.SaveOptions) error {
+	t.Helper()
+	return func(_ context.Context, key persistence.Key, graph *corerpv20250801preview.ApplicationGraphResponse, opts persistence.SaveOptions) error {
+		require.Equal(t, wantBranch, key.Namespace)
+		require.Equal(t, modeledGraphKeyName, key.Name)
+		require.NotNil(t, graph)
+		require.Len(t, graph.Resources, 1)
+		require.Equal(t, wantResource, *graph.Resources[0].Name)
+		return nil
+	}
 }
