@@ -96,6 +96,12 @@ kubectl create namespace private-combined-demo
 All Bicep templates referenced below live in [`./bicep`](./bicep) and the sample
 recipe in [`./recipes`](./recipes). Run the commands from this demo directory.
 
+> **Prefer to automate it?** The [`./scripts`](./scripts) folder contains an
+> end-to-end runner that performs every step below (group + namespace setup,
+> recipe publish, deploy, and verify) for a chosen scenario. See
+> [Automated E2E runner](#automated-e2e-runner). The manual steps that follow
+> document exactly what those scripts do.
+
 ---
 
 ## Scenario 1 — Private Bicep recipe registry (OCI)
@@ -356,6 +362,56 @@ the demo focuses on the paths that are wired end-to-end:
 
 ---
 
+## Automated E2E runner
+
+The [`./scripts`](./scripts) folder provides a cross-platform runner that
+executes the whole walkthrough non-interactively — ideal for E2E validation:
+
+| Platform | Script |
+| --- | --- |
+| Linux / macOS | [`scripts/run-e2e.sh`](./scripts/run-e2e.sh) |
+| Windows (PowerShell) | [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) |
+
+Both scripts read the **same environment variables** documented in the scenarios
+above, create the Radius group and namespaces, publish the sample Bicep recipe
+(for the Bicep/combined scenarios), deploy the selected scenario, and verify it.
+
+Set the variables for the scenario(s) you want, then run:
+
+- **Linux / macOS:**
+  ```bash
+  export BICEP_REGISTRY="myregistry.azurecr.io"
+  export BICEP_RECIPE="${BICEP_REGISTRY}/recipes/redis:latest"
+  export BICEP_REGISTRY_USERNAME="<token-name-or-app-id>"
+  export BICEP_REGISTRY_PASSWORD="<token-password-or-secret>"
+  export TF_REGISTRY_HOST="app.terraform.io"
+  export TF_RECIPE_LOCATION="app.terraform.io/my-org/redis/kubernetes"
+  export TF_REGISTRY_TOKEN="<your-terraform-registry-token>"
+
+  ./scripts/run-e2e.sh --scenario bicep      # or terraform | combined | all
+  ./scripts/run-e2e.sh --cleanup             # tear everything down
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  $env:BICEP_REGISTRY          = "myregistry.azurecr.io"
+  $env:BICEP_RECIPE            = "$($env:BICEP_REGISTRY)/recipes/redis:latest"
+  $env:BICEP_REGISTRY_USERNAME = "<token-name-or-app-id>"
+  $env:BICEP_REGISTRY_PASSWORD = "<token-password-or-secret>"
+  $env:TF_REGISTRY_HOST        = "app.terraform.io"
+  $env:TF_RECIPE_LOCATION      = "app.terraform.io/my-org/redis/kubernetes"
+  $env:TF_REGISTRY_TOKEN       = "<your-terraform-registry-token>"
+
+  .\scripts\run-e2e.ps1 -Scenario bicep      # or terraform | combined | all
+  .\scripts\run-e2e.ps1 -Cleanup             # tear everything down
+  ```
+
+Useful flags: `--scenario` / `-Scenario` selects `bicep`, `terraform`,
+`combined`, or `all`; `--skip-publish` / `-SkipPublish` reuses an already-pushed
+recipe; `--cleanup` / `-Cleanup` deletes all demo resources. Pass `--help` (bash)
+or `Get-Help .\scripts\run-e2e.ps1` (PowerShell) for full details.
+
+---
+
 ## Cleanup
 
 ```bash
@@ -379,3 +435,5 @@ kubectl delete namespace private-bicep-demo private-tf-demo private-combined-dem
 | [`bicep/terraform-private-registry.bicep`](./bicep/terraform-private-registry.bicep) | Scenario 2 — private Terraform registry via `terraformConfigs` (credentials token). |
 | [`bicep/combined.bicep`](./bicep/combined.bicep) | Scenario 3 — one environment referencing both configs. |
 | [`recipes/redis-recipe.bicep`](./recipes/redis-recipe.bicep) | Sample Bicep recipe to publish to your private OCI registry for Scenario 1. |
+| [`scripts/run-e2e.sh`](./scripts/run-e2e.sh) | Linux / macOS E2E runner that automates the full walkthrough. |
+| [`scripts/run-e2e.ps1`](./scripts/run-e2e.ps1) | Windows (PowerShell) E2E runner that automates the full walkthrough. |
