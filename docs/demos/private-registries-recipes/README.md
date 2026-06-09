@@ -75,6 +75,9 @@ the same value. Substitute your own values throughout.
    - For Scenario 2: a private **Terraform** module registry or repository that
      authenticates with a token (e.g. Terraform Cloud `app.terraform.io`, or a
      self-hosted private module registry).
+   - **Don't have one yet?** See [PREREQUISITES.md](./PREREQUISITES.md) for
+     high-level steps to set up a private Bicep (OCI) and Terraform registry for
+     demoing.
 5. The Bicep tooling for `rad bicep publish` (bundled with `rad`).
 
 Verify your setup:
@@ -436,6 +439,7 @@ kubectl delete namespace private-bicep-demo private-tf-demo private-combined-dem
 
 | Path | Description |
 | --- | --- |
+| [`PREREQUISITES.md`](./PREREQUISITES.md) | High-level steps to set up the private Bicep (OCI) and Terraform registries the demo needs. |
 | [`bicep/bicep-private-registry.bicep`](./bicep/bicep-private-registry.bicep) | Scenario 1 — private Bicep (OCI) registry via `bicepConfigs` (BasicAuth). |
 | [`bicep/terraform-private-registry.bicep`](./bicep/terraform-private-registry.bicep) | Scenario 2 — private Terraform registry via `terraformConfigs` (credentials token). |
 | [`bicep/combined.bicep`](./bicep/combined.bicep) | Scenario 3 — one environment referencing both configs. |
