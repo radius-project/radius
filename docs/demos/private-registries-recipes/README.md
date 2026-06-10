@@ -173,6 +173,11 @@ creates the `SecretStore`, the `Radius.Core/bicepConfigs`, a `Radius.Core/recipe
 pointing at the private recipe, the `Radius.Core/environments` that references the
 bicepConfig, and an app that runs the recipe.
 
+> **Self-hosted insecure registries.** This demo targets HTTPS registries. If your
+> private OCI registry only serves plain HTTP (for example a locally hosted dev
+> registry), set `plainHttp: true` on the recipe entry in the `recipePacks`
+> resource so Radius pulls over HTTP instead of HTTPS.
+
 - **Linux / macOS:**
   ```bash
   rad deploy ./bicep/bicep-private-registry.bicep \
@@ -262,8 +267,15 @@ ran `terraform apply`.
 
 > **Tip - confirm the credentials were applied.** Because the config sets
 > `TF_LOG: INFO`, the recipe execution logs include the Terraform run. Tail the
-> recipe engine logs to observe the module download from your private host:
+> recipe engine logs to observe the module download from your private host. The
+> recipe runs in the resource provider that handles the environment - for
+> `Radius.Core` environments this is typically `dynamic-rp`, while legacy
+> `Applications.Core` paths run in `applications-rp`. Pick whichever pod is
+> executing your recipe:
 > ```bash
+> # Radius.Core (this demo)
+> kubectl logs -n radius-system deploy/dynamic-rp -f
+> # Legacy Applications.Core path
 > kubectl logs -n radius-system deploy/applications-rp -f
 > ```
 
