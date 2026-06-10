@@ -158,6 +158,23 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				t.Helper()
 				workingDir := t.TempDir()
 				moduleDir := filepath.Join(workingDir, moduleRootDir, "test-module-no-config")
+				require.NoError(t, os.MkdirAll(moduleDir, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "README.md"), []byte("no terraform configuration"), 0644))
+				return workingDir
+			},
+		},
+		{
+			name: "module directory with Terraform-named subdirectory",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-dir-config-like-name",
+				TemplatePath: "test-module-dir-config-like-name",
+			},
+			err:      "The Terraform configuration in location test-module-dir-config-like-name is not found.",
+			errExact: true,
+			setup: func(t *testing.T) string {
+				t.Helper()
+				workingDir := t.TempDir()
+				moduleDir := filepath.Join(workingDir, moduleRootDir, "test-module-dir-config-like-name")
 				require.NoError(t, os.MkdirAll(filepath.Join(moduleDir, "main.tf"), 0755))
 				require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "README.md"), []byte("no terraform configuration"), 0644))
 				return workingDir

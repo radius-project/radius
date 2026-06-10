@@ -189,11 +189,7 @@ func hasTerraformConfigFiles(moduleDir string) (bool, error) {
 		return false, err
 	}
 	for _, entry := range entries {
-		info, err := entry.Info()
-		if err != nil {
-			return false, err
-		}
-		if !info.Mode().IsRegular() {
+		if !entry.Type().IsRegular() {
 			continue
 		}
 
