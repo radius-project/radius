@@ -15,16 +15,17 @@ Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius 
 * Eliminate the prerequisite to have a Kubernetes cluster configured.
 * Enable Radius to run ephemerally within a GitHub Actions runner, starting on demand and shutting down after each operation.
 * Persist Radius state (application graphs, deployment history, environment configuration) in GitHub-native storage rather than in-cluster databases.
-* Support multiple UX surfaces (Copilot app, CLI, browser extension, third-party integrations), with Copilot app integration as the top priority.
+* Support the Copilot app integration in the near team and other UX surfaces in the future.
 * Maintain compatibility with the existing Radius resource model and Bicep/Terraform recipe system.
 
 ### Non-goals (out of scope)
 
 * Replacing the existing persistent control plane deployment model. Repo Radius is an alternative delivery mechanism, not a replacement.
+* Building the frontend UI component such as the Copilot app. Repo Radius must ship with a separate frontend component.
 * Supporting non-GitHub source control platforms (GitLab, Bitbucket, Azure DevOps).
 * Running Repo Radius outside of GitHub Actions (e.g., locally on a developer's workstation as the primary mode).
 * Multi-repository orchestration at the infrastructure layer. Multi-repo applications may use Repo Radius per-repo, but cross-repo state coordination is deferred.
-* Building the Copilot agent, browser extension, Deployment panel UI, or other frontend components. These are separate components that consume Repo Radius capabilities.
+
 
 ## User profile and challenges
 
@@ -69,7 +70,7 @@ A developer who has outgrown Repo Radius can export their application definition
 
 ## Key dependencies and risks
 
-* **Dependency: External UI**. Repo Radius is designed to be embedded in a developer solution which includes an application graph visualization, AI-based modeling of the application, and a user interface to configure environments and visualize deployments. Repo Radius must ship with a separate frontend component.
+* **Dependency: External UI**. Repo Radius is designed to be shipped as part of a developer solution which includes an application graph visualization, AI-based modeling of the application, and a user interface to configure environments and visualize deployments. These other components are a dependency and not part of the Repo Radius scope.
 
 * **Risk: Radius startup time**. Radius must start quickly enough within a GitHub Actions runner that the developer experience feels responsive. If startup takes minutes, the experience degrades significantly.
 
