@@ -230,6 +230,10 @@ A `{{context.*}}` expression system that resolves Radius application runtime con
 
 An `outputs` field on `RecipeDefinition` that maps module output names to resource property names. Provides a stable property interface for resource consumers regardless of the underlying module's output naming.
 
+### Feature 4: Private Registry/Repository Support
+
+Validate that direct recipe modules work with private registries and repositories using the existing `Radius.Core/terraformConfigs` and `Radius.Core/bicepConfigs` authentication mechanisms. Since direct modules use the same `location` field and driver download path as wrapper-based recipes, this is expected to be a no-op, the existing credential resolution logic should work. The investment here is primarily testing and documentation.
+
 ## Usage Examples
 
 ### Terraform Registry Module (AWS RDS)
