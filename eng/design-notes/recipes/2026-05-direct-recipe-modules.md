@@ -47,7 +47,7 @@ Platform engineers can easily configure a Recipe using any existing module setti
 
 ### Scenario 1: Terraform Registry Module
 
-A platform engineer sets `location` to a Terraform registry URI (e.g., `registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0`) and the system deploys it by automatically resolving developer set properties via `context` as Terraform input variables, and mapping module outputs to Resource Type properties via the `outputs` field.
+A platform engineer sets `location` to a Terraform registry module source (e.g., `terraform-aws-modules/rds/aws`) with a `version` field (e.g., `5.9.0`) and the system deploys it by automatically resolving developer set properties via `context` as Terraform input variables, and mapping module outputs to Resource Type properties via the `outputs` field.
 
 ### Scenario 2: Azure Verified Modules (OCI)
 
@@ -76,7 +76,7 @@ When I want to use a community Terraform module (like `terraform-aws-modules/rds
 
 ## Desired user experience outcome
 
-After this feature, I can set `location` directly to `registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0` on my Recipe definition, configure `parameters` with `{{context.*}}` expressions for dynamic values, and set `outputs` to map the module's outputs to my Resource Type's properties. The module doesn't need to know about Radius. When my application developer deploys a `Radius.Data/mySqlDatabases` resource, the system resolves expressions, passes parameters to the module, executes it, and maps outputs — all without any wrapper.
+After this feature, I can set `location` directly to `terraform-aws-modules/rds/aws` and `version` to `5.9.0` on my Recipe definition, configure `parameters` with `{{context.*}}` expressions for dynamic values, and set `outputs` to map the module's outputs to my Resource Type's properties. The module doesn't need to know about Radius. When my application developer deploys a `Radius.Data/mySqlDatabases` resource, the system resolves expressions, passes parameters to the module, executes it, and maps outputs — all without any wrapper.
 
 ### Detailed user experience
 
@@ -92,7 +92,8 @@ After this feature, I can set `location` directly to `registry.terraform.io/terr
        recipes: {
          'Radius.Data/mySqlDatabases': {
            kind: 'terraform'
-           location: 'registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0'
+           location: 'terraform-aws-modules/rds/aws'
+           version: '5.9.0'
            // Specify the module's input parameters
            parameters: {
              identifier: '{{context.resource.name}}'
@@ -143,6 +144,78 @@ After this feature, I can set `location` directly to `registry.terraform.io/terr
 4. Module outputs are mapped to resource properties via the `outputs` definition
 5. Application reads `resource.properties.host`, `resource.properties.port` etc as the resolved values from the module outputs.
 
+6. (Optional) For private modules, the platform engineer configures registry or Git authentication using the settings resources (`Radius.Core/terraformConfigs` or `Radius.Core/bicepConfigs`) referenced from the environment. The Radius driver resolves credentials by parsing the hostname from the module `location` and looking up the matching key in the credentials map.
+
+   **Private Terraform registry (e.g., Terraform Cloud):**
+
+   ```bicep
+   resource terraformConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
+     name: 'my-terraform-config'
+     properties: {
+       terraformrc: {
+         credentials: {
+           'app.terraform.io': {
+             secret: tfcSecrets.id
+           }
+         }
+       }
+     }
+   }
+
+   resource tfcSecrets 'Radius.Core/secrets@2025-08-01-preview' = {
+     name: 'tfc-creds'
+     properties: {
+       type: 'generic'
+       data: {
+         token: { value: tfcToken }
+       }
+     }
+   }
+
+   resource env 'Radius.Core/environments@2025-08-01-preview' = {
+     name: 'aws-dev'
+     properties: {
+       recipePacks: [recipepack.id]
+       terraformConfig: terraformConfig.id
+     }
+   }
+   ```
+
+   **Private Bicep/OCI registry:**
+
+   ```bicep
+   resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
+     name: 'my-bicep-config'
+     properties: {
+       registryAuthentications: {
+         'corp.acr.io': {
+           authenticationMethod: 'BasicAuth'
+           basicAuthSecretId: acrSecrets.id
+         }
+       }
+     }
+   }
+
+   resource acrSecrets 'Radius.Core/secrets@2025-08-01-preview' = {
+     name: 'acr-creds'
+     properties: {
+       type: 'generic'
+       data: {
+         username: { value: acrUsername }
+         password: { value: acrPassword }
+       }
+     }
+   }
+
+   resource env 'Radius.Core/environments@2025-08-01-preview' = {
+     name: 'aws-dev'
+     properties: {
+       recipePacks: [recipepack.id]
+       bicepConfig: bicepConfig.id
+     }
+   }
+   ```
+
 ## Key investments
 
 ### Feature 1: Direct Module Execution
@@ -168,7 +241,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/mySqlDatabases': {
         kind: 'terraform'
-        location: 'registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0'
+        location: 'terraform-aws-modules/rds/aws'
+        version: '5.9.0'
         parameters: {
           identifier: '{{context.resource.name}}'
           db_name: '{{context.resource.properties.database}}'
@@ -254,7 +328,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/mySqlDatabases': {
         kind: 'terraform'
-        location: 'registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0'
+        location: 'terraform-aws-modules/rds/aws'
+        version: '5.9.0'
         parameters: {
           identifier: '{{context.resource.name}}'
           db_name: '{{context.resource.properties.database}}'
@@ -284,3 +359,9 @@ Radius determines sensitivity from the Resource Type schema — any output mappe
 4. **Invalid `{{context.*}}` expression path** — If a template expression references a context path that does not exist (e.g., `{{context.resource.properties.nonexistent}}`), the expression resolves to an empty string. The IaC engine may then fail if the parameter requires a non-empty value.
 5. **Large module with many unused variables** — Some community modules expose dozens of input variables with defaults. Only variables explicitly mapped in `parameters` are passed; all others use the module's defaults. This is expected behavior.
 6. **Module version yanked or deleted** — If the pinned module version is removed from the registry, the Recipe deployment fails at the module download step with a fetch error. Mitigation: platform engineers should monitor upstream module availability.
+
+## Open Questions/ Designs (Reviewed on 6/10)
+
+1. Follow up with a separate design/gist to determine the approach for handling secrets in the context of Recipe modules.
+2. Describe the user experience for platform engineers using pre-canned recipe packs from resource type contrib in the feature spec
+3. Depending on external modules carries a supply-chain security risk even with version pinning, since bad actors could potentially overwrite pinned versions. SHA/digest-based pinning is the more secure approach. Investigate which source types support this (Git via `?ref=<sha>`, OCI via `@sha256:...`) and whether Radius should recommend or enforce it.
