@@ -235,6 +235,8 @@ Environment parameters merge with Recipe-level parameters. Environment takes pre
 
 ### Secrets Output Mapping
 
+Properties marked as `x-radius-sensitive` in the Resource Type definition are automatically handled by Radius — their values are encrypted at rest and not exposed in plain text through the API. When a module output is mapped to a property that has `x-radius-sensitive: true`, Radius encrypts the value before storing it:
+
 ```bicep
 resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'aws-data-pack'
@@ -251,18 +253,15 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
           manage_master_user_password: true
         }
         outputs: {
-          values: {
-            host: 'db_instance_address'
-            port: 'db_instance_port'
-            database: 'db_instance_name'
-          }
-          secrets: {
-            secret: 'db_master_user_secret_arn'
-            connectionString: 'db_instance_endpoint'
-          }
+          host: 'db_instance_address'
+          port: 'db_instance_port'
+          database: 'db_instance_name'
+          password: 'db_master_user_secret_arn'       // mapped to x-radius-sensitive property → encrypted by Radius
         }
       }
     }
   }
 }
 ```
+
+The platform engineer does not need to separate values and secrets in the `outputs` mapping. Radius determines sensitivity from the Resource Type schema — any output mapped to a property with `x-radius-sensitive: true` is automatically encrypted.
