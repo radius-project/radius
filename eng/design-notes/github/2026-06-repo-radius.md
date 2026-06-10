@@ -70,13 +70,19 @@ A developer who has outgrown Repo Radius can export their application definition
 ## Key dependencies and risks
 
 * **Dependency: External UI**. Repo Radius is designed to be embedded in a developer solution which includes an application graph visualization, AI-based modeling of the application, and a user interface to configure environments and visualize deployments. Repo Radius must ship with a separate frontend component.
+
 * **Risk: Radius startup time**. Radius must start quickly enough within a GitHub Actions runner that the developer experience feels responsive. If startup takes minutes, the experience degrades significantly.
 
 ## Key assumptions to test and questions to answer
 
 * **Reading application graph data**. Application graph data must be readable by the frontend without the Radius control plane being available and separate from the Radius control plane state. In the current designs for the application graph, graph data is stored separately from Repo Radius.
+
 * **Storage location**. What is the technical storage medium? The previous assumption used an orphan branch in the Git repository but that has security drawbacks. Are other options within GitHub, such as GHCR, sufficient for all state that Radius needs to persist, or will some state require a different storage mechanism?
+
+* **Real-time deployment status**. How does the frontend receive real-time progress updates during a workflow run? The GitHub REST API does not support streaming job logs while a job is running. This feature spec includes the creation of artifacts after each Radius CLI command is executed, but GitHub Actions does not provide a public API for streaming updates (e.g., resource-by-resource updates from the `rad deploy` command). Is it possible, and if so, what mechanism should the workflow use to provide incremental status to the frontend?
+
 * **Concurrency**. How do we handle two developers triggering deployments to the same environment simultaneously? Git-based locking, GitHub environment protection rules, or something else?
+
 * **Credential lifecycle**. How are cloud provider credentials (OIDC tokens) scoped and rotated within the Repo Radius lifecycle?
 
 ## Current state
@@ -84,7 +90,9 @@ A developer who has outgrown Repo Radius can export their application definition
 Work on many Repo Radius components or dependencies is already in flight. This includes:
 
 * **Deploy to External AKS and EKS Clusters**: [Feature spec](https://github.com/radius-project/radius/blob/main/eng/design-notes/environments/2026-05-external-kubernetes.md) is reviewed and merged.
+
 * **Externalize Radius state store**: The [technical design](https://github.com/radius-project/radius/pull/11457) is in draft but is expected to be superseded by a revised technical design.
+
 * **Workflow including OIDC authentication**: A [prototype workflow](https://github.com/radius-project/github-extension/blob/0378b1e349d09fe0f7f09c978c0e7a32c214a72a/.copilot/extensions/radius/src/shared/github-client.ts#L1581) has been implemented which includes OIDC authentication to AWS and Azure. This spec extends the prototype with (1) standardized workflow inputs and outputs and (2) loading of the external Radius state store.
 
 ## Details of user problem
@@ -93,7 +101,7 @@ When I try to deploy my cloud-native application with Radius, I first have to pr
 
 Once Radius is running, I am responsible for keeping the Kubernetes cluster and the Radius control plane operational: upgrading Radius, monitoring its health, backing up its state, and securing it. This is a significant ongoing cost for what I really want, which is just to deploy my application to AWS or Azure.
 
-As a result, I either give up on Radius entirely and go back to manually configuring cloud resources, or I wait until my organization hires a platform engineering team, which may never happen.
+As a result, I fall back to my existing infrastructure as code solution and do not adopt Radius.
 
 ## Desired user experience outcome
 
@@ -105,11 +113,11 @@ Repo Radius is a backend designed to be driven by a separate frontend component 
 
 #### Step 1: Environment setup (prerequisite)
 
-The frontend creates a GitHub Environment. The environment stores cloud provider details (e.g., AWS account and region, or Azure subscription and resource group) and Kubernetes cluster details (e.g., the EKA or AKS cluster name and Kubernetes namespace) for application workloads.
+The frontend creates a GitHub Environment. The environment stores cloud provider details (e.g., AWS account and region, or Azure subscription and resource group) and Kubernetes cluster details (e.g., the EKS or AKS cluster name and Kubernetes namespace) for application workloads.
 
 #### Step 2: OIDC setup (prerequisite)
 
-The frontend guides the user through configuring OIDC federated identity with their cloud provider so that the workflow can authenticate using short-lived tokens rather than stored credentials. The Azure client and tenat ID and AWS IAM role are stored in the GitHub Environment.
+The frontend guides the user through configuring their cloud provider to trust the GitHub Actions OIDC identity provider as a federated identity source, so that the workflow can authenticate using short-lived tokens rather than stored credentials. For Azure, this means creating a federated credential on an Entra ID app registration that trusts tokens issued by GitHub Actions; the resulting client ID, tenant ID, and subscription ID are stored in the GitHub Environment. For AWS, this means creating an IAM OIDC identity provider and an IAM role with a trust policy that accepts GitHub Actions tokens; the role ARN and region are stored in the GitHub Environment.
 
 #### Step 3: Workflow dispatch
 
@@ -160,9 +168,13 @@ The single Repo Radius workflow is executed within a GitHub Actions runner. A pr
 
 * **Create a Radius environment based on the GitHub Environment**. The workflow creates a Radius resource group and environment with the properties from the GitHub Environment passed as an input to the workflow.
 
-* **Execute `rad` CLI commands**. The workflow parses the `radius_commands` input and runs each command (e.g., `rad deploy app.bicep`). The workflow provides structured updates for each step in the workflow log. The output of each command is captured as a GitHub Actions workflow artifact for post-execution consumption by the frontend.
+* **Execute `rad` CLI commands**. The workflow iterates over the `radius_commands` input. For each command, the workflow executes the command, captures its output, and uploads the output as a workflow artifact. If a command fails, the workflow stops iteration and proceeds to persist the data store.
 
-* **Persist the Radius data store**. The workflow writes the updated Radius data store back to the configured storage location so that subsequent workflow runs can resume from the current state. 
+* **Persist the Radius data store**. The workflow writes the updated Radius data store back to the configured storage location so that subsequent workflow runs can resume from the current state.
+
+#### Step 5: Read workflow output
+
+The frontend reads the output of the workflow by polling the GitHub Actions API for the workflow run status and downloading artifacts as they become available. Artifacts are available via the API as soon as each upload step completes, so the frontend can retrieve results incrementally while the workflow is still running.
 
 ## Key investments
 
@@ -172,14 +184,12 @@ Enable Radius to deploy application workloads to an AKS or EKS cluster that is s
 
 ### Investment 2: Externalization of the Radius data store
 
-Move the Radius data store out of the ephemeral Kubernetes cluster so that state persists across workflow runs. This includes the Radius resource data, application graphs, deployment history, and Terraform state. 
+Move the Radius data store out of the ephemeral Kubernetes cluster so that state persists across workflow runs. This includes the Radius resource data, application graphs, deployment history, and Terraform state.
 
 ### Investment 3: Repo Radius workflow with standardized inputs and outputs
 
-Build the single reusable GitHub Actions workflow that orchestrates Repo Radius operations. The workflow accepts a GitHub Environment name and `rad` CLI commands as inputs, and produces structured workflow logs and artifacts as outputs. The input and output contract must be stable and well-defined so that multiple frontend components can drive Repo Radius without coupling to its internals.
+Build the single reusable GitHub Actions workflow that orchestrates Repo Radius operations. The workflow accepts a GitHub Environment name and `rad` CLI commands as inputs, and produces artifacts as outputs. The input and output contract must be stable and well-defined so that multiple frontend components can drive Repo Radius without coupling to its internals.
 
 ### Investment 4: Cloud credential integration
 
 Integrate with GitHub's OIDC federation to securely provide AWS and Azure credentials to the Radius control plane without storing long-lived secrets. This includes the workflow's authentication steps, `rad credential register` commands, and injection of session credentials into the Radius pods for Terraform provider access.
-
-
