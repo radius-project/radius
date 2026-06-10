@@ -269,4 +269,4 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
 }
 ```
 
-The platform engineer does not need to separate values and secrets in the `outputs` mapping. Radius determines sensitivity from the Resource Type schema — any output mapped to a property with `x-radius-sensitive: true` is automatically encrypted.
+Radius determines sensitivity from the Resource Type schema — any output mapped to a property with `x-radius-sensitive: true` is automatically encrypted.
