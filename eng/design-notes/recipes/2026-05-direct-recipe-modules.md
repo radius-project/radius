@@ -150,7 +150,7 @@ A `{{context.*}}` expression system that resolves Radius application runtime con
 
 ### Feature 3: Output Mapping
 
-An `outputs` field on `RecipeDefinition` that maps module output names to resource property names. Provides a stable property interface for resource consumers regardless of the underlying module's output naming. Sensitive outputs are automatically routed to the Secrets map.
+An `outputs` field on `RecipeDefinition` that maps module output names to resource property names. Provides a stable property interface for resource consumers regardless of the underlying module's output naming.
 
 ## Usage Examples
 
@@ -163,7 +163,7 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/mySqlDatabases': {
         kind: 'terraform'
-        location: 'terraform-aws-modules/rds/aws'
+        location: 'registry.terraform.io/terraform-aws-modules/rds/aws:5.9.0'
         parameters: {
           identifier: '{{context.resource.name}}'
           db_name: '{{context.resource.properties.database}}'
@@ -196,7 +196,7 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/postgreSqlDatabases': {
         kind: 'terraform'
-        location: 'Azure/avm-res-dbforpostgresql-flexibleserver/azurerm'
+        location: 'br:mcr.microsoft.com/bicep/avm/res/db-for-postgre-sql/flexible-server:0.4.0'
         parameters: {
           name: 'pg-{{context.resource.name}}'
           location: 'eastus2'
