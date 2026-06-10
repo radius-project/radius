@@ -66,7 +66,7 @@ A platform engineer references an internal module hosted in a private Git reposi
 
 Today, Radius only supports Recipes that are purpose-built for Radius. Both Terraform and Bicep modules must include a `context` input variable (carrying Radius runtime metadata) and a structured `result` output (returning resource values back to Radius). Any community or third-party module that lacks these conventions cannot be used as a Recipe without first wrapping it.
 
-Recipe Packs (`Radius.Core/recipePacks`) already enables platform engineers to group Recipe definitions by Resource Type. This direct module support extends that foundation by adding a `outputs` mapping to `RecipeDefinition` and broadening `location` to accept standard module sources that do not follow Radius wrapper conventions.
+Recipe Packs (`Radius.Core/recipePacks`) already enable platform engineers to group Recipe definitions by Resource Type. This direct module support extends that foundation by adding an `outputs` mapping to `RecipeDefinition` and broadening `location` to accept standard module sources that do not follow Radius wrapper conventions.
 
 ## Details of user problem
 
@@ -96,11 +96,12 @@ After this feature, I can set `location` directly to `registry.terraform.io/terr
              instance_class: 'db.t3.micro'
            }
            // Map the module's outputs to the resource's properties
-           outputs: {
-             host: 'db_instance_address'
-             port: 'db_instance_port'
-             database: 'db_instance_name'
-           }
+            outputs: {
+              host: 'db_instance_address'
+              port: 'db_instance_port'
+              database: 'db_instance_name'
+              secretName: 'db_instance_master_user_secret_arn'
+            }
          }
        }
      }
@@ -111,8 +112,10 @@ After this feature, I can set `location` directly to `registry.terraform.io/terr
      properties: {
        recipePacks: [recipepack.id]
        recipeParameters: {
-         backup_retention_days: '2'
-         geo_redundant_backup_enabled: 'false'
+         'Radius.Data/mySqlDatabases': {
+           backup_retention_days: 2
+           geo_redundant_backup_enabled: false
+         }
        }
      }
    }
@@ -224,8 +227,10 @@ resource devenv 'Radius.Core/environments@2025-08-01-preview' = {
   properties: {
     recipePacks: [recipepack.id]
     recipeParameters: {
-      backup_retention_days: '2'
-      geo_redundant_backup_enabled: 'false'
+      'Radius.Data/mySqlDatabases': {
+        backup_retention_days: 2
+        geo_redundant_backup_enabled: false
+      }
     }
   }
 }

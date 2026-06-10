@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/stretchr/testify/require"
@@ -147,7 +148,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: awsAccessKeysCreateInstructionFmt,
+				Format: common.AWSAccessKeysCreateInstructionFmt,
 			},
 		}
 		require.Equal(t, expectedWrites, outputSink.Writes)
@@ -174,7 +175,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: awsAccessKeysCreateInstructionFmt,
+				Format: common.AWSAccessKeysCreateInstructionFmt,
 			},
 		}
 		require.Equal(t, expectedWrites, outputSink.Writes)
@@ -201,7 +202,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: azureServicePrincipalCreateInstructionsFmt,
+				Format: common.AzureServicePrincipalCreateInstructionsFmt,
 				Params: []any{azureProviderServicePrincipal.SubscriptionID, azureProviderServicePrincipal.ResourceGroup},
 			},
 		}
@@ -229,7 +230,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: azureWorkloadIdentityCreateInstructionsFmt,
+				Format: common.AzureWorkloadIdentityCreateInstructionsFmt,
 			},
 		}
 		require.Equal(t, expectedWrites, outputSink.Writes)
@@ -261,10 +262,10 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: awsAccessKeysCreateInstructionFmt,
+				Format: common.AWSAccessKeysCreateInstructionFmt,
 			},
 			output.LogOutput{
-				Format: azureServicePrincipalCreateInstructionsFmt,
+				Format: common.AzureServicePrincipalCreateInstructionsFmt,
 				Params: []any{azureProviderServicePrincipal.SubscriptionID, azureProviderServicePrincipal.ResourceGroup},
 			},
 		}
@@ -301,10 +302,10 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 
 		expectedWrites := []any{
 			output.LogOutput{
-				Format: awsAccessKeysCreateInstructionFmt,
+				Format: common.AWSAccessKeysCreateInstructionFmt,
 			},
 			output.LogOutput{
-				Format: awsAccessKeysCreateInstructionFmt,
+				Format: common.AWSAccessKeysCreateInstructionFmt,
 			},
 		}
 		require.Equal(t, expectedWrites, outputSink.Writes)

@@ -39,18 +39,19 @@ import (
 )
 
 type UCPApplicationsManagementClient struct {
-	RootScope                        string
-	ClientOptions                    *arm.ClientOptions
-	genericResourceClientFactory     func(scope string, resourceType string) (genericResourceClient, error)
-	applicationResourceClientFactory func(scope string) (applicationResourceClient, error)
-	environmentResourceClientFactory func(scope string) (environmentResourceClient, error)
-	recipePackResourceClientFactory  func(scope string) (recipePackResourceClient, error)
-	resourceGroupClientFactory       func() (resourceGroupClient, error)
-	resourceProviderClientFactory    func() (resourceProviderClient, error)
-	resourceTypeClientFactory        func() (resourceTypeClient, error)
-	apiVersionClientFactory          func() (apiVersionClient, error)
-	locationClientFactory            func() (locationClient, error)
-	capture                          func(ctx context.Context, capture **http.Response) context.Context
+	RootScope                                  string
+	ClientOptions                              *arm.ClientOptions
+	genericResourceClientFactory               func(scope string, resourceType string) (genericResourceClient, error)
+	applicationResourceClientFactory           func(scope string) (applicationResourceClient, error)
+	environmentResourceClientFactory           func(scope string) (environmentResourceClient, error)
+	recipePackResourceClientFactory            func(scope string) (recipePackResourceClient, error)
+	radiusCoreEnvironmentResourceClientFactory func(scope string) (radiusCoreEnvironmentResourceClient, error)
+	resourceGroupClientFactory                 func() (resourceGroupClient, error)
+	resourceProviderClientFactory              func() (resourceProviderClient, error)
+	resourceTypeClientFactory                  func() (resourceTypeClient, error)
+	apiVersionClientFactory                    func() (apiVersionClient, error)
+	locationClientFactory                      func() (locationClient, error)
+	capture                                    func(ctx context.Context, capture **http.Response) context.Context
 }
 
 var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
@@ -63,7 +64,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Cont
 	}
 	results := []generated.GenericResource{}
 
-	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions)
+	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions, false)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +140,7 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.getGenericClient(scope, resourceType, apiVersions)
+	client, err := amc.getGenericClient(scope, resourceType, apiVersions, false)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -178,7 +179,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.C
 }
 
 // DeleteResource deletes a resource by its type and name (or id).
-func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string) (bool, error) {
+func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (bool, error) {
 	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
 	if err != nil {
 		return false, err
@@ -189,7 +190,8 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 		return false, err
 	}
 
-	client, err := amc.getGenericClient(scope, resourceType, apiVersions)
+	var client genericResourceClient
+	client, err = amc.getGenericClient(scope, resourceType, apiVersions, force)
 	if err != nil {
 		return false, err
 	}
@@ -357,7 +359,7 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 }
 
 // DeleteApplication deletes an application and all of its resources by its name (or id).
-func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationNameOrID string) (bool, error) {
+func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationNameOrID string, force bool) (bool, error) {
 	scope, name, err := amc.extractScopeAndName(applicationNameOrID)
 	if err != nil {
 		return false, err
@@ -373,7 +375,7 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	g, groupCtx := errgroup.WithContext(ctx)
 	for _, resource := range resources {
 		g.Go(func() error {
-			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)
+			_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID, force)
 			if err != nil && !clientv2.Is404Error(err) {
 				return err
 			}
@@ -387,7 +389,8 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return false, err
 	}
 
-	client, err := amc.createApplicationClient(scope)
+	var client applicationResourceClient
+	client, err = amc.createApplicationClient(scope, force)
 	if err != nil {
 		return false, err
 	}
@@ -509,6 +512,46 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return []corerpv20231001.EnvironmentResource{}, err
+		}
+
+		for _, environment := range page.EnvironmentResourceListResult.Value {
+			environments = append(environments, *environment)
+		}
+	}
+
+	return environments, nil
+}
+
+// ListRadiusCoreEnvironmentsAll queries the plane scope for all Radius.Core environment resources
+// across all resource groups and returns them as a slice. It mirrors ListEnvironmentsAll, but
+// targets Radius.Core/environments (v20250801preview) instead of Applications.Core/environments
+// (v20231001preview).
+func (amc *UCPApplicationsManagementClient) ListRadiusCoreEnvironmentsAll(ctx context.Context) ([]corerpv20250801.EnvironmentResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return []corerpv20250801.EnvironmentResource{}, err
+	}
+
+	// Query at plane scope, not resource group scope. We don't enforce the exact structure of the scope, so handle both cases.
+	//
+	// - /planes/radius/local
+	// - /planes/radius/local/resourceGroups/my-group
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
+		scope = scope.Truncate()
+	}
+
+	// Generated client doesn't like the leading '/' in the scope.
+	client, err := amc.createRadiusCoreEnvironmentClient(scope.String())
+	if err != nil {
+		return []corerpv20250801.EnvironmentResource{}, err
+	}
+
+	environments := []corerpv20250801.EnvironmentResource{}
+	pager := client.NewListByScopePager(&corerpv20250801.EnvironmentsClientListByScopeOptions{})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return []corerpv20250801.EnvironmentResource{}, err
 		}
 
 		for _, environment := range page.EnvironmentResourceListResult.Value {
@@ -641,7 +684,7 @@ func (amc *UCPApplicationsManagementClient) DeleteEnvironment(ctx context.Contex
 	}
 
 	for _, application := range applications {
-		_, err := amc.DeleteApplication(ctx, *application.ID)
+		_, err := amc.DeleteApplication(ctx, *application.ID, false)
 		if err != nil {
 			return false, err
 		}
@@ -748,7 +791,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 		for _, resource := range resources {
 			g.Go(func() error {
 				// Delete each resource using its full ID to ensure correct scope
-				_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID)
+				_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID, false)
 				if err != nil && !clientv2.Is404Error(err) {
 					return err
 				}
@@ -804,7 +847,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx con
 			continue // Skip this resource type if we can't get API versions
 		}
 
-		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions)
+		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
 		if err != nil {
 			continue
 		}
@@ -869,7 +912,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroup(c
 		return nil, err
 	}
 
-	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions)
+	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1198,13 +1241,23 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateLocation(ctx context.C
 	return response.LocationResource, nil
 }
 
-func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string) (applicationResourceClient, error) {
-	if amc.applicationResourceClientFactory == nil {
-		// Generated client doesn't like the leading '/' in the scope.
-		return corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+// createApplicationClient creates an application resource client for the specified scope.
+// When no applicationResourceClientFactory is configured and force is true, a per-call policy is added
+// that appends force=true to the request URL query string.
+func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string, force ...bool) (applicationResourceClient, error) {
+	if amc.applicationResourceClientFactory != nil {
+		return amc.applicationResourceClientFactory(scope)
 	}
 
-	return amc.applicationResourceClientFactory(scope)
+	forceEnabled := len(force) > 0 && force[0]
+	clientOptions := amc.ClientOptions
+	if forceEnabled {
+		opts := withForceDeletePolicy(*amc.ClientOptions)
+		clientOptions = &opts
+	}
+
+	// Generated client doesn't like the leading '/' in the scope.
+	return corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, clientOptions)
 }
 
 func (amc *UCPApplicationsManagementClient) createRecipePackClient(scope string) (recipePackResourceClient, error) {
@@ -1221,6 +1274,15 @@ func (amc *UCPApplicationsManagementClient) createEnvironmentClient(scope string
 	}
 
 	return amc.environmentResourceClientFactory(scope)
+}
+
+func (amc *UCPApplicationsManagementClient) createRadiusCoreEnvironmentClient(scope string) (radiusCoreEnvironmentResourceClient, error) {
+	if amc.radiusCoreEnvironmentResourceClientFactory == nil {
+		// Generated client doesn't like the leading '/' in the scope.
+		return corerpv20250801.NewEnvironmentsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	}
+
+	return amc.radiusCoreEnvironmentResourceClientFactory(scope)
 }
 
 func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, resourceType string, apiVersion ...string) (genericResourceClient, error) {
@@ -1377,23 +1439,60 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 }
 
 // getGenericClient returns a generic resource client for the specified scope and resource type.
-// if apiVersions is empty, it uses the default version i.e 2023-10-01-preview else uses any version supported by the resource type.
-func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string) (client genericResourceClient, err error) {
+// If apiVersions is empty, it uses the default version (2023-10-01-preview), else uses any version supported by the resource type.
+// When no genericResourceClientFactory is configured and force is true, a per-call policy is added
+// that appends force=true to the request URL query string. This is used for force-deleting resources
+// that are in a non-terminal provisioning state. Factory-based configurations (used in tests) bypass
+// the force policy since mock clients do not exercise the HTTP pipeline.
+func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string, force bool) (client genericResourceClient, err error) {
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
 	if strings.HasPrefix(resourceType, "Radius.Core") {
 		apiVersions = []string{"2025-08-01-preview"}
 	}
-	if len(apiVersions) == 0 {
-		client, err = amc.createGenericClient(scope, resourceType)
-	} else {
-		client, err = amc.createGenericClient(scope, resourceType, apiVersions[0])
+
+	if amc.genericResourceClientFactory != nil {
+		return amc.genericResourceClientFactory(scope, resourceType)
 	}
 
-	if err != nil {
-		return nil, err
+	clientOptions := *amc.ClientOptions
+
+	if force {
+		clientOptions = withForceDeletePolicy(clientOptions)
 	}
 
-	return client, err
+	if len(apiVersions) != 0 {
+		clientOptions.APIVersion = apiVersions[0]
+	}
+
+	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
+}
+
+// withForceDeletePolicy returns a copy of opts with forceDeletePolicy appended to PerCallPolicies.
+func withForceDeletePolicy(opts arm.ClientOptions) arm.ClientOptions {
+	opts.PerCallPolicies = append(
+		append([]policy.Policy{}, opts.PerCallPolicies...),
+		&forceDeletePolicy{},
+	)
+	return opts
+}
+
+// forceDeletePolicy is a per-call pipeline policy that appends force=true to DELETE request URL query strings.
+type forceDeletePolicy struct{}
+
+func (p *forceDeletePolicy) Do(req *policy.Request) (*http.Response, error) {
+	rawReq := req.Raw()
+	if rawReq.Method != http.MethodDelete {
+		return req.Next()
+	}
+
+	q := rawReq.URL.Query()
+	if _, ok := q["force"]; ok {
+		return req.Next()
+	}
+
+	q.Set("force", "true")
+	rawReq.URL.RawQuery = q.Encode()
+	return req.Next()
 }

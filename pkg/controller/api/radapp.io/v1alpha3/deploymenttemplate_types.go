@@ -18,6 +18,7 @@ package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // DeploymentTemplateSpec defines the desired state of a DeploymentTemplate resource.
@@ -64,6 +65,11 @@ const (
 	// DeploymentTemplatePhraseReady indicates that the Deployment Template is ready.
 	DeploymentTemplatePhraseReady DeploymentTemplatePhrase = "Ready"
 
+	// DeploymentTemplatePhraseReadyPendingCleanup indicates that the latest deployment
+	// succeeded but residual DeploymentResources removed from the previous generation
+	// are still draining. The reconciler transitions to Ready once they are gone.
+	DeploymentTemplatePhraseReadyPendingCleanup DeploymentTemplatePhrase = "ReadyPendingCleanup"
+
 	// DeploymentTemplatePhraseFailed indicates that the Deployment Template has failed.
 	DeploymentTemplatePhraseFailed DeploymentTemplatePhrase = "Failed"
 
@@ -98,5 +104,8 @@ type DeploymentTemplateList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&DeploymentTemplate{}, &DeploymentTemplateList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &DeploymentTemplate{}, &DeploymentTemplateList{})
+		return nil
+	})
 }

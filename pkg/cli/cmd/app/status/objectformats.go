@@ -18,8 +18,8 @@ package status
 
 import "github.com/radius-project/radius/pkg/cli/output"
 
-// statusFormat sets up the columns and headings for a table to display application names and resource counts.
-func statusFormat() output.FormatterOptions {
+// StatusFormat sets up the columns and headings for a table to display application names and resource counts.
+func StatusFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
@@ -34,9 +34,9 @@ func statusFormat() output.FormatterOptions {
 	}
 }
 
-// gatewayFormat returns a FormatterOptions object which contains a list of columns to be used for
+// GatewayFormat returns a FormatterOptions object which contains a list of columns to be used for
 // formatting the output of a list of application gateways.
-func gatewayFormat() output.FormatterOptions {
+func GatewayFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{

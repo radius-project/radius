@@ -28,8 +28,14 @@ import (
 )
 
 const (
+	// bicepVersion is the pinned version of the Bicep CLI to download.
+	// Pinned because Bicep v0.43+ tightened ContainerRegistryClientFactory.ThrowIfRegistryNotTrusted
+	// to reject br:localhost:5000/... targets, breaking publish-extension to local registries used
+	// by our CI and local dev workflows.
+	bicepVersion = "v0.42.1"
+
 	// binaryRepo is the name of the remote bicep binary repository
-	binaryRepo = "https://github.com/Azure/bicep/releases/latest/download/"
+	binaryRepo = "https://github.com/Azure/bicep/releases/download/" + bicepVersion + "/"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.

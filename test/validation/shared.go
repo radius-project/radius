@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli"
@@ -42,6 +41,13 @@ const (
 	ContainersResource   = "applications.core/containers"
 	VolumesResource      = "applications.core/volumes"
 	SecretStoresResource = "applications.core/secretStores"
+
+	// Radius.Core resource types (new provider).
+	CoreEnvironmentsResource = "radius.core/environments"
+	CoreApplicationsResource = "radius.core/applications"
+
+	// Radius.Compute resource types (new provider).
+	ComputeContainersResource = "radius.compute/containers"
 
 	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
@@ -98,7 +104,20 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
 		return cli.ApplicationDelete(ctx, resource.Name)
+	} else if resource.Type == CoreApplicationsResource {
+		// Radius.Core applications require cascade delete via the CLI --preview flag,
+		// which deletes owned resources before deleting the application itself.
+		t.Logf("deleting Radius.Core application: %s", resource.Name)
+		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		return err
+	} else if resource.Type == CoreEnvironmentsResource {
+		t.Logf("deleting Radius.Core environment: %s", resource.Name)
+		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		return err
 	}
+
+	// Other resource types (containers, databases, etc.) are cleaned up
+	// via cascade delete when their parent application is deleted.
 	return nil
 }
 
@@ -117,29 +136,18 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 		return nil
 	} else if resource.Type == ApplicationsResource {
 		return cli.ApplicationDelete(ctx, resource.Name)
+	} else if resource.Type == CoreApplicationsResource {
+		// Radius.Core applications require cascade delete via the CLI --preview flag.
+		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		return err
+	} else if resource.Type == CoreEnvironmentsResource {
+		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		return err
 	} else {
 		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
-
-		// Retry deletion with exponential backoff for 409 Conflict errors
-		// Resources may be stuck in "Updating" state after failed deployments
-		maxRetries := 5
-		var err error
-		for attempt := range maxRetries {
-			_, err = client.DeleteResource(ctx, resource.Type, resource.Name)
-			if err == nil {
-				break
-			}
-
-			// Check if it's a 409 Conflict error (resource is updating)
-			if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), "Conflict") {
-				if attempt < maxRetries-1 {
-					waitTime := time.Duration(1<<attempt) * time.Second // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-					time.Sleep(waitTime)
-					continue
-				}
-			}
-			break
-		}
+		// Use force=true to handle resources that may be stuck in non-terminal provisioning states
+		// (e.g., "Updating" after failed deployments), which would otherwise return 409 Conflict.
+		_, err := client.DeleteResource(ctx, resource.Type, resource.Name, true)
 		return err
 	}
 }

@@ -42,7 +42,7 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 
 	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest, latest, latest, latest), string(b))
+	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
 }
 
 func Test_ScaffoldApplication_KeepsExistingFiles(t *testing.T) {

@@ -1,0 +1,18 @@
+{
+  "resources": {
+    "Radius.Compute/containers@2025-08-01-preview": {
+      "$ref": "types.json#/125"
+    },
+    "Radius.Compute/persistentVolumes@2025-08-01-preview": {
+      "$ref": "types.json#/140"
+    },
+    "Radius.Compute/routes@2025-08-01-preview": {
+      "$ref": "types.json#/193"
+    }
+  },
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radiusradiuscompute",
+    "version": "0.0.1"
+  }
+}

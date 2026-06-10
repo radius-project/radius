@@ -3,19 +3,19 @@ extension radius
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'corerp-resources-app-env-env'
   location: location
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'corerp-resources-app-env-env'
+    providers: {
+      kubernetes: {
+        namespace: 'corerp-resources-app-env'
+      }
     }
   }
 }
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-app-env-app'
   location: location
   properties: {
