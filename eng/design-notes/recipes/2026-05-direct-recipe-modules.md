@@ -4,13 +4,15 @@
 
 ## Topic Summary
 
-Radius Recipes enable platform engineers to define reusable infrastructure templates that application developers can consume without understanding the underlying cloud resources. Today, to use an existing community module e.g., an AWS RDS Terraform module from the Terraform Registry, or an Azure Verified Bicep Module as a Recipe, a platform engineer must write a thin recipe wrapper that adds Radius-specific conventions — namely a `context` input variable and a structured `result` output — publish it to a distribution source like a container registry or Git, and then it's ready for use. This extra layer adds maintenance burden, version drift risk, and a barrier to adoption.
+Radius Recipes enable platform engineers to define reusable infrastructure templates that application developers can consume without understanding the underlying cloud resources. Today, to use an existing community module — e.g., an [AWS RDS Terraform module](https://registry.terraform.io/modules/terraform-aws-modules/rds/aws/latest) from the Terraform Registry, or an [Azure Verified Bicep Module](https://azure.github.io/Azure-Verified-Modules/) from the Microsoft Container Registry — as a Recipe, a platform engineer must write a thin recipe wrapper that adds Radius-specific conventions — namely a `context` input variable and a structured `result` output, publish it to a distribution source like a container registry or Git, and then it's ready for use. This extra layer adds maintenance burden, version drift risk, and a barrier to adoption.
 
 **Direct Recipe Module Support removes this requirement.** Platform engineers can now point a Recipe's `location` directly at any standard Bicep or Terraform module — no wrapper needed. Radius automatically resolves input values into the module's parameters at deploy time and maps the module's outputs back to the Resource Type's properties. The result is a simpler workflow: find a module, reference it, configure the parameter and output mappings, and deploy.
 
+This also enables us to scale the `resource-types-contrib` repository by leveraging existing, well-maintained community modules without having to write everything from scratch. Instead of authoring and maintaining custom wrapper Recipes, we maintain Recipe Packs with tested modules per platform validated against Radius Resource Types.
+
 ### Top level goals
 
-- Enable platform engineers to leverage community owned Terraform registry modules and Azure Verified Modules directly as Radius Recipes
+- Enable platform engineers to leverage community maintained Terraform registry modules and Azure Verified Modules directly as Radius Recipes
 - Eliminate the need to write a Recipe wrapper, publish, and maintain these Recipes separately from the underlying module
 - Scale the `resource-types-contrib` repository with tested Recipes by referencing community modules directly, eliminating wrapper maintenance overhead
   
@@ -51,13 +53,13 @@ A platform engineer sets `location` to a Terraform registry URI (e.g., `registry
 
 A platform engineer sets `location` to an Azure Verified Module OCI reference (e.g., `br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3`) and the system deploys it via ARM, passing resolved parameters and mapping outputs to Resource Type properties via the `outputs` field.
 
-### Scenario 3: Private Git-hosted Terraform Module
+### Scenario 3: Private hosted Module
 
-A platform engineer references an internal module hosted in a private Git repository (e.g., `git::https://github.com/contoso/infra-modules.git//modules/vpc?ref=v2.0`). This supports organizations that maintain proprietary modules outside the public Terraform Registry. The system clones the module at the specified ref and executes it using the same parameter resolution and output mapping as registry modules.
+A platform engineer references an internal module hosted in a private OCI registry (e.g., `oci://my-registry.com/my-namespace/my-module:1.0.0`). This supports organizations that maintain proprietary modules outside the public Terraform Registry. The system clones the module at the specified ref and executes it using the same parameter resolution and output mapping as registry modules.
 
 ## Key dependencies and risks
 
-- **Community module coverage** — Not every Radius Resource Type will have a suitable community module available. Platform engineers may still need to author custom modules for Resource Types without community coverage or where community modules don't align with organizational requirements.
+- **Community module coverage** — Not every Radius Resource Type has a suitable community module. Where gaps exist, platform engineers will still author custom modules. For the `resource-types-contrib` repository, we will continue to write and maintain Recipes for Resource Types that lack community module coverage.
 - **Terraform version compatibility** — Direct modules may use features from newer Terraform versions. Mitigation: Terraform settings feature enables specifying the Terraform version.
 - **Module API stability** — Direct modules expose platform engineers to upstream breaking changes. Mitigation: version pinning via `?ref=` for Git or registry version constraints.
 - **Expression resolution correctness** — Unresolved `{{context.*}}` expressions are left as literal strings, which may cause cryptic downstream errors from the IaC engine. Mitigation: clear documentation of available expression paths.
@@ -78,7 +80,10 @@ After this feature, I can set `location` directly to `registry.terraform.io/terr
 
 ### Detailed user experience
 
-1. Platform engineer creates a RecipePack pointing directly at an upstream module:
+>**Note**: This user experience incorporates the [Rename recipeKind and recipeLocation to kind and location in Recipe Packs](https://github.com/radius-project/radius/issues/11879) changes.
+
+
+1. Platform engineer creates a Recipe Pack pointing directly at an upstream module:
 
    ```bicep
    resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
@@ -270,3 +275,12 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
 ```
 
 Radius determines sensitivity from the Resource Type schema — any output mapped to a property with `x-radius-sensitive: true` is automatically encrypted.
+
+## Edge cases
+
+1. **Module with no outputs** — A module that produces no outputs results in an empty Values map on the resource. The resource is still created successfully but has no populated properties from the Recipe. Radius logs a warning indicating that the module produced no outputs to help platform engineers catch misconfiguration early.
+2. **Output name mismatch** — If the `outputs` mapping references a module output that does not exist, the mapped property is left empty (nil) on the resource. Radius logs a warning indicating the unresolved output name, so platform engineers can identify and fix the mapping without blocking deployment.
+3. **Required parameters not supplied** — If the module requires an input variable that is not provided through `parameters` or environment-level `recipeParameters`, Radius surfaces the error from IaC engine indicating which variable is missing.
+4. **Invalid `{{context.*}}` expression path** — If a template expression references a context path that does not exist (e.g., `{{context.resource.properties.nonexistent}}`), the expression resolves to an empty string. The IaC engine may then fail if the parameter requires a non-empty value.
+5. **Large module with many unused variables** — Some community modules expose dozens of input variables with defaults. Only variables explicitly mapped in `parameters` are passed; all others use the module's defaults. This is expected behavior.
+6. **Module version yanked or deleted** — If the pinned module version is removed from the registry, the Recipe deployment fails at the module download step with a fetch error. Mitigation: platform engineers should monitor upstream module availability.
