@@ -1,121 +1,113 @@
 # Pod Security Admission notes for the dynamic-rp BuildKit sidecar
 
-The `Radius.Compute/containerImages` resource type relies on a rootless
-BuildKit sidecar in the `dynamic-rp` Pod. This document captures what
-we empirically validated about how that sidecar interacts with
-Kubernetes Pod Security Admission, so operators can configure their
-clusters accordingly.
+The `Radius.Compute/containerImages` resource type depends on a
+rootless BuildKit sidecar in the `dynamic-rp` Pod. The sidecar is
+opt-in (`dynamicrp.buildkit.enabled: false` by default in the
+chart). This document describes the PSA implications for operators
+deciding whether to enable it.
 
 ## TL;DR
 
-| PSA mode (radius-system namespace) | BuildKit sidecar status |
-|------------------------------------|-------------------------|
-| `privileged` (default for unlabeled namespaces) | ✅ Supported, validated end-to-end |
-| `baseline` | ❌ Not supported (upstream BuildKit limitation) |
-| `restricted` | ❌ Not supported (upstream BuildKit limitation) |
+| PSA mode on `radius-system` | Sidecar disabled (default) | Sidecar enabled |
+|---|---|---|
+| `privileged` | Works | Works |
+| `baseline` | Works | Sidecar rejected at admission |
+| `restricted` | Chart not supported (unrelated to this feature) | Chart not supported (unrelated to this feature) |
 
-Operators who need their cluster to enforce PSA `baseline` or
-`restricted` cluster-wide should:
+The default install is PSA-baseline-compatible because the sidecar is
+not installed. Operators who want `Radius.Compute/containerImages`
+need to enable the sidecar and either run radius-system under PSA
+`privileged` or accept that admission will reject the dynamic-rp Pod.
 
-1. Keep `Radius.Compute/containerImages` disabled
-   (`--set dynamicrp.buildkit.enabled=false`). The chart will install
-   cleanly under `baseline` / `restricted` without the sidecar.
-2. If the resource type IS needed, label only the `radius-system`
-   namespace as `privileged`:
-   `kubectl label ns radius-system pod-security.kubernetes.io/enforce=privileged --overwrite`.
-   The resource type only requires elevated privilege within that
-   namespace; user workload namespaces (where `Radius.Compute/containers`
-   actually runs the built images) can stay `baseline` / `restricted`.
+## Enabling the sidecar
 
-## Why baseline/restricted don't work
+```bash
+rad install kubernetes --set dynamicrp.buildkit.enabled=true
+# or
+helm install radius radius/radius --set dynamicrp.buildkit.enabled=true
+```
 
-This is **not a Radius-specific problem.** Building OCI images inside
-a Kubernetes Pod requires Linux capabilities (mount, unshare,
-pivot_root, /proc manipulation) that PSA baseline and restricted both
-disallow. BuildKit's maintainer (AkihiroSuda, also the author of
-rootlesskit) has confirmed this is fundamental:
+If `radius-system` is unlabeled (the default on AKS, EKS, GKE, kind,
+k3d), no further action is needed: unlabeled namespaces inherit PSA
+`privileged`.
 
-> "The default apparmor profile prohibits mounting, so it still
-> cannot be enabled."
-> — moby/buildkit#4022 (the upstream issue asking exactly this question)
+If your cluster enforces PSA `baseline` on `radius-system` (either by
+namespace label or cluster-wide API server default), explicitly label
+`radius-system` as `privileged`:
 
-The same constraint applies to alternative builders:
+```bash
+kubectl label ns radius-system pod-security.kubernetes.io/enforce=privileged --overwrite
+```
 
-- **Kaniko**: ARCHIVED June 2025; no longer maintained.
-- **img** (`genuinetools/img`): unmaintained since 2024.
-- **Buildah**: needs `seccompProfile: Unconfined` for rootless mounts;
-  PSA baseline forbids Unconfined seccomp.
-- **BuildKit rootless**: needs Unconfined seccomp + AppArmor for
-  rootlesskit's newuidmap/unshare; both forbidden by baseline.
-- **BuildKit + `hostUsers: false` + non-rootless image**: chart
-  admission passes baseline AND the daemon starts, BUT actual image
-  builds fail in the snapshotter machinery (BuildKit's per-build-step
-  PID-namespace creation hits seccomp restrictions; the
-  `--oci-worker-no-process-sandbox` workaround is gated to the
-  rootless image only). Tracked as the same constraint in
-  moby/buildkit#4022 and moby/buildkit#3217 ("Rootless does not
-  start on GKE Autopilot" — GKE Autopilot enforces a security
-  posture similar to PSA baseline).
+Workload namespaces (where `Radius.Compute/containers` actually
+deploys the built images) are unaffected and can remain at
+`baseline` or `restricted`.
 
-Per the [PSA spec](https://kubernetes.io/docs/concepts/security/pod-security-standards/):
-- Baseline forbids `seccompProfile.type: Unconfined`
-- Baseline forbids `appArmorProfile.type: Unconfined`
-- Baseline forbids adding capabilities outside the allow-list (which
-  excludes `SYS_ADMIN`, required for `mount`/`unshare`)
-- Baseline forbids `procMount: Unmasked`
+## Why baseline doesn't work for the sidecar
+
+Building OCI images inside a Kubernetes Pod requires Linux
+capabilities (mount, unshare, pivot_root, /proc manipulation) that
+PSA baseline disallows. BuildKit's maintainer (AkihiroSuda, also the
+author of rootlesskit) confirmed this is fundamental in
+[moby/buildkit#4022](https://github.com/moby/buildkit/issues/4022):
+
+> The default apparmor profile prohibits mounting, so it still
+> cannot be enabled.
+
+Per the
+[PSA spec](https://kubernetes.io/docs/concepts/security/pod-security-standards/),
+baseline forbids:
+
+- `seccompProfile.type: Unconfined` (rootless BuildKit requires it
+  for rootlesskit's `unshare`)
+- `appArmorProfile.type: Unconfined` (rootless BuildKit requires it
+  for `mount`)
+- Capabilities outside the allow-list (the allow-list excludes
+  `SYS_ADMIN`, required for in-pod image builds)
+- `procMount: Unmasked`
 
 Every in-cluster image builder hits at least one of these.
 
-## Validation runs
+## Validation
 
-The findings above were verified by running E2E with PSA enforcement
-on:
+Verified empirically with PSA enforcement on:
 
-- AKS PSA baseline workflow (`e2e-aks-psa-baseline.yaml`)
-- EKS PSA baseline workflow (`e2e-eks-psa-baseline.yaml`) — run
-  #27164309017 proved admission + daemon-start; run #27164822141
-  confirmed the `--oci-worker-no-process-sandbox` flag is rootless-only
-- k3d PSA baseline workflow (`e2e-k3d-psa-baseline.yaml`) — admission
-  passed, daemon blocked by inner-Docker AppArmor
+- EKS PSA baseline workflow: admission passes, daemon starts, image
+  builds fail in the snapshotter machinery (workflow run
+  [#27164309017](https://github.com/willdavsmith/radius-containerimagetype-demo/actions/runs/27164309017))
+- k3d PSA baseline workflow: admission passes, daemon blocked by the
+  inner-Docker AppArmor profile
+- AKS PSA baseline workflow: blocked on OIDC service principal
+  permissions in the test environment
 
-Full debug logs available in the demo repo's Actions history.
+Full debug logs in the
+[demo repo Actions history](https://github.com/willdavsmith/radius-containerimagetype-demo/actions).
 
-## Possible future paths
+## Future paths
 
-- **Localhost seccomp profile via DaemonSet.** PSA baseline accepts
-  `seccompProfile.type: Localhost`, so in principle a custom seccomp
-  profile that allows the syscalls BuildKit needs (mount, pivot_root,
-  unshare with `CLONE_NEWUSER`, /proc operations) could work. Requires
-  shipping a JSON profile to every node's
-  `/var/lib/kubelet/seccomp/` directory via a DaemonSet, plus
-  validating it doesn't expose more than the standard runtime default.
+If the PSA `baseline` limitation becomes a blocker for in-cluster
+builds, possible directions:
+
+- Localhost seccomp profile via a node DaemonSet. PSA baseline
+  accepts `seccompProfile.type: Localhost`, so a custom profile that
+  allows BuildKit's syscall set could work. Requires shipping a JSON
+  profile to every node's `/var/lib/kubelet/seccomp/` directory.
   Untested.
-- **Out-of-cluster builds.** Move image building to an external
-  CI/CD pipeline; have `Radius.Compute/containerImages` orchestrate
-  remote builds rather than building in-cluster. Pursuing this in
-  the longer term would sidestep the entire PSA-baseline problem.
-- **K8s 1.36+ user namespaces (GA April 2026).** May shift upstream
-  BuildKit's stance on requiring Unconfined seccomp. Worth a
-  re-evaluation in 6-12 months once Linux distros and BuildKit
-  catch up.
-- **Direct sandboxed builders.** Newer experimental tools like
-  `crane` (go-containerregistry) can construct images from layers
-  without invoking the OCI runtime at all, sidestepping the entire
-  seccomp/cap problem — but only support a narrow subset of
-  Dockerfile features.
+- Out-of-cluster builds. Move image building to an external CI/CD
+  pipeline. Radius config references the pre-built image directly.
+  Sidesteps the PSA problem entirely.
+- K8s 1.36+ user namespaces (GA April 2026). May shift upstream
+  BuildKit's stance on requiring Unconfined seccomp. Worth
+  re-evaluating in 6-12 months once Linux distros and BuildKit catch
+  up.
 
 ## References
 
-- moby/buildkit#4022 — "Question: buildkit rootless + AppArmor on
-  k8s- could Kubernetes UserNamespacesStatelessPodsSupport feature
-  (v1.25 alpha) make this possible?" — confirms AppArmor is the
-  fundamental blocker.
-- moby/buildkit#3217 — "Rootless does not start on GKE Autopilot" —
-  same constraint manifesting on Google's managed K8s.
-- Kubernetes Pod Security Standards spec:
-  https://kubernetes.io/docs/concepts/security/pod-security-standards/
-- BuildKit rootless docs (lists every required `--security-opt`):
-  https://github.com/moby/buildkit/blob/master/docs/rootless.md
-- Kaniko archival notice (June 2025):
-  https://github.com/GoogleContainerTools/kaniko
+- [moby/buildkit#4022](https://github.com/moby/buildkit/issues/4022).
+  Confirms AppArmor is the fundamental blocker.
+- [moby/buildkit#3217](https://github.com/moby/buildkit/issues/3217).
+  Same constraint manifesting on GKE Autopilot.
+- [Kubernetes Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/).
+- [BuildKit rootless docs](https://github.com/moby/buildkit/blob/master/docs/rootless.md).
+  Lists every required `--security-opt`.
 
