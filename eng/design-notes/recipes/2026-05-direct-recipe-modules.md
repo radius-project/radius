@@ -163,7 +163,7 @@ After this feature, I can set `location` directly to `terraform-aws-modules/rds/
    }
 
    resource tfcSecrets 'Radius.Core/secrets@2025-08-01-preview' = {
-     name: 'tfc-creds'
+     name: 'tfc-credentials'
      properties: {
        type: 'generic'
        data: {
@@ -197,7 +197,7 @@ After this feature, I can set `location` directly to `terraform-aws-modules/rds/
    }
 
    resource acrSecrets 'Radius.Core/secrets@2025-08-01-preview' = {
-     name: 'acr-creds'
+     name: 'acr-credentials'
      properties: {
        type: 'generic'
        data: {
