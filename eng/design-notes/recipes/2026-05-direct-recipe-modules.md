@@ -220,7 +220,7 @@ After this feature, I can set `location` directly to `terraform-aws-modules/rds/
 
 ### Feature 1: Direct Module Execution
 
-Use any standard Bicep or Terraform module directly as a Recipe by pointing `location` at the module source. The system automatically detects that the module is not a Radius wrapper (no `context` variable), downloads it, and executes it through the existing driver — no wrapper needed.
+Use any standard Bicep or Terraform module directly as a Recipe by pointing `location` at the module source. The system downloads the module, and executes it through the existing driver.
 
 ### Feature 2: Template Expression Resolution
 
