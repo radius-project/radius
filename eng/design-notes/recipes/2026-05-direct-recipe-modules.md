@@ -6,7 +6,7 @@
 
 Radius Recipes enable platform engineers to define reusable infrastructure templates that application developers can consume without understanding the underlying cloud resources. Today, to use an existing community module — e.g., an [AWS RDS Terraform module](https://registry.terraform.io/modules/terraform-aws-modules/rds/aws/latest) from the Terraform Registry, or an [Azure Verified Bicep Module](https://azure.github.io/Azure-Verified-Modules/) from the Microsoft Container Registry — as a Recipe, a platform engineer must write a thin recipe wrapper that adds Radius-specific conventions — namely a `context` input variable and a structured `result` output, publish it to a distribution source like a container registry or Git, and then it's ready for use. This extra layer adds maintenance burden, version drift risk, and a barrier to adoption.
 
-**Direct Recipe Module Support removes this requirement.** Platform engineers can now point a Recipe's `location` directly at any standard Bicep or Terraform module — no wrapper needed. Radius automatically resolves input values into the module's parameters at deploy time and maps the module's outputs back to the Resource Type's properties. The result is a simpler workflow: find a module, reference it, configure the parameter and output mappings, and deploy.
+**Direct Recipe Module Support removes this requirement.** Platform engineers can now point a Recipe's `source` directly at any standard Bicep or Terraform module — no wrapper needed. Radius automatically resolves input values into the module's parameters at deploy time and maps the module's outputs back to the Resource Type's properties. The result is a simpler workflow: find a module, reference it, configure the parameter and output mappings, and deploy.
 
 This also enables us to scale the `resource-types-contrib` repository by leveraging existing, well-maintained community modules without having to write everything from scratch. Instead of authoring and maintaining custom wrapper Recipes, we maintain Recipe Packs with tested modules per platform validated against Radius Resource Types.
 
@@ -18,7 +18,7 @@ This also enables us to scale the `resource-types-contrib` repository by leverag
   
 ### Non-goals (out of scope)
 
-1. Local filesystem paths as `location` sources. Modules must be fetched from remote registries or Git; local paths are not supported.
+1. Local filesystem paths as `source` values. Modules must be fetched from remote registries or Git; local paths are not supported.
 2. Automatic module version bumping. Platform engineers explicitly pin module versions in their Recipe Packs. Auto-upgrading could introduce breaking changes silently.
 3. Custom retry logic for module fetch failures. Fetch retries are delegated to the underlying IaC engine (Terraform CLI / Bicep). Radius does not add its own retry layer.
 4. New observability infrastructure. This feature uses existing Radius logging, tracing, and metrics. No new telemetry systems are introduced.
@@ -41,17 +41,17 @@ This also enables us to scale the `resource-types-contrib` repository by leverag
 
 ### Positive user outcome
 
-Platform engineers can easily configure a Recipe using any existing module setting `location` directly — zero wrapping, zero republishing. The entire Terraform and Bicep module ecosystem becomes immediately usable as Radius Recipes.
+Platform engineers can easily configure a Recipe using any existing module setting `source` directly — zero wrapping, zero republishing. The entire Terraform and Bicep module ecosystem becomes immediately usable as Radius Recipes.
 
 ## Key scenarios
 
 ### Scenario 1: Terraform Registry Module
 
-A platform engineer sets `location` to a Terraform registry module source (e.g., `terraform-aws-modules/rds/aws`) with a `version` field (e.g., `5.9.0`) and the system deploys it by automatically resolving developer set properties via `context` as Terraform input variables, and mapping module outputs to Resource Type properties via the `outputs` field.
+A platform engineer sets `source` to a Terraform registry module source (e.g., `terraform-aws-modules/rds/aws`) with a `version` field (e.g., `5.9.0`) and the system deploys it by automatically resolving developer set properties via `context` as Terraform input variables, and mapping module outputs to Resource Type properties via the `outputs` field.
 
 ### Scenario 2: Azure Verified Modules (OCI)
 
-A platform engineer sets `location` to an Azure Verified Module OCI reference (e.g., `br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3`) and the system deploys it via ARM, passing resolved parameters and mapping outputs to Resource Type properties via the `outputs` field.
+A platform engineer sets `source` to an Azure Verified Module OCI reference (e.g., `br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3`) and the system deploys it via ARM, passing resolved parameters and mapping outputs to Resource Type properties via the `outputs` field.
 
 ### Scenario 3: Private hosted Module
 
@@ -68,7 +68,7 @@ A platform engineer references an internal module hosted in a private OCI regist
 
 Today, Radius only supports Recipes that are purpose-built for Radius. Both Terraform and Bicep modules must include a `context` input variable (carrying Radius runtime metadata) and a structured `result` output (returning resource values back to Radius). Any community or third-party module that lacks these conventions cannot be used as a Recipe without first wrapping it.
 
-Recipe Packs (`Radius.Core/recipePacks`) already enable platform engineers to group Recipe definitions by Resource Type. This direct module support extends that foundation by adding an `outputs` mapping to `RecipeDefinition` and broadening `location` to accept standard module sources that do not follow Radius wrapper conventions.
+Recipe Packs (`Radius.Core/recipePacks`) already enable platform engineers to group Recipe definitions by Resource Type. This direct module support extends that foundation by adding an `outputs` mapping to `RecipeDefinition` and broadening `source` to accept standard module sources that do not follow Radius wrapper conventions.
 
 ## Details of user problem
 
@@ -76,7 +76,7 @@ When I want to use a community Terraform module (like `terraform-aws-modules/rds
 
 ## Desired user experience outcome
 
-After this feature, I can set `location` directly to `terraform-aws-modules/rds/aws` and `version` to `5.9.0` on my Recipe definition, configure `parameters` with `{{context.*}}` expressions for dynamic values, and set `outputs` to map the module's outputs to my Resource Type's properties. The module doesn't need to know about Radius. When my application developer deploys a `Radius.Data/mySqlDatabases` resource, the system resolves expressions, passes parameters to the module, executes it, and maps outputs — all without any wrapper.
+After this feature, I can set `source` directly to `terraform-aws-modules/rds/aws` and `version` to `5.9.0` on my Recipe definition, configure `parameters` with `{{context.*}}` expressions for dynamic values, and set `outputs` to map the module's outputs to my Resource Type's properties. The module doesn't need to know about Radius. When my application developer deploys a `Radius.Data/mySqlDatabases` resource, the system resolves expressions, passes parameters to the module, executes it, and maps outputs — all without any wrapper.
 
 ### Detailed user experience
 
@@ -92,7 +92,7 @@ After this feature, I can set `location` directly to `terraform-aws-modules/rds/
        recipes: {
          'Radius.Data/mySqlDatabases': {
            kind: 'terraform'
-           location: 'terraform-aws-modules/rds/aws'
+           source: 'terraform-aws-modules/rds/aws'
            version: '5.9.0'
            // Specify the module's input parameters
            parameters: {
@@ -144,7 +144,7 @@ After this feature, I can set `location` directly to `terraform-aws-modules/rds/
 4. Module outputs are mapped to resource properties via the `outputs` definition
 5. Application reads `resource.properties.host`, `resource.properties.port` etc as the resolved values from the module outputs.
 
-6. (Optional) For private modules, the platform engineer configures registry or Git authentication using the settings resources (`Radius.Core/terraformConfigs` or `Radius.Core/bicepConfigs`) referenced from the environment. The Radius driver resolves credentials by parsing the hostname from the module `location` and looking up the matching key in the credentials map.
+6. (Optional) For private modules, the platform engineer configures registry or Git authentication using the settings resources (`Radius.Core/terraformConfigs` or `Radius.Core/bicepConfigs`) referenced from the environment. The Radius driver resolves credentials by parsing the hostname from the module `source` and looking up the matching key in the credentials map.
 
    **Private Terraform registry (e.g., Terraform Cloud):**
 
@@ -220,7 +220,7 @@ After this feature, I can set `location` directly to `terraform-aws-modules/rds/
 
 ### Feature 1: Direct Module Execution
 
-Use any standard Bicep or Terraform module directly as a Recipe by pointing `location` at the module source. The system downloads the module, and executes it through the existing driver.
+Use any standard Bicep or Terraform module directly as a Recipe by pointing `source` at the module source. The system downloads the module, and executes it through the existing driver.
 
 ### Feature 2: Template Expression Resolution
 
@@ -232,7 +232,7 @@ An `outputs` field on `RecipeDefinition` that maps module output names to resour
 
 ### Feature 4: Private Registry/Repository Support
 
-Validate that direct recipe modules work with private registries and repositories using the existing `Radius.Core/terraformConfigs` and `Radius.Core/bicepConfigs` authentication mechanisms. Since direct modules use the same `location` field and driver download path as wrapper-based recipes, this is expected to be a no-op, the existing credential resolution logic should work. The investment here is primarily testing and documentation.
+Validate that direct recipe modules work with private registries and repositories using the existing `Radius.Core/terraformConfigs` and `Radius.Core/bicepConfigs` authentication mechanisms. Since direct modules use the same `source` field and driver download path as wrapper-based recipes, this is expected to be a no-op, the existing credential resolution logic should work. The investment here is primarily testing and documentation.
 
 ## Usage Examples
 
@@ -245,7 +245,7 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/mySqlDatabases': {
         kind: 'terraform'
-        location: 'terraform-aws-modules/rds/aws'
+        source: 'terraform-aws-modules/rds/aws'
         version: '5.9.0'
         parameters: {
           identifier: '{{context.resource.name}}'
@@ -279,7 +279,7 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/postgreSqlDatabases': {
         kind: 'terraform'
-        location: 'br:mcr.microsoft.com/bicep/avm/res/db-for-postgre-sql/flexible-server:0.4.0'
+        source: 'br:mcr.microsoft.com/bicep/avm/res/db-for-postgre-sql/flexible-server:0.4.0'
         parameters: {
           name: 'pg-{{context.resource.name}}'
           location: 'eastus2'
@@ -332,7 +332,7 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Radius.Data/mySqlDatabases': {
         kind: 'terraform'
-        location: 'terraform-aws-modules/rds/aws'
+        source: 'terraform-aws-modules/rds/aws'
         version: '5.9.0'
         parameters: {
           identifier: '{{context.resource.name}}'
