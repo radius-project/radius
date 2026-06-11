@@ -109,6 +109,9 @@ model ApplicationGraphResource {
 
   @doc("Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.")
   diffHash?: string;
+
+  @doc("Resource-type-specific properties of the resource as returned by its resource provider, with secrets redacted. The shape of this map varies by `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any user-defined resource type) and matches the `properties` returned by that resource's GET response. Fields already represented elsewhere in this model (id, type, name, provisioningState, status.outputResources, connections, routes) are omitted. Use `diffHash` rather than a byte-wise compare of this map to detect change.")
+  properties?: Record<unknown>;
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")
