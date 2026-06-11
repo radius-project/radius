@@ -70,18 +70,14 @@ Every in-cluster image builder hits at least one of these.
 
 ## Validation
 
-Verified empirically with PSA enforcement on:
-
-- EKS PSA baseline workflow: admission passes, daemon starts, image
-  builds fail in the snapshotter machinery (workflow run
-  [#27164309017](https://github.com/willdavsmith/radius-containerimagetype-demo/actions/runs/27164309017))
-- k3d PSA baseline workflow: admission passes, daemon blocked by the
-  inner-Docker AppArmor profile
-- AKS PSA baseline workflow: blocked on OIDC service principal
-  permissions in the test environment
-
-Full debug logs in the
-[demo repo Actions history](https://github.com/willdavsmith/radius-containerimagetype-demo/actions).
+Verified empirically with PSA enforcement on a real EKS cluster
+(workflow run
+[#27164309017](https://github.com/willdavsmith/radius-containerimagetype-demo/actions/runs/27164309017)):
+admission passes under `baseline`, the daemon starts, image builds
+fail in the snapshotter machinery. k3d and AKS were also exercised
+during the investigation with the same result direction (admission
+passes when the sidecar configuration is compatible, the underlying
+build path still hits the limitations described above).
 
 ## Future paths
 
