@@ -317,6 +317,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 		applicationGraphResource.Connections = connections
 		applicationGraphResource.OutputResources = outputResourcesFromAPIData(resource)
+		applicationGraphResource.Properties = getResourceTypeSpecificProperties(resource.Properties)
 
 		applicationGraphResourcesByID[*resource.ID] = *applicationGraphResource
 	}
@@ -444,6 +445,40 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 		Type:              new(application.Type()),
 		ProvisioningState: to.Ptr(string(v1.ProvisioningStateSucceeded)),
 	}
+}
+
+// existingKeys lists property keys whose value is surfaced as a
+// first-class field on ApplicationGraphResource and therefore omitted from the projected
+// Properties bag to avoid duplication.
+var existingKeys = map[string]struct{}{
+	"provisioningState": {},
+	"connections":       {},
+	"routes":            {},
+	"status":            {},
+}
+
+// getResourceTypeSpecificProperties returns a deduplicated copy of a resource's properties
+// suitable for inclusion in ApplicationGraphResource.Properties. It drops top-level keys
+// already represented as first-class fields on the graph resource (provisioningState,
+// connections, routes, status) and returns nil when the projected map would be empty so
+// callers can leave the optional Properties field unset.
+func getResourceTypeSpecificProperties(properties map[string]any) map[string]any {
+	if len(properties) == 0 {
+		return nil
+	}
+
+	propertyBag := make(map[string]any, len(properties))
+	for k, v := range properties {
+		if _, drop := existingKeys[k]; drop {
+			continue
+		}
+		propertyBag[k] = v
+	}
+
+	if len(propertyBag) == 0 {
+		return nil
+	}
+	return propertyBag
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
