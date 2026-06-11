@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ import "@typespec/openapi";
 import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
+import "@azure-tools/typespec-client-generator-core";
 
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
@@ -195,6 +196,33 @@ model ResourceTypeSummaryResultApiVersion {
   @doc("Schema holds the resource type definitions for this API version.")
   schema?: Record<unknown>;
 }
+
+// TCGC (used by the typespec-go emitter) treats any model property or path
+// parameter whose name contains "apiVersion" as the client's API-version
+// parameter and stamps it with a client default value. These are plain data
+// fields and the API-version resource's own name/key (not the operation's
+// api-version query parameter), so opt them out. This is a client-generator
+// hint only and does not affect the OpenAPI (Swagger) output emitted by
+// typespec-autorest. Without the opt-out on ApiVersionResource.name, the
+// emitter would hard-code the {apiVersionName} path segment to the spec's
+// api-version value and drop it from the generated method signature.
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceTypeProperties.defaultApiVersion,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  LocationResourceType.apiVersions,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceProviderSummaryResourceType.apiVersions,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceProviderSummaryResourceType.defaultApiVersion,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(ApiVersionResource.name, false);
 
 model ResourceProviderBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;

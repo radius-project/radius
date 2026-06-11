@@ -38,7 +38,7 @@ func Test_ResourceProviderSummary_DataModelToVersioned(t *testing.T) {
 			filename: "resourceprovidersummary_datamodel.json",
 			expected: &ResourceProviderSummary{
 				Name: new("Applications.Test"),
-				Locations: map[string]map[string]any{
+				Locations: map[string]*ResourceProviderSummaryLocation{
 					"east": {},
 				},
 				ResourceTypes: map[string]*ResourceProviderSummaryResourceType{

@@ -141,7 +141,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	client := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	_, err := client.Delete(ctx, r.EnvironmentName, &corerpv20250801.EnvironmentsClientDeleteOptions{})
+	_, err := client.Delete(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientDeleteOptions{})
 	if err != nil {
 		// If this is a 404, treat as successful but with a different message
 		// We don't have the Is404Error helper wired to Radius.Core yet, so always surface the error.

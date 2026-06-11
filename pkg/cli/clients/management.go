@@ -1257,32 +1257,47 @@ func (amc *UCPApplicationsManagementClient) createApplicationClient(scope string
 	}
 
 	// Generated client doesn't like the leading '/' in the scope.
-	return corerpv20231001.NewApplicationsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, clientOptions)
+	scope = strings.TrimPrefix(scope, resources.SegmentSeparator)
+	inner, err := corerpv20231001.NewApplicationsClient(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+	return &scopedApplicationsClient{inner: inner, scope: scope}, nil
 }
 
 func (amc *UCPApplicationsManagementClient) createRecipePackClient(scope string) (recipePackResourceClient, error) {
-	if amc.recipePackResourceClientFactory == nil {
-		return corerpv20250801.NewRecipePacksClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if amc.recipePackResourceClientFactory != nil {
+		return amc.recipePackResourceClientFactory(scope)
 	}
-	return amc.recipePackResourceClientFactory(scope)
+	inner, err := corerpv20250801.NewRecipePacksClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return nil, err
+	}
+	return &scopedRecipePacksClient{inner: inner, scope: strings.TrimPrefix(scope, resources.SegmentSeparator)}, nil
 }
 
 func (amc *UCPApplicationsManagementClient) createEnvironmentClient(scope string) (environmentResourceClient, error) {
-	if amc.environmentResourceClientFactory == nil {
-		// Generated client doesn't like the leading '/' in the scope.
-		return corerpv20231001.NewEnvironmentsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if amc.environmentResourceClientFactory != nil {
+		return amc.environmentResourceClientFactory(scope)
 	}
-
-	return amc.environmentResourceClientFactory(scope)
+	// Generated client doesn't like the leading '/' in the scope.
+	inner, err := corerpv20231001.NewEnvironmentsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return nil, err
+	}
+	return &scopedEnvironmentsClient{inner: inner, scope: strings.TrimPrefix(scope, resources.SegmentSeparator)}, nil
 }
 
 func (amc *UCPApplicationsManagementClient) createRadiusCoreEnvironmentClient(scope string) (radiusCoreEnvironmentResourceClient, error) {
-	if amc.radiusCoreEnvironmentResourceClientFactory == nil {
-		// Generated client doesn't like the leading '/' in the scope.
-		return corerpv20250801.NewEnvironmentsClient(strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if amc.radiusCoreEnvironmentResourceClientFactory != nil {
+		return amc.radiusCoreEnvironmentResourceClientFactory(scope)
 	}
-
-	return amc.radiusCoreEnvironmentResourceClientFactory(scope)
+	// Generated client doesn't like the leading '/' in the scope.
+	inner, err := corerpv20250801.NewEnvironmentsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return nil, err
+	}
+	return &scopedRadiusCoreEnvironmentsClient{inner: inner, scope: strings.TrimPrefix(scope, resources.SegmentSeparator)}, nil
 }
 
 func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, resourceType string, apiVersion ...string) (genericResourceClient, error) {

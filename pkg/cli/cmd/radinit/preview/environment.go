@@ -113,7 +113,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 	}
 
 	defaultPack := recipepack.NewDefaultRecipePackResource()
-	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
+	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultResourceGroupScope, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
 	}
@@ -122,7 +122,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 	envProperties.RecipePacks = []*string{to.Ptr(recipepack.DefaultRecipePackID())}
 
 	// Create the Radius.Core/environments resource
-	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
+	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Workspace.Scope, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
 		Location:   to.Ptr(v1.LocationGlobal),
 		Properties: &envProperties,
 	}, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})

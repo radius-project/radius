@@ -130,7 +130,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
 
-	resp, err := envClient.Get(ctx, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
+	resp, err := envClient.Get(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("The environment %q does not exist. Please select a new environment and try again.", r.EnvironmentName)
 	} else if err != nil {
@@ -182,7 +182,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			client = factory.NewRecipePacksClient()
 		}
 
-		pack, err := client.Get(ctx, ID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+		pack, err := client.Get(ctx, ID.RootScope(), ID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
 		if err != nil {
 			return err
 		}
