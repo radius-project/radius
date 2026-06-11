@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
@@ -38,7 +39,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
@@ -225,7 +225,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 
 // Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud
-// providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
+// providers, scaffolds a bicepconfig.json, and updates the config file, all while displaying progress updates to the UI.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
@@ -253,6 +253,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
+		// Silence helm install log messages while the bubbletea progress UI
+		// owns stdout. Concurrent writes from output.LogInfo would corrupt
+		// the in-place rendering of the progress display.
+		clusterOptions.Logger = func(format string, v ...any) {}
+
 		err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to install Radius.")
@@ -270,39 +275,21 @@ func (r *Runner) Run(ctx context.Context) error {
 	progress.EnvironmentComplete = true
 	progressChan <- progress
 
-	if r.Options.Application.Scaffold {
-		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-		if err != nil {
-			return err
-		}
-
-		// Initialize the application resource if it's not found. This supports the scenario where the application
-		// resource is not defined in bicep.
-		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, &corerp.ApplicationResource{
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &corerp.ApplicationProperties{
-				Environment: &r.Workspace.Environment,
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		// Scaffold application files in the current directory
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-
-		err = setup.ScaffoldApplication(wd)
-		if err != nil {
-			return err
-		}
+	// Always scaffold a bicepconfig.json in the current directory so that users have the
+	// required Bicep configuration to author Radius applications.
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
 	}
-	progress.ApplicationComplete = true
+
+	bicepConfigExisted, err := setup.ScaffoldBicepConfig(wd)
+	if err != nil {
+		return err
+	}
+	progress.BicepConfigComplete = true
 	progressChan <- progress
 
-	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
+	err = r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -313,6 +300,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	err = <-progressCompleteChan
 	if err != nil {
 		return err
+	}
+
+	// Warn the user (after the progress UI has finished) if a bicepconfig.json was already
+	// present so that they know it was preserved and not overwritten.
+	if bicepConfigExisted {
+		bicepConfigPath := filepath.Join(wd, "bicepconfig.json")
+		r.Output.LogInfo("Warning: An existing bicepconfig.json was found at %s. It was preserved and not modified. Ensure it contains the Radius Bicep extensions (radius, radiusCompute, radiusData, radiusSecurity, aws); otherwise Bicep authoring may fail.", bicepConfigPath)
 	}
 
 	return nil
