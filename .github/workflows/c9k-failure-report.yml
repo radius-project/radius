@@ -32,4 +32,4 @@ jobs:
           auto-issue-classes: "CodeChange,BrokenTestRun,DepMajorBump,DepGroupUpdate"
           auto-close-flaky: "true"
           assign-copilot: "true"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}

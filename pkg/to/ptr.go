@@ -19,8 +19,6 @@ limitations under the License.
 package to
 
 // Ptr takes in a value of any type and returns a pointer to that value.
-//
-//go:fix inline
 func Ptr[T any](v T) *T {
 	return new(v)
 }

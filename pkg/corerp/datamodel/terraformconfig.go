@@ -38,7 +38,7 @@ func (r *TerraformConfig) ResourceTypeName() string {
 // TerraformConfigResourceProperties represents the properties of the Terraform config resource.
 type TerraformConfigResourceProperties struct {
 	// Terraformrc contains Terraform CLI configuration file (.terraformrc) settings.
-	Terraformrc TerraformrcConfig `json:"terraformrc,omitempty"`
+	Terraformrc TerraformrcConfig `json:"terraformrc"`
 
 	// Env specifies the environment variables to be set during Terraform recipe execution.
 	Env map[string]string `json:"env,omitempty"`
