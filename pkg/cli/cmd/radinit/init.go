@@ -294,7 +294,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		err = setup.ScaffoldApplication(wd)
+		err = setup.ScaffoldApplication(wd, setup.AppBicepTemplate)
 		if err != nil {
 			return err
 		}
