@@ -136,18 +136,26 @@ describe("x-ms-client-flatten functional tests", () => {
       // ...as ReadOnly aliases (so they show up for output references but
       // cannot be assigned to from a template body, which would generate a
       // payload the RP cannot parse).
-      expect(body.properties.basicString.flags & ObjectTypePropertyFlags.ReadOnly).toBe(
-        ObjectTypePropertyFlags.ReadOnly
-      );
-      expect(body.properties.stringEnum.flags & ObjectTypePropertyFlags.ReadOnly).toBe(
-        ObjectTypePropertyFlags.ReadOnly
-      );
+      expect(
+        body.properties.basicString.flags & ObjectTypePropertyFlags.ReadOnly
+      ).toBe(ObjectTypePropertyFlags.ReadOnly);
+      expect(
+        body.properties.stringEnum.flags & ObjectTypePropertyFlags.ReadOnly
+      ).toBe(ObjectTypePropertyFlags.ReadOnly);
       // ...and never Required (the wrapper `properties` carries Required).
-      expect(body.properties.basicString.flags & ObjectTypePropertyFlags.Required).toBe(0);
-      expect(body.properties.stringEnum.flags & ObjectTypePropertyFlags.Required).toBe(0);
+      expect(
+        body.properties.basicString.flags & ObjectTypePropertyFlags.Required
+      ).toBe(0);
+      expect(
+        body.properties.stringEnum.flags & ObjectTypePropertyFlags.Required
+      ).toBe(0);
       // ...and never WriteOnly (read-side surface only).
-      expect(body.properties.basicString.flags & ObjectTypePropertyFlags.WriteOnly).toBe(0);
-      expect(body.properties.stringEnum.flags & ObjectTypePropertyFlags.WriteOnly).toBe(0);
+      expect(
+        body.properties.basicString.flags & ObjectTypePropertyFlags.WriteOnly
+      ).toBe(0);
+      expect(
+        body.properties.stringEnum.flags & ObjectTypePropertyFlags.WriteOnly
+      ).toBe(0);
     });
 
     it("keeps the writable `properties` envelope so existing templates still compile", () => {

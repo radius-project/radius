@@ -118,7 +118,9 @@ export function generateTypes(
     // catch both already-emitted siblings (e.g. the standardized envelope
     // props) and siblings still pending later in the loop. Without this,
     // a flattened child colliding with a *later* sibling would slip through.
-    const resourceSiblingNames = new Set<string>(Object.keys(resourceProperties));
+    const resourceSiblingNames = new Set<string>(
+      Object.keys(resourceProperties)
+    );
     for (const { propertyName } of getObjectTypeProperties(
       putSchema,
       getSchema,
@@ -509,10 +511,7 @@ export function generateTypes(
     return (
       ObjectTypePropertyFlags.ReadOnly |
       (childFlags &
-        ~(
-          ObjectTypePropertyFlags.Required |
-          ObjectTypePropertyFlags.WriteOnly
-        ))
+        ~(ObjectTypePropertyFlags.Required | ObjectTypePropertyFlags.WriteOnly))
     );
   }
 
