@@ -135,23 +135,17 @@ dynamicrp:
     limits:
       memory: "500Mi"
   # buildkit configures an in-Pod rootless BuildKit sidecar that
-  # backs the Radius.Compute/containerImages resource type. No host
-  # Docker socket; no privileged containers.
+  # backs the Radius.Compute/containerImages resource type. Opt-in:
+  # disabled by default. No host Docker socket; no privileged containers.
   buildkit:
-    # Set false to skip provisioning the sidecar. Disabling makes
-    # Radius.Compute/containerImages unusable.
-    #
-    # PSA mode: the sidecar runs under PSA "privileged" (the default
-    # for unlabeled namespaces). It is NOT compatible with PSA
-    # "baseline" or "restricted" because rootless BuildKit requires
-    # Unconfined seccomp + AppArmor profiles, and we couldn't find an
-    # off-the-shelf BuildKit configuration today that satisfies PSA
-    # baseline and still works for actual image builds. Operators who
-    # need stricter PSA enforcement should keep this sidecar disabled
-    # and label radius-system "privileged" only when this resource
-    # type is needed; or apply a Localhost seccomp profile via a node
-    # DaemonSet (see deploy/Chart/PSA-NOTES.md for details).
-    enabled: true
+    # Opt in to enable Radius.Compute/containerImages. When enabled,
+    # the dynamic-rp Pod gets a rootless BuildKit sidecar that requires
+    # PSA "privileged" on radius-system (the sidecar uses Unconfined
+    # seccomp + AppArmor, which PSA "baseline" and "restricted" forbid).
+    # Default install (this disabled) is PSA-baseline-compatible. See
+    # deploy/Chart/PSA-NOTES.md for details on the PSA tradeoff and
+    # operator guidance.
+    enabled: false
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
     # Default limits suit small/medium image builds; raise for large
