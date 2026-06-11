@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	appBicepTemplate = `extension radius
+	// AppBicepTemplate is the app.bicep template used by `rad init`.
+	AppBicepTemplate = `extension radius
 
 @description('The Radius Application ID. Injected automatically by the rad CLI.')
 param application string
@@ -46,6 +47,34 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 }
 ` // Trailing newline intentional.
 
+	// PreviewAppBicepTemplate is the app.bicep template used by `rad init --preview`.
+	PreviewAppBicepTemplate = `extension radius
+
+@description('The Radius Environment ID. Injected automatically by the rad CLI.')
+param environment string
+
+@description('The Radius Application ID. Injected automatically by the rad CLI.')
+param application string
+
+resource demo 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'demo'
+  properties: {
+    environment: environment
+    application: application
+    containers: {
+      demo: {
+        image: 'ghcr.io/radius-project/samples/demo:latest'
+        ports: {
+          web: {
+            containerPort: 3000
+          }
+        }
+      }
+    }
+  }
+}
+` // Trailing newline intentional.
+
 	bicepConfigTemplate = `{
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
@@ -55,13 +84,13 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 )
 
 // ScaffoldApplication creates a working sample application in the provided directory.
-func ScaffoldApplication(directory string) error {
+func ScaffoldApplication(directory string, template string) error {
 	// We NEVER overwrite app.bicep or the bicepconfig.json if it exists. We assume the user might have changed it, and don't
 	// want them to lose their content.
 	appBicepFilepath := filepath.Join(directory, "app.bicep")
 	_, err := os.Stat(appBicepFilepath)
 	if os.IsNotExist(err) {
-		err = os.WriteFile(appBicepFilepath, []byte(appBicepTemplate), 0644)
+		err = os.WriteFile(appBicepFilepath, []byte(template), 0644)
 		if err != nil {
 			return err
 		}

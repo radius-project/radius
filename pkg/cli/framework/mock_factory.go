@@ -25,6 +25,7 @@ import (
 	portforward "github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	output "github.com/radius-project/radius/pkg/cli/output"
 	prompt "github.com/radius-project/radius/pkg/cli/prompt"
+	persistence "github.com/radius-project/radius/pkg/graph/persistence"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -351,6 +352,44 @@ func (c *MockFactoryGetDeployCall) Do(f func() deploy.Interface) *MockFactoryGet
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockFactoryGetDeployCall) DoAndReturn(f func() deploy.Interface) *MockFactoryGetDeployCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetGraphStore mocks base method.
+func (m *MockFactory) GetGraphStore() persistence.Store {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGraphStore")
+	ret0, _ := ret[0].(persistence.Store)
+	return ret0
+}
+
+// GetGraphStore indicates an expected call of GetGraphStore.
+func (mr *MockFactoryMockRecorder) GetGraphStore() *MockFactoryGetGraphStoreCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGraphStore", reflect.TypeOf((*MockFactory)(nil).GetGraphStore))
+	return &MockFactoryGetGraphStoreCall{Call: call}
+}
+
+// MockFactoryGetGraphStoreCall wrap *gomock.Call
+type MockFactoryGetGraphStoreCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockFactoryGetGraphStoreCall) Return(arg0 persistence.Store) *MockFactoryGetGraphStoreCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockFactoryGetGraphStoreCall) Do(f func() persistence.Store) *MockFactoryGetGraphStoreCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockFactoryGetGraphStoreCall) DoAndReturn(f func() persistence.Store) *MockFactoryGetGraphStoreCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
