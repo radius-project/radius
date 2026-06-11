@@ -80,7 +80,7 @@ After this feature, I can set `source` directly to `terraform-aws-modules/rds/aw
 
 ### Detailed user experience
 
->**Note**: This user experience incorporates the [Rename recipeKind and recipeLocation to kind and location in Recipe Packs](https://github.com/radius-project/radius/issues/11879) changes.
+>**Note**: This user experience incorporates the [Rename recipeKind and recipeLocation to kind and source in Recipe Packs](https://github.com/radius-project/radius/issues/11879) changes.
 
 
 1. Platform engineer creates a Recipe Pack pointing directly at an upstream module:
