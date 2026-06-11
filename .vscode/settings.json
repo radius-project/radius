@@ -9,6 +9,14 @@
         "*.yaml": "yaml",
         "*.yml": "yaml"
     },
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "[markdown]": {
+        "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+        "editor.formatOnSave": true,
+        "editor.formatOnPaste": true
+    },
+    "markdownlint.configFile": "./.github/linters/.markdownlint.yml",
     "terminal.integrated.env.linux": {
         "RADIUS_DEV_ROOT": "${workspaceFolder}/debug_files"
     },
