@@ -52,11 +52,6 @@ var (
 	}
 )
 
-var (
-	configureDefaultContourGateway = ensureDefaultContourGateway
-	removeDefaultContourGateway    = deleteDefaultContourGateway
-)
-
 func ensureDefaultContourGateway(ctx context.Context, kubeContext string) error {
 	client, err := newDynamicClient(kubeContext)
 	if err != nil {
@@ -121,7 +116,7 @@ func reconcileGatewayClass(ctx context.Context, client dynamic.Interface) error 
 
 	controllerName, _, _ := unstructured.NestedString(existing.Object, "spec", "controllerName")
 	if controllerName != ContourGatewayControllerName {
-		return fmt.Errorf("GatewayClass %q already exists with controllerName %q, expected %q", ContourGatewayClassName, controllerName, ContourGatewayControllerName)
+		return fmt.Errorf("gatewayClass %q already exists with controllerName %q, expected %q", ContourGatewayClassName, controllerName, ContourGatewayControllerName)
 	}
 
 	return nil
@@ -138,7 +133,7 @@ func reconcileGateway(ctx context.Context, client dynamic.Interface) error {
 	}
 
 	if !isRadiusManaged(existing) {
-		return fmt.Errorf("Gateway %q in namespace %q already exists and is not managed by Radius", DefaultContourGatewayName, DefaultContourGatewayNamespace)
+		return fmt.Errorf("gateway %q in namespace %q already exists and is not managed by Radius", DefaultContourGatewayName, DefaultContourGatewayNamespace)
 	}
 
 	gateway := newContourGateway()

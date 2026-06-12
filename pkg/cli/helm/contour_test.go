@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 )
 
@@ -31,7 +32,7 @@ func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
 	}
 
 	// Assert
-	envoy := testChart.Values["envoy"].(map[string]any)
+	envoy := requireMap(t, testChart.Values, "envoy")
 
 	if hostNetwork := envoy["hostNetwork"]; hostNetwork != true {
 		t.Errorf("expected hostNetwork=true, got %v", hostNetwork)
@@ -40,14 +41,14 @@ func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
 		t.Errorf("expected dnsPolicy=ClusterFirstWithHostNet, got %v", dnsPolicy)
 	}
 
-	containerPorts := envoy["containerPorts"].(map[string]any)
+	containerPorts := requireMap(t, envoy, "containerPorts")
 	wantContainer := map[string]any{"http": 80, "https": 443}
 	if !reflect.DeepEqual(containerPorts, wantContainer) {
 		t.Errorf("containerPorts mismatch.\nexpected: %v\ngot:      %v", wantContainer, containerPorts)
 	}
 
-	service := envoy["service"].(map[string]any)
-	servicePorts := service["ports"].(map[string]any)
+	service := requireMap(t, envoy, "service")
+	servicePorts := requireMap(t, service, "ports")
 	wantService := map[string]any{"http": 8080, "https": 8443}
 	if !reflect.DeepEqual(servicePorts, wantService) {
 		t.Errorf("service ports mismatch.\nexpected: %v\ngot:      %v", wantService, servicePorts)
@@ -96,9 +97,9 @@ func cloneMap(src map[string]any) map[string]any {
 func assertDefaultGatewayRef(t *testing.T, values map[string]any) {
 	t.Helper()
 
-	configInline := values["configInline"].(map[string]any)
-	gateway := configInline["gateway"].(map[string]any)
-	gatewayRef := gateway["gatewayRef"].(map[string]any)
+	configInline := requireMap(t, values, "configInline")
+	gateway := requireMap(t, configInline, "gateway")
+	gatewayRef := requireMap(t, gateway, "gatewayRef")
 
 	if name := gatewayRef["name"]; name != DefaultContourGatewayName {
 		t.Errorf("expected gatewayRef.name=%s, got %v", DefaultContourGatewayName, name)
@@ -111,8 +112,19 @@ func assertDefaultGatewayRef(t *testing.T, values map[string]any) {
 func assertGatewayAPIManageCRDs(t *testing.T, values map[string]any) {
 	t.Helper()
 
-	gatewayAPI := values["gatewayAPI"].(map[string]any)
+	gatewayAPI := requireMap(t, values, "gatewayAPI")
 	if manageCRDs := gatewayAPI["manageCRDs"]; manageCRDs != true {
 		t.Errorf("expected gatewayAPI.manageCRDs=true, got %v", manageCRDs)
 	}
+}
+
+func requireMap(t *testing.T, values map[string]any, key string) map[string]any {
+	t.Helper()
+
+	value, ok := values[key]
+	require.Truef(t, ok, "expected %q to be present", key)
+
+	typed, ok := value.(map[string]any)
+	require.Truef(t, ok, "expected %q to be map[string]any, got %T", key, value)
+	return typed
 }

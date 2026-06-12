@@ -205,9 +205,28 @@ type Interface interface {
 type Impl struct {
 	// HelmClient is the Helm client used to interact with the Kubernetes cluster.
 	Helm HelmClient
+
+	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
+	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
 }
 
 var _ Interface = &Impl{}
+
+func (i *Impl) configureContourGateway(ctx context.Context, kubeContext string) error {
+	configure := i.configureDefaultContourGateway
+	if configure == nil {
+		configure = ensureDefaultContourGateway
+	}
+	return configure(ctx, kubeContext)
+}
+
+func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) error {
+	remove := i.removeDefaultContourGateway
+	if remove == nil {
+		remove = deleteDefaultContourGateway
+	}
+	return remove(ctx, kubeContext)
+}
 
 // InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
@@ -241,13 +260,15 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
 
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
+	contourChartOptions := clusterOptions.Contour.ChartOptions
+	contourChartOptions.Wait = true
+	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, contourChartOptions)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
 
 	output.LogInfo("Configuring Radius Contour Gateway...")
-	if err := configureDefaultContourGateway(ctx, kubeContext); err != nil {
+	if err := i.configureContourGateway(ctx, kubeContext); err != nil {
 		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
 	}
 
@@ -263,7 +284,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 
 	if !clusterOptions.Contour.Disabled {
 		output.LogInfo("Deleting Radius Contour Gateway...")
-		if err := removeDefaultContourGateway(ctx, kubeContext); err != nil {
+		if err := i.removeContourGateway(ctx, kubeContext); err != nil {
 			return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
 		}
 	}
@@ -378,14 +399,14 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, true)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}
 	output.LogInfo("Contour upgrade complete")
 
 	output.LogInfo("Configuring Radius Contour Gateway...")
-	if err := configureDefaultContourGateway(ctx, kubeContext); err != nil {
+	if err := i.configureContourGateway(ctx, kubeContext); err != nil {
 		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
 	}
 
