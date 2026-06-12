@@ -36,11 +36,21 @@ const (
 
 // HelmClient is an interface for interacting with Helm charts.
 type HelmClient interface {
-	// RunHelmInstall installs the Helm chart.
-	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error)
+	// RunHelmInstall installs the Helm chart using the supplied user-values map as the
+	// override set. The map should contain only user-supplied overrides (not the chart
+	// defaults); Helm merges them on top of the chart's defaults at render time.
+	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool) (*release.Release, error)
 
-	// RunHelmUpgrade upgrades the Helm chart.
-	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error)
+	// RunHelmUpgrade upgrades the Helm chart. When reuseValues is true,
+	// upgrade uses ResetThenReuseValues semantics: it starts from the new chart's
+	// defaults, overlays the user-supplied values stored on the previous release, and
+	// then overlays vals. When reuseValues is false, the previous release's stored
+	// user values are discarded and only vals (merged over the new chart's defaults)
+	// are used.
+	//
+	// See https://helm.sh/docs/helm/helm_upgrade/#options for details on
+	// --reset-then-reuse-values behavior.
+	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*release.Release, error)
 
 	// RunHelmUninstall uninstalls the Helm chart.
 	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error)
@@ -78,7 +88,9 @@ func NewHelmClient() HelmClient {
 
 // RunHelmInstall installs a Helm chart as a new release in the specified namespace.
 // It creates the namespace if it doesn't exist and optionally waits for the deployment to be ready.
-func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
+// The vals map should contain only user-supplied overrides; Helm merges them on top of
+// the chart's defaults during rendering.
+func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool) (*release.Release, error) {
 	installClient := helm.NewInstall(helmConf)
 	installClient.ReleaseName = releaseName
 	installClient.Namespace = namespace
@@ -86,19 +98,39 @@ func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmC
 	installClient.Timeout = installTimeout
 	installClient.Wait = wait
 
-	return installClient.Run(helmChart, helmChart.Values)
+	if vals == nil {
+		vals = map[string]any{}
+	}
+
+	return installClient.Run(helmChart, vals)
 }
 
 // RunHelmUpgrade upgrades an existing Helm release with a new chart version or configuration.
 // It recreates pods to ensure the new configuration is applied and optionally waits for the deployment to be ready.
-func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, releaseName, namespace string, wait bool) (*release.Release, error) {
+// When reuseValues is true, the upgrade uses ResetThenReuseValues semantics: Helm starts from the new chart's
+// defaults, overlays the user-supplied values stored on the previous release, and then overlays vals.
+// When reuseValues is false, only vals (merged over the new chart's defaults) are used; any user-supplied
+// values stored on the previous release are discarded. The vals map should contain only user-supplied
+// overrides; passing nil is equivalent to passing an empty map.
+//
+// See https://helm.sh/docs/helm/helm_upgrade/#options for details on --reset-then-reuse-values behavior.
+func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*release.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = namespace
 	upgradeClient.Wait = wait
 	upgradeClient.Timeout = upgradeTimeout
 	upgradeClient.Recreate = true
+	// ResetThenReuseValues is the desired default for Radius upgrades: pick up new chart
+	// defaults but preserve any user overrides previously stored on the release. When the
+	// caller opts out (e.g. via `rad upgrade kubernetes --reset-values`), we leave the
+	// flag at its zero value so Helm treats vals as the complete user-supplied tree.
+	upgradeClient.ResetThenReuseValues = reuseValues
 
-	return upgradeClient.Run(releaseName, helmChart, helmChart.Values)
+	if vals == nil {
+		vals = map[string]any{}
+	}
+
+	return upgradeClient.Run(releaseName, helmChart, vals)
 }
 
 // RunHelmUninstall removes a Helm release and its associated resources from the cluster.

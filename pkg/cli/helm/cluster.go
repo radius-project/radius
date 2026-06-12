@@ -32,11 +32,21 @@ import (
 type CLIClusterOptions struct {
 	Radius  ChartOptions
 	Contour ChartOptions
+
+	// ResetValues, when true, instructs `UpgradeRadius` to discard the user-supplied
+	// values stored on the previous Helm release and use only the current invocation's
+	// `--set` / `--set-file` overrides (merged over the new chart defaults). When false
+	// (the default), upgrade uses Helm's ResetThenReuseValues semantics so previously
+	// stored user overrides are preserved across upgrades.
+	ResetValues bool
 }
 
 type ClusterOptions struct {
 	Radius  RadiusChartOptions
 	Contour ContourChartOptions
+
+	// ResetValues mirrors CLIClusterOptions.ResetValues. See its documentation.
+	ResetValues bool
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -137,6 +147,8 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Contour.SetFileArgs = cliOptions.Contour.SetFileArgs
 	}
 
+	options.ResetValues = cliOptions.ResetValues
+
 	return options
 }
 
@@ -220,11 +232,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	helmAction := NewHelmAction(i.Helm)
 
 	// Install Radius
-	radiusHelmChart, radiusHelmConf, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
-	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions)
+	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
@@ -236,12 +248,12 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	// Install Contour
 	output.LogInfo("Installing Contour...")
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
 
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
+	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions, contourValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
@@ -335,16 +347,28 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 }
 
 // UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
+// By default it preserves the user-supplied values stored on the previous Helm release (ResetThenReuseValues
+// semantics): the upgrade starts from the new chart defaults, re-applies the previously stored user overrides,
+// and then overlays the current invocation's --set / --set-file values. Set ClusterOptions.ResetValues to true
+// to opt out and use only the current invocation's overrides.
+//
+// See the Helm upgrade documentation for details on ResetThenReuseValues behavior:
+// https://helm.sh/docs/helm/helm_upgrade/#options
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	helmAction := NewHelmAction(i.Helm)
 
+	// reuseValues is the inverse of the user-facing --reset-values flag: by default we
+	// reuse previously stored user overrides so settings like
+	// `global.azureWorkloadIdentity.enabled=true` don't silently revert on upgrade.
+	reuseValues := !clusterOptions.ResetValues
+
 	output.LogInfo("Upgrading Radius...")
-	radiusHelmChart, radiusHelmConf, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true)
+	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
@@ -362,11 +386,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	output.LogInfo("Upgrading Contour...")
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, contourValues, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false, reuseValues)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}
