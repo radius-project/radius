@@ -70,7 +70,7 @@ If you added a new page, link it from the nearest index — a section `README.md
 
 ### Doing this with an agent
 
-You can follow these steps manually, or ask an agent to draft the doc from a topic and a code reference. The [contributing-docs-updater](../../.github/skills/contributing-docs-updater/SKILL.md) skill already encodes this workflow; this document is the prose source of truth it links back to. Either way, a human reviews the draft before merge.
+You can follow these steps manually, or ask an agent to draft the doc from a topic and a code reference. The [contributing-docs-updater](../../.github/skills/contributing-docs-updater/SKILL.md) skill already encodes this workflow; this document is the prose source of truth it should link back to. Either way, a human reviews the draft before merge.
 
 ## Verification
 

@@ -53,7 +53,7 @@ After authoring, update exactly these live files (and no planning docs):
 | File | When to update |
 |---|---|
 | The primary contributing doc | Always — this is step 2. |
-| The capability index in [docs/contributing/README.md](./README.md) | Always — add a row mapping the capability to its primary doc (the index is built in Phase 3). |
+| The capability index in [docs/contributing/README.md](./README.md) | Once the capability index exists (Phase 3), add or update the row mapping the capability to its primary doc. |
 | `AGENTS.md` (repo root) | Only when the capability needs a new top-level link. |
 | Optional wrappers | Whichever you scaffolded in step 3. |
 
@@ -83,7 +83,7 @@ The change is complete when:
 - The capability has exactly one primary backing contributing doc.
 - Every wrapper links to that doc and stays within its file-size budget.
 - Wrapper and doc names match the [naming conventions](./contributing-agent-assets.md#naming-conventions).
-- A row for the capability exists in the capability index in [docs/contributing/README.md](./README.md).
+- Once the capability index exists (Phase 3), a row for the capability exists in the capability index in [docs/contributing/README.md](./README.md).
 - The change passes the [CI gates](./contributing-agent-assets.md#ci-gates) without manual cleanup — notably the link check and `cspell` (`make spellcheck`).
 - No edits were made to the planning docs.
 

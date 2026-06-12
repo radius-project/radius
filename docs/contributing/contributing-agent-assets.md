@@ -75,7 +75,7 @@ Skills and agents use a `radius-` prefix; prompts use a `radius.` prefix (matchi
 
 **The `<repo>` segment is optional.** Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (for example `radius-contrib-add-resource-type` in `resource-types-contrib/`). Repo short names: `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
 
-Existing assets keep their current names; no rename migration is planned. The skills currently in the repo are `architecture-documenter`, `contributing-docs-updater`, `radius-build-cli`, `radius-build-images`, `radius-code-review`, and `radius-install-custom`; the existing custom agent is `issue-investigator`. New skills and agents follow the `radius-` prefix going forward.
+Existing assets keep their current names; no rename migration is planned. New skills and agents follow the `radius-` prefix going forward. For the current set of skills and agents, browse [.github/skills/](../../.github/skills/) and [.github/agents/](../../.github/agents/).
 
 ## CI gates
 
@@ -216,7 +216,7 @@ The docs-drift code-review instructions and the scheduled drift workflow consult
 
 | Code glob | Backing doc |
 |---|---|
-| _(none yet — populated in Phase 3)_ | |
+| *(none yet — populated in Phase 3)* | |
 
 ## Verification
 
