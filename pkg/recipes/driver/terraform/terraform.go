@@ -458,6 +458,10 @@ func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn st
 		return "", fmt.Errorf("\"%s\" is not a valid ARN", arn)
 	}
 
+	// Terraform state does not guarantee that the ARN contains an account. S3
+	// bucket ARNs, for example, are globally unique and leave the account and
+	// region segments empty. Use the configured AWS provider scope as the source
+	// of truth for the account that owns this Terraform deployment.
 	scopeID, err := resources.ParseScope(scope)
 	if err != nil {
 		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment: %w", scope, err)
@@ -471,9 +475,16 @@ func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn st
 	partition := arnSegments[1]
 	region := arnSegments[3]
 	if region == "" {
+		// Radius AWS-plane resource IDs always include a region segment. AWS
+		// resources with no ARN region, such as S3 buckets, are represented under
+		// the synthetic "global" region.
 		region = "global"
 	}
 
+	// Keep Terraform-discovered resources in a Terraform-specific namespace
+	// instead of trying to infer a CloudControl type from the ARN. AWS ARN
+	// formats are service-specific and often omit the type token needed to build
+	// an AWS.<Service>/<Type> ID.
 	resourceName := terraformAWSResourceName(resource, arnSegments)
 	if resource.Type == "" || resourceName == "" {
 		return "", fmt.Errorf("terraform AWS resource type or resource name is empty")
