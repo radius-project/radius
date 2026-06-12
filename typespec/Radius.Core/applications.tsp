@@ -116,6 +116,15 @@ model ApplicationGraphOutputResource {
   @doc("The resource ID.")
   id: string;
 
+  @doc("The provider-native resource ID of the underlying resource.")
+  providerResourceId?: string;
+
+  @doc("The kind of provider-native resource ID.")
+  providerResourceIdKind?: string;
+
+  @doc("Additional provider-specific output resource properties.")
+  additionalProperties?: Record<string>;
+
   @doc("The resource type.")
   type: string;
 

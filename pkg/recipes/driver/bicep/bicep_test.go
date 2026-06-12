@@ -23,6 +23,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -264,10 +265,11 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 
 func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 	d := &bicepDriver{}
+	outputResourceID := "/planes/radius/local/resourcegroups/test-rg/providers/System.Resources/resources/outputResourceId"
 
-	resources := []*armresources.ResourceReference{
+	outputResources := []*armresources.ResourceReference{
 		{
-			ID: new("outputResourceId"),
+			ID: &outputResourceID,
 		},
 	}
 
@@ -287,7 +289,13 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		"value": value,
 	}
 	expectedResponse := &recipes.RecipeOutput{
-		Resources: []string{"testId1", "testId2", "outputResourceId"},
+		Resources: []string{"testId1", "testId2", outputResourceID},
+		OutputResources: []rpv1.OutputResource{
+			{
+				ID:            resources.MustParse(outputResourceID),
+				RadiusManaged: new(true),
+			},
+		},
 		Secrets: map[string]any{
 			"username":         "testUser",
 			"password":         "testPassword",
@@ -314,17 +322,18 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		},
 		PrevState: []string{},
 	}
-	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, response, resources)
+	actualResponse, err := d.prepareRecipeResponse(testcontext.New(t), opts.BaseOptions.Definition.TemplatePath, response, outputResources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 	d := &bicepDriver{}
+	outputResourceID := "/planes/radius/local/resourcegroups/test-rg/providers/System.Resources/resources/outputResourceId"
 
-	resources := []*armresources.ResourceReference{
+	outputResources := []*armresources.ResourceReference{
 		{
-			ID: new("outputResourceId"),
+			ID: &outputResourceID,
 		},
 	}
 
@@ -339,8 +348,14 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 		"value": value,
 	}
 	expectedResponse := &recipes.RecipeOutput{
-		Resources: []string{"testId1", "testId2", "outputResourceId"},
-		Secrets:   map[string]any{},
+		Resources: []string{"testId1", "testId2", outputResourceID},
+		OutputResources: []rpv1.OutputResource{
+			{
+				ID:            resources.MustParse(outputResourceID),
+				RadiusManaged: new(true),
+			},
+		},
+		Secrets: map[string]any{},
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
@@ -351,31 +366,106 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, resources)
+	actualResponse, err := d.prepareRecipeResponse(testcontext.New(t), "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, outputResources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	d := &bicepDriver{}
+	outputResourceID := "/planes/radius/local/resourcegroups/test-rg/providers/System.Resources/resources/outputResourceId"
 
-	resources := []*armresources.ResourceReference{
+	outputResources := []*armresources.ResourceReference{
 		{
-			ID: new("outputResourceId"),
+			ID: &outputResourceID,
 		},
 	}
 	response := map[string]any{}
 	expectedResponse := &recipes.RecipeOutput{
-		Resources: []string{"outputResourceId"},
+		Resources: []string{outputResourceID},
+		OutputResources: []rpv1.OutputResource{
+			{
+				ID:            resources.MustParse(outputResourceID),
+				RadiusManaged: new(true),
+			},
+		},
 		Status: &rpv1.RecipeStatus{
 			TemplateKind: recipes.TemplateKindBicep,
 			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, resources)
+	actualResponse, err := d.prepareRecipeResponse(testcontext.New(t), "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, outputResources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
+}
+
+func Test_Bicep_PrepareRecipeResponse_AWSResourceAddsProviderResourceID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	d := &bicepDriver{ResourceClient: client}
+	outputResourceID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+
+	outputResources := []*armresources.ResourceReference{
+		{
+			ID: &outputResourceID,
+		},
+	}
+
+	client.EXPECT().Get(gomock.Any(), outputResourceID).Return(generated.GenericResource{
+		Properties: map[string]any{
+			"Arn": "arn:aws:s3:::my-bucket",
+		},
+	}, nil)
+
+	actualResponse, err := d.prepareRecipeResponse(testcontext.New(t), "recipe", map[string]any{}, outputResources)
+	require.NoError(t, err)
+	require.Equal(t, []rpv1.OutputResource{
+		{
+			ID:                     resources.MustParse(outputResourceID),
+			RadiusManaged:          new(true),
+			ProviderResourceID:     "arn:aws:s3:::my-bucket",
+			ProviderResourceIDKind: rpv1.OutputResourceProviderResourceIDKindAWSARN,
+			AdditionalProperties: map[string]string{
+				"arn": "arn:aws:s3:::my-bucket",
+			},
+		},
+	}, actualResponse.OutputResources)
+}
+
+func Test_Bicep_PrepareRecipeResponse_ExplicitAWSResourceAddsProviderResourceID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	d := &bicepDriver{ResourceClient: client}
+	outputResourceID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+
+	response := map[string]any{
+		"result": map[string]any{
+			"value": map[string]any{
+				"resources": []any{outputResourceID},
+			},
+		},
+	}
+
+	client.EXPECT().Get(gomock.Any(), outputResourceID).Return(generated.GenericResource{
+		Properties: map[string]any{
+			"Arn": "arn:aws:s3:::my-bucket",
+		},
+	}, nil)
+
+	actualResponse, err := d.prepareRecipeResponse(testcontext.New(t), "recipe", response, nil)
+	require.NoError(t, err)
+	require.Equal(t, []rpv1.OutputResource{
+		{
+			ID:                     resources.MustParse(outputResourceID),
+			RadiusManaged:          new(true),
+			ProviderResourceID:     "arn:aws:s3:::my-bucket",
+			ProviderResourceIDKind: rpv1.OutputResourceProviderResourceIDKindAWSARN,
+			AdditionalProperties: map[string]string{
+				"arn": "arn:aws:s3:::my-bucket",
+			},
+		},
+	}, actualResponse.OutputResources)
 }
 
 func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient) {

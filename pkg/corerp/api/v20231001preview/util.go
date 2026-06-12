@@ -142,6 +142,18 @@ func toOutputResourcesDataModel(outputResources []rpv1.OutputResource) []*Output
 		if or.RadiusManaged != nil {
 			r.RadiusManaged = or.RadiusManaged
 		}
+		if or.ProviderResourceID != "" {
+			r.ProviderResourceID = new(or.ProviderResourceID)
+		}
+		if or.ProviderResourceIDKind != "" {
+			r.ProviderResourceIDKind = new(or.ProviderResourceIDKind)
+		}
+		if len(or.AdditionalProperties) > 0 {
+			r.AdditionalProperties = map[string]*string{}
+			for key, value := range or.AdditionalProperties {
+				r.AdditionalProperties[key] = new(value)
+			}
+		}
 
 		outResources = append(outResources, r)
 	}

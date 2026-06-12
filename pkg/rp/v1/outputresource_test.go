@@ -159,6 +159,64 @@ func TestGetGCOutputResources_ResourceDiffersByID(t *testing.T) {
 	require.Equal(t, before, diff)
 }
 
+func TestOutputResourceMatches_ProviderResourceID(t *testing.T) {
+	first := OutputResource{
+		ID:                     resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"),
+		ProviderResourceID:     "arn:aws:s3:::my-bucket",
+		ProviderResourceIDKind: OutputResourceProviderResourceIDKindAWSARN,
+	}
+	second := OutputResource{
+		ID:                     resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"),
+		ProviderResourceID:     "arn:aws:s3:::my-bucket",
+		ProviderResourceIDKind: OutputResourceProviderResourceIDKindAWSARN,
+	}
+
+	require.True(t, OutputResourceMatches(first, second))
+}
+
+func TestOutputResourceMatches_DifferentProviderResourceID(t *testing.T) {
+	id := resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket")
+	first := OutputResource{
+		ID:                     id,
+		ProviderResourceID:     "arn:aws:s3:::my-bucket",
+		ProviderResourceIDKind: OutputResourceProviderResourceIDKindAWSARN,
+	}
+	second := OutputResource{
+		ID:                     id,
+		ProviderResourceID:     "arn:aws:s3:::other-bucket",
+		ProviderResourceIDKind: OutputResourceProviderResourceIDKindAWSARN,
+	}
+
+	require.False(t, OutputResourceMatches(first, second))
+}
+
+func TestOutputResourceMatches_DifferentProviderResourceIDKind(t *testing.T) {
+	id := resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket")
+	first := OutputResource{
+		ID:                     id,
+		ProviderResourceID:     "shared-resource-id",
+		ProviderResourceIDKind: OutputResourceProviderResourceIDKindAWSARN,
+	}
+	second := OutputResource{
+		ID:                     id,
+		ProviderResourceID:     "shared-resource-id",
+		ProviderResourceIDKind: "otherKind",
+	}
+
+	require.False(t, OutputResourceMatches(first, second))
+}
+
+func TestOutputResourceMatches_FallsBackToID(t *testing.T) {
+	id := resources.MustParse("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket")
+	first := OutputResource{ID: id}
+	second := OutputResource{
+		ID:                 id,
+		ProviderResourceID: "arn:aws:s3:::my-bucket",
+	}
+
+	require.True(t, OutputResourceMatches(first, second))
+}
+
 func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 	after := []OutputResource{}
 	before := []OutputResource{}

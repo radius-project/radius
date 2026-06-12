@@ -72,8 +72,11 @@ func (a *ApplicationGraphConnection) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ApplicationGraphOutputResource.
 func (a ApplicationGraphOutputResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "additionalProperties", a.AdditionalProperties)
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "name", a.Name)
+	populate(objectMap, "providerResourceId", a.ProviderResourceID)
+	populate(objectMap, "providerResourceIdKind", a.ProviderResourceIDKind)
 	populate(objectMap, "type", a.Type)
 	return json.Marshal(objectMap)
 }
@@ -87,11 +90,20 @@ func (a *ApplicationGraphOutputResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "additionalProperties":
+			err = unpopulate(val, "AdditionalProperties", &a.AdditionalProperties)
+			delete(rawMsg, key)
 		case "id":
 			err = unpopulate(val, "ID", &a.ID)
 			delete(rawMsg, key)
 		case "name":
 			err = unpopulate(val, "Name", &a.Name)
+			delete(rawMsg, key)
+		case "providerResourceId":
+			err = unpopulate(val, "ProviderResourceID", &a.ProviderResourceID)
+			delete(rawMsg, key)
+		case "providerResourceIdKind":
+			err = unpopulate(val, "ProviderResourceIDKind", &a.ProviderResourceIDKind)
 			delete(rawMsg, key)
 		case "type":
 			err = unpopulate(val, "Type", &a.Type)
@@ -2552,8 +2564,11 @@ func (o *OperationListResult) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type OutputResource.
 func (o OutputResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "additionalProperties", o.AdditionalProperties)
 	populate(objectMap, "id", o.ID)
 	populate(objectMap, "localId", o.LocalID)
+	populate(objectMap, "providerResourceId", o.ProviderResourceID)
+	populate(objectMap, "providerResourceIdKind", o.ProviderResourceIDKind)
 	populate(objectMap, "radiusManaged", o.RadiusManaged)
 	return json.Marshal(objectMap)
 }
@@ -2567,11 +2582,20 @@ func (o *OutputResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "additionalProperties":
+			err = unpopulate(val, "AdditionalProperties", &o.AdditionalProperties)
+			delete(rawMsg, key)
 		case "id":
 			err = unpopulate(val, "ID", &o.ID)
 			delete(rawMsg, key)
 		case "localId":
 			err = unpopulate(val, "LocalID", &o.LocalID)
+			delete(rawMsg, key)
+		case "providerResourceId":
+			err = unpopulate(val, "ProviderResourceID", &o.ProviderResourceID)
+			delete(rawMsg, key)
+		case "providerResourceIdKind":
+			err = unpopulate(val, "ProviderResourceIDKind", &o.ProviderResourceIDKind)
 			delete(rawMsg, key)
 		case "radiusManaged":
 			err = unpopulate(val, "RadiusManaged", &o.RadiusManaged)

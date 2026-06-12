@@ -28,6 +28,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+const (
+	// OutputResourceProviderResourceIDProperty is the API field name for the provider-native resource ID.
+	// Radius uses this to compare output resources that have different Radius IDs but reference the same provider resource.
+	OutputResourceProviderResourceIDProperty = "providerResourceId"
+
+	// OutputResourceProviderResourceIDKindProperty is the API field name for the provider-native resource ID kind.
+	OutputResourceProviderResourceIDKindProperty = "providerResourceIdKind"
+
+	// OutputResourceProviderResourceIDKindAWSARN is the providerResourceIdKind value for AWS ARNs.
+	OutputResourceProviderResourceIDKindAWSARN = "awsArn"
+)
+
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	// LocalID is a logical identifier scoped to the owning Radius resource. This is only needed or used
@@ -40,6 +52,12 @@ type OutputResource struct {
 
 	// RadiusManaged determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool `json:"radiusManaged"`
+
+	// ProviderResourceID is the provider-native ID of the underlying resource.
+	ProviderResourceID string `json:"providerResourceId,omitempty"`
+
+	// ProviderResourceIDKind identifies the provider-native ID format.
+	ProviderResourceIDKind string `json:"providerResourceIdKind,omitempty"`
 
 	AdditionalProperties map[string]string `json:"additionalProperties,omitempty"`
 
@@ -170,7 +188,7 @@ func GetGCOutputResources(after []OutputResource, before []OutputResource) []Out
 	for _, beforeResource := range before {
 		found := false
 		for _, afterResource := range after {
-			if resources.IDEquals(beforeResource.ID, afterResource.ID) {
+			if OutputResourceMatches(beforeResource, afterResource) {
 				found = true
 				break
 			}
@@ -182,4 +200,21 @@ func GetGCOutputResources(after []OutputResource, before []OutputResource) []Out
 	}
 
 	return diff
+}
+
+// OutputResourceMatches compares output resources by provider resource ID when both resources expose one, otherwise by ID.
+func OutputResourceMatches(x OutputResource, y OutputResource) bool {
+	xProviderResourceID := x.ProviderResourceID
+	yProviderResourceID := y.ProviderResourceID
+	if xProviderResourceID != "" && yProviderResourceID != "" {
+		xProviderResourceIDKind := x.ProviderResourceIDKind
+		yProviderResourceIDKind := y.ProviderResourceIDKind
+		if xProviderResourceIDKind != "" && yProviderResourceIDKind != "" && xProviderResourceIDKind != yProviderResourceIDKind {
+			return false
+		}
+
+		return xProviderResourceID == yProviderResourceID
+	}
+
+	return resources.IDEquals(x.ID, y.ID)
 }

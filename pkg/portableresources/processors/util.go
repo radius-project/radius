@@ -18,6 +18,7 @@ package processors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -50,7 +51,22 @@ func GetOutputResourcesFromResourcesField(field []*portableresources.ResourceRef
 // returning an error if any of the resources are invalid.
 func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputResource, error) {
 	results := []rpv1.OutputResource{}
+	resourceIDs := map[string]bool{}
+
+	for _, resource := range output.OutputResources {
+		if resource.ID.IsEmpty() {
+			continue
+		}
+
+		results = append(results, resource)
+		resourceIDs[strings.ToLower(resource.ID.String())] = true
+	}
+
 	for _, resource := range output.Resources {
+		if resourceIDs[strings.ToLower(resource)] {
+			continue
+		}
+
 		id, err := resources.ParseResource(resource)
 		if err != nil {
 			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q returned by recipe is invalid", resource)}

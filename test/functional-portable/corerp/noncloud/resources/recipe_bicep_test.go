@@ -266,7 +266,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 					},
 				}
 				actual := resource.Properties["status"].(map[string]any)["outputResources"].([]any)
-				require.Equal(t, expected, actual)
+				require.ElementsMatch(t, expected, actual)
 			},
 		},
 	})

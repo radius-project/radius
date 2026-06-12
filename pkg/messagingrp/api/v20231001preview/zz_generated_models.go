@@ -188,6 +188,9 @@ type OperationListResult struct {
 
 // OutputResource - Properties of an output resource.
 type OutputResource struct {
+	// Additional provider-specific output resource properties.
+	AdditionalProperties map[string]*string
+
 	// The UCP resource ID of the underlying resource.
 	ID *string
 
@@ -195,6 +198,12 @@ type OutputResource struct {
 	// relationship. LocalIDs do not have any particular format or meaning beyond
 	// being compared to determine dependency relationships.
 	LocalID *string
+
+	// The provider-native resource ID of the underlying resource.
+	ProviderResourceID *string
+
+	// The kind of provider-native resource ID.
+	ProviderResourceIDKind *string
 
 	// Determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool

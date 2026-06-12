@@ -22,6 +22,7 @@ import (
 	reflect "reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -168,7 +169,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -373,7 +374,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(ctx context.Context, templatePath string, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -401,12 +402,93 @@ func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, re
 		TemplatePath: templatePath,
 	}
 
+	explicitResources := append([]string{}, recipeResponse.Resources...)
+
 	// process the 'resources' created by the template
 	for _, id := range resources {
 		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
+		outputResource, err := d.outputResourceFromID(ctx, *id.ID)
+		if err != nil {
+			return &recipes.RecipeOutput{}, err
+		}
+		recipeResponse.OutputResources = append(recipeResponse.OutputResources, outputResource)
+	}
+
+	for _, resourceID := range explicitResources {
+		outputResource, ok, err := d.enrichExplicitOutputResource(ctx, resourceID)
+		if err != nil {
+			return &recipes.RecipeOutput{}, err
+		}
+		if ok {
+			recipeResponse.OutputResources = append(recipeResponse.OutputResources, outputResource)
+		}
 	}
 
 	return recipeResponse, nil
+}
+
+func (d *bicepDriver) enrichExplicitOutputResource(ctx context.Context, resourceID string) (rpv1.OutputResource, bool, error) {
+	id, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return rpv1.OutputResource{}, false, nil
+	}
+	if !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "aws/") {
+		return rpv1.OutputResource{}, false, nil
+	}
+
+	outputResource, err := d.outputResourceFromID(ctx, resourceID)
+	if err != nil {
+		return rpv1.OutputResource{}, false, err
+	}
+
+	return outputResource, true, nil
+}
+
+func (d *bicepDriver) outputResourceFromID(ctx context.Context, resourceID string) (rpv1.OutputResource, error) {
+	id, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return rpv1.OutputResource{}, err
+	}
+
+	outputResource := rpv1.OutputResource{
+		ID:            id,
+		RadiusManaged: new(true),
+	}
+
+	if !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "aws/") {
+		return outputResource, nil
+	}
+	if d.ResourceClient == nil {
+		return outputResource, nil
+	}
+
+	resource, err := d.ResourceClient.Get(ctx, resourceID)
+	if err != nil {
+		return outputResource, nil
+	}
+
+	arn := findAWSARN(resource.Properties)
+	if arn == "" {
+		return outputResource, nil
+	}
+
+	outputResource.ProviderResourceID = arn
+	outputResource.ProviderResourceIDKind = rpv1.OutputResourceProviderResourceIDKindAWSARN
+	outputResource.AdditionalProperties = map[string]string{"arn": arn}
+
+	return outputResource, nil
+}
+
+func findAWSARN(properties map[string]any) string {
+	for key, value := range properties {
+		if strings.EqualFold(key, "arn") {
+			if arn, ok := value.(string); ok {
+				return arn
+			}
+		}
+	}
+
+	return ""
 }
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
