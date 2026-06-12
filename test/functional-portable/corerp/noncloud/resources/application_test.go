@@ -18,7 +18,9 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
@@ -29,6 +31,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -104,9 +107,17 @@ func Test_ApplicationGraph(t *testing.T) {
 				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple1", map[string]any{}, nil)
 				require.NoError(t, err)
 
-				// assert that the graph is as expected
+				// assert that the graph is as expected. The fixture was authored against the
+				// CI cluster's resource group name `kind-radius`; rewrite it on read so the
+				// test passes regardless of which resource group the local environment uses.
 				expected := []*v20231001preview.ApplicationGraphResource{}
-				testutil.MustUnmarshalFromFile("corerp-resources-application-graph-out.json", &expected)
+				scope, err := resources.ParseScope(appManagementClient.RootScope)
+				require.NoError(t, err)
+				rg := scope.FindScope("resourcegroups")
+				require.NotEmpty(t, rg, "expected a resource group in RootScope %q", appManagementClient.RootScope)
+				rawFixture := testutil.ReadFixture("corerp-resources-application-graph-out.json")
+				rawFixture = []byte(strings.ReplaceAll(string(rawFixture), "/resourcegroups/kind-radius/", "/resourcegroups/"+rg+"/"))
+				require.NoError(t, json.Unmarshal(rawFixture, &expected))
 
 				// For easier comparison, we sort the resources by name.
 				sort.Slice(res.Resources, func(i, j int) bool {

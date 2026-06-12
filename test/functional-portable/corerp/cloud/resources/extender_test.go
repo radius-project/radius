@@ -32,10 +32,12 @@ import (
 func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
-	// Error the test if the required environment variables are not set
-	// for running locally set the environment variables
+	// Skip the test if the required environment variables are not set
+	// (in CI these are provided alongside AWS credentials; locally the
+	// AWS feature gate via RequiredFeatures will also skip the test when
+	// AWS credentials are not registered with UCP).
 	if awsAccountID == "" || awsRegion == "" {
-		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
+		t.Skip("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
 	}
 
 	template := "testdata/corerp-resources-extender-aws-logs-recipe.bicep"

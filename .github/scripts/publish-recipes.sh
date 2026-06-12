@@ -65,5 +65,9 @@ for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
 
     echo "Publishing $RECIPE to $PUBLISH_REF"
     echo "- $PUBLISH_REF" >>$GITHUB_STEP_SUMMARY
-    rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
+    PUBLISH_FLAGS=()
+    if [[ "${PLAIN_HTTP:-false}" == "true" ]]; then
+        PUBLISH_FLAGS+=(--plain-http)
+    fi
+    rad bicep publish --file "$RECIPE" --target "br:$PUBLISH_REF" "${PUBLISH_FLAGS[@]}"
 done

@@ -137,6 +137,10 @@ func Test_Flux_Complex(t *testing.T) {
 
 // testFluxIntegration is a helper function that runs a test for the integration of Radius and Flux.
 func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, namespaces []string) {
+	if os.Getenv("RADIUS_SKIP_FLUX_TESTS") != "" {
+		t.Skip("Skipping Flux test: RADIUS_SKIP_FLUX_TESTS is set (Radius controller cannot resolve in-cluster Flux source-controller URL when running as a host OS process).")
+	}
+
 	ctx := testcontext.New(t)
 	opts := rp.NewRPTestOptions(t)
 
