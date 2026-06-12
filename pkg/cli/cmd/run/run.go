@@ -50,7 +50,7 @@ const (
 	// configured using the extensible Radius.Core/environments resource type. The log streaming and
 	// port-forwarding features of `rad run` are inherently Kubernetes-specific and are not supported for
 	// extensible compute runtimes.
-	extensibleComputeNotSupportedMessage = "The `rad run` command is not supported for compute runtimes configured using the extensible `Radius.Core/environments` and is planned for deprecation in a future release. Please manually set up port forwarding and log streaming based on the specific compute runtime or platform you have configured in your Environment."
+	extensibleComputeNotSupportedMessage = "The `rad run` command is not supported for compute runtimes configured using the extensible resource type `Radius.Core/environments` and is planned for deprecation in a future release.\nPlease manually set up port forwarding and log streaming based on the specific compute runtime or platform you have configured in your Environment."
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -154,7 +154,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// successfully instead of failing.
 	if r.usesExtensibleEnvironment() {
 		r.Output.LogInfo("")
-		r.Output.LogInfo(extensibleComputeNotSupportedMessage)
+		r.Output.LogInfo("%s", extensibleComputeNotSupportedMessage)
 		return nil
 	}
 

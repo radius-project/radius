@@ -834,7 +834,8 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 			Format: "",
 		},
 		output.LogOutput{
-			Format: extensibleComputeNotSupportedMessage,
+			Format: "%s",
+			Params: []any{extensibleComputeNotSupportedMessage},
 		},
 	}
 	require.Equal(t, expected, outputSink.Writes)
@@ -900,7 +901,8 @@ func Test_Run_ExtensibleEnvironment_PreExisting(t *testing.T) {
 			Format: "",
 		},
 		output.LogOutput{
-			Format: extensibleComputeNotSupportedMessage,
+			Format: "%s",
+			Params: []any{extensibleComputeNotSupportedMessage},
 		},
 	}
 	require.Equal(t, expected, outputSink.Writes)
