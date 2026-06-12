@@ -542,7 +542,9 @@ export function generateTypes(
     // Collision check uses the precomputed sibling-name set rather than
     // `target` because expansion happens mid-loop in the nested path: a child
     // that collides with a sibling emitted *later* would not yet be present in
-    // `target`. The set includes every sibling, present or pending.
+    // `target`. The set includes every sibling, present or pending, and is
+    // updated below as we hoist children so a subsequent flattened wrapper
+    // cannot silently overwrite an already-hoisted alias.
     for (const c of candidates) {
       if (siblingNames.has(c.name)) {
         logWarning(
@@ -565,6 +567,7 @@ export function generateTypes(
         flagsForFlattenedChild(childFlags),
         description
       );
+      siblingNames.add(c.name);
     }
   }
 
