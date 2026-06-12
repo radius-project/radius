@@ -180,10 +180,6 @@ Backing doc: [<doc title>](../../docs/contributing/<path>.md)
 agent: agent
 name: radius.<action>
 description: <One line describing the shortcut.>
-tools:
-  - edit
-  - search
-  - runCommands
 ---
 
 # <Prompt title>
