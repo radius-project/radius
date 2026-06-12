@@ -194,13 +194,14 @@ jobs:
       # still generated and uploaded as artifacts above for inspection.
       - name: Sync reference docs to docs repository
         if: env.PUBLISH_DOCS == 'true'
-        uses: raven-actions/repo-files-sync@f2ad1a963f28c083517e8e3982f3203416119a0f # v0.1.0-rc.10
+        uses: raven-actions/repo-files-sync@a4c9248f592fa5c5d19d70f630b7bd0d4772ab67 # v0.1.0-rc.12
         with:
           # The App installation token authenticates as <app-slug>[bot]. Passing it as
-          # GH_INSTALLATION_TOKEN makes repo-files-sync create verified commits through
+          # GH_TOKEN makes repo-files-sync create verified commits through
           # the GitHub API and use the x-access-token git transport.
-          GH_INSTALLATION_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           OVERWRITE_EXISTING_PR: true
+          REBASE: true
           BRANCH_PREFIX: reference-docs
           # Installation tokens cannot resolve the committer via the API, so the bot
           # identity is supplied explicitly from the bot-details outputs.
