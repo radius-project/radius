@@ -18,6 +18,8 @@ change-safety guidance.
 - [ucp.md](ucp.md) explains how UCP routes and adapts requests.
 - [dynamic-rp.md](dynamic-rp.md) explains the generic resource provider used for
   authoring and handling Radius resource types.
+- [extensibility.md](extensibility.md) explains how resource types and recipes
+  are registered and how they are invoked during deployment.
 - [deployment-engine.md](deployment-engine.md) explains the deployment engine
   that processes Bicep/ARM deployments.
 - [controller.md](controller.md) explains the Kubernetes controller process and
@@ -43,12 +45,13 @@ If you are new to the codebase, read these in order:
 2. [shared-runtime-and-armrpc.md](shared-runtime-and-armrpc.md)
 3. [ucp.md](ucp.md)
 4. [dynamic-rp.md](dynamic-rp.md)
-5. [deployment-engine.md](deployment-engine.md)
-6. [controller.md](controller.md)
-7. [rad-cli.md](rad-cli.md)
-8. [state-persistence.md](state-persistence.md)
-9. [credentials.md](credentials.md)
-10. [application-graph.md](application-graph.md)
+5. [extensibility.md](extensibility.md)
+6. [deployment-engine.md](deployment-engine.md)
+7. [controller.md](controller.md)
+8. [rad-cli.md](rad-cli.md)
+9. [state-persistence.md](state-persistence.md)
+10. [credentials.md](credentials.md)
+11. [application-graph.md](application-graph.md)
 
 ## Related Material
 
