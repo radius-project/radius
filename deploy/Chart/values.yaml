@@ -129,6 +129,34 @@ dynamicrp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  resources:
+    requests:
+      memory: "160Mi"
+    limits:
+      memory: "500Mi"
+  # buildkit configures an in-Pod rootless BuildKit sidecar that
+  # backs the Radius.Compute/containerImages resource type. Opt-in:
+  # disabled by default. No host Docker socket; no privileged containers.
+  buildkit:
+    # Opt in to enable Radius.Compute/containerImages. When enabled,
+    # the dynamic-rp Pod gets a rootless BuildKit sidecar that requires
+    # PSA "privileged" on radius-system (the sidecar uses Unconfined
+    # seccomp + AppArmor, which PSA "baseline" and "restricted" forbid).
+    # Default install (this disabled) is PSA-baseline-compatible. See
+    # deploy/Chart/PSA-NOTES.md for details on the PSA tradeoff and
+    # operator guidance.
+    enabled: false
+    # Pinned rootless BuildKit image.
+    image: "moby/buildkit:v0.13.2-rootless"
+    # Default limits suit small/medium image builds; raise for large
+    # contexts or memory-heavy compilations.
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
 
 rp:
   image: applications-rp
