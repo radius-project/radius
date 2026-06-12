@@ -878,7 +878,7 @@ func Test_RadiusCoreEnv(t *testing.T) {
 		err = cli.GroupCreate(ctx, "test-group")
 		require.NoError(t, err)
 
-		_, err = cli.EnvironmentCreatePreview(ctx, "env-test-update", "test-group")
+		_, err = cli.EnvironmentCreatePreview(ctx, "env-test-update", "test-group", "")
 		require.NoError(t, err)
 
 		output, err := cli.EnvironmentListPreview(ctx, "test-group")
