@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,6 +51,9 @@ model ApplicationProperties {
   @doc("The status of the asynchronous operation.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
+
+  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations.")
+  codeReference?: string;
 
   @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment: string;
@@ -109,6 +112,9 @@ model ApplicationGraphResource {
 
   @doc("Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.")
   diffHash?: string;
+
+  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations.")
+  codeReference?: string;
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")
