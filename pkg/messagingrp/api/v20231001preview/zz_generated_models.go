@@ -218,6 +218,10 @@ type RabbitMQQueueProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// The hostname of the RabbitMQ instance
 	Host *string
 

@@ -98,6 +98,7 @@ func (d DaprConfigurationStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "auth", d.Auth)
+	populate(objectMap, "codeReference", d.CodeReference)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
@@ -125,6 +126,9 @@ func (d *DaprConfigurationStoreProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "auth":
 			err = unpopulate(val, "Auth", &d.Auth)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &d.CodeReference)
 			delete(rawMsg, key)
 		case "componentName":
 			err = unpopulate(val, "ComponentName", &d.ComponentName)
@@ -294,6 +298,7 @@ func (d DaprPubSubBrokerProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "auth", d.Auth)
+	populate(objectMap, "codeReference", d.CodeReference)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
@@ -321,6 +326,9 @@ func (d *DaprPubSubBrokerProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "auth":
 			err = unpopulate(val, "Auth", &d.Auth)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &d.CodeReference)
 			delete(rawMsg, key)
 		case "componentName":
 			err = unpopulate(val, "ComponentName", &d.ComponentName)
@@ -516,6 +524,7 @@ func (d *DaprResourceAuth) UnmarshalJSON(data []byte) error {
 func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
+	populate(objectMap, "codeReference", d.CodeReference)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
@@ -539,6 +548,9 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &d.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &d.CodeReference)
 			delete(rawMsg, key)
 		case "componentName":
 			err = unpopulate(val, "ComponentName", &d.ComponentName)
@@ -705,6 +717,7 @@ func (d DaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "auth", d.Auth)
+	populate(objectMap, "codeReference", d.CodeReference)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "metadata", d.Metadata)
@@ -732,6 +745,9 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "auth":
 			err = unpopulate(val, "Auth", &d.Auth)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &d.CodeReference)
 			delete(rawMsg, key)
 		case "componentName":
 			err = unpopulate(val, "ComponentName", &d.ComponentName)

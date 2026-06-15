@@ -1337,6 +1337,10 @@
         "diffHash": {
           "type": "string",
           "description": "Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'."
+        },
+        "codeReference": {
+          "type": "string",
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
         }
       },
       "required": [
@@ -1375,6 +1379,10 @@
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the asynchronous operation.",
           "readOnly": true
+        },
+        "codeReference": {
+          "type": "string",
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
         },
         "environment": {
           "type": "string",

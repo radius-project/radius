@@ -63,6 +63,13 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
+      "codeReference": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+      },
       "status": {
         "type": {
           "$ref": "#/13"
@@ -573,6 +580,13 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
+      "codeReference": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+      },
       "status": {
         "type": {
           "$ref": "#/13"
@@ -951,6 +965,13 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
+      "codeReference": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+      },
       "status": {
         "type": {
           "$ref": "#/13"
@@ -1181,6 +1202,13 @@
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "codeReference": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
       },
       "status": {
         "type": {
@@ -1453,6 +1481,13 @@
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
+      "codeReference": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+      },
       "status": {
         "type": {
           "$ref": "#/13"
@@ -1676,6 +1711,13 @@
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "codeReference": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
       },
       "status": {
         "type": {

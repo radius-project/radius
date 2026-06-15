@@ -107,6 +107,7 @@ func (a *ApplicationGraphOutputResource) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ApplicationGraphResource.
 func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "codeReference", a.CodeReference)
 	populate(objectMap, "connections", a.Connections)
 	populate(objectMap, "diffHash", a.DiffHash)
 	populate(objectMap, "id", a.ID)
@@ -126,6 +127,9 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &a.CodeReference)
+			delete(rawMsg, key)
 		case "connections":
 			err = unpopulate(val, "Connections", &a.Connections)
 			delete(rawMsg, key)
@@ -448,6 +452,7 @@ func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", a.Application)
 	populate(objectMap, "certificates", a.Certificates)
+	populate(objectMap, "codeReference", a.CodeReference)
 	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "keys", a.Keys)
 	objectMap["kind"] = "azure.com.keyvault"
@@ -472,6 +477,9 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "certificates":
 			err = unpopulate(val, "Certificates", &a.Certificates)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &a.CodeReference)
 			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &a.Environment)
@@ -799,6 +807,7 @@ func (c *ContainerPortProperties) UnmarshalJSON(data []byte) error {
 func (c ContainerProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", c.Application)
+	populate(objectMap, "codeReference", c.CodeReference)
 	populate(objectMap, "connections", c.Connections)
 	populate(objectMap, "container", c.Container)
 	populate(objectMap, "environment", c.Environment)
@@ -824,6 +833,9 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &c.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &c.CodeReference)
 			delete(rawMsg, key)
 		case "connections":
 			err = unpopulate(val, "Connections", &c.Connections)
@@ -1501,6 +1513,7 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", e.Application)
+	populate(objectMap, "codeReference", e.CodeReference)
 	populate(objectMap, "environment", e.Environment)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
 	populate(objectMap, "recipe", e.Recipe)
@@ -1526,6 +1539,9 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &e.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &e.CodeReference)
 			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &e.Environment)
@@ -1750,6 +1766,7 @@ func (g *GatewayHostname) UnmarshalJSON(data []byte) error {
 func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", g.Application)
+	populate(objectMap, "codeReference", g.CodeReference)
 	populate(objectMap, "environment", g.Environment)
 	populate(objectMap, "hostname", g.Hostname)
 	populate(objectMap, "internal", g.Internal)
@@ -1772,6 +1789,9 @@ func (g *GatewayProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &g.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &g.CodeReference)
 			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &g.Environment)
@@ -3255,6 +3275,7 @@ func (s *SecretStoreListSecretsResult) UnmarshalJSON(data []byte) error {
 func (s SecretStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", s.Application)
+	populate(objectMap, "codeReference", s.CodeReference)
 	populate(objectMap, "data", s.Data)
 	populate(objectMap, "environment", s.Environment)
 	populate(objectMap, "provisioningState", s.ProvisioningState)
@@ -3275,6 +3296,9 @@ func (s *SecretStoreProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &s.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &s.CodeReference)
 			delete(rawMsg, key)
 		case "data":
 			err = unpopulate(val, "Data", &s.Data)
@@ -3739,6 +3763,7 @@ func (v *Volume) UnmarshalJSON(data []byte) error {
 func (v VolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", v.Application)
+	populate(objectMap, "codeReference", v.CodeReference)
 	populate(objectMap, "environment", v.Environment)
 	objectMap["kind"] = v.Kind
 	populate(objectMap, "provisioningState", v.ProvisioningState)
@@ -3757,6 +3782,9 @@ func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &v.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &v.CodeReference)
 			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &v.Environment)

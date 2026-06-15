@@ -342,6 +342,7 @@ func (m *MongoDatabaseListSecretsResult) UnmarshalJSON(data []byte) error {
 func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", m.Application)
+	populate(objectMap, "codeReference", m.CodeReference)
 	populate(objectMap, "database", m.Database)
 	populate(objectMap, "environment", m.Environment)
 	populate(objectMap, "host", m.Host)
@@ -367,6 +368,9 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &m.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &m.CodeReference)
 			delete(rawMsg, key)
 		case "database":
 			err = unpopulate(val, "Database", &m.Database)
@@ -818,6 +822,7 @@ func (r *RedisCacheListSecretsResult) UnmarshalJSON(data []byte) error {
 func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", r.Application)
+	populate(objectMap, "codeReference", r.CodeReference)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "port", r.Port)
@@ -843,6 +848,9 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &r.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &r.CodeReference)
 			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &r.Environment)
@@ -1181,6 +1189,7 @@ func (s *SQLDatabaseListSecretsResult) UnmarshalJSON(data []byte) error {
 func (s SQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", s.Application)
+	populate(objectMap, "codeReference", s.CodeReference)
 	populate(objectMap, "database", s.Database)
 	populate(objectMap, "environment", s.Environment)
 	populate(objectMap, "port", s.Port)
@@ -1206,6 +1215,9 @@ func (s *SQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &s.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &s.CodeReference)
 			delete(rawMsg, key)
 		case "database":
 			err = unpopulate(val, "Database", &s.Database)

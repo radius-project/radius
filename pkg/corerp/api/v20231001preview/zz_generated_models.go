@@ -54,6 +54,10 @@ type ApplicationGraphResource struct {
 	// REQUIRED; The resource type.
 	Type *string
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify
 	// resources as added, removed, modified, or unchanged across graphs. Format:
 	// 'sha256:{hex}'.
@@ -192,6 +196,10 @@ type AzureKeyVaultVolumeProperties struct {
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]*CertificateObjectProperties
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
@@ -212,6 +220,7 @@ type AzureKeyVaultVolumeProperties struct {
 func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties {
 	return &VolumeProperties{
 		Application:       a.Application,
+		CodeReference:     a.CodeReference,
 		Environment:       a.Environment,
 		Kind:              a.Kind,
 		ProvisioningState: a.ProvisioningState,
@@ -360,6 +369,10 @@ type ContainerProperties struct {
 
 	// REQUIRED; Definition of a container.
 	Container *Container
+
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
 
 	// Specifies a connection to another resource.
 	Connections map[string]*ConnectionProperties
@@ -671,6 +684,10 @@ type ExtenderProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
 	Recipe *Recipe
 
@@ -765,6 +782,10 @@ type GatewayProperties struct {
 
 	// REQUIRED; Routes attached to this Gateway
 	Routes []*GatewayRoute
+
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
 
 	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
@@ -1365,6 +1386,10 @@ type SecretStoreProperties struct {
 	// Fully qualified resource ID for the application
 	Application *string
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
@@ -1585,6 +1610,10 @@ type VolumeProperties struct {
 
 	// REQUIRED; Discriminator property for VolumeProperties.
 	Kind *string
+
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
 
 	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string

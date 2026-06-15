@@ -154,6 +154,10 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// Database name of the target Mongo database
 	Database *string
 
@@ -349,6 +353,10 @@ type RedisCacheProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
+
 	// The host name of the target Redis cache
 	Host *string
 
@@ -492,6 +500,10 @@ type SQLDatabaseProperties struct {
 
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
+
+	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
+	// Set by tooling such as 'rad app graph' for visualizations.
+	CodeReference *string
 
 	// The name of the Sql database.
 	Database *string

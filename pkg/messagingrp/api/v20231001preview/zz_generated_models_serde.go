@@ -490,6 +490,7 @@ func (r *RabbitMQListSecretsResult) UnmarshalJSON(data []byte) error {
 func (r RabbitMQQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "application", r.Application)
+	populate(objectMap, "codeReference", r.CodeReference)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "port", r.Port)
@@ -517,6 +518,9 @@ func (r *RabbitMQQueueProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 			err = unpopulate(val, "Application", &r.Application)
+			delete(rawMsg, key)
+		case "codeReference":
+			err = unpopulate(val, "CodeReference", &r.CodeReference)
 			delete(rawMsg, key)
 		case "environment":
 			err = unpopulate(val, "Environment", &r.Environment)
