@@ -65,6 +65,80 @@
         }
       }
     },
+    "TestType2": {
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TestType2Properties",
+          "description": "The resource properties (polymorphic; cannot be flattened).",
+          "x-ms-client-flatten": true
+        }
+      },
+      "type": "object",
+      "description": "Resource exercising the fallback path for polymorphic flatten."
+    },
+    "TestType2Properties": {
+      "type": "object",
+      "description": "Polymorphic properties body.",
+      "discriminator": "kind",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The polymorphic discriminator."
+        }
+      }
+    },
+    "TestType2VariantA": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TestType2Properties"
+        }
+      ],
+      "x-ms-discriminator-value": "VariantA",
+      "properties": {
+        "valueA": {
+          "type": "string",
+          "description": "Value for variant A."
+        }
+      },
+      "type": "object",
+      "description": "Variant A of TestType2."
+    },
+    "TestType3": {
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TestType3Properties",
+          "description": "Properties whose flattened child collides with the resource name.",
+          "x-ms-client-flatten": true
+        }
+      },
+      "type": "object",
+      "description": "Resource exercising the fallback path for name-collision flatten."
+    },
+    "TestType3Properties": {
+      "type": "object",
+      "description": "Properties bag containing a 'name' child which would collide.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Conflicts with the standardized resource 'name' property."
+        },
+        "extra": {
+          "type": "string",
+          "description": "A non-conflicting sibling."
+        }
+      }
+    },
     "FoosResponse": {
       "properties": {
         "someString": {
@@ -277,6 +351,82 @@
             "required": true,
             "type": "string",
             "description": "The testType1 resource name."
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Test.Rp1/testType2/{typeName}": {
+      "put": {
+        "summary": "Create or update a testType2 resource",
+        "description": "Create or update a testType2 resource",
+        "operationId": "TestType2_CreateOrUpdate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": { "$ref": "#/definitions/TestType2" }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The testType2 resource name."
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/TestType2" },
+            "description": "The request parameters"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ]
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Test.Rp1/testType3/{typeName}": {
+      "put": {
+        "summary": "Create or update a testType3 resource",
+        "description": "Create or update a testType3 resource",
+        "operationId": "TestType3_CreateOrUpdate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": { "$ref": "#/definitions/TestType3" }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "name": "typeName",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "The testType3 resource name."
+          },
+          {
+            "name": "parameters",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/TestType3" },
+            "description": "The request parameters"
           },
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"

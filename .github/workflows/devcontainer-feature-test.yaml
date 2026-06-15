@@ -37,8 +37,10 @@ jobs:
         run: npm install -g @devcontainers/cli
 
       - name: Generating tests for Radius CLI (default) against '${{ matrix.baseImage }}'
-        run: devcontainer features test --skip-scenarios -f radcli -i ${{ matrix.baseImage }} .
+        run: devcontainer features test --skip-scenarios -f radcli -i "${BASE_IMAGE}" .
         working-directory: ./deploy/devcontainer-feature
+        env:
+          BASE_IMAGE: ${{ matrix.baseImage }}
 
   test-scenarios:
     runs-on: ubuntu-24.04
