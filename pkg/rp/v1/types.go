@@ -47,6 +47,11 @@ type BasicResourceProperties struct {
 	// Application represents the id of application resource.
 	Application string `json:"application,omitempty"`
 
+	// CodeReference is an optional URL that deep-links the resource to its source code
+	// (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). It is set by tooling
+	// such as 'rad app graph' for visualizations and is round-tripped through the API.
+	CodeReference string `json:"codeReference,omitempty"`
+
 	// Status represents the resource status.
 	Status ResourceStatus `json:"status"`
 }

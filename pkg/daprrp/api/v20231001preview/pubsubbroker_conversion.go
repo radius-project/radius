@@ -33,8 +33,9 @@ import (
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: to.String(src.Properties.Environment),
-			Application: to.String(src.Properties.Application),
+			Environment:   to.String(src.Properties.Environment),
+			Application:   to.String(src.Properties.Application),
+			CodeReference: to.String(src.Properties.CodeReference),
 		},
 	}
 
@@ -133,6 +134,9 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 			Recipe:          fromRecipeStatus(daprPubSub.Properties.Status.Recipe),
 		},
 		Auth: fromAuthDataModel(daprPubSub.Properties.Auth),
+	}
+	if daprPubSub.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(daprPubSub.Properties.CodeReference)
 	}
 
 	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {

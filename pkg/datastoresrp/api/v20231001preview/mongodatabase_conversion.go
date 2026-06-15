@@ -43,8 +43,9 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment:   to.String(src.Properties.Environment),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 		},
 	}
@@ -107,6 +108,9 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Recipe:               fromRecipeDataModel(mongo.Properties.Recipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(mongo.Properties.ResourceProvisioning),
 		Username:             new(mongo.Properties.Username),
+	}
+	if mongo.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(mongo.Properties.CodeReference)
 	}
 
 	return nil

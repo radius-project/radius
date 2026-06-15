@@ -306,6 +306,13 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 			applicationGraphResource.ProvisioningState = &state
 		}
 
+		// Propagate codeReference (e.g. a GitHub blob URL set by tooling like 'rad app graph').
+		if codeReference, ok := resource.Properties["codeReference"]; ok {
+			if cr, ok := codeReference.(string); ok && cr != "" {
+				applicationGraphResource.CodeReference = &cr
+			}
+		}
+
 		// Resolve Outbound connections based on 'connections'.
 		connections := resolveConnections(resource, connectionsPath, connectionsResolver(resources))
 		// Resolve Outbound connections based on 'routes'.

@@ -24,6 +24,7 @@
     },
     "provisioningState": "Succeeded",
     "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "codeReference": "src/testresources/resource.ts#L10",
     "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
     "kind": "azure.com.keyvault",
     "secrets": {

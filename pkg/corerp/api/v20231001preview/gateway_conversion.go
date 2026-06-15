@@ -86,7 +86,8 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.GatewayProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: to.String(src.Properties.Application),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 			Hostname: hostname,
 			TLS:      tls,
@@ -157,6 +158,9 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 		Routes:            routes,
 		TLS:               tls,
 		URL:               new(g.Properties.URL),
+	}
+	if g.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(g.Properties.CodeReference)
 	}
 
 	return nil

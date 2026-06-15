@@ -41,7 +41,8 @@ func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.VolumeResourceProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: to.String(src.Properties.GetVolumeProperties().Application),
+				Application:   to.String(src.Properties.GetVolumeProperties().Application),
+				CodeReference: to.String(src.Properties.GetVolumeProperties().CodeReference),
 			},
 			Kind: to.String(src.Properties.GetVolumeProperties().Kind),
 		},
@@ -101,6 +102,9 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 			Application:       new(resource.Properties.Application),
 			Resource:          new(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
+		}
+		if resource.Properties.CodeReference != "" {
+			p.CodeReference = to.Ptr(resource.Properties.CodeReference)
 		}
 		if azProp.Certificates != nil {
 			p.Certificates = map[string]*CertificateObjectProperties{}

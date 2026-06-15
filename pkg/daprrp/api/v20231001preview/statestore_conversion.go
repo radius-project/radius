@@ -17,8 +17,9 @@ import (
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: to.String(src.Properties.Environment),
-			Application: to.String(src.Properties.Application),
+			Environment:   to.String(src.Properties.Environment),
+			Application:   to.String(src.Properties.Application),
+			CodeReference: to.String(src.Properties.CodeReference),
 		},
 	}
 
@@ -117,6 +118,9 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		ResourceProvisioning: fromResourceProvisioningDataModel(daprStateStore.Properties.ResourceProvisioning),
 		Resources:            fromResourcesDataModel(daprStateStore.Properties.Resources),
 		Auth:                 fromAuthDataModel(daprStateStore.Properties.Auth),
+	}
+	if daprStateStore.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(daprStateStore.Properties.CodeReference)
 	}
 
 	if daprStateStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {

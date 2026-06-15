@@ -41,7 +41,8 @@ func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: &datamodel.SecretStoreProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: to.String(src.Properties.Application),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 			Resource: to.String(src.Properties.Resource),
 			Type:     toSecretStoreDataTypeDataModel(src.Properties.Type),
@@ -73,6 +74,9 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 		Type:              fromSecretStoreDataTypeDataModel(ss.Properties.Type),
 		Resource:          new(ss.Properties.Resource),
 		Data:              fromSecretStoreDataPropertiesDataModel(ss.Properties.Data),
+	}
+	if ss.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(ss.Properties.CodeReference)
 	}
 
 	return nil

@@ -123,7 +123,8 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.ContainerProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: to.String(src.Properties.Application),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 			Connections: connections,
 			Container: datamodel.Container{
@@ -334,6 +335,9 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		Resources:            fromResourceReferencesDataModel(c.Properties.Resources),
 		ResourceProvisioning: fromContainerResourceProvisioningDataModel(c.Properties.ResourceProvisioning),
 		RestartPolicy:        fromRestartPolicyDataModel(c.Properties.RestartPolicy),
+	}
+	if c.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(c.Properties.CodeReference)
 	}
 
 	return nil

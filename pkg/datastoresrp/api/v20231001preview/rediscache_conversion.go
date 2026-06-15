@@ -43,8 +43,9 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment:   to.String(src.Properties.Environment),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 		},
 	}
@@ -106,6 +107,9 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 		Environment:       new(redis.Properties.Environment),
 		Application:       new(redis.Properties.Application),
+	}
+	if redis.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(redis.Properties.CodeReference)
 	}
 
 	return nil

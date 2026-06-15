@@ -43,8 +43,9 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.RabbitMQQueueProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment:   to.String(src.Properties.Environment),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 		},
 	}
@@ -109,6 +110,9 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 		Username:             new(rabbitmq.Properties.Username),
 		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
 		TLS:                  new(rabbitmq.Properties.TLS),
+	}
+	if rabbitmq.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(rabbitmq.Properties.CodeReference)
 	}
 	if rabbitmq.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)

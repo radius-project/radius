@@ -45,8 +45,9 @@ func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment:   to.String(src.Properties.Environment),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 			AdditionalProperties: src.Properties.AdditionalProperties,
 			Secrets:              src.Properties.Secrets,
@@ -87,6 +88,9 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 		Recipe:               fromRecipeDataModel(extender.Properties.ResourceRecipe),
 		ResourceProvisioning: fromResourceProvisioningDataModel(extender.Properties.ResourceProvisioning),
 		// Secrets are omitted.
+	}
+	if extender.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(extender.Properties.CodeReference)
 	}
 
 	return nil

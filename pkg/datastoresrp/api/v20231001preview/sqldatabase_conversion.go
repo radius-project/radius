@@ -43,8 +43,9 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment:   to.String(src.Properties.Environment),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 		},
 	}
@@ -105,6 +106,9 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Environment:       new(sql.Properties.Environment),
 		Application:       new(sql.Properties.Application),
 		Username:          new(sql.Properties.Username),
+	}
+	if sql.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(sql.Properties.CodeReference)
 	}
 	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)

@@ -47,8 +47,9 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment:   to.String(src.Properties.Environment),
+				Application:   to.String(src.Properties.Application),
+				CodeReference: to.String(src.Properties.CodeReference),
 			},
 		},
 	}
@@ -126,6 +127,9 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			Recipe:          fromRecipeStatus(daprSecretStore.Properties.Status.Recipe),
 		},
+	}
+	if daprSecretStore.Properties.CodeReference != "" {
+		dst.Properties.CodeReference = to.Ptr(daprSecretStore.Properties.CodeReference)
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = fromMetadataDataModel(daprSecretStore.Properties.Metadata)
