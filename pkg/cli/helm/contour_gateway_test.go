@@ -116,6 +116,47 @@ func TestReconcileDefaultContourGatewayAllowsExistingMatchingGatewayClass(t *tes
 	require.NoError(t, err)
 }
 
+func TestReconcileDefaultContourGatewayPreservesExistingGatewayMetadata(t *testing.T) {
+	t.Parallel()
+
+	existingGateway := newContourGateway()
+	existingGateway.SetAnnotations(map[string]string{
+		"example.com/annotation": "preserve",
+	})
+	existingGateway.SetFinalizers([]string{"example.com/finalizer"})
+	existingGateway.SetLabels(map[string]string{
+		radiusManagedByLabel: radiusManagedValue,
+		radiusPartOfLabel:    radiusManagedValue,
+		"example.com/label":  "preserve",
+	})
+	require.NoError(t, unstructured.SetNestedSlice(existingGateway.Object, []any{
+		map[string]any{
+			"name":     "old",
+			"protocol": "HTTP",
+			"port":     int64(8080),
+		},
+	}, "spec", "listeners"))
+
+	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), newContourGatewayClass())
+	_, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Create(context.Background(), existingGateway, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	err = reconcileDefaultContourGateway(context.Background(), client)
+	require.NoError(t, err)
+
+	gateway, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "preserve", gateway.GetAnnotations()["example.com/annotation"])
+	require.Equal(t, []string{"example.com/finalizer"}, gateway.GetFinalizers())
+	require.Equal(t, "preserve", gateway.GetLabels()["example.com/label"])
+	require.True(t, isRadiusManaged(gateway))
+
+	listeners, _, _ := unstructured.NestedSlice(gateway.Object, "spec", "listeners")
+	require.Len(t, listeners, 2)
+	require.Equal(t, "http", listeners[0].(map[string]any)["name"])
+	require.Equal(t, "https", listeners[1].(map[string]any)["name"])
+}
+
 func TestReconcileDefaultContourGatewayRejectsConflictingGatewayClass(t *testing.T) {
 	t.Parallel()
 

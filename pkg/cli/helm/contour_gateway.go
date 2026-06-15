@@ -167,9 +167,20 @@ func reconcileGateway(ctx context.Context, client dynamic.Interface) error {
 		return fmt.Errorf("gateway %q in namespace %q already exists and is not managed by Radius", DefaultContourGatewayName, DefaultContourGatewayNamespace)
 	}
 
-	gateway := newContourGateway()
-	gateway.SetResourceVersion(existing.GetResourceVersion())
-	_, err = resource.Update(ctx, gateway, metav1.UpdateOptions{})
+	gatewayLabels := existing.GetLabels()
+	if gatewayLabels == nil {
+		gatewayLabels = map[string]string{}
+	}
+	gatewayLabels[radiusManagedByLabel] = radiusManagedValue
+	gatewayLabels[radiusPartOfLabel] = radiusManagedValue
+	existing.SetLabels(gatewayLabels)
+
+	desired := newContourGateway()
+	if err := unstructured.SetNestedField(existing.Object, desired.Object["spec"], "spec"); err != nil {
+		return err
+	}
+
+	_, err = resource.Update(ctx, existing, metav1.UpdateOptions{})
 	return err
 }
 
