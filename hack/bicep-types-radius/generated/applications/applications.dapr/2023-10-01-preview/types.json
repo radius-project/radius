@@ -102,7 +102,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
       },
       "status": {
         "type": {
@@ -831,7 +831,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
       },
       "status": {
         "type": {
@@ -1110,7 +1110,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
       },
       "status": {
         "type": {
@@ -1369,7 +1369,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+        "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
       },
       "status": {
         "type": {

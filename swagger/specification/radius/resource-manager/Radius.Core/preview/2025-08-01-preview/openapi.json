@@ -1340,7 +1340,7 @@
         },
         "codeReference": {
           "type": "string",
-          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
         }
       },
       "required": [
@@ -1379,10 +1379,6 @@
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the asynchronous operation.",
           "readOnly": true
-        },
-        "codeReference": {
-          "type": "string",
-          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
         },
         "environment": {
           "type": "string",

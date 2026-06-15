@@ -55,7 +55,6 @@ type ApplicationGraphResource struct {
 	Type *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify
@@ -197,7 +196,6 @@ type AzureKeyVaultVolumeProperties struct {
 	Certificates map[string]*CertificateObjectProperties
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Fully qualified resource ID for the environment that the application is linked to
@@ -371,7 +369,6 @@ type ContainerProperties struct {
 	Container *Container
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Specifies a connection to another resource.
@@ -685,7 +682,6 @@ type ExtenderProperties struct {
 	Application *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
@@ -784,7 +780,6 @@ type GatewayProperties struct {
 	Routes []*GatewayRoute
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Fully qualified resource ID for the environment that the application is linked to
@@ -1387,7 +1382,6 @@ type SecretStoreProperties struct {
 	Application *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Fully qualified resource ID for the environment that the application is linked to
@@ -1612,7 +1606,6 @@ type VolumeProperties struct {
 	Kind *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Fully qualified resource ID for the environment that the application is linked to

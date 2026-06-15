@@ -61,7 +61,6 @@ type DaprConfigurationStoreProperties struct {
 	Auth *DaprResourceAuth
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -156,7 +155,6 @@ type DaprPubSubBrokerProperties struct {
 	Auth *DaprResourceAuth
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -254,7 +252,6 @@ type DaprSecretStoreProperties struct {
 	Application *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -346,7 +343,6 @@ type DaprStateStoreProperties struct {
 	Auth *DaprResourceAuth
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec

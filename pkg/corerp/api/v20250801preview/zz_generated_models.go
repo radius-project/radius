@@ -49,7 +49,6 @@ type ApplicationGraphResource struct {
 	Type *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify
@@ -68,10 +67,6 @@ type ApplicationGraphResponse struct {
 type ApplicationProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
-
-	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
-	CodeReference *string
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState

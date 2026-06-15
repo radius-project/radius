@@ -155,7 +155,6 @@ type MongoDatabaseProperties struct {
 	Application *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// Database name of the target Mongo database
@@ -354,7 +353,6 @@ type RedisCacheProperties struct {
 	Application *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The host name of the target Redis cache
@@ -502,7 +500,6 @@ type SQLDatabaseProperties struct {
 	Application *string
 
 	// Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).
-	// Set by tooling such as 'rad app graph' for visualizations.
 	CodeReference *string
 
 	// The name of the Sql database.

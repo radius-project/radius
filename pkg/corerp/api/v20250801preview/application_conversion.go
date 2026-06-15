@@ -41,8 +41,7 @@ func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 		},
 		Properties: datamodel.ApplicationProperties_v20250801preview{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment:   to.String(src.Properties.Environment),
-				CodeReference: to.String(src.Properties.CodeReference),
+				Environment: to.String(src.Properties.Environment),
 			},
 		},
 	}
@@ -67,9 +66,6 @@ func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 		ProvisioningState: fromProvisioningStateDataModel(app.InternalMetadata.AsyncProvisioningState),
 		Environment:       new(app.Properties.Environment),
 		Status:            &ResourceStatus{},
-	}
-	if app.Properties.CodeReference != "" {
-		dst.Properties.CodeReference = to.Ptr(app.Properties.CodeReference)
 	}
 
 	return nil

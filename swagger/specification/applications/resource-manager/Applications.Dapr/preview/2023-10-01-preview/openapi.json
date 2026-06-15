@@ -1304,7 +1304,7 @@
         },
         "codeReference": {
           "type": "string",
-          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
         },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
@@ -1427,7 +1427,7 @@
         },
         "codeReference": {
           "type": "string",
-          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
         },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
@@ -1560,7 +1560,7 @@
         },
         "codeReference": {
           "type": "string",
-          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
         },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
@@ -1672,7 +1672,7 @@
         },
         "codeReference": {
           "type": "string",
-          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations."
+          "description": "Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor)."
         },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
