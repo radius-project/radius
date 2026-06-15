@@ -62,7 +62,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -75,7 +75,7 @@ jobs:
       - name: Setup and verify bicep CLI
         run: |
           # Download bicep CLI
-          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${{ env.BICEP_VER }}/bicep-linux-x64"
+          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
           chmod +x ./bicep
 
           # Install in both locations for maximum compatibility
@@ -110,10 +110,9 @@ jobs:
       - name: Modify bicepconfig.json
         run: |
           # Update bicepconfig.json with paths for extensions
-          WORKDIR="${{ github.workspace }}"
           jq \
-            --arg rad "$WORKDIR/tmp-radius-bicep-extension/radius.tgz" \
-            --arg test "$WORKDIR/tmp-testresources-bicep-extension/testresources.tgz" \
+            --arg rad "$GITHUB_WORKSPACE/tmp-radius-bicep-extension/radius.tgz" \
+            --arg test "$GITHUB_WORKSPACE/tmp-testresources-bicep-extension/testresources.tgz" \
             '.extensions.radius = $rad | .extensions.testresources = $test' \
             bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
 

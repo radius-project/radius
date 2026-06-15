@@ -415,3 +415,39 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 		return apierrors.IsNotFound(err)
 	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
 }
+
+// deleteDeploymentTemplateAndWait deletes a DeploymentTemplate and blocks
+// until it (and all its owned DeploymentResources / Radius finalizers) are
+// fully removed from the API server. Used to sequence Radius-side teardown
+// before the K8s namespace delete in functional tests.
+func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types.NamespacedName, opts rp.RPTestOptions) {
+	dt := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+	}
+	err := opts.Client.Delete(ctx, dt)
+	if controller_runtime.IgnoreNotFound(err) != nil {
+		require.NoErrorf(t, err, "failed to delete DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
+	}
+
+	// Capture any non-NotFound Get error so we surface it instead of burning
+	// the 10-minute budget masking a real API/RBAC/connectivity failure as
+	// "still deleting".
+	var lastErr error
+	require.Eventuallyf(t, func() bool {
+		got := &radappiov1alpha3.DeploymentTemplate{}
+		err := opts.Client.Get(ctx, nn, got)
+		switch {
+		case apierrors.IsNotFound(err):
+			lastErr = nil
+			return true
+		case err != nil:
+			lastErr = err
+			return true
+		default:
+			lastErr = nil
+			return false
+		}
+	}, time.Minute*10, time.Second*5,
+		"waiting for DeploymentTemplate %s/%s to be fully deleted", nn.Namespace, nn.Name)
+	require.NoErrorf(t, lastErr, "unexpected error fetching DeploymentTemplate %s/%s", nn.Namespace, nn.Name)
+}

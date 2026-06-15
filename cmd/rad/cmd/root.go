@@ -34,11 +34,13 @@ import (
 	app_delete "github.com/radius-project/radius/pkg/cli/cmd/app/delete"
 	app_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/app/delete/preview"
 	app_graph "github.com/radius-project/radius/pkg/cli/cmd/app/graph"
+	app_graph_preview "github.com/radius-project/radius/pkg/cli/cmd/app/graph/preview"
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
 	app_list_preview "github.com/radius-project/radius/pkg/cli/cmd/app/list/preview"
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
 	app_show_preview "github.com/radius-project/radius/pkg/cli/cmd/app/show/preview"
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
+	app_status_preview "github.com/radius-project/radius/pkg/cli/cmd/app/status/preview"
 	bicep_generate_kubernetes_manifest "github.com/radius-project/radius/pkg/cli/cmd/bicep/generatekubernetesmanifest"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
 	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
@@ -106,6 +108,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/graph/persistence/git"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -252,6 +255,12 @@ func init() {
 }
 
 func initSubCommands() {
+	graphStore, err := git.NewStore(git.Options{})
+	if err != nil {
+		// graphStore is required only when we are in repo radius
+		// it can be nil otherwise.
+		graphStore = nil
+	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
 			FileSystem: filesystem.OSFileSystem{},
@@ -275,6 +284,7 @@ func initSubCommands() {
 		NamespaceInterface: &namespace.Impl{},
 		AWSClient:          aws.NewClient(),
 		AzureClient:        azure.NewClient(),
+		GraphStore:         graphStore,
 	}
 
 	deployCmd, _ := cmd_deploy.NewCommand(framework)
@@ -421,9 +431,13 @@ func initSubCommands() {
 	applicationCmd.AddCommand(appShowCmd)
 
 	appStatusCmd, _ := app_status.NewCommand(framework)
+	previewAppStatusCmd, _ := app_status_preview.NewCommand(framework)
+	wirePreviewSubcommand(appStatusCmd, previewAppStatusCmd)
 	applicationCmd.AddCommand(appStatusCmd)
 
 	appGraphCmd, _ := app_graph.NewCommand(framework)
+	previewAppGraphCmd, _ := app_graph_preview.NewCommand(framework)
+	wirePreviewSubcommand(appGraphCmd, previewAppGraphCmd)
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)

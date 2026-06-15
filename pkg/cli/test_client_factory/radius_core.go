@@ -178,8 +178,25 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 	}
 }
 
+// WithApplicationsServerNoError returns an ApplicationsServer with default success behavior.
 func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 	return corerpfake.ApplicationsServer{
+		CreateOrUpdate: func(
+			ctx context.Context,
+			applicationName string,
+			resource v20250801preview.ApplicationResource,
+			options *v20250801preview.ApplicationsClientCreateOrUpdateOptions,
+		) (resp azfake.Responder[v20250801preview.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.ApplicationsClientCreateOrUpdateResponse{
+				ApplicationResource: v20250801preview.ApplicationResource{
+					Name:       to.Ptr(applicationName),
+					Location:   resource.Location,
+					Properties: resource.Properties,
+				},
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
 		Get: func(
 			ctx context.Context,
 			applicationName string,
@@ -218,6 +235,19 @@ func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 				},
 				nil,
 			)
+			return
+		},
+		GetGraph: func(
+			ctx context.Context,
+			applicationName string,
+			body any,
+			options *v20250801preview.ApplicationsClientGetGraphOptions,
+		) (resp azfake.Responder[v20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+			resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientGetGraphResponse{
+				ApplicationGraphResponse: v20250801preview.ApplicationGraphResponse{
+					Resources: []*v20250801preview.ApplicationGraphResource{},
+				},
+			}, nil)
 			return
 		},
 	}

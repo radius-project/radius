@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -90,6 +91,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 		Radius:                    mockRadiusClient,
 		ResourceDeploymentsClient: mockResourceDeploymentsClient,
 		DelayInterval:             DeploymentResourceTestControllerDelayInterval,
+		DeleteRetryInterval:       DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
@@ -123,6 +125,67 @@ func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now deleting of the DeploymentResource object can complete.
+	waitForDeploymentResourceDeleted(t, k8sClient, name)
+}
+
+func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
+	// Verifies the bounded delete-path retry: a failed UCP delete must
+	// trigger a fresh delete attempt within the bounded DeleteRetryInterval
+	// rather than controller-runtime's exponential rate-limiter (which
+	// climbs to ~16 minutes).
+
+	ctx := testcontext.New(t)
+	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
+
+	name := types.NamespacedName{Namespace: "deploymentresource-deleteretry", Name: TestDeploymentResourceName}
+	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	require.NoError(t, err)
+
+	// A finalizer keeps the DR alive past Delete; an OwnerReference is
+	// required because reconcileDelete indexes OwnerReferences[0].
+	resourceID := fmt.Sprintf("/planes/radius/local/resourcegroups/%s/providers/Applications.Core/containers/%s", name.Namespace, name.Name)
+	deployment := &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: ctrl.ObjectMeta{
+			Namespace:  name.Namespace,
+			Name:       name.Name,
+			Finalizers: []string{DeploymentResourceFinalizer},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "radapp.io/v1alpha3",
+					Kind:       "DeploymentTemplate",
+					Name:       "synthetic-owner",
+					UID:        types.UID("synthetic-owner-uid-deleteretry"),
+				},
+			},
+		},
+		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: resourceID},
+	}
+	err = k8sClient.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	_ = waitForDeploymentResourceStateReady(t, k8sClient, name)
+
+	err = k8sClient.Delete(ctx, deployment)
+	require.NoError(t, err)
+
+	firstStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, name, nil)
+	firstOperation := firstStatus.Operation
+	require.NotNil(t, firstOperation, "first delete attempt should have an operation")
+
+	mockDeploymentClient.CompleteOperation(firstOperation.ResumeToken, func(state *sdkclients.OperationState) {
+		state.Err = errors.New("transient dependency failure")
+	})
+
+	// A fresh delete operation must start within the bounded retry interval.
+	// We don't assert on the brief intermediate Failed phrase because the
+	// Failed -> reconcileDelete -> Deleting cycle completes faster than the
+	// test polling interval (same approach as
+	// Test_DeploymentTemplateReconciler_FailureRecovery).
+	secondStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, name, firstOperation)
+	require.NotNil(t, secondStatus.Operation, "retry should have an operation")
+	require.NotEqual(t, firstOperation.ResumeToken, secondStatus.Operation.ResumeToken, "retry should start a fresh operation")
+
+	mockDeploymentClient.CompleteOperation(secondStatus.Operation.ResumeToken, nil)
 	waitForDeploymentResourceDeleted(t, k8sClient, name)
 }
 

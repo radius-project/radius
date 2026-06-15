@@ -44,12 +44,16 @@ jobs:
     timeout-minutes: 15
     env:
       GOPRIVATE: github.com/radius-project
+      # Gate the docs-publishing steps (App token, bot identity and the docs PR
+      # sync) to push events (main/release lines) and manual runs that opt in via
+      # open_pull_request. This is always false for pull_request events, so PRs
+      # still generate and upload the docs as artifacts without touching the docs repo.
+      PUBLISH_DOCS: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true') }}
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - name: Checkout radius repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/radius
           path: radius
@@ -65,14 +69,14 @@ jobs:
 
       - name: Generate docs release branch name
         run: |
-          if [[ ${{ env.REL_CHANNEL }} != "edge" ]]; then
-            echo DOCS_BRANCH="v${{ env.REL_CHANNEL }}" >> $GITHUB_ENV
+          if [[ "${REL_CHANNEL}" != "edge" ]]; then
+            echo "DOCS_BRANCH=v${REL_CHANNEL}" >> "$GITHUB_ENV"
           else
-            echo DOCS_BRANCH="edge" >> $GITHUB_ENV
+            echo "DOCS_BRANCH=edge" >> "$GITHUB_ENV"
           fi
 
       - name: Checkout docs repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/docs
           path: docs
@@ -146,37 +150,90 @@ jobs:
           cd docs
           git status --porcelain -unormal -- *.md
 
-      # Prepare PR context information based on trigger type
-      # This step captures details about what triggered the workflow and formats them
-      # into a meaningful PR title and body for the auto-generated docs PR.
+      # Generate a short-lived GitHub App installation token scoped to the docs
+      # repository. This replaces the long-lived GH_RAD_CI_BOT_PAT: tokens expire
+      # after one hour, are least-privilege (contents + pull-requests on docs only),
+      # and let repo-files-sync create GPG-verified commits via the GitHub API.
       #
-      # The logic is extracted to a separate script for easier local testing and maintenance.
-      # See .github/scripts/prepare-docs-pr-context.sh for implementation details.
-      - name: Prepare PR context
-        id: pr-context
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ACTOR: ${{ github.actor }}
-        run: ./radius/.github/scripts/prepare-docs-pr-context.sh
-
-      - name: Create pull request
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      # Requires the App's credentials to be configured on radius-project/radius:
+      #   - secrets.RADIUS_DOCS_BOT_CLIENT_ID
+      #   - secrets.RADIUS_DOCS_BOT_PRIVATE_KEY
+      # and the App installed on radius-project/docs with contents + PR write access.
+      - name: Generate GitHub App token
+        id: app-token
+        if: env.PUBLISH_DOCS == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          path: docs
-          add-paths: |
-            *.md
-          committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          signoff: true
-          branch: reference-cli/patch-${{ github.sha }}
-          delete-branch: true
-          title: ${{ steps.pr-context.outputs.pr-title }}
-          body: ${{ steps.pr-context.outputs.pr-body }}
-          commit-message: |
-            Autogenerate reference docs
+          client-id: ${{ secrets.RADIUS_DOCS_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_DOCS_BOT_PRIVATE_KEY }}
+          repositories: docs
+          permission-contents: write
+          permission-pull-requests: write
+
+      # Resolve the App bot's GitHub-formatted name and email (e.g.
+      # "<app-slug>[bot] <id+<app-slug>[bot]@users.noreply.github.com>") so commits
+      # and the DCO sign-off are attributed correctly to the bot identity.
+      - name: Get bot details
+        id: bot-details
+        if: env.PUBLISH_DOCS == 'true'
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
+      # Sync the generated reference docs to the radius-project/docs repository.
+      #
+      # Unlike the previous create-pull-request step (which cut a brand-new branch
+      # named reference-cli/patch-<sha> on every run and quickly piled up dozens of
+      # open PRs), repo-files-sync reuses a single, stable head branch per docs
+      # branch: "<BRANCH_PREFIX>/<DOCS_BRANCH>". With OVERWRITE_EXISTING_PR enabled
+      # it force-updates that branch and keeps exactly one open PR per docs branch,
+      # amending it in place on subsequent runs.
+      #
+      # The step is gated to the same triggers that previously opened a PR (push and
+      # workflow_dispatch with open_pull_request=true); on pull_request the docs are
+      # still generated and uploaded as artifacts above for inspection.
+      - name: Sync reference docs to docs repository
+        if: env.PUBLISH_DOCS == 'true'
+        uses: raven-actions/repo-files-sync@a4c9248f592fa5c5d19d70f630b7bd0d4772ab67 # v0.1.0-rc.12
+        with:
+          # The App installation token authenticates as <app-slug>[bot]. Passing it as
+          # GH_TOKEN makes repo-files-sync create verified commits through
+          # the GitHub API and use the x-access-token git transport.
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          OVERWRITE_EXISTING_PR: true
+          REBASE: true
+          BRANCH_PREFIX: reference-docs
+          # Installation tokens cannot resolve the committer via the API, so the bot
+          # identity is supplied explicitly from the bot-details outputs.
+          GIT_USERNAME: ${{ steps.bot-details.outputs.name }}
+          GIT_EMAIL: ${{ steps.bot-details.outputs.email }}
+          # repo-files-sync reuses one PR per docs branch and overwrites it on
+          # each run, so a stable, descriptive title is preferable. Manual
+          # (workflow_dispatch) runs are flagged so they are easy to spot.
+          PR_TITLE: >-
+            ${{ github.event_name == 'workflow_dispatch'
+            && 'Update auto-generated reference documentation (manual trigger)'
+            || format('Update auto-generated reference documentation ({0})', github.ref_name) }}
+          # The action already prepends "synced local file(s) with <repo>.", lists
+          # the changed files, and appends a footer linking the source workflow
+          # run, so the body only needs a direct link to the triggering commit.
+          PR_BODY: "Auto-generated from [radius-project/radius@${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})."
+          PR_LABELS: documentation
+          COMMIT_PREFIX: "docs:"
+          # Preserve the DCO sign-off the previous step added via `signoff: true`.
+          # COMMIT_BODY is appended to the commit message, so the Signed-off-by trailer
+          # (formatted by bot-details) satisfies the docs repository's DCO check.
+          COMMIT_BODY: "Signed-off-by: ${{ steps.bot-details.outputs.name-email }}"
+          # The docs repo is checked out at ./docs, so the generated files live under
+          # docs/docs/content/reference/... and map to docs/content/reference/... in
+          # the target repo. The PR base branch is taken from "@<DOCS_BRANCH>".
+          # deleteOrphaned keeps the target in sync when generated files are removed
+          # (e.g. CLI docs are regenerated from scratch, preserving only _index.md).
+          INLINE_CONFIG: |
+            radius-project/docs@${{ env.DOCS_BRANCH }}:
+              - source: docs/docs/content/reference/resources/
+                dest: docs/content/reference/resources/
+                deleteOrphaned: true
+              - source: docs/docs/content/reference/cli/
+                dest: docs/content/reference/cli/
+                deleteOrphaned: true

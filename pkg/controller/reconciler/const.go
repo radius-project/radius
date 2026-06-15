@@ -22,6 +22,12 @@ const (
 	// PollingDelay is the amount of time to wait between polling for the status of a resource.
 	PollingDelay time.Duration = 5 * time.Second
 
+	// DeleteRetryDelay is the default RequeueAfter used when a DeploymentResource
+	// delete operation returns a transient error. Using a fixed bound instead of
+	// returning the error avoids controller-runtime's exponential rate-limiter,
+	// which climbs to ~16m and extends total drain time.
+	DeleteRetryDelay time.Duration = 30 * time.Second
+
 	// AnnotationRadiusEnabled is the name of the annotation that indicates if a Deployment has Radius enabled.
 	AnnotationRadiusEnabled = "radapp.io/enabled"
 

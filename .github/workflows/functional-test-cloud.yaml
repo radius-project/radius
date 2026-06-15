@@ -198,46 +198,58 @@ jobs:
       BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
     steps:
       - name: Log Event Information
+        env:
+          PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}
         run: |
-          echo "Event Name: ${{ github.event_name }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Author Association: ${{ github.event.pull_request.author_association }}"
-          echo "PR Head Repo: ${{ github.event.pull_request.head.repo.full_name }}"
-          echo "PR Base Repo: ${{ github.event.pull_request.base.repo.full_name }}"
-          echo "Is Fork: ${{ github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}"
+          echo "Event Name: ${GITHUB_EVENT_NAME}"
+          echo "Actor: ${GITHUB_ACTOR}"
+          echo "Author Association: ${PR_AUTHOR_ASSOCIATION}"
+          echo "PR Head Repo: ${PR_HEAD_REPO}"
+          echo "PR Base Repo: ${PR_BASE_REPO}"
+          echo "Is Fork: ${IS_FORK}"
 
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
 
       - name: Set up checkout target (repository_dispatch)
         if: github.event_name == 'repository_dispatch'
         run: |
-          echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
 
       - name: Set up checkout target (pull_request_target)
         if: github.event_name == 'pull_request_target'
+        env:
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}"
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}"
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
-            echo "BASE_SHA=${{ github.event.pull_request.base.sha }}"
+            echo "CHECKOUT_REPO=${PR_HEAD_REPO}"
+            echo "CHECKOUT_REF=${PR_HEAD_SHA}"
+            echo "PR_NUMBER=${PR_NUMBER}"
+            echo "BASE_SHA=${PR_BASE_SHA}"
           } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
+        env:
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -268,13 +280,13 @@ jobs:
           {
             echo "REL_VERSION=pr-${UNIQUE_ID}"
             echo "UNIQUE_ID=${UNIQUE_ID}"
-            echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}"
-            echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}"
+            echo "CHECKOUT_REPO=${CHECKOUT_REPO}"
+            echo "CHECKOUT_REF=${CHECKOUT_REF}"
             echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64"
-            echo "PR_NUMBER=${{ env.PR_NUMBER }}"
-            echo "DE_IMAGE=${{ env.DE_IMAGE }}"
-            echo "DE_TAG=${{ env.DE_TAG }}"
-            echo "BASE_SHA=${{ env.BASE_SHA }}"
+            echo "PR_NUMBER=${PR_NUMBER}"
+            echo "DE_IMAGE=${DE_IMAGE}"
+            echo "DE_TAG=${DE_TAG}"
+            echo "BASE_SHA=${BASE_SHA}"
           } >> "${GITHUB_OUTPUT}"
 
   changes:
@@ -324,7 +336,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -378,7 +390,7 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -457,8 +469,10 @@ jobs:
           echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       - name: Generate Bicep extensibility types from OpenAPI specs
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+          make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
 
       - name: Setup and verify bicep CLI
         run: |
@@ -475,21 +489,23 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Publish Radius test bicep types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+          if [[ "${REL_VERSION}" == "edge" ]]; then
             RADIUS_VERSION="latest"
           else
-            RADIUS_VERSION="${{ env.REL_VERSION }}"
+            RADIUS_VERSION="${REL_VERSION}"
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
             }
           }
           EOF
@@ -565,7 +581,12 @@ jobs:
     if: always() && needs.setup.result == 'success' && needs.build.result == 'success'
     # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
-      fail-fast: true
+      # Keep matrix legs independent. With fail-fast: true, a single failing
+      # (often flaky) leg cancels all in-progress siblings. GitHub's
+      # "Re-run failed jobs" reliably re-runs only failure-concluded jobs, so
+      # cancelled siblings can stay stale on the PR and the checks never fully
+      # update to green even after a successful re-run.
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04]
         name: [corerp-cloud, ucp-cloud]
@@ -582,7 +603,15 @@ jobs:
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      # Include run_attempt so each re-run uses a distinct resource group.
+      # UNIQUE_ID is generated in the separate `setup` job, which is NOT
+      # re-executed by "Re-run failed jobs", so it stays constant across
+      # attempts. The delete step uses `az group delete --no-wait`, so a
+      # re-run would otherwise try to recreate the same resource group while
+      # the previous attempt's deletion is still in progress, failing with
+      # "ResourceGroupBeingDeleted". The radtest- prefix is preserved so the
+      # purge workflow still cleans up any orphaned groups.
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}-${{ github.run_attempt }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
@@ -614,14 +643,14 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
 
       - name: Checkout Samples repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -645,7 +674,7 @@ jobs:
       - name: Copy rad CLI to bin
         run: |
           mkdir -p ./bin
-          cp "${{ runner.temp }}/rad-cli-artifact/rad" ./bin/rad
+          cp "${RUNNER_TEMP}/rad-cli-artifact/rad" ./bin/rad
           chmod +x ./bin/rad
           # Verify it is the expected binary
           file ./bin/rad | grep -q "ELF" || { echo "Downloaded rad binary is not a valid ELF executable"; exit 1; }
@@ -673,13 +702,14 @@ jobs:
         run: |
           current_time=$(date +%s)
           az group create \
-            --location ${{ env.AZURE_LOCATION }} \
-            --name $RESOURCE_GROUP \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --location "${AZURE_LOCATION}" \
+            --name "${RESOURCE_GROUP}" \
+            --subscription "${AZURE_SUBSCRIPTIONID_TESTS}" \
             --tags creationTime=$current_time
-          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
+          while [ $(az group exists --name "${RESOURCE_GROUP}") = false ]; do sleep 2; done
         env:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
@@ -688,7 +718,7 @@ jobs:
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -696,14 +726,17 @@ jobs:
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
+        env:
+          FUNCTEST_AZURE_OIDC_JSON: ${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VER }}/kind-linux-amd64"
+          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VER}/kind-linux-amd64"
           chmod +x ./kind
 
           # Parse and validate Azure workload identity values from secret JSON.
-          OIDC_JSON='${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}'
+          OIDC_JSON="${FUNCTEST_AZURE_OIDC_JSON}"
           if ! echo "${OIDC_JSON}" | jq -e . >/dev/null; then
             echo "FUNCTEST_AZURE_OIDC_JSON is not valid JSON."
             echo "Expected keys: AZURE_OIDC_ISSUER, AZURE_OIDC_ISSUER_PUBLIC_KEY, AZURE_OIDC_ISSUER_PRIVATE_KEY"
@@ -714,7 +747,7 @@ jobs:
           AZURE_OIDC_ISSUER_PUBLIC_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PUBLIC_KEY')"
           AZURE_OIDC_ISSUER_PRIVATE_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PRIVATE_KEY')"
 
-          AUTHKEY=$(printf '%s' "${{ github.actor }}:${{ github.token }}" | base64)
+          AUTHKEY=$(printf '%s' "${GITHUB_ACTOR}:${GITHUB_TOKEN}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
@@ -751,15 +784,17 @@ jobs:
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
-          helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --version ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
+          helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --version "${AZURE_KEYVAULT_CSI_DRIVER_VER}"
 
       - name: Install azure workload identity webhook chart
+        env:
+          AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
         run: |
           helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
-          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version "${AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER}" --set "azureTenantID=${AZURE_SP_TESTS_TENANTID}"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -774,7 +809,7 @@ jobs:
 
       - name: Install gotestsum (test reporting tool)
         run: |
-          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
+          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
 
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
@@ -787,19 +822,25 @@ jobs:
           message: |
             :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Install Radius
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          FUNCTEST_AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          FUNC_TEST_RAD_IRSA_ROLE: ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
 
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
-            --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
-            --set dynamicrp.image=${{ env.CONTAINER_REGISTRY }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
-            --set controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }} \
-            --set ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
-            --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }} \
-            --set bicep.image=${{ env.CONTAINER_REGISTRY }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
+            --chart "${RADIUS_CHART_LOCATION}" \
+            --set "rp.image=${CONTAINER_REGISTRY}/applications-rp,rp.tag=${REL_VERSION}" \
+            --set "dynamicrp.image=${CONTAINER_REGISTRY}/dynamic-rp,dynamicrp.tag=${REL_VERSION}" \
+            --set "controller.image=${CONTAINER_REGISTRY}/controller,controller.tag=${REL_VERSION}" \
+            --set "ucp.image=${CONTAINER_REGISTRY}/ucpd,ucp.tag=${REL_VERSION}" \
+            --set "de.image=${DE_IMAGE},de.tag=${DE_TAG}" \
+            --set "bicep.image=${CONTAINER_REGISTRY}/bicep,bicep.tag=${REL_VERSION}" \
             --set global.azureWorkloadIdentity.enabled=true \
             --set global.aws.irsa.enabled=true
 
@@ -857,17 +898,17 @@ jobs:
           rad env switch kind-radius
 
           echo "*** Configuring Azure provider ***"
-          rad env update kind-radius --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          rad env update kind-radius --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
-            --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+            --client-id "${AZURE_SP_TESTS_APPID}" \
+            --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad env update kind-radius --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
 
           rad credential register aws irsa \
-            --iam-role ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
+            --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
@@ -885,16 +926,16 @@ jobs:
           make publish-test-terraform-recipes
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+          if [[ "${REL_VERSION}" == "edge" ]]; then
             RADIUS_VERSION="latest"
           else
-            RADIUS_VERSION="${{ env.REL_VERSION }}"
+            RADIUS_VERSION="${REL_VERSION}"
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${{ env.TEST_BICEP_TYPES_REGISTRY }}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
             },
             "cloud": {
               "credentialPrecedence": ["AzureCLI", "Environment"]
@@ -925,7 +966,7 @@ jobs:
           # AZURE_MSSQL_RESOURCE_ID
           # AZURE_MSSQL_USERNAME
           # AZURE_MSSQL_PASSWORD
-          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
+          PREPROVISIONED_JSON="${FUNCTEST_PREPROVISIONED_RESOURCE_JSON}"
           if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
             echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
             echo "Expected keys: AZURE_COSMOS_MONGODB_ACCOUNT_ID, AZURE_MSSQL_RESOURCE_ID, AZURE_MSSQL_USERNAME, AZURE_MSSQL_PASSWORD"
@@ -937,7 +978,7 @@ jobs:
           export AZURE_MSSQL_USERNAME="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_USERNAME')"
           export AZURE_MSSQL_PASSWORD="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_PASSWORD')"
 
-          make test-functional-${{ matrix.name }}
+          make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
@@ -953,6 +994,8 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          MATRIX_NAME: ${{ matrix.name }}
+          FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
@@ -965,9 +1008,11 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
-          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
-          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/${MATRIX_NAME}-tests-pod-states.log"
+          mkdir -p "$(dirname "${POD_STATE_LOG_FILENAME}")"
           {
             echo "kubectl get pods -A"
             kubectl get pods -A
@@ -1041,11 +1086,13 @@ jobs:
 
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
           # if deletion fails, purge workflow will purge the resource group and its resources later.
           az group delete \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-            --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
+            --subscription "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            --name "${AZURE_TEST_RESOURCE_GROUP}" \
             --yes \
             --verbose \
             --no-wait
@@ -1073,9 +1120,11 @@ jobs:
 
       - name: Get tests job status
         id: get_test_status
+        env:
+          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
         run: |
           # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
-          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${{ steps.get_installation_token.outputs.token }}" https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs | jq ".jobs[] | {job_status: .conclusion}")
+          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" | jq ".jobs[] | {job_status: .conclusion}")
           echo "All jobs status: $ALL_JOBS_STATUS"
           TEST_STATUS="success"
           for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
@@ -1111,11 +1160,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY
+    permissions:
+      issues: write # Required to create an issue when the scheduled run fails
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

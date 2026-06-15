@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/main/schema/markdownlint-cli2-config-schema.json
+---
+config:
+  extends: ./.markdownlint.yml
+gitignore: true
+ignores:
+  - .git
+  - "**/node_modules/**"
+  - .copilot-tracking/**
+  - venv/**
+  - .venv/**

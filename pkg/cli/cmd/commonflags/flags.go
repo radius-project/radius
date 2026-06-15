@@ -39,8 +39,15 @@ const (
 	ClearEnvAWSFlag = "clear-aws"
 	// KubernetesNamespaceFlag provides kubernetes namespace.
 	KubernetesNamespaceFlag = "kubernetes-namespace"
+	// NamespaceFlag is the legacy alias for KubernetesNamespaceFlag.
+	NamespaceFlag = "namespace"
 	// ClearEnvKubernetesFlag tells the command to clear kubernetes scope on the environment it is configured.
 	ClearEnvKubernetesFlag = "clear-kubernetes"
+
+	// AzureScopeTemplate is the scope format for an Azure subscription/resource group pair.
+	AzureScopeTemplate = "/subscriptions/%s/resourceGroups/%s"
+	// AwsScopeTemplate is the scope format for an AWS account/region pair.
+	AwsScopeTemplate = "/planes/aws/aws/accounts/%s/regions/%s"
 )
 
 // AddOutputFlag adds a flag to the given command that allows the user to specify the output format of the command's output.
@@ -48,7 +55,6 @@ func AddOutputFlag(cmd *cobra.Command) {
 	description := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	cmd.Flags().StringP("output", "o", output.DefaultFormat, description)
 }
-
 
 // AddWorkspaceFlag adds a flag to the given command that allows the user to specify a workspace name.
 func AddWorkspaceFlag(cmd *cobra.Command) {
@@ -82,7 +88,34 @@ func AddEnvironmentNameFlag(cmd *cobra.Command) {
 
 // AddNamespaceFlag adds a flag to the given command that allows the user to specify a Kubernetes namespace.
 func AddNamespaceFlag(cmd *cobra.Command) {
-	cmd.Flags().StringP("namespace", "n", "", "The Kubernetes namespace")
+	cmd.Flags().StringP(NamespaceFlag, "n", "", "The Kubernetes namespace")
+}
+
+// MarkNamespaceFlagDeprecated marks --namespace as a deprecated alias of --kubernetes-namespace.
+// The flag continues to work but Cobra prints a deprecation warning when it is used.
+func MarkNamespaceFlagDeprecated(cmd *cobra.Command) {
+	_ = cmd.Flags().MarkDeprecated(NamespaceFlag, fmt.Sprintf("use --%s instead", KubernetesNamespaceFlag))
+}
+
+// ResolveKubernetesNamespaceFlag returns the namespace specified by either --kubernetes-namespace or
+// the legacy --namespace alias. The two flags are expected to be marked mutually exclusive by the caller.
+// The boolean return value indicates whether a namespace was explicitly provided.
+func ResolveKubernetesNamespaceFlag(cmd *cobra.Command) (string, bool, error) {
+	if cmd.Flags().Changed(KubernetesNamespaceFlag) {
+		v, err := cmd.Flags().GetString(KubernetesNamespaceFlag)
+		if err != nil {
+			return "", false, err
+		}
+		return v, true, nil
+	}
+	if cmd.Flags().Changed(NamespaceFlag) {
+		v, err := cmd.Flags().GetString(NamespaceFlag)
+		if err != nil {
+			return "", false, err
+		}
+		return v, true, nil
+	}
+	return "", false, nil
 }
 
 // AddParameterFlag adds a flag to the given command that allows the user to specify parameters for the deployment.
@@ -145,7 +178,7 @@ func AddKubernetesScopeFlags(cmd *cobra.Command) {
 
 // AddNamespaceFlag adds a flag to the given command that allows the user to specify a Kubernetes namespace.
 func AddKubernetesNamespaceFlag(cmd *cobra.Command) {
-	cmd.Flags().String(KubernetesNamespaceFlag, "", "The namespace where Kubernetes resources will be deployed (preview)")
+	cmd.Flags().String(KubernetesNamespaceFlag, "", "The namespace where Kubernetes resources will be deployed")
 }
 
 // AddKubeContextFlagVar adds a flag to the given command that allows the user to specify a Kubernetes context to use.

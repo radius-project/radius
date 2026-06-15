@@ -166,7 +166,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	err = r.Output.WriteFormatted(r.Format, applicationStatus, statusFormat())
+	err = r.Output.WriteFormatted(r.Format, applicationStatus, StatusFormat())
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		// Print newline for readability
 		r.Output.LogInfo("")
 
-		err = r.Output.WriteFormatted(r.Format, applicationStatus.Gateways, gatewayFormat())
+		err = r.Output.WriteFormatted(r.Format, applicationStatus.Gateways, GatewayFormat())
 		if err != nil {
 			return err
 		}
