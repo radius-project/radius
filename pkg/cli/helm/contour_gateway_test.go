@@ -19,6 +19,7 @@ package helm
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 func TestReconcileDefaultContourGatewayCreatesResources(t *testing.T) {
@@ -69,6 +71,30 @@ func TestReconcileDefaultContourGatewayCreatesResources(t *testing.T) {
 			},
 		},
 	}, listeners[1])
+}
+
+func TestWaitForDefaultContourGatewayRetriesGatewayAPINotFound(t *testing.T) {
+	t.Parallel()
+
+	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
+	createGatewayClassAttempts := 0
+	client.PrependReactor("create", "gatewayclasses", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		createGatewayClassAttempts++
+		if createGatewayClassAttempts == 1 {
+			return true, nil, apierrors.NewNotFound(gatewayClassGVR.GroupResource(), ContourGatewayClassName)
+		}
+
+		return false, nil, nil
+	})
+
+	err := waitForDefaultContourGateway(context.Background(), client, time.Millisecond, time.Second)
+	require.NoError(t, err)
+	require.Equal(t, 2, createGatewayClassAttempts)
+
+	_, err = client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
+	require.NoError(t, err)
+	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	require.NoError(t, err)
 }
 
 func TestReconcileDefaultContourGatewayAllowsExistingMatchingGatewayClass(t *testing.T) {

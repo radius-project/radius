@@ -10,7 +10,7 @@ Radius keeps installing Contour by default for now. When Contour install is enab
 
 - `GatewayClass/contour`
 - `Gateway/radius` in `radius-system`
-- HTTP listener on port 80 and HTTPS listener on port 443 with routes allowed from application namespaces
+- HTTP listener on port 80 and HTTPS listener on port 443 with routes allowed from all namespaces
 
 With that infrastructure in place, the default `Radius.Compute/routes` recipe can create Gateway API `HTTPRoute` and `TLSRoute` resources and attach them to the shared `radius-system/radius` Gateway.
 
@@ -94,8 +94,8 @@ Radius.Compute/routes               -> Gateway API HTTPRoute/TLSRoute
 
 The route recipe defaults are:
 
-- `gateway_name`: `radius`
-- `gateway_namespace`: `radius-system`
+- `gatewayName`: `radius`
+- `gatewayNamespace`: `radius-system`
 
 The `Radius.Compute/routes` resource type can model HTTP, TLS, TCP, and UDP routes. The default Contour install supports HTTP and TLS through the managed 80/443 listeners. TCP requires a user-provided Gateway listener on the target port, and UDP is not supported by Contour's Gateway API path today.
 
@@ -179,7 +179,7 @@ The demo validates the default recipe shape end to end:
 
 The main security consideration is Kubernetes RBAC. The recipe execution identity needs explicit permissions for Gateway API route resources.
 
-Because the default Gateway allows routes from application namespaces, route hostnames are required for HTTP and TLS routes. This avoids accidental catch-all route attachment to the shared Gateway.
+Because the default Gateway allows routes from all namespaces, route hostnames are required for HTTP and TLS routes. This avoids accidental catch-all route attachment to the shared Gateway.
 
 Recipe artifacts should be published from trusted locations. The local registry and module server used in the demo are test infrastructure, not a production distribution model.
 

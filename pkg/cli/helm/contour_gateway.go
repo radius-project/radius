@@ -19,12 +19,14 @@ package helm
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/radius-project/radius/pkg/kubeutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -37,6 +39,9 @@ const (
 	radiusManagedByLabel = "app.kubernetes.io/managed-by"
 	radiusPartOfLabel    = "app.kubernetes.io/part-of"
 	radiusManagedValue   = "radius"
+
+	defaultContourGatewayRetryInterval = 2 * time.Second
+	defaultContourGatewayRetryTimeout  = 2 * time.Minute
 )
 
 var (
@@ -58,7 +63,33 @@ func ensureDefaultContourGateway(ctx context.Context, kubeContext string) error 
 		return err
 	}
 
-	return reconcileDefaultContourGateway(ctx, client)
+	return waitForDefaultContourGateway(ctx, client, defaultContourGatewayRetryInterval, defaultContourGatewayRetryTimeout)
+}
+
+func waitForDefaultContourGateway(ctx context.Context, client dynamic.Interface, interval time.Duration, timeout time.Duration) error {
+	var lastErr error
+	err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(ctx context.Context) (bool, error) {
+		err := reconcileDefaultContourGateway(ctx, client)
+		if err == nil {
+			return true, nil
+		}
+
+		if isRetryableGatewayAPIError(err) {
+			lastErr = err
+			return false, nil
+		}
+
+		return false, err
+	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("timed out waiting for Gateway API resources to become available: %w", lastErr)
+	}
+
+	return err
+}
+
+func isRetryableGatewayAPIError(err error) bool {
+	return apierrors.IsNotFound(err)
 }
 
 func reconcileDefaultContourGateway(ctx context.Context, client dynamic.Interface) error {

@@ -260,9 +260,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
 
-	contourChartOptions := clusterOptions.Contour.ChartOptions
-	contourChartOptions.Wait = true
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, contourChartOptions)
+	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
@@ -399,7 +397,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, true)
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}
