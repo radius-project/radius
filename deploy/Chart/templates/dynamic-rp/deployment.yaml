@@ -276,8 +276,7 @@ spec:
       # the dynamic-rp container reaches it via BUILDKIT_HOST. No
       # host Docker socket, no privileged containers.
       #
-      # PSA notes (verified empirically on AKS / EKS / k3d, runs
-      # documented in deploy/Chart/PSA-NOTES.md):
+      # PSA notes (verified empirically on AKS / EKS / k3d):
       #   - This pod runs cleanly in PSA mode "privileged" (the default
       #     for unlabeled namespaces).
       #   - PSA "baseline" rejects this pod because of the Unconfined

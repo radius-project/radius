@@ -137,9 +137,7 @@ dynamicrp:
     # the dynamic-rp Pod gets a rootless BuildKit sidecar that requires
     # PSA "privileged" on radius-system (the sidecar uses Unconfined
     # seccomp + AppArmor, which PSA "baseline" and "restricted" forbid).
-    # Default install (this disabled) is PSA-baseline-compatible. See
-    # deploy/Chart/PSA-NOTES.md for details on the PSA tradeoff and
-    # operator guidance.
+    # Default install (this disabled) is PSA-baseline-compatible.
     enabled: false
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
