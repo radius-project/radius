@@ -179,7 +179,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 
