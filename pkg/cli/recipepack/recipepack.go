@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -43,11 +44,11 @@ const (
 
 	// DefaultRoutesGatewayName is the name of the Gateway installed by the default
 	// Radius-managed Contour installation.
-	DefaultRoutesGatewayName = "radius"
+	DefaultRoutesGatewayName = helm.DefaultContourGatewayName
 
 	// DefaultRoutesGatewayNamespace is the namespace of the Gateway installed by
 	// the default Radius-managed Contour installation.
-	DefaultRoutesGatewayNamespace = "radius-system"
+	DefaultRoutesGatewayNamespace = helm.DefaultContourGatewayNamespace
 )
 
 // ResourceGroupCreator is a function that creates or updates a Radius resource group.

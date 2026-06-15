@@ -193,3 +193,23 @@ func TestDeleteDefaultContourGatewayResourcesOnlyDeletesManagedResources(t *test
 	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
 	require.True(t, apierrors.IsNotFound(err))
 }
+
+func TestDeleteDefaultContourGatewayResourcesPreservesGatewayClassForUnmanagedGateway(t *testing.T) {
+	t.Parallel()
+
+	managedGatewayClass := newContourGatewayClass()
+	unmanagedGateway := newContourGateway()
+	unmanagedGateway.SetLabels(nil)
+	unmanagedGateway.SetNamespace(DefaultContourGatewayNamespace)
+	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), managedGatewayClass)
+	_, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Create(context.Background(), unmanagedGateway, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	err = deleteDefaultContourGatewayResources(context.Background(), client)
+	require.NoError(t, err)
+
+	_, err = client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
+	require.NoError(t, err)
+	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	require.NoError(t, err)
+}

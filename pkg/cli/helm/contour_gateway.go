@@ -109,7 +109,16 @@ func deleteDefaultContourGateway(ctx context.Context, kubeContext string) error 
 }
 
 func deleteDefaultContourGatewayResources(ctx context.Context, client dynamic.Interface) error {
-	if err := deleteManagedResource(ctx, client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace), DefaultContourGatewayName); err != nil {
+	gatewayResource := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace)
+	existingGateway, err := gatewayResource.Get(ctx, DefaultContourGatewayName, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err == nil && !isRadiusManaged(existingGateway) {
+		return nil
+	}
+
+	if err := deleteManagedResource(ctx, gatewayResource, DefaultContourGatewayName); err != nil {
 		return err
 	}
 
