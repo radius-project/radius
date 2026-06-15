@@ -71,6 +71,12 @@ func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *tes
 		"gatewayAPI":   map[string]any{},
 	}
 	testChart := &chart.Chart{Values: cloneMap(original)}
+	expectedEnvoy := map[string]any{
+		"containerPorts": map[string]any{"http": 3000, "https": 3443},
+		"service": map[string]any{
+			"ports": map[string]any{"http": 3000, "https": 3443},
+		},
+	}
 	opts := ContourChartOptions{HostNetwork: false}
 
 	// Act
@@ -79,7 +85,7 @@ func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *tes
 	}
 
 	// Assert - host network chart values should be unchanged.
-	if !reflect.DeepEqual(testChart.Values["envoy"], original["envoy"]) {
+	if !reflect.DeepEqual(testChart.Values["envoy"], expectedEnvoy) {
 		t.Errorf("expected envoy chart values to remain unchanged when HostNetwork is false")
 	}
 
@@ -117,6 +123,24 @@ func TestAddContourValues_MergesGatewayConfig(t *testing.T) {
 	require.Equal(t, "projectcontour.io/gateway-controller", gateway["controllerName"])
 	assertDefaultGatewayRef(t, testChart.Values)
 	assertGatewayAPIManageCRDs(t, testChart.Values)
+}
+
+func TestAddContourValues_HostNetworkEnabled_ReturnsErrorForInvalidEnvoyNode(t *testing.T) {
+	// Arrange
+	testChart := &chart.Chart{
+		Values: map[string]any{
+			"envoy":        "invalid",
+			"configInline": map[string]any{},
+			"gatewayAPI":   map[string]any{},
+		},
+	}
+	opts := ContourChartOptions{HostNetwork: true}
+
+	// Act
+	err := addContourValues(testChart, opts)
+
+	// Assert
+	require.ErrorContains(t, err, "envoy node not found in chart values")
 }
 
 // cloneMap does a shallow copy of a map[string]any for test isolation.
