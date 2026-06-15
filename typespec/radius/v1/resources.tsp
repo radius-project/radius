@@ -40,7 +40,7 @@ model EnvironmentScopedResource {
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations.")
+  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).")
   codeReference?: string;
 
   @doc("Status of a resource.")
@@ -60,7 +60,7 @@ model ApplicationScopedResource {
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations.")
+  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).")
   codeReference?: string;
 
   @doc("Status of a resource.")
@@ -80,7 +80,7 @@ model GlobalScopedResource {
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations.")
+  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).")
   codeReference?: string;
 
   @doc("Status of a resource.")

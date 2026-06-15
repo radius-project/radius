@@ -116,7 +116,7 @@ model ApplicationGraphResource {
   @doc("Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.")
   diffHash?: string;
 
-  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor). Set by tooling such as 'rad app graph' for visualizations.")
+  @doc("Optional URL that deep-links the resource to its source code (e.g. a GitHub blob URL, optionally with a '#Lnnn' line anchor).")
   codeReference?: string;
 }
 
