@@ -29,6 +29,10 @@ import (
 // ConvertTo converts from the versioned Extender resource to version-agnostic datamodel and returns it, or an error if the
 // conversion fails.
 func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.Extender{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

@@ -31,6 +31,10 @@ import (
 // ConvertTo converts a versioned DaprPubSubBrokerResource to a version-agnostic DaprPubSubBroker. It returns an error
 // if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment:   to.String(src.Properties.Environment),

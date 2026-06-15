@@ -25,6 +25,10 @@ import (
 
 // ConvertTo converts from the versioned Volume resource to version-agnostic datamodel.
 func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.GetVolumeProperties().CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.VolumeResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

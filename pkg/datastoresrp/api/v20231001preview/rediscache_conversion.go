@@ -27,6 +27,10 @@ import (
 // ConvertTo converts from the versioned Redis cache resource to version-agnostic datamodel
 // and returns an error if the inputs are invalid.
 func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.RedisCache{
 		BaseResource: v1.BaseResource{
 			InternalMetadata: v1.InternalMetadata{

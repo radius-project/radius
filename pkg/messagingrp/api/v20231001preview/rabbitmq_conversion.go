@@ -27,6 +27,10 @@ import (
 // ConvertTo converts a versioned RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
 // and returns it or an error if the inputs are invalid.
 func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.RabbitMQQueue{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

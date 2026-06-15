@@ -31,6 +31,10 @@ import (
 // ConvertTo converts a versioned DaprConfigurationStoreResource to a version-agnostic DaprConfigurationStore. It returns an error
 // if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprConfigurationStoreResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	daprConfigurationStoreProperties := datamodel.DaprConfigurationStoreProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment:   to.String(src.Properties.Environment),

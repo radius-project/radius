@@ -15,6 +15,10 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel and returns an error
 // if the resourceProvisioning is set to manual and the required fields are not specified.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Environment:   to.String(src.Properties.Environment),

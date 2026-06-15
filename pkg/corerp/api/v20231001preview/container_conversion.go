@@ -28,6 +28,10 @@ import (
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
 func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	connections := make(map[string]datamodel.ConnectionProperties)

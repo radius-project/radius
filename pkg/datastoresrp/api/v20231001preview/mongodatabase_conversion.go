@@ -27,6 +27,10 @@ import (
 // ConvertTo converts from the versioned Mongo database resource to version-agnostic datamodel and returns it,
 // returning an error if any of the inputs are invalid.
 func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

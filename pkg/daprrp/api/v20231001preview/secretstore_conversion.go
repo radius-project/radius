@@ -31,6 +31,10 @@ import (
 // ConvertTo converts from the versioned DaprSecretStore resource to version-agnostic datamodel and returns an error if the
 // resourceProvisioning is set to manual and the required fields are not specified.
 func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.DaprSecretStore{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

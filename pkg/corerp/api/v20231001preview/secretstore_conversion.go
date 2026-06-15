@@ -25,6 +25,10 @@ import (
 
 // ConvertTo converts from the versioned SecretStoreResource resource to version-agnostic datamodel.
 func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	converted := &datamodel.SecretStore{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{

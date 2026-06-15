@@ -25,6 +25,10 @@ import (
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
+	if err := rpv1.ValidateCodeReference(to.String(src.Properties.CodeReference)); err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+
 	tls := &datamodel.GatewayPropertiesTLS{}
 	if src.Properties.TLS == nil {
 		tls = nil
