@@ -1445,13 +1445,15 @@ tests:
       # CronJob handles automatic rotation, not Helm upgrades
 
   # ─────────────────────────────────────────────────────────────────
-  # BuildKit sidecar shape: when enabled (default), the dynamic-rp Pod
-  # gains a buildctl-init init container, a buildkitd container, and
-  # the dynamic-rp container has BUILDKIT_HOST wired to loopback TCP.
-  - it: should provision buildkit sidecar by default
+  # BuildKit sidecar shape: when opted in via dynamicrp.buildkit.enabled,
+  # the dynamic-rp Pod gains a buildctl-init init container, a buildkitd
+  # container, and the dynamic-rp container has BUILDKIT_HOST wired to
+  # loopback TCP. By default (opt-out) the sidecar is absent.
+  - it: should provision buildkit sidecar when opted in
     set:
       dynamicrp.image: dynamic-rp
       rp.image: applications-rp
+      dynamicrp.buildkit.enabled: true
     asserts:
       - contains:
           path: spec.template.spec.initContainers
@@ -1472,11 +1474,10 @@ tests:
             value: tcp://127.0.0.1:1234
         template: dynamic-rp/deployment.yaml
 
-  - it: should omit buildkit sidecar when disabled
+  - it: should omit buildkit sidecar by default
     set:
       dynamicrp.image: dynamic-rp
       rp.image: applications-rp
-      dynamicrp.buildkit.enabled: false
     asserts:
       - notContains:
           path: spec.template.spec.containers

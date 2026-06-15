@@ -25,11 +25,18 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
+      {{- if or (eq .Values.global.prometheus.enabled true) (and .Values.dynamicrp.buildkit.enabled (not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version))) }}
       annotations:
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+        {{- end }}
+        {{- if and .Values.dynamicrp.buildkit.enabled (not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version)) }}
+        # Pre-K8s 1.30 fallback: securityContext.appArmorProfile was added
+        # in v1.30. Older clusters use the (now deprecated) annotation.
+        container.apparmor.security.beta.kubernetes.io/buildkitd: unconfined
+        {{- end }}
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
@@ -308,10 +315,15 @@ spec:
           # PSA baseline forbids both; this means the radius-system
           # namespace must be PSA-labeled "privileged" (or unlabeled,
           # which defaults to privileged) when buildkit is enabled.
+          # AppArmor is set via securityContext.appArmorProfile on K8s
+          # 1.30+ and via the container.apparmor.security.beta annotation
+          # on older clusters (set on the pod template metadata above).
           seccompProfile:
             type: Unconfined
+          {{- if semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version }}
           appArmorProfile:
             type: Unconfined
+          {{- end }}
           # rootlesskit's newuidmap relies on file capabilities, which
           # the kernel nullifies under no_new_privs=1 (set when
           # allowPrivilegeEscalation: false).

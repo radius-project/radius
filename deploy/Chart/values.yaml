@@ -129,11 +129,6 @@ dynamicrp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
-  resources:
-    requests:
-      memory: "160Mi"
-    limits:
-      memory: "500Mi"
   # buildkit configures an in-Pod rootless BuildKit sidecar that
   # backs the Radius.Compute/containerImages resource type. Opt-in:
   # disabled by default. No host Docker socket; no privileged containers.

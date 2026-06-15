@@ -9,6 +9,7 @@ ARM's
 AWSCredential
 AWSCredentialProvider
 AcquireLock
+Akihiro
 Amidst
 AnonymousCredential
 ApiVersionName
@@ -388,6 +389,7 @@ Stateful
 Statestores
 StaticCredential
 Subramanian
+Suda
 Swappable
 Sylvainsf
 Symlinked
@@ -642,6 +644,7 @@ dirs
 disableDefaultEnvVars
 discoverability
 discoverable
+distros
 dlv
 dns
 doDifferentThings
