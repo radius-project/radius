@@ -434,6 +434,211 @@ func Test_Run_RecipePacksReplaced(t *testing.T) {
 	require.True(t, foundWarning, "expected replacement warning in output")
 }
 
+// Test_Run_DefaultsKubernetesNamespace verifies the namespace defaulting that
+// happens at the end of Run() when the user did not pass --kubernetes-namespace
+// or --clear-kubernetes.
+func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	// existingPackID is returned by the fake Get so the update path isn't gated on recipe packs.
+	existingPackID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/old-pack"
+
+	// makeServer returns a fake server that returns existingProviders on Get
+	// and captures the CreateOrUpdate resource into captured.
+	makeServer := func(existingProviders *v20250801preview.Providers, captured *v20250801preview.EnvironmentResource) func() fake.EnvironmentsServer {
+		return func() fake.EnvironmentsServer {
+			return fake.EnvironmentsServer{
+				Get: func(
+					_ context.Context,
+					environmentName string,
+					_ *v20250801preview.EnvironmentsClientGetOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+					props := &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(existingPackID)},
+					}
+					if existingProviders != nil {
+						props.Providers = existingProviders
+					}
+					result := v20250801preview.EnvironmentsClientGetResponse{
+						EnvironmentResource: v20250801preview.EnvironmentResource{
+							ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+							Name:       to.Ptr(environmentName),
+							Properties: props,
+						},
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+				CreateOrUpdate: func(
+					_ context.Context,
+					_ string,
+					resource v20250801preview.EnvironmentResource,
+					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					*captured = resource
+					result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+						EnvironmentResource: resource,
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+			}
+		}
+	}
+
+	// kubernetesOnly is a small constructor for an existing-providers value with
+	// only the Kubernetes namespace populated.
+	kubernetesOnly := func(ns string) *v20250801preview.Providers {
+		return &v20250801preview.Providers{
+			Kubernetes: &v20250801preview.ProvidersKubernetes{Namespace: to.Ptr(ns)},
+		}
+	}
+
+	t.Run("env without namespace gets default when user does not provide one", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(nil, &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers:               &v20250801preview.Providers{},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties)
+		require.NotNil(t, captured.Properties.Providers)
+		require.NotNil(t, captured.Properties.Providers.Kubernetes)
+		require.NotNil(t, captured.Properties.Providers.Kubernetes.Namespace)
+		require.Equal(t, "default", *captured.Properties.Providers.Kubernetes.Namespace)
+	})
+
+	t.Run("env with existing namespace is preserved when user does not provide one", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers:               &v20250801preview.Providers{},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties.Providers.Kubernetes)
+		require.Equal(t, "existing-ns", *captured.Properties.Providers.Kubernetes.Namespace)
+	})
+
+	t.Run("user-provided namespace overrides default", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(nil, &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("user-ns"),
+				},
+			},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties.Providers.Kubernetes)
+		require.Equal(t, "user-ns", *captured.Properties.Providers.Kubernetes.Namespace)
+	})
+
+	t.Run("--clear-kubernetes is respected and default is not applied", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			clearEnvKubernetes:      true,
+			providers:               &v20250801preview.Providers{},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties.Providers)
+		require.Nil(t, captured.Properties.Providers.Kubernetes, "clear-kubernetes must not be overridden by the default")
+	})
+
+	t.Run("env with Azure provider does not get default namespace", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		azureOnly := &v20250801preview.Providers{
+			Azure: &v20250801preview.ProvidersAzure{
+				SubscriptionID:    to.Ptr("test-sub-id"),
+				ResourceGroupName: to.Ptr("test-rg"),
+			},
+		}
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(azureOnly, &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers:               &v20250801preview.Providers{},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties.Providers)
+		require.NotNil(t, captured.Properties.Providers.Azure, "Azure provider must be preserved")
+		require.Equal(t, "test-sub-id", *captured.Properties.Providers.Azure.SubscriptionID)
+		require.Nil(t, captured.Properties.Providers.Kubernetes, "Kubernetes namespace must not be defaulted when Azure is configured")
+	})
+}
+
 func Test_syncRecipePackReferences(t *testing.T) {
 	scope := "/planes/radius/local/resourceGroups/test-group"
 	workspace := &workspaces.Workspace{

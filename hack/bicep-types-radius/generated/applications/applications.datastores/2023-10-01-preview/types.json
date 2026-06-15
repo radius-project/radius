@@ -42,16 +42,100 @@
         "flags": 10,
         "description": "The resource api version"
       },
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/12"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/31"
+        },
+        "flags": 2,
+        "description": "The secret values for the given MongoDatabase resource"
+      },
+      "host": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Host name of the target Mongo database"
+      },
+      "port": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 2,
+        "description": "Port value of the target Mongo database"
+      },
+      "database": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Database name of the target Mongo database"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/34"
+        },
+        "flags": 2,
+        "description": "List of the resource IDs that support the MongoDB resource"
+      },
+      "username": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Username to use when connecting to the target Mongo database"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/35"
+        },
+        "flags": 2,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/39"
+        },
+        "flags": 2,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      },
       "properties": {
         "type": {
-          "$ref": "#/4"
+          "$ref": "#/40"
         },
         "flags": 1,
         "description": "MongoDatabase portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/54"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -65,100 +149,10 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/42"
+          "$ref": "#/55"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "MongoDatabaseProperties",
-    "properties": {
-      "environment": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-      },
-      "application": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-      },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/13"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "status": {
-        "type": {
-          "$ref": "#/14"
-        },
-        "flags": 2,
-        "description": "Status of a resource."
-      },
-      "secrets": {
-        "type": {
-          "$ref": "#/32"
-        },
-        "flags": 0,
-        "description": "The secret values for the given MongoDatabase resource"
-      },
-      "host": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Host name of the target Mongo database"
-      },
-      "port": {
-        "type": {
-          "$ref": "#/33"
-        },
-        "flags": 0,
-        "description": "Port value of the target Mongo database"
-      },
-      "database": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Database name of the target Mongo database"
-      },
-      "resources": {
-        "type": {
-          "$ref": "#/35"
-        },
-        "flags": 0,
-        "description": "List of the resource IDs that support the MongoDB resource"
-      },
-      "username": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Username to use when connecting to the target Mongo database"
-      },
-      "recipe": {
-        "type": {
-          "$ref": "#/36"
-        },
-        "flags": 0,
-        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
-      },
-      "resourceProvisioning": {
-        "type": {
-          "$ref": "#/40"
-        },
-        "flags": 0,
-        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
       }
     }
   },
@@ -198,6 +192,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/4"
+      },
+      {
         "$ref": "#/5"
       },
       {
@@ -217,9 +214,6 @@
       },
       {
         "$ref": "#/11"
-      },
-      {
-        "$ref": "#/12"
       }
     ]
   },
@@ -229,21 +223,21 @@
     "properties": {
       "compute": {
         "type": {
-          "$ref": "#/15"
+          "$ref": "#/14"
         },
         "flags": 0,
         "description": "Represents backing compute resource"
       },
       "recipe": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/27"
         },
         "flags": 2,
         "description": "Recipe status at deployment time for a resource."
       },
       "outputResources": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -264,7 +258,7 @@
       },
       "identity": {
         "type": {
-          "$ref": "#/16"
+          "$ref": "#/15"
         },
         "flags": 0,
         "description": "IdentitySettings is the external identity setting."
@@ -272,10 +266,10 @@
     },
     "elements": {
       "aci": {
-        "$ref": "#/24"
+        "$ref": "#/23"
       },
       "kubernetes": {
-        "$ref": "#/26"
+        "$ref": "#/25"
       }
     }
   },
@@ -285,7 +279,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/22"
+          "$ref": "#/21"
         },
         "flags": 1,
         "description": "IdentitySettingKind is the kind of supported external identity setting"
@@ -306,7 +300,7 @@
       },
       "managedIdentity": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/22"
         },
         "flags": 0,
         "description": "The list of user assigned managed identities"
@@ -337,6 +331,9 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/16"
+      },
+      {
         "$ref": "#/17"
       },
       {
@@ -347,9 +344,6 @@
       },
       {
         "$ref": "#/20"
-      },
-      {
-        "$ref": "#/21"
       }
     ]
   },
@@ -372,7 +366,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/24"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -396,7 +390,7 @@
       },
       "kind": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/26"
         },
         "flags": 1,
         "description": "Discriminator property for EnvironmentCompute."
@@ -454,7 +448,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -467,7 +461,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/29"
+      "$ref": "#/28"
     }
   },
   {
@@ -509,7 +503,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/34"
+      "$ref": "#/33"
     }
   },
   {
@@ -525,7 +519,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/37"
+          "$ref": "#/36"
         },
         "flags": 0,
         "description": "Any object"
@@ -547,252 +541,16 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/37"
+      },
+      {
         "$ref": "#/38"
-      },
-      {
-        "$ref": "#/39"
       }
     ]
   },
   {
     "$type": "ObjectType",
-    "name": "TrackedResourceTags",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "SystemData",
-    "properties": {
-      "createdBy": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The identity that created the resource."
-      },
-      "createdByType": {
-        "type": {
-          "$ref": "#/47"
-        },
-        "flags": 0,
-        "description": "The type of identity that created the resource."
-      },
-      "createdAt": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The timestamp of resource creation (UTC)."
-      },
-      "lastModifiedBy": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The identity that last modified the resource."
-      },
-      "lastModifiedByType": {
-        "type": {
-          "$ref": "#/52"
-        },
-        "flags": 0,
-        "description": "The type of identity that created the resource."
-      },
-      "lastModifiedAt": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The timestamp of resource last modification (UTC)"
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "User"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Application"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "ManagedIdentity"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Key"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/43"
-      },
-      {
-        "$ref": "#/44"
-      },
-      {
-        "$ref": "#/45"
-      },
-      {
-        "$ref": "#/46"
-      }
-    ]
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "User"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Application"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "ManagedIdentity"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Key"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/48"
-      },
-      {
-        "$ref": "#/49"
-      },
-      {
-        "$ref": "#/50"
-      },
-      {
-        "$ref": "#/51"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "MongoDatabaseListSecretsResult",
-    "properties": {
-      "password": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 2,
-        "description": "Password to use when connecting to the target Mongo database"
-      },
-      "connectionString": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 2,
-        "description": "Connection string used to connect to the target Mongo database"
-      }
-    }
-  },
-  {
-    "$type": "FunctionType",
-    "parameters": [],
-    "output": {
-      "$ref": "#/53"
-    }
-  },
-  {
-    "$type": "ResourceType",
-    "name": "Applications.Datastores/mongoDatabases@2023-10-01-preview",
-    "body": {
-      "$ref": "#/3"
-    },
-    "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {
-      "listSecrets": {
-        "type": {
-          "$ref": "#/54"
-        },
-        "description": "listSecrets"
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Datastores/redisCaches"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Datastores/redisCaches",
-    "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/56"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
-      "apiVersion": {
-        "type": {
-          "$ref": "#/57"
-        },
-        "flags": 10,
-        "description": "The resource api version"
-      },
-      "properties": {
-        "type": {
-          "$ref": "#/59"
-        },
-        "flags": 1,
-        "description": "RedisCache portable resource properties"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/74"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/42"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RedisCacheProperties",
+    "name": "MongoDatabaseProperties",
     "properties": {
       "environment": {
         "type": {
@@ -810,70 +568,70 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/49"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "status": {
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/13"
         },
         "flags": 2,
         "description": "Status of a resource."
       },
       "secrets": {
         "type": {
-          "$ref": "#/69"
+          "$ref": "#/31"
         },
         "flags": 0,
-        "description": "The secret values for the given RedisCache resource"
+        "description": "The secret values for the given MongoDatabase resource"
       },
       "host": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The host name of the target Redis cache"
+        "description": "Host name of the target Mongo database"
       },
       "port": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/32"
         },
         "flags": 0,
-        "description": "The port value of the target Redis cache"
+        "description": "Port value of the target Mongo database"
+      },
+      "database": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Database name of the target Mongo database"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/50"
+        },
+        "flags": 0,
+        "description": "List of the resource IDs that support the MongoDB resource"
       },
       "username": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The username for Redis cache"
-      },
-      "tls": {
-        "type": {
-          "$ref": "#/30"
-        },
-        "flags": 0,
-        "description": "Specifies whether to enable SSL connections to the Redis cache"
-      },
-      "resources": {
-        "type": {
-          "$ref": "#/70"
-        },
-        "flags": 0,
-        "description": "List of the resource IDs that support the Redis resource"
+        "description": "Username to use when connecting to the target Mongo database"
       },
       "recipe": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/35"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/53"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -916,8 +674,164 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/60"
+        "$ref": "#/41"
       },
+      {
+        "$ref": "#/42"
+      },
+      {
+        "$ref": "#/43"
+      },
+      {
+        "$ref": "#/44"
+      },
+      {
+        "$ref": "#/45"
+      },
+      {
+        "$ref": "#/46"
+      },
+      {
+        "$ref": "#/47"
+      },
+      {
+        "$ref": "#/48"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/33"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/51"
+      },
+      {
+        "$ref": "#/52"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TrackedResourceTags",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SystemData",
+    "properties": {
+      "createdBy": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The identity that created the resource."
+      },
+      "createdByType": {
+        "type": {
+          "$ref": "#/60"
+        },
+        "flags": 0,
+        "description": "The type of identity that created the resource."
+      },
+      "createdAt": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The timestamp of resource creation (UTC)."
+      },
+      "lastModifiedBy": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The identity that last modified the resource."
+      },
+      "lastModifiedByType": {
+        "type": {
+          "$ref": "#/65"
+        },
+        "flags": 0,
+        "description": "The type of identity that created the resource."
+      },
+      "lastModifiedAt": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The timestamp of resource last modification (UTC)"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "User"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Application"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ManagedIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Key"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/56"
+      },
+      {
+        "$ref": "#/57"
+      },
+      {
+        "$ref": "#/58"
+      },
+      {
+        "$ref": "#/59"
+      }
+    ]
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "User"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Application"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ManagedIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Key"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
       {
         "$ref": "#/61"
       },
@@ -929,15 +843,265 @@
       },
       {
         "$ref": "#/64"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "MongoDatabaseListSecretsResult",
+    "properties": {
+      "password": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Password to use when connecting to the target Mongo database"
+      },
+      "connectionString": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Connection string used to connect to the target Mongo database"
+      }
+    }
+  },
+  {
+    "$type": "FunctionType",
+    "parameters": [],
+    "output": {
+      "$ref": "#/66"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Datastores/mongoDatabases@2023-10-01-preview",
+    "body": {
+      "$ref": "#/3"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {
+      "listSecrets": {
+        "type": {
+          "$ref": "#/67"
+        },
+        "description": "listSecrets"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Datastores/redisCaches"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Applications.Datastores/redisCaches",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/69"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/70"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/80"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/81"
+        },
+        "flags": 2,
+        "description": "The secret values for the given RedisCache resource"
+      },
+      "host": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The host name of the target Redis cache"
+      },
+      "port": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 2,
+        "description": "The port value of the target Redis cache"
+      },
+      "username": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The username for Redis cache"
+      },
+      "tls": {
+        "type": {
+          "$ref": "#/29"
+        },
+        "flags": 2,
+        "description": "Specifies whether to enable SSL connections to the Redis cache"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/82"
+        },
+        "flags": 2,
+        "description": "List of the resource IDs that support the Redis resource"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/35"
+        },
+        "flags": 2,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/85"
+        },
+        "flags": 2,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/86"
+        },
+        "flags": 1,
+        "description": "RedisCache portable resource properties"
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/100"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/55"
+        },
+        "flags": 2,
+        "description": "Metadata pertaining to creation and last modification of the resource."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/72"
       },
       {
-        "$ref": "#/65"
+        "$ref": "#/73"
       },
       {
-        "$ref": "#/66"
+        "$ref": "#/74"
       },
       {
-        "$ref": "#/67"
+        "$ref": "#/75"
+      },
+      {
+        "$ref": "#/76"
+      },
+      {
+        "$ref": "#/77"
+      },
+      {
+        "$ref": "#/78"
+      },
+      {
+        "$ref": "#/79"
       }
     ]
   },
@@ -971,7 +1135,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/34"
+      "$ref": "#/33"
     }
   },
   {
@@ -986,10 +1150,186 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/71"
+        "$ref": "#/83"
       },
       {
-        "$ref": "#/72"
+        "$ref": "#/84"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RedisCacheProperties",
+    "properties": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/95"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/81"
+        },
+        "flags": 0,
+        "description": "The secret values for the given RedisCache resource"
+      },
+      "host": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The host name of the target Redis cache"
+      },
+      "port": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 0,
+        "description": "The port value of the target Redis cache"
+      },
+      "username": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The username for Redis cache"
+      },
+      "tls": {
+        "type": {
+          "$ref": "#/29"
+        },
+        "flags": 0,
+        "description": "Specifies whether to enable SSL connections to the Redis cache"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/96"
+        },
+        "flags": 0,
+        "description": "List of the resource IDs that support the Redis resource"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/35"
+        },
+        "flags": 0,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/99"
+        },
+        "flags": 0,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/87"
+      },
+      {
+        "$ref": "#/88"
+      },
+      {
+        "$ref": "#/89"
+      },
+      {
+        "$ref": "#/90"
+      },
+      {
+        "$ref": "#/91"
+      },
+      {
+        "$ref": "#/92"
+      },
+      {
+        "$ref": "#/93"
+      },
+      {
+        "$ref": "#/94"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/33"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/97"
+      },
+      {
+        "$ref": "#/98"
       }
     ]
   },
@@ -1032,21 +1372,21 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/75"
+      "$ref": "#/101"
     }
   },
   {
     "$type": "ResourceType",
     "name": "Applications.Datastores/redisCaches@2023-10-01-preview",
     "body": {
-      "$ref": "#/58"
+      "$ref": "#/71"
     },
     "readableScopes": 0,
     "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/76"
+          "$ref": "#/102"
         },
         "description": "listSecrets"
       }
@@ -1080,28 +1420,112 @@
       },
       "type": {
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/104"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/79"
+          "$ref": "#/105"
         },
         "flags": 10,
         "description": "The resource api version"
       },
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/115"
+        },
+        "flags": 2,
+        "description": "Provisioning state of the resource at the time the operation was called"
+      },
+      "status": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "database": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The name of the Sql database."
+      },
+      "server": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "The fully qualified domain name of the Sql database."
+      },
+      "port": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 2,
+        "description": "Port value of the target Sql database"
+      },
+      "username": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Username to use when connecting to the target Sql database"
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/116"
+        },
+        "flags": 2,
+        "description": "List of the resource IDs that support the SqlDatabase resource"
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/117"
+        },
+        "flags": 2,
+        "description": "The secret values for the given SqlDatabase resource"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/35"
+        },
+        "flags": 2,
+        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/120"
+        },
+        "flags": 2,
+        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
+      },
       "properties": {
         "type": {
-          "$ref": "#/81"
+          "$ref": "#/121"
         },
         "flags": 1,
         "description": "SqlDatabase properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/96"
+          "$ref": "#/135"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1115,12 +1539,118 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/42"
+          "$ref": "#/55"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
       }
     }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/107"
+      },
+      {
+        "$ref": "#/108"
+      },
+      {
+        "$ref": "#/109"
+      },
+      {
+        "$ref": "#/110"
+      },
+      {
+        "$ref": "#/111"
+      },
+      {
+        "$ref": "#/112"
+      },
+      {
+        "$ref": "#/113"
+      },
+      {
+        "$ref": "#/114"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/33"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SqlDatabaseSecrets",
+    "properties": {
+      "password": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Password to use when connecting to the target Sql database"
+      },
+      "connectionString": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Connection string used to connect to the target Sql database"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/118"
+      },
+      {
+        "$ref": "#/119"
+      }
+    ]
   },
   {
     "$type": "ObjectType",
@@ -1142,14 +1672,14 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/90"
+          "$ref": "#/130"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "status": {
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/13"
         },
         "flags": 2,
         "description": "Status of a resource."
@@ -1170,7 +1700,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "Port value of the target Sql database"
@@ -1184,28 +1714,28 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/131"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the SqlDatabase resource"
       },
       "secrets": {
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/117"
         },
         "flags": 0,
         "description": "The secret values for the given SqlDatabase resource"
       },
       "recipe": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/35"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/95"
+          "$ref": "#/134"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -1248,55 +1778,35 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/82"
+        "$ref": "#/122"
       },
       {
-        "$ref": "#/83"
+        "$ref": "#/123"
       },
       {
-        "$ref": "#/84"
+        "$ref": "#/124"
       },
       {
-        "$ref": "#/85"
+        "$ref": "#/125"
       },
       {
-        "$ref": "#/86"
+        "$ref": "#/126"
       },
       {
-        "$ref": "#/87"
+        "$ref": "#/127"
       },
       {
-        "$ref": "#/88"
+        "$ref": "#/128"
       },
       {
-        "$ref": "#/89"
+        "$ref": "#/129"
       }
     ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/34"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "SqlDatabaseSecrets",
-    "properties": {
-      "password": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Password to use when connecting to the target Sql database"
-      },
-      "connectionString": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Connection string used to connect to the target Sql database"
-      }
+      "$ref": "#/33"
     }
   },
   {
@@ -1311,10 +1821,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/93"
+        "$ref": "#/132"
       },
       {
-        "$ref": "#/94"
+        "$ref": "#/133"
       }
     ]
   },
@@ -1350,21 +1860,21 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/97"
+      "$ref": "#/136"
     }
   },
   {
     "$type": "ResourceType",
     "name": "Applications.Datastores/sqlDatabases@2023-10-01-preview",
     "body": {
-      "$ref": "#/80"
+      "$ref": "#/106"
     },
     "readableScopes": 0,
     "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/137"
         },
         "description": "listSecrets"
       }

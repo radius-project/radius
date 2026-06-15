@@ -69,7 +69,7 @@ jobs:
         run: |
           {
             echo "## :x: Spellcheck Failed"
-            echo "There are spelling errors in your PR. Visit [the workflow output](${{ env.ACTION_LINK }}) to see what words are failing."
+            echo "There are spelling errors in your PR. Visit [the workflow output](${ACTION_LINK}) to see what words are failing."
             echo "### Adding new words"
             echo "You can add new custom words to [.cspellignore](https://github.com/radius-project/radius/blob/main/.cspellignore)."
           } >> "${GITHUB_STEP_SUMMARY}"
