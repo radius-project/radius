@@ -314,7 +314,7 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		},
 		PrevState: []string{},
 	}
-	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, response, resources)
+	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -351,7 +351,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, resources)
+	actualResponse, err := d.prepareRecipeResponse(recipes.EnvironmentDefinition{TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"}, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -373,7 +373,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, resources)
+	actualResponse, err := d.prepareRecipeResponse(recipes.EnvironmentDefinition{TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"}, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -585,4 +585,148 @@ func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
+}
+
+func Test_Bicep_PrepareRecipeResponse_DirectModule(t *testing.T) {
+	d := &bicepDriver{}
+
+	tests := []struct {
+		desc             string
+		definition       recipes.EnvironmentDefinition
+		outputs          any
+		resources        []*armresources.ResourceReference
+		expectedResponse *recipes.RecipeOutput
+		expectedErr      error
+	}{
+		{
+			desc: "direct module with outputs mapping",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+				Outputs:      map[string]string{"endpoint": "storageEndpoint", "name": "storageName"},
+			},
+			outputs: map[string]any{
+				"storageEndpoint": map[string]any{"type": "string", "value": "https://sa.blob.core.windows.net"},
+				"storageName":     map[string]any{"type": "string", "value": "mystorageaccount"},
+				"extra":           map[string]any{"type": "string", "value": "ignored"},
+			},
+			resources: []*armresources.ResourceReference{
+				{ID: new("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/sa")},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:    map[string]any{"endpoint": "https://sa.blob.core.windows.net", "name": "mystorageaccount"},
+				Secrets:   map[string]any{},
+				Resources: []string{"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/sa"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+				},
+			},
+		},
+		{
+			desc: "direct module without outputs mapping - pass through all",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+			},
+			outputs: map[string]any{
+				"storageEndpoint": map[string]any{"type": "string", "value": "https://sa.blob.core.windows.net"},
+				"storageName":     map[string]any{"type": "string", "value": "mystorageaccount"},
+			},
+			resources:   nil,
+			expectedErr: nil,
+			expectedResponse: &recipes.RecipeOutput{
+				Values: map[string]any{
+					"storageEndpoint": "https://sa.blob.core.windows.net",
+					"storageName":     "mystorageaccount",
+				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+				},
+			},
+		},
+		{
+			desc: "module with result and no outputs mapping - wrapped behavior",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath: "radiusdev.azurecr.io/recipes/mongo:1.0",
+			},
+			outputs: map[string]any{
+				"result": map[string]any{
+					"value": map[string]any{
+						"values":    map[string]any{"host": "mongohost"},
+						"secrets":   map[string]any{"connStr": "mongodb://..."},
+						"resources": []any{"res1"},
+					},
+				},
+			},
+			resources: nil,
+			expectedResponse: &recipes.RecipeOutput{
+				Values:    map[string]any{"host": "mongohost"},
+				Secrets:   map[string]any{"connStr": "mongodb://..."},
+				Resources: []string{"res1"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "radiusdev.azurecr.io/recipes/mongo:1.0",
+				},
+			},
+		},
+		{
+			desc: "module with both result and outputs mapping - outputs wins",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath: "br:myregistry/module:1.0",
+				Outputs:      map[string]string{"host": "hostname"},
+			},
+			outputs: map[string]any{
+				"result": map[string]any{
+					"value": map[string]any{"values": map[string]any{"host": "from-result"}},
+				},
+				"hostname": map[string]any{"type": "string", "value": "from-arm-output"},
+			},
+			resources: nil,
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "from-arm-output"},
+				Secrets: map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "br:myregistry/module:1.0",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			resp, err := d.prepareRecipeResponse(tt.definition, tt.outputs, tt.resources)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expectedResponse, resp)
+		})
+	}
+}
+
+func Test_WrapARMParameters(t *testing.T) {
+	tests := []struct {
+		name     string
+		params   map[string]any
+		expected map[string]any
+	}{
+		{
+			name:     "nil params returns empty map",
+			params:   nil,
+			expected: map[string]any{},
+		},
+		{
+			name:   "wraps values in ARM format",
+			params: map[string]any{"name": "mysa", "sku": "Standard"},
+			expected: map[string]any{
+				"name": map[string]any{"value": "mysa"},
+				"sku":  map[string]any{"value": "Standard"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := wrapARMParameters(tt.params)
+			require.Equal(t, tt.expected, result)
+		})
+	}
 }

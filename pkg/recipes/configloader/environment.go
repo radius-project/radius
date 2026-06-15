@@ -31,6 +31,7 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -361,20 +362,65 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// Reconcile parameters from recipe pack and environment-level recipe parameters
 		parameters := reconcileRecipeParameters(recipeDefinition.Parameters, envDatamodel.Properties.RecipeParameters, resource.Type())
 
+		// Recipe packs don't carry a separate version field, so for Terraform recipes the module
+		// version is encoded in the recipe location using the "<source>@<version>" convention
+		// (e.g. "terraform-aws-modules/rds/aws@6.1.0"). Registry modules require the version as a
+		// separate Terraform "version" argument, so we split it out here.
+		templatePath := recipeDefinition.RecipeLocation
+		templateVersion := ""
+		if strings.EqualFold(recipeDefinition.RecipeKind, recipes.TemplateKindTerraform) {
+			templatePath, templateVersion = parseTerraformModuleSource(recipeDefinition.RecipeLocation)
+		}
+
 		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
-			Name:         "default",
-			Driver:       recipeDefinition.RecipeKind,
-			ResourceType: resource.Type(),
-			Parameters:   parameters,
-			TemplatePath: recipeDefinition.RecipeLocation,
-			PlainHTTP:    recipeDefinition.PlainHTTP,
+			Name:            "default",
+			Driver:          recipeDefinition.RecipeKind,
+			ResourceType:    resource.Type(),
+			Parameters:      parameters,
+			TemplatePath:    templatePath,
+			TemplateVersion: templateVersion,
+			PlainHTTP:       recipeDefinition.PlainHTTP,
+			Outputs:         recipeDefinition.Outputs,
 		}
 		return definition, nil
 	}
 
 	return nil, fmt.Errorf("could not find any recipe pack for %q in environment %q", resource.Type(), recipe.EnvironmentID)
+}
+
+// parseTerraformModuleSource splits a Terraform module reference of the form "<source>@<version>"
+// into its source and version components, implementing the Radius convention for pinning Terraform
+// registry modules. Terraform registry addresses (e.g. "terraform-aws-modules/rds/aws") are not URLs
+// and require the version to be supplied as a separate "version" argument rather than embedded in the
+// source, so RecipePacks encode it as a "@<version>" suffix. For example
+// "terraform-aws-modules/rds/aws@6.1.0" yields source "terraform-aws-modules/rds/aws" and version "6.1.0".
+//
+// The "@<version>" suffix is only recognized for registry-style addresses: the source must not contain
+// a "://" scheme (so HTTP, Git, and OCI URLs that legitimately contain "@" are left untouched) and the
+// "@" must appear after the final "/" (so it is not confused with the user component of a "git@host"
+// SSH address). References without a recognized suffix are returned unchanged with an empty version.
+func parseTerraformModuleSource(location string) (source string, version string) {
+	if strings.Contains(location, "://") {
+		return location, ""
+	}
+
+	at := strings.LastIndex(location, "@")
+	if at < 0 {
+		return location, ""
+	}
+
+	candidateSource := location[:at]
+	candidateVersion := location[at+1:]
+
+	// A version suffix must come after the last path separator; otherwise the "@" belongs to a host
+	// component such as "git@github.com/org/repo".
+	if candidateSource == "" || candidateVersion == "" || strings.ContainsRune(candidateVersion, '/') {
+		return location, ""
+	}
+
+	return candidateSource, candidateVersion
 }
 
 // fetchRecipeDefinition fetches recipe pack resources from the given recipe pack IDs and returns
@@ -407,6 +453,7 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 					RecipeLocation: string(*definition.RecipeLocation),
 					Parameters:     definition.Parameters,
 					PlainHTTP:      plainHTTP,
+					Outputs:        to.StringMap(definition.Outputs),
 				}, nil
 			}
 		}

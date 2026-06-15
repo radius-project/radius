@@ -64,10 +64,10 @@
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/121"
     },
     "Radius.Core/recipePacks@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/154"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/155"
     },
     "Radius.Core/terraformConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/192"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/193"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
       "$ref": "radius/radius.data/2025-08-01-preview/types.json#/17"

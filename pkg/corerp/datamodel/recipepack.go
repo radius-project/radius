@@ -58,6 +58,10 @@ type RecipeDefinition struct {
 	// Parameters to pass to the recipe.
 	Parameters map[string]any `json:"parameters,omitempty"`
 
+	// Outputs maps resource-type property names to module output names. Used for recipes that point
+	// directly at a Bicep or Terraform module to map the module's outputs onto resource properties.
+	Outputs map[string]string `json:"outputs,omitempty"`
+
 	// PlainHTTP connects to the location using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
 }

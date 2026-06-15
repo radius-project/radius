@@ -698,6 +698,85 @@ func Test_AddOutputs(t *testing.T) {
 	}
 }
 
+func Test_AddMappedOutputs(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+
+	tests := []struct {
+		desc           string
+		moduleName     string
+		outputsMap     map[string]string
+		sensitivity    map[string]bool
+		expectedOutput map[string]any
+		expectedErr    bool
+	}{
+		{
+			desc:       "maps non-sensitive and sensitive outputs",
+			moduleName: testRecipeName,
+			outputsMap: map[string]string{
+				"host":     "endpoint",
+				"password": "secret",
+			},
+			sensitivity: map[string]bool{
+				"endpoint": false,
+				"secret":   true,
+			},
+			expectedOutput: map[string]any{
+				"endpoint": map[string]any{
+					"value":     "${module." + testRecipeName + ".endpoint}",
+					"sensitive": false,
+				},
+				"secret": map[string]any{
+					"value":     "${module." + testRecipeName + ".secret}",
+					"sensitive": true,
+				},
+			},
+		},
+		{
+			desc:       "duplicate module outputs are de-duplicated",
+			moduleName: testRecipeName,
+			outputsMap: map[string]string{
+				"primary":   "endpoint",
+				"secondary": "endpoint",
+			},
+			sensitivity: map[string]bool{"endpoint": false},
+			expectedOutput: map[string]any{
+				"endpoint": map[string]any{
+					"value":     "${module." + testRecipeName + ".endpoint}",
+					"sensitive": false,
+				},
+			},
+		},
+		{
+			desc:           "empty outputs map is a no-op",
+			moduleName:     testRecipeName,
+			outputsMap:     map[string]string{},
+			expectedOutput: nil,
+		},
+		{
+			desc:        "empty module name returns error",
+			moduleName:  "",
+			outputsMap:  map[string]string{"host": "endpoint"},
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
+			require.NoError(t, err)
+
+			err = tfconfig.AddMappedOutputs(tc.moduleName, tc.outputsMap, tc.sensitivity)
+			if tc.expectedErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedOutput, tfconfig.Output)
+		})
+	}
+}
+
 func Test_updateModuleWithProviderAliases(t *testing.T) {
 	tests := []struct {
 		name               string

@@ -196,6 +196,57 @@ func Test_Process(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "is not a valid resource id")
 	})
+
+	t.Run("non-string secret values are stringified", func(t *testing.T) {
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{
+					UpdatedAPIVersion: "2024-01-01",
+				},
+			},
+			Properties: map[string]any{
+				"status": map[string]any{},
+			},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values: map[string]any{
+					"host": hostname,
+				},
+				// A direct module may emit sensitive outputs that are not strings (numbers, booleans).
+				Secrets: map[string]any{
+					"port":    float64(port),
+					"enabled": true,
+				},
+			},
+			UcpClient: clientFactory,
+		}
+
+		err := processor.Process(context.Background(), resource, options)
+		require.NoError(t, err)
+
+		bs, err := json.Marshal(resource.Properties)
+		require.NoError(t, err)
+		properties := map[string]any{}
+		require.NoError(t, json.Unmarshal(bs, &properties))
+
+		status, ok := properties["status"].(map[string]any)
+		require.True(t, ok)
+		secrets, ok := status["secrets"].(map[string]any)
+		require.True(t, ok)
+
+		portSecret, ok := secrets["port"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "1234", portSecret["Value"])
+
+		enabledSecret, ok := secrets["enabled"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "true", enabledSecret["Value"])
+	})
 }
 
 func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {

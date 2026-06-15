@@ -2009,6 +2009,13 @@
           "type": "object",
           "description": "Parameters to pass to the recipe",
           "additionalProperties": {}
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [

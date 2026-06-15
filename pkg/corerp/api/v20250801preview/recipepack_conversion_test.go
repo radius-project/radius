@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -53,6 +54,16 @@ func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	// Validate API version metadata
 	require.Equal(t, Version, recipePack.InternalMetadata.CreatedAPIVersion)
 	require.Equal(t, Version, recipePack.InternalMetadata.UpdatedAPIVersion)
+
+	// Validate the outputs mapping is converted onto the datamodel recipe definition.
+	stateStore := recipePack.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.Equal(t, map[string]string{"host": "redis_host", "port": "redis_port"}, stateStore.Outputs)
+
+	// A recipe without an outputs mapping should leave Outputs unset.
+	container := recipePack.Properties.Recipes["Applications.Core/containers"]
+	require.NotNil(t, container)
+	require.Nil(t, container.Outputs)
 }
 
 func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
@@ -75,6 +86,16 @@ func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, dataModel.Type, *versionedResource.Type)
 	require.Equal(t, dataModel.Location, *versionedResource.Location)
 	require.NotNil(t, versionedResource.Properties)
+
+	// Validate the outputs mapping is converted onto the versioned recipe definition.
+	stateStore := versionedResource.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.Equal(t, map[string]*string{"host": to.Ptr("redis_host"), "port": to.Ptr("redis_port")}, stateStore.Outputs)
+
+	// A recipe without an outputs mapping should leave Outputs unset.
+	container := versionedResource.Properties.Recipes["Applications.Core/containers"]
+	require.NotNil(t, container)
+	require.Nil(t, container.Outputs)
 }
 
 func TestRecipePackConvertInvalidModel(t *testing.T) {

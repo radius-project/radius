@@ -521,6 +521,10 @@ type RecipeDefinition struct {
 	// REQUIRED; URL path to the recipe
 	RecipeLocation *string
 
+	// Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform
+	// module to map the module's outputs onto the resource's properties.
+	Outputs map[string]*string
+
 	// Parameters to pass to the recipe
 	Parameters map[string]any
 

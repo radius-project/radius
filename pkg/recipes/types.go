@@ -83,6 +83,9 @@ type EnvironmentDefinition struct {
 	TemplateVersion string
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with their original names.
+	Outputs map[string]string
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
@@ -158,6 +161,9 @@ type RecipeDefinition struct {
 	RecipeLocation string
 	// Parameters represents parameters to pass to the recipe
 	Parameters map[string]any
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with their original names.
+	Outputs map[string]string
 	// PlainHTTP connects to the location using HTTP (not-HTTPS)
 	PlainHTTP bool
 }

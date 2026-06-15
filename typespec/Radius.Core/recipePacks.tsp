@@ -68,6 +68,9 @@ model RecipeDefinition {
 
   @doc("Parameters to pass to the recipe")
   parameters?: Record<unknown>;
+
+  @doc("Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties.")
+  outputs?: Record<string>;
 }
 
 @doc("The type of recipe")

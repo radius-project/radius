@@ -296,3 +296,34 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 
 	return nil
 }
+
+// AddMappedOutputs generates an output block for each module output referenced by the outputs
+// mapping. This is used for direct modules that do not produce a wrapped "result" output but
+// declare individual outputs that should be mapped to resource properties.
+//
+// Each generated output is marked sensitive according to the module's own output declaration
+// (sensitivity), because Terraform requires a re-exported sensitive value to be marked sensitive.
+// Preserving the per-output sensitivity keeps the Values/Secrets split intact when the state is read back.
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap map[string]string, sensitivity map[string]bool) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+	if len(outputsMap) == 0 {
+		return nil
+	}
+
+	if cfg.Output == nil {
+		cfg.Output = make(map[string]any, len(outputsMap))
+	}
+	// Multiple resource properties may map to the same module output; keying the generated
+	// output block by the module output name naturally de-duplicates those references.
+	for _, moduleOutputName := range outputsMap {
+		cfg.Output[moduleOutputName] = map[string]any{
+			"value":     "${module." + localModuleName + "." + moduleOutputName + "}",
+			"sensitive": sensitivity[moduleOutputName],
+		}
+	}
+
+	return nil
+}
