@@ -378,8 +378,8 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 					Properties: datamodel.RecipePackProperties{
 						Recipes: map[string]*datamodel.RecipeDefinition{
 							"Applications.Core/containers": {
-								RecipeKind:     "bicep",
-								RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+								Kind:   "bicep",
+								Source: "br:myregistry.azurecr.io/recipes/container:1.0",
 							},
 						},
 					},
@@ -388,8 +388,8 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 					Properties: datamodel.RecipePackProperties{
 						Recipes: map[string]*datamodel.RecipeDefinition{
 							"Applications.Dapr/stateStores": {
-								RecipeKind:     "terraform",
-								RecipeLocation: "git::https://github.com/recipes/dapr-state",
+								Kind:   "terraform",
+								Source: "git::https://github.com/recipes/dapr-state",
 							},
 						},
 					},
@@ -413,8 +413,8 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 					Properties: datamodel.RecipePackProperties{
 						Recipes: map[string]*datamodel.RecipeDefinition{
 							"Applications.Core/containers": {
-								RecipeKind:     "bicep",
-								RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+								Kind:   "bicep",
+								Source: "br:myregistry.azurecr.io/recipes/container:1.0",
 							},
 						},
 					},
@@ -423,8 +423,8 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 					Properties: datamodel.RecipePackProperties{
 						Recipes: map[string]*datamodel.RecipeDefinition{
 							"Applications.Core/containers": {
-								RecipeKind:     "terraform",
-								RecipeLocation: "git::https://github.com/recipes/container",
+								Kind:   "terraform",
+								Source: "git::https://github.com/recipes/container",
 							},
 						},
 					},
@@ -456,8 +456,8 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 					Properties: datamodel.RecipePackProperties{
 						Recipes: map[string]*datamodel.RecipeDefinition{
 							"Applications.Core/containers": {
-								RecipeKind:     "bicep",
-								RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+								Kind:   "bicep",
+								Source: "br:myregistry.azurecr.io/recipes/container:1.0",
 							},
 						},
 					},

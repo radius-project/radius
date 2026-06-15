@@ -53,6 +53,19 @@ func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	// Validate API version metadata
 	require.Equal(t, Version, recipePack.InternalMetadata.CreatedAPIVersion)
 	require.Equal(t, Version, recipePack.InternalMetadata.UpdatedAPIVersion)
+
+	// Validate recipe definitions, including the renamed kind/source fields.
+	require.Len(t, recipePack.Properties.Recipes, 2)
+
+	container := recipePack.Properties.Recipes["Applications.Core/containers"]
+	require.NotNil(t, container)
+	require.Equal(t, "Bicep", container.Kind)
+	require.Equal(t, "br:ghcr.io/radius-project/recipes/kubernetes-container:latest", container.Source)
+
+	stateStore := recipePack.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.Equal(t, "Terraform", stateStore.Kind)
+	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", stateStore.Source)
 }
 
 func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
@@ -75,6 +88,18 @@ func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, dataModel.Type, *versionedResource.Type)
 	require.Equal(t, dataModel.Location, *versionedResource.Location)
 	require.NotNil(t, versionedResource.Properties)
+
+	// Validate recipe definitions round-trip, including the renamed kind/source fields.
+	require.Len(t, versionedResource.Properties.Recipes, 2)
+
+	stateStore := versionedResource.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.NotNil(t, stateStore.Kind)
+	require.Equal(t, RecipeKind("Terraform"), *stateStore.Kind)
+	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", *stateStore.Source)
+
+	container := versionedResource.Properties.Recipes["Applications.Core/containers"]
+	require.NotNil(t, container)
 }
 
 func TestRecipePackConvertInvalidModel(t *testing.T) {
