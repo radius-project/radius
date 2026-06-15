@@ -56,7 +56,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long: `
 Interactively install the Radius control-plane and setup a Radius.Core environment.
 
-If an environment already exists, 'rad init --preview' will prompt the user to use the existing environment or create a new one. 
+If an environment already exists, 'rad init --preview' will prompt the user to use the existing environment or create a new one.
 
 By default, 'rad init --preview' will optimize for a developer-focused environment with an environment named "default" and a default recipe pack that includes recipes to support prototyping, development and testing in Kubernetes. These environments are great for building and testing your application.
 
@@ -244,10 +244,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		// Create the Radius.Core application resource if it's not found.
 		appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
-		_, err := appClient.Get(ctx, r.Options.Application.Name, nil)
+		_, err := appClient.Get(ctx, r.Workspace.Scope, r.Options.Application.Name, nil)
 		if clients.Is404Error(err) {
 			// Application does not exist, create it.
-			_, err = appClient.CreateOrUpdate(ctx, r.Options.Application.Name, corerpv20250801.ApplicationResource{
+			_, err = appClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.Options.Application.Name, corerpv20250801.ApplicationResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &corerpv20250801.ApplicationProperties{
 					Environment: &r.Workspace.Environment,

@@ -456,6 +456,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 			return fake.EnvironmentsServer{
 				Get: func(
 					_ context.Context,
+					_ string,
 					environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -477,6 +478,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 				},
 				CreateOrUpdate: func(
 					_ context.Context,
+					_ string,
 					_ string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,

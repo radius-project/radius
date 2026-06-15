@@ -186,6 +186,7 @@ func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 	return corerpfake.ApplicationsServer{
 		CreateOrUpdate: func(
 			ctx context.Context,
+			rootScope string,
 			applicationName string,
 			resource v20250801preview.ApplicationResource,
 			options *v20250801preview.ApplicationsClientCreateOrUpdateOptions,
