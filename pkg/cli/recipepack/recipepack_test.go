@@ -83,7 +83,9 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 		require.Equal(t, def.Parameters, recipe.Parameters)
 	}
 
+	require.Contains(t, resource.Properties.Recipes, "Radius.Compute/routes")
 	routeRecipe := resource.Properties.Recipes["Radius.Compute/routes"]
+	require.NotNil(t, routeRecipe)
 	require.Equal(t, map[string]any{
 		"gatewayName":      DefaultRoutesGatewayName,
 		"gatewayNamespace": DefaultRoutesGatewayNamespace,

@@ -87,6 +87,38 @@ func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *tes
 	assertGatewayAPIManageCRDs(t, testChart.Values)
 }
 
+func TestAddContourValues_MergesGatewayConfig(t *testing.T) {
+	// Arrange
+	testChart := &chart.Chart{
+		Values: map[string]any{
+			"envoy": map[string]any{
+				"containerPorts": map[string]any{},
+				"service": map[string]any{
+					"ports": map[string]any{},
+				},
+			},
+			"configInline": map[string]any{
+				"gateway": map[string]any{
+					"controllerName": "projectcontour.io/gateway-controller",
+				},
+			},
+			"gatewayAPI": map[string]any{},
+		},
+	}
+	opts := ContourChartOptions{HostNetwork: false}
+
+	// Act
+	err := addContourValues(testChart, opts)
+
+	// Assert
+	require.NoError(t, err)
+	configInline := requireMap(t, testChart.Values, "configInline")
+	gateway := requireMap(t, configInline, "gateway")
+	require.Equal(t, "projectcontour.io/gateway-controller", gateway["controllerName"])
+	assertDefaultGatewayRef(t, testChart.Values)
+	assertGatewayAPIManageCRDs(t, testChart.Values)
+}
+
 // cloneMap does a shallow copy of a map[string]any for test isolation.
 func cloneMap(src map[string]any) map[string]any {
 	out := make(map[string]any, len(src))

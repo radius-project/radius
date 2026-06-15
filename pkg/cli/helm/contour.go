@@ -83,11 +83,15 @@ func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error
 		helmChart.Values["configInline"] = configInlineNode
 	}
 
-	configInlineNode["gateway"] = map[string]any{
-		"gatewayRef": map[string]any{
-			"name":      DefaultContourGatewayName,
-			"namespace": DefaultContourGatewayNamespace,
-		},
+	gatewayNode, ok := configInlineNode["gateway"].(map[string]any)
+	if !ok || gatewayNode == nil {
+		gatewayNode = map[string]any{}
+		configInlineNode["gateway"] = gatewayNode
+	}
+
+	gatewayNode["gatewayRef"] = map[string]any{
+		"name":      DefaultContourGatewayName,
+		"namespace": DefaultContourGatewayNamespace,
 	}
 
 	gatewayAPINode, ok := helmChart.Values["gatewayAPI"].(map[string]any)

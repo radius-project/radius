@@ -288,7 +288,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	}
 
 	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext); err != nil {
 		return err
 	}
 

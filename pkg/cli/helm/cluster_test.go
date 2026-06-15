@@ -106,6 +106,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 	ctx := context.Background()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
+	options.Contour.Namespace = "contour-system"
 
 	// Expect uninstall calls for Radius / Contour.
 	for _, c := range []struct {
