@@ -1,74 +1,23 @@
 extension radius
 
-@description('Specifies the location for resources.')
-param location string = 'global'
-
-@description('Specifies the environment for resources.')
-param environment string = 'test'
-
 @description('Specifies the image to be deployed.')
 param magpieimage string
 
-param registry string
-param version string
+@description('Specifies the environment for resources.')
+param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'corerp-mechanics-invalid-resourceids'
-  location: location
-  properties: {
-    environment: environment
-  }
-}
-
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'invalid-env'
-  properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'invalid-env'
-    }
-    recipes: { 
-      'Applications.Dapr/pubSubBrokers': {
-        default: {
-          templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dapr-pubsub-broker:${version}'
-        }
-      }
-    }
-  }
-}
-
-resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'invalid-extndr'
-  properties: {
-    application: app.location
-    environment: env.id
-    resourceProvisioning: 'manual'
-  }
-}
-
-resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: 'invalid-gtwy'
-  location: location
+// A container that references an invalid application resource ID. The deployment is
+// expected to fail because the application ID cannot be parsed as a valid resource ID.
+resource container 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'invalid-ctnr'
+  location: 'global'
   properties: {
     application: 'not_an_id'
-    routes: [
-      {
-        destination: ''
-        path: ''
+    environment: environment
+    containers: {
+      invalidctnr: {
+        image: magpieimage
       }
-    ]
-  }
-}
-
-resource container 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'invalid-ctnr'
-  location: location
-  properties: {
-    application: '/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/default/providers/applications.core/environments/env'
-    container: {
-      image: magpieimage
     }
   }
 }
