@@ -280,11 +280,9 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		return err
 	}
 
-	if !clusterOptions.Contour.Disabled {
-		output.LogInfo("Deleting Radius Contour Gateway...")
-		if err := i.removeContourGateway(ctx, kubeContext); err != nil {
-			return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
-		}
+	output.LogInfo("Deleting Radius Contour Gateway...")
+	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
 	}
 
 	// Uninstall Contour

@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -125,9 +126,9 @@ func TestReconcileDefaultContourGatewayPreservesExistingGatewayMetadata(t *testi
 	})
 	existingGateway.SetFinalizers([]string{"example.com/finalizer"})
 	existingGateway.SetLabels(map[string]string{
-		radiusManagedByLabel: radiusManagedValue,
-		radiusPartOfLabel:    radiusManagedValue,
-		"example.com/label":  "preserve",
+		kubernetes.LabelManagedBy: radiusManagedValue,
+		kubernetes.LabelPartOf:    radiusManagedValue,
+		"example.com/label":       "preserve",
 	})
 	require.NoError(t, unstructured.SetNestedSlice(existingGateway.Object, []any{
 		map[string]any{

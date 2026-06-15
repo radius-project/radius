@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,9 +37,7 @@ const (
 	DefaultContourGatewayName      = "radius"
 	DefaultContourGatewayNamespace = RadiusSystemNamespace
 
-	radiusManagedByLabel = "app.kubernetes.io/managed-by"
-	radiusPartOfLabel    = "app.kubernetes.io/part-of"
-	radiusManagedValue   = "radius"
+	radiusManagedValue = "radius"
 
 	defaultContourGatewayRetryInterval = 2 * time.Second
 	defaultContourGatewayRetryTimeout  = 2 * time.Minute
@@ -171,8 +170,8 @@ func reconcileGateway(ctx context.Context, client dynamic.Interface) error {
 	if gatewayLabels == nil {
 		gatewayLabels = map[string]string{}
 	}
-	gatewayLabels[radiusManagedByLabel] = radiusManagedValue
-	gatewayLabels[radiusPartOfLabel] = radiusManagedValue
+	gatewayLabels[kubernetes.LabelManagedBy] = radiusManagedValue
+	gatewayLabels[kubernetes.LabelPartOf] = radiusManagedValue
 	existing.SetLabels(gatewayLabels)
 
 	desired := newContourGateway()
@@ -260,12 +259,12 @@ func newContourGateway() *unstructured.Unstructured {
 
 func radiusManagedLabels() map[string]any {
 	return map[string]any{
-		radiusManagedByLabel: radiusManagedValue,
-		radiusPartOfLabel:    radiusManagedValue,
+		kubernetes.LabelManagedBy: radiusManagedValue,
+		kubernetes.LabelPartOf:    radiusManagedValue,
 	}
 }
 
 func isRadiusManaged(resource *unstructured.Unstructured) bool {
 	labels := resource.GetLabels()
-	return labels[radiusManagedByLabel] == radiusManagedValue && labels[radiusPartOfLabel] == radiusManagedValue
+	return labels[kubernetes.LabelManagedBy] == radiusManagedValue && labels[kubernetes.LabelPartOf] == radiusManagedValue
 }
