@@ -37,6 +37,11 @@ import (
 
 const (
 	envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
+
+	// defaultKubernetesNamespace is used when neither the user nor the existing
+	// environment specifies one. Recipes that deploy Kubernetes resources
+	// require a namespace to target.
+	defaultKubernetesNamespace = "default"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env update` preview command.
@@ -294,6 +299,25 @@ func (r *Runner) Run(ctx context.Context) error {
 			env.Properties.Providers = &corerpv20250801.Providers{}
 		}
 		env.Properties.Providers.Kubernetes = r.providers.Kubernetes
+	}
+
+	// Default the Kubernetes namespace only when the env has no other providers
+	// configured (after applying user flags). For envs that target Azure or AWS,
+	// the user may intend to deploy containers as ACI or to other compute, and
+	// silently adding a Kubernetes namespace would be incorrect.
+	if !r.clearEnvKubernetes {
+		hasOtherProviders := env.Properties.Providers != nil &&
+			(env.Properties.Providers.Azure != nil || env.Properties.Providers.Aws != nil)
+		if !hasOtherProviders {
+			if env.Properties.Providers == nil {
+				env.Properties.Providers = &corerpv20250801.Providers{}
+			}
+			if env.Properties.Providers.Kubernetes == nil || env.Properties.Providers.Kubernetes.Namespace == nil {
+				env.Properties.Providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+					Namespace: to.Ptr(defaultKubernetesNamespace),
+				}
+			}
+		}
 	}
 
 	newRecipePacks := []*string{}

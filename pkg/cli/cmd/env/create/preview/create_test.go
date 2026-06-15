@@ -19,8 +19,10 @@ package preview
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -30,6 +32,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -238,6 +243,58 @@ func Test_Validate(t *testing.T) {
 				require.Equal(t, "testAWSAccount", *r.providers.Aws.AccountID)
 			},
 		},
+		{
+			Name:          "Create command without --kubernetes-namespace defaults to \"default\"",
+			Input:         []string{"testingenv"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Kubernetes)
+				require.NotNil(t, r.providers.Kubernetes.Namespace)
+				require.Equal(t, "default", *r.providers.Kubernetes.Namespace)
+			},
+		},
+		{
+			Name:          "Create command with Azure provider does not default the Kubernetes namespace",
+			Input:         []string{"testingenv", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Azure)
+				require.Nil(t, r.providers.Kubernetes, "should not default Kubernetes namespace when Azure provider is configured")
+			},
+		},
+		{
+			Name:          "Create command with AWS provider does not default the Kubernetes namespace",
+			Input:         []string{"testingenv", "--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.NotNil(t, r.providers)
+				require.NotNil(t, r.providers.Aws)
+				require.Nil(t, r.providers.Kubernetes, "should not default Kubernetes namespace when AWS provider is configured")
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -376,6 +433,85 @@ func Test_Run(t *testing.T) {
 		err = runner.Run(context.Background())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
+	})
+
+	// Without this defaulting, recipes that deploy Kubernetes resources fail with
+	// "Namespace parameter required." when the environment is created without one.
+	t.Run("sends default Kubernetes namespace on the created environment", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockAppClient := clients.NewMockApplicationsManagementClient(ctrl)
+		mockAppClient.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+
+		// Capture the resource sent on CreateOrUpdate so we can assert the namespace.
+		var capturedResource v20250801preview.EnvironmentResource
+		capturingServer := func() corerpfake.EnvironmentsServer {
+			return corerpfake.EnvironmentsServer{
+				Get: func(
+					ctx context.Context,
+					environmentName string,
+					options *v20250801preview.EnvironmentsClientGetOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(http.StatusNotFound, "Not Found")
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context,
+					environmentName string,
+					resource v20250801preview.EnvironmentResource,
+					options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedResource = resource
+					result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+						EnvironmentResource: resource,
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			capturingServer,
+			nil,
+		)
+		require.NoError(t, err)
+
+		defaultScopeFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			recipepack.DefaultResourceGroupScope,
+			nil,
+			nil,
+		)
+		require.NoError(t, err)
+
+		// Validate() would normally populate r.providers; mimic that here for the
+		// no-flag case by passing the default namespace explicitly.
+		runner := &Runner{
+			RadiusCoreClientFactory:   factory,
+			DefaultScopeClientFactory: defaultScopeFactory,
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: mockAppClient},
+			Output:                    &output.MockOutput{},
+			Workspace:                 workspace,
+			EnvironmentName:           "testenv",
+			ResourceGroupName:         "test-resource-group",
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("default"),
+				},
+			},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.NotNil(t, capturedResource.Properties)
+		require.NotNil(t, capturedResource.Properties.Providers)
+		require.NotNil(t, capturedResource.Properties.Providers.Kubernetes)
+		require.NotNil(t, capturedResource.Properties.Providers.Kubernetes.Namespace)
+		require.Equal(t, "default", *capturedResource.Properties.Providers.Kubernetes.Namespace)
 	})
 }
 
