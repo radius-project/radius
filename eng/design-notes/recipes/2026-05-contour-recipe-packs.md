@@ -10,7 +10,7 @@ Radius keeps installing Contour by default for now. When Contour install is enab
 
 - `GatewayClass/contour`
 - `Gateway/radius` in `radius-system`
-- HTTP listener on port 80 and HTTPS listener on port 443 with routes allowed from all namespaces
+- HTTP listener on port 80 and TLS passthrough listener on port 443 with routes allowed from all namespaces
 
 With that infrastructure in place, the default `Radius.Compute/routes` recipe can create Gateway API `HTTPRoute` and `TLSRoute` resources and attach them to the shared `radius-system/radius` Gateway.
 
@@ -37,7 +37,7 @@ Radius already has a default recipe pack experience for development scenarios. `
 ### Goals
 
 - Keep Contour installed by default for now.
-- Create the shared Contour Gateway API `Gateway` during Radius install when Contour install is enabled, with HTTP and HTTPS listeners for existing HTTPProxy behavior.
+- Create the shared Contour Gateway API `Gateway` during Radius install when Contour install is enabled, with HTTP and TLS passthrough listeners for existing HTTPProxy behavior.
 - Use the existing `Radius.Compute/routes` recipe to render Gateway API route resources by default.
 - Keep Gateway API infrastructure out of the application model in the default path.
 - Allow users to swap ingress behavior by changing recipe packs.
@@ -97,7 +97,7 @@ The route recipe defaults are:
 - `gatewayName`: `radius`
 - `gatewayNamespace`: `radius-system`
 
-The `Radius.Compute/routes` resource type can model HTTP, TLS, TCP, and UDP routes. The default Contour install supports HTTP and TLS through the managed 80/443 listeners. TCP requires a user-provided Gateway listener on the target port, and UDP is not supported by Contour's Gateway API path today.
+The `Radius.Compute/routes` resource type can model HTTP, TLS, TCP, and UDP routes. The default Contour install supports HTTP through the managed port 80 listener and TLS passthrough through the managed port 443 listener. TCP requires a user-provided Gateway listener on the target port, and UDP is not supported by Contour's Gateway API path today.
 
 For HTTP and TLS routes, the route must include at least one hostname when attaching to the shared default Gateway. This prevents multiple applications from unintentionally claiming the same catch-all listener.
 

@@ -63,9 +63,12 @@ func TestReconcileDefaultContourGatewayCreatesResources(t *testing.T) {
 		},
 	}, listeners[0])
 	require.Equal(t, map[string]any{
-		"name":     "https",
-		"protocol": "HTTPS",
+		"name":     "tls",
+		"protocol": "TLS",
 		"port":     int64(443),
+		"tls": map[string]any{
+			"mode": "Passthrough",
+		},
 		"allowedRoutes": map[string]any{
 			"namespaces": map[string]any{
 				"from": "All",
@@ -155,7 +158,7 @@ func TestReconcileDefaultContourGatewayPreservesExistingGatewayMetadata(t *testi
 	listeners, _, _ := unstructured.NestedSlice(gateway.Object, "spec", "listeners")
 	require.Len(t, listeners, 2)
 	require.Equal(t, "http", listeners[0].(map[string]any)["name"])
-	require.Equal(t, "https", listeners[1].(map[string]any)["name"])
+	require.Equal(t, "tls", listeners[1].(map[string]any)["name"])
 }
 
 func TestReconcileDefaultContourGatewayRejectsConflictingGatewayClass(t *testing.T) {
