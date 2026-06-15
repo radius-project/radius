@@ -99,6 +99,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 		Radius:                    mockRadiusClient,
 		ResourceDeploymentsClient: mockResourceDeploymentsClient,
 		DelayInterval:             DeploymentResourceTestControllerDelayInterval,
+		DeleteRetryInterval:       DeploymentResourceTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
@@ -773,6 +774,189 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
+func Test_DeploymentTemplateReconciler_ReadyPendingCleanup(t *testing.T) {
+	// After an update removes an output resource, the DT must transition to
+	// ReadyPendingCleanup (not Ready) while the removed DR is still draining,
+	// and only to Ready once the residual is gone.
+
+	ctx := testcontext.New(t)
+
+	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	testNamespace := "deploymenttemplate-readypendingcleanup"
+	testName := "test-deploymenttemplate-readypendingcleanup"
+	template := readFileIntoTemplate(t, "deploymenttemplate-outputresources-1.json")
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
+	require.NoError(t, err)
+
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	require.NoError(t, err)
+
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
+	err = k8sClient.Create(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	// First deployment: env + app + container.
+	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+
+	envID := "/planes/radius/local/resourceGroups/deploymenttemplate-readypendingcleanup/providers/Applications.Core/environments/deploymenttemplate-readypendingcleanup-environment"
+	appID := "/planes/radius/local/resourceGroups/deploymenttemplate-readypendingcleanup/providers/Applications.Core/applications/deploymenttemplate-readypendingcleanup-application"
+	containerID := "/planes/radius/local/resourceGroups/deploymenttemplate-readypendingcleanup/providers/Applications.Core/containers/deploymenttemplate-readypendingcleanup-container"
+
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+		require.True(t, ok, "failed to find resource")
+
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: new(envID)},
+			{ID: new(appID)},
+			{ID: new(containerID)},
+		}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
+
+	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+
+	containerDR := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-readypendingcleanup-container"}
+	_ = waitForDeploymentResourceStateReady(t, k8sClient, containerDR)
+
+	// Re-deploy with the container removed.
+	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
+	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
+	require.NoError(t, err)
+	newDeploymentTemplate.Spec.Template = readFileIntoTemplate(t, "deploymenttemplate-outputresources-2.json")
+	err = k8sClient.Update(ctx, &newDeploymentTemplate)
+	require.NoError(t, err)
+
+	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+		require.True(t, ok, "failed to find resource")
+
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: new(envID)},
+			{ID: new(appID)},
+		}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
+
+	// The container DR's delete operation is still pending in the mock, so
+	// the DT should report ReadyPendingCleanup, not Ready.
+	_ = waitForDeploymentTemplateStateReadyPendingCleanup(t, k8sClient, namespacedName)
+
+	// Drain the container DR; the Owns watch should then wake the DT and
+	// flip it to Ready.
+	containerStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, containerDR, nil)
+	mockDeploymentClient.CompleteOperation(containerStatus.Operation.ResumeToken, nil)
+	waitForDeploymentResourceDeleted(t, k8sClient, containerDR)
+
+	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+
+	// Cleanup.
+	err = k8sClient.Delete(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
+	for _, dependency := range []types.NamespacedName{
+		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-readypendingcleanup-environment"},
+		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-readypendingcleanup-application"},
+	} {
+		dependencyStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dependency, nil)
+		mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
+		waitForDeploymentResourceDeleted(t, k8sClient, dependency)
+	}
+	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+}
+
+func Test_DeploymentTemplateReconciler_NilOutputResourcesTriggersCleanup(t *testing.T) {
+	// Regression for the case where a redeploy returns nil OutputResources for
+	// a DT that previously tracked some. The diff/delete logic must still run
+	// (treating nil as empty), otherwise residual DRs are never deleted and
+	// hasResidualDeploymentResources holds the DT in ReadyPendingCleanup
+	// indefinitely.
+
+	ctx := testcontext.New(t)
+
+	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	testNamespace := "deploymenttemplate-niloutputs"
+	testName := "test-deploymenttemplate-niloutputs"
+	template := readFileIntoTemplate(t, "deploymenttemplate-outputresources-1.json")
+	parameters := map[string]string{}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
+	require.NoError(t, err)
+
+	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
+	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	require.NoError(t, err)
+
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
+	err = k8sClient.Create(ctx, deploymentTemplate)
+	require.NoError(t, err)
+
+	// First deployment: env + app + container.
+	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+
+	envID := "/planes/radius/local/resourceGroups/deploymenttemplate-niloutputs/providers/Applications.Core/environments/deploymenttemplate-niloutputs-environment"
+	appID := "/planes/radius/local/resourceGroups/deploymenttemplate-niloutputs/providers/Applications.Core/applications/deploymenttemplate-niloutputs-application"
+	containerID := "/planes/radius/local/resourceGroups/deploymenttemplate-niloutputs/providers/Applications.Core/containers/deploymenttemplate-niloutputs-container"
+
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+		require.True(t, ok, "failed to find resource")
+
+		resource.Properties.OutputResources = []*armresources.ResourceReference{
+			{ID: new(envID)},
+			{ID: new(appID)},
+			{ID: new(containerID)},
+		}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armresources.DeploymentExtended{Properties: resource.Properties}}
+	})
+
+	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+
+	dependencies := []types.NamespacedName{
+		// Order matters: container is the dependent of env/app via
+		// checkForDeploymentResourceDependencies, so it must drain first.
+		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-niloutputs-container"},
+		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-niloutputs-application"},
+		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-niloutputs-environment"},
+	}
+	for _, dep := range dependencies {
+		_ = waitForDeploymentResourceStateReady(t, k8sClient, dep)
+	}
+
+	// Re-deploy. We complete the operation WITHOUT setting OutputResources so
+	// the response surfaces Properties != nil but Properties.OutputResources == nil
+	// — the case the bug guards against.
+	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
+	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
+	require.NoError(t, err)
+	newDeploymentTemplate.Spec.Template = readFileIntoTemplate(t, "deploymenttemplate-outputresources-2.json")
+	err = k8sClient.Update(ctx, &newDeploymentTemplate)
+	require.NoError(t, err)
+
+	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
+
+	// All three DRs from the first generation must now be enqueued for delete.
+	// Drain them so the residual check can converge.
+	for _, dep := range dependencies {
+		depStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dep, nil)
+		mockDeploymentClient.CompleteOperation(depStatus.Operation.ResumeToken, nil)
+		waitForDeploymentResourceDeleted(t, k8sClient, dep)
+	}
+
+	// DT must transition to Ready, not stick in ReadyPendingCleanup.
+	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+
+	// Cleanup.
+	err = k8sClient.Delete(ctx, deploymentTemplate)
+	require.NoError(t, err)
+	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+}
+
 func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := testcontext.New(t)
 
@@ -798,6 +982,29 @@ func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Clien
 		}
 
 	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter updating state")
+
+	return status
+}
+
+func waitForDeploymentTemplateStateReadyPendingCleanup(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
+	ctx := testcontext.New(t)
+
+	logger := t
+	status := &radappiov1alpha3.DeploymentTemplateStatus{}
+	require.EventuallyWithTf(t, func(t *assert.CollectT) {
+		logger.Logf("Fetching DeploymentTemplate: %+v", name)
+		current := &radappiov1alpha3.DeploymentTemplate{}
+		err := client.Get(ctx, name, current)
+		require.NoError(t, err)
+
+		status = &current.Status
+		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
+		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
+
+		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup, current.Status.Phrase) {
+			assert.Empty(t, current.Status.Operation)
+		}
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter ready-pending-cleanup state")
 
 	return status
 }

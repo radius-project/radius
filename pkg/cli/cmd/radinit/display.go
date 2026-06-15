@@ -18,423 +18,56 @@ package radinit
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
-	"github.com/radius-project/radius/pkg/cli/aws"
-	"github.com/radius-project/radius/pkg/cli/azure"
-	"github.com/radius-project/radius/pkg/cli/prompt"
-)
-
-const (
-	summaryIndent                                 = "   - "
-	summaryHeading                                = "You've selected the following:\n\n"
-	summaryFooter                                 = "\n(press enter to confirm or esc to restart)\n"
-	summaryKubernetesHeadingIcon                  = "🔧 "
-	summaryKubernetesInstallHeadingFmt            = "Install Radius %s\n" + summaryIndent + "Kubernetes cluster: %s\n" + summaryIndent + "Kubernetes namespace: %s\n"
-	summaryKubernetesInstallAWSCloudProviderFmt   = summaryIndent + "AWS credential: %s\n"
-	summaryKubernetesInstallAzureCloudProviderFmt = summaryIndent + "Azure credential: %s\n"
-	summaryKubernetesExistingHeadingFmt           = "Use existing Radius %s install on %s\n"
-	summaryEnvironmentHeadingIcon                 = "🌏 "
-	summaryEnvironmentCreateHeadingFmt            = "Create new environment %s\n" + summaryIndent + "Kubernetes namespace: %s\n"
-	summaryEnvironmentCreateAWSCloudProviderFmt   = summaryIndent + "AWS: account %s and region %s\n"
-	summaryEnvironmentCreateAzureCloudProviderFmt = summaryIndent + "Azure: subscription %s and resource group %s\n"
-	summaryEnvironmentCreateRecipePackyFmt        = summaryIndent + "Recipe pack: %s\n"
-	summaryEnvironmentExistingHeadingFmt          = "Use existing environment %s\n"
-	summaryApplicationHeadingIcon                 = "🚧 "
-	summaryApplicationScaffoldHeadingFmt          = "Scaffold application %s\n"
-	summaryApplicationScaffoldFile                = summaryIndent + "Create %s\n"
-	summaryConfigurationHeadingIcon               = "📋 "
-	summaryConfigurationUpdateHeading             = "Update local configuration\n"
-	progressHeading                               = "Initializing Radius. This may take a minute or two...\n\n"
-	progressCompleteFooter                        = "\nInitialization complete! Have a RAD time 😎\n\n"
-	progressStepCompleteIcon                      = "✅ "
-	progressStepWaitingIcon                       = "⏳ "
-)
-
-var (
-	progressSpinner = spinner.Spinner{
-		Frames: []string{"🕐 ", "🕑 ", "🕒 ", "🕓 ", "🕔 ", "🕕 ", "🕖 ", "🕗 ", "🕘 ", "🕙 ", "🕚 ", "🕛 "},
-		FPS:    time.Second / 4,
-	}
-
-	foregroundBrightStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#111111", Dark: "#EEEEEE"}).Bold(true)
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
 
 // confirmOptions shows a summary of the user's selections and prompts for confirmation.
 func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool, error) {
-	model := NewSummaryModel(*options)
-	program := tea.NewProgram(model, tea.WithContext(ctx))
-
-	model, err := r.Prompter.RunProgram(program)
-	if err != nil {
-		return false, err
-	}
-
-	switch model.(*summaryModel).result {
-	case resultConfimed:
-		return true, nil
-	case resultCanceled:
-		return false, nil
-	case resultQuit:
-		return false, &prompt.ErrExitConsole{}
-	default:
-		panic("unknown result " + model.(*summaryModel).result)
-	}
+	return common.ConfirmOptions(ctx, r.Prompter, toDisplayOptions(options))
 }
 
 // showProgress shows an updating progress display while the user's selections are being applied.
 //
 // This function should be called from a goroutine while installation proceeds in the background.
-// provide a channel to update progress.
-func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan progressMsg) error {
-	model := NewProgessModel(*options)
-	program := tea.NewProgram(model, tea.WithContext(ctx))
-
-	go func() {
-		for msg := range progressChan {
-			program.Send(msg)
-		}
-
-		program.Send(tea.Quit)
-	}()
-
-	_, err := r.Prompter.RunProgram(program)
-	if err != nil {
-		return err
-	}
-
-	return err
+func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan common.ProgressMsg) error {
+	return common.ShowProgress(ctx, r.Prompter, toDisplayOptions(options), progressChan)
 }
 
-// progressMsg is a message sent to the progress display to update the status of the installation.
-type progressMsg struct {
-	InstallComplete     bool
-	EnvironmentComplete bool
-	ApplicationComplete bool
-	ConfigComplete      bool
-}
-
-type summaryResult string
-
-const (
-	resultConfimed = "confirmed"
-	resultCanceled = "canceled"
-	resultQuit     = "quit"
-)
-
-var _ tea.Model = &summaryModel{}
-
-type summaryModel struct {
-	style   lipgloss.Style
-	result  summaryResult
-	options initOptions
-	width   int
-}
-
-// NewSummaryModel creates a new model for the options summary shown during 'rad init'.
-func NewSummaryModel(options initOptions) tea.Model {
-	return &summaryModel{
-		style:   lipgloss.NewStyle().Margin(1, 0),
-		options: options,
-	}
-}
-
-// Init implements the init function for tea.Model. This will be called when the model is started, before View or
-// Update are called.
-func (m *summaryModel) Init() tea.Cmd {
-	return nil
-}
-
-// Update implements the update function for tea.Model. This will be called when a message is received by the model.
-//
-// It's safe to update internal state inside this function. View will be called afterwards to draw the UI.
-//
-
-// "summaryModel.Update" handles messages and state transitions, and returns the next model and command based on the type
-// of message received. If the message is a KeyCtrlC, KeyEsc, or KeyEnter, the result is set accordingly and the command is
-//
-//	set to Quit. Otherwise, the message is ignored and no command is returned.
-func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// This function handles messages and state transitions. We don't need to update
-	// any UI here, just return the next model and command.
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-	case tea.KeyMsg:
-		if msg.Type == tea.KeyCtrlC {
-			// User is quitting
-			copy := *m
-			copy.result = resultQuit
-			return &copy, tea.Quit
-		}
-		if msg.Type == tea.KeyEsc {
-			// User is canceling
-			copy := *m
-			copy.result = resultCanceled
-			return &copy, tea.Quit
-		}
-		if msg.Type == tea.KeyEnter {
-			// User has confirmed
-			copy := *m
-			copy.result = resultConfimed
-			return &copy, tea.Quit
-		}
+// toDisplayOptions converts the package-local initOptions into the common
+// DisplayOptions consumed by the shared summary and progress views.
+func toDisplayOptions(options *initOptions) common.DisplayOptions {
+	recipePackLabel := ""
+	if options.Recipes.DevRecipes {
+		recipePackLabel = "local-dev"
 	}
 
-	// Ignore other messages
-	return m, nil
-}
-
-// View implments the view function for tea.Model. This will be called after Init and after each call to Update to
-// draw the UI.
-func (m *summaryModel) View() string {
-	// Hide when summary is dismissed
-	if m.result != "" {
-		return ""
-	}
-
-	options := m.options
-
-	message := &strings.Builder{}
-	message.WriteString(summaryHeading)
-
-	message.WriteString(summaryKubernetesHeadingIcon)
-	if options.Cluster.Install {
-		message.WriteString(fmt.Sprintf(summaryKubernetesInstallHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context), highlight(options.Cluster.Namespace)))
-
-		if options.CloudProviders.AWS != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(string(options.CloudProviders.AWS.CredentialKind))))
-			switch options.CloudProviders.AWS.CredentialKind {
-			case aws.AWSCredentialKindAccessKey:
-				message.WriteString(fmt.Sprintf(summaryIndent+"AccessKey ID: %s\n", highlight(options.CloudProviders.AWS.AccessKey.AccessKeyID)))
-			case aws.AWSCredentialKindIRSA:
-				message.WriteString(fmt.Sprintf(summaryIndent+"IAM Role ARN: %s\n", highlight(options.CloudProviders.AWS.IRSA.RoleARN)))
-			}
-
-		}
-		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
-			switch options.CloudProviders.Azure.CredentialKind {
-			case azure.AzureCredentialKindServicePrincipal:
-				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
-			case azure.AzureCredentialKindWorkloadIdentity:
-				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.WorkloadIdentity.ClientID)))
-			}
-		}
-	} else {
-		message.WriteString(fmt.Sprintf(summaryKubernetesExistingHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context)))
-	}
-
-	message.WriteString(summaryEnvironmentHeadingIcon)
-	if options.Environment.Create {
-		message.WriteString(fmt.Sprintf(summaryEnvironmentCreateHeadingFmt, highlight(options.Environment.Name), highlight(options.Environment.Namespace)))
-
-		if options.CloudProviders.AWS != nil {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccountID), highlight(options.CloudProviders.AWS.Region)))
-		}
-
-		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.SubscriptionID), highlight(options.CloudProviders.Azure.ResourceGroup)))
-		}
-
-		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
-		}
-	} else {
-		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
-	}
-
+	var scaffoldFiles []string
 	if options.Application.Scaffold {
-		message.WriteString(summaryApplicationHeadingIcon)
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight("app.bicep")))
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldFile, highlight("bicepconfig.json")))
+		scaffoldFiles = []string{"app.bicep", "bicepconfig.json"}
 	}
 
-	message.WriteString(summaryConfigurationHeadingIcon)
-	message.WriteString(summaryConfigurationUpdateHeading)
-
-	message.WriteString(summaryFooter)
-
-	return m.style.Render(ansi.Hardwrap(message.String(), m.width, true))
-}
-
-var _ tea.Model = &progressModel{}
-
-// NewProgessModel creates a new model for the initialization progress dialog shown during 'rad init'.
-func NewProgessModel(options initOptions) tea.Model {
-	return &progressModel{
-		options: options,
-		spinner: spinner.New(spinner.WithSpinner(progressSpinner)),
-
-		// Setting a height here to avoid double-printing issues when the
-		// hight of the output changes.
-		style: lipgloss.NewStyle().Margin(1, 0),
+	return common.DisplayOptions{
+		Cluster: common.ClusterDisplay{
+			Install:   options.Cluster.Install,
+			Namespace: options.Cluster.Namespace,
+			Context:   options.Cluster.Context,
+			Version:   options.Cluster.Version,
+		},
+		Environment: common.EnvironmentDisplay{
+			Create:    options.Environment.Create,
+			Name:      options.Environment.Name,
+			Namespace: options.Environment.Namespace,
+		},
+		CloudProviders: common.CloudProvidersDisplay{
+			Azure: options.CloudProviders.Azure,
+			AWS:   options.CloudProviders.AWS,
+		},
+		Application: common.ApplicationDisplay{
+			Scaffold:      options.Application.Scaffold,
+			Name:          options.Application.Name,
+			ScaffoldFiles: scaffoldFiles,
+		},
+		RecipePackLabel: recipePackLabel,
 	}
-}
-
-type progressModel struct {
-	options  initOptions
-	progress progressMsg
-	spinner  spinner.Model
-	style    lipgloss.Style
-
-	// suppressSpinner is used to suppress the ticking of the spinner for testing.
-	suppressSpinner bool
-	width           int
-}
-
-// Init implements the init function for tea.Model. This will be called when the model is started, before View or
-// Update are called.
-func (m *progressModel) Init() tea.Cmd {
-	if m.suppressSpinner {
-		return nil
-	}
-
-	// Start the spinner
-	return m.spinner.Tick
-}
-
-// Update implements the update function for tea.Model. This will be called when a message is received by the model.
-//
-// It's safe to update internal state inside this function. View will be called afterwards to draw the UI.
-//
-
-// Update updates the internal state of the progressModel when it receives a progressMsg or spinner.TickMsg,
-// and returns a tea.Cmd to quit the program if the progress is complete.
-func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		return m, nil
-	// Update our internal state when we receive a progress update message.
-	case progressMsg:
-		m.progress = msg
-		if m.isComplete() {
-			return m, tea.Quit
-		}
-
-		return m, nil
-
-	// Update spinner internal state when we receive a tick.
-	case spinner.TickMsg:
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
-	default:
-		return m, nil
-	}
-}
-
-// View implments the view function for tea.Model. This will be called after Init and after each call to Update to
-// draw the UI.
-//
-
-// View builds a string containing a summary of the progress of a GO program, including the installation of
-// Kubernetes, the creation of an environment, the scaffolding of an application, and the updating of configuration.
-func (m *progressModel) View() string {
-	options := m.options
-
-	message := &strings.Builder{}
-	message.WriteString(progressHeading)
-
-	waiting := false // It's the hardest part.
-
-	m.writeProgressIcon(message, m.progress.InstallComplete, &waiting)
-	if options.Cluster.Install {
-		message.WriteString(fmt.Sprintf(summaryKubernetesInstallHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context), highlight(options.Cluster.Namespace)))
-
-		if options.CloudProviders.AWS != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAWSCloudProviderFmt, highlight(string(options.CloudProviders.AWS.CredentialKind))))
-			switch options.CloudProviders.AWS.CredentialKind {
-			case aws.AWSCredentialKindAccessKey:
-				message.WriteString(fmt.Sprintf(summaryIndent+"AccessKey ID: %s\n", highlight(options.CloudProviders.AWS.AccessKey.AccessKeyID)))
-			case aws.AWSCredentialKindIRSA:
-				message.WriteString(fmt.Sprintf(summaryIndent+"IAM Role ARN: %s\n", highlight(options.CloudProviders.AWS.IRSA.RoleARN)))
-			}
-		}
-
-		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryKubernetesInstallAzureCloudProviderFmt, highlight(string(options.CloudProviders.Azure.CredentialKind))))
-			switch options.CloudProviders.Azure.CredentialKind {
-			case azure.AzureCredentialKindServicePrincipal:
-				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.ServicePrincipal.ClientID)))
-			case azure.AzureCredentialKindWorkloadIdentity:
-				message.WriteString(fmt.Sprintf(summaryIndent+"Client ID: %s\n", highlight(options.CloudProviders.Azure.WorkloadIdentity.ClientID)))
-			}
-		}
-	} else {
-		message.WriteString(fmt.Sprintf(summaryKubernetesExistingHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context)))
-	}
-
-	m.writeProgressIcon(message, m.progress.EnvironmentComplete, &waiting)
-	if options.Environment.Create {
-		message.WriteString(fmt.Sprintf(summaryEnvironmentCreateHeadingFmt, highlight(options.Environment.Name), highlight(options.Environment.Namespace)))
-
-		if options.CloudProviders.AWS != nil {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAWSCloudProviderFmt, highlight(options.CloudProviders.AWS.AccountID), highlight(options.CloudProviders.AWS.Region)))
-		}
-
-		if options.CloudProviders.Azure != nil {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateAzureCloudProviderFmt, highlight(options.CloudProviders.Azure.SubscriptionID), highlight(options.CloudProviders.Azure.ResourceGroup)))
-		}
-
-		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
-		}
-	} else {
-		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
-	}
-
-	if options.Application.Scaffold {
-		m.writeProgressIcon(message, m.progress.ApplicationComplete, &waiting)
-		message.WriteString(fmt.Sprintf(summaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-	}
-
-	m.writeProgressIcon(message, m.progress.ConfigComplete, &waiting)
-	message.WriteString(summaryConfigurationUpdateHeading)
-
-	if !waiting {
-		// Everything is complete, so we're done.
-		message.WriteString(progressCompleteFooter)
-	}
-
-	return m.style.Render(ansi.Hardwrap(message.String(), m.width, true))
-}
-
-func (m *progressModel) isComplete() bool {
-	return m.progress.InstallComplete && m.progress.EnvironmentComplete && m.progress.ApplicationComplete && m.progress.ConfigComplete
-}
-
-// writeProgressIcon writes the correct icon for the progress step depending on the current step.
-func (m *progressModel) writeProgressIcon(message *strings.Builder, condition bool, waiting *bool) {
-	// Logic:
-	//
-	// - If the step is complete, write the complete icon.
-	// - If we're waiting based on a previous step not being complete, write the waiting icon.
-	// - If we're not waiting then this is the current step:
-	//    - Show the spinner
-	//    - Set waiting to true so that we show the waiting icon for the following steps.
-	if condition {
-		message.WriteString(progressStepCompleteIcon)
-	} else if *waiting {
-		message.WriteString(progressStepWaitingIcon)
-	} else if m.suppressSpinner {
-		// We can't render the *real* spinner without starting it, so just render a static glyph.
-		message.WriteString(progressSpinner.Frames[0])
-		*waiting = true
-	} else {
-		message.WriteString(m.spinner.View())
-		*waiting = true
-	}
-}
-
-func highlight(text string) string {
-	return foregroundBrightStyle.Render(text)
 }

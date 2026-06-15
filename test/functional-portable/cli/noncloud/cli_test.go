@@ -605,7 +605,7 @@ func Test_CLI_Delete(t *testing.T) {
 		})
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerY")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerY", false)
 		require.NoErrorf(t, err, "failed to delete resource containerY")
 		err = DeleteAppWithoutDeletingResources(t, ctx, options, appNameUnassociatedResources)
 		require.NoErrorf(t, err, "failed to delete application %s", appNameUnassociatedResources)
@@ -618,7 +618,7 @@ func Test_CLI_Delete(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerX")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerX", false)
 		require.NoErrorf(t, err, "failed to delete resource containerX")
 
 	})
@@ -885,7 +885,7 @@ func Test_RadiusCoreEnv(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, output, "env-test-update")
 
-		_, err = cli.EnvironmentUpdatePreview(ctx, "env-test-update", "test-group", "/planes/radius/local/resourcegroups/kind-radius/providers/Radius.Core/recipePacks/computeRecipePack")
+		_, err = cli.EnvironmentUpdatePreview(ctx, "env-test-update", "test-group", "/planes/radius/local/resourcegroups/kind-radius/providers/Radius.Core/recipePacks/computeRecipePack", "")
 		require.NoError(t, err)
 
 		output, err = cli.EnvironmentShowPreview(ctx, "env-test-update", "test-group")

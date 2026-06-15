@@ -39,6 +39,7 @@ Bitbucket
 Bitnami
 Bitnami's
 Bugfix
+Buildah
 CDN
 CEL
 CLI's
@@ -85,6 +86,7 @@ CoreRP
 CreateOrUpdate
 CreateOrUpdateEnvironment
 CustomConfigValidationCheck
+Cytoscape
 DCO
 DML
 DSL
@@ -204,6 +206,7 @@ InvalidTemplate
 JetStream
 KRM
 KV
+Kaniko
 Karishma
 KeyObjectProperties
 KeyVault
@@ -296,6 +299,7 @@ ProvidersAws
 ProvidersAzure
 ProvidersKubernetes
 PubSubBroker
+Pulumi
 Qube
 RCs
 RDBMS
@@ -519,11 +523,14 @@ bicepConfig
 bicepconfig
 bicepparams
 bikeshedding
+binfmt
 bool
 booleans
 breakpoint
 brooke
 bubbletea
+buildctl
+buildkitd
 buildx
 caBundle
 camelCased
@@ -790,6 +797,7 @@ kubebuilder
 kubeconf
 kubeconfig
 kubectl
+kubelet
 kubeproxy
 kubernetes
 kubernetesMetadata
@@ -1175,6 +1183,7 @@ testrp
 testsyncresources
 tf
 tfexec
+tfvars
 tgz
 th
 throughs

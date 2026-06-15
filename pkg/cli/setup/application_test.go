@@ -28,42 +28,60 @@ import (
 const latest = "latest"
 
 func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
-	directory := t.TempDir()
+	templates := map[string]string{
+		"classic": AppBicepTemplate,
+		"preview": PreviewAppBicepTemplate,
+	}
 
-	err := ScaffoldApplication(directory)
-	require.NoError(t, err)
+	for name, tmpl := range templates {
+		t.Run(name, func(t *testing.T) {
+			directory := t.TempDir()
 
-	require.FileExists(t, filepath.Join(directory, "app.bicep"))
-	require.FileExists(t, filepath.Join(directory, "bicepconfig.json"))
+			err := ScaffoldApplication(directory, tmpl)
+			require.NoError(t, err)
 
-	b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
-	require.NoError(t, err)
-	require.Equal(t, appBicepTemplate, string(b))
+			require.FileExists(t, filepath.Join(directory, "app.bicep"))
+			require.FileExists(t, filepath.Join(directory, "bicepconfig.json"))
 
-	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
-	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest, latest, latest, latest), string(b))
+			b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
+			require.NoError(t, err)
+			require.Equal(t, tmpl, string(b))
+
+			b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
+			require.NoError(t, err)
+			require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
+		})
+	}
 }
 
 func Test_ScaffoldApplication_KeepsExistingFiles(t *testing.T) {
-	directory := t.TempDir()
+	templates := map[string]string{
+		"classic": AppBicepTemplate,
+		"preview": PreviewAppBicepTemplate,
+	}
 
-	// Pre-create files
-	err := os.WriteFile(filepath.Join(directory, "app.bicep"), []byte("something else"), 0644)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(directory, "bicepconfig.json"), []byte("something else"), 0644)
-	require.NoError(t, err)
+	for name, tmpl := range templates {
+		t.Run(name, func(t *testing.T) {
+			directory := t.TempDir()
 
-	err = ScaffoldApplication(directory)
-	require.NoError(t, err)
+			// Pre-create files
+			err := os.WriteFile(filepath.Join(directory, "app.bicep"), []byte("something else"), 0644)
+			require.NoError(t, err)
+			err = os.WriteFile(filepath.Join(directory, "bicepconfig.json"), []byte("something else"), 0644)
+			require.NoError(t, err)
 
-	require.FileExists(t, filepath.Join(directory, "app.bicep"))
+			err = ScaffoldApplication(directory, tmpl)
+			require.NoError(t, err)
 
-	b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
-	require.NoError(t, err)
-	require.Equal(t, "something else", string(b))
+			require.FileExists(t, filepath.Join(directory, "app.bicep"))
 
-	b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
-	require.NoError(t, err)
-	require.Equal(t, "something else", string(b))
+			b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
+			require.NoError(t, err)
+			require.Equal(t, "something else", string(b))
+
+			b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
+			require.NoError(t, err)
+			require.Equal(t, "something else", string(b))
+		})
+	}
 }

@@ -48,21 +48,23 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@751d8ad57b84f1794661bc70c0afb92a22ad7b3c # v4.53.2
+        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
 
       - name: Determine desired release version
         id: get-version
+        env:
+          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
         run: |
-          ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} "."
+          ./.github/scripts/release-get-version.sh "${SUPPORTED_VERSIONS}" "."
 
       - name: Find the previous tag
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -111,8 +113,10 @@ jobs:
 
       - name: Find release note
         shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
         run: |
-          if [ -f ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md ]; then
+          if [ -f "./docs/release-notes/${RELEASE_VERSION}.md" ]; then
             echo "RELNOTE_FOUND=true" >> "${GITHUB_ENV}"
           fi
 
@@ -144,14 +148,14 @@ jobs:
     permissions:
       contents: read # Required for actions/checkout
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/radius
           ref: main
           persist-credentials: false
 
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/radius
           ref: main
@@ -160,7 +164,7 @@ jobs:
           persist-credentials: true
 
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/recipes
           ref: main
@@ -169,7 +173,7 @@ jobs:
           persist-credentials: true
 
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/dashboard
           ref: main
@@ -178,7 +182,7 @@ jobs:
           persist-credentials: true
 
       - name: Checkout radius-project/bicep-types-aws@main
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/bicep-types-aws
           ref: main
@@ -193,15 +197,17 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@751d8ad57b84f1794661bc70c0afb92a22ad7b3c # v4.53.2
+        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
 
       - name: Determine desired release version
         id: get-version
+        env:
+          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
         run: |
-          ./radius/.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} radius
+          ./radius/.github/scripts/release-get-version.sh "${SUPPORTED_VERSIONS}" radius
 
       - name: Check if release branch exists
         id: release-branch-exists
@@ -230,42 +236,58 @@ jobs:
 
       - name: Generate release summary
         if: steps.release-branch-exists.outputs.result == 'false'
+        env:
+          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
         run: |
           {
             echo "## Release"
             echo "* Release driver: ${GITHUB_ACTOR}"
-            echo "* Supported versions: ${{ steps.get-supported-versions.outputs.result }}"
-            echo "* Desired release tag: ${{ steps.get-version.outputs.release-version }}"
-            echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}"
+            echo "* Supported versions: ${SUPPORTED_VERSIONS}"
+            echo "* Desired release tag: ${RELEASE_VERSION}"
+            echo "* Desired release branch: ${RELEASE_BRANCH_NAME}"
             echo "* Release date: $(date)"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
         run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh radius ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh radius "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
         run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh recipes "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Release radius-project/dashboard version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
         run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Release radius-project/bicep-types-aws version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
         run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Get App Token for radius-publisher
         if: success() && steps.release-branch-exists.outputs.result == 'false'
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get-de-token
         with:
-          app-id: ${{ secrets.RADIUS_PUBLISHER_BOT_APP_ID }}
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
           permission-metadata: read
           permission-actions: read
@@ -318,5 +340,6 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ steps.get-de-token.outputs.token }}
+          RUN_ID: ${{ steps.monitor-de-workflow.outputs.run_id }}
         run: |
-          gh run view "${{ steps.monitor-de-workflow.outputs.run_id }}" --repo azure-octo/radius-publisher --log-failed || true
+          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true

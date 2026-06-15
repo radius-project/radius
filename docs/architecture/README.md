@@ -26,8 +26,14 @@ change-safety guidance.
   backend services.
 - [state-persistence.md](state-persistence.md) explains the shared database,
   secret, and queue abstractions used by the control-plane services.
+- [credentials.md](credentials.md) explains how cloud credentials are stored
+  and used for deployments, and how clients authenticate to a Radius install.
 - [application-graph.md](application-graph.md) explains how the application
   graph is computed from stored resources and displayed via the CLI.
+- [terraform-bicep-config.md](terraform-bicep-config.md) explains the reusable
+  `Radius.Core/terraformConfigs` and `bicepConfigs` resources referenced by
+  environments to provide private registry auth, Terraform CLI provider
+  installation rules, and recipe environment variables.
 
 ## Reading Order
 
@@ -41,7 +47,8 @@ If you are new to the codebase, read these in order:
 6. [controller.md](controller.md)
 7. [rad-cli.md](rad-cli.md)
 8. [state-persistence.md](state-persistence.md)
-9. [application-graph.md](application-graph.md)
+9. [credentials.md](credentials.md)
+10. [application-graph.md](application-graph.md)
 
 ## Related Material
 

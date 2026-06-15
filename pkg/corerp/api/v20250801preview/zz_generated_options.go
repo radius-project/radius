@@ -34,6 +34,31 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// BicepConfigsClientCreateOrUpdateOptions contains the optional parameters for the BicepConfigsClient.CreateOrUpdate method.
+type BicepConfigsClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// BicepConfigsClientDeleteOptions contains the optional parameters for the BicepConfigsClient.Delete method.
+type BicepConfigsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// BicepConfigsClientGetOptions contains the optional parameters for the BicepConfigsClient.Get method.
+type BicepConfigsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// BicepConfigsClientListByScopeOptions contains the optional parameters for the BicepConfigsClient.NewListByScopePager method.
+type BicepConfigsClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// BicepConfigsClientUpdateOptions contains the optional parameters for the BicepConfigsClient.Update method.
+type BicepConfigsClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate method.
 type EnvironmentsClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -86,5 +111,32 @@ type RecipePacksClientListByScopeOptions struct {
 
 // RecipePacksClientUpdateOptions contains the optional parameters for the RecipePacksClient.Update method.
 type RecipePacksClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// TerraformConfigsClientCreateOrUpdateOptions contains the optional parameters for the TerraformConfigsClient.CreateOrUpdate
+// method.
+type TerraformConfigsClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// TerraformConfigsClientDeleteOptions contains the optional parameters for the TerraformConfigsClient.Delete method.
+type TerraformConfigsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// TerraformConfigsClientGetOptions contains the optional parameters for the TerraformConfigsClient.Get method.
+type TerraformConfigsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// TerraformConfigsClientListByScopeOptions contains the optional parameters for the TerraformConfigsClient.NewListByScopePager
+// method.
+type TerraformConfigsClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// TerraformConfigsClientUpdateOptions contains the optional parameters for the TerraformConfigsClient.Update method.
+type TerraformConfigsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }

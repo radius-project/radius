@@ -21,7 +21,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-func providerFromID(id string) string {
+// ProviderFromID extracts the provider from a resource ID string.
+func ProviderFromID(id string) string {
 	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return ""

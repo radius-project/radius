@@ -45,6 +45,11 @@ on:
 permissions: {}
 
 env:
+  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
+  GOTESTSUM_VER: 1.13.0
+  # yq version
+  YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
   HELM_VER: v3.19.4
   # KinD cluster version
@@ -87,6 +92,9 @@ env:
   GIT_HTTP_PASSWORD: not-a-secret-password
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
+  # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
+  # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
+  BICEP_VER: v0.42.1
 
 jobs:
   changes:
@@ -141,8 +149,8 @@ jobs:
           # Set output variables to be used in the other jobs
           {
             echo "REL_VERSION=pr-${UNIQUE_ID}"
-            echo "DE_IMAGE=${{ env.DE_IMAGE }}"
-            echo "DE_TAG=${{ env.DE_TAG }}"
+            echo "DE_IMAGE=${DE_IMAGE}"
+            echo "DE_TAG=${DE_TAG}"
           } >> "${GITHUB_OUTPUT}"
 
   tests:
@@ -153,7 +161,12 @@ jobs:
       contents: read # Required for listing the commits
       checks: write # Required for creating a check run
     strategy:
-      fail-fast: true
+      # Keep matrix legs independent. With fail-fast: true, a single failing
+      # (often flaky) leg cancels all in-progress siblings. GitHub's
+      # "Re-run failed jobs" reliably re-runs only failure-concluded jobs, so
+      # cancelled siblings can stay stale on the PR and the checks never fully
+      # update to green even after a successful re-run.
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04]
         name:
@@ -181,34 +194,38 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
             echo "CHECKOUT_REF=refs/heads/main"
           } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=${{ github.ref }}"
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=${GITHUB_REF}"
+            echo "PR_NUMBER=${PR_NUMBER}"
           } >> "${GITHUB_ENV}"
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
+        env:
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -223,14 +240,29 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
 
+      - name: Install gotestsum (test reporting tool)
+        run: |
+          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
+
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: .node-version
 
-      - name: Generate Bicep extensibility types from OpenAPI specs
+      - name: Install yq
+        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
         run: |
-          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+        run: |
+          make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
 
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -248,22 +280,31 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-      - name: Publish bicep types
+      - name: Setup and verify bicep CLI
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Publish bicep types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+        run: |
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+          if [[ "${REL_VERSION}" == "edge" ]]; then
             RADIUS_VERSION="latest"
           else
-            RADIUS_VERSION="${{ env.REL_VERSION }}"
+            RADIUS_VERSION="${REL_VERSION}"
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
             }
           }
           EOF
@@ -320,17 +361,17 @@ jobs:
           fi
 
           RAD_COMMAND="rad install kubernetes \
-                 --chart ${{ env.RADIUS_CHART_LOCATION }} \
-                 --set rp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
-                 --set dynamicrp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
-                 --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
-                 --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
-                 --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
-                 --set preupgrade.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/pre-upgrade,preupgrade.tag=${{ env.REL_VERSION }} \
-                 --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
+                 --chart ${RADIUS_CHART_LOCATION} \
+                 --set rp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/applications-rp,rp.tag=${REL_VERSION} \
+                 --set dynamicrp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/dynamic-rp,dynamicrp.tag=${REL_VERSION} \
+                 --set controller.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/controller,controller.tag=${REL_VERSION} \
+                 --set ucp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/ucpd,ucp.tag=${REL_VERSION} \
+                 --set bicep.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/bicep,bicep.tag=${REL_VERSION} \
+                 --set preupgrade.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/pre-upgrade,preupgrade.tag=${REL_VERSION} \
+                 --set de.image=${DE_IMAGE},de.tag=${DE_TAG}"
 
-          if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
-            RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt"
+          if [ "${USE_CERT_FILE}" = "true" ]; then
+            RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${LOCAL_REGISTRY_SERVER}/client.crt"
           fi
 
           echo "*** Installing Radius to Kubernetes ***"
@@ -421,43 +462,40 @@ jobs:
       - name: Install Dapr CLI and control plane
         if: matrix.name == 'daprrp-noncloud'
         run: |
-          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
-          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_RUNTIME_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s "${DAPR_CLI_VER}"
+          dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}" --dashboard-version "${DAPR_DASHBOARD_VER}"
 
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
 
-      - name: Setup and verify bicep CLI
-        run: |
-          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
-
       - name: Publish bicep types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Publish UDT types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/testresources:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+          if [[ "${REL_VERSION}" == "edge" ]]; then
             RADIUS_VERSION="latest"
           else
-            RADIUS_VERSION="${{ env.REL_VERSION }}"
+            RADIUS_VERSION="${REL_VERSION}"
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
-              "testresources": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:$RADIUS_VERSION"
+              "radius": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest",
+              "testresources": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/testresources:$RADIUS_VERSION"
             }
           }
           EOF
@@ -486,7 +524,7 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          make test-functional-${{ matrix.name }}
+          make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
@@ -498,6 +536,7 @@ jobs:
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
+          MATRIX_NAME: ${{ matrix.name }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
@@ -511,19 +550,21 @@ jobs:
       - name: Collect detailed Radius logs and events
         id: radius-logs-events
         if: always()
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
           # Create Radius logs directory
-          mkdir -p func-nc/radius-logs-events/${{ matrix.name }}
+          mkdir -p "func-nc/radius-logs-events/${MATRIX_NAME}"
 
           # Get pod logs and save to file
           namespace="radius-system"
           pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
           for pod_name in "${pod_names[@]}"; do
-            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt 2>&1 || echo "Failed to get logs for pod: $pod_name" > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
+            kubectl logs $pod_name -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/${pod_name}.txt" 2>&1 || echo "Failed to get logs for pod: $pod_name" > "func-nc/radius-logs-events/${MATRIX_NAME}/${pod_name}.txt"
           done
-          echo "Pod logs saved to func-nc/radius-logs-events/${{ matrix.name }}/"
+          echo "Pod logs saved to func-nc/radius-logs-events/${MATRIX_NAME}/"
           # Get kubernetes events and save to file
-          kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
+          kubectl get events -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/events.txt"
 
       - name: Upload Pod logs for failed tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -536,9 +577,11 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
-          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
-          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/${MATRIX_NAME}-tests-pod-states.log"
+          mkdir -p "$(dirname "$POD_STATE_LOG_FILENAME")"
           {
             echo "kubectl get pods -A"
             kubectl get pods -A
