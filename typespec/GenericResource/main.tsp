@@ -174,11 +174,11 @@ model GenericResourceClientParameters {
 
 // Shared path params declared on operations; hoisted to the client via @clientInitialization.
 model RootScopePathParams {
-  @path
+  @path(#{ allowReserved: true })
   @doc("The scope in which the resource is present.")
   rootScope: string;
 
-  @path
+  @path(#{ allowReserved: true })
   @doc("The azure resource type. For example RedisCache, RabbitMQ and other")
   resourceType: string;
 }
