@@ -1,10 +1,10 @@
 ---
 agent: agent
 name: radius.author-doc
-description: Draft a contributing or architecture doc from a topic and a code reference, in the repository standard format.
+description: Draft a contributing doc from a topic and a code reference, in the repository standard format.
 ---
 
-# Author a contributing or architecture doc
+# Author a contributing doc
 
 Read [.github/skills/radius-author-doc/SKILL.md](../skills/radius-author-doc/SKILL.md) and follow it end-to-end. The prose source of truth is [docs/contributing/authoring-contributing-docs.md](../../docs/contributing/authoring-contributing-docs.md).
 

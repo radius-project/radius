@@ -92,7 +92,7 @@ Act as a critic of your own review to ensure:
 
 ### Step 4: Assess Contributor Documentation Impact
 
-Use the [Contributing Docs Updater](../skills/contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
+Use the [Contributing Docs Updater](../skills/radius-contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
 
 Common triggers for doc updates:
 

@@ -1,6 +1,6 @@
 ---
 name: radius-update-doc
-description: 'Given a PR diff and an affected contributor doc, propose the smallest targeted patch that re-aligns the doc with the changed code. Use when a code change moves behavior documented in CONTRIBUTING.md, docs/contributing/, or docs/architecture/, or when the code-review docs-impact step flags drift.'
+description: 'Patch an EXISTING contributor doc that has drifted from changed code — the smallest targeted edit, no rewrite. Use when a PR changes a command, flag, path, or workflow an existing doc describes, or when the code-review docs-impact step flags drift. Not for creating a new doc (use radius-author-doc) or finding which docs are missing/stale (use radius-contributing-docs-updater).'
 argument-hint: 'A PR diff (or list of changed paths) and the affected doc path'
 user-invocable: true
 ---
@@ -8,6 +8,15 @@ user-invocable: true
 # Update a doc to match changed code
 
 Propose a focused patch to an existing doc so its prose matches the current code. Do not rewrite the doc.
+
+## Which doc skill?
+
+| You want to…                                                         | Use                                                                              |
+|----------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| **Create** a new contributing doc                                    | [radius-author-doc](../radius-author-doc/SKILL.md)                               |
+| **Fix** an existing doc that drifted from code                       | **this skill**                                                                   |
+| **Find** missing or stale docs, or assess a code change's doc impact | [radius-contributing-docs-updater](../radius-contributing-docs-updater/SKILL.md) |
+| **Diagram** a subsystem / write an architecture doc                  | [radius-architecture-documenter](../radius-architecture-documenter/SKILL.md)     |
 
 Backing docs: [authoring-contributing-docs.md](../../../docs/contributing/authoring-contributing-docs.md) (the format the patched doc must keep) and the [code ↔ doc path map](../../../docs/contributing/contributing-agent-assets.md#code--doc-path-map) (which maps changed code globs to the doc that documents them). This skill is a convenience wrapper and adds no knowledge beyond those docs.
 

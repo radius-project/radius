@@ -24,7 +24,7 @@ Use this skill to perform an automated, end-to-end code review for a Radius pull
 Do not use this skill for:
 
 - General code authoring or refactoring tasks
-- Documentation-only changes (use `contributing-docs-updater` instead when contributor doc impact is the focus)
+- Documentation-only changes (use `radius-contributing-docs-updater` instead when contributor doc impact is the focus)
 - Reviewing local uncommitted changes (use the built-in `code-review` agent)
 
 ## Inputs
@@ -124,7 +124,7 @@ number (re-`grep`) before continuing.
 
 ## Step 4: Assess Contributor Documentation Impact
 
-Per the **Step 4** guidance in the code review instructions, use the [`contributing-docs-updater`](../contributing-docs-updater/SKILL.md) skill to determine whether contributor documentation in `docs/contributing/` or `docs/architecture/` needs updates. Record the assessment in the overall assessment section of `pr-review-${prNumber}.md`.
+Per the **Step 4** guidance in the code review instructions, use the [`radius-contributing-docs-updater`](../radius-contributing-docs-updater/SKILL.md) skill to determine whether contributor documentation in `docs/contributing/` or `docs/architecture/` needs updates. Record the assessment in the overall assessment section of `pr-review-${prNumber}.md`.
 
 ## Step 5: Generate the Review-Posting Script
 
@@ -289,4 +289,4 @@ Before finishing:
 - [ ] Generated script passes `shellcheck -x` with no errors (variables quoted, JSON built via `jq`)
 - [ ] Script uses the resolved head commit SHA, not `HEAD`
 - [ ] Script was created but not executed
-- [ ] Contributor doc impact assessed via `contributing-docs-updater`
+- [ ] Contributor doc impact assessed via `radius-contributing-docs-updater`

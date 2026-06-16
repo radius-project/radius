@@ -39,11 +39,13 @@ The following instruction files are available:
 
 These skills are available for specific Radius tasks under the `.github/skills/` directory.
 
-- **[Architecture Documentation](skills/architecture-documenter/SKILL.md)** - Document and diagram application architecture
+- **[Architecture Documentation](skills/radius-architecture-documenter/SKILL.md)** - Document and diagram application architecture
 - **[Build Radius CLI](skills/radius-build-cli/SKILL.md)** - Build the `rad` CLI binary from source
 - **[Build and Push Container Images](skills/radius-build-images/SKILL.md)** - Build and push Radius Docker images to a registry
 - **[Install Radius from Custom Images](skills/radius-install-custom/SKILL.md)** - Install Radius on Kubernetes from custom-built images
-- **[Contributing Docs Updater](skills/contributing-docs-updater/SKILL.md)** - Update, create, review, and find gaps in contributor documentation
+- **[Author a Contributing Doc](skills/radius-author-doc/SKILL.md)** - Create a new contributing doc in the standard format
+- **[Update a Doc](skills/radius-update-doc/SKILL.md)** - Patch an existing doc that drifted from changed code
+- **[Contributing Docs Updater](skills/radius-contributing-docs-updater/SKILL.md)** - Assess contributor docs: find gaps and assess a code change's doc impact (routes authoring to the skills above)
 - **[Radius Code Review](skills/radius-code-review/SKILL.md)** - Perform an automated PR code review and generate review artifacts plus a GitHub API posting script
 
 ## Architecture Documentation

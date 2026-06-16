@@ -196,7 +196,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
   - Key packages and their responsibilities
   - One representative end-to-end flow (sequence diagram in Mermaid)
   - Change-safety notes (what tests to run, what other components are affected)
-- `docs/architecture/README.md` is a current index used by both humans and the `architecture-documenter` skill.
+- `docs/architecture/README.md` is a current index used by both humans and the `radius-architecture-documenter` skill.
 - Add a CI check that the index lists every `*.md` file in the directory.
 
 **Verification**:
@@ -238,7 +238,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 **Deliverables**:
 
 - `radius/`:
-  - Update `radius-build-cli`, `radius-build-images`, `radius-install-custom`, `architecture-documenter`, `contributing-docs-updater` for accuracy and doc links.
+  - Update `radius-build-cli`, `radius-build-images`, `radius-install-custom`, `radius-architecture-documenter`, `radius-contributing-docs-updater` for accuracy and doc links.
   - Add `radius-schema-changes` (TypeSpec → Swagger → Go).
   - Add `radius-run-controlplane` and `radius-debug-components` if the Phase 3 audit confirms the docs alone aren't sufficient.
 - `resource-types-contrib/`:
@@ -314,7 +314,7 @@ Skills and agents use a `radius-` prefix; prompts use a `radius.` prefix (matchi
 | Prompt | `radius.<action>.prompt.md` (add `<repo>` segment when ambiguous across repos) | `radius.create-pr.prompt.md`, `radius.contrib.add-recipe.prompt.md` | `/radius.create-pr`, `/radius.contrib.add-recipe` |
 | Lifecycle workflow | `skill-lifecycle-review.yml` | `.github/workflows/skill-lifecycle-review.yml` | scheduled |
 
-The `<repo>` segment is optional. Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (e.g., `radius-contrib-add-resource-type` lives in `resource-types-contrib/` and disambiguates from any future `radius-add-resource-type` work in `radius/`). Existing skills (`radius-build-cli`, `radius-build-images`, `radius-install-custom`, `architecture-documenter`, `contributing-docs-updater`) and prompts (`radius.create-pr`, `radius.code-review`) keep their current names; no rename migration is planned.
+The `<repo>` segment is optional. Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (e.g., `radius-contrib-add-resource-type` lives in `resource-types-contrib/` and disambiguates from any future `radius-add-resource-type` work in `radius/`). Existing skills (`radius-build-cli`, `radius-build-images`, `radius-install-custom`) and prompts (`radius.create-pr`, `radius.code-review`) keep their current names; no rename migration is planned.
 
 Repo short names (used when the `<repo>` segment is needed): `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
 

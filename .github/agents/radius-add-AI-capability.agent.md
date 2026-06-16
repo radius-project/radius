@@ -1,6 +1,6 @@
 ---
 name: radius-add-AI-capability
-description: Walks a contributor through adding a new AI capability to the Agent Ex system — choosing the right asset type, authoring or extending the primary contributing doc, scaffolding any optional wrappers, and updating the live files. Scoped to documentation and agent-asset files only.
+description: Walks a contributor through adding a new AI capability to the Agent Ex system (such as a custom agent, prompt, skill, or instruction) — choosing the right asset type, authoring or extending the primary contributing doc, scaffolding any optional wrappers, and updating the live files. Scoped to documentation and agent-asset files only.
 ---
 
 # Add an AI capability
