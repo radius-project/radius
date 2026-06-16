@@ -93,8 +93,11 @@ graph TD
 ## Resource Type Registration
 
 A resource type is registered by writing its manifest into UCP under the
-`System.Resources` provider. There are two paths to do this; both end at the
-same database records.
+`System.Resources` provider. There are two paths to do this. They produce
+equivalent database records but are not interchangeable: Path A
+(`rad resource-type create`) registers custom, user-defined types against a
+running cluster, while Path B (the UCP initializer) runs only at UCP pod
+startup and registers the built-in and bundled types that ship with Radius.
 
 ### Path A: `rad resource-type create`
 
@@ -201,7 +204,8 @@ current code: `Radius.Core/recipePacks` are first-class resources, and
    `envResource.Properties.Recipes[<resourceType>][<recipeName>]`.
 4. Calls `CreateOrUpdateEnvironment` to persist.
 
-The resulting `Applications.Core/environments` shape:
+The resulting `Applications.Core/environments` shape stores a single recipe per
+resource type under `properties.recipes[<type>].default`:
 
 ```yaml
 properties:
@@ -211,10 +215,6 @@ properties:
         templateKind: bicep
         templatePath: ghcr.io/.../redis:1.0.0
         parameters: { ... }
-      memorydb:
-        templateKind: terraform
-        templatePath: git::https://...
-        templateVersion: v1.2.0
 ```
 
 The same `properties.recipes` map can be edited directly (e.g. by Bicep that
@@ -222,7 +222,31 @@ defines an `Applications.Core` environment) — the CLI is a convenience that
 performs the merge and update.
 
 For the `Radius.Core` environment path, recipe definitions are stored on
-`Radius.Core/recipePacks` resources. During recipe loading,
+`Radius.Core/recipePacks` resources. An environment references those packs by
+ID and optionally overrides their parameters per resource type:
+
+```yaml
+# Radius.Core/environments
+properties:
+  recipePacks:
+    - /planes/radius/local/resourceGroups/default/providers/Radius.Core/recipePacks/data-recipes
+  recipeParameters:
+    Radius.Data/redisCaches:
+      size: standard
+```
+
+```yaml
+# Radius.Core/recipePacks (referenced above)
+properties:
+  recipes:
+    Radius.Data/redisCaches:
+      recipeKind: bicep
+      recipeLocation: ghcr.io/.../redis:1.0.0
+      plainHttp: false
+      parameters: { ... }
+```
+
+During recipe loading,
 [configloader.LoadRecipe](../../pkg/recipes/configloader/environment.go)
 fetches the environment's recipe pack IDs, finds the first pack with a recipe
 whose key matches the resource type, and reconciles that recipe's parameters
@@ -462,8 +486,12 @@ up before the Radius resource record is removed.
 - Dynamic recipe output only becomes user-visible resource properties when
   those properties exist in the registered schema and are not basic Radius
   properties such as `application` or `environment`.
-- Sensitive input fields marked by schema annotations are encrypted at rest and
-  decrypted only for in-memory recipe execution.
+- Sensitive input fields marked by schema annotations are encrypted by the
+  frontend filter when the accepted resource is first stored. During backend
+  processing the recipe controller decrypts an in-memory copy for recipe
+  execution and then persists a redacted resource with those fields set to
+  `nil`, so the durable resource record retains neither plaintext nor
+  ciphertext for sensitive fields.
 
 ## Change This Safely
 
