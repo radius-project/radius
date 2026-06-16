@@ -173,12 +173,15 @@ model GenericResourceClientParameters {
 }
 
 // Shared path params declared on operations; hoisted to the client via @clientInitialization.
+// NOTE: rootScope and resourceType use RFC 6570 reserved expansion ({+param}) directly in the
+// @route URI templates below, so the slashes in the scope are NOT URL-encoded. Do not add
+// allowReserved here as well; it must only be declared in one place (the URI template).
 model RootScopePathParams {
-  @path(#{ allowReserved: true })
+  @path
   @doc("The scope in which the resource is present.")
   rootScope: string;
 
-  @path(#{ allowReserved: true })
+  @path
   @doc("The azure resource type. For example RedisCache, RabbitMQ and other")
   resourceType: string;
 }
