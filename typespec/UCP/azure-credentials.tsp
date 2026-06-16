@@ -41,7 +41,7 @@ namespace Ucp;
 @doc("The parameter of Azure plane")
 model AzurePlaneNameParameter {
   @doc("The name of the plane")
-  @path(#{ allowReserved: true })
+  @path
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "method")
   @segment("planes/azure")

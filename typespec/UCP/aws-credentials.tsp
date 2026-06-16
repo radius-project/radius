@@ -51,7 +51,7 @@ model AwsCredentialResource
 @doc("The parameter for AWS plane name")
 model AwsPlaneNameParameter {
   @doc("The name of AWS plane")
-  @path(#{ allowReserved: true })
+  @path
   @segment("planes/aws")
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "method")

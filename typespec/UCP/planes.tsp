@@ -40,7 +40,7 @@ namespace Ucp;
 @doc("The Plane Name parameter.")
 model PlaneNameParameter {
   @doc("The name of the plane")
-  @path(#{ allowReserved: true })
+  @path
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "method")
   planeName: ResourceNameString;
