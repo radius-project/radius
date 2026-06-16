@@ -80,25 +80,25 @@ interface RadiusPlanes {
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
-  @doc("Create or update a plane")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Create or update a plane")
   @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     RadiusPlaneResource,
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Update a plane")
   @patch(#{ implicitOptionality: true })
-  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @Azure.Core.useFinalStateVia("location")
   update is UcpCustomPatchAsync<
     RadiusPlaneResource,
     PlaneBaseParameters<RadiusPlaneResource>
   >;
 
-  @doc("Delete a plane")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Delete a plane")
   @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     RadiusPlaneResource,

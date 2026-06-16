@@ -263,16 +263,16 @@ interface ResourceProviders {
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
-  @doc("Create or update a resource provider")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Create or update a resource provider")
   @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
-  @doc("Delete a resource provider")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Delete a resource provider")
   @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ResourceProviderResource,
@@ -312,16 +312,16 @@ interface ResourceTypes {
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
-  @doc("Create or update a resource type")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Create or update a resource type")
   @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
-  @doc("Delete a resource type")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Delete a resource type")
   @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ResourceTypeResource,
@@ -344,16 +344,16 @@ interface ApiVersions {
     ApiVersionBaseParameters<ApiVersionResource>
   >;
 
-  @doc("Create or update an API version.")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Create or update an API version.")
   @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ApiVersionResource,
     ApiVersionBaseParameters<ApiVersionResource>
   >;
 
-  @doc("Delete an API version.")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Delete an API version.")
   @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ApiVersionResource,
@@ -376,16 +376,16 @@ interface Locations {
     LocationBaseParameters<LocationResource>
   >;
 
-  @doc("Create or update a location. The location resource represents a logical location where the resource provider operates.")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Create or update a location. The location resource represents a logical location where the resource provider operates.")
   @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     LocationResource,
     LocationBaseParameters<LocationResource>
   >;
 
-  @doc("Delete a location. The location resource represents a logical location where the resource provider operates.")
   #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @doc("Delete a location. The location resource represents a logical location where the resource provider operates.")
   @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     LocationResource,
