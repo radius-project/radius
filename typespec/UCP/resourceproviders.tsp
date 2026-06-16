@@ -264,12 +264,16 @@ interface ResourceProviders {
   >;
 
   @doc("Create or update a resource provider")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
   @doc("Delete a resource provider")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
@@ -309,12 +313,16 @@ interface ResourceTypes {
   >;
 
   @doc("Create or update a resource type")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
   @doc("Delete a resource type")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
@@ -337,12 +345,16 @@ interface ApiVersions {
   >;
 
   @doc("Create or update an API version.")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ApiVersionResource,
     ApiVersionBaseParameters<ApiVersionResource>
   >;
 
   @doc("Delete an API version.")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ApiVersionResource,
     ApiVersionBaseParameters<ApiVersionResource>
@@ -365,12 +377,16 @@ interface Locations {
   >;
 
   @doc("Create or update a location. The location resource represents a logical location where the resource provider operates.")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     LocationResource,
     LocationBaseParameters<LocationResource>
   >;
 
   @doc("Delete a location. The location resource represents a logical location where the resource provider operates.")
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     LocationResource,
     LocationBaseParameters<LocationResource>

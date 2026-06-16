@@ -49,7 +49,9 @@ func (client *RadiusPlanesClient) BeginCreateOrUpdate(ctx context.Context, plane
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RadiusPlanesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RadiusPlanesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -109,7 +111,9 @@ func (client *RadiusPlanesClient) BeginDelete(ctx context.Context, planeName str
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RadiusPlanesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RadiusPlanesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -262,7 +266,9 @@ func (client *RadiusPlanesClient) BeginUpdate(ctx context.Context, planeName str
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RadiusPlanesClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RadiusPlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

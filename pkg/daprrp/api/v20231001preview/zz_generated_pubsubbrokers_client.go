@@ -51,7 +51,9 @@ func (client *PubSubBrokersClient) BeginCreateOrUpdate(ctx context.Context, root
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[PubSubBrokersClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[PubSubBrokersClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -116,7 +118,9 @@ func (client *PubSubBrokersClient) BeginDelete(ctx context.Context, rootScope st
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[PubSubBrokersClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[PubSubBrokersClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -285,7 +289,9 @@ func (client *PubSubBrokersClient) BeginUpdate(ctx context.Context, rootScope st
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[PubSubBrokersClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[PubSubBrokersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

@@ -51,7 +51,9 @@ func (client *ResourceTypesClient) BeginCreateOrUpdate(ctx context.Context, plan
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[ResourceTypesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ResourceTypesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[ResourceTypesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -121,7 +123,9 @@ func (client *ResourceTypesClient) BeginDelete(ctx context.Context, planeName st
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[ResourceTypesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ResourceTypesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[ResourceTypesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)

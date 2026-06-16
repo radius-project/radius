@@ -52,7 +52,9 @@ func (client *APIVersionsClient) BeginCreateOrUpdate(ctx context.Context, planeN
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[APIVersionsClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[APIVersionsClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[APIVersionsClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -126,7 +128,9 @@ func (client *APIVersionsClient) BeginDelete(ctx context.Context, planeName stri
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[APIVersionsClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[APIVersionsClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[APIVersionsClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)

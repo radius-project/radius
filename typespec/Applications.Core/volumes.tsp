@@ -154,17 +154,23 @@ model KeyObjectProperties {
 interface Volumes {
   get is ArmResourceRead<VolumeResource, UCPBaseParameters<VolumeResource>>;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is ArmResourceCreateOrReplaceAsync<
     VolumeResource,
     UCPBaseParameters<VolumeResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   update is ArmResourcePatchAsync<
     VolumeResource,
     VolumeProperties,
     UCPBaseParameters<VolumeResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is ArmResourceDeleteWithoutOkAsync<
     VolumeResource,
     UCPBaseParameters<VolumeResource>

@@ -51,7 +51,9 @@ func (client *MongoDatabasesClient) BeginCreateOrUpdate(ctx context.Context, roo
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[MongoDatabasesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[MongoDatabasesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[MongoDatabasesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -116,7 +118,9 @@ func (client *MongoDatabasesClient) BeginDelete(ctx context.Context, rootScope s
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[MongoDatabasesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[MongoDatabasesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[MongoDatabasesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -346,7 +350,9 @@ func (client *MongoDatabasesClient) BeginUpdate(ctx context.Context, rootScope s
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[MongoDatabasesClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[MongoDatabasesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[MongoDatabasesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

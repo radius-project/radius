@@ -51,7 +51,9 @@ func (client *ConfigurationStoresClient) BeginCreateOrUpdate(ctx context.Context
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[ConfigurationStoresClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[ConfigurationStoresClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -116,7 +118,9 @@ func (client *ConfigurationStoresClient) BeginDelete(ctx context.Context, rootSc
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[ConfigurationStoresClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[ConfigurationStoresClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -285,7 +289,9 @@ func (client *ConfigurationStoresClient) BeginUpdate(ctx context.Context, rootSc
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[ConfigurationStoresClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[ConfigurationStoresClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

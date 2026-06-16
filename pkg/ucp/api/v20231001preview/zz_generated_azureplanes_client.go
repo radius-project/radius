@@ -49,7 +49,9 @@ func (client *AzurePlanesClient) BeginCreateOrUpdate(ctx context.Context, planeN
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[AzurePlanesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[AzurePlanesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -108,7 +110,9 @@ func (client *AzurePlanesClient) BeginDelete(ctx context.Context, planeName stri
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[AzurePlanesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[AzurePlanesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -260,7 +264,9 @@ func (client *AzurePlanesClient) BeginUpdate(ctx context.Context, planeName stri
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[AzurePlanesClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[AzurePlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

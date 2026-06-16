@@ -52,7 +52,9 @@ func (client *LocationsClient) BeginCreateOrUpdate(ctx context.Context, planeNam
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[LocationsClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[LocationsClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[LocationsClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -122,7 +124,9 @@ func (client *LocationsClient) BeginDelete(ctx context.Context, planeName string
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[LocationsClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[LocationsClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[LocationsClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)

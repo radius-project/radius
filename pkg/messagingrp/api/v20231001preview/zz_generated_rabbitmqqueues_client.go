@@ -51,7 +51,9 @@ func (client *RabbitMQQueuesClient) BeginCreateOrUpdate(ctx context.Context, roo
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RabbitMQQueuesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RabbitMQQueuesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -116,7 +118,9 @@ func (client *RabbitMQQueuesClient) BeginDelete(ctx context.Context, rootScope s
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RabbitMQQueuesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RabbitMQQueuesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -346,7 +350,9 @@ func (client *RabbitMQQueuesClient) BeginUpdate(ctx context.Context, rootScope s
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RabbitMQQueuesClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RabbitMQQueuesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

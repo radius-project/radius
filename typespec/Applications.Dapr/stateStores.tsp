@@ -62,17 +62,23 @@ interface StateStores {
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is ArmResourceCreateOrReplaceAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   update is ArmResourcePatchAsync<
     DaprStateStoreResource,
     DaprStateStoreProperties,
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is ArmResourceDeleteWithoutOkAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>

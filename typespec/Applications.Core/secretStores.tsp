@@ -125,17 +125,23 @@ interface SecretStores {
     UCPBaseParameters<SecretStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is ArmResourceCreateOrReplaceAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   update is ArmResourcePatchAsync<
     SecretStoreResource,
     SecretStoreProperties,
     UCPBaseParameters<SecretStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is ArmResourceDeleteWithoutOkAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>

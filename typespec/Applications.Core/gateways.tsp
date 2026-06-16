@@ -130,17 +130,23 @@ model GatewayRouteTimeoutPolicy {
 interface Gateways {
   get is ArmResourceRead<GatewayResource, UCPBaseParameters<GatewayResource>>;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   create is ArmResourceCreateOrReplaceAsync<
     GatewayResource,
     UCPBaseParameters<GatewayResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   createOrUpdate is ArmResourcePatchAsync<
     GatewayResource,
     GatewayProperties,
     UCPBaseParameters<GatewayResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is ArmResourceDeleteWithoutOkAsync<
     GatewayResource,
     UCPBaseParameters<GatewayResource>

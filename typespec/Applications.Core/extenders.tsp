@@ -70,17 +70,23 @@ model ExtenderProperties extends Record<unknown> {
 interface Extenders {
   get is ArmResourceRead<ExtenderResource, UCPBaseParameters<ExtenderResource>>;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is ArmResourceCreateOrReplaceAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   update is ArmResourcePatchAsync<
     ExtenderResource,
     ExtenderProperties,
     UCPBaseParameters<ExtenderResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is ArmResourceDeleteWithoutOkAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>

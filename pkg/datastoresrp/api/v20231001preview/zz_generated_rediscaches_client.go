@@ -51,7 +51,9 @@ func (client *RedisCachesClient) BeginCreateOrUpdate(ctx context.Context, rootSc
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RedisCachesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RedisCachesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -115,7 +117,9 @@ func (client *RedisCachesClient) BeginDelete(ctx context.Context, rootScope stri
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RedisCachesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RedisCachesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -343,7 +347,9 @@ func (client *RedisCachesClient) BeginUpdate(ctx context.Context, rootScope stri
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[RedisCachesClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[RedisCachesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

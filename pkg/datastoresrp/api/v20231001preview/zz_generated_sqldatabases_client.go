@@ -51,7 +51,9 @@ func (client *SQLDatabasesClient) BeginCreateOrUpdate(ctx context.Context, rootS
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[SQLDatabasesClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[SQLDatabasesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -116,7 +118,9 @@ func (client *SQLDatabasesClient) BeginDelete(ctx context.Context, rootScope str
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[SQLDatabasesClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[SQLDatabasesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -346,7 +350,9 @@ func (client *SQLDatabasesClient) BeginUpdate(ctx context.Context, rootScope str
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[SQLDatabasesClientUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[SQLDatabasesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)

@@ -50,7 +50,9 @@ func (client *GatewaysClient) BeginCreate(ctx context.Context, rootScope string,
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[GatewaysClientCreateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientCreateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[GatewaysClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -116,7 +118,9 @@ func (client *GatewaysClient) BeginCreateOrUpdate(ctx context.Context, rootScope
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[GatewaysClientCreateOrUpdateResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[GatewaysClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
@@ -180,7 +184,9 @@ func (client *GatewaysClient) BeginDelete(ctx context.Context, rootScope string,
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller[GatewaysClientDeleteResponse](resp, client.internal.Pipeline(), nil)
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
 		return poller, err
 	} else {
 		return runtime.NewPollerFromResumeToken[GatewaysClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
