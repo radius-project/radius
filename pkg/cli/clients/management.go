@@ -288,7 +288,7 @@ func (amc *UCPApplicationsManagementClient) GetApplicationGraph(ctx context.Cont
 		return corerpv20231001.ApplicationGraphResponse{}, err
 	}
 
-	getResponse, err := client.GetGraph(ctx, name, map[string]any{}, &corerpv20231001.ApplicationsClientGetGraphOptions{})
+	getResponse, err := client.GetGraph(ctx, name, corerpv20231001.GetGraphRequest{}, &corerpv20231001.ApplicationsClientGetGraphOptions{})
 	if err != nil {
 		return corerpv20231001.ApplicationGraphResponse{}, err
 	}

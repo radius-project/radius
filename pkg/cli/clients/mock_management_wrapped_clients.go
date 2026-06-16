@@ -340,7 +340,7 @@ func (c *MockapplicationResourceClientGetCall) DoAndReturn(f func(context.Contex
 }
 
 // GetGraph mocks base method.
-func (m *MockapplicationResourceClient) GetGraph(ctx context.Context, applicationName string, body map[string]any, options *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error) {
+func (m *MockapplicationResourceClient) GetGraph(ctx context.Context, applicationName string, body v20231001preview.GetGraphRequest, options *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetGraph", ctx, applicationName, body, options)
 	ret0, _ := ret[0].(v20231001preview.ApplicationsClientGetGraphResponse)
@@ -367,13 +367,13 @@ func (c *MockapplicationResourceClientGetGraphCall) Return(arg0 v20231001preview
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockapplicationResourceClientGetGraphCall) Do(f func(context.Context, string, map[string]any, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
+func (c *MockapplicationResourceClientGetGraphCall) Do(f func(context.Context, string, v20231001preview.GetGraphRequest, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockapplicationResourceClientGetGraphCall) DoAndReturn(f func(context.Context, string, map[string]any, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
+func (c *MockapplicationResourceClientGetGraphCall) DoAndReturn(f func(context.Context, string, v20231001preview.GetGraphRequest, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

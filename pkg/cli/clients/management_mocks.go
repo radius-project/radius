@@ -52,7 +52,7 @@ type applicationResourceClient interface {
 	Get(ctx context.Context, applicationName string, options *corerpv20231001.ApplicationsClientGetOptions) (corerpv20231001.ApplicationsClientGetResponse, error)
 	NewListByScopePager(options *corerpv20231001.ApplicationsClientListByScopeOptions) *runtime.Pager[corerpv20231001.ApplicationsClientListByScopeResponse]
 
-	GetGraph(ctx context.Context, applicationName string, body map[string]any, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error)
+	GetGraph(ctx context.Context, applicationName string, body corerpv20231001.GetGraphRequest, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error)
 }
 
 // environmentResourceClient is an interface for mocking the generated SDK client for environment resources.
