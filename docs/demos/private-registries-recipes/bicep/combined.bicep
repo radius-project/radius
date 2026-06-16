@@ -45,7 +45,7 @@ param bicepRegistryUsername string
 param bicepRegistryPassword string
 
 // SecretStore for the Terraform registry token (key: token).
-resource terraformTokenSecret 'Radius.Security/secretStores@2025-08-01-preview' = {
+resource terraformTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'combined-tf-token-secret'
   location: 'global'
   properties: {
@@ -60,7 +60,7 @@ resource terraformTokenSecret 'Radius.Security/secretStores@2025-08-01-preview' 
 }
 
 // SecretStore for the Bicep OCI registry BasicAuth (keys: username, password).
-resource bicepRegistrySecret 'Radius.Security/secretStores@2025-08-01-preview' = {
+resource bicepRegistrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'combined-bicep-registry-secret'
   location: 'global'
   properties: {

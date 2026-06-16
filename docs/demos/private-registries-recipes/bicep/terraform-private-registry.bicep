@@ -33,7 +33,7 @@ param redisCacheName string = 'tf-private-redis'
 
 // SecretStore holding the Terraform registry token. The terraformConfig
 // credentials block references this; the secret store must expose a 'token' key.
-resource registryTokenSecret 'Radius.Security/secretStores@2025-08-01-preview' = {
+resource registryTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'private-tf-token-secret'
   location: 'global'
   properties: {
