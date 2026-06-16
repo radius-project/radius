@@ -83,7 +83,7 @@ func (client *PubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Conte
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if pubSubBrokerName == "" {
 		return nil, errors.New("parameter pubSubBrokerName cannot be empty")
 	}
@@ -148,7 +148,7 @@ func (client *PubSubBrokersClient) deleteCreateRequest(ctx context.Context, root
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if pubSubBrokerName == "" {
 		return nil, errors.New("parameter pubSubBrokerName cannot be empty")
 	}
@@ -193,7 +193,7 @@ func (client *PubSubBrokersClient) getCreateRequest(ctx context.Context, rootSco
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if pubSubBrokerName == "" {
 		return nil, errors.New("parameter pubSubBrokerName cannot be empty")
 	}
@@ -250,7 +250,7 @@ func (client *PubSubBrokersClient) listByScopeCreateRequest(ctx context.Context,
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -317,7 +317,7 @@ func (client *PubSubBrokersClient) updateCreateRequest(ctx context.Context, root
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if pubSubBrokerName == "" {
 		return nil, errors.New("parameter pubSubBrokerName cannot be empty")
 	}

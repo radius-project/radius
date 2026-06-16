@@ -83,7 +83,7 @@ func (client *RabbitMQQueuesClient) createOrUpdateCreateRequest(ctx context.Cont
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if rabbitMQQueueName == "" {
 		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
 	}
@@ -148,7 +148,7 @@ func (client *RabbitMQQueuesClient) deleteCreateRequest(ctx context.Context, roo
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if rabbitMQQueueName == "" {
 		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
 	}
@@ -193,7 +193,7 @@ func (client *RabbitMQQueuesClient) getCreateRequest(ctx context.Context, rootSc
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if rabbitMQQueueName == "" {
 		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
 	}
@@ -250,7 +250,7 @@ func (client *RabbitMQQueuesClient) listByScopeCreateRequest(ctx context.Context
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -303,7 +303,7 @@ func (client *RabbitMQQueuesClient) listSecretsCreateRequest(ctx context.Context
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if rabbitMQQueueName == "" {
 		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
 	}
@@ -378,7 +378,7 @@ func (client *RabbitMQQueuesClient) updateCreateRequest(ctx context.Context, roo
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if rabbitMQQueueName == "" {
 		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
 	}

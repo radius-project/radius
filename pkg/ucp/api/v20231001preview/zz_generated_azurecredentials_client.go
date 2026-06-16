@@ -69,7 +69,7 @@ func (client *AzureCredentialsClient) createOrUpdateCreateRequest(ctx context.Co
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -127,7 +127,7 @@ func (client *AzureCredentialsClient) deleteCreateRequest(ctx context.Context, p
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -172,7 +172,7 @@ func (client *AzureCredentialsClient) getCreateRequest(ctx context.Context, plan
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -229,7 +229,7 @@ func (client *AzureCredentialsClient) listCreateRequest(ctx context.Context, pla
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -281,7 +281,7 @@ func (client *AzureCredentialsClient) updateCreateRequest(ctx context.Context, p
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}

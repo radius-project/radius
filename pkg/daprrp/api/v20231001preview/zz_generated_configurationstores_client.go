@@ -83,7 +83,7 @@ func (client *ConfigurationStoresClient) createOrUpdateCreateRequest(ctx context
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if configurationStoreName == "" {
 		return nil, errors.New("parameter configurationStoreName cannot be empty")
 	}
@@ -148,7 +148,7 @@ func (client *ConfigurationStoresClient) deleteCreateRequest(ctx context.Context
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if configurationStoreName == "" {
 		return nil, errors.New("parameter configurationStoreName cannot be empty")
 	}
@@ -193,7 +193,7 @@ func (client *ConfigurationStoresClient) getCreateRequest(ctx context.Context, r
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if configurationStoreName == "" {
 		return nil, errors.New("parameter configurationStoreName cannot be empty")
 	}
@@ -250,7 +250,7 @@ func (client *ConfigurationStoresClient) listByScopeCreateRequest(ctx context.Co
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -317,7 +317,7 @@ func (client *ConfigurationStoresClient) updateCreateRequest(ctx context.Context
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if configurationStoreName == "" {
 		return nil, errors.New("parameter configurationStoreName cannot be empty")
 	}
