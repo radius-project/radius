@@ -19,8 +19,10 @@ package providers
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -33,11 +35,25 @@ var _ Provider = (*kubernetesProvider)(nil)
 
 type kubernetesProvider struct{}
 
-// BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.
-// It returns an error if the in cluster config cannot be retrieved, and uses default kubeconfig file if
-// in-cluster config is not present.
-// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
+// BuildConfig generates the Terraform provider configuration for the Kubernetes provider.
+//
+// When RADIUS_TARGET_KUBECONFIG is set (the multi-cluster v1 contract), the
+// provider is pointed at that kubeconfig so the recipe deploys to the external
+// target cluster. Otherwise it falls back to the in-cluster config, or the
+// default kubeconfig file when not running in-cluster.
+//
+// Note: the Terraform state backend is intentionally not affected by
+// RADIUS_TARGET_KUBECONFIG — state stays on the control-plane cluster. Only the
+// provider (where workloads are created) targets the external cluster.
+// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs#in-cluster-config
 func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
+	// Honor the injected target kubeconfig first (multi-cluster v1 contract).
+	if targetKubeconfig := os.Getenv(clusteraccess.TargetKubeconfigEnvVar); targetKubeconfig != "" {
+		return map[string]any{
+			"config_path": targetKubeconfig,
+		}, nil
+	}
+
 	_, err := rest.InClusterConfig()
 	if err != nil {
 		// If in cluster config is not present, then use default kubeconfig file.
