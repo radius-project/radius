@@ -96,11 +96,6 @@ jobs:
         with:
           node-version-file: radius/.node-version
 
-      - name: Install mockgen
-        run: |
-          cd radius
-          go install go.uber.org/mock/mockgen@v0.6.0
-
       - name: Install controller-gen
         run: |
           cd radius

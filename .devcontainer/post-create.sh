@@ -52,9 +52,6 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install
 echo "Installing controller-gen..."
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 
-echo "Installing mockgen..."
-go install go.uber.org/mock/mockgen@v0.6.0
-
 echo "Installing cspell..."
 # Ensure pnpm global bin directory exists and is on PATH before installing
 # global packages. `pnpm setup` updates shell rc files for future sessions,

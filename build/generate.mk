@@ -165,14 +165,8 @@ generate-genericcliclient: generate-tsp-installed ## Generates the generic CLI c
 	go fmt ./pkg/cli/clients_new/generated/...
 	@echo "$(ARROW) Done."
 
-.PHONY: generate-mockgen-installed
-generate-mockgen-installed:
-	@echo "$(ARROW) Detecting mockgen..."
-	@which mockgen > /dev/null || { echo "run 'go install go.uber.org/mock/mockgen@v0.6.0' to install mockgen"; exit 1; }
-	@echo "$(ARROW) OK"
-
 .PHONY: generate-go
-generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mocks).
+generate-go: ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 

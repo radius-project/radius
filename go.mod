@@ -341,3 +341,6 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 )
+
+// go.uber.org/mock vX.Y.Z <- the actual pinned version above of this tool
+tool go.uber.org/mock/mockgen
