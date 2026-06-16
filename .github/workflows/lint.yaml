@@ -74,7 +74,7 @@ jobs:
           node-version-file: .node-version
 
       - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@v0.4.0
+        run: go install go.uber.org/mock/mockgen@v0.6.0
 
       - name: Install controller-gen
         run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0

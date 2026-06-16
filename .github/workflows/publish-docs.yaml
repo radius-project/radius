@@ -99,7 +99,7 @@ jobs:
       - name: Install mockgen
         run: |
           cd radius
-          go install go.uber.org/mock/mockgen@v0.4.0
+          go install go.uber.org/mock/mockgen@v0.6.0
 
       - name: Install controller-gen
         run: |

@@ -53,7 +53,7 @@ echo "Installing controller-gen..."
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 
 echo "Installing mockgen..."
-go install go.uber.org/mock/mockgen@v0.4.0
+go install go.uber.org/mock/mockgen@v0.6.0
 
 echo "Installing cspell..."
 # Ensure pnpm global bin directory exists and is on PATH before installing

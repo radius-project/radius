@@ -21,6 +21,7 @@ import (
 type MockProvider struct {
 	ctrl     *gomock.Controller
 	recorder *MockProviderMockRecorder
+	isgomock struct{}
 }
 
 // MockProviderMockRecorder is the mock recorder for MockProvider.
@@ -41,18 +42,18 @@ func (m *MockProvider) EXPECT() *MockProviderMockRecorder {
 }
 
 // BuildConfig mocks base method.
-func (m *MockProvider) BuildConfig(arg0 context.Context, arg1 *recipes.Configuration) (map[string]any, error) {
+func (m *MockProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildConfig", arg0, arg1)
+	ret := m.ctrl.Call(m, "BuildConfig", ctx, envConfig)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BuildConfig indicates an expected call of BuildConfig.
-func (mr *MockProviderMockRecorder) BuildConfig(arg0, arg1 any) *MockProviderBuildConfigCall {
+func (mr *MockProviderMockRecorder) BuildConfig(ctx, envConfig any) *MockProviderBuildConfigCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildConfig", reflect.TypeOf((*MockProvider)(nil).BuildConfig), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildConfig", reflect.TypeOf((*MockProvider)(nil).BuildConfig), ctx, envConfig)
 	return &MockProviderBuildConfigCall{Call: call}
 }
 
