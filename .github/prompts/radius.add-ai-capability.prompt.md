@@ -1,12 +1,12 @@
 ---
-agent: radius-add-AI-capability
-name: radius.add-AI-capability
+agent: radius-add-ai-capability
+name: radius.add-ai-capability
 description: Walk through adding a new AI capability to the Agent Ex system (such as a custom agent, prompt, skill, or instruction) — pick the asset type, author the primary doc, scaffold wrappers, and update the live files.
 ---
 
 # Add an AI capability
 
-Follow [docs/contributing/extending-agent-ex.md](../../docs/contributing/extending-agent-ex.md) end-to-end, using the [radius-add-AI-capability](../agents/radius-add-AI-capability.agent.md) agent's workflow. The conventions, budgets, and templates are in [docs/contributing/contributing-agent-assets.md](../../docs/contributing/contributing-agent-assets.md).
+Follow [docs/contributing/extending-agent-ex.md](../../docs/contributing/extending-agent-ex.md) end-to-end, using the [radius-add-ai-capability](../agents/radius-add-ai-capability.agent.md) agent's workflow. The conventions, budgets, and templates are in [docs/contributing/contributing-agent-assets.md](../../docs/contributing/contributing-agent-assets.md).
 
 AI capability to add: ${input:capability:Describe the new AI capability or workflow}
 

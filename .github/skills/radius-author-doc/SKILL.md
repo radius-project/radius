@@ -23,7 +23,7 @@ Backing doc: [authoring-contributing-docs.md](../../../docs/contributing/authori
 ## When to use
 
 - A contributor workflow ("how do I do X?") has no doc, or its doc does not follow the standard format.
-- You are invoked by [/radius.author-doc](../../prompts/radius.author-doc.prompt.md) or by the `radius-add-AI-capability` agent to write a capability's primary doc.
+- You are invoked by [/radius.author-doc](../../prompts/radius.author-doc.prompt.md) or by the `radius-add-ai-capability` agent to write a capability's primary doc.
 
 For an **architecture** doc ("how does a subsystem work?"), use the [radius-architecture-documenter](../radius-architecture-documenter/SKILL.md) skill instead — it owns `docs/architecture/`.
 

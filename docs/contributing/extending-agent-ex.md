@@ -38,7 +38,7 @@ Steps 3 and 5 are the two most easily confused. Choose between them this way:
 
 > **Do not pin a `tools:` allow-list in agent frontmatter.** Tool names change frequently, so a hard-coded list goes stale and silently breaks the agent. Define the agent's scope through prose guardrails — which files it may and may not touch — not a tool list.
 
-Example: [`radius-add-AI-capability`](../../.github/agents/radius-add-AI-capability.agent.md) is a custom agent, not a skill, because it (1) defines a guarded scope that forbids editing product source or the planning docs, and (2) orchestrates the [`radius-author-doc`](../../.github/skills/radius-author-doc/SKILL.md) skill to do the mechanical writing while it handles the decision tree and the scope guardrails. The writing step is a skill; the persona that drives and bounds the session is an agent.
+Example: [`radius-add-ai-capability`](../../.github/agents/radius-add-ai-capability.agent.md) is a custom agent, not a skill, because it (1) defines a guarded scope that forbids editing product source or the planning docs, and (2) orchestrates the [`radius-author-doc`](../../.github/skills/radius-author-doc/SKILL.md) skill to do the mechanical writing while it handles the decision tree and the scope guardrails. The writing step is a skill; the persona that drives and bounds the session is an agent.
 
 **The two-of-four rule** (from [Design Principle 6 in agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md#design-principles)): only add a skill, prompt, or custom agent if it satisfies **at least two** of:
 

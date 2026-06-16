@@ -22,4 +22,4 @@ Both tools are installed as dev dependencies in the root `package.json`. See the
 
 ## Before committing
 
-Run the Markdown linters (see the `markdown-lint` skill) on the files you changed and fix any reported issues.
+Run the Markdown linters (see the `radius-markdown-lint` skill) on the files you changed and fix any reported issues.
