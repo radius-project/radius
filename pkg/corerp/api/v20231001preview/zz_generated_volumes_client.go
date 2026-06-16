@@ -83,7 +83,7 @@ func (client *VolumesClient) createOrUpdateCreateRequest(ctx context.Context, ro
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
@@ -147,7 +147,7 @@ func (client *VolumesClient) deleteCreateRequest(ctx context.Context, rootScope 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
@@ -192,7 +192,7 @@ func (client *VolumesClient) getCreateRequest(ctx context.Context, rootScope str
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
@@ -248,7 +248,7 @@ func (client *VolumesClient) listByScopeCreateRequest(ctx context.Context, rootS
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -314,7 +314,7 @@ func (client *VolumesClient) updateCreateRequest(ctx context.Context, rootScope 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}

@@ -70,7 +70,7 @@ func (client *TerraformConfigsClient) createOrUpdateCreateRequest(ctx context.Co
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if terraformConfigName == "" {
 		return nil, errors.New("parameter terraformConfigName cannot be empty")
 	}
@@ -129,7 +129,7 @@ func (client *TerraformConfigsClient) deleteCreateRequest(ctx context.Context, r
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if terraformConfigName == "" {
 		return nil, errors.New("parameter terraformConfigName cannot be empty")
 	}
@@ -175,7 +175,7 @@ func (client *TerraformConfigsClient) getCreateRequest(ctx context.Context, root
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if terraformConfigName == "" {
 		return nil, errors.New("parameter terraformConfigName cannot be empty")
 	}
@@ -233,7 +233,7 @@ func (client *TerraformConfigsClient) listByScopeCreateRequest(ctx context.Conte
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -286,7 +286,7 @@ func (client *TerraformConfigsClient) updateCreateRequest(ctx context.Context, r
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if terraformConfigName == "" {
 		return nil, errors.New("parameter terraformConfigName cannot be empty")
 	}

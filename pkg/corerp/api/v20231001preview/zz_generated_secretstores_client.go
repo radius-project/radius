@@ -83,7 +83,7 @@ func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Contex
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -148,7 +148,7 @@ func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, rootS
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -193,7 +193,7 @@ func (client *SecretStoresClient) getCreateRequest(ctx context.Context, rootScop
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -250,7 +250,7 @@ func (client *SecretStoresClient) listByScopeCreateRequest(ctx context.Context, 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -303,7 +303,7 @@ func (client *SecretStoresClient) listSecretsCreateRequest(ctx context.Context, 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -378,7 +378,7 @@ func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, rootS
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}

@@ -69,7 +69,7 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -127,7 +127,7 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, rootS
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -172,7 +172,7 @@ func (client *ApplicationsClient) getCreateRequest(ctx context.Context, rootScop
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -228,7 +228,7 @@ func (client *ApplicationsClient) getGraphCreateRequest(ctx context.Context, roo
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -289,7 +289,7 @@ func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -341,7 +341,7 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, rootS
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}

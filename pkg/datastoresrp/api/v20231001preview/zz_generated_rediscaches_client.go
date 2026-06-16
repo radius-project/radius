@@ -83,7 +83,7 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -147,7 +147,7 @@ func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, rootSc
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -192,7 +192,7 @@ func (client *RedisCachesClient) getCreateRequest(ctx context.Context, rootScope
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -249,7 +249,7 @@ func (client *RedisCachesClient) listByScopeCreateRequest(ctx context.Context, r
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, r
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
@@ -375,7 +375,7 @@ func (client *RedisCachesClient) updateCreateRequest(ctx context.Context, rootSc
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}

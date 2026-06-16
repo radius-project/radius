@@ -83,7 +83,7 @@ func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context,
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
@@ -147,7 +147,7 @@ func (client *ContainersClient) deleteCreateRequest(ctx context.Context, rootSco
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
@@ -192,7 +192,7 @@ func (client *ContainersClient) getCreateRequest(ctx context.Context, rootScope 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}
@@ -249,7 +249,7 @@ func (client *ContainersClient) listByScopeCreateRequest(ctx context.Context, ro
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -315,7 +315,7 @@ func (client *ContainersClient) updateCreateRequest(ctx context.Context, rootSco
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if containerName == "" {
 		return nil, errors.New("parameter containerName cannot be empty")
 	}

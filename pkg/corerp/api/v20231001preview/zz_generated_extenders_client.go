@@ -83,7 +83,7 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -147,7 +147,7 @@ func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, rootScop
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -192,7 +192,7 @@ func (client *ExtendersClient) getCreateRequest(ctx context.Context, rootScope s
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -249,7 +249,7 @@ func (client *ExtendersClient) listByScopeCreateRequest(ctx context.Context, roo
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, roo
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
@@ -375,7 +375,7 @@ func (client *ExtendersClient) updateCreateRequest(ctx context.Context, rootScop
 	if rootScope == "" {
 		return nil, errors.New("parameter rootScope cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", url.PathEscape(rootScope))
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
 	}
