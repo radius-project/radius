@@ -32,7 +32,7 @@ param registryPassword string
 
 // SecretStore holding the username/password used to authenticate to the private
 // OCI registry. For BasicAuth the secret store must expose 'username' and 'password'.
-resource registrySecret 'Radius.Security/secretStores@2025-08-01-preview' = {
+resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'private-bicep-registry-secret'
   location: 'global'
   properties: {
