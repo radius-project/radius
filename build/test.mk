@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -154,7 +154,7 @@ test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade fu
 .PHONY: test-functional-upgrade-noncloud
 test-functional-upgrade-noncloud: ## Runs Upgrade functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/upgrade/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
-	
+
 .PHONY: test-functional-samples
 test-functional-samples: test-functional-samples-noncloud ## Runs all Samples functional tests
 
@@ -174,7 +174,7 @@ test-helm: ## Runs Helm chart unit tests
 	cd deploy/Chart && helm unittest .
 
 # TODO re-enable https://github.com/radius-project/radius/issues/5091
-.PHONY: test-ucp-spec-examples 
+.PHONY: test-ucp-spec-examples
 test-ucp-spec-examples: generate-tsp-installed ## Validates UCP examples conform to UCP OpenAPI Spec
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
 	# pnpm -C typespec exec oav validate-example ../swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json

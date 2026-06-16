@@ -96,11 +96,6 @@ jobs:
         with:
           node-version-file: radius/.node-version
 
-      - name: Install controller-gen
-        run: |
-          cd radius
-          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
-
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
         run: |

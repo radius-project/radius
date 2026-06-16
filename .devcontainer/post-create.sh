@@ -48,10 +48,6 @@ pnpm config set store-dir /tmp/.pnpm-store
 echo "Installing golangci-lint ${GOLANGCI_LINT_VERSION}..."
 curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
 
-# Other go tools
-echo "Installing controller-gen..."
-go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
-
 echo "Installing cspell..."
 # Ensure pnpm global bin directory exists and is on PATH before installing
 # global packages. `pnpm setup` updates shell rc files for future sessions,

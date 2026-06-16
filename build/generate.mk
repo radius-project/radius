@@ -65,23 +65,17 @@ generate-node-installed:
 	@which node > /dev/null || { echo "node is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
 
-.PHONY: generate-controller-gen-installed
-generate-controller-gen-installed:
-	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0'"; exit 1; }
-	@echo "$(ARROW) OK"
-
 .PHONY: generate-ucp-crd
-generate-ucp-crd: generate-controller-gen-installed ## Generates the CRDs for UCP APIServer store.
+generate-ucp-crd: ## Generates the CRDs for UCP APIServer store.
 	@echo "$(ARROW) Generating CRDs for ucp.dev..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
-	controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
+	go tool controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
+	go tool controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
 .PHONY: generate-controller
-generate-controller: generate-controller-gen-installed ## Generates the CRDs for the Radius controller.
+generate-controller: ## Generates the CRDs for the Radius controller.
 	@echo "$(ARROW) Generating CRDs for radapp.io..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
-	controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
+	go tool controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
+	go tool controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
 
 .PHONY: generate-cleanup
 generate-cleanup: ## Deletes all generated code.
