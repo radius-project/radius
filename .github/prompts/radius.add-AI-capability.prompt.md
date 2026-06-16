@@ -1,5 +1,5 @@
 ---
-agent: agent
+agent: radius-add-AI-capability
 name: radius.add-AI-capability
 description: Walk through adding a new AI capability to the Agent Ex system (such as a custom agent, prompt, skill, or instruction) — pick the asset type, author the primary doc, scaffold wrappers, and update the live files.
 ---
