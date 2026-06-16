@@ -90,6 +90,25 @@ rules:
   - update
   - watch
 
+# Gateway API resources for Recipes deployment.
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - gateways
+  - httproutes
+  - tlsroutes
+  - tcproutes
+  - udproutes
+  - referencegrants
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
 # Integration with DE's API.
 - apiGroups:
   - apps
