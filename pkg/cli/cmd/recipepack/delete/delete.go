@@ -170,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		envClientFactory, ok := factoriesByScope[ID.RootScope()]
 		if !ok {
-			envClientFactory, err = utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+			envClientFactory, err = utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 			if err != nil {
 				return err
 			}

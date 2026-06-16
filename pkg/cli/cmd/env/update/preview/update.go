@@ -248,7 +248,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -337,7 +337,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			recipePackID, err := resources.Parse(recipePack)
 			// If the provided recipe pack value is an ID, parse its scope.
 			if err == nil {
-				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipePackID.RootScope())
+				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 				if err != nil {
 					return err
 				}
@@ -459,7 +459,7 @@ func getRecipePacksClientForScope(
 	factory := defaultFactory
 	if rootScope != workspace.Scope {
 		var err error
-		factory, err = cmd.InitializeRadiusCoreClientFactory(ctx, workspace, rootScope)
+		factory, err = cmd.InitializeRadiusCoreClientFactory(ctx, workspace)
 		if err != nil {
 			return nil, err
 		}

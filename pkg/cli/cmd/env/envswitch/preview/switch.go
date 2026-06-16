@@ -112,7 +112,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := util.InitializeRadiusCoreClientFactory(cmd.Context(), r.Workspace, r.Workspace.Scope)
+		clientFactory, err := util.InitializeRadiusCoreClientFactory(cmd.Context(), r.Workspace)
 		if err != nil {
 			return err
 		}

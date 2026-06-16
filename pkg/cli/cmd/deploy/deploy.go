@@ -499,7 +499,7 @@ func (r *Runner) getApplicationsCoreEnvironment(ctx context.Context, id string) 
 // getRadiusCoreEnvironment retrieves environment using Radius Core client and returns as Applications.Core format
 func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v20250801preview.EnvironmentResource, error) {
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return nil, err
 		}
@@ -718,7 +718,7 @@ func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource 
 
 	// Initialize the default scope client factory so we can access default recipe packs.
 	if r.DefaultScopeClientFactory == nil {
-		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}

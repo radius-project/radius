@@ -235,7 +235,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.Options.Application.Scaffold {
 		// Initialize the Radius.Core client factory if not already set
 		if r.RadiusCoreClientFactory == nil {
-			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 			if err != nil {
 				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
 			}

@@ -121,14 +121,13 @@ func InitializeClientFactory(ctx context.Context, workspace *workspaces.Workspac
 // InitializeRadiusCoreClientFactory initializes a new v20250801preview.ClientFactory using the provided workspace context.
 // It connects to the workspace and creates a new client factory with anonymous credentials.
 // If the connection fails, it returns an error.
-func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspaces.Workspace, rootScope string) (*v20250801preview.ClientFactory, error) {
+func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspaces.Workspace) (*v20250801preview.ClientFactory, error) {
 	connection, err := workspace.Connect(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	clientOptions := sdk.NewClientOptions(connection)
-	_ = rootScope
 	clientFactory, err := v20250801preview.NewClientFactory(&tokencredentials.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
@@ -154,7 +153,7 @@ func PopulateRecipePackClients(
 		if _, exists := clientsByScope[scope]; exists {
 			continue
 		}
-		factory, err := InitializeRadiusCoreClientFactory(ctx, workspace, scope)
+		factory, err := InitializeRadiusCoreClientFactory(ctx, workspace)
 		if err != nil {
 			return err
 		}

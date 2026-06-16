@@ -100,7 +100,7 @@ func (r *Runner) validateRadiusCoreEnvironment(ctx context.Context, ws *workspac
 	envID := ws.Scope + "/providers/" + datamodel.EnvironmentResourceType_v20250801preview + "/" + envName
 
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, ws, ws.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, ws)
 		if err != nil {
 			return "", err
 		}

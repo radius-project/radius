@@ -121,7 +121,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad env show` preview command.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -174,7 +174,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		client := recipepackClient
 		if ID.RootScope() != r.Workspace.Scope {
-			factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+			factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 			if err != nil {
 				return err
 			}

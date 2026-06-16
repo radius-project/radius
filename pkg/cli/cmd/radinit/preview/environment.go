@@ -86,7 +86,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 
 	// Initialize the Radius.Core client factory if not already set
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
 		}
@@ -104,7 +104,7 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		if r.Workspace.Scope == recipepack.DefaultResourceGroupScope {
 			r.DefaultScopeClientFactory = r.RadiusCoreClientFactory
 		} else {
-			defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+			defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 			if err != nil {
 				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client for default scope.")
 			}
