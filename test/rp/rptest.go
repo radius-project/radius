@@ -557,7 +557,13 @@ func (ct RPTest) Test(t *testing.T) {
 			continue
 		}
 
-		for _, resource := range step.RPResources.Resources {
+		// Delete resources in reverse declaration order so that the Environment
+		// (typically declared first) is deleted last. Otherwise the Environment
+		// can be removed while child resources (Applications/Containers/portable
+		// resources) are still mid-cascade, causing their recipe-driven cleanup
+		// to fail loading the (now-gone) environment configuration.
+		for i := len(step.RPResources.Resources) - 1; i >= 0; i-- {
+			resource := step.RPResources.Resources[i]
 			t.Logf("deleting %s", resource.Name)
 
 			if ct.FastCleanup {

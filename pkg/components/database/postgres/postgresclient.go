@@ -225,13 +225,14 @@ func (p *PostgresClient) Query(ctx context.Context, query database.Query, option
 	// NOTE: building SQL by concatenating strings is hard to do safely and should be avoided.
 	// If you need to work on this code MAKE SURE you use SQL parameters
 	// for any user input.
+	// Cast pagination token to TIMESTAMPTZ to match created_at; TIMESTAMP would be reinterpreted in the session timezone and skip rows.
 	sql := `
 SELECT original_id, etag, resource_data, created_at 
 FROM resources
 WHERE ((root_scope = $1) OR ($2 AND (root_scope LIKE $1 || '%'))) AND 
 	resource_type = $3 AND 
 	((routing_scope LIKE $4 || '%') OR $4 IS NULL) AND 
-	(created_at > $5::TIMESTAMP OR $5 IS NULL)
+	(created_at > $5::TIMESTAMPTZ OR $5 IS NULL)
 ORDER BY created_at ASC
 LIMIT $6`
 

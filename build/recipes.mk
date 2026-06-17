@@ -27,7 +27,7 @@ publish-test-bicep-recipes: ## Publishes test recipes to <BICEP_RECIPE_REGISTRY>
 	@if [ -z "$(BICEP_RECIPE_REGISTRY)" ]; then echo "Error: BICEP_RECIPE_REGISTRY must be set to a valid OCI registry"; exit 1; fi
 	
 	@echo "$(ARROW) Publishing Bicep test recipes from ./test/testrecipes/test-bicep-recipes..."
-	./.github/scripts/publish-recipes.sh \
+	PLAIN_HTTP=$(BICEP_RECIPE_PLAIN_HTTP) ./.github/scripts/publish-recipes.sh \
 		./test/testrecipes/test-bicep-recipes \
 		${BICEP_RECIPE_REGISTRY}/test/testrecipes/test-bicep-recipes \
 		${BICEP_RECIPE_TAG_VERSION}

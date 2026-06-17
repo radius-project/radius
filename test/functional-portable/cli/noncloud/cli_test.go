@@ -323,6 +323,20 @@ func Test_Run_Logger(t *testing.T) {
 
 	// Read the text line-by-line while the command is running, but store it so we can report failures.
 	output := bytes.Buffer{}
+	sawExpectedLine := false
+
+	// Watchdog: if the expected log line never appears within the window, cancel the
+	// command so the test fails fast with a useful message instead of hanging until the
+	// outer test timeout. The bicep template prints "hello from the streaming logs!" in
+	// a while-true loop with a 10s sleep, so on a healthy cluster the first line should
+	// arrive well within a few minutes (image pull + pod schedule + first iteration).
+	const watchdogTimeout = 3 * time.Minute
+	watchdog := time.AfterFunc(watchdogTimeout, func() {
+		t.Logf("Test_Run_Logger watchdog: expected log line not observed within %s; cancelling 'rad run'", watchdogTimeout)
+		cancel()
+	})
+	defer watchdog.Stop()
+
 	scanner := bufio.NewScanner(stdout)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
@@ -330,6 +344,8 @@ func Test_Run_Logger(t *testing.T) {
 		output.WriteString(line)
 		output.WriteString("\n")
 		if strings.Contains(line, "hello from the streaming logs!") {
+			sawExpectedLine = true
+			watchdog.Stop()
 			cancel() // Stop the command, but keep reading to drain all output.
 		}
 	}
@@ -351,6 +367,9 @@ func Test_Run_Logger(t *testing.T) {
 	// We should have an error, but only because we canceled the context.
 	require.Errorf(t, err, "rad run should have been canceled")
 	require.Equal(t, err, ctx.Err(), "rad run should have been canceled")
+	require.Truef(t, sawExpectedLine,
+		"watchdog fired after %s without seeing 'hello from the streaming logs!' — container likely never produced logs. Captured output:\n%s",
+		watchdogTimeout, output.String())
 }
 
 func Test_Run_Portforward(t *testing.T) {

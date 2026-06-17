@@ -73,7 +73,9 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 			},
 			SkipObjectValidation: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+				// Use the active workspace's scope so this works against any
+				// resource group (CI uses 'kind-radius', local debug uses 'default').
+				resourceID := test.Options.Workspace.Scope + "/providers/Applications.Core/extenders/" + name
 				secretSuffix, err := corerp.GetSecretSuffix(resourceID, envName, appName)
 				require.NoError(t, err)
 
@@ -87,7 +89,7 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 	})
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
-		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+		resourceID := test.Options.Workspace.Scope + "/providers/Applications.Core/extenders/" + name
 		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
@@ -104,6 +106,12 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 // - Upload the files from test/testrecipes/test-terraform-recipes/kubernetes-redis/modules to a private repository and update the module source in testutil.GetTerraformPrivateModuleSource()
 // - Create a PAT to access the private repository and update testutil.GetGitPAT() to return the generated PAT.
 func Test_TerraformPrivateGitModule_KubernetesRedis(t *testing.T) {
+	// This test pulls a Terraform module from a private GitHub repo using a
+	// personal access token supplied via the GH_TOKEN env var (set in CI).
+	// Without that secret the deployment cannot succeed, so skip locally.
+	if strings.TrimSpace(os.Getenv("GH_TOKEN")) == "" {
+		t.Skip("Test_TerraformPrivateGitModule_KubernetesRedis requires GH_TOKEN to access a private terraform module repo")
+	}
 	template := "testdata/corerp-resources-terraform-private-git-repo-redis.bicep"
 	name := "corerp-resources-terraform-private-redis"
 	appName := "corerp-resources-terraform-private-app"

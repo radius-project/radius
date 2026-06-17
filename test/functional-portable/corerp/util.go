@@ -18,6 +18,7 @@ package corerp
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,8 +26,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test/rp"
 )
 
@@ -42,10 +46,37 @@ func TestSecretDeletion(t *testing.T, ctx context.Context, test rp.RPTest, appNa
 	require.Equal(t, secret, &corev1.Secret{})
 }
 
-// GetSecretSuffix returns the secret suffix for a given resource
+// CurrentWorkspaceResourceGroup loads the rad workspace currently configured for tests and
+// returns the resource group from its scope. If no workspace is configured it falls back
+// to the historical default "kind-radius" used by the cloud test harness.
+func CurrentWorkspaceResourceGroup() string {
+	config, err := cli.LoadConfig("")
+	if err != nil {
+		return "kind-radius"
+	}
+	workspace, err := cli.GetWorkspace(config, "")
+	if err != nil || workspace == nil || workspace.Scope == "" {
+		return "kind-radius"
+	}
+	scope, err := resources.ParseScope(workspace.Scope)
+	if err != nil {
+		return "kind-radius"
+	}
+	if rg := scope.FindScope(resources_radius.ScopeResourceGroups); rg != "" {
+		return rg
+	}
+	return "kind-radius"
+}
+
+// GetSecretSuffix returns the secret suffix for a given resource. The resource group
+// embedded in the environment / application / resource IDs is normalized to the
+// current workspace's resource group so the computed suffix matches the secret name
+// produced by the Terraform recipe at runtime.
 func GetSecretSuffix(resourceID, envName, appName string) (string, error) {
-	envID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/" + envName
-	appID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/" + appName
+	rg := CurrentWorkspaceResourceGroup()
+	envID := "/planes/radius/local/resourcegroups/" + rg + "/providers/Applications.Core/environments/" + envName
+	appID := "/planes/radius/local/resourcegroups/" + rg + "/providers/Applications.Core/applications/" + appName
+	resourceID = rewriteResourceGroup(resourceID, rg)
 
 	resourceRecipe := recipes.ResourceMetadata{
 		EnvironmentID: envID,
@@ -62,4 +93,20 @@ func GetSecretSuffix(resourceID, envName, appName string) (string, error) {
 	kubernetes := secretMap["kubernetes"].(map[string]any)
 
 	return kubernetes["secret_suffix"].(string), nil
+}
+
+// rewriteResourceGroup rewrites the resource group segment of a Radius resource ID to
+// the supplied resource group name. Returns the input unchanged if it cannot be parsed.
+func rewriteResourceGroup(resourceID, rg string) string {
+	parsed, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return resourceID
+	}
+	current := parsed.FindScope(resources_radius.ScopeResourceGroups)
+	if current == "" || current == rg {
+		return resourceID
+	}
+	// Case-insensitive replacement of the resourcegroups segment value while preserving the
+	// rest of the ID exactly.
+	return strings.ReplaceAll(resourceID, "/"+current+"/", "/"+rg+"/")
 }

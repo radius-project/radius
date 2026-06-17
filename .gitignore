@@ -76,6 +76,11 @@ debug_files/*
 drad
 *.lock
 
+# Local-only bicepconfig override written by `make debug-publish-bicep-types`.
+# Lives next to the .bicep templates so bicep's nearest-config search picks it up
+# over the tracked sibling at .../resources/bicepconfig.json. Removed by debug-stop.
+test/functional-portable/dynamicrp/noncloud/resources/testdata/bicepconfig.json
+
 # Demo app
 demo/*
 demo

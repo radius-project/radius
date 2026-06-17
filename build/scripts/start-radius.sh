@@ -130,6 +130,18 @@ fi
 # Ensure logs directory exists
 mkdir -p "$DEBUG_ROOT/logs"
 
+# Use a writable Terraform global cache directory for local OS-process runs.
+# The default `/terraform` path only exists inside the Radius container image
+# and would fail with "read-only file system" on host filesystems.
+export TERRAFORM_TEST_GLOBAL_DIR="${TERRAFORM_TEST_GLOBAL_DIR:-$DEBUG_ROOT/terraform-global}"
+mkdir -p "$TERRAFORM_TEST_GLOBAL_DIR"
+
+# Allow plain-HTTP OCI pulls for loopback registries (the local debug stack
+# uses `registry:2` on http://localhost:5000). pkg/rp/util/registry.go reads
+# this env var and forces PlainHTTP=true when the recipe templatePath host
+# resolves to a loopback address. Non-loopback registries are unaffected.
+export RADIUS_INSECURE_LOOPBACK_REGISTRIES="${RADIUS_INSECURE_LOOPBACK_REGISTRIES:-true}"
+
 # Check prerequisites
 check_prerequisites
 
@@ -281,16 +293,17 @@ echo "Starting UCP with dlv on port 40001..."
 dlv exec "$DEBUG_ROOT/bin/ucpd" --listen=127.0.0.1:40001 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/ucp.yaml" > "$DEBUG_ROOT/logs/ucp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/ucp.pid"
 
-# Wait for UCP to start and complete initialization (this can take 60+ seconds)
+# Wait for UCP to start and complete initialization (this can take 60+ seconds).
+# A 200 from /apis/api.ucp.dev/v1alpha3 means the API server is listening, which
+# only happens after manifest registration completes (see ucp api/server.go).
+# Don't grep the log file: dlv buffers child stdout, so the manifest line can sit
+# unflushed in the buffer for minutes even though UCP is fully ready.
 echo "Waiting for UCP to initialize (this may take up to 2 minutes)..."
 max_attempts=60
 attempt=0
 while [ $attempt -lt $max_attempts ]; do
   if curl -s "http://localhost:9000/apis/api.ucp.dev/v1alpha3" > /dev/null 2>&1; then
-    # Check if initialization is complete by looking for the success message in logs
-    if grep -q "Successfully registered manifests" "$DEBUG_ROOT/logs/ucp.log" 2>/dev/null; then
-      break
-    fi
+    break
   fi
 
   # Show progress every 10 seconds

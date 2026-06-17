@@ -168,6 +168,14 @@ func GetWorkspace(v *viper.Viper, name string) (*workspaces.Workspace, error) {
 func getConfig(configFilePath string) (*viper.Viper, error) {
 	config := viper.New()
 
+	// Allow callers (e.g. functional tests, drad) to override the default config
+	// location without threading an explicit path through every call site.
+	if configFilePath == "" {
+		if envPath := os.Getenv("RAD_CONFIG_FILE"); envPath != "" {
+			configFilePath = envPath
+		}
+	}
+
 	if configFilePath == "" {
 		// Set config file using the HOME directory.
 

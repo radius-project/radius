@@ -33,6 +33,67 @@ TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
 DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
+
+# Auto-detect the local debug OCI registry started by `make debug-publish-recipes`.
+# When it is running and the user has not explicitly set BICEP_RECIPE_REGISTRY,
+# point the functional tests at it so the locally-published test recipes are used
+# instead of the (private) ghcr.io fallback.
+ifeq ($(origin BICEP_RECIPE_REGISTRY), undefined)
+ifneq ($(shell docker ps --format '{{.Names}}' 2>/dev/null | grep -x radius-debug-registry),)
+export BICEP_RECIPE_REGISTRY := localhost:5000
+export BICEP_RECIPE_TAG_VERSION ?= latest
+$(info Using local debug recipe registry: BICEP_RECIPE_REGISTRY=$(BICEP_RECIPE_REGISTRY) BICEP_RECIPE_TAG_VERSION=$(BICEP_RECIPE_TAG_VERSION))
+# When the debug-built rad CLI is available, point the functional tests at it
+# (via RAD_PATH, honored by test/radcli/cli.go) so they exercise the HEAD CLI
+# matching the locally-running control plane, not any system-installed rad.
+ifneq ($(wildcard $(CURDIR)/debug_files/bin/rad),)
+export RAD_PATH := $(CURDIR)/debug_files/bin
+$(info Using debug-built rad CLI: RAD_PATH=$(RAD_PATH))
+endif
+endif
+endif
+
+# Auto-detect the in-cluster Git HTTP backend started by `make debug-install-git-http-backend`.
+# When its port-forward PID file exists and the process is alive, export the
+# GIT_HTTP_* variables that the kubernetes-noncloud Flux tests expect.
+ifeq ($(origin GIT_HTTP_SERVER_URL), undefined)
+ifneq ($(wildcard $(CURDIR)/debug_files/logs/git-http-port-forward.pid),)
+ifneq ($(shell pid=$$(cat $(CURDIR)/debug_files/logs/git-http-port-forward.pid 2>/dev/null); kill -0 $$pid 2>/dev/null && echo up),)
+export GIT_HTTP_SERVER_URL := http://localhost:30080
+export GIT_HTTP_USERNAME ?= testuser
+export GIT_HTTP_PASSWORD ?= not-a-secret-password
+export GIT_HTTP_EMAIL ?= testuser@radapp.io
+$(info Using local git-http-backend: GIT_HTTP_SERVER_URL=$(GIT_HTTP_SERVER_URL))
+endif
+endif
+endif
+
+# When the Radius controller is running as a host OS process (local debug flow),
+# the in-cluster Flux source-controller URL cannot be resolved from the host, so
+# Test_Flux_* would fail to fetch artifacts. Auto-skip those tests in that case.
+ifeq ($(origin RADIUS_SKIP_FLUX_TESTS), undefined)
+ifneq ($(wildcard $(CURDIR)/debug_files/logs/controller.pid),)
+ifneq ($(shell pid=$$(cat $(CURDIR)/debug_files/logs/controller.pid 2>/dev/null); kill -0 $$pid 2>/dev/null && echo up),)
+export RADIUS_SKIP_FLUX_TESTS := 1
+$(info Radius controller running as host OS process: skipping Flux tests (RADIUS_SKIP_FLUX_TESTS=1))
+endif
+endif
+endif
+
+# Auto-detect the OS-process UCP started by `make debug-start`. When it's live,
+# route the functional tests' rad CLI subprocess AND the in-process
+# cli.LoadConfig("") calls at the project-local debug config instead of
+# ~/.rad/config.yaml. Without this, tests pick up whichever workspace happens
+# to be "default" in the user's home directory (e.g. an AKS workspace) and fail
+# with DNS errors when the cluster URL is unreachable from the host.
+ifeq ($(origin RAD_CONFIG_FILE), undefined)
+ifneq ($(wildcard $(CURDIR)/debug_files/logs/ucp.pid),)
+ifneq ($(shell pid=$$(cat $(CURDIR)/debug_files/logs/ucp.pid 2>/dev/null); kill -0 $$pid 2>/dev/null && echo up),)
+export RAD_CONFIG_FILE := $(CURDIR)/build/configs/rad-debug-config.yaml
+$(info Using debug rad config: RAD_CONFIG_FILE=$(RAD_CONFIG_FILE))
+endif
+endif
+endif
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.30.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
@@ -50,8 +111,13 @@ GOTEST_TOOL ?= go test
 else
 # Use these options by default but allow an override via env-var
 GOTEST_OPTS ?=
-# We need the double dash here to separate the 'gotestsum' options from the 'go test' options
-GOTEST_TOOL ?= gotestsum $(GOTESTSUM_OPTS) --
+# When set, a per-target JSON timing file is emitted as $(GOTESTSUM_JSONFILE_DIR)/<target>.jsonl.
+# This avoids the file being overwritten by each sub-target in test-functional-all-*.
+# Example: GOTESTSUM_JSONFILE_DIR=/tmp/timings make test-functional-all-noncloud
+GOTESTSUM_JSONFILE_DIR ?=
+# Recursive '=' so $@ resolves in each recipe's context.
+# We need the double dash here to separate the 'gotestsum' options from the 'go test' options.
+GOTEST_TOOL = gotestsum $(GOTESTSUM_OPTS)$(if $(GOTESTSUM_JSONFILE_DIR), --jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 endif
 
 .PHONY: test
@@ -161,6 +227,44 @@ test-functional-samples: test-functional-samples-noncloud ## Runs all Samples fu
 .PHONY: test-functional-samples-noncloud
 test-functional-samples-noncloud: ## Runs Samples functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/samples/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+# ----------------------------------------------------------------------------
+# Local Azure functional tests
+#
+# These targets orchestrate an ephemeral Azure resource group, deploy the test
+# fixtures (Cosmos Mongo for Test_AzureConnections), run the Test_Azure* subset
+# of corerp-cloud tests against your locally-running Radius stack (make
+# debug-start) using ambient `az login` credentials, and tear everything down.
+#
+# Prerequisites:
+#   - `az login` succeeded for the target subscription.
+#   - `make debug-start` is running (OS-process Radius).
+#   - Deployment Engine is running locally on :5017 (NOT in a container) so it
+#     can use the az CLI fallback. See debug_files/logs/de-external.marker.
+#
+# NOTE: AWS is intentionally out of scope for this iteration.
+# ----------------------------------------------------------------------------
+AZURE_LOCAL_TESTENV := ./build/scripts/azure-local-testenv.sh
+
+.PHONY: test-functional-azure-local-setup
+test-functional-azure-local-setup: ## Provision an ephemeral Azure RG and fixtures for local Azure functional tests.
+	@$(AZURE_LOCAL_TESTENV) setup
+
+.PHONY: test-functional-azure-local-run
+test-functional-azure-local-run: ## Run Test_Azure* against the locally-running Radius stack using the env from setup.
+	@$(AZURE_LOCAL_TESTENV) run
+
+.PHONY: test-functional-azure-local-teardown
+test-functional-azure-local-teardown: ## Delete the ephemeral Azure RG and clear local Azure test state.
+	@$(AZURE_LOCAL_TESTENV) teardown
+
+.PHONY: test-functional-azure-local
+test-functional-azure-local: ## Setup -> run Test_Azure* -> teardown (teardown runs even on test failure).
+	@$(AZURE_LOCAL_TESTENV) all
+
+.PHONY: test-functional-azure-local-keep
+test-functional-azure-local-keep: ## Same as test-functional-azure-local but skips teardown on failure (post-mortem).
+	@AZURE_LOCAL_KEEP_ON_FAILURE=1 $(AZURE_LOCAL_TESTENV) all
 
 .PHONY: test-validate-bicep
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
