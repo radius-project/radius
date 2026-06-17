@@ -151,8 +151,7 @@ jobs:
           git status --porcelain -unormal -- *.md
 
       # Generate a short-lived GitHub App installation token scoped to the docs
-      # repository. This replaces the long-lived GH_RAD_CI_BOT_PAT: tokens expire
-      # after one hour, are least-privilege (contents + pull-requests on docs only),
+      # repository. Tokens expire after one hour, are least-privilege (contents + pull-requests on docs only),
       # and let repo-files-sync create GPG-verified commits via the GitHub API.
       #
       # Requires the App's credentials to be configured on radius-project/radius:
