@@ -156,8 +156,21 @@ jobs:
           go install github.com/go-delve/delve/cmd/dlv@latest
 
       - name: Install cspell
-        # Spell-check tooling used by `make spellcheck`.
-        run: pnpm add -g cspell
+        # Spell-check tooling used by `make spellcheck`. Ensure pnpm's global bin
+        # directory exists and is on PATH (for this step and later ones) before
+        # installing global packages.
+        run: |
+          export PNPM_HOME="${PNPM_HOME:-${HOME}/.local/share/pnpm}"
+          PNPM_BIN_DIR="$(pnpm config get global-bin-dir 2>/dev/null || true)"
+          if [[ -z "${PNPM_BIN_DIR}" || "${PNPM_BIN_DIR}" == "undefined" ]]; then
+            PNPM_BIN_DIR="${PNPM_HOME}/bin"
+            pnpm config set global-bin-dir "${PNPM_BIN_DIR}"
+          fi
+          mkdir -p "${PNPM_BIN_DIR}"
+          export PATH="${PNPM_BIN_DIR}:${PATH}"
+          echo "${PNPM_BIN_DIR}" >> "${GITHUB_PATH}"
+          pnpm add -g cspell
+          cspell --version
 
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.
