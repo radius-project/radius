@@ -11,6 +11,11 @@ updates:
       - "/.github/actions/*"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
     groups:
       github-actions:
         patterns:
@@ -23,6 +28,11 @@ updates:
       - /test/testrp
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
     groups:
       go-dependencies:
         patterns:
@@ -32,6 +42,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
 
   - package-ecosystem: npm
     directories:
@@ -41,6 +56,11 @@ updates:
       - /hack/bicep-types-radius/src/generator
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
     groups:
       npm-dependencies:
         patterns:
