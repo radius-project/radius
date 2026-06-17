@@ -13,9 +13,6 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 7
     groups:
       github-actions:
         patterns:
@@ -30,9 +27,6 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 7
     groups:
       go-dependencies:
         patterns:
@@ -44,9 +38,6 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 7
 
   - package-ecosystem: npm
     directories:
@@ -58,9 +49,6 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 7
     groups:
       npm-dependencies:
         patterns:
