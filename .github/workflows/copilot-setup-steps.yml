@@ -134,12 +134,14 @@ jobs:
         run: make generate-tsp-installed
 
       - name: Configure pnpm global bin directory
-        # pnpm requires its global bin directory (PNPM_HOME) to exist and be on
-        # PATH before installing global packages. Persist both via GITHUB_ENV and
-        # GITHUB_PATH so subsequent steps (and the agent) inherit them.
+        # pnpm requires its global bin directory to exist and be on PATH before
+        # installing global packages. Pin the bin dir to PNPM_HOME (otherwise it
+        # defaults to ${PNPM_HOME}/bin, which would not be on PATH) and persist
+        # both via GITHUB_ENV and GITHUB_PATH so subsequent steps inherit them.
         run: |
           PNPM_HOME="${RUNNER_TEMP}/pnpm"
           mkdir -p "${PNPM_HOME}"
+          pnpm config set global-bin-dir "${PNPM_HOME}"
           echo "PNPM_HOME=${PNPM_HOME}" >> "${GITHUB_ENV}"
           echo "${PNPM_HOME}" >> "${GITHUB_PATH}"
 
