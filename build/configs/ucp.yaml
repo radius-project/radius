@@ -1,4 +1,4 @@
-testresourceenvironment:
+environment:
   name: "dev"
   roleLocation: "global"
 
