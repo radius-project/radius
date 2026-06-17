@@ -27,12 +27,11 @@ The new `Radius.Core/recipePacks` `RecipeDefinition` does not (today) carry a ve
 
 - Allow platform engineers to pin a specific version of a Terraform **registry** module referenced directly (no wrapper) from a Recipe Pack.
 - Keep non-registry sources (Git `?ref=`, OCI `:tag`, HTTP) working as pure pass-through, exactly as they do for wrapped recipes today.
-- Be consistent — to the extent possible — with the existing [Terraform module version design](./2023-07-terraform-template-version.md) and the [direct-recipe-modules spec](./2026-05-direct-recipe-modules.md).
 
 ### Non-goals
 
 - Changing how Bicep recipes are versioned. Bicep modules use OCI references and carry the version in the `:tag`; nothing here changes that.
-- Automatic version bumping or floating version constraints. Platform engineers pin explicit versions, consistent with the direct-module design non-goals.
+- Automatic version bumping or floating version constraints. Platform engineers pin explicit versions.
 - Local filesystem sources, which are out of scope for direct modules.
 
 ## Background: how versions flow today
@@ -48,7 +47,7 @@ module "default" {
 
 Two facts shape the options below:
 
-1. The **environment-recipe** model (`Applications.Core/environments`) has a first-class, optional `templateVersion` API field (see the [2023-07 design](./2023-07-terraform-template-version.md)). That design also explicitly **rejected** encoding source + version as a single "stringified" (OCI-like) value, calling it "overly complex".
+1. The **environment-recipe** model (`Applications.Core/environments`) has a first-class, optional `templateVersion` API field (see the [2023-07 design](./2023-07-terraform-template-version.md)).
 2. The **Recipe Packs** model (`Radius.Core/recipePacks`) introduced in [2025-08-recipe-packs.md](./2025-08-recipe-packs.md) has no per-recipe version field. Its `RecipeDefinition` is `recipeKind`, `recipeLocation`, `parameters`, `outputs`, `plainHTTP`.
 
 So the gap is specific to Recipe Packs: there is currently nowhere to put a registry module's version.
@@ -77,8 +76,6 @@ Radius splits this into `source = "terraform-aws-modules/rds/aws"` and `version 
 
 #### Disadvantages of Option A
 
-- **Previously rejected.** This is the "stringified source + version" representation the [2023-07 design](./2023-07-terraform-template-version.md) explicitly turned down as overly complex.
-- **Diverges from the approved spec.** The [direct-recipe-modules design](./2026-05-direct-recipe-modules.md) shows a first-class `version` field (`source: 'terraform-aws-modules/rds/aws'`, `version: '5.9.0'`), not an `@` suffix.
 - **Not Terraform-native.** Terraform itself does not accept `source@version`; the syntax is a Radius-only invention that platform engineers must learn.
 - **Inconsistent across IaC kinds.** Bicep uses OCI `:tag` and Terraform Git uses `?ref=`; this adds a third, Radius-specific spelling only for Terraform registries.
 - Requires custom parsing with collision rules that must be kept correct over time.
@@ -97,7 +94,6 @@ Add an optional `version` (rendered to `templateVersion`) to the Recipe Packs `R
 
 #### Advantages of Option B
 
-- **Matches the approved direct-module spec** ([2026-05](./2026-05-direct-recipe-modules.md)) and the original [2023-07 design](./2023-07-terraform-template-version.md).
 - **Terraform-native semantics** — `source` and `version` map one-to-one onto the generated `module` block, exactly how a Terraform author thinks.
 - **Explicit and discoverable** — the field is in the schema, documented, and validatable (for example, "version is only valid for registry sources").
 - No fragile string parsing or collision rules.
@@ -106,7 +102,7 @@ Add an optional `version` (rendered to `templateVersion`) to the Recipe Packs `R
 
 - API/schema change to `Radius.Core/recipePacks` plus codegen (TypeSpec → swagger → models → datamodel → conversion → bicep types).
 - Slightly larger blast radius than Option A.
-- Needs a clear rule for non-registry sources (omit `version`, or error if both a `?ref=`/`:tag` and `version` are supplied), matching the 2023-07 behavior.
+- Needs a clear rule for non-registry sources (omit `version`, or error if both a `?ref=`/`:tag` and `version` are supplied).
 
 ### Option C — Support only non-registry sources (version always in the source)
 
@@ -122,7 +118,7 @@ Do not provide any version mechanism for registries; support Git (`?ref=`), OCI 
 
 ### Proposed Option
 
-**Option B (first-class `version` field).** It matches the approved direct-module spec and the long-standing Terraform version design, is Terraform-native, explicit, validatable, and avoids a convention that was already weighed and rejected. Option A's only real advantage is blast radius, which Option B can match closely because the rendering plumbing (`templateVersion` → module `version`) already exists — only the API surface and codegen need to be added.
+**Option B (first-class `version` field).** It is Terraform-native (`source` and `version` map directly onto the generated `module` block), explicit, and validatable. Option A's only real advantage is blast radius, which Option B can match closely because the rendering plumbing (`templateVersion` → module `version`) already exists — only the API surface and codegen need to be added.
 
 **Status in this PR:** Option A is implemented as a minimal, no-codegen interim so the end-to-end direct-module path is exercisable, pending this design decision. If the team accepts Option B, the change is contained: add `version?` to the `recipePacks` `RecipeDefinition`, populate `EnvironmentDefinition.TemplateVersion` from it in the config loader, and remove `parseTerraformModuleSource`.
 
@@ -151,7 +147,7 @@ model RecipeDefinition {
 ## Test plan
 
 - **Unit** — version rendering into the generated `module` block for: registry with version, registry without version, Git `?ref=`, OCI `:tag`, and HTTP (no version). Option A additionally needs the `@`-split collision tests, which exist in `configloader` today.
-- **Functional** — noncloud functional tests cannot reach the public Terraform registry (no network egress, no OSS registry in-cluster). They continue to use the HTTP archive module server, consistent with the [2023-07 design](./2023-07-terraform-template-version.md). Registry-plus-version resolution remains a manual or cloud-E2E verification regardless of option.
+- **Functional** — noncloud functional tests cannot reach the public Terraform registry (no network egress, no OSS registry in-cluster). They continue to use the HTTP archive module server. Registry-plus-version resolution remains a manual or cloud-E2E verification regardless of option.
 
 ## Compatibility
 
@@ -166,4 +162,4 @@ model RecipeDefinition {
 
 ## Alternatives considered
 
-See Options A and C above. The "stringified source + version" idea (Option A) was also previously considered and rejected in the [2023-07 Terraform module versions design](./2023-07-terraform-template-version.md) for the environment-recipe model.
+See Options A and C above.
