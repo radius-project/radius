@@ -132,10 +132,7 @@ Phase 2 adds optional provider resource metadata as first-class output resource 
         "id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket",
         "radiusManaged": true,
         "providerResourceId": "arn:aws:s3:::shared-bucket",
-        "providerResourceIdKind": "awsArn",
-        "additionalProperties": {
-          "arn": "arn:aws:s3:::shared-bucket"
-        }
+        "providerResourceIdKind": "awsArn"
       }
     ]
   }
@@ -220,10 +217,7 @@ Phase 2 keeps producer IDs distinct but adds optional first-class provider resou
   "id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket",
   "radiusManaged": true,
   "providerResourceId": "arn:aws:s3:::shared-bucket",
-  "providerResourceIdKind": "awsArn",
-  "additionalProperties": {
-    "arn": "arn:aws:s3:::shared-bucket"
-  }
+  "providerResourceIdKind": "awsArn"
 }
 ```
 
@@ -231,7 +225,7 @@ For AWS resources, `providerResourceId` is the ARN when Radius can read one, and
 
 Phase 2 behavior:
 
-- AWS Terraform output resources store `providerResourceId` and `providerResourceIdKind` when Terraform state has an `arn` attribute. They may also preserve the raw ARN as `additionalProperties.arn`.
+- AWS Terraform output resources store `providerResourceId` and `providerResourceIdKind` when Terraform state has an `arn` attribute.
 - AWS Bicep output resources keep CloudControl-shaped IDs and store the same ARN metadata when CloudControl resource properties expose `ARN`, `Arn`, or `arn`.
 - Delete warning logic compares output resources by `providerResourceId` when both sides have it, then falls back to producer ID equality. If both sides provide `providerResourceIdKind`, the kind must also match.
 - Application graph output resources preserve `providerResourceId` and `providerResourceIdKind` so clients can inspect the provider identity.
@@ -291,7 +285,6 @@ model OutputResource {
   radiusManaged?: boolean;
   providerResourceId?: string;
   providerResourceIdKind?: string;
-  additionalProperties?: Record<string>;
 }
 ```
 
@@ -311,11 +304,11 @@ No Phase 1 or Phase 2 UCP routing changes are required.
 
 #### Bicep
 
-For AWS Bicep output resources, the Bicep deployment path should read deployed resource properties and set `providerResourceId` and `providerResourceIdKind` when the properties include `ARN`, `Arn`, or `arn`. The raw ARN may also be preserved as `additionalProperties.arn`.
+For AWS Bicep output resources, the Bicep deployment path should read deployed resource properties and set `providerResourceId` and `providerResourceIdKind` when the properties include `ARN`, `Arn`, or `arn`.
 
 #### Deployment Engine
 
-The deployment processor should preserve output resource `providerResourceId`, `providerResourceIdKind`, and `AdditionalProperties` when persisting deployed output resources. This lets provider resource metadata survive from recipe or Bicep deployment output into resource status.
+The deployment processor should preserve output resource `providerResourceId` and `providerResourceIdKind` when persisting deployed output resources. This lets provider resource metadata survive from recipe or Bicep deployment output into resource status.
 
 #### Core RP
 
@@ -332,7 +325,7 @@ The Terraform driver should build AWS Terraform output resource IDs from Terrafo
 - ARN provides partition, region, and a candidate name when possible.
 - The configured AWS provider scope provides account.
 - Empty ARN region becomes `global`.
-- ARN is copied to `providerResourceId` with `providerResourceIdKind: awsArn`. The raw ARN may also be preserved as `additionalProperties.arn`.
+- ARN is copied to `providerResourceId` with `providerResourceIdKind: awsArn`.
 
 ### Error Handling
 
@@ -356,7 +349,7 @@ Phase 2:
 - Unit test Terraform output resources with ARN metadata.
 - Unit test AWS Bicep output resources with `ARN`, `Arn`, `arn`, and missing ARN properties.
 - Unit test resource and application delete warnings for Bicep-shaped and Terraform-shaped output resources that share the same ARN.
-- Verify the app graph preserves output resource `providerResourceId`, `providerResourceIdKind`, and `AdditionalProperties`.
+- Verify the app graph preserves output resource `providerResourceId` and `providerResourceIdKind`.
 
 Phase 3:
 
