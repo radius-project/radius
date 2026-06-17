@@ -22,61 +22,23 @@ jobs:
     timeout-minutes: 45
     permissions: {}
     steps:
-      # Generate a short-lived GitHub App installation token scoped to the
-      # radius-project organization with packages:write. App tokens expire after one hour and are
-      # least-privilege (packages only), reducing the blast radius if leaked.
+      # GitHub Container Registry package APIs are only accessible to classic
+      # personal access tokens (and the built-in GITHUB_TOKEN). GitHub App
+      # installation tokens cannot list or delete org packages — the list
+      # endpoint returns "400 Invalid argument" and deletes are rejected. See
+      # https://github.com/snok/container-retention-policy/issues/94 (GitHub
+      # Support confirmation). The wildcard image-names below also requires the
+      # list-packages endpoint, so a classic PAT is required here.
       #
-      # Requires the App's credentials to be configured on radius-project/radius:
-      #   - secrets.RADIUS_PURGE_BOT_CLIENT_ID
-      #   - secrets.RADIUS_PURGE_BOT_PRIVATE_KEY
-      # and the App installed on the radius-project org with the "Packages:
-      # Read and write" repository permission.
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ secrets.RADIUS_PURGE_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PURGE_BOT_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          permission-packages: write
-
-      # snok/container-retention-policy classifies a GitHub App installation
-      # token (ghs_ prefix) the same as the temporal GITHUB_TOKEN, which cannot
-      # call the list-packages endpoint. As a result it rejects wildcard
-      # image-names such as 'dev/*'. To keep using an App token, resolve the
-      # concrete dev/* package names up front via the GitHub API (which the App
-      # token is allowed to call) and pass them to the action as an explicit
-      # list. image-tags wildcards (pr-*) are not affected by this restriction.
-      - name: Resolve dev/* container image names
-        id: image-names
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const org = core.getInput('owner')
-            const packages = await github.paginate(
-              github.rest.packages.listPackagesForOrganization,
-              { package_type: 'container', org, per_page: 100 }
-            )
-            const names = packages
-              .map((pkg) => pkg.name)
-              .filter((name) => name.startsWith('dev/'))
-            if (names.length === 0) {
-              core.info('No dev/* container packages found; nothing to purge.')
-            } else {
-              core.info(`Resolved ${names.length} dev/* package names.`)
-            }
-            core.setOutput('names', names.join(' '))
-        env:
-          INPUT_OWNER: ${{ github.repository_owner }}
-
+      # secrets.GH_RAD_CI_BOT_PAT must be a classic PAT with the following scopes:
+      #   - read:packages   (list package versions)
+      #   - delete:packages (delete old package versions)
       - name: Delete 'dev' containers older than a week
-        if: steps.image-names.outputs.names != ''
         uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53 # v3.1.0
         with:
           account: ${{ github.repository_owner }}
-          token: ${{ steps.app-token.outputs.token }}
-          image-names: ${{ steps.image-names.outputs.names }}
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          image-names: dev/*
           image-tags: pr-*
           cut-off: 1w
 
