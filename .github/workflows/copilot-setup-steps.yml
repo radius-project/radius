@@ -107,8 +107,8 @@ jobs:
 
       - name: Install kubectl
         run: |
-          KUBECTL_VER=v1.30.0
-          KUBECTL_LINUX_AMD64_SHA256=7c3807c0f5c1b30110a2ff1e55da1d112a6d0096201f1beb81b269f582b5d1c5
+          KUBECTL_VER="v1.30.0"
+          KUBECTL_LINUX_AMD64_SHA256="7c3807c0f5c1b30110a2ff1e55da1d112a6d0096201f1beb81b269f582b5d1c5"
           curl -fsSLo ./kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
           echo "${KUBECTL_LINUX_AMD64_SHA256}  ./kubectl" | sha256sum -c -
           chmod +x ./kubectl
@@ -157,20 +157,16 @@ jobs:
         # used by `make test` to produce test reports; dlv (Delve) is used by the
         # process-debugging workflow (make debug-*).
         run: |
-          CONTROLLER_GEN_VER=v0.17.0
-          MOCKGEN_VER=v0.4.0
-          GOTESTSUM_VER=1.13.0
-          DLV_VER=v1.26.3
-          go install "sigs.k8s.io/controller-tools/cmd/controller-gen@${CONTROLLER_GEN_VER}"
-          go install "go.uber.org/mock/mockgen@${MOCKGEN_VER}"
+          GOTESTSUM_VER="1.13.0"
+          DLV_VER="v1.26.3"
           go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
           go install "github.com/go-delve/delve/cmd/dlv@${DLV_VER}"
 
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.
         run: |
-          YQ_VERSION=v4.44.3
-          YQ_LINUX_AMD64_SHA256=a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
+          YQ_VERSION="v4.44.3"
+          YQ_LINUX_AMD64_SHA256="a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7"
           mkdir -p "${RUNNER_TEMP}/bin"
           curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
           echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
@@ -181,7 +177,7 @@ jobs:
         # Lets the agent create a local Kubernetes cluster for integration and
         # functional tests.
         run: |
-          KIND_VER=v0.29.0
+          KIND_VER="v0.29.0"
           curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VER}/kind-linux-amd64"
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
@@ -191,7 +187,7 @@ jobs:
         # Used by the local debug environment (make debug-start) to create a
         # lightweight Kubernetes cluster.
         run: |
-          K3D_VER=v5.6.0
+          K3D_VER="v5.6.0"
           curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VER}" bash
           k3d version
 
@@ -199,7 +195,7 @@ jobs:
         # Multi-pod log tailing for debugging Kubernetes output across the
         # radius-system components.
         run: |
-          STERN_VER=1.32.0
+          STERN_VER="1.32.0"
           curl -fsSLo "${RUNNER_TEMP}/stern.tar.gz" "https://github.com/stern/stern/releases/download/v${STERN_VER}/stern_${STERN_VER}_linux_amd64.tar.gz"
           tar -xzf "${RUNNER_TEMP}/stern.tar.gz" -C "${RUNNER_TEMP}" stern
           chmod +x "${RUNNER_TEMP}/stern"
@@ -208,7 +204,7 @@ jobs:
 
       - name: Install Dapr CLI
         run: |
-          DAPR_CLI_VER=1.15.1
+          DAPR_CLI_VER="1.15.1"
           wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - \
             | /bin/bash -s "${DAPR_CLI_VER}"
           dapr --version
@@ -232,7 +228,7 @@ jobs:
         # rad bicep flows. Pinned to v0.42.1: v0.40+ rejects br:localhost
         # registries used by the local functional tests.
         run: |
-          BICEP_VER=v0.42.1
+          BICEP_VER="v0.42.1"
           curl -fsSLo ./bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
