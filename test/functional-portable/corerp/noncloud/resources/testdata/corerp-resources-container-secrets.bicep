@@ -1,5 +1,7 @@
-
 extension radius
+
+@description('Specifies the location for resources.')
+param location string = 'global'
 
 @description('Specifies the image of the container resource.')
 param magpieimage string
@@ -7,31 +9,29 @@ param magpieimage string
 @description('Specifies the environment for resources.')
 param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-container-secrets'
+  location: location
   properties: {
     environment: environment
-    extensions: [
-      {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-secrets'
-      }
-    ]
   }
 }
 
-resource container 'Applications.Core/containers@2023-10-01-preview' = {
+resource container 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'cntr-cntr-secrets'
+  location: location
   properties: {
-      application: app.id
-      container: {
+    application: app.id
+    environment: environment
+    containers: {
+      cntrcntrsecrets: {
         image: magpieimage
         env: {
           DB_USER: { value: 'DB_USER' }
           DB_PASSWORD: {
             valueFrom: {
-              secretRef: {
-                source: saltysecret.id
+              secretKeyRef: {
+                secretName: saltysecret.name
                 key: 'DB_PASSWORD'
               }
             }
@@ -45,15 +45,18 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
       }
     }
   }
+}
 
-  resource saltysecret 'Applications.Core/secretStores@2023-10-01-preview' = {
-    name: 'saltysecret'
-    properties: {
-      application: app.id
-      data: {
-        DB_PASSWORD: {
-          value: 'password'
-        }
+resource saltysecret 'Radius.Security/secrets@2025-08-01-preview' = {
+  name: 'saltysecret'
+  location: location
+  properties: {
+    environment: environment
+    application: app.id
+    data: {
+      DB_PASSWORD: {
+        value: 'password'
       }
     }
   }
+}
