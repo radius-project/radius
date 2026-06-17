@@ -225,7 +225,15 @@ Phase 2 behavior:
 
 #### Phase 3: Provider resource identity adoption
 
-Phase 3 extends provider identity across Radius APIs. Server-side APIs provide normalized associations and grouping; clients consume those responses and identity fields:
+Phase 3 implements provider-resource equality in Radius control plane APIs. The control plane should decide when two output resources represent the same provider resource, then expose that association in API responses. Dashboard, CLI, SDKs, and generated clients should not independently compare ARNs or provider-specific fields.
+
+The equality rule is:
+
+1. If both output resources have `providerResourceId`, compare `providerResourceId`.
+2. If either output resource lacks `providerResourceId`, fall back to producer ID equality.
+3. If both output resources also have `providerResourceIdKind`, the kinds must match.
+
+For example:
 
 ```json
 {
@@ -238,12 +246,12 @@ Phase 3 extends provider identity across Radius APIs. Server-side APIs provide n
 
 Phase 3 behavior:
 
-- Use provider identity for server-side resource association beyond delete warnings.
+- Use the provider-resource equality rule for control plane API association beyond delete warnings.
 - Keep producer IDs unchanged so lifecycle ownership remains explicit.
-- Update APIs such as app graph to group or annotate output resources by provider identity.
-- Ensure dashboard, CLI, and generated clients consume normalized API responses and first-class identity fields instead of implementing provider-specific matching rules.
+- Update APIs such as app graph to group or annotate output resources that represent the same provider resource.
+- Ensure dashboard, CLI, SDKs, and generated clients consume control-plane associations instead of implementing provider-specific matching rules.
 
-Phase 2 is sufficient for delete warnings, but it does not solve every client concern. For example, the dashboard app graph should not have to group equivalent resources itself by comparing AWS ARNs. Phase 3 makes provider identity a platform-wide association contract implemented by Radius APIs.
+Phase 2 is sufficient for delete warnings, but it does not solve every client concern. For example, the dashboard app graph should not have to group equivalent resources itself by comparing AWS ARNs. Phase 3 makes provider-resource equality a platform-wide control plane contract.
 
 #### Advantages
 
@@ -256,7 +264,7 @@ Phase 2 is sufficient for delete warnings, but it does not solve every client co
 #### Disadvantages
 
 - Producer IDs differ for the same physical object.
-- Phase 2 only applies the fields to shared-resource delete warnings; broader API-owned association and grouping behavior waits for Phase 3.
+- Phase 2 only applies the equality rule to shared-resource delete warnings; broader control-plane API association and grouping behavior waits for Phase 3.
 - Resources without reliable provider resource metadata still fall back to ID matching.
 - ARN extraction from CloudControl properties starts with common property names. Schema-driven extraction may be needed for broader AWS coverage.
 
@@ -280,7 +288,7 @@ model OutputResource {
 }
 ```
 
-Phase 3 does not need another output resource schema change for identity. It updates Radius APIs to use these fields consistently and lets clients consume the normalized API behavior.
+Phase 3 does not need another output resource schema change for identity. It updates control plane APIs to apply provider-resource equality consistently and return the resulting associations or groups.
 
 ### CLI Design
 
@@ -305,6 +313,8 @@ The deployment processor should preserve output resource `providerResourceId` an
 #### Core RP
 
 The Core RP should preserve `providerResourceId` and `providerResourceIdKind` in app graph output resource data so clients can inspect Phase 2 metadata.
+
+In Phase 3, Core RP APIs that return app/resource relationships should use the provider-resource equality rule to associate output resources that have different producer IDs but the same provider identity.
 
 #### Portable Resources / Recipes RP
 
@@ -345,8 +355,9 @@ Phase 2:
 
 Phase 3:
 
-- Add app graph tests showing the API groups or annotates equivalent output resources by `providerResourceId`.
-- Add dashboard and CLI tests, where applicable, showing clients consume normalized app graph/API behavior and first-class provider identity fields instead of inferring identity from IDs.
+- Add app graph tests showing the control plane groups or annotates equivalent output resources by provider-resource equality.
+- Add API tests for provider ID match, provider ID mismatch, provider ID kind mismatch, and producer ID fallback.
+- Add dashboard and CLI tests, where applicable, showing clients consume control-plane associations instead of inferring identity from IDs.
 - Add API compatibility tests ensuring `providerResourceId` and `providerResourceIdKind` continue to round-trip.
 
 ## Security
@@ -359,7 +370,7 @@ This design does not change AWS, Azure, or Kubernetes credential handling.
 
 - Phase 1 changes AWS Terraform output resource IDs. Existing AWS Terraform output resources are repopulated with `Terraform.AWS` IDs on the next recipe deployment.
 - Phase 2 adds optional output resource fields. Existing resources without provider identity continue to compare by ID.
-- Phase 3 uses the Phase 2 fields directly in Radius APIs, avoiding a metadata migration.
+- Phase 3 uses the Phase 2 fields directly in control plane APIs, avoiding a metadata migration.
 - Azure and Kubernetes output resource behavior is unchanged by Phase 1 and Phase 2.
 - Older clients that ignore new fields continue to see output resource IDs as before, except for the intended Phase 1 AWS Terraform ID shape change.
 
@@ -373,13 +384,13 @@ Delete warning flows should continue to use existing CLI output. No new metrics 
 
 1. Phase 1: Merge AWS Terraform output resource ID changes for [#11838](https://github.com/radius-project/radius/issues/11838).
 2. Phase 2: Merge shared-resource comparison and first-class provider resource identity fields for [#12020](https://github.com/radius-project/radius/issues/12020).
-3. Phase 3: Open a follow-up issue or design review for API-owned provider identity association and grouping across app graph, dashboard, CLI, and generated clients.
+3. Phase 3: Open a follow-up issue or design review for provider-resource equality in control plane APIs, starting with app graph and the APIs that dashboard, CLI, SDKs, and generated clients consume.
 
 ## Open Questions
 
 - Should `providerResourceId` always be paired with `providerResourceIdKind`, or can a missing kind be treated as an opaque provider ID?
 - Should Radius normalize ARN case or preserve provider output exactly?
-- What normalized grouping or association shape should app graph and related Radius APIs expose when multiple producer IDs reference the same provider resource?
+- What normalized grouping or association shape should control plane APIs expose when multiple producer IDs reference the same provider resource?
 - Should server-side delete validation use provider resource identity, and if so, which operations should enforce it?
 
 ## Alternatives considered
