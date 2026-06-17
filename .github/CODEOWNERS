@@ -1,5 +1,10 @@
 # Code Owners for github.com/radius-project/radius
-# Generated from template - do not edit directly
+#
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
 
 # General maintainers and approvers for the entire repository
 * @radius-project/maintainers-radius @radius-project/approvers-radius
