@@ -63,7 +63,8 @@ It proposes three phases:
 - Stop emitting malformed or misleading AWS CloudControl-shaped IDs for Terraform-managed resources.
 - Detect when AWS Bicep and Terraform output resources reference the same provider resource.
 - Add first-class provider resource identity so future clients do not each implement provider-specific matching rules.
-- Preserve existing Azure and Kubernetes output resource behavior.
+- Populate provider resource identity for AWS, Azure, and Kubernetes output resources when Radius can determine it.
+- Preserve existing output resource ID behavior except for the intended AWS Terraform ID shape change.
 
 ### Non goals
 
@@ -155,7 +156,15 @@ The selected design keeps `status.outputResources[].id` as the producer ID and a
 
 Phase 1 fixes the Terraform AWS producer ID. Phase 2 adds a first-class provider identity field and uses it for shared-resource delete warnings. Phase 3 uses that field across Radius APIs for normalized association and grouping.
 
-This design populates `providerResourceId` for AWS output resources first. Azure and Kubernetes output resource behavior remains unchanged in these phases. The same field can be populated for additional providers later without changing the Phase 3 control plane equality model.
+This design populates `providerResourceId` for AWS, Azure, and Kubernetes output resources when Radius can determine the provider-native identity. The field is optional, so resources without provider identity continue to work with existing Radius resource ID comparisons.
+
+#### Provider coverage
+
+AWS output resources should use the resource ARN as `providerResourceId`.
+
+Azure output resources should use the ARM resource ID as `providerResourceId`. For many Azure output resources this may be the same value as `id`, but Radius should still populate `providerResourceId` so control plane APIs can use one equality model across providers.
+
+Kubernetes output resources should use a stable Kubernetes object identity as `providerResourceId`, including enough information to distinguish cluster, API group/version, kind or resource, namespace, and name. The exact serialized format should follow existing Radius Kubernetes identity conventions so the value is stable and comparable.
 
 ### Architecture Diagram
 
@@ -217,6 +226,8 @@ Phase 2 behavior:
 
 - AWS Terraform output resources store provider identity when Terraform state has an `arn` attribute.
 - AWS Bicep output resources keep CloudControl-shaped IDs and store the same ARN metadata when CloudControl resource properties expose `ARN`, `Arn`, or `arn`.
+- Azure output resources store the ARM resource ID as provider identity when Radius can determine it.
+- Kubernetes output resources store stable Kubernetes object identity as provider identity when Radius can determine it.
 - Delete warning logic compares output resources by provider identity when both sides have it, then falls back to producer ID equality.
 - Application graph output resources preserve provider identity so clients can inspect it.
 - Warnings remain advisory. Phase 2 does not add server-side delete enforcement.
@@ -229,6 +240,8 @@ The equality rule is:
 
 1. If both output resources have `providerResourceId`, compare `providerResourceId`.
 2. If either output resource lacks `providerResourceId`, fall back to producer ID equality.
+
+This fallback order is intentionally non-breaking. Existing resources and older producers that only populate `id` continue to compare exactly as they do today. Newer resources get stronger cross-producer matching when `providerResourceId` is present.
 
 For example:
 
@@ -305,7 +318,7 @@ Phase 3: no UCP routing changes are expected unless a control plane API endpoint
 
 Phase 1: no Bicep changes are required.
 
-Phase 2: for AWS Bicep output resources, the Bicep deployment path should set `providerResourceId` when deployed resource properties include `ARN`, `Arn`, or `arn`.
+Phase 2: for AWS Bicep output resources, the Bicep deployment path should set `providerResourceId` when deployed resource properties include `ARN`, `Arn`, or `arn`. For Azure Bicep output resources, it should set `providerResourceId` to the ARM resource ID when Radius can determine it.
 
 Phase 3: no Bicep-specific changes are expected beyond preserving `providerResourceId`.
 
@@ -339,11 +352,19 @@ Phase 2: the portable resource processors should preserve recipe output resource
 
 Phase 3: no Recipes RP-specific equality behavior is expected. Control plane APIs consume the persisted `providerResourceId`.
 
+#### Kubernetes
+
+Phase 1: no Kubernetes-specific changes are required.
+
+Phase 2: Kubernetes output resource producers should populate `providerResourceId` with the stable Kubernetes object identity when Radius can determine it.
+
+Phase 3: Kubernetes output resources participate in the same control plane provider-resource equality behavior as AWS and Azure output resources.
+
 ### Error Handling
 
 - If a Terraform AWS ARN is malformed, the Terraform driver should return a recipe output error rather than emitting a malformed resource ID.
 - If the configured AWS provider scope is missing account information, the Terraform driver should return an error because the Terraform-shaped output resource ID requires an account scope.
-- If Radius cannot read an ARN from Terraform state or AWS Bicep deployment output, Radius should still persist the output resource without provider resource identity metadata.
+- If Radius cannot read a provider-native identity from Terraform state, deployment output, or Kubernetes object metadata, Radius should still persist the output resource without provider resource identity metadata.
 - If either side of a shared-resource comparison lacks provider resource identity, Radius should fall back to producer ID comparison.
 
 ## Test plan
@@ -352,13 +373,15 @@ Phase 1:
 
 - Unit test Terraform AWS S3 state with `arn:aws:s3:::<bucket>` and verify a `Terraform.AWS/aws_s3_bucket` output resource ID.
 - Unit test AWS resources whose ARN includes account and region and verify they no longer emit CloudControl-shaped IDs from Terraform state.
-- Preserve existing Azure and Kubernetes output resource behavior.
+- Preserve existing Azure and Kubernetes output resource ID behavior in Phase 1.
 
 Phase 2:
 
 - Unit test output resource comparison for provider resource ID match, provider resource ID mismatch, and ID fallback.
 - Unit test Terraform output resources with ARN metadata.
 - Unit test AWS Bicep output resources with `ARN`, `Arn`, `arn`, and deployment output that does not include an ARN property.
+- Unit test Azure output resources populate ARM resource ID as `providerResourceId`.
+- Unit test Kubernetes output resources populate stable Kubernetes object identity as `providerResourceId`.
 - Unit test resource and application delete warnings for Bicep-shaped and Terraform-shaped output resources that share the same ARN.
 - Verify the app graph preserves output resource `providerResourceId`.
 
@@ -380,8 +403,18 @@ This design does not change AWS, Azure, or Kubernetes credential handling.
 - Phase 1 changes AWS Terraform output resource IDs. Existing AWS Terraform output resources are repopulated with `Terraform.AWS` IDs on the next recipe deployment.
 - Phase 2 adds an optional output resource field. Existing resources without provider identity continue to compare by ID.
 - Phase 3 uses the Phase 2 field directly in control plane APIs, avoiding a metadata migration.
-- Azure and Kubernetes output resource behavior is unchanged by Phase 1 and Phase 2.
 - Older clients that ignore the new field continue to see output resource IDs as before, except for the intended Phase 1 AWS Terraform ID shape change.
+
+### No breaking changes
+
+This design should not require a breaking API change. `providerResourceId` is optional status metadata. Existing clients can ignore it, and existing resources that do not have the field remain valid.
+
+Control plane comparison should use this fallback order:
+
+1. If both output resources have `providerResourceId`, compare `providerResourceId`.
+2. Otherwise, compare the Radius output resource `id`.
+
+This preserves current behavior for older resources and producers while enabling stronger matching for resources that provide a provider-native identity.
 
 ## Monitoring and Logging
 
