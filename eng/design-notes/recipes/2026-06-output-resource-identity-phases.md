@@ -197,17 +197,6 @@ The previous AWS Terraform behavior parsed an ARN and tried to emit a CloudContr
 
 Terraform provider `id` values are provider-defined, so Radius should prefer the ARN resource component when it has a usable final physical-name segment. If that is unavailable, Radius can use simple provider state attributes such as `id`. Radius should not use the Terraform block name as the physical name. In `resource "aws_s3_bucket" "storage"`, `storage` is a local Terraform label, not the AWS bucket name.
 
-Adversarial examples:
-
-| Terraform resource type | Example ARN | CloudControl type | Why Terraform IDs are safer |
-|---|---|---|---|
-| `aws_s3_bucket` | `arn:aws:s3:::shared-bucket` | `AWS::S3::Bucket` | ARN lacks account, region, and a `Bucket` type segment. |
-| `aws_sqs_queue` | `arn:aws:sqs:us-west-2:123456789012:orders` | `AWS::SQS::Queue` | ARN has a bare resource name; Terraform `id` is commonly a queue URL. |
-| `aws_sns_topic` | `arn:aws:sns:us-east-1:123456789012:orders` | `AWS::SNS::Topic` | ARN has no type token from which to infer `Topic`. |
-| `aws_cloudwatch_log_group` | `arn:aws:logs:us-west-1:123456789012:log-group:/app/orders` | `AWS::Logs::LogGroup` | Terraform says `cloudwatch`, ARN says `logs`, ARN path says `log-group`, and CloudControl says `Logs::LogGroup`. |
-| `aws_lb` | `arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/web/50dc...` | `AWS::ElasticLoadBalancingV2::LoadBalancer` | Terraform abbreviates the type, ARN service is long, and CloudControl uses another service spelling. |
-| `aws_s3_bucket_versioning` | Often bucket-name based rather than a standalone ARN. | Usually modeled as configuration on `AWS::S3::Bucket`. | Not every Terraform resource maps to a standalone CloudControl resource. |
-
 #### Phase 2: First-class provider resource metadata
 
 Phase 2 keeps producer IDs distinct but adds optional first-class provider resource identity fields:
