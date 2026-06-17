@@ -56,29 +56,30 @@ So the gap is specific to Recipe Packs: there is currently nowhere to put a regi
 
 Three options are considered. In all three, non-registry sources are unaffected because their version is already in the source string or absent.
 
-### Option A — Stringified `<source>@<version>` convention (implemented in this PR)
+### Option A — Stringified `<source>:<version>` convention (implemented in this PR, proposed in [#12086](https://github.com/radius-project/radius/issues/12086))
 
-Encode the version as an `@<version>` suffix on `recipeLocation`, and split it inside Radius before generating the Terraform config:
+Encode the version as a `:<version>` suffix on `recipeLocation` — the same spelling Bicep/OCI recipes use for their image tag — and split it inside Radius before generating the Terraform config:
 
 ```bicep
 'Test.Resources/userTypeAlpha': {
   recipeKind: 'terraform'
-  recipeLocation: 'terraform-aws-modules/rds/aws@6.1.0'
+  recipeLocation: 'terraform-aws-modules/rds/aws:6.1.0'
 }
 ```
 
-Radius splits this into `source = "terraform-aws-modules/rds/aws"` and `version = "6.1.0"` (`configloader.parseTerraformModuleSource`). The split only fires when the source has no `://` scheme and the `@` is after the last `/`, so it does not collide with `git@host` SSH addresses or URLs that legitimately contain `@`.
+Radius splits this into `source = "terraform-aws-modules/rds/aws"` and `version = "6.1.0"` (`configloader.parseTerraformModuleSource`). The split only fires when the source has no `://` scheme and the `:` is in the final path segment (after the last `/`), so a registry `host:port` such as `my.registry.com:8443/ns/name/aws` is not mistaken for a version, and Git/HTTP URLs are left untouched.
 
 #### Advantages of Option A
 
 - No API, schema, or codegen change — the smallest possible blast radius.
 - A single field for a platform engineer to set.
+- **Uniform spelling with Bicep/OCI.** The version is appended after a `:` exactly as for an OCI recipe tag, so a platform engineer pins a version the same way regardless of IaC kind.
 
 #### Disadvantages of Option A
 
-- **Not Terraform-native.** Terraform itself does not accept `source@version`; the syntax is a Radius-only invention that platform engineers must learn.
-- **Inconsistent across IaC kinds.** Bicep uses OCI `:tag` and Terraform Git uses `?ref=`; this adds a third, Radius-specific spelling only for Terraform registries.
-- Requires custom parsing with collision rules that must be kept correct over time.
+- **Not Terraform-native.** Terraform's `module` block takes `source` and `version` as separate arguments and does not accept `source:version`; the combined spelling is a Radius convention that platform engineers must learn.
+- **Looks like an OCI tag but isn't.** An OCI `:tag` is part of the native image reference; a Terraform registry version never is (it is always a separate argument), so the shared spelling hides a semantic difference.
+- Requires custom parsing whose collision rules (registry `host:port`, SCP-style Git, URL schemes) must be kept correct over time.
 
 ### Option B — First-class `version` field on `RecipeDefinition` (spec design)
 
@@ -118,15 +119,15 @@ Do not provide any version mechanism for registries; support Git (`?ref=`), OCI 
 
 ### Proposed Option
 
-**Option B (first-class `version` field).** It is Terraform-native (`source` and `version` map directly onto the generated `module` block), explicit, and validatable. Option A's only real advantage is blast radius, which Option B can match closely because the rendering plumbing (`templateVersion` → module `version`) already exists — only the API surface and codegen need to be added.
+Issue [#12086](https://github.com/radius-project/radius/issues/12086) proposes **Option A with the `:` separator**, which is what this PR implements: platform engineers pin a version with the same `:<version>` spelling they already use for Bicep/OCI recipe tags, and no API change is required. **Option B (a first-class `version` field)** is the more explicit, Terraform-native alternative and the natural follow-up if the team wants schema-level validation (for example, rejecting a version on non-registry sources). The decision is a trade-off — blast radius and uniform spelling (A) versus explicitness and validatability (B) — and is left for design review.
 
-**Status in this PR:** Option A is implemented as a minimal, no-codegen interim so the end-to-end direct-module path is exercisable, pending this design decision. If the team accepts Option B, the change is contained: add `version?` to the `recipePacks` `RecipeDefinition`, populate `EnvironmentDefinition.TemplateVersion` from it in the config loader, and remove `parseTerraformModuleSource`.
+**Status in this PR:** Option A (the `:` convention from [#12086](https://github.com/radius-project/radius/issues/12086)) is implemented so the end-to-end direct-module path is exercisable. Moving to Option B would be contained: add `version?` to the `recipePacks` `RecipeDefinition`, populate `EnvironmentDefinition.TemplateVersion` from it in the config loader, and remove `parseTerraformModuleSource`.
 
 ## API design
 
 | Option | API change                                                 | Generated Terraform                                                           |
 |--------|------------------------------------------------------------|-------------------------------------------------------------------------------|
-| A      | None                                                       | `source` parsed from `recipeLocation` split on `@`; `version` from the suffix |
+| A      | None                                                       | `source` parsed from `recipeLocation` split on `:`; `version` from the suffix |
 | B      | Add optional `version` to `recipePacks` `RecipeDefinition` | `source` = `recipeLocation`, `version` = `version`                            |
 | C      | None                                                       | `source` = `recipeLocation`; no `version`                                     |
 
@@ -146,13 +147,13 @@ model RecipeDefinition {
 
 ## Test plan
 
-- **Unit** — version rendering into the generated `module` block for: registry with version, registry without version, Git `?ref=`, OCI `:tag`, and HTTP (no version). Option A additionally needs the `@`-split collision tests, which exist in `configloader` today.
+- **Unit** — version rendering into the generated `module` block for: registry with version, registry without version, Git `?ref=`, OCI `:tag`, and HTTP (no version). Option A additionally needs the `:`-split collision tests (including a registry `host:port`), which exist in `configloader` today.
 - **Functional** — noncloud functional tests cannot reach the public Terraform registry (no network egress, no OSS registry in-cluster). They continue to use the HTTP archive module server. Registry-plus-version resolution remains a manual or cloud-E2E verification regardless of option.
 
 ## Compatibility
 
 - Options A and C are additive and do not change existing wrapped-recipe behavior.
-- Option B is an additive, optional API field and is backward compatible. If the interim Option A `@<version>` convention has shipped, switching to Option B would make `recipeLocation: '…/rds/aws@6.1.0'` no longer split automatically; this should be called out as a behavior change before Option A reaches a stable API version.
+- Option B is an additive, optional API field and is backward compatible. If the interim Option A `:<version>` convention has shipped, switching to Option B would make `recipeLocation: '…/rds/aws:6.1.0'` no longer split automatically; this should be called out as a behavior change before Option A reaches a stable API version.
 
 ## Open Questions
 
