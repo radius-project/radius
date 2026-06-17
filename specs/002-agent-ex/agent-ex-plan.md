@@ -148,7 +148,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 **Deliverables (per repo)**:
 
-- Add `.github/copilot-setup-steps.yml` per repo, following the existing GitHub workflows pattern. Each one uses the same `setup-go`/`setup-node`/`setup-python` actions and version pinning the workflows already use to provision tools.
+- Add `.github/workflows/copilot-setup-steps.yml` per repo, following the existing GitHub workflows pattern. Each one uses the same `setup-go`/`setup-node`/`setup-python` actions and version pinning the workflows already use to provision tools.
 
 **Verification**:
 

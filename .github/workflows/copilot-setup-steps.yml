@@ -42,7 +42,6 @@ on:
       - .python-version
       - .golangci-lint-version
       - .terraform-version
-      - go.mod
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps.yml
@@ -50,7 +49,6 @@ on:
       - .python-version
       - .golangci-lint-version
       - .terraform-version
-      - go.mod
 
 permissions: {}
 
@@ -110,7 +108,9 @@ jobs:
       - name: Install kubectl
         run: |
           KUBECTL_VER=v1.30.0
+          KUBECTL_LINUX_AMD64_SHA256=7c3807c0f5c1b30110a2ff1e55da1d112a6d0096201f1beb81b269f582b5d1c5
           curl -fsSLo ./kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
+          echo "${KUBECTL_LINUX_AMD64_SHA256}  ./kubectl" | sha256sum -c -
           chmod +x ./kubectl
           sudo mv ./kubectl /usr/local/bin/kubectl
           kubectl version --client
@@ -160,10 +160,11 @@ jobs:
           CONTROLLER_GEN_VER=v0.17.0
           MOCKGEN_VER=v0.4.0
           GOTESTSUM_VER=1.13.0
+          DLV_VER=v1.26.3
           go install "sigs.k8s.io/controller-tools/cmd/controller-gen@${CONTROLLER_GEN_VER}"
           go install "go.uber.org/mock/mockgen@${MOCKGEN_VER}"
           go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
-          go install github.com/go-delve/delve/cmd/dlv@latest
+          go install "github.com/go-delve/delve/cmd/dlv@${DLV_VER}"
 
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.
