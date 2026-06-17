@@ -70,7 +70,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         id: latest-release-tag
         with:
-          # Reads a release in the current repository; the built-in token has contents: read.
+          # Reads a release in the current repository; uses the job's GITHUB_TOKEN permissions.
           github-token: ${{ github.token }}
           result-encoding: string
           script: |
