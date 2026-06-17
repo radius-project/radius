@@ -26,8 +26,10 @@
 # functional-test-noncloud.yaml). Language and tool versions are read from the
 # repo's version files (go.mod, .node-version, .python-version,
 # .golangci-lint-version, .terraform-version) so a version bump flows here
-# automatically; other tool versions are pinned in the env block below to match
-# the CI workflows.
+# automatically; other tool versions are pinned inline in each step below to
+# match the CI workflows. Versions are NOT declared in a workflow-level `env:`
+# block because the Copilot coding agent replays these steps in a harness that
+# does not provide that context.
 name: copilot-setup-steps
 
 on:
@@ -52,38 +54,23 @@ on:
 
 permissions: {}
 
-env:
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
-  # controller-gen version (Kubernetes CRD/code generation).
-  CONTROLLER_GEN_VER: v0.17.0
-  # mockgen version (Go mock generation).
-  MOCKGEN_VER: v0.4.0
-  # Helm version.
-  HELM_VER: v3.19.4
-  # kubectl version.
-  KUBECTL_VER: v1.30.0
-  # KinD cluster version.
-  KIND_VER: v0.29.0
-  # Dapr CLI version.
-  DAPR_CLI_VER: 1.15.1
-  # k3d version (used by the local debug environment).
-  K3D_VER: v5.6.0
-  # stern version (multi-pod Kubernetes log tailing).
-  STERN_VER: 1.32.0
-  # Bicep CLI version. Pinned to v0.42.1: v0.40+ rejects br:localhost registries
-  # used by the local functional tests.
-  BICEP_VER: v0.42.1
-  # yq version (used by Bicep type generation).
-  YQ_VERSION: v4.44.3
-  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
+# NOTE: Tool versions are pinned inline in each step below rather than in a
+# workflow-level `env:` block. When the Copilot coding agent provisions its
+# environment, it only honors a fixed allow-list of `copilot-setup-steps` job
+# settings (`steps`, `permissions`, `runs-on`, `services`, `snapshot`,
+# `timeout-minutes`); anything else -- including a job/workflow-level `env:`
+# block -- is ignored. As a result `${{ env.X }}` and env vars inherited from
+# such a block resolve to empty when the agent runs these steps.
+# See: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
+# Versions read from repo version files (go.mod, .node-version, .python-version,
+# .golangci-lint-version, .terraform-version) still work because the steps read
+# the files directly.
 
 jobs:
   # The job MUST be named `copilot-setup-steps` for the Copilot coding agent to
   # discover and run it. See
   # https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/customize-the-agent-environment
   copilot-setup-steps:
-    name: Copilot setup steps
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -118,10 +105,11 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
-          version: ${{ env.HELM_VER }}
+          version: v3.19.4
 
       - name: Install kubectl
         run: |
+          KUBECTL_VER=v1.30.0
           curl -fsSLo ./kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
           chmod +x ./kubectl
           sudo mv ./kubectl /usr/local/bin/kubectl
@@ -169,6 +157,9 @@ jobs:
         # used by `make test` to produce test reports; dlv (Delve) is used by the
         # process-debugging workflow (make debug-*).
         run: |
+          CONTROLLER_GEN_VER=v0.17.0
+          MOCKGEN_VER=v0.4.0
+          GOTESTSUM_VER=1.13.0
           go install "sigs.k8s.io/controller-tools/cmd/controller-gen@${CONTROLLER_GEN_VER}"
           go install "go.uber.org/mock/mockgen@${MOCKGEN_VER}"
           go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
@@ -177,6 +168,8 @@ jobs:
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.
         run: |
+          YQ_VERSION=v4.44.3
+          YQ_LINUX_AMD64_SHA256=a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
           mkdir -p "${RUNNER_TEMP}/bin"
           curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
           echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
@@ -187,6 +180,7 @@ jobs:
         # Lets the agent create a local Kubernetes cluster for integration and
         # functional tests.
         run: |
+          KIND_VER=v0.29.0
           curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VER}/kind-linux-amd64"
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
@@ -196,6 +190,7 @@ jobs:
         # Used by the local debug environment (make debug-start) to create a
         # lightweight Kubernetes cluster.
         run: |
+          K3D_VER=v5.6.0
           curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VER}" bash
           k3d version
 
@@ -203,6 +198,7 @@ jobs:
         # Multi-pod log tailing for debugging Kubernetes output across the
         # radius-system components.
         run: |
+          STERN_VER=1.32.0
           curl -fsSLo "${RUNNER_TEMP}/stern.tar.gz" "https://github.com/stern/stern/releases/download/v${STERN_VER}/stern_${STERN_VER}_linux_amd64.tar.gz"
           tar -xzf "${RUNNER_TEMP}/stern.tar.gz" -C "${RUNNER_TEMP}" stern
           chmod +x "${RUNNER_TEMP}/stern"
@@ -211,6 +207,7 @@ jobs:
 
       - name: Install Dapr CLI
         run: |
+          DAPR_CLI_VER=1.15.1
           wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - \
             | /bin/bash -s "${DAPR_CLI_VER}"
           dapr --version
@@ -231,8 +228,10 @@ jobs:
 
       - name: Install Bicep CLI
         # Required by Bicep type publishing (make publish-bicep-extension) and
-        # rad bicep flows.
+        # rad bicep flows. Pinned to v0.42.1: v0.40+ rejects br:localhost
+        # registries used by the local functional tests.
         run: |
+          BICEP_VER=v0.42.1
           curl -fsSLo ./bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
           chmod +x ./bicep
           sudo mv ./bicep /usr/local/bin/bicep
