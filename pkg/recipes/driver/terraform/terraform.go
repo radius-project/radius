@@ -180,7 +180,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
 //
-// Precedence logic (FR-015):
+// Output resolution precedence (direct module support):
 //   - If an `outputs` mapping is configured on the definition, it takes precedence: all module outputs
 //     are collected flat and then renamed via the mapping.
 //   - If no `outputs` mapping exists and the module has a `result` output, the module is treated as a
