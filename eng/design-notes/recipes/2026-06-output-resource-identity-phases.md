@@ -386,13 +386,6 @@ Delete warning flows should continue to use existing CLI output. No new metrics 
 2. Phase 2: Merge shared-resource comparison and first-class provider resource identity fields for [#12020](https://github.com/radius-project/radius/issues/12020).
 3. Phase 3: Open a follow-up issue or design review for provider-resource equality in control plane APIs, starting with app graph and the APIs that dashboard, CLI, SDKs, and generated clients consume.
 
-## Open Questions
-
-- Should `providerResourceId` always be paired with `providerResourceIdKind`, or can a missing kind be treated as an opaque provider ID?
-- Should Radius normalize ARN case or preserve provider output exactly?
-- What normalized grouping or association shape should control plane APIs expose when multiple producer IDs reference the same provider resource?
-- Should server-side delete validation use provider resource identity, and if so, which operations should enforce it?
-
 ## Alternatives considered
 
 ### Convert Terraform AWS resources to CloudControl IDs
