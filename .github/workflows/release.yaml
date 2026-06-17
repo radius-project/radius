@@ -269,7 +269,7 @@ jobs:
                 console.log(`Release branch ${releaseBranchName} already exists and this is a push to main.`)
                 return 'true'
               } else {
-                console.log("This is not a push to main.")
+                console.log(`Release branch ${releaseBranchName} exists, but this is not a push to main; continuing release steps.`)
                 return 'false'
               }
             } catch (error) {
