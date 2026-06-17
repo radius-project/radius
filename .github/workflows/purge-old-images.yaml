@@ -22,11 +22,29 @@ jobs:
     timeout-minutes: 45
     permissions: {}
     steps:
+      # Generate a short-lived GitHub App installation token scoped to the
+      # radius-project organization with packages:write. App tokens expire after one hour and are
+      # least-privilege (packages only), reducing the blast radius if leaked.
+      #
+      # Requires the App's credentials to be configured on radius-project/radius:
+      #   - secrets.RADIUS_PURGE_BOT_CLIENT_ID
+      #   - secrets.RADIUS_PURGE_BOT_PRIVATE_KEY
+      # and the App installed on the radius-project org with the "Packages:
+      # Read and write" repository permission.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_PURGE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PURGE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-packages: write
+
       - name: Delete 'dev' containers older than a week
         uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53 # v3.1.0
         with:
-          account: radius-project
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          account: ${{ github.repository_owner }}
+          token: ${{ steps.app-token.outputs.token }}
           image-names: dev/*
           image-tags: pr-*
           cut-off: 1w
