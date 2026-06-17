@@ -162,7 +162,126 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_RecipePacks_NoProvider_Failure tests that deployment fails when Radius.Core/environments
+// Test_RecipePacks_ByName_Deployment tests that an environment can reference a recipe pack
+// by its bare name (instead of a full resource ID). The server resolves the name against the
+// environment's own plane and resource group and stores the canonical resource ID, so the
+// recipe is resolved and the resource is deployed exactly as it would be with a full ID.
+//
+// The bare name is a compile-time constant in Bicep and therefore creates no implicit
+// dependency edge, so the template uses an explicit dependsOn to guarantee the pack is
+// deployed before the environment that references it.
+func Test_RecipePacks_ByName_Deployment(t *testing.T) {
+	template := "testdata/recipepacks-test-by-name.bicep"
+	appName := "recipepacks-byname-app"
+	appNamespace := "recipepacks-byname-ns"
+	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// The first step in this test is to create the Kubernetes namespace.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: appNamespace,
+					},
+				}, metav1.CreateOptions{})
+				if err != nil && !strings.Contains(err.Error(), "already exists") {
+					require.NoError(t, err)
+				}
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
+				require.NoError(t, err, "Namespace should be created")
+			},
+		},
+		{
+			// The second step in this test is to create/register the parent user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			// The third step deploys a bicep file whose environment references the recipe pack by name.
+			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   false,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "test-recipe-pack-byname",
+						Type: "radius.core/recipepacks",
+					},
+					{
+						Name: "recipepacks-byname-env",
+						Type: "radius.core/environments",
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "rrtresource",
+						Type: "test.resources/usertypealpha",
+						App:  appName,
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				// Verify deployments exist in the specified namespace
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, deployments.Items, "No deployments found in namespace %s", appNamespace)
+
+				t.Logf("Found %d deployments in namespace %s", len(deployments.Items), appNamespace)
+
+				// Recipe parameters reconciliation check: Verify that the deployed containers have the expected port from recipe parameters
+				foundPort := false
+				for _, deploy := range deployments.Items {
+					t.Logf("Deployment: %s", deploy.Name)
+					for _, container := range deploy.Spec.Template.Spec.Containers {
+						for _, port := range container.Ports {
+							t.Logf("  Container %s has port %d", container.Name, port.ContainerPort)
+							if port.ContainerPort == 9090 {
+								foundPort = true
+								t.Logf("  ✓ Found container listening on port 9090")
+							}
+						}
+					}
+				}
+				require.True(t, foundPort, "Expected to find a container listening on port 9090")
+
+				// Clean up the namespace after verification
+				err = test.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
+				if err != nil {
+					t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
+				} else {
+					t.Logf("Successfully deleted namespace %s", appNamespace)
+				}
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
 // does not include a providers.kubernetes.namespace configuration.
 // This test validates that the system properly enforces namespace requirements.
 //

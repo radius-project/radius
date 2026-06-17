@@ -18,6 +18,7 @@ package v20250801preview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
@@ -100,9 +102,14 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		}
 	}
 
-	if resp, err := e.validateRecipePacks(ctx, newResource.Properties.RecipePacks); resp != nil || err != nil {
+	// Resolve recipe pack references (names or full IDs) to canonical resource IDs and
+	// validate them, then persist the normalized IDs so downstream readers always see
+	// fully-qualified references.
+	normalizedRecipePacks, resp, err := e.resolveAndValidateRecipePacks(ctx, serviceCtx.ResourceID, newResource.Properties.RecipePacks)
+	if resp != nil || err != nil {
 		return resp, err
 	}
+	newResource.Properties.RecipePacks = normalizedRecipePacks
 
 	// Validate referenced config resources exist and are of the correct type.
 	if newResource.Properties.TerraformConfig != "" {
@@ -125,42 +132,92 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-// Validate recipe packs ensures that no two recipe packs define recipe for the same resource type.
-func (e *CreateOrUpdateEnvironmentv20250801preview) validateRecipePacks(ctx context.Context, recipePacks []string) (rest.Response, error) {
-	if len(recipePacks) <= 1 {
-		return nil, nil
+// resolveAndValidateRecipePacks resolves each recipe pack reference to a canonical
+// Radius.Core/recipePacks resource ID, verifies the referenced pack exists, and ensures
+// that no two packs define a recipe for the same resource type.
+//
+// A reference may be either a full resource ID or a bare name (e.g. "postgresPack"). A
+// bare name is resolved against the environment's own plane and resource group, so
+// authors can link a previously deployed pack without repeating the full path. The
+// returned slice contains the canonical full resource IDs to persist.
+func (e *CreateOrUpdateEnvironmentv20250801preview) resolveAndValidateRecipePacks(ctx context.Context, envID resources.ID, recipePacks []string) ([]string, rest.Response, error) {
+	if len(recipePacks) == 0 {
+		return recipePacks, nil, nil
 	}
 
-	// map to store map[resourceType]recipePackID
+	resolved := make([]string, 0, len(recipePacks))
+	// resourceTypeMap stores map[lowercaseResourceType]recipePackID to detect conflicts
+	// where two packs register a recipe for the same resource type.
 	resourceTypeMap := make(map[string]string)
 
-	for _, recipePackID := range recipePacks {
-		id, err := resources.ParseResource(recipePackID)
-		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack resource ID: %s", recipePackID)), nil
+	for _, ref := range recipePacks {
+		packID, resp := resolveRecipePackRef(envID, ref)
+		if resp != nil {
+			return nil, resp, nil
 		}
 
-		// Get the recipe pack resource
-		obj, err := e.DatabaseClient().Get(ctx, id.String())
+		// Fail fast if the referenced recipe pack does not exist in the resolved scope.
+		obj, err := e.DatabaseClient().Get(ctx, packID)
 		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Failed to retrieve recipe pack %s: %v", recipePackID, err)), nil
+			if !errors.Is(err, &database.ErrNotFound{}) {
+				return nil, nil, err
+			}
+			return nil, rest.NewBadRequestResponse(fmt.Sprintf("Referenced recipe pack %q could not be found (resolved to %q): %v", ref, packID, err)), nil
 		}
 
 		recipePack := &datamodel.RecipePack{}
 		if err := obj.As(recipePack); err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Failed to parse recipe pack %s: %v", recipePackID, err)), nil
+			return nil, rest.NewBadRequestResponse(fmt.Sprintf("Failed to parse recipe pack %q: %v", packID, err)), nil
 		}
 
-		// Check for conflicting resource types across recipe packs
+		// Check for conflicting resource types across recipe packs.
 		for resourceType := range recipePack.Properties.Recipes {
-			if existingPackID, exists := resourceTypeMap[resourceType]; exists {
-				return rest.NewConflictResponse(fmt.Sprintf("Resource type '%s' is defined in multiple recipe packs: %s and %s", resourceType, existingPackID, recipePackID)), nil
+			resourceTypeKey := strings.ToLower(resourceType)
+			if existingPackID, exists := resourceTypeMap[resourceTypeKey]; exists {
+				if !strings.EqualFold(existingPackID, packID) {
+					return nil, rest.NewConflictResponse(fmt.Sprintf("Resource type '%s' is defined in multiple recipe packs: %s and %s", resourceType, existingPackID, packID)), nil
+				}
+				continue
 			}
-			resourceTypeMap[resourceType] = recipePackID
+			resourceTypeMap[resourceTypeKey] = packID
 		}
+
+		resolved = append(resolved, packID)
 	}
 
-	return nil, nil
+	return resolved, nil, nil
+}
+
+// resolveRecipePackRef converts a single recipe pack reference into a canonical
+// Radius.Core/recipePacks resource ID. A full resource ID is validated to be of the
+// recipe pack type; a bare name is resolved against the environment's plane and resource
+// group (envID.RootScope()). It returns a populated rest.Response on validation failure.
+func resolveRecipePackRef(envID resources.ID, ref string) (string, rest.Response) {
+	// A full resource ID parses successfully; validate it points at a recipe pack.
+	if id, err := resources.ParseResource(ref); err == nil {
+		if !strings.EqualFold(id.Type(), datamodel.RecipePackResourceType) {
+			return "", rest.NewBadRequestResponse(fmt.Sprintf("Referenced recipe pack %q has type %q; expected %q.", ref, id.Type(), datamodel.RecipePackResourceType))
+		}
+		return id.String(), nil
+	}
+
+	// Otherwise treat the reference as a bare name scoped to the environment.
+	if ref == "" || strings.Contains(ref, resources.SegmentSeparator) {
+		return "", rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack reference %q: provide a recipe pack name or a %s resource ID.", ref, datamodel.RecipePackResourceType))
+	}
+
+	scopeID, err := resources.ParseScope(envID.RootScope())
+	if err != nil {
+		return "", rest.NewBadRequestResponse(fmt.Sprintf("Could not resolve recipe pack %q within scope %q.", ref, envID.RootScope()))
+	}
+
+	packID := scopeID.Append(resources.TypeSegment{Type: datamodel.RecipePackResourceType, Name: ref})
+	// Re-parse to reject structurally invalid names (e.g. empty or containing '/').
+	if parsed, err := resources.ParseResource(packID.String()); err != nil || !parsed.IsResource() {
+		return "", rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack reference %q: provide a recipe pack name or a %s resource ID.", ref, datamodel.RecipePackResourceType))
+	}
+
+	return packID.String(), nil
 }
 
 // validateConfigRef checks that the referenced resource ID parses, has the
