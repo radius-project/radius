@@ -495,12 +495,16 @@ func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName st
 
 // EnvironmentCreatePreview runs the "env create" command for the specified environment name and returns the output as a string, returning
 // an error if the command fails.
-func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName string) (string, error) {
+func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName, kubernetesNamespace string) (string, error) {
 	args := []string{
 		"env",
 		"create",
 		environmentName,
 		"--preview",
+	}
+
+	if kubernetesNamespace != "" {
+		args = append(args, "--kubernetes-namespace", kubernetesNamespace)
 	}
 
 	if groupName != "" {
