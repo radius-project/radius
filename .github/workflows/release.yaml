@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       pull-requests: write # Required for marocchino/sticky-pull-request-comment
-      contents: read # Required for actions/checkout
+      contents: write # Required for actions/checkout and github.rest.repos.generateReleaseNotes
     # We should only create the release note if this is a pull request against main
     if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request' && github.base_ref == 'main'
     env:
@@ -61,16 +61,17 @@ jobs:
 
       - name: Determine desired release version
         id: get-version
-        env:
-          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
         run: |
           ./.github/scripts/release-get-version.sh "${SUPPORTED_VERSIONS}" "."
+        env:
+          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
 
       - name: Find the previous tag
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         id: latest-release-tag
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          # Reads a release in the current repository; the built-in token has contents: read.
+          github-token: ${{ github.token }}
           result-encoding: string
           script: |
             const { data } = await github.rest.repos.getLatestRelease({
@@ -83,17 +84,21 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         id: generate-notes
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          # Generates notes for the current repository; requires contents: write (granted at job level).
+          github-token: ${{ github.token }}
           result-encoding: string
           script: |
             const { data } = await github.rest.repos.generateReleaseNotes({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: '${{ steps.get-version.outputs.release-version }}',
+              tag_name: process.env.INPUT_RELEASE_VERSION,
               target_commitish: 'main',
-              previous_tag_name: '${{ steps.latest-release-tag.outputs.result }}',
+              previous_tag_name: process.env.INPUT_PREVIOUS_TAG,
             })
             return data.body
+        env:
+          INPUT_RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          INPUT_PREVIOUS_TAG: ${{ steps.latest-release-tag.outputs.result }}
 
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
@@ -113,12 +118,12 @@ jobs:
 
       - name: Find release note
         shell: bash
-        env:
-          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
         run: |
           if [ -f "./docs/release-notes/${RELEASE_VERSION}.md" ]; then
             echo "RELNOTE_FOUND=true" >> "${GITHUB_ENV}"
           fi
+        env:
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
 
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         continue-on-error: true
@@ -148,6 +153,31 @@ jobs:
     permissions:
       contents: read # Required for actions/checkout
     steps:
+      # Generate a short-lived GitHub App installation token with contents:write
+      # scoped to the four repositories that receive release tags and branches.
+      # Unlike the built-in GITHUB_TOKEN, an App token (a) can push to the
+      # recipes/dashboard/bicep-types-aws repositories, and (b) lets the resulting tag pushes
+      # trigger the downstream build/publish workflows.
+      #
+      # Requires the App's credentials configured on radius-project/radius:
+      #   - secrets.RADIUS_RELEASE_BOT_CLIENT_ID
+      #   - secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY
+      # and the App installed on the radius-project org with "Contents:
+      # Read and write" on radius, recipes, dashboard, and bicep-types-aws.
+      - name: Get App Token for release repositories
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+          repositories: |
+            radius
+            recipes
+            dashboard
+            bicep-types-aws
+
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: radius-project/radius
@@ -159,7 +189,7 @@ jobs:
         with:
           repository: radius-project/radius
           ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           path: radius
           persist-credentials: true
 
@@ -168,7 +198,7 @@ jobs:
         with:
           repository: radius-project/recipes
           ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           path: recipes
           persist-credentials: true
 
@@ -177,7 +207,7 @@ jobs:
         with:
           repository: radius-project/dashboard
           ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           path: dashboard
           persist-credentials: true
 
@@ -186,14 +216,26 @@ jobs:
         with:
           repository: radius-project/bicep-types-aws
           ref: main
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           path: bicep-types-aws
           persist-credentials: true
 
-      - name: Set up GitHub credentials
+      # Resolve the App bot's GitHub-formatted name and email (e.g.
+      # "<app-slug>[bot] <id+<app-slug>[bot]@users.noreply.github.com>") so the
+      # release branch and tag pushes are attributed to the bot identity.
+      - name: Get bot details
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
+      - name: Configure git with bot identity
         run: |
-          git config --global user.name "Radius CI Bot"
-          git config --global user.email "radiuscoreteam@service.microsoft.com"
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
+        env:
+          GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
+          GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
@@ -204,10 +246,10 @@ jobs:
 
       - name: Determine desired release version
         id: get-version
-        env:
-          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
         run: |
           ./radius/.github/scripts/release-get-version.sh "${SUPPORTED_VERSIONS}" radius
+        env:
+          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
 
       - name: Check if release branch exists
         id: release-branch-exists
@@ -215,31 +257,30 @@ jobs:
         with:
           result-encoding: string
           script: |
+            const releaseBranchName = process.env.INPUT_RELEASE_BRANCH_NAME
             try {
               const { data } = await github.rest.repos.getBranch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                branch: '${{ steps.get-version.outputs.release-branch-name }}',
+                branch: releaseBranchName,
               })
 
-              if (data && data.name == '${{ steps.get-version.outputs.release-branch-name }}' && context.ref == 'refs/heads/main' && context.eventName == 'push') {
-                console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists and this is a push to main.")
+              if (data && data.name == releaseBranchName && context.ref == 'refs/heads/main' && context.eventName == 'push') {
+                console.log(`Release branch ${releaseBranchName} already exists and this is a push to main.`)
                 return 'true'
               } else {
                 console.log("This is not a push to main.")
                 return 'false'
               }
             } catch (error) {
-              console.log("Release branch ${{ steps.get-version.outputs.release-branch-name }} does not exist.")
+              console.log(`Release branch ${releaseBranchName} does not exist.`)
               return 'false'
             }
+        env:
+          INPUT_RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Generate release summary
         if: steps.release-branch-exists.outputs.result == 'false'
-        env:
-          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
-          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
-          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
         run: |
           {
             echo "## Release"
@@ -249,38 +290,42 @@ jobs:
             echo "* Desired release branch: ${RELEASE_BRANCH_NAME}"
             echo "* Release date: $(date)"
           } >> "${GITHUB_STEP_SUMMARY}"
+        env:
+          SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh radius "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
           RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
-        run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh radius "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh recipes "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
           RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
-        run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh recipes "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Release radius-project/dashboard version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
           RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
-        run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Release radius-project/bicep-types-aws version ${{ steps.get-version.outputs.release-version }}
         if: success() && steps.release-branch-exists.outputs.result == 'false'
+        run: |
+          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
           RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
-        run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
 
       - name: Get App Token for radius-publisher
         if: success() && steps.release-branch-exists.outputs.result == 'false'
@@ -338,8 +383,8 @@ jobs:
       - name: Show failed DE publish logs
         if: failure() && steps.monitor-de-workflow.outputs.run_id != ''
         shell: bash
+        run: |
+          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true
         env:
           GH_TOKEN: ${{ steps.get-de-token.outputs.token }}
           RUN_ID: ${{ steps.monitor-de-workflow.outputs.run_id }}
-        run: |
-          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true
