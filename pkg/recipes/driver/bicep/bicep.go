@@ -134,7 +134,8 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		parameters = createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, true, recipeContext)
 	} else {
 		// Direct module — resolve {{context.*}} expressions, merge parameters, and wrap as ARM parameters.
-		mergedParams := recipes_util.ShallowMergeParameters(opts.Recipe.Parameters, opts.Definition.Parameters)
+		// Resource (developer) parameters take precedence over environment (operator) parameters.
+		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
 		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
 		parameters = wrapARMParameters(resolvedParams)
 	}
