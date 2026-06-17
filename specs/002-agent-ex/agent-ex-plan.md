@@ -13,7 +13,7 @@ The plan, in order:
 
 1. [**Phase 0 — Meta-tooling**](#phase-0--meta-tooling-foundation). Build the factory first: templates, naming conventions, authoring skills, an "add a capability" agent mode, docs-drift code-review instructions.
 2. [**Phase 1 — `AGENTS.md`**](#phase-1--single-entry-point-for-every-agent). One entry point per repo. `.github/copilot-instructions.md` is a symlink to it.
-3. [**Phase 2 — Cloud Agent bootstrap**](#phase-2--cloud-agent-bootstrap). `copilot-setup-steps.yml` + shared dev-container post-create script.
+3. [**Phase 2 — Cloud Agent bootstrap**](#phase-2--cloud-agent-bootstrap). `copilot-setup-steps.yml`, following the existing GitHub workflows pattern.
 4. [**Phase 3 — Contributing docs**](#phase-3--contributing-docs) · [**Phase 4 — Architecture docs**](#phase-4--architecture-docs-grounded-in-code) · [**Phase 5 — Coding instructions**](#phase-5--coding-instructions-project-specific-only). Run in parallel. Audit, fill gaps, trim to project-specific only.
 5. [**Phase 6 — Per-workflow conveniences**](#phase-6--per-workflow-copilot-conveniences). Skills, prompts, custom agents — only where justified.
 6. [**Phase 7 — Continuous improvement**](#phase-7--continuous-improvement-loop). Weekly log-signal analysis + weekly docs-drift review.
@@ -77,7 +77,7 @@ Concretely:
 - **`.github/skills/*/SKILL.md`** wrap multi-step Radius-specific workflows (≤ 500 lines each). Every skill MUST link to a contributing doc that contains the same steps in prose.
 - **`.github/prompts/*.prompt.md`** are slash-command shortcuts (VS Code only). Every prompt MUST be reproducible by a non-VS-Code agent that reads the same backing doc.
 - **`.github/agents/*.agent.md`** are custom agents — read by the Copilot agent surfaces (VS Code, Cloud Agent, CLI) per [GitHub's Custom Agents docs](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-custom-agents). Claude Code reads its own equivalents at `.claude/agents/`. Body is backed by a doc per the same rule as skills.
-- **`copilot-setup-steps.yml`** mirrors the dev container post-create script so the Cloud Agent gets the same environment.
+- **`copilot-setup-steps.yml`** provisions the Cloud Agent's environment following the existing GitHub workflows pattern (not the dev container). See the [Phase 2 note on environment-setup duplication](#phase-2--cloud-agent-bootstrap).
 
 ---
 
@@ -144,16 +144,15 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 **Unlocks**: Assigning an issue to Copilot Cloud Agent results in a working environment without trial-and-error tool installation. Independent of Phase 1; can run in parallel.
 
+**Note on environment-setup duplication**: Development-environment setup logic is duplicated and overlapping across three places today — the dev container, the GitHub workflows, and the Makefiles. Reconciling these into a single source of truth is needed work, but it is **out of scope** for this plan. To avoid coupling Cloud Agent bootstrap to that larger cleanup, Phase 2 follows the existing pattern established in the GitHub workflows rather than integrating with the dev container.
+
 **Deliverables (per repo)**:
 
-- Pin tool versions in version files (`.node-version`, `.python-version`, `go.mod` already has Go). These become the single source of truth for both the dev container and the Cloud Agent.
-- Make `.devcontainer/post-create.sh` (or equivalent) idempotent and safe to run on a GHA runner.
-- Add `.github/copilot-setup-steps.yml` per repo. Each one uses the same `setup-go`/`setup-node`/`setup-python` actions that read the version files, then calls the shared post-create script.
-- Cross-reference comments between `devcontainer.json` and `copilot-setup-steps.yml` so a change in one prompts a check of the other.
+- Add `.github/workflows/copilot-setup-steps.yml` per repo, following the existing GitHub workflows pattern. Each one uses the same `setup-go`/`setup-node`/`setup-python` actions and version pinning the workflows already use to provision tools.
 
 **Verification**:
 
-- Deterministic: `copilot-setup-steps.yml` validates against `actionlint`. CI runs the post-create script in an Ubuntu container and succeeds.
+- Deterministic: `copilot-setup-steps.yml` validates against `actionlint`. CI runs the setup steps in an Ubuntu container and succeeds.
 - Prompt: assign a "build and run unit tests" test issue to Cloud Agent in each repo. Agent succeeds without manual intervention.
 
 ---
