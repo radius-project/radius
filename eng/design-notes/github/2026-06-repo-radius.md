@@ -15,7 +15,7 @@ Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius 
 * Eliminate the prerequisite to have a Kubernetes cluster configured.
 * Enable Radius to run ephemerally within a GitHub Actions runner, starting on demand and shutting down after each operation.
 * Persist Radius state (application graphs, deployment history, environment configuration) in GitHub-native storage rather than in-cluster databases.
-* Support the Copilot app integration in the near team and other UX surfaces in the future.
+* Support the Copilot app integration in the near term and other UX surfaces in the future.
 * Maintain compatibility with the existing Radius resource model and Bicep/Terraform recipe system.
 
 ### Non-goals (out of scope)
