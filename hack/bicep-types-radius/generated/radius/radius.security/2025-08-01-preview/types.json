@@ -165,11 +165,39 @@
           "$ref": "#/18"
         }
       },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "data": {
+        "description": "(Required) Map of secret data. For example: `data: { username: { value: user1 } password: { value: pass }}`",
+        "flags": 2,
+        "type": {
+          "$ref": "#/6"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/7"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
           "$ref": "#/20"
+        }
+      },
+      "kind": {
+        "description": "(Optional) The kind of content of the secret. If not specified, generic is assumed. basicAuthentication, awsIRSA, and azureWorkloadIdentity should only be used for configuring authentication to OCI registries for storing Bicep templates. This will change in the future.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/14"
         }
       },
       "location": {

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/bicep-tools/pkg/cli"
@@ -197,6 +199,77 @@ func TestIntegration_ErrorHandling(t *testing.T) {
 	_, err = generator.GenerateFromString("name: Test")
 	if err == nil {
 		t.Error("Expected error for invalid manifest")
+	}
+}
+
+// TestIntegration_FlattensPropertiesAliases verifies end-to-end that the generated
+// types.json hoists `properties` children onto the resource body as ReadOnly flat
+// aliases, so Bicep authors can use flat references.
+func TestIntegration_FlattensPropertiesAliases(t *testing.T) {
+	manifestFile := "../internal/testdata/valid-with-schema-properties.yaml"
+
+	generator := cli.NewGenerator()
+	result, err := generator.GenerateFromFile(manifestFile)
+	if err != nil {
+		t.Fatalf("Failed to generate from manifest: %v", err)
+	}
+
+	var typeList []map[string]any
+	if err := json.Unmarshal([]byte(result.TypesContent), &typeList); err != nil {
+		t.Fatalf("Types content is not valid JSON: %v", err)
+	}
+
+	// Resolve a "#/N" reference to its index in the types array.
+	resolveRef := func(ref any) int {
+		m, ok := ref.(map[string]any)
+		if !ok {
+			t.Fatalf("Expected a reference object, got %T", ref)
+		}
+		s, ok := m["$ref"].(string)
+		if !ok {
+			t.Fatalf("Expected $ref string, got %v", m["$ref"])
+		}
+		idx, err := strconv.Atoi(strings.TrimPrefix(s, "#/"))
+		if err != nil {
+			t.Fatalf("Invalid $ref %q: %v", s, err)
+		}
+		return idx
+	}
+
+	// Find the resource body object.
+	var body map[string]any
+	for _, typ := range typeList {
+		if typ["$type"] == "ResourceType" {
+			body = typeList[resolveRef(typ["body"])]
+			break
+		}
+	}
+	if body == nil {
+		t.Fatal("Expected to find a ResourceType in the generated types")
+	}
+
+	bodyProps, ok := body["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("Expected resource body to have properties")
+	}
+
+	// The ReadOnly flag in the Bicep type system has bit value 2.
+	const readOnlyFlag = 2
+	for _, name := range []string{"a", "b", "c"} {
+		prop, exists := bodyProps[name].(map[string]any)
+		if !exists {
+			t.Errorf("Expected flat alias %q on the resource body", name)
+			continue
+		}
+		flags, _ := prop["flags"].(float64)
+		if int(flags)&readOnlyFlag == 0 {
+			t.Errorf("Expected flat alias %q to be ReadOnly, got flags %v", name, prop["flags"])
+		}
+	}
+
+	// The nested properties envelope is preserved.
+	if _, exists := bodyProps["properties"]; !exists {
+		t.Error("Expected resource body to retain the nested 'properties' envelope")
 	}
 }
 

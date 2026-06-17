@@ -182,6 +182,19 @@ func addResourceTypeForAPIVersion(
 		},
 	}
 
+	// Hoist the children of `properties` onto the resource body as ReadOnly flat
+	// aliases. This mirrors the x-ms-client-flatten behavior of the TypeScript
+	// generator so Bicep authors can read flat references (e.g. myResource.image)
+	// in addition to the nested form (myResource.properties.container.image). The
+	// original `properties` envelope is preserved for authoring.
+	//
+	// The already-built properties ObjectType is resolved via the factory and its
+	// existing child type references are reused, so no new types are registered
+	// and no type indices shift. Children whose name collides with an envelope
+	// property (name, location, properties, apiVersion, type, id) are skipped so
+	// the envelope always wins.
+	hoistPropertiesAliases(propertyTypeRef, bodyType, typeFactory)
+
 	// Create the resource type
 	resourceTypeRef := typeFactory.CreateResourceType(
 		qualifiedName,
@@ -192,6 +205,44 @@ func addResourceTypeForAPIVersion(
 	)
 
 	return typeFactory.GetReference(resourceTypeRef), nil
+}
+
+// hoistPropertiesAliases copies the children of the `properties` object onto the
+// resource body as ReadOnly flat aliases, mirroring the x-ms-client-flatten
+// behavior of the TypeScript generator.
+//
+// propertyTypeRef must reference the already-registered `properties` ObjectType.
+// Its existing child type references are reused verbatim, so this registers no
+// new types and does not shift any type indices. A child is skipped when a body
+// property with the same name already exists (the envelope properties always
+// win) or when the reference cannot be resolved to an ObjectType (e.g. an empty
+// schema), leaving the body unchanged in those cases.
+func hoistPropertiesAliases(propertyTypeRef types.ITypeReference, bodyType *types.ObjectType, typeFactory *factory.TypeFactory) {
+	ref, ok := propertyTypeRef.(types.TypeReference)
+	if !ok {
+		return
+	}
+
+	propsType, err := typeFactory.GetTypeByIndex(ref.Ref)
+	if err != nil {
+		return
+	}
+
+	propsObject, ok := propsType.(*types.ObjectType)
+	if !ok {
+		return
+	}
+
+	for childName, childProp := range propsObject.Properties {
+		if _, exists := bodyType.Properties[childName]; exists {
+			continue
+		}
+		bodyType.Properties[childName] = types.ObjectTypeProperty{
+			Type:        childProp.Type,
+			Flags:       types.TypePropertyFlagsReadOnly,
+			Description: childProp.Description,
+		}
+	}
 }
 
 // addSchemaType converts a manifest schema to a Bicep type
