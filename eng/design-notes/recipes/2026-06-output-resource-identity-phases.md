@@ -33,7 +33,7 @@ This document proposes a phased solution:
 
 1. Phase 1: Fix AWS Terraform output resource IDs so Terraform resources use `Terraform.AWS` IDs.
 2. Phase 2: Add first-class provider resource identity metadata on output resources and use it for shared-resource delete warnings.
-3. Phase 3: Update remaining APIs and clients to consistently use provider resource identity for association and display.
+3. Phase 3: Update Radius APIs to consistently use provider resource identity for association and grouping, so dashboard, CLI, and generated clients can consume normalized results without provider-specific matching logic.
 
 ## Terms and definitions
 
@@ -153,7 +153,7 @@ The selected design separates producer identity from provider identity.
 - `providerResourceId` identifies the provider-native resource when Radius can determine one.
 - `providerResourceIdKind` identifies the provider resource ID format, for example `awsArn`.
 
-Phase 1 fixes the Terraform AWS producer ID. Phase 2 adds first-class provider identity fields to output resources and uses them for shared-resource delete warnings. Phase 3 updates remaining APIs and clients to use those fields consistently for association and display.
+Phase 1 fixes the Terraform AWS producer ID. Phase 2 adds first-class provider identity fields to output resources and uses them for shared-resource delete warnings. Phase 3 updates Radius APIs to use those fields consistently for association and grouping, so clients can rely on normalized API behavior.
 
 ### Architecture Diagram
 
@@ -233,7 +233,7 @@ Phase 2 behavior:
 
 #### Phase 3: Provider resource identity adoption
 
-Phase 3 extends usage of the Phase 2 provider resource identity fields across Radius APIs and clients:
+Phase 3 extends usage of the Phase 2 provider resource identity fields across Radius APIs. The goal is for server-side APIs to provide normalized associations and grouping, while clients consume the normalized response and identity fields:
 
 ```json
 {
@@ -246,12 +246,12 @@ Phase 3 extends usage of the Phase 2 provider resource identity fields across Ra
 
 Phase 3 behavior:
 
-- Use `providerResourceId` for server-side and client-facing resource association beyond delete warnings.
+- Use `providerResourceId` for server-side resource association beyond delete warnings.
 - Keep producer IDs unchanged so lifecycle ownership remains explicit.
-- Allow APIs such as app graph to group or annotate output resources by provider resource identity.
-- Ensure dashboard, CLI, and generated clients use `providerResourceId` and `providerResourceIdKind` directly instead of provider-specific `additionalProperties` conventions.
+- Update APIs such as app graph to group or annotate output resources by provider resource identity.
+- Ensure dashboard, CLI, and generated clients consume normalized API responses and first-class `providerResourceId`/`providerResourceIdKind` fields instead of implementing provider-specific matching rules.
 
-Phase 2 is sufficient for delete warnings, but it does not solve every client concern. For example, a dashboard app graph should not have to implement its own grouping behavior. Phase 3 makes provider resource identity a platform-wide association contract.
+Phase 2 is sufficient for delete warnings, but it does not solve every client concern. For example, the dashboard app graph should not have to group equivalent resources itself by comparing AWS ARNs. Phase 3 makes provider resource identity a platform-wide association contract implemented by Radius APIs.
 
 #### Advantages
 
@@ -264,13 +264,13 @@ Phase 2 is sufficient for delete warnings, but it does not solve every client co
 #### Disadvantages
 
 - Producer IDs differ for the same physical object.
-- Phase 2 only applies the fields to shared-resource delete warnings; broader API and client behavior waits for Phase 3.
+- Phase 2 only applies the fields to shared-resource delete warnings; broader API-owned association and grouping behavior waits for Phase 3.
 - Resources without reliable provider resource metadata still fall back to ID matching.
 - ARN extraction from CloudControl properties starts with common property names. Schema-driven extraction may be needed for broader AWS coverage.
 
 #### Proposed Option
 
-Use Terraform-shaped AWS output resource IDs for Terraform recipe output resources, and add provider resource identity as separate output resource fields in Phase 2. Phase 3 then expands API and client usage of those fields.
+Use Terraform-shaped AWS output resource IDs for Terraform recipe output resources, and add provider resource identity as separate output resource fields in Phase 2. Phase 3 then expands Radius API usage of those fields so clients receive normalized association and grouping behavior.
 
 ### API design
 
@@ -288,7 +288,7 @@ model OutputResource {
 }
 ```
 
-Phase 3 does not need another output resource schema change for identity. It updates APIs and clients to use these fields consistently.
+Phase 3 does not need another output resource schema change for identity. It updates Radius APIs to use these fields consistently and lets clients consume the normalized API behavior.
 
 ### CLI Design
 
@@ -353,8 +353,8 @@ Phase 2:
 
 Phase 3:
 
-- Add app graph tests showing clients can group or inspect output resources by `providerResourceId`.
-- Add dashboard and CLI tests, where applicable, showing provider resource identity is used directly instead of inferred from IDs or `additionalProperties`.
+- Add app graph tests showing the API groups or annotates equivalent output resources by `providerResourceId`.
+- Add dashboard and CLI tests, where applicable, showing clients consume normalized app graph/API behavior and first-class provider identity fields instead of inferring identity from IDs or `additionalProperties`.
 - Add API compatibility tests ensuring `providerResourceId` and `providerResourceIdKind` continue to round-trip.
 
 ## Security
@@ -367,7 +367,7 @@ This design does not change AWS, Azure, or Kubernetes credential handling.
 
 - Phase 1 changes AWS Terraform output resource IDs. Existing Terraform-created AWS output resources are repopulated with `Terraform.AWS` IDs on the next recipe deployment.
 - Phase 2 adds optional output resource fields. Existing resources without provider resource identity continue to compare by ID.
-- Phase 3 should use the Phase 2 fields directly, avoiding a metadata migration.
+- Phase 3 should use the Phase 2 fields directly in Radius APIs, avoiding a metadata migration.
 - Existing Azure and Kubernetes output resource behavior is unchanged by Phase 1 and Phase 2.
 - Older clients that ignore new output resource fields continue to see output resource IDs as before, except for the intended Phase 1 AWS Terraform ID shape change.
 
@@ -381,13 +381,13 @@ Delete warning flows should continue to use existing CLI output. No new metrics 
 
 1. Phase 1: Merge AWS Terraform output resource ID changes for [#11838](https://github.com/radius-project/radius/issues/11838).
 2. Phase 2: Merge shared-resource comparison and first-class provider resource identity fields for [#12020](https://github.com/radius-project/radius/issues/12020).
-3. Phase 3: Open a follow-up issue or design review for making app graph, dashboard, CLI, and other APIs consistently use provider resource identity.
+3. Phase 3: Open a follow-up issue or design review for making app graph and other Radius APIs consistently use provider resource identity for normalized association/grouping, so dashboard, CLI, and generated clients do not need provider-specific matching logic.
 
 ## Open Questions
 
 - Should `providerResourceId` always be paired with `providerResourceIdKind`, or can a missing kind be treated as an opaque provider ID?
 - Should Radius normalize ARN case or preserve provider output exactly?
-- Should Radius expose graph grouping directly, or only expose provider resource IDs and let clients group?
+- What normalized grouping or association shape should app graph and related Radius APIs expose when multiple producer IDs reference the same provider resource?
 - Should server-side delete validation use provider resource identity, and if so, which operations should enforce it?
 
 ## Alternatives considered
