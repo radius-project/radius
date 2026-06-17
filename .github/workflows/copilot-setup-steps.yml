@@ -133,6 +133,23 @@ jobs:
         # warming the cache for the TypeSpec -> OpenAPI -> Go generation pipeline.
         run: make generate-tsp-installed
 
+      - name: Configure pnpm global bin directory
+        # pnpm requires its global bin directory (PNPM_HOME) to exist and be on
+        # PATH before installing global packages. Persist both via GITHUB_ENV and
+        # GITHUB_PATH so subsequent steps (and the agent) inherit them.
+        run: |
+          PNPM_HOME="${RUNNER_TEMP}/pnpm"
+          mkdir -p "${PNPM_HOME}"
+          echo "PNPM_HOME=${PNPM_HOME}" >> "${GITHUB_ENV}"
+          echo "${PNPM_HOME}" >> "${GITHUB_PATH}"
+
+      - name: Install cspell
+        # Spell-check tooling used by `make spellcheck`, which requires `cspell`
+        # on PATH (provided by the pnpm global bin directory configured above).
+        run: |
+          pnpm add -g cspell
+          cspell --version
+
       - name: Install golangci-lint
         # Version is read from .golangci-lint-version, the source of truth shared
         # with the dev container and CI.
@@ -154,23 +171,6 @@ jobs:
           go install "go.uber.org/mock/mockgen@${MOCKGEN_VER}"
           go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
           go install github.com/go-delve/delve/cmd/dlv@latest
-
-      - name: Install cspell
-        # Spell-check tooling used by `make spellcheck`. Ensure pnpm's global bin
-        # directory exists and is on PATH (for this step and later ones) before
-        # installing global packages.
-        run: |
-          export PNPM_HOME="${PNPM_HOME:-${HOME}/.local/share/pnpm}"
-          PNPM_BIN_DIR="$(pnpm config get global-bin-dir 2>/dev/null || true)"
-          if [[ -z "${PNPM_BIN_DIR}" || "${PNPM_BIN_DIR}" == "undefined" ]]; then
-            PNPM_BIN_DIR="${PNPM_HOME}/bin"
-            pnpm config set global-bin-dir "${PNPM_BIN_DIR}"
-          fi
-          mkdir -p "${PNPM_BIN_DIR}"
-          export PATH="${PNPM_BIN_DIR}:${PATH}"
-          echo "${PNPM_BIN_DIR}" >> "${GITHUB_PATH}"
-          pnpm add -g cspell
-          cspell --version
 
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.
