@@ -40,12 +40,43 @@ jobs:
           owner: ${{ github.repository_owner }}
           permission-packages: write
 
+      # snok/container-retention-policy classifies a GitHub App installation
+      # token (ghs_ prefix) the same as the temporal GITHUB_TOKEN, which cannot
+      # call the list-packages endpoint. As a result it rejects wildcard
+      # image-names such as 'dev/*'. To keep using an App token, resolve the
+      # concrete dev/* package names up front via the GitHub API (which the App
+      # token is allowed to call) and pass them to the action as an explicit
+      # list. image-tags wildcards (pr-*) are not affected by this restriction.
+      - name: Resolve dev/* container image names
+        id: image-names
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const org = core.getInput('owner')
+            const packages = await github.paginate(
+              github.rest.packages.listPackagesForOrganization,
+              { package_type: 'container', org, per_page: 100 }
+            )
+            const names = packages
+              .map((pkg) => pkg.name)
+              .filter((name) => name.startsWith('dev/'))
+            if (names.length === 0) {
+              core.info('No dev/* container packages found; nothing to purge.')
+            } else {
+              core.info(`Resolved ${names.length} dev/* package names.`)
+            }
+            core.setOutput('names', names.join(' '))
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+
       - name: Delete 'dev' containers older than a week
+        if: steps.image-names.outputs.names != ''
         uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53 # v3.1.0
         with:
           account: ${{ github.repository_owner }}
           token: ${{ steps.app-token.outputs.token }}
-          image-names: dev/*
+          image-names: ${{ steps.image-names.outputs.names }}
           image-tags: pr-*
           cut-off: 1w
 
