@@ -126,6 +126,34 @@
           "$ref": "#/13"
         }
       },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "database": {
+        "description": "(Optional) The name of the database. Defaults to `mysql_db` if not provided.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/1"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius EnvironmentID. Typically set by the rad CLI. Typically value should be `environment`",
+        "flags": 2,
+        "type": {
+          "$ref": "#/2"
+        }
+      },
+      "host": {
+        "description": "(Read-only) The host name used to connect to the database.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/3"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
@@ -147,6 +175,13 @@
           "$ref": "#/11"
         }
       },
+      "port": {
+        "description": "(Read-only) The port number used to connect to the database.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/4"
+        }
+      },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
@@ -154,11 +189,25 @@
           "$ref": "#/10"
         }
       },
+      "secretName": {
+        "description": "(Required) The name of the secret containing the database credentials.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
           "$ref": "#/14"
+        }
+      },
+      "version": {
+        "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/9"
         }
       }
     }
