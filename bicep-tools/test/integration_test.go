@@ -229,9 +229,15 @@ func TestIntegration_FlattensPropertiesAliases(t *testing.T) {
 		if !ok {
 			t.Fatalf("Expected $ref string, got %v", m["$ref"])
 		}
+		if !strings.HasPrefix(s, "#/") {
+			t.Fatalf("Expected $ref %q to use the \"#/N\" format", s)
+		}
 		idx, err := strconv.Atoi(strings.TrimPrefix(s, "#/"))
 		if err != nil {
 			t.Fatalf("Invalid $ref %q: %v", s, err)
+		}
+		if idx < 0 || idx >= len(typeList) {
+			t.Fatalf("$ref %q resolves to index %d, out of bounds (0-%d)", s, idx, len(typeList)-1)
 		}
 		return idx
 	}
