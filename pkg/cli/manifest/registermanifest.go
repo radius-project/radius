@@ -95,7 +95,7 @@ func RegisterResourceProvider(ctx context.Context, clientFactory *v20231001previ
 		}
 
 		locationResourceType := &v20231001preview.LocationResourceType{
-			APIVersions: map[string]map[string]any{},
+			APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{},
 		}
 
 		for apiVersionName := range resourceType.APIVersions {
@@ -119,7 +119,7 @@ func RegisterResourceProvider(ctx context.Context, clientFactory *v20231001previ
 			if err != nil {
 				return err
 			}
-			locationResourceType.APIVersions[apiVersionName] = map[string]any{}
+			locationResourceType.APIVersions[apiVersionName] = &v20231001preview.LocationResourceTypeAPIVersion{}
 		}
 
 		resourceTypes[resourceTypeName] = locationResourceType
@@ -283,10 +283,10 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 	}
 
 	locationResource.Properties.ResourceTypes[typeName] = &v20231001preview.LocationResourceType{
-		APIVersions: map[string]map[string]any{},
+		APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{},
 	}
 	for apiVersionName := range resourceType.APIVersions {
-		locationResource.Properties.ResourceTypes[typeName].APIVersions[apiVersionName] = map[string]any{}
+		locationResource.Properties.ResourceTypes[typeName].APIVersions[apiVersionName] = &v20231001preview.LocationResourceTypeAPIVersion{}
 	}
 
 	locationPoller, err := clientFactory.NewLocationsClient().BeginCreateOrUpdate(ctx, planeName, resourceProvider.Namespace, locationName, locationResource, nil)

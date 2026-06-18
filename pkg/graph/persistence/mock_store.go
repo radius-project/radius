@@ -21,6 +21,7 @@ import (
 type MockStore struct {
 	ctrl     *gomock.Controller
 	recorder *MockStoreMockRecorder
+	isgomock struct{}
 }
 
 // MockStoreMockRecorder is the mock recorder for MockStore.
@@ -41,17 +42,17 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockStore) Delete(arg0 context.Context, arg1 Key) error {
+func (m *MockStore) Delete(ctx context.Context, key Key) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", ctx, key)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockStoreMockRecorder) Delete(arg0, arg1 any) *MockStoreDeleteCall {
+func (mr *MockStoreMockRecorder) Delete(ctx, key any) *MockStoreDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockStore)(nil).Delete), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockStore)(nil).Delete), ctx, key)
 	return &MockStoreDeleteCall{Call: call}
 }
 
@@ -79,18 +80,18 @@ func (c *MockStoreDeleteCall) DoAndReturn(f func(context.Context, Key) error) *M
 }
 
 // List mocks base method.
-func (m *MockStore) List(arg0 context.Context, arg1 string) ([]Key, error) {
+func (m *MockStore) List(ctx context.Context, namespace string) ([]Key, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0, arg1)
+	ret := m.ctrl.Call(m, "List", ctx, namespace)
 	ret0, _ := ret[0].([]Key)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockStoreMockRecorder) List(arg0, arg1 any) *MockStoreListCall {
+func (mr *MockStoreMockRecorder) List(ctx, namespace any) *MockStoreListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStore)(nil).List), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStore)(nil).List), ctx, namespace)
 	return &MockStoreListCall{Call: call}
 }
 
@@ -118,18 +119,18 @@ func (c *MockStoreListCall) DoAndReturn(f func(context.Context, string) ([]Key, 
 }
 
 // Load mocks base method.
-func (m *MockStore) Load(arg0 context.Context, arg1 Key) (*v20250801preview.ApplicationGraphResponse, error) {
+func (m *MockStore) Load(ctx context.Context, key Key) (*v20250801preview.ApplicationGraphResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Load", arg0, arg1)
+	ret := m.ctrl.Call(m, "Load", ctx, key)
 	ret0, _ := ret[0].(*v20250801preview.ApplicationGraphResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Load indicates an expected call of Load.
-func (mr *MockStoreMockRecorder) Load(arg0, arg1 any) *MockStoreLoadCall {
+func (mr *MockStoreMockRecorder) Load(ctx, key any) *MockStoreLoadCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockStore)(nil).Load), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockStore)(nil).Load), ctx, key)
 	return &MockStoreLoadCall{Call: call}
 }
 
@@ -157,17 +158,17 @@ func (c *MockStoreLoadCall) DoAndReturn(f func(context.Context, Key) (*v20250801
 }
 
 // Save mocks base method.
-func (m *MockStore) Save(arg0 context.Context, arg1 Key, arg2 *v20250801preview.ApplicationGraphResponse, arg3 SaveOptions) error {
+func (m *MockStore) Save(ctx context.Context, key Key, graph *v20250801preview.ApplicationGraphResponse, opts SaveOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "Save", ctx, key, graph, opts)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockStoreMockRecorder) Save(arg0, arg1, arg2, arg3 any) *MockStoreSaveCall {
+func (mr *MockStoreMockRecorder) Save(ctx, key, graph, opts any) *MockStoreSaveCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockStore)(nil).Save), arg0, arg1, arg2, arg3)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockStore)(nil).Save), ctx, key, graph, opts)
 	return &MockStoreSaveCall{Call: call}
 }
 

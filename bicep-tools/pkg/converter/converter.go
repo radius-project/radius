@@ -115,7 +115,9 @@ func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 
 	markdownWriter := writers.NewMarkdownWriter()
 	var docBuffer bytes.Buffer
-	err = markdownWriter.WriteTypeIndex(&docBuffer, typeIndex)
+	// The typeFiles argument is only used to resolve namespace function names; this
+	// converter only populates Resources, so nil is sufficient (matches upstream usage).
+	err = markdownWriter.WriteTypeIndex(&docBuffer, typeIndex, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write markdown documentation: %w", err)
 	}
