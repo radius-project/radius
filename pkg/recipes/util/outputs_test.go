@@ -80,6 +80,14 @@ func Test_ApplyOutputsMapping(t *testing.T) {
 			expectedSecrets: map[string]any{},
 		},
 		{
+			name:            "nil values and secrets with outputs mapping returns empty maps",
+			values:          nil,
+			secrets:         nil,
+			outputsMap:      map[string]string{"host": "hostname"},
+			expectedValues:  map[string]any{},
+			expectedSecrets: map[string]any{},
+		},
+		{
 			name:            "empty maps with outputs mapping",
 			values:          map[string]any{},
 			secrets:         map[string]any{},

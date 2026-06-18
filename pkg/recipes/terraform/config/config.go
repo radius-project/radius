@@ -313,6 +313,15 @@ func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap 
 		return nil
 	}
 
+	// Validate before mutating cfg.Output so a bad mapping does not leave behind partial output
+	// blocks. An empty module output name would otherwise generate an invalid Terraform output keyed
+	// by "" with a malformed "${module.<name>.}" reference.
+	for propertyName, moduleOutputName := range outputsMap {
+		if moduleOutputName == "" {
+			return fmt.Errorf("invalid outputs mapping: module output name for property %q cannot be empty", propertyName)
+		}
+	}
+
 	if cfg.Output == nil {
 		cfg.Output = make(map[string]any, len(outputsMap))
 	}

@@ -758,6 +758,12 @@ func Test_AddMappedOutputs(t *testing.T) {
 			outputsMap:  map[string]string{"host": "endpoint"},
 			expectedErr: true,
 		},
+		{
+			desc:        "empty module output name returns error",
+			moduleName:  testRecipeName,
+			outputsMap:  map[string]string{"host": ""},
+			expectedErr: true,
+		},
 	}
 
 	for _, tc := range tests {
