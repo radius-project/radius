@@ -120,11 +120,10 @@ func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmC
 	upgradeClient.Wait = wait
 	upgradeClient.Timeout = upgradeTimeout
 	upgradeClient.Recreate = true
-	// ResetThenReuseValues is the desired default for Radius upgrades: pick up new chart
-	// defaults but preserve any user overrides previously stored on the release. When the
-	// caller opts out (e.g. via `rad upgrade kubernetes --reset-values`), we leave the
-	// flag at its zero value so Helm treats vals as the complete user-supplied tree.
+	// ResetThenReuseValues is the desired default for Radius upgrades: pick up new chart defaults but preserve
+	// any user overrides previously stored on the release. When the caller opts out, use ResetValues semantics.
 	upgradeClient.ResetThenReuseValues = reuseValues
+	upgradeClient.ResetValues = !reuseValues
 
 	if vals == nil {
 		vals = map[string]any{}
