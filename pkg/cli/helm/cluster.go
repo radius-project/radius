@@ -185,7 +185,7 @@ type RevisionInfo struct {
 	Description string
 }
 
-//go:generate mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
+//go:generate go tool mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {

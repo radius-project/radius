@@ -32,7 +32,7 @@ const (
 	rollbackTimeout  = time.Duration(5) * time.Minute
 )
 
-//go:generate mockgen -typed -destination=./mock_helmclient.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmClient
+//go:generate go tool mockgen -typed -destination=./mock_helmclient.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm HelmClient
 
 // HelmClient is an interface for interacting with Helm charts.
 type HelmClient interface {

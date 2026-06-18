@@ -135,21 +135,21 @@
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/40"
         },
         "flags": 2,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
       },
       "properties": {
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/41"
         },
         "flags": 1,
         "description": "RabbitMQQueue portable resource properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/55"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -163,7 +163,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/55"
+          "$ref": "#/56"
         },
         "flags": 2,
         "description": "Metadata pertaining to creation and last modification of the resource."
@@ -533,15 +533,23 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/37"
         },
         "flags": 0,
-        "description": "Any object"
+        "description": "Key/value parameters to pass into the recipe at deployment"
       }
     }
   },
   {
     "$type": "AnyType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RecipeParameters",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/36"
+    }
   },
   {
     "$type": "StringLiteralType",
@@ -555,10 +563,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/37"
+        "$ref": "#/38"
       },
       {
-        "$ref": "#/38"
+        "$ref": "#/39"
       }
     ]
   },
@@ -582,7 +590,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/49"
+          "$ref": "#/50"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
@@ -638,7 +646,7 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/50"
+          "$ref": "#/51"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the rabbitMQ resource"
@@ -659,7 +667,7 @@
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/54"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
@@ -702,9 +710,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/41"
-      },
-      {
         "$ref": "#/42"
       },
       {
@@ -724,6 +729,9 @@
       },
       {
         "$ref": "#/48"
+      },
+      {
+        "$ref": "#/49"
       }
     ]
   },
@@ -745,10 +753,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/51"
+        "$ref": "#/52"
       },
       {
-        "$ref": "#/52"
+        "$ref": "#/53"
       }
     ]
   },
@@ -773,7 +781,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/61"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -794,7 +802,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/66"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -828,9 +836,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/56"
-      },
-      {
         "$ref": "#/57"
       },
       {
@@ -838,6 +843,9 @@
       },
       {
         "$ref": "#/59"
+      },
+      {
+        "$ref": "#/60"
       }
     ]
   },
@@ -861,9 +869,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/61"
-      },
-      {
         "$ref": "#/62"
       },
       {
@@ -871,6 +876,9 @@
       },
       {
         "$ref": "#/64"
+      },
+      {
+        "$ref": "#/65"
       }
     ]
   },
@@ -898,7 +906,7 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/66"
+      "$ref": "#/67"
     }
   },
   {
@@ -912,7 +920,7 @@
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/68"
         },
         "description": "listSecrets"
       }

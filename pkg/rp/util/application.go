@@ -33,12 +33,12 @@ func FetchApplication(ctx context.Context, application string, ucpOptions *arm.C
 		return nil, err
 	}
 
-	client, err := v20231001preview.NewApplicationsClient(applicationID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, applicationID.Name(), nil)
+	response, err := client.Get(ctx, applicationID.RootScope(), applicationID.Name(), nil)
 	if err != nil {
 		return nil, err
 	}
