@@ -13,6 +13,7 @@
 #   3. Run: make update-resource-types
 #   4. Commit the updated files (defaults.yaml, go.mod, go.sum, and copied YAMLs).
 defaultRegistration:
+  - Radius.Compute/containerImages
   - Radius.Compute/containers
   - Radius.Compute/persistentVolumes
   - Radius.Compute/routes
