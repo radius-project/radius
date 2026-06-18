@@ -484,8 +484,8 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					require.Equal(t, providerSecretIDs["secret1"], new(SecretReference{Source: new(baseSecretStorePath + "secretstore1"), Key: new("key1")}))
 					require.Equal(t, providerSecretIDs["secret2"], new(SecretReference{Source: new(baseSecretStorePath + "secretstore2"), Key: new("key2")}))
 
-					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Env))
-					require.Equal(t, new("myEnvValue"), versioned.Properties.RecipeConfig.Env["myEnvVar"])
+					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Env.AdditionalProperties))
+					require.Equal(t, new("myEnvValue"), versioned.Properties.RecipeConfig.Env.AdditionalProperties["myEnvVar"])
 
 					envSecretIDs := versioned.Properties.RecipeConfig.EnvSecrets
 					envSecretRef, ok := envSecretIDs["myEnvSecretVar"]
@@ -558,7 +558,7 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Resource))
 	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
 	require.Equal(t, map[string][]*ProviderConfigProperties{}, versioned.Properties.RecipeConfig.Terraform.Providers)
-	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env)
+	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env.AdditionalProperties)
 }
 
 func TestConvertDataModelWithACIToVersioned(t *testing.T) {
@@ -1006,9 +1006,11 @@ func Test_toRecipeConfigEnvDatamodel(t *testing.T) {
 		{
 			name: "With Multiple Environment Variables",
 			config: &RecipeConfigProperties{
-				Env: map[string]*string{
-					"key1": new("value1"),
-					"key2": new("value2"),
+				Env: &EnvironmentVariables{
+					AdditionalProperties: map[string]*string{
+						"key1": new("value1"),
+						"key2": new("value2"),
+					},
 				},
 			},
 			want: datamodel.EnvironmentVariables{
@@ -1031,12 +1033,12 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 	tests := []struct {
 		name   string
 		config datamodel.RecipeConfigProperties
-		want   map[string]*string
+		want   *EnvironmentVariables
 	}{
 		{
 			name:   "Empty Recipe Configuration",
 			config: datamodel.RecipeConfigProperties{},
-			want:   map[string]*string{},
+			want:   &EnvironmentVariables{AdditionalProperties: map[string]*string{}},
 		},
 		{
 			name: "With Multiple Environment Variables",
@@ -1048,9 +1050,11 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 					},
 				},
 			},
-			want: map[string]*string{
-				"key1": new("value1"),
-				"key2": new("value2"),
+			want: &EnvironmentVariables{
+				AdditionalProperties: map[string]*string{
+					"key1": new("value1"),
+					"key2": new("value2"),
+				},
 			},
 		},
 	}

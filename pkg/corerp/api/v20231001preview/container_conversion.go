@@ -620,7 +620,7 @@ func fromRuntimePropertiesDataModel(runtime *datamodel.RuntimeProperties) *Runti
 			if err := json.Unmarshal([]byte(runtime.Kubernetes.Pod), &podPatch); err != nil {
 				return nil
 			}
-			r.Kubernetes.Pod = podPatch
+			r.Kubernetes.Pod = &KubernetesPodSpec{AdditionalProperties: podPatch}
 		}
 	}
 	if runtime.ACI != nil {

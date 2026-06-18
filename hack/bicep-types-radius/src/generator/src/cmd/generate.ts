@@ -264,8 +264,21 @@ async function generateSchema(
   verbose: boolean,
   waitForDebugger: boolean,
 ) {
+  // NOTE: The AutoRest toolchain is deprecated and retires 2026-07-01
+  // (radius-project/radius#11425). The `autorest` CLI is a bootstrapper that
+  // resolves and downloads `@autorest/core` and `@autorest/modelerfour` from npm
+  // at build time. Left unpinned, those versions can silently drift (e.g.
+  // modelerfour drifting from the declared `^4.27.3` down to a cached 4.26.2),
+  // which would change the byte-for-byte output under `generated/`. Until the
+  // generator is migrated off AutoRest, we pin BOTH the core engine (`--version`)
+  // and modelerfour (`--use=...@<version>`) to the exact versions that reproduce
+  // the committed golden output, so the deprecated pipeline stays deterministic
+  // and is immune to post-retirement registry resolution changes.
+  const autorestCoreVersion = "3.10.8";
+  const modelerfourVersion = "4.26.2";
   let autoRestParams = [
-    `--use=@autorest/modelerfour`,
+    `--version=${autorestCoreVersion}`,
+    `--use=@autorest/modelerfour@${modelerfourVersion}`,
     `--use=${extensionDir}`,
     "--bicep",
     `--output-folder=${outputBaseDir}`,

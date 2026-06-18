@@ -181,11 +181,9 @@ Enter the following commands to install all of the required tools.
 
 ```bash
 pnpm -C typespec install
-go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
-go install go.uber.org/mock/mockgen@v0.4.0
 ```
 
-> **Note:** `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.
+> **Note:** `mockgen` and `controller-gen` are managed as Go tool dependencies (the `tool` directives in `go.mod`) and are invoked via `go tool mockgen` and `go tool controller-gen`, so they do not require a separate `go install`. `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.
 
 ## Updating the dev container lockfile
 
