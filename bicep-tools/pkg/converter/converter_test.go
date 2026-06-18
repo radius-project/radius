@@ -339,6 +339,19 @@ func TestAddResourceTypeForAPIVersion_HoistsPropertiesAsReadOnlyAliases(t *testi
 	}
 }
 
+func TestHoistPropertiesAliases_ReturnsErrorForUnresolvableReference(t *testing.T) {
+	typeFactory := factory.NewTypeFactory()
+	bodyType := typeFactory.CreateObjectType("Body", nil, nil, nil)
+
+	// A reference index that was never registered must surface as an error rather
+	// than being silently swallowed, which would otherwise yield partially
+	// flattened output with no signal.
+	err := hoistPropertiesAliases(types.TypeReference{Ref: 9999}, bodyType, typeFactory)
+	if err == nil {
+		t.Fatal("Expected an error for an unresolvable properties reference, got nil")
+	}
+}
+
 func TestAddSchemaType_String(t *testing.T) {
 	schema := &manifest.Schema{Type: "string"}
 	typeFactory := factory.NewTypeFactory()
