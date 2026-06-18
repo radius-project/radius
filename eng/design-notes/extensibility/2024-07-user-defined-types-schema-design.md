@@ -53,7 +53,7 @@ https://github.com/radius-project/radius/issues/6688
 
 ### Guiding principles
 
-We begin with an initial subset of OpenAPI features that Radius UDTs would support. Depending on user input, we would add more fatures in subsequent iterations.
+We begin with an initial subset of OpenAPI features that Radius UDTs would support. Depending on user input, we would add more features in subsequent iterations.
 
 ### Goals
 
