@@ -518,10 +518,6 @@ func terraformAWSResourceName(resource *tfjson.StateResource, arnSegments []stri
 	resourcePath = strings.TrimRight(resourcePath, "/")
 	if resourcePath != "" {
 		parts := strings.Split(resourcePath, "/")
-		if len(parts) == 0 {
-			return resourcePath
-		}
-
 		return parts[len(parts)-1]
 	}
 
