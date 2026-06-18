@@ -33,12 +33,12 @@ func FetchRecipePack(ctx context.Context, recipePackID string, ucpOptions *arm.C
 		return nil, err
 	}
 
-	client, err := v20250801preview.NewRecipePacksClient(rpID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewRecipePacksClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, rpID.Name(), nil)
+	response, err := client.Get(ctx, rpID.RootScope(), rpID.Name(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,13 +49,13 @@ func FetchRecipePack(ctx context.Context, recipePackID string, ucpOptions *arm.C
 // ListRecipePacks fetches all recipe pack resources in the given scope using the provided ClientOptions,
 // and returns a slice of RecipePackResource or an error.
 func ListRecipePacks(ctx context.Context, scope string, ucpOptions *arm.ClientOptions) ([]*v20250801preview.RecipePackResource, error) {
-	client, err := v20250801preview.NewRecipePacksClient(scope, &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewRecipePacksClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	var recipePacks []*v20250801preview.RecipePackResource
-	pager := client.NewListByScopePager(nil)
+	pager := client.NewListByScopePager(scope, nil)
 
 	for pager.More() {
 		page, err := pager.NextPage(ctx)

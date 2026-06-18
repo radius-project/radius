@@ -56,12 +56,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "update [environment]",
 		Short: "Update environment configuration",
 		Long: `Update environment configuration
-	
+
 This command updates the configuration of an environment for properties that are able to be changed.
-		
+
 Properties that can be updated include:
 - providers (Azure, AWS)
-		  
+
 All other properties require the environment to be deleted and recreated.
 `,
 		Args: cobra.ExactArgs(1),
@@ -248,7 +248,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -258,7 +258,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
 
 	// Get the current environment so we can update it.
-	getResp, err := envClient.Get(ctx, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
+	getResp, err := envClient.Get(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message(envNotFoundErrMessageFmt, r.EnvironmentName)
 	} else if err != nil {
@@ -337,7 +337,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			recipePackID, err := resources.Parse(recipePack)
 			// If the provided recipe pack value is an ID, parse its scope.
 			if err == nil {
-				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipePackID.RootScope())
+				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 				if err != nil {
 					return err
 				}
@@ -356,7 +356,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 			cfclient := rClientFactory.NewRecipePacksClient()
 
-			_, err = cfclient.Get(ctx, recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+			_, err = cfclient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
 			if err != nil {
 				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
 			}
@@ -373,7 +373,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		env.Properties.RecipePacks = newRecipePacks
 	}
 
-	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, env, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, env, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to update environment %q.", r.EnvironmentName)
 	}
@@ -459,7 +459,7 @@ func getRecipePacksClientForScope(
 	factory := defaultFactory
 	if rootScope != workspace.Scope {
 		var err error
-		factory, err = cmd.InitializeRadiusCoreClientFactory(ctx, workspace, rootScope)
+		factory, err = cmd.InitializeRadiusCoreClientFactory(ctx, workspace)
 		if err != nil {
 			return nil, err
 		}
@@ -489,7 +489,7 @@ func removeEnvReferenceFromRecipePack(
 		return err
 	}
 
-	packResp, err := packClient.Get(ctx, resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	packResp, err := packClient.Get(ctx, resourceID.RootScope(), resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
 	if clients.Is404Error(err) {
 		return nil
 	}
@@ -505,7 +505,7 @@ func removeEnvReferenceFromRecipePack(
 
 	pack.Properties.ReferencedBy = removeReference(pack.Properties.ReferencedBy, envID)
 
-	_, err = packClient.CreateOrUpdate(ctx, resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	_, err = packClient.CreateOrUpdate(ctx, resourceID.RootScope(), resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
 	}
@@ -531,7 +531,7 @@ func addEnvReferenceToRecipePack(
 		return err
 	}
 
-	packResp, err := packClient.Get(ctx, resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	packResp, err := packClient.Get(ctx, resourceID.RootScope(), resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", resourceID.String())
 	}
@@ -549,7 +549,7 @@ func addEnvReferenceToRecipePack(
 		pack.Properties.ReferencedBy = append(pack.Properties.ReferencedBy, &envID)
 	}
 
-	_, err = packClient.CreateOrUpdate(ctx, resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	_, err = packClient.CreateOrUpdate(ctx, resourceID.RootScope(), resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
 	}

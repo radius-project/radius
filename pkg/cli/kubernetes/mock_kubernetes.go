@@ -21,6 +21,7 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -41,17 +42,17 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // DeleteAPIService mocks base method.
-func (m *MockInterface) DeleteAPIService(arg0, arg1 string) error {
+func (m *MockInterface) DeleteAPIService(kubeContext, name string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteAPIService", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteAPIService", kubeContext, name)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteAPIService indicates an expected call of DeleteAPIService.
-func (mr *MockInterfaceMockRecorder) DeleteAPIService(arg0, arg1 any) *MockInterfaceDeleteAPIServiceCall {
+func (mr *MockInterfaceMockRecorder) DeleteAPIService(kubeContext, name any) *MockInterfaceDeleteAPIServiceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIService", reflect.TypeOf((*MockInterface)(nil).DeleteAPIService), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAPIService", reflect.TypeOf((*MockInterface)(nil).DeleteAPIService), kubeContext, name)
 	return &MockInterfaceDeleteAPIServiceCall{Call: call}
 }
 
@@ -79,17 +80,17 @@ func (c *MockInterfaceDeleteAPIServiceCall) DoAndReturn(f func(string, string) e
 }
 
 // DeleteCRDs mocks base method.
-func (m *MockInterface) DeleteCRDs(arg0 string, arg1 []string) error {
+func (m *MockInterface) DeleteCRDs(kubeContext string, crdNames []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteCRDs", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteCRDs", kubeContext, crdNames)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteCRDs indicates an expected call of DeleteCRDs.
-func (mr *MockInterfaceMockRecorder) DeleteCRDs(arg0, arg1 any) *MockInterfaceDeleteCRDsCall {
+func (mr *MockInterfaceMockRecorder) DeleteCRDs(kubeContext, crdNames any) *MockInterfaceDeleteCRDsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCRDs", reflect.TypeOf((*MockInterface)(nil).DeleteCRDs), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCRDs", reflect.TypeOf((*MockInterface)(nil).DeleteCRDs), kubeContext, crdNames)
 	return &MockInterfaceDeleteCRDsCall{Call: call}
 }
 
@@ -117,17 +118,17 @@ func (c *MockInterfaceDeleteCRDsCall) DoAndReturn(f func(string, []string) error
 }
 
 // DeleteNamespace mocks base method.
-func (m *MockInterface) DeleteNamespace(arg0 string) error {
+func (m *MockInterface) DeleteNamespace(kubeContext string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteNamespace", arg0)
+	ret := m.ctrl.Call(m, "DeleteNamespace", kubeContext)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteNamespace indicates an expected call of DeleteNamespace.
-func (mr *MockInterfaceMockRecorder) DeleteNamespace(arg0 any) *MockInterfaceDeleteNamespaceCall {
+func (mr *MockInterfaceMockRecorder) DeleteNamespace(kubeContext any) *MockInterfaceDeleteNamespaceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNamespace", reflect.TypeOf((*MockInterface)(nil).DeleteNamespace), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNamespace", reflect.TypeOf((*MockInterface)(nil).DeleteNamespace), kubeContext)
 	return &MockInterfaceDeleteNamespaceCall{Call: call}
 }
 
@@ -155,17 +156,17 @@ func (c *MockInterfaceDeleteNamespaceCall) DoAndReturn(f func(string) error) *Mo
 }
 
 // DeleteNamespaceWithName mocks base method.
-func (m *MockInterface) DeleteNamespaceWithName(arg0, arg1 string) error {
+func (m *MockInterface) DeleteNamespaceWithName(kubeContext, namespace string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteNamespaceWithName", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteNamespaceWithName", kubeContext, namespace)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteNamespaceWithName indicates an expected call of DeleteNamespaceWithName.
-func (mr *MockInterfaceMockRecorder) DeleteNamespaceWithName(arg0, arg1 any) *MockInterfaceDeleteNamespaceWithNameCall {
+func (mr *MockInterfaceMockRecorder) DeleteNamespaceWithName(kubeContext, namespace any) *MockInterfaceDeleteNamespaceWithNameCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNamespaceWithName", reflect.TypeOf((*MockInterface)(nil).DeleteNamespaceWithName), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNamespaceWithName", reflect.TypeOf((*MockInterface)(nil).DeleteNamespaceWithName), kubeContext, namespace)
 	return &MockInterfaceDeleteNamespaceWithNameCall{Call: call}
 }
 
@@ -232,17 +233,17 @@ func (c *MockInterfaceGetKubeContextCall) DoAndReturn(f func() (*api.Config, err
 }
 
 // PerformRadiusCleanup mocks base method.
-func (m *MockInterface) PerformRadiusCleanup(arg0 context.Context, arg1 string, arg2 CleanupPlan) error {
+func (m *MockInterface) PerformRadiusCleanup(ctx context.Context, kubeContext string, plan CleanupPlan) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PerformRadiusCleanup", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "PerformRadiusCleanup", ctx, kubeContext, plan)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PerformRadiusCleanup indicates an expected call of PerformRadiusCleanup.
-func (mr *MockInterfaceMockRecorder) PerformRadiusCleanup(arg0, arg1, arg2 any) *MockInterfacePerformRadiusCleanupCall {
+func (mr *MockInterfaceMockRecorder) PerformRadiusCleanup(ctx, kubeContext, plan any) *MockInterfacePerformRadiusCleanupCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PerformRadiusCleanup", reflect.TypeOf((*MockInterface)(nil).PerformRadiusCleanup), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PerformRadiusCleanup", reflect.TypeOf((*MockInterface)(nil).PerformRadiusCleanup), ctx, kubeContext, plan)
 	return &MockInterfacePerformRadiusCleanupCall{Call: call}
 }
 
