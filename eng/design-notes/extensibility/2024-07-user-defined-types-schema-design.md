@@ -230,7 +230,7 @@ schema:
 
 - map
 
-We support map through `adddiionalProperties`. This is useful when the resource type allows for dynamic(user defined) keys. We still must specify a type for the value of the property.
+We support map through `additionalProperties`. This is useful when the resource type allows for dynamic(user defined) keys. We still must specify a type for the value of the property.
 
 ```yaml
 schema:
@@ -253,7 +253,7 @@ Schemas will support every construct OpenAPI provides for a scalar field. That i
 
 #### Maps
 
-Schemas support maps using `additional properties`. The additionalProperties keyword allows for dynamic keys that are not predefined in the schema
+Schemas support maps using `additionalProperties`. The additionalProperties keyword allows for dynamic keys that are not predefined in the schema
 The Schema is allowed to have either user-defined properties or additional properties which specifies a type. The type can be `Object` or another scalar.
 
 #### Arrays
@@ -270,19 +270,19 @@ The exact URL and set of types that can be referenced is TBD.
 
 All the limitations here are because at this point, we want to limit complexity and keep our tooling simple. Based on feedback, we would likely add support for some of the more complex OpenAPI features.
 
-1. We are not supporting inheritence and polymorphism. Objects may not use the following constructs:
+1. We are not supporting inheritance and polymorphism. Objects may not use the following constructs:
 
-- `allOf`
-- `anyOf`
-- `oneOf`
-- `not`
-- `discriminator`
+   - `allOf`
+   - `anyOf`
+   - `oneOf`
+   - `not`
+   - `discriminator`
 
-1. Objects may not set both `additionalProperties` as well as  define their own properties.
+2. Objects may not set both `additionalProperties` as well as  define their own properties.
 
-2. Schemas are not allowed to use `$ref` to reference other than what we provide in Radius. This reduces concept count and simplifies our tooling. We can reconsider this based on feedback. This also prevents the definition of recursive types and circular references.
+3. Schemas are not allowed to use `$ref` to reference other than what we provide in Radius. This reduces concept count and simplifies our tooling. We can reconsider this based on feedback. This also prevents the definition of recursive types and circular references.
 
-3. readOnly: true => user cant set this property, its available as output
+4. readOnly: true => user cant set this property, its available as output
 
 #### Radius specific schema attributes
 
