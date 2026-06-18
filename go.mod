@@ -17,7 +17,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.4
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1
-	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260118201541-556bf5edad58
+	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260614201630-7ee0136a7be7
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.8.2
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/semver/v3 v3.5.0
@@ -69,7 +69,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hashicorp/go-version v1.9.0
 	github.com/hashicorp/hc-install v0.9.5
-	github.com/hashicorp/terraform-config-inspect v0.0.0-20250828155816-225c06ed5fd9
+	github.com/hashicorp/terraform-config-inspect v0.0.0-20260224005459-813a97530220
 	github.com/hashicorp/terraform-exec v0.25.2
 	github.com/hashicorp/terraform-json v0.27.2
 	github.com/jackc/pgx/v5 v5.10.0
@@ -80,7 +80,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/projectcontour/contour v1.33.5
 	github.com/prometheus/client_golang v1.23.2
-	github.com/radius-project/resource-types-contrib v0.0.0-20260615163340-1552489004a4
+	github.com/radius-project/resource-types-contrib v0.0.0-20260618174538-51ee446a8fc6
 	github.com/sanity-io/litter v1.5.8
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.10.2
@@ -332,7 +332,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiserver v0.36.2 // indirect
-	k8s.io/code-generator v0.36.1 // indirect
+	k8s.io/code-generator v0.36.2 // indirect
 	k8s.io/component-base v0.36.2 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
@@ -352,5 +352,6 @@ tool (
 	// go.uber.org/mock vX.Y.Z <- the actual pinned version above of this tool
 	go.uber.org/mock/mockgen
 	sigs.k8s.io/controller-runtime/tools/setup-envtest
+	// sigs.k8s.io/controller-tools vX.Y.Z <- the actual pinned version above of this tool
 	sigs.k8s.io/controller-tools/cmd/controller-gen
 )
