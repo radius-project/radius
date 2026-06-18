@@ -213,7 +213,7 @@ func resolveRecipePackRef(envID resources.ID, ref string) (string, rest.Response
 
 	packID := scopeID.Append(resources.TypeSegment{Type: datamodel.RecipePackResourceType, Name: ref})
 	// Re-parse to reject structurally invalid names (e.g. empty or containing '/').
-	if parsed, err := resources.ParseResource(packID.String()); err != nil || !parsed.IsResource() {
+	if _, err := resources.ParseResource(packID.String()); err != nil {
 		return "", rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack reference %q: provide a recipe pack name or a %s resource ID.", ref, datamodel.RecipePackResourceType))
 	}
 
