@@ -352,6 +352,19 @@ func TestHoistPropertiesAliases_ReturnsErrorForUnresolvableReference(t *testing.
 	}
 }
 
+func TestHoistPropertiesAliases_ReturnsErrorForNonLocalReference(t *testing.T) {
+	typeFactory := factory.NewTypeFactory()
+	bodyType := typeFactory.CreateObjectType("Body", nil, nil, nil)
+
+	// addSchemaType always produces a same-file types.TypeReference, so any other
+	// ITypeReference (e.g. a cross-file reference) signals an internal
+	// inconsistency and must fail fast rather than silently skip flattening.
+	err := hoistPropertiesAliases(types.CrossFileTypeReference{Ref: 0, RelativePath: "other.json"}, bodyType, typeFactory)
+	if err == nil {
+		t.Fatal("Expected an error for a non-local properties reference, got nil")
+	}
+}
+
 func TestAddSchemaType_String(t *testing.T) {
 	schema := &manifest.Schema{Type: "string"}
 	typeFactory := factory.NewTypeFactory()
