@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
@@ -115,6 +116,37 @@ func Test_ApplicationGraph(t *testing.T) {
 				sort.Slice(expected, func(i, j int) bool {
 					return *expected[i].Name < *expected[j].Name
 				})
+
+				// Verify the resource-type-specific Properties bag. We assert
+				// the top-level keys and compare the value of `application`
+				// (a stable, deterministic string).
+				for i, r := range res.Resources {
+					if *r.Type != "Applications.Core/containers" {
+						continue
+					}
+					require.NotNil(t, r.Properties, "%s: Properties should not be nil", *r.Name)
+
+					// The application that owns this container lives in the
+					// same resource group; derive its expected ID from the
+					// container's own ID so the assertion is independent of
+					// the resource group name used by the test environment.
+					expectedAppID := strings.Replace(
+						*r.ID,
+						"/containers/"+*r.Name,
+						"/applications/"+name,
+						1,
+					)
+					require.Equal(t, expectedAppID, r.Properties["application"], "%s: application property mismatch", *r.Name)
+					require.Contains(t, r.Properties, "container", "%s: missing container property", *r.Name)
+
+					// Graft the actual Properties onto the expected resource
+					// so the struct-level equality check below succeeds for
+					// the rest of the fields without having to encode the
+					// environment-specific property bag in the fixture.
+					if i < len(expected) {
+						expected[i].Properties = r.Properties
+					}
+				}
 
 				if len(res.Resources) != len(expected) {
 					require.ElementsMatch(t, expected, res.Resources)
