@@ -777,6 +777,12 @@ func Test_parseTerraformModuleSource(t *testing.T) {
 			expectedVersion: "",
 		},
 		{
+			name:            "shorthand without slash is not treated as version",
+			location:        "git@host:repo",
+			expectedSource:  "git@host:repo",
+			expectedVersion: "",
+		},
+		{
 			name:            "trailing colon with empty version is unchanged",
 			location:        "terraform-aws-modules/rds/aws:",
 			expectedSource:  "terraform-aws-modules/rds/aws:",

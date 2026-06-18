@@ -401,13 +401,20 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 // it as a ":<version>" suffix. For example "terraform-aws-modules/rds/aws:6.1.0" yields source
 // "terraform-aws-modules/rds/aws" and version "6.1.0".
 //
-// The ":<version>" suffix is only recognized for registry-style addresses: the source must not contain
-// a "://" scheme (so HTTP, Git, and OCI URLs are left untouched) and the ":" must appear in the final
-// path segment (after the last "/"), so a registry "host:port" such as "my.registry.com:8443/ns/name/aws"
-// is not mistaken for a version. References without a recognized suffix are returned unchanged with an
-// empty version.
+// The ":<version>" suffix is only recognized for registry-style addresses: the source must contain at
+// least one "/", must not contain a "://" scheme (so HTTP, Git, and OCI URLs are left untouched), and
+// the ":" must appear in the final path segment (after the last "/"), so a registry "host:port" such as
+// "my.registry.com:8443/ns/name/aws" is not mistaken for a version. References without a recognized
+// suffix are returned unchanged with an empty version.
 func parseTerraformModuleSource(location string) (source string, version string) {
 	if strings.Contains(location, "://") {
+		return location, ""
+	}
+
+	// Registry-style addresses always contain at least one "/" (namespace/name/provider). Without a
+	// slash there is nothing resembling a registry address, so leave shorthand forms such as the
+	// SCP-style "git@host:repo" untouched rather than mistaking the colon for a version suffix.
+	if !strings.Contains(location, "/") {
 		return location, ""
 	}
 

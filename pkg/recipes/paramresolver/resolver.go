@@ -27,6 +27,11 @@ import (
 // expressionPattern matches {{context.*}} template expressions, including ternary expressions.
 var expressionPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
 
+// singleExpressionPattern matches a string that consists of exactly one {{...}} expression with no
+// surrounding text (e.g. "{{context.resource.properties.port}}"). It is used to detect parameters
+// whose entire value is a single expression so their original scalar type can be preserved.
+var singleExpressionPattern = regexp.MustCompile(`^\s*\{\{([^}]+)\}\}\s*$`)
+
 // ternaryPattern matches single-level ternary expressions: expr == "val" ? "trueResult" : "falseResult"
 var ternaryPattern = regexp.MustCompile(`^\s*(.+?)\s*==\s*"([^"]*)"\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\s*$`)
 
@@ -40,33 +45,56 @@ func ResolveParameterExpressions(params map[string]any, ctx *recipecontext.Conte
 	}
 
 	lookup := buildContextLookup(ctx)
+	typedLookup := buildTypedContextLookup(ctx)
 	result := make(map[string]any, len(params))
 	for k, v := range params {
-		result[k] = resolveValue(v, lookup)
+		result[k] = resolveValue(v, lookup, typedLookup)
 	}
 	return result
 }
 
 // resolveValue resolves template expressions in a single value. It handles strings, maps, and slices recursively.
-func resolveValue(v any, lookup map[string]string) any {
+func resolveValue(v any, lookup map[string]string, typedLookup map[string]any) any {
 	switch val := v.(type) {
 	case string:
+		// When the entire value is a single {{...}} expression that maps to a typed context value,
+		// preserve the original scalar type so typed module parameters (int, bool, object) are passed
+		// through correctly instead of being coerced to a string. Interpolated strings and ternary
+		// expressions fall back to string resolution below.
+		if typed, ok := resolveTypedExpression(val, typedLookup); ok {
+			return typed
+		}
 		return resolveString(val, lookup)
 	case map[string]any:
 		resolved := make(map[string]any, len(val))
 		for k, inner := range val {
-			resolved[k] = resolveValue(inner, lookup)
+			resolved[k] = resolveValue(inner, lookup, typedLookup)
 		}
 		return resolved
 	case []any:
 		resolved := make([]any, len(val))
 		for i, inner := range val {
-			resolved[i] = resolveValue(inner, lookup)
+			resolved[i] = resolveValue(inner, lookup, typedLookup)
 		}
 		return resolved
 	default:
 		return v
 	}
+}
+
+// resolveTypedExpression returns the typed value for a string that consists of exactly one {{...}}
+// expression (e.g. "{{context.resource.properties.port}}") when that expression maps to a typed
+// context value. It returns (nil, false) for interpolated strings, ternary expressions, or
+// expressions without a typed value, so those fall back to string resolution.
+func resolveTypedExpression(s string, typedLookup map[string]any) (any, bool) {
+	m := singleExpressionPattern.FindStringSubmatch(s)
+	if m == nil {
+		return nil, false
+	}
+
+	key := strings.TrimSpace(m[1])
+	val, ok := typedLookup[key]
+	return val, ok
 }
 
 // resolveString replaces all {{...}} expressions in a string with their resolved values.
@@ -174,4 +202,29 @@ func buildContextLookup(ctx *recipecontext.Context) map[string]string {
 	}
 
 	return lookup
+}
+
+// buildTypedContextLookup builds a lookup of dynamic resource and connection properties that preserves
+// each value's original Go type. It is used to resolve single-expression parameters (e.g.
+// "{{context.resource.properties.port}}") without coercing typed values to strings. Only the
+// arbitrarily-typed sources (resource properties and connection properties) are included; all other
+// context fields are strings and are resolved through the string lookup.
+func buildTypedContextLookup(ctx *recipecontext.Context) map[string]any {
+	typed := map[string]any{}
+	if ctx == nil {
+		return typed
+	}
+
+	for key, val := range ctx.Resource.Properties {
+		typed[fmt.Sprintf("context.resource.properties.%s", key)] = val
+	}
+
+	for connName, conn := range ctx.Resource.Connections {
+		prefix := fmt.Sprintf("context.resource.connections.%s", connName)
+		for propKey, propVal := range conn.Properties {
+			typed[fmt.Sprintf("%s.properties.%s", prefix, propKey)] = propVal
+		}
+	}
+
+	return typed
 }

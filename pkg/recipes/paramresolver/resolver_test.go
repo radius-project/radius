@@ -34,8 +34,9 @@ func testContext() *recipecontext.Context {
 			},
 			Type: "Applications.Core/extenders",
 			Properties: map[string]any{
-				"host": "myhost.example.com",
-				"port": 5432,
+				"host":    "myhost.example.com",
+				"port":    5432,
+				"enabled": true,
 			},
 			Connections: map[string]recipes.ConnectedResource{
 				"db": {
@@ -229,13 +230,33 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "context.resource.properties resolves numeric property as string",
+			name: "single property expression preserves numeric type",
 			params: map[string]any{
 				"port": "{{context.resource.properties.port}}",
 			},
 			ctx: testContext(),
 			expected: map[string]any{
-				"port": "5432",
+				"port": 5432,
+			},
+		},
+		{
+			name: "single property expression preserves bool type",
+			params: map[string]any{
+				"enabled": "{{context.resource.properties.enabled}}",
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"enabled": true,
+			},
+		},
+		{
+			name: "property expression interpolated into larger string is stringified",
+			params: map[string]any{
+				"label": "port-{{context.resource.properties.port}}",
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"label": "port-5432",
 			},
 		},
 		{
@@ -414,6 +435,29 @@ func Test_buildContextLookup(t *testing.T) {
 		ctx.AWS = nil
 		lookup := buildContextLookup(ctx)
 		_, ok := lookup["context.aws.region"]
+		assert.False(t, ok)
+	})
+}
+
+func Test_buildTypedContextLookup(t *testing.T) {
+	t.Run("nil context returns empty map", func(t *testing.T) {
+		typed := buildTypedContextLookup(nil)
+		assert.Empty(t, typed)
+	})
+
+	t.Run("preserves original property and connection-property types", func(t *testing.T) {
+		ctx := testContext()
+		typed := buildTypedContextLookup(ctx)
+
+		assert.Equal(t, "myhost.example.com", typed["context.resource.properties.host"])
+		assert.Equal(t, 5432, typed["context.resource.properties.port"])
+		assert.Equal(t, true, typed["context.resource.properties.enabled"])
+		assert.Equal(t, "postgres://myhost:5432/mydb", typed["context.resource.connections.db.properties.connectionString"])
+
+		// Non-property context fields are resolved through the string lookup, not the typed lookup.
+		_, ok := typed["context.resource.name"]
+		assert.False(t, ok)
+		_, ok = typed["context.resource.connections.db.name"]
 		assert.False(t, ok)
 	})
 }
