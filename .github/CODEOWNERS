@@ -1,57 +1,94 @@
 # Code Owners for github.com/radius-project/radius
-# Generated from template - do not edit directly
+
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
 
 # General maintainers and approvers for the entire repository
 * @radius-project/maintainers-radius @radius-project/approvers-radius
 
 # Dependency files - on-call can also approve these (Dependabot, etc.)
 
+# Version managers (language-agnostic)
+**/.tool-versions                  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/mise.toml                       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.mise.toml                      @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
 # Node.js
-**/package.json           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/package-lock.json      @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/pnpm-lock.yaml         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/yarn.lock              @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/.nvmrc                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/.npmrc                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/.node-version          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/tsconfig.json          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/tsconfig.*.json        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/*.tsconfig.json        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/package.json                    @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/package-lock.json               @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/npm-shrinkwrap.json             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/pnpm-lock.yaml                  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/pnpm-workspace.yaml             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/yarn.lock                       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/bun.lock                        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/bun.lockb                       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.nvmrc                          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.npmrc                          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.yarnrc                         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.yarnrc.yml                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.node-version                   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/tsconfig.json                   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/tsconfig.*.json                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/*.tsconfig.json                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
 # Go
-**/go.mod                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/go.sum                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/go.work                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/go.work.sum            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/.go-version            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.mod                          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.sum                          @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.work                         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/go.work.sum                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.go-version                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
 # .NET
-**/*.csproj               @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/*.sln                  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/nuget.config           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/global.json            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/*.csproj                        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/*.sln                           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/nuget.config                    @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/global.json                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Directory.Build.props           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Directory.Build.targets         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Directory.Packages.props        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/packages.config                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/packages.lock.json              @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
 # Python
-**/requirements.txt       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/pyproject.toml         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/uv.lock                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/poetry.lock            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/Pipfile                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/Pipfile.lock           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/.python-version        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/requirements*.txt               @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/constraints*.txt                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/setup.py                        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/setup.cfg                       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/pyproject.toml                  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/uv.lock                         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/poetry.lock                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/pdm.lock                        @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Pipfile                         @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Pipfile.lock                    @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.python-version                 @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
 # Rust
-**/Cargo.toml             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/Cargo.lock             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Cargo.toml                      @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/Cargo.lock                      @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/rust-toolchain                  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/rust-toolchain.toml             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
 # Bicep
-**/bicepconfig.json       @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/bicepconfig.json                @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
-# Container files
-**/Dockerfile             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/*.Dockerfile           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-**/.devcontainer/*.json   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+# Terraform / OpenTofu
+**/versions.tf                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.terraform.lock.hcl             @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.terraform-version              @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
+# Dev Container configs
+**/.devcontainer/*.json            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.devcontainer.json              @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.devcontainer/**/Dockerfile     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+**/.devcontainer/**/*.Dockerfile   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+
+# GitHub config files (Dependabot, etc.)
+.github/*.yml                      @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+.github/*.yaml                     @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
 
 # GitHub workflows
-.github/workflows/*.yml   @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
-.github/workflows/*.yaml  @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+.github/workflows/*.yml            @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
+.github/workflows/*.yaml           @radius-project/maintainers-radius @radius-project/approvers-radius @radius-project/on-call
