@@ -220,14 +220,15 @@ func addResourceTypeForAPIVersion(
 // win. When the properties type resolves to a non-object (e.g. an empty schema)
 // there is nothing to hoist and the body is left unchanged.
 //
-// An unresolvable propertyTypeRef is returned as an error rather than ignored:
-// the type was just registered via addSchemaType, so a failure to resolve it
-// signals an internal generator inconsistency that would otherwise silently
-// produce partially-flattened output.
+// A propertyTypeRef that is not a same-file type reference, or that cannot be
+// resolved, is returned as an error rather than ignored: the type was just
+// registered via addSchemaType, so either condition signals an internal
+// generator inconsistency that would otherwise silently produce
+// partially-flattened output.
 func hoistPropertiesAliases(propertyTypeRef types.ITypeReference, bodyType *types.ObjectType, typeFactory *factory.TypeFactory) error {
 	ref, ok := propertyTypeRef.(types.TypeReference)
 	if !ok {
-		return nil
+		return fmt.Errorf("expected properties reference of type types.TypeReference, got %T", propertyTypeRef)
 	}
 
 	propsType, err := typeFactory.GetTypeByIndex(ref.Ref)

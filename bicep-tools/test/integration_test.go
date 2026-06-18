@@ -259,7 +259,9 @@ func TestIntegration_FlattensPropertiesAliases(t *testing.T) {
 		t.Fatal("Expected resource body to have properties")
 	}
 
-	// The ReadOnly flag in the Bicep type system has bit value 2.
+	// Hoisted aliases must be ReadOnly-only (flag value 2). Any additional flags
+	// (e.g. Required or WriteOnly) would violate the flattening contract, so
+	// assert exact equality rather than just the ReadOnly bit.
 	const readOnlyFlag = 2
 	for _, name := range []string{"a", "b", "c"} {
 		prop, exists := bodyProps[name].(map[string]any)
@@ -267,9 +269,13 @@ func TestIntegration_FlattensPropertiesAliases(t *testing.T) {
 			t.Errorf("Expected flat alias %q on the resource body", name)
 			continue
 		}
-		flags, _ := prop["flags"].(float64)
-		if int(flags)&readOnlyFlag == 0 {
-			t.Errorf("Expected flat alias %q to be ReadOnly, got flags %v", name, prop["flags"])
+		flags, ok := prop["flags"].(float64)
+		if !ok {
+			t.Errorf("Expected flat alias %q to have numeric flags, got %v", name, prop["flags"])
+			continue
+		}
+		if int(flags) != readOnlyFlag {
+			t.Errorf("Expected flat alias %q to be ReadOnly only (flags=%d), got flags %d", name, readOnlyFlag, int(flags))
 		}
 	}
 
