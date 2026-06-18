@@ -20,6 +20,7 @@ on:
           test/**/*.md
           test/*.md
           *.md
+          .cspellignore
           versions.yaml
           !docs/release-notes/v*.md
           .codecov.yml
