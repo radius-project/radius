@@ -193,7 +193,9 @@ func addResourceTypeForAPIVersion(
 	// and no type indices shift. Children whose name collides with an envelope
 	// property (name, location, properties, apiVersion, type, id) are skipped so
 	// the envelope always wins.
-	hoistPropertiesAliases(propertyTypeRef, bodyType, typeFactory)
+	if err := hoistPropertiesAliases(propertyTypeRef, bodyType, typeFactory); err != nil {
+		return nil, fmt.Errorf("failed to hoist properties aliases for %q: %w", qualifiedName, err)
+	}
 
 	// Create the resource type
 	resourceTypeRef := typeFactory.CreateResourceType(
@@ -214,23 +216,28 @@ func addResourceTypeForAPIVersion(
 // propertyTypeRef must reference the already-registered `properties` ObjectType.
 // Its existing child type references are reused verbatim, so this registers no
 // new types and does not shift any type indices. A child is skipped when a body
-// property with the same name already exists (the envelope properties always
-// win) or when the reference cannot be resolved to an ObjectType (e.g. an empty
-// schema), leaving the body unchanged in those cases.
-func hoistPropertiesAliases(propertyTypeRef types.ITypeReference, bodyType *types.ObjectType, typeFactory *factory.TypeFactory) {
+// property with the same name already exists, so the envelope properties always
+// win. When the properties type resolves to a non-object (e.g. an empty schema)
+// there is nothing to hoist and the body is left unchanged.
+//
+// An unresolvable propertyTypeRef is returned as an error rather than ignored:
+// the type was just registered via addSchemaType, so a failure to resolve it
+// signals an internal generator inconsistency that would otherwise silently
+// produce partially-flattened output.
+func hoistPropertiesAliases(propertyTypeRef types.ITypeReference, bodyType *types.ObjectType, typeFactory *factory.TypeFactory) error {
 	ref, ok := propertyTypeRef.(types.TypeReference)
 	if !ok {
-		return
+		return nil
 	}
 
 	propsType, err := typeFactory.GetTypeByIndex(ref.Ref)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to resolve properties type (ref %d) for flattening: %w", ref.Ref, err)
 	}
 
 	propsObject, ok := propsType.(*types.ObjectType)
 	if !ok {
-		return
+		return nil
 	}
 
 	for childName, childProp := range propsObject.Properties {
@@ -243,6 +250,8 @@ func hoistPropertiesAliases(propertyTypeRef types.ITypeReference, bodyType *type
 			Description: childProp.Description,
 		}
 	}
+
+	return nil
 }
 
 // addSchemaType converts a manifest schema to a Bicep type
