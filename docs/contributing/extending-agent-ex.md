@@ -27,7 +27,18 @@ Every capability **must** have a primary contributing doc. On top of that doc, d
 2. **Add a path-scoped instruction** when the capability is a *coding convention* tied to a file type that a linter cannot enforce (`.github/instructions/<technology>.instructions.md`).
 3. **Add a skill** when the workflow is multi-step and benefits from a repeatable, agent-invocable wrapper (`.github/skills/radius-<verb>-<noun>/SKILL.md`).
 4. **Add a prompt** when VS Code users want a slash-command shortcut to that workflow (`.github/prompts/radius.<action>.prompt.md`). VS Code only.
-5. **Add a custom agent** when the capability needs a scoped persona with its own tool set (`.github/agents/radius-<name>.agent.md`).
+5. **Add a custom agent** when the capability needs a scoped persona with its own guarded file scope (`.github/agents/radius-<name>.agent.md`).
+
+#### Skill vs. custom agent
+
+Steps 3 and 5 are the two most easily confused. Choose between them this way:
+
+- Pick a **skill** when the capability is a *self-contained procedure* — a repeatable set of steps that any running agent can invoke on demand. A skill is instructions injected into whatever agent is already active; it cannot wall off files or own the session.
+- Pick a **custom agent** when the capability needs a **scoped persona** that owns the whole session: a guarded scope boundary (which files it may and may not touch) and authority to **coordinate other skills** rather than be one. An agent is the right home for branching, judgment-driven work that decides *which* procedure to run, in what order, and enforces guardrails throughout.
+
+> **Do not pin a `tools:` allow-list in agent frontmatter.** Tool names change frequently, so a hard-coded list goes stale and silently breaks the agent. Define the agent's scope through prose guardrails — which files it may and may not touch — not a tool list.
+
+Example: [`radius-add-ai-capability`](../../.github/agents/radius-add-ai-capability.agent.md) is a custom agent, not a skill, because it (1) defines a guarded scope that forbids editing product source or the planning docs, and (2) orchestrates the [`radius-author-doc`](../../.github/skills/radius-author-doc/SKILL.md) skill to do the mechanical writing while it handles the decision tree and the scope guardrails. The writing step is a skill; the persona that drives and bounds the session is an agent.
 
 **The two-of-four rule** (from [Design Principle 6 in agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md#design-principles)): only add a skill, prompt, or custom agent if it satisfies **at least two** of:
 
@@ -92,6 +103,7 @@ The change is complete when:
 ## Troubleshooting
 
 - **Not sure whether to add a wrapper.** Apply the two-of-four rule. If it satisfies fewer than two, the doc alone is enough.
+- **Not sure whether a wrapper should be a skill or a custom agent.** See [Skill vs. custom agent](#skill-vs-custom-agent). A skill is a self-contained, invocable procedure; a custom agent is a scoped persona that owns the session — a guarded file scope and authority to coordinate skills. If you need to wall off files or own the whole session, it's an agent.
 - **The capability touches several file types.** It may be several capabilities. Give each its own primary doc and index row.
 - **A wrapper would duplicate doc content.** That's expected to be avoided — move the knowledge into the doc and have the wrapper link to it.
 - **Tempted to update the planning docs.** Don't. They record the original buildout; ongoing work updates the live docs and the capability index only.

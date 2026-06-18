@@ -180,10 +180,6 @@ Backing doc: [<doc title>](../../docs/contributing/<path>.md)
 agent: agent
 name: radius.<action>
 description: <One line describing the shortcut.>
-tools:
-  - edit
-  - search
-  - runCommands
 ---
 
 # <Prompt title>
@@ -200,7 +196,6 @@ backing doc.>
 ---
 name: radius-<name>
 description: <One line describing the agent persona and its scope.>
-tools: ["read", "search", "edit", "web", "shell"]
 ---
 
 # <Agent title>
@@ -209,6 +204,8 @@ Backing doc: [<doc title>](../../docs/contributing/<path>.md)
 
 <The agent's role, scope, and step-by-step behavior.>
 ```
+
+> Do **not** add a `tools:` allow-list to the frontmatter. Tool names change frequently, so a pinned list goes stale and silently breaks the agent. Scope the agent through prose instead — state which files it may and may not touch in its body.
 
 ## Code ↔ doc path map
 
