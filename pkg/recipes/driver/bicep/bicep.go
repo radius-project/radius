@@ -22,6 +22,7 @@ import (
 	reflect "reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -408,9 +409,10 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 
 		switch {
 		case hasOutputsMapping:
-			// Direct module with an outputs mapping — collect all ARM outputs flat, then apply the mapping.
-			values := collectARMOutputValues(out)
-			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, map[string]any{}, definition.Outputs)
+			// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
+			// secure-typed outputs into secrets), then apply the mapping.
+			values, secrets := collectARMOutputs(out)
+			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs)
 		case hasResultOutput:
 			// Wrapped recipe — use the existing 'result' output parsing.
 			if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
@@ -422,8 +424,9 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 				}
 			}
 		default:
-			// Direct module without a mapping — pass through all ARM outputs unchanged.
-			recipeResponse.Values = collectARMOutputValues(out)
+			// Direct module without a mapping — pass through all ARM outputs unchanged, routing
+			// secure-typed outputs to Secrets so they are not exposed as plain values.
+			recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 		}
 	}
 
@@ -440,18 +443,46 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 	return recipeResponse, nil
 }
 
-// collectARMOutputValues extracts values from ARM deployment outputs.
+// collectARMOutputs splits ARM deployment outputs into non-sensitive values and sensitive secrets
+// based on each output's declared ARM type. Outputs typed securestring/secureobject are routed to
+// secrets so that secure Bicep module outputs are not exposed as plain values, mirroring the
+// Terraform driver which preserves per-output sensitivity.
 // ARM outputs have the shape: {"outputName": {"type": "...", "value": ...}, ...}.
-func collectARMOutputValues(outputs map[string]any) map[string]any {
+func collectARMOutputs(outputs map[string]any) (map[string]any, map[string]any) {
 	values := make(map[string]any)
+	secrets := make(map[string]any)
 	for name, raw := range outputs {
-		if outputMap, ok := raw.(map[string]any); ok {
-			if val, ok := outputMap["value"]; ok {
-				values[name] = val
-			}
+		outputMap, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		val, ok := outputMap["value"]
+		if !ok {
+			continue
+		}
+		if isSecureARMOutputType(outputMap["type"]) {
+			secrets[name] = val
+		} else {
+			values[name] = val
 		}
 	}
-	return values
+	return values, secrets
+}
+
+// isSecureARMOutputType reports whether an ARM output's declared type marks it as sensitive
+// (securestring or secureobject). The comparison is case-insensitive because ARM may return the
+// type with different casing than the compiled template.
+func isSecureARMOutputType(outputType any) bool {
+	typeStr, ok := outputType.(string)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(typeStr) {
+	case "securestring", "secureobject":
+		return true
+	default:
+		return false
+	}
 }
 
 // wrapARMParameters wraps raw parameter values into the ARM parameter format: {"key": {"value": val}}.

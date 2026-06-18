@@ -638,6 +638,50 @@ func Test_Bicep_PrepareRecipeResponse_DirectModule(t *testing.T) {
 					"storageEndpoint": "https://sa.blob.core.windows.net",
 					"storageName":     "mystorageaccount",
 				},
+				Secrets: map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+				},
+			},
+		},
+		{
+			desc: "direct module without mapping - secure outputs routed to secrets",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+			},
+			outputs: map[string]any{
+				"endpoint":  map[string]any{"type": "string", "value": "https://sa.blob.core.windows.net"},
+				"accessKey": map[string]any{"type": "securestring", "value": "s3cr3t"},
+				"config":    map[string]any{"type": "secureObject", "value": map[string]any{"token": "abc"}},
+			},
+			resources: nil,
+			expectedResponse: &recipes.RecipeOutput{
+				Values: map[string]any{"endpoint": "https://sa.blob.core.windows.net"},
+				Secrets: map[string]any{
+					"accessKey": "s3cr3t",
+					"config":    map[string]any{"token": "abc"},
+				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+				},
+			},
+		},
+		{
+			desc: "direct module with mapping - secure output mapped to secret property",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",
+				Outputs:      map[string]string{"endpoint": "storageEndpoint", "password": "accessKey"},
+			},
+			outputs: map[string]any{
+				"storageEndpoint": map[string]any{"type": "string", "value": "https://sa.blob.core.windows.net"},
+				"accessKey":       map[string]any{"type": "securestring", "value": "s3cr3t"},
+			},
+			resources: nil,
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"endpoint": "https://sa.blob.core.windows.net"},
+				Secrets: map[string]any{"password": "s3cr3t"},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind: recipes.TemplateKindBicep,
 					TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/storage/storage-account:0.14.3",

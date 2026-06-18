@@ -392,7 +392,11 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 		// Merge environment-level and resource-level parameters (resource parameters take precedence),
 		// then resolve any {{context.*}} expressions against the recipe context.
-		mergedParams := recipes_util.ShallowMergeParameters(options.EnvRecipe.Parameters, options.ResourceRecipe.Parameters)
+		var resourceParams map[string]any
+		if options.ResourceRecipe != nil {
+			resourceParams = options.ResourceRecipe.Parameters
+		}
+		mergedParams := recipes_util.ShallowMergeParameters(options.EnvRecipe.Parameters, resourceParams)
 		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
 		if resolvedParams != nil {
 			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
