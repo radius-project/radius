@@ -648,6 +648,78 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 		},
 		{
+			desc: "AWS resource name prefers Terraform ID",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_ecs_task_definition",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders:42",
+									"arn": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource name preserves colon in ARN path fallback",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_ecs_task_definition",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource missing Terraform type returns actionable error",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("terraform AWS resource type is empty for ARN \"arn:aws:s3:::my-bucket\""),
+		},
+		{
 			desc: "kubernetes manifest type with no apiVersion information",
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{

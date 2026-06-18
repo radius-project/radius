@@ -486,8 +486,11 @@ func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn st
 	// formats are service-specific and often omit the type token needed to build
 	// an AWS.<Service>/<Type> ID.
 	resourceName := terraformAWSResourceName(resource, arnSegments)
-	if resource.Type == "" || resourceName == "" {
-		return "", fmt.Errorf("terraform AWS resource type or resource name is empty")
+	if resource.Type == "" {
+		return "", fmt.Errorf("terraform AWS resource type is empty for ARN %q", arn)
+	}
+	if resourceName == "" {
+		return "", fmt.Errorf("terraform AWS resource name is empty for ARN %q and Terraform resource type %q", arn, resource.Type)
 	}
 
 	ucpID := fmt.Sprintf(
@@ -507,21 +510,19 @@ func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn st
 }
 
 func terraformAWSResourceName(resource *tfjson.StateResource, arnSegments []string) string {
+	if id, ok := resource.AttributeValues["id"].(string); ok && id != "" {
+		return id
+	}
+
 	resourcePath := strings.Join(arnSegments[5:], ":")
-	resourcePath = strings.TrimRight(resourcePath, "/:")
+	resourcePath = strings.TrimRight(resourcePath, "/")
 	if resourcePath != "" {
-		parts := strings.FieldsFunc(resourcePath, func(r rune) bool {
-			return r == '/' || r == ':'
-		})
+		parts := strings.Split(resourcePath, "/")
 		if len(parts) == 0 {
 			return resourcePath
 		}
 
 		return parts[len(parts)-1]
-	}
-
-	if id, ok := resource.AttributeValues["id"].(string); ok && id != "" {
-		return id
 	}
 
 	return ""
