@@ -289,7 +289,7 @@ All the limitations here are because at this point, we want to limit complexity 
 Typically, "recipes" block provides details on recipe used by a specific type.
 Example:
 
-```json
+```bicep
 recipe: {
       name: 'default'
       parameters: {
