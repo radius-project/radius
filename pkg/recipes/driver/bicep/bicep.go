@@ -489,6 +489,12 @@ func isSecureARMOutputType(outputType any) bool {
 func wrapARMParameters(params map[string]any) map[string]any {
 	wrapped := make(map[string]any, len(params))
 	for k, v := range params {
+		// Skip nil values so we don't emit an explicit ARM "value": null, which can
+		// override a module parameter's default or fail ARM type validation. This
+		// mirrors the Terraform driver's SetParams behavior.
+		if v == nil {
+			continue
+		}
 		wrapped[k] = map[string]any{
 			"value": v,
 		}

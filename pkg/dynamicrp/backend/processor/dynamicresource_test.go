@@ -247,6 +247,49 @@ func Test_Process(t *testing.T) {
 		require.True(t, ok)
 		require.Equal(t, "true", enabledSecret["Value"])
 	})
+
+	t.Run("nil secret values are skipped", func(t *testing.T) {
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{
+					UpdatedAPIVersion: "2024-01-01",
+				},
+			},
+			Properties: map[string]any{
+				"status": map[string]any{},
+			},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values: map[string]any{
+					"host": hostname,
+				},
+				// A nil secret output must not be recorded as the literal string "<nil>".
+				Secrets: map[string]any{
+					"password": nil,
+				},
+			},
+			UcpClient: clientFactory,
+		}
+
+		err := processor.Process(context.Background(), resource, options)
+		require.NoError(t, err)
+
+		bs, err := json.Marshal(resource.Properties)
+		require.NoError(t, err)
+		properties := map[string]any{}
+		require.NoError(t, json.Unmarshal(bs, &properties))
+
+		status, ok := properties["status"].(map[string]any)
+		require.True(t, ok)
+		secrets, _ := status["secrets"].(map[string]any)
+		_, exists := secrets["password"]
+		require.False(t, exists, "nil secret value should be skipped")
+	})
 }
 
 func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {

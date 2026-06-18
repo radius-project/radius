@@ -58,9 +58,17 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		validator.AddOptionalAnyField(key, &value)
 	}
 	for key, value := range options.RecipeOutput.Secrets {
+		if value == nil {
+			// A nil secret value carries no data; skip it so we don't record the
+			// literal string "<nil>" and overwrite an otherwise-unset secret field.
+			continue
+		}
 		// Secret values originating from a direct module's outputs may not be strings
 		// (e.g. numeric or boolean Terraform outputs). Stringify defensively to avoid a panic.
-		strValue := fmt.Sprintf("%v", value)
+		strValue, ok := value.(string)
+		if !ok {
+			strValue = fmt.Sprintf("%v", value)
+		}
 		validator.AddOptionalSecretField(key, &strValue)
 	}
 

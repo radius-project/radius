@@ -765,6 +765,13 @@ func Test_WrapARMParameters(t *testing.T) {
 				"sku":  map[string]any{"value": "Standard"},
 			},
 		},
+		{
+			name:   "skips nil values",
+			params: map[string]any{"name": "mysa", "optional": nil},
+			expected: map[string]any{
+				"name": map[string]any{"value": "mysa"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
