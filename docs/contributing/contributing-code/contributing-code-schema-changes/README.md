@@ -19,19 +19,19 @@ In order to update or create a new schema follow these steps:
     <details>
     <summary>Alternately, if you would like to manually generate the OpenAPI spec and API client, follow these steps:</summary>
 
-    1. Run the following command to generate the OpenAPI spec with the newly added changes
+    1. Run the following command from a namespace folder (e.g. `typespec/Applications.Core`) to generate the OpenAPI spec with the newly added changes
 
         ```bash
         npx tsp compile .
         ```
 
-    1. Generate the client code by running autorest. For example, to generate the `Applications.Core` resources run:
+    1. Generate the Go client code with the [TypeSpec Go emitter](https://github.com/Azure/typespec-azure). For example, to generate the `Applications.Core` resources run:
 
         ```bash
-        autorest pkg/corerp/api/README.md --tag=link-2023-10-01-preview
+        cd typespec/Applications.Core && npx tsp compile . --emit=@azure-tools/typespec-go
         ```
 
-        The autorest configuration file (_i.e README.md_) is generally found in `pkg/<NAMESPACE>/api/` directory and has details on which tag to use.
+        The emitter configuration lives in each namespace's `tspconfig.yaml` (under the `@azure-tools/typespec-go` options block). The generated files are written to a temporary `.tsp-go-tmp` folder and copied into the matching `pkg/<NAMESPACE>/api/<version>/` directory; the per-namespace `make generate-rad-<namespace>-client` targets automate this copy-and-format step.
     </details>
 1. Add any necessary changes to the Radius resource provider to support the newly added types.
 1. Add any necessary tests, as needed.

@@ -89,7 +89,7 @@ func toLocationResourceTypeDatamodel(src *LocationResourceType) datamodel.Locati
 	return dst
 }
 
-func toLocationAPIVersionDatamodel(_ map[string]any) datamodel.LocationAPIVersionConfiguration {
+func toLocationAPIVersionDatamodel(_ *LocationResourceTypeAPIVersion) datamodel.LocationAPIVersionConfiguration {
 	dst := datamodel.LocationAPIVersionConfiguration{
 		// Empty for now.
 	}
@@ -98,7 +98,7 @@ func toLocationAPIVersionDatamodel(_ map[string]any) datamodel.LocationAPIVersio
 
 func fromLocationResourceTypeDatamodel(src datamodel.LocationResourceTypeConfiguration) *LocationResourceType {
 	dst := &LocationResourceType{
-		APIVersions: map[string]map[string]any{},
+		APIVersions: map[string]*LocationResourceTypeAPIVersion{},
 	}
 
 	for name, value := range src.APIVersions {
@@ -108,8 +108,8 @@ func fromLocationResourceTypeDatamodel(src datamodel.LocationResourceTypeConfigu
 	return dst
 }
 
-func fromLocationAPIVersionDatamodel(src datamodel.LocationAPIVersionConfiguration) map[string]any {
-	dst := map[string]any{
+func fromLocationAPIVersionDatamodel(_ datamodel.LocationAPIVersionConfiguration) *LocationResourceTypeAPIVersion {
+	dst := &LocationResourceTypeAPIVersion{
 		// Empty for now.
 	}
 	return dst

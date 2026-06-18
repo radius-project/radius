@@ -107,7 +107,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the preview `rad app graph` command.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
-		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
 
 	// Fetch the application graph — GetGraph returns 404 if the application does not exist.
-	graphResponse, err := appClient.GetGraph(ctx, r.ApplicationName, map[string]any{}, &corerpv20250801.ApplicationsClientGetGraphOptions{})
+	graphResponse, err := appClient.GetGraph(ctx, r.Workspace.Scope, r.ApplicationName, corerpv20250801.GetGraphRequest{}, &corerpv20250801.ApplicationsClientGetGraphOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("Application %q does not exist or has been deleted.", r.ApplicationName)
 	} else if err != nil {

@@ -804,10 +804,10 @@ func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, option
 	client := options.ManagementClient
 	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 	appManagementClient := client.(*clients.UCPApplicationsManagementClient)
-	appDeleteClient, err := v20231001preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+	appDeleteClient, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
 	require.NoError(t, err)
 	// We don't care about the response for tests
-	_, err = appDeleteClient.Delete(ctx, applicationName, nil)
+	_, err = appDeleteClient.Delete(ctx, appManagementClient.RootScope, applicationName, nil)
 	return err
 }
 

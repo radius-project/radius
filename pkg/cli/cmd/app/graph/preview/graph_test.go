@@ -113,8 +113,9 @@ func Test_Run(t *testing.T) {
 			srv := test_client_factory.WithApplicationsServerNoError()
 			srv.GetGraph = func(
 				ctx context.Context,
+				rootScope string,
 				applicationName string,
-				body any,
+				body corerpv20250801.GetGraphRequest,
 				options *corerpv20250801.ApplicationsClientGetGraphOptions,
 			) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
 				containerID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/web"
@@ -187,8 +188,9 @@ func Test_Run(t *testing.T) {
 			return fake.ApplicationsServer{
 				GetGraph: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
-					body any,
+					body corerpv20250801.GetGraphRequest,
 					options *corerpv20250801.ApplicationsClientGetGraphOptions,
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
 					errResp.SetResponseError(http.StatusNotFound, "NotFound")
@@ -218,8 +220,9 @@ func Test_Run(t *testing.T) {
 			srv := test_client_factory.WithApplicationsServerNoError()
 			srv.GetGraph = func(
 				ctx context.Context,
+				rootScope string,
 				applicationName string,
-				body any,
+				body corerpv20250801.GetGraphRequest,
 				options *corerpv20250801.ApplicationsClientGetGraphOptions,
 			) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
 				errResp.SetResponseError(http.StatusInternalServerError, "InternalServerError")
